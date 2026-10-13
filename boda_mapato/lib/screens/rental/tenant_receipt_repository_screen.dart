@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import 'receipt_view_screen.dart';
+import '../../services/localization_service.dart';
 
 class TenantReceiptRepositoryScreen extends StatefulWidget {
   const TenantReceiptRepositoryScreen({super.key});
@@ -37,7 +38,7 @@ class _TenantReceiptRepositoryScreenState extends State<TenantReceiptRepositoryS
       });
     } catch (e) {
       debugPrint('Error fetching tenant receipts: $e');
-      if (mounted) ThemeConstants.showErrorSnackBar(context, "Failed to load receipts.");
+      if (mounted) ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('failed_to_load_receipts'));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -65,7 +66,7 @@ class _TenantReceiptRepositoryScreenState extends State<TenantReceiptRepositoryS
   Widget build(BuildContext context) {
     return ThemeConstants.buildResponsiveScaffold(
       context,
-      title: "Receipt Repository",
+      title: LocalizationService.instance.translate('receipt_repository'),
       body: Column(
         children: [
           Padding(
@@ -75,7 +76,7 @@ class _TenantReceiptRepositoryScreenState extends State<TenantReceiptRepositoryS
               onChanged: _filterReceipts,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                hintText: "Search by Month, Year, or Number",
+                hintText: LocalizationService.instance.translate('search_by_month_year_or_number'),
                 hintStyle: const TextStyle(color: Colors.white54),
                 prefixIcon: const Icon(Icons.search, color: Colors.white54),
                 filled: true,
@@ -107,12 +108,12 @@ class _TenantReceiptRepositoryScreenState extends State<TenantReceiptRepositoryS
           Icon(Icons.inventory_2_outlined, size: 80.sp, color: Colors.white24),
           SizedBox(height: 16.h),
           Text(
-            "No Receipts Found",
+            LocalizationService.instance.translate('no_receipts_found'),
             style: TextStyle(color: Colors.white54, fontSize: 18.sp, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 8.h),
           Text(
-            "When landlords dispatch receipts, they will appear here.",
+            LocalizationService.instance.translate('when_landlords_dispatch_receipts_they_will'),
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white38, fontSize: 14.sp),
           ),

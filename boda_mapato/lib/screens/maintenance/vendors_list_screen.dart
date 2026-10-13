@@ -6,6 +6,7 @@ import '../../constants/theme_constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/maintenance_provider.dart';
 import '../../widgets/temporary_password_dialog.dart';
+import '../../services/localization_service.dart';
 
 class VendorsListScreen extends StatefulWidget {
   const VendorsListScreen({super.key});
@@ -47,14 +48,14 @@ class _VendorsListScreenState extends State<VendorsListScreen> {
 
   Future<void> _callVendor(String? phone) async {
     if (phone == null || phone.isEmpty) {
-      ThemeConstants.showErrorSnackBar(context, "Namba ya simu haipatikani");
+      ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('phone_number_not_available'));
       return;
     }
     final String urlString = "tel:$phone";
     if (await canLaunchUrlString(urlString)) {
       await launchUrlString(urlString, mode: LaunchMode.externalApplication);
     } else {
-      ThemeConstants.showErrorSnackBar(context, "Imeshindikana kupiga simu");
+      ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('could_not_make_the_call'));
     }
   }
 
@@ -84,27 +85,27 @@ class _VendorsListScreenState extends State<VendorsListScreen> {
                 decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10.r)),
               ),
             ),
-            Text("Ongeza Fundi Mpya", style: ThemeConstants.headingStyle.copyWith(fontSize: 18.sp)),
+            Text(LocalizationService.instance.translate('add_new_technician'), style: ThemeConstants.headingStyle.copyWith(fontSize: 18.sp)),
             SizedBox(height: 24.h),
-            _buildTextField(_nameController, "Jina kamili", Icons.person),
+            _buildTextField(_nameController, LocalizationService.instance.translate('full_name'), Icons.person),
             SizedBox(height: 16.h),
             Row(
               children: [
-                Expanded(child: _buildTextField(_phoneController, "Namba ya simu", Icons.phone, keyboardType: TextInputType.phone)),
+                Expanded(child: _buildTextField(_phoneController, LocalizationService.instance.translate('phone_no'), Icons.phone, keyboardType: TextInputType.phone)),
                 SizedBox(width: 8.w),
-                Expanded(child: _buildTextField(_specialtyController, "Utaalamu", Icons.category)),
+                Expanded(child: _buildTextField(_specialtyController, LocalizationService.instance.translate('specialty'), Icons.category)),
               ],
             ),
             SizedBox(height: 16.h),
             Row(
               children: [
-                 Expanded(child: _buildTextField(_emailController, "Barua pepe (Email)", Icons.email, keyboardType: TextInputType.emailAddress)),
+                 Expanded(child: _buildTextField(_emailController, LocalizationService.instance.translate('email_3'), Icons.email, keyboardType: TextInputType.emailAddress)),
                  SizedBox(width: 8.w),
-                 Expanded(child: _buildTextField(_experienceController, "Uzoefu (Mf. Miezi 6)", Icons.history)),
+                 Expanded(child: _buildTextField(_experienceController, LocalizationService.instance.translate('experience_e_g_6_months'), Icons.history)),
               ],
             ),
             SizedBox(height: 16.h),
-            _buildTextField(_addressController, "Anwani (Mtaa/Eneo)", Icons.location_on),
+            _buildTextField(_addressController, LocalizationService.instance.translate('address_street_area'), Icons.location_on),
             SizedBox(height: 32.h),
             SizedBox(
               width: double.infinity,
@@ -112,7 +113,7 @@ class _VendorsListScreenState extends State<VendorsListScreen> {
               child: ElevatedButton(
                 onPressed: () async {
                   if (_nameController.text.isEmpty || _phoneController.text.isEmpty) {
-                    ThemeConstants.showErrorSnackBar(context, "Tafadhali jaza jina na namba ya simu");
+                    ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('please_fill_in_the_name_and'));
                     return;
                   }
                   final MaintenanceProvider provider = context.read<MaintenanceProvider>();
@@ -137,7 +138,7 @@ class _VendorsListScreenState extends State<VendorsListScreen> {
                     _emailController.clear();
                     _addressController.clear();
                     _experienceController.clear();
-                    ThemeConstants.showSuccessSnackBar(context, "Fundi ameongezwa kikamilifu");
+                    ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('technician_added_successfully'));
                     if (temporaryPassword != null) {
                       // The list screen's own context: the sheet's is gone once it has closed.
                       await showTemporaryPasswords(this.context, <TemporaryCredential>[
@@ -156,7 +157,7 @@ class _VendorsListScreenState extends State<VendorsListScreen> {
                   backgroundColor: ThemeConstants.footerBarColor,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
                 ),
-                child: Text("HIFADHI TAARIFA", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16.sp)),
+                child: Text(LocalizationService.instance.translate('save_details').toUpperCase(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16.sp)),
               ),
             ),
             SizedBox(height: 30.h),
@@ -171,7 +172,7 @@ class _VendorsListScreenState extends State<VendorsListScreen> {
     final bool canManage = context.watch<AuthProvider>().user?.hasPermission('manage_vendors') == true;
 
     return ThemeConstants.buildScaffold(
-      title: canManage ? "Usimamizi wa Mafundi" : "Watoa Huduma & Mafundi",
+      title: canManage ? LocalizationService.instance.translate('technician_management') : LocalizationService.instance.translate('service_providers_technicians'),
       body: Consumer<MaintenanceProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading && provider.vendors.isEmpty) {
@@ -195,9 +196,9 @@ class _VendorsListScreenState extends State<VendorsListScreen> {
                     labelColor: ThemeConstants.footerBarColor,
                     unselectedLabelColor: Colors.grey,
                     labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp),
-                    tabs: const [
-                      Tab(text: "Mafundi Wangu"),
-                      Tab(text: "Soko la Mafundi"),
+                    tabs: [
+                      Tab(text: LocalizationService.instance.translate('my_technicians')),
+                      Tab(text: LocalizationService.instance.translate('technician_marketplace')),
                     ],
                   ),
                 ),
@@ -236,7 +237,7 @@ class _VendorsListScreenState extends State<VendorsListScreen> {
           children: [
             Icon(Icons.person_search_outlined, size: 64.sp, color: Colors.grey.withOpacity(0.4)),
             SizedBox(height: 16.h),
-            Text(isMarketplace ? "Hakuna mafundi kwenye soko" : "Hakuna mafundi kwenye orodha yako", style: ThemeConstants.subHeadingStyle),
+            Text(isMarketplace ? LocalizationService.instance.translate('no_technicians_in_the_marketplace') : LocalizationService.instance.translate('no_technicians_in_your_list'), style: ThemeConstants.subHeadingStyle),
           ],
         ),
       );
@@ -275,14 +276,14 @@ class _VendorsListScreenState extends State<VendorsListScreen> {
                       SizedBox(height: 4.h),
                       Row(
                         children: [
-                          Text(vendor['specialty'] ?? 'Fundi',
+                          Text(vendor['specialty'] ?? LocalizationService.instance.translate('technician'),
                               style: TextStyle(color: ThemeConstants.footerBarColor, fontSize: 12.sp, fontWeight: FontWeight.w500)),
                           if (vendor['experience'] != null && vendor['experience'].toString().isNotEmpty) ...[
                              SizedBox(width: 8.w),
                              Container(
                                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                                decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(4.r)),
-                               child: Text('${vendor['experience']} ya Uzoefu', style: TextStyle(color: Colors.orange, fontSize: 10.sp)),
+                               child: Text(LocalizationService.instance.translateWith('of_experience', <Object?>[vendor['experience']]), style: TextStyle(color: Colors.orange, fontSize: 10.sp)),
                              ),
                           ]
                         ]
@@ -300,9 +301,9 @@ class _VendorsListScreenState extends State<VendorsListScreen> {
                     onPressed: () async {
                       final success = await provider.saveToRoster(vendor['id'].toString());
                       if (success && mounted) {
-                        ThemeConstants.showSuccessSnackBar(context, "Fundi amehifadhiwa!");
+                        ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('technician_saved'));
                       } else if (mounted) {
-                        ThemeConstants.showErrorSnackBar(context, "Imeshindikana kuhifadhi fundi");
+                        ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('could_not_save_the_technician'));
                       }
                     },
                   )

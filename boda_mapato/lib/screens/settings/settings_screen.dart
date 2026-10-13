@@ -109,7 +109,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        user?.name ?? 'User',
+                        user?.name ?? LocalizationService.instance.translate('user'),
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -152,7 +152,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              isSuperAdmin ? 'SUPER ADMIN' : isAdmin ? 'ADMIN' : (user?.role?.toUpperCase() ?? ''),
+                              isSuperAdmin ? LocalizationService.instance.translate('super_admin').toUpperCase() : isAdmin ? LocalizationService.instance.translate('admin').toUpperCase() : (user?.role?.toUpperCase() ?? ''),
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -601,7 +601,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (file.bytes == null) return;
       if (!context.mounted) return;
       // ignore: use_build_context_synchronously
-      ThemeConstants.showInfoSnackBar(context, 'Uploading image...');
+      ThemeConstants.showInfoSnackBar(context, '${LocalizationService.instance.translate('uploading_image')}...');
       final ok = await authProvider.uploadProfileImage(
         bytes: file.bytes!,
         filename: file.name,
@@ -609,15 +609,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!context.mounted) return;
       // ignore: use_build_context_synchronously
       if (ok) {
-        ThemeConstants.showSuccessSnackBar(context, 'Image uploaded successfully');
+        ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('image_uploaded'));
       } else {
-        ThemeConstants.showErrorSnackBar(context, 'Failed to upload image');
+        ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('failed_to_upload_image'));
       }
       if (ok && mounted) setState(() {});
     } on Exception catch (e) {
       if (!context.mounted) return;
       // ignore: use_build_context_synchronously
-      ThemeConstants.showErrorSnackBar(context, 'Upload failed: $e');
+      ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translateWith('upload_failed', <Object?>[e]));
     }
   }
 }

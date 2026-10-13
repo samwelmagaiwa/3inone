@@ -1,4 +1,5 @@
 import "package:intl/intl.dart";
+import '../services/localization_service.dart';
 
 mixin AppDateUtils {
   // Date formatters
@@ -38,27 +39,27 @@ mixin AppDateUtils {
 
     if (difference.inDays > 365) {
       final int years = (difference.inDays / 365).floor();
-      return years == 1 ? "Mwaka mmoja uliopita" : "Miaka $years iliyopita";
+      return years == 1 ? LocalizationService.instance.translate('one_year_ago') : LocalizationService.instance.translateWith('years_ago', <Object?>[years]);
     } else if (difference.inDays > 30) {
       final int months = (difference.inDays / 30).floor();
-      return months == 1 ? "Mwezi mmoja uliopita" : "Miezi $months iliyopita";
+      return months == 1 ? LocalizationService.instance.translate('one_month_ago') : LocalizationService.instance.translateWith('months_ago', <Object?>[months]);
     } else if (difference.inDays > 7) {
       final int weeks = (difference.inDays / 7).floor();
-      return weeks == 1 ? "Wiki moja iliyopita" : "Wiki $weeks zilizopita";
+      return weeks == 1 ? LocalizationService.instance.translate('one_week_ago') : LocalizationService.instance.translateWith('weeks_ago', <Object?>[weeks]);
     } else if (difference.inDays > 0) {
       return difference.inDays == 1
-          ? "Jana"
-          : "Siku ${difference.inDays} zilizopita";
+          ? LocalizationService.instance.translate('yesterday')
+          : LocalizationService.instance.translateWith('days_ago', <Object?>[difference.inDays]);
     } else if (difference.inHours > 0) {
       return difference.inHours == 1
-          ? "Saa moja iliyopita"
-          : "Saa ${difference.inHours} zilizopita";
+          ? LocalizationService.instance.translate('one_hour_ago')
+          : LocalizationService.instance.translateWith('hours_ago', <Object?>[difference.inHours]);
     } else if (difference.inMinutes > 0) {
       return difference.inMinutes == 1
-          ? "Dakika moja iliyopita"
-          : "Dakika ${difference.inMinutes} zilizopita";
+          ? LocalizationService.instance.translate('one_minute_ago')
+          : LocalizationService.instance.translateWith('minutes_ago', <Object?>[difference.inMinutes]);
     } else {
-      return "Sasa hivi";
+      return LocalizationService.instance.translate('just_now');
     }
   }
 
@@ -197,13 +198,13 @@ mixin AppDateUtils {
     final Duration difference = end.difference(start);
 
     if (difference.inDays > 0) {
-      return "${difference.inDays} siku";
+      return LocalizationService.instance.translateWith('days_2', <Object?>[difference.inDays]);
     } else if (difference.inHours > 0) {
-      return "${difference.inHours} saa";
+      return LocalizationService.instance.translateWith('hours', <Object?>[difference.inHours]);
     } else if (difference.inMinutes > 0) {
-      return "${difference.inMinutes} dakika";
+      return LocalizationService.instance.translateWith('minutes', <Object?>[difference.inMinutes]);
     } else {
-      return "${difference.inSeconds} sekunde";
+      return LocalizationService.instance.translateWith('seconds', <Object?>[difference.inSeconds]);
     }
   }
 

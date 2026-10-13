@@ -56,7 +56,7 @@ class _HouseManagementScreenState extends State<HouseManagementScreen> {
   Widget build(BuildContext context) {
     return ThemeConstants.buildResponsiveScaffold(
       context,
-      title: "Vyumba - ${widget.propertyName}",
+      title: LocalizationService.instance.translateWith('houses_2', <Object?>[widget.propertyName]),
       actions: [
         IconButton(
           icon: const Icon(Icons.add, color: Colors.white),
@@ -85,10 +85,10 @@ class _HouseManagementScreenState extends State<HouseManagementScreen> {
                 child: Icon(Icons.door_front_door,
                     size: 64.sp, color: Colors.white38)),
             SizedBox(height: 24.h),
-            Text("Hakuna vyumba",
+            Text(LocalizationService.instance.translate('no_houses_yet'),
                 style: TextStyle(color: Colors.white54, fontSize: 18.sp)),
             SizedBox(height: 8.h),
-            Text("Ongeza vyumba vya kukodisha",
+            Text(LocalizationService.instance.translate('add_houses_to_rent_out'),
                 style: TextStyle(color: Colors.white38, fontSize: 14.sp)),
             SizedBox(height: 24.h),
             ElevatedButton.icon(
@@ -99,7 +99,7 @@ class _HouseManagementScreenState extends State<HouseManagementScreen> {
                       EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h)),
               icon: const Icon(Icons.add, color: Colors.white),
               label:
-                  const Text("Ongeza Nyumba", style: TextStyle(color: Colors.white)),
+                  Text(LocalizationService.instance.translate('add_house'), style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -112,7 +112,7 @@ class _HouseManagementScreenState extends State<HouseManagementScreen> {
             Icon(Icons.error_outline,
                 size: 64.sp, color: ThemeConstants.errorRed),
             SizedBox(height: 16.h),
-            Text("Hitilafu",
+            Text(LocalizationService.instance.translate('error'),
                 style: TextStyle(color: Colors.white, fontSize: 18.sp)),
             SizedBox(height: 8.h),
             Text(_error ?? '',
@@ -122,7 +122,7 @@ class _HouseManagementScreenState extends State<HouseManagementScreen> {
                 onPressed: _loadHouses,
                 style: ElevatedButton.styleFrom(
                     backgroundColor: ThemeConstants.primaryOrange),
-                child: const Text("Retry")),
+                child: Text(LocalizationService.instance.translate('retry'))),
           ],
         ),
       );
@@ -155,13 +155,13 @@ class _HouseManagementScreenState extends State<HouseManagementScreen> {
           borderRadius: BorderRadius.circular(16.r)),
       child: Row(
         children: [
-          _buildMiniStat("Jumla", _houses.length.toString(), Colors.white),
+          _buildMiniStat(LocalizationService.instance.translate('total'), _houses.length.toString(), Colors.white),
           Container(width: 1, height: 30.h, color: Colors.white12),
           _buildMiniStat(
-              "Imekalia", occupied.toString(), ThemeConstants.successGreen),
+              LocalizationService.instance.translate('house_occupied'), occupied.toString(), ThemeConstants.successGreen),
           Container(width: 1, height: 30.h, color: Colors.white12),
           _buildMiniStat(
-              "Wazi", vacant.toString(), ThemeConstants.warningAmber),
+              LocalizationService.instance.translate('house_vacant'), vacant.toString(), ThemeConstants.warningAmber),
           Container(width: 1, height: 30.h, color: Colors.white12),
           _buildMiniStat(
               "Matengenezo", maintenance.toString(), ThemeConstants.errorRed),
@@ -189,16 +189,16 @@ class _HouseManagementScreenState extends State<HouseManagementScreen> {
     switch (status) {
       case 'occupied':
         statusColor = ThemeConstants.successGreen;
-        statusLabel = 'Imekalia';
+        statusLabel = LocalizationService.instance.translate('house_occupied');
       case 'maintenance':
         statusColor = ThemeConstants.warningAmber;
         statusLabel = 'Matengenezo';
       case 'reserved':
         statusColor = ThemeConstants.primaryOrange;
-        statusLabel = 'Hifadhi';
+        statusLabel = LocalizationService.instance.translate('house_reserved');
       default:
         statusColor = Colors.white54;
-        statusLabel = 'Wazi';
+        statusLabel = LocalizationService.instance.translate('house_vacant');
     }
 
     return Container(
@@ -467,7 +467,7 @@ class _HouseManagementScreenState extends State<HouseManagementScreen> {
                                       fontSize: 22.sp,
                                       fontWeight: FontWeight.bold)),
                               Text(
-                                  "TSh ${_formatCurrency(house['rent_amount'])}/mwezi",
+                                  LocalizationService.instance.translateWith('tsh_month', <Object?>[_formatCurrency(house['rent_amount'])]),
                                   style: TextStyle(
                                       color: Colors.white70, fontSize: 14.sp)),
                             ]),
@@ -486,21 +486,21 @@ class _HouseManagementScreenState extends State<HouseManagementScreen> {
                       ),
                     ]),
                     SizedBox(height: 24.h),
-                    _detailRow("Aina", house['type'] ?? '-'),
+                    _detailRow(LocalizationService.instance.translate('type'), house['type'] ?? '-'),
                     _detailRow(LocalizationService.instance.translate('deposit'),
                         "TSh ${_formatCurrency(house['deposit_amount'] ?? 0)}"),
-                    _detailRow("Block", house['block']?['name'] ?? '-'),
+                    _detailRow(LocalizationService.instance.translate('block'), house['block']?['name'] ?? '-'),
                     if (house['electricity_meter'] != null)
-                      _detailRow("Stima Meter", house['electricity_meter']),
+                      _detailRow(LocalizationService.instance.translate('electricity_meter_2'), house['electricity_meter']),
                     if (house['water_meter'] != null)
-                      _detailRow("Maji Meter", house['water_meter']),
+                      _detailRow(LocalizationService.instance.translate('water_meter_2'), house['water_meter']),
                     if (house['bedrooms'] != null)
                       _detailRow(
-                          "Vyumba vya Kulala", house['bedrooms'].toString()),
+                          LocalizationService.instance.translate('bedrooms_2'), house['bedrooms'].toString()),
                     if (house['bathrooms'] != null)
-                      _detailRow("Bafu", house['bathrooms'].toString()),
+                      _detailRow(LocalizationService.instance.translate('bathrooms_2'), house['bathrooms'].toString()),
                     if (house['floor'] != null)
-                      _detailRow("Ghorofa", house['floor'].toString()),
+                      _detailRow(LocalizationService.instance.translate('floor'), house['floor'].toString()),
                     if (tenant != null) ...[
                       SizedBox(height: 20.h),
                       Container(
@@ -518,7 +518,7 @@ class _HouseManagementScreenState extends State<HouseManagementScreen> {
                               child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                Text("Mteja: ${tenant['name'] ?? ''}",
+                                Text(LocalizationService.instance.translateWith('tenant_2', <Object?>[tenant['name'] ?? '']),
                                     style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 14.sp,
@@ -540,7 +540,7 @@ class _HouseManagementScreenState extends State<HouseManagementScreen> {
                             _showAddHouseDialog(existing: house);
                           },
                           icon: const Icon(Icons.edit, size: 18),
-                          label: const Text("Hariri"),
+                          label: Text(LocalizationService.instance.translate('edit')),
                           style: ElevatedButton.styleFrom(
                               backgroundColor: ThemeConstants.primaryOrange,
                               padding: EdgeInsets.symmetric(vertical: 12.h)),
@@ -557,22 +557,22 @@ class _HouseManagementScreenState extends State<HouseManagementScreen> {
                                   builder: (c) => AlertDialog(
                                         backgroundColor:
                                             ThemeConstants.primaryBlue,
-                                        title: const Text("Futa Nyumba?",
+                                        title: Text("${LocalizationService.instance.translate('delete_house')}?",
                                             style:
                                                 TextStyle(color: Colors.white)),
-                                        content: const Text(
-                                            "Huu utafuta nyumba hii",
+                                        content: Text(
+                                            LocalizationService.instance.translate('this_will_delete_this_house'),
                                             style: TextStyle(
                                                 color: Colors.white70)),
                                         actions: [
                                           TextButton(
                                               onPressed: () =>
                                                   Navigator.pop(c, false),
-                                              child: const Text("Cancel")),
+                                              child: Text(LocalizationService.instance.translate('cancel'))),
                                           TextButton(
                                               onPressed: () =>
                                                   Navigator.pop(c, true),
-                                              child: const Text("Futa",
+                                              child: Text(LocalizationService.instance.translate('delete'),
                                                   style: TextStyle(
                                                       color: ThemeConstants
                                                           .errorRed))),
@@ -585,7 +585,7 @@ class _HouseManagementScreenState extends State<HouseManagementScreen> {
                               }
                             },
                             icon: const Icon(Icons.delete, size: 18),
-                            label: const Text("Futa"),
+                            label: Text(LocalizationService.instance.translate('delete')),
                             style: ElevatedButton.styleFrom(
                                 backgroundColor:
                                     ThemeConstants.errorRed.withOpacity(0.3),
@@ -622,9 +622,9 @@ class _HouseManagementScreenState extends State<HouseManagementScreen> {
   }
 
   String _formatStatus(String s) => switch (s) {
-        'occupied' => 'Imekalia',
+        'occupied' => LocalizationService.instance.translate('house_occupied'),
         'maintenance' => 'Matengenezo',
-        'reserved' => 'Hifadhi',
-        _ => 'Wazi'
+        'reserved' => LocalizationService.instance.translate('house_reserved'),
+        _ => LocalizationService.instance.translate('house_vacant')
       };
 }

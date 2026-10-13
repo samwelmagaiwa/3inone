@@ -1,4 +1,5 @@
 import "package:flutter/foundation.dart";
+import '../services/localization_service.dart';
 
 enum TransactionType {
   income,
@@ -15,9 +16,9 @@ extension TransactionTypeExtension on TransactionType {
   String get name {
     switch (this) {
       case TransactionType.income:
-        return "Mapato";
+        return LocalizationService.instance.translate('income');
       case TransactionType.expense:
-        return "Matumizi";
+        return LocalizationService.instance.translate('expenses');
     }
   }
 }
@@ -26,11 +27,11 @@ extension TransactionStatusExtension on TransactionStatus {
   String get name {
     switch (this) {
       case TransactionStatus.pending:
-        return "Inasubiri";
+        return LocalizationService.instance.translate('pending_2');
       case TransactionStatus.completed:
-        return "Imekamilika";
+        return LocalizationService.instance.translate('status_completed');
       case TransactionStatus.cancelled:
-        return "Imeghairiwa";
+        return LocalizationService.instance.translate('cancelled');
     }
   }
 }

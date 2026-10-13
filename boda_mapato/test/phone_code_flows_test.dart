@@ -96,6 +96,39 @@ void main() {
       expect(confirmed, findsOneWidget);
     });
 
+    testWidgets('does not ask for a code that was never sent when text messages are off', (t) async {
+      await pumpScreen(t, serverAnswer: <String, dynamic>{
+        'phone_verification_required': true,
+        'phone_verified': false,
+        'code_sent': false,
+        'code_status': 'unavailable',
+      });
+
+      expect(find.byKey(const ValueKey<String>('registration_done_title')), findsOneWidget, reason: 'the application itself is in');
+      expect(card, findsNothing, reason: 'there is no code to type');
+      expect(find.byKey(const ValueKey<String>('phone_code_unavailable')), findsOneWidget, reason: 'and the person is told why');
+      expect(confirmed, findsNothing);
+    });
+
+    testWidgets('still asks for the code when one went out a moment ago', (t) async {
+      await pumpScreen(t, serverAnswer: <String, dynamic>{
+        'phone_verification_required': true,
+        'phone_verified': false,
+        'code_sent': false,
+        'code_status': 'throttled',
+      });
+
+      expect(card, findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('phone_code_unavailable')), findsNothing);
+    });
+
+    testWidgets('an older server that sends no code status behaves as before', (t) async {
+      await pumpScreen(t, serverAnswer: <String, dynamic>{'phone_verification_required': true});
+
+      expect(card, findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('phone_code_unavailable')), findsNothing);
+    });
+
     testWidgets('a code that is not 6 digits is not sent', (t) async {
       final List<String> calls = await pumpScreen(t, serverAnswer: <String, dynamic>{'phone_verification_required': true});
 

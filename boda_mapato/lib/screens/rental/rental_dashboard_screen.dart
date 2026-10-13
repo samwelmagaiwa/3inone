@@ -166,7 +166,7 @@ class _RentalDashboardScreenState extends State<RentalDashboardScreen> {
         Text("${loc.translate('welcome')},",
             style: TextStyle(color: Colors.white60, fontSize: 13.sp)),
         Text(
-          user?.name ?? "Landlord",
+          user?.name ?? LocalizationService.instance.translate('landlord'),
           style: TextStyle(
               color: Colors.white,
               fontSize: 24.sp,
@@ -466,9 +466,9 @@ class _RentalDashboardScreenState extends State<RentalDashboardScreen> {
                         context: context,
                         fetchData: (p) => p.fetchBills(),
                         condition: RentalFlowValidator.hasUnpaidBills,
-                        title: 'Hakuna Bili Tupu',
-                        message: 'Hakuna bili zinazohitaji malipo kwa sasa. Hakikisha una mikataba hai.',
-                        actionLabel: 'Angalia Mikataba',
+                        title: LocalizationService.instance.translate('no_open_bills_2'),
+                        message: LocalizationService.instance.translate('no_bills_need_payment_right_now'),
+                        actionLabel: LocalizationService.instance.translate('view_agreements'),
                         actionRoute: '/rental/agreements',
                       )),
             if (canManageProperties)
@@ -489,9 +489,9 @@ class _RentalDashboardScreenState extends State<RentalDashboardScreen> {
                           await p.fetchProperties();
                         },
                         condition: (p) => RentalFlowValidator.hasTenants(p) && RentalFlowValidator.hasVacantHouses(p),
-                        title: 'Tengeneza Mkataba',
-                        message: 'Unahitaji kuwa na wapangaji na nyumba wazi kabla ya kutengeneza mkataba mpya.',
-                        actionLabel: 'Ingiza Mpangaji',
+                        title: LocalizationService.instance.translate('create_lease'),
+                        message: LocalizationService.instance.translate('you_need_tenants_and_vacant_houses'),
+                        actionLabel: LocalizationService.instance.translate('add_tenant'),
                         actionRoute: '/rental/onboard-tenant', // Fixed typo
                       )),
             _buildActionIcon(loc.translate('zaidi'), Icons.grid_view,
@@ -557,23 +557,23 @@ class _RentalDashboardScreenState extends State<RentalDashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(house['name'] ?? 'House',
+              Text(house['name'] ?? LocalizationService.instance.translate('house'),
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: 20.sp,
                       fontWeight: FontWeight.w900)),
               SizedBox(height: 8.h),
-              _infoRow('Location', house['location'] ?? ''),
+              _infoRow(LocalizationService.instance.translate('location'), house['location'] ?? ''),
               _infoRow(
-                  'Rent',
+                  LocalizationService.instance.translate('rent'),
                   house['rent'] != null
                       ? 'TSh ${_formatAmount(house["rent"])}'
                       : ''),
               _infoRow(
-                  'Status',
+                  LocalizationService.instance.translate('status'),
                   (house['is_occupied'] == 1 || house['is_occupied'] == true)
-                      ? 'Occupied'
-                      : 'Vacant'),
+                      ? LocalizationService.instance.translate('occupied')
+                      : LocalizationService.instance.translate('vacant')),
             ],
           ),
         ),
@@ -663,7 +663,7 @@ class _RentalDashboardScreenState extends State<RentalDashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(prop['name'] ?? 'Property',
+                Text(prop['name'] ?? LocalizationService.instance.translate('property'),
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 13.sp,

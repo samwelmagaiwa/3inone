@@ -76,7 +76,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
           _isLoading = false;
         });
         ThemeConstants.showErrorSnackBar(
-            context, "Hitilafu katika kupakia mikumbusho: $e");
+            context, LocalizationService.instance.translateWith('error_loading_reminders', <Object?>[e]));
       }
     }
   }
@@ -134,12 +134,12 @@ class _RemindersScreenState extends State<RemindersScreen> {
       unawaited(_loadReminders());
 
       if (mounted) {
-        ThemeConstants.showSuccessSnackBar(context, "Kikumbusho kimefutwa");
+        ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('reminder_deleted'));
       }
     } on Exception catch (e) {
       if (mounted) {
         ThemeConstants.showErrorSnackBar(
-            context, "Hitilafu katika kufuta kikumbusho: $e");
+            context, LocalizationService.instance.translateWith('error_deleting_the_reminder', <Object?>[e]));
       }
     }
   }
@@ -150,12 +150,12 @@ class _RemindersScreenState extends State<RemindersScreen> {
       unawaited(_loadReminders());
 
       if (mounted) {
-        ThemeConstants.showSuccessSnackBar(context, "Kikumbusho kimekamilika");
+        ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('reminder_completed'));
       }
     } on Exception catch (e) {
       if (mounted) {
         ThemeConstants.showErrorSnackBar(
-            context, "Hitilafu katika kubadilisha hali ya kikumbusho: $e");
+            context, LocalizationService.instance.translateWith('error_changing_the_reminder_status', <Object?>[e]));
       }
     }
   }
@@ -190,7 +190,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                         children: <Widget>[
                           Expanded(
                             child: _SummaryCard(
-                              title: "Vikumbusho vya Sasa",
+                              title: LocalizationService.instance.translate('current_reminders'),
                               count: activeReminders.length,
                               icon: Icons.notifications_active,
                               color: ThemeConstants.primaryBlue,
@@ -199,7 +199,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                           const SizedBox(width: 16),
                           Expanded(
                             child: _SummaryCard(
-                              title: "Vilivyochelewa",
+                              title: LocalizationService.instance.translate('overdue_2'),
                               count: overdueReminders.length,
                               icon: Icons.warning,
                               color: ThemeConstants.errorRed,
@@ -245,7 +245,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
               onChanged: _onSearchChanged,
               style: ThemeConstants.bodyStyle,
               decoration: InputDecoration(
-                hintText: "Tafuta kikumbusho...",
+                hintText: "${LocalizationService.instance.translate('search_reminder')}...",
                 hintStyle: ThemeConstants.bodyStyle.copyWith(
                   color: ThemeConstants.textSecondary,
                 ),
@@ -289,10 +289,10 @@ class _RemindersScreenState extends State<RemindersScreen> {
             Wrap(
               spacing: 8,
               children: <Widget>[
-                _buildFilterChip("all", "Yote"),
-                _buildFilterChip("active", "Hai"),
-                _buildFilterChip("overdue", "Yamechelewa"),
-                _buildFilterChip("completed", "Yamekamilika"),
+                _buildFilterChip("all", LocalizationService.instance.translate('all_3')),
+                _buildFilterChip("active", LocalizationService.instance.translate('active')),
+                _buildFilterChip("overdue", LocalizationService.instance.translate('overdue')),
+                _buildFilterChip("completed", LocalizationService.instance.translate('completed')),
               ],
             ),
           ],
@@ -336,13 +336,13 @@ class _RemindersScreenState extends State<RemindersScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              "Hakuna Vikumbusho",
+              LocalizationService.instance.translate('no_reminders'),
               style: ThemeConstants.headingStyle,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              "Bofya kitufe cha + kuongeza kikumbusho kipya",
+              LocalizationService.instance.translate('tap_the_button_to_add_a'),
               style: ThemeConstants.bodyStyle.copyWith(
                 color: ThemeConstants.textSecondary,
               ),
@@ -359,7 +359,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                   vertical: 12,
                 ),
               ),
-              child: const Text("Kikumbusho Kipya"),
+              child: Text(LocalizationService.instance.translate('new_reminder')),
             ),
           ],
         ),
@@ -383,7 +383,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                "Vikumbusho Vilivyochelewa",
+                LocalizationService.instance.translate('overdue_reminders'),
                 style: ThemeConstants.headingStyle,
               ),
             ],
@@ -397,7 +397,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
         // Active Reminders Section
         if (upcomingReminders.isNotEmpty) ...<Widget>[
           Text(
-            "Vikumbusho vya Baadaye",
+            LocalizationService.instance.translate('upcoming_reminders'),
             style: ThemeConstants.headingStyle,
           ),
           const SizedBox(height: 12),
@@ -452,23 +452,23 @@ class _RemindersScreenState extends State<RemindersScreen> {
                     itemBuilder: (BuildContext context) =>
                         <PopupMenuEntry<String>>[
                       if (reminder.isActive)
-                        const PopupMenuItem<String>(
+                        PopupMenuItem<String>(
                           value: 'complete',
                           child: Row(
                             children: <Widget>[
                               Icon(Icons.check, color: Colors.green),
                               SizedBox(width: 8),
-                              Text('Kamilisha'),
+                              Text(LocalizationService.instance.translate('complete')),
                             ],
                           ),
                         ),
-                      const PopupMenuItem<String>(
+                      PopupMenuItem<String>(
                         value: 'delete',
                         child: Row(
                           children: <Widget>[
                             Icon(Icons.delete, color: Colors.red),
                             SizedBox(width: 8),
-                            Text('Futa'),
+                            Text(LocalizationService.instance.translate('delete')),
                           ],
                         ),
                       ),
@@ -538,11 +538,11 @@ class _RemindersScreenState extends State<RemindersScreen> {
       builder: (BuildContext context) => AlertDialog(
         backgroundColor: ThemeConstants.cardColor,
         title: Text(
-          "Futa Kikumbusho",
+          LocalizationService.instance.translate('delete_reminder_2'),
           style: ThemeConstants.headingStyle,
         ),
         content: Text(
-          "Je, una uhakika unataka kufuta kikumbusho hiki?",
+          "${LocalizationService.instance.translate('are_you_sure_you_want_to_5')}?",
           style: ThemeConstants.bodyStyle.copyWith(
             color: ThemeConstants.textSecondary,
           ),
@@ -551,7 +551,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
-              "Ghairi",
+              LocalizationService.instance.translate('cancel_2'),
               style: ThemeConstants.bodyStyle.copyWith(
                 color: ThemeConstants.textSecondary,
               ),
@@ -566,7 +566,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
               backgroundColor: ThemeConstants.errorRed,
               foregroundColor: Colors.white,
             ),
-            child: const Text("Futa"),
+            child: Text(LocalizationService.instance.translate('delete')),
           ),
         ],
       ),
@@ -675,12 +675,12 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
 
       if (mounted) {
         Navigator.pop(context, true); // Return true to indicate success
-        ThemeConstants.showSuccessSnackBar(context, "Kikumbusho kimeongezwa");
+        ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('reminder_added'));
       }
     } on Exception catch (e) {
       if (mounted) {
         ThemeConstants.showErrorSnackBar(
-            context, "Hitilafu katika kuongeza kikumbusho: $e");
+            context, LocalizationService.instance.translateWith('error_adding_the_reminder', <Object?>[e]));
       }
     } finally {
       if (mounted) {
@@ -716,7 +716,7 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
             Row(
               children: <Widget>[
                 Text(
-                  "Kikumbusho Kipya",
+                  LocalizationService.instance.translate('new_reminder'),
                   style: ThemeConstants.headingStyle,
                 ),
                 const Spacer(),
@@ -747,11 +747,11 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                         controller: _titleController,
                         style: ThemeConstants.bodyStyle,
                         decoration: InputDecoration(
-                          labelText: "Kichwa cha Kikumbusho",
+                          labelText: LocalizationService.instance.translate('reminder_title_2'),
                           labelStyle: ThemeConstants.bodyStyle.copyWith(
                             color: Colors.white.withOpacity(0.8),
                           ),
-                          hintText: "Mfano: Kukusanya Mapato",
+                          hintText: LocalizationService.instance.translate('example_collect_income'),
                           hintStyle: ThemeConstants.bodyStyle.copyWith(
                             color: Colors.white.withOpacity(0.6),
                           ),
@@ -780,7 +780,7 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                         ),
                         validator: (String? value) {
                           if (value == null || value.trim().isEmpty) {
-                            return "Kichwa ni lazima";
+                            return LocalizationService.instance.translate('title_is_required');
                           }
                           return null;
                         },
@@ -793,11 +793,11 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                         controller: _messageController,
                         style: ThemeConstants.bodyStyle,
                         decoration: InputDecoration(
-                          labelText: "Ujumbe wa Kikumbusho",
+                          labelText: LocalizationService.instance.translate('reminder_message_2'),
                           labelStyle: ThemeConstants.bodyStyle.copyWith(
                             color: Colors.white.withOpacity(0.8),
                           ),
-                          hintText: "Maelezo ya kikumbusho",
+                          hintText: LocalizationService.instance.translate('reminder_details_2'),
                           hintStyle: ThemeConstants.bodyStyle.copyWith(
                             color: Colors.white.withOpacity(0.6),
                           ),
@@ -827,7 +827,7 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                         maxLines: 3,
                         validator: (String? value) {
                           if (value == null || value.trim().isEmpty) {
-                            return "Ujumbe ni lazima";
+                            return LocalizationService.instance.translate('message_is_required');
                           }
                           return null;
                         },
@@ -855,7 +855,7 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: <Widget>[
                                     Text(
-                                      "Tarehe",
+                                      LocalizationService.instance.translate('date'),
                                       style:
                                           ThemeConstants.captionStyle.copyWith(
                                         color: ThemeConstants.textSecondary,
@@ -899,7 +899,7 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: <Widget>[
                                     Text(
-                                      "Muda",
+                                      LocalizationService.instance.translate('time_2'),
                                       style:
                                           ThemeConstants.captionStyle.copyWith(
                                         color: ThemeConstants.textSecondary,
@@ -932,7 +932,7 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
 
                       // Priority Selector
                       Text(
-                        "Kipaumbele",
+                        LocalizationService.instance.translate('priority'),
                         style: ThemeConstants.bodyStyle.copyWith(
                           color: ThemeConstants.textSecondary,
                         ),
@@ -961,14 +961,14 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                             // dark Container this dropdown sits inside.
                             filled: false,
                           ),
-                          items: const [
+                          items: [
                             DropdownMenuItem(
-                                value: 'low', child: Text('Chini')),
+                                value: 'low', child: Text(LocalizationService.instance.translate('low'))),
                             DropdownMenuItem(
-                                value: 'medium', child: Text('Wastani')),
-                            DropdownMenuItem(value: 'high', child: Text('Juu')),
+                                value: 'medium', child: Text(LocalizationService.instance.translate('priority_medium'))),
+                            DropdownMenuItem(value: 'high', child: Text(LocalizationService.instance.translate('high'))),
                             DropdownMenuItem(
-                                value: 'urgent', child: Text('Dharura')),
+                                value: 'urgent', child: Text(LocalizationService.instance.translate('urgent'))),
                           ],
                           onChanged: (String? value) {
                             if (value != null) {
@@ -1009,8 +1009,8 @@ class _AddReminderDialogState extends State<_AddReminderDialog> {
                                     ),
                                   ),
                                 )
-                              : const Text(
-                                  "Hifadhi Kikumbusho",
+                              : Text(
+                                  LocalizationService.instance.translate('save_reminder'),
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,

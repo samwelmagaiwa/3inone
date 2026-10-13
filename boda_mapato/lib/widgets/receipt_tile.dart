@@ -4,6 +4,7 @@ import "../constants/colors.dart";
 import "../constants/styles.dart";
 import "../utils/responsive_utils.dart";
 import "responsive_wrapper.dart";
+import '../services/localization_service.dart';
 
 class ReceiptTile extends StatelessWidget {
   const ReceiptTile({
@@ -133,7 +134,7 @@ class ReceiptTile extends StatelessWidget {
                           ),
                         ),
                         label: Text(
-                          "Chapisha",
+                          LocalizationService.instance.translate('print'),
                           style: AppStyles.bodySmallResponsive(context),
                         ),
                         style: OutlinedButton.styleFrom(
@@ -165,7 +166,7 @@ class ReceiptTile extends StatelessWidget {
                           ),
                         ),
                         label: Text(
-                          "Shiriki",
+                          LocalizationService.instance.translate('share'),
                           style: AppStyles.bodySmallResponsive(context),
                         ),
                         style: OutlinedButton.styleFrom(
@@ -319,7 +320,7 @@ class ReceiptPreviewCard extends StatelessWidget {
             ),
             Center(
               child: Text(
-                "Risiti ya Huduma",
+                LocalizationService.instance.translate('service_receipt'),
                 style: AppStyles.bodySmallResponsive(context),
               ),
             ),
@@ -327,20 +328,20 @@ class ReceiptPreviewCard extends StatelessWidget {
             const Divider(),
 
             // Receipt Details
-            _ReceiptRow("Nambari ya Risiti:", receiptNumber),
-            _ReceiptRow("Tarehe:", "${date.day}/${date.month}/${date.year}"),
+            _ReceiptRow("${LocalizationService.instance.translate('receipt_number_2')}:", receiptNumber),
+            _ReceiptRow("${LocalizationService.instance.translate('date')}:", "${date.day}/${date.month}/${date.year}"),
             _ReceiptRow(
-              "Muda:",
+              "${LocalizationService.instance.translate('time_2')}:",
               "${date.hour}:${date.minute.toString().padLeft(2, "0")}",
             ),
 
             const Divider(),
 
             // Customer & Service Details
-            _ReceiptRow("Mteja:", customerName),
-            _ReceiptRow("Huduma:", serviceType),
+            _ReceiptRow("${LocalizationService.instance.translate('customer')}:", customerName),
+            _ReceiptRow("${LocalizationService.instance.translate('service_label')}:", serviceType),
             if (notes != null && notes!.isNotEmpty)
-              _ReceiptRow("Maelezo:", notes!),
+              _ReceiptRow("${LocalizationService.instance.translate('description')}:", notes!),
 
             const Divider(),
 
@@ -349,7 +350,7 @@ class ReceiptPreviewCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: <Widget>[
                 Text(
-                  "JUMLA:",
+                  "${LocalizationService.instance.translate('total').toUpperCase()}:",
                   style: AppStyles.heading3Responsive(context),
                 ),
                 FittedBox(
@@ -369,7 +370,7 @@ class ReceiptPreviewCard extends StatelessWidget {
             // Footer
             Center(
               child: Text(
-                "Asante kwa kutumia huduma zetu!",
+                "${LocalizationService.instance.translate('thank_you_for_using_our_services')}!",
                 style: AppStyles.bodySmallResponsive(context),
                 textAlign: TextAlign.center,
               ),

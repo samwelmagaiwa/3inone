@@ -22,6 +22,7 @@ class BusinessKindCard extends StatefulWidget {
     required this.canChange,
     required this.onChange,
     required this.sw,
+    this.joined = false,
   });
 
   /// Did the server report a kind at all? (An older server does not.)
@@ -36,6 +37,9 @@ class BusinessKindCard extends StatefulWidget {
   /// Saves the new kind. Returns null on success, or the reason it was refused.
   final Future<String?> Function(String kind) onChange;
   final bool sw;
+
+  /// Drawn as a section of a joined card: no box of its own.
+  final bool joined;
 
   @override
   State<BusinessKindCard> createState() => _BusinessKindCardState();
@@ -78,8 +82,8 @@ class _BusinessKindCardState extends State<BusinessKindCard> {
     return Container(
       key: const ValueKey<String>('business_kind_card'),
       width: double.infinity,
-      decoration: ThemeConstants.glassCardDecoration,
-      padding: EdgeInsets.all(12.w),
+      decoration: widget.joined ? null : ThemeConstants.glassCardDecoration,
+      padding: widget.joined ? null : EdgeInsets.all(12.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[

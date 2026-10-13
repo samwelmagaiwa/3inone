@@ -71,6 +71,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
   // The server texted a code to the phone; until it is entered the super admin sees an
   // unconfirmed number. The application itself is already sent either way.
   bool _needsCode = false;
+  bool _codeUnavailable = false;
   bool _phoneConfirmed = false;
   bool _codeBusy = false;
   String? _codeError;
@@ -146,7 +147,10 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
       setState(() {
         _busy = false;
         _done = true;
-        _needsCode = data is Map && data["phone_verification_required"] == true;
+        // Text messages can be switched off on the server: then no code exists, and asking for one
+        // would leave the person waiting for something that never comes.
+        _codeUnavailable = data is Map && data["code_status"] == "unavailable";
+        _needsCode = data is Map && data["phone_verification_required"] == true && !_codeUnavailable;
         _phoneConfirmed = data is Map && data["phone_verified"] == true;
       });
     } on AuthHttpException catch (e) {
@@ -491,9 +495,11 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
             Text(
               _sw
                   ? 'Msimamizi mkuu atakagua taarifa za "${_business.text.trim()}" na kukupa huduma. '
-                      'Ukikubaliwa utaweza kuingia kwa barua pepe na nenosiri ulilotumia hapa.'
+                      '${_codeUnavailable ? "Ukikubaliwa utaweza" : "Ukikubaliwa utatumiwa ujumbe mfupi, kisha utaweza"} '
+                      'kuingia kwa barua pepe na nenosiri ulilotumia hapa.'
                   : 'A super admin will review "${_business.text.trim()}" and give you your services. '
-                      'Once approved you can sign in with the email and password you just used.',
+                      '${_codeUnavailable ? "Once approved you can" : "Once approved you will get a text message, and can"} '
+                      'sign in with the email and password you just used.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white70, fontSize: 14.sp, height: 1.4),
             ),
@@ -512,6 +518,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
                 ],
               ),
             if (_needsCode) _buildCodeCard(),
+            if (_codeUnavailable && !_phoneConfirmed) _buildNoCodeNotice(),
             SizedBox(height: 20.h),
             _primaryButton(
               label: _sw ? "Rudi kuingia" : "Back to sign in",
@@ -519,6 +526,28 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Text messages are off on the server, so there is no code to enter: say so plainly, and that the
+  /// application is not harmed by it (the super admin checks the number themselves before approving).
+  Widget _buildNoCodeNotice() {
+    return Container(
+      key: const ValueKey<String>("phone_code_unavailable"),
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Text(
+        _sw
+            ? "Huduma ya ujumbe mfupi haipatikani sasa, kwa hiyo hatukuweza kukutumia nambari ya kuthibitisha simu. "
+                "Usijali: msimamizi atakuthibitisha kabla ya kukubali ombi lako."
+            : "Text messages are not available right now, so we could not send you a phone confirmation code. "
+                "Don't worry: the admin will check you before approving your application.",
+        style: TextStyle(color: Colors.white70, fontSize: 13.sp, height: 1.4),
       ),
     );
   }

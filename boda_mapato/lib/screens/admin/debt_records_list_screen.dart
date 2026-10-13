@@ -96,7 +96,7 @@ class _DebtRecordsListScreenState extends State<DebtRecordsListScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: ThemeConstants.primaryBlue,
-        appBar: ThemeConstants.buildAppBar('Madeni - ${widget.driverName}',
+        appBar: ThemeConstants.buildAppBar(LocalizationService.instance.translateWith('debts_2', <Object?>[widget.driverName]),
             actions: <Widget>[
               IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
             ]),
@@ -182,7 +182,7 @@ class _DebtRecordsListScreenState extends State<DebtRecordsListScreen> {
                                     contentPadding: const EdgeInsets.symmetric(
                                         horizontal: 12, vertical: 4),
                                     title: Text(
-                                        'Tarehe: ${r['formatted_date']}',
+                                        LocalizationService.instance.translateWith('date_2', <Object?>[r['formatted_date']]),
                                         style: const TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.w600)),
@@ -193,20 +193,20 @@ class _DebtRecordsListScreenState extends State<DebtRecordsListScreen> {
                                         runSpacing: 4,
                                         children: <Widget>[
                                           _chip(Icons.payments,
-                                              'Kiasi: ${r['expected_amount']}'),
+                                              LocalizationService.instance.translateWith('amount_2', <Object?>[r['expected_amount']])),
                                           if (r['license_number']
                                                   ?.toString()
                                                   .isNotEmpty ??
                                               false)
                                             _chip(Icons.badge,
-                                                'Leseni: ${r['license_number']}'),
+                                                LocalizationService.instance.translateWith('license_2', <Object?>[r['license_number']])),
                                           _chip(
                                               isPaid
                                                   ? Icons.check_circle
                                                   : Icons.error_outline,
                                               isPaid
-                                                  ? 'Imelipwa'
-                                                  : 'Haijalipwa',
+                                                  ? LocalizationService.instance.translate('settled')
+                                                  : LocalizationService.instance.translate('unpaid_2'),
                                               color: isPaid
                                                   ? ThemeConstants.successGreen
                                                   : ThemeConstants.errorRed),
@@ -299,17 +299,17 @@ class _DebtRecordsListScreenState extends State<DebtRecordsListScreen> {
       builder: (BuildContext context) => AlertDialog(
         backgroundColor: ThemeConstants.primaryBlue,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Futa Deni', style: TextStyle(color: Colors.white)),
-        content: const Text('Je, una uhakika unataka kufuta deni hili?',
+        title: Text(LocalizationService.instance.translate('delete_debt'), style: TextStyle(color: Colors.white)),
+        content: Text('${LocalizationService.instance.translate('are_you_sure_you_want_to_6')}?',
             style: TextStyle(color: Colors.white70)),
         actions: <Widget>[
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Hapana',
+              child: Text(LocalizationService.instance.translate('no'),
                   style: TextStyle(color: Colors.white70))),
           TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Ndio',
+              child: Text(LocalizationService.instance.translate('yes'),
                   style: TextStyle(color: Colors.redAccent))),
         ],
       ),
@@ -436,7 +436,7 @@ class _EditDebtRecordScreenState extends State<_EditDebtRecordScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: ThemeConstants.primaryBlue,
-        appBar: ThemeConstants.buildAppBar('Hariri Deni'),
+        appBar: ThemeConstants.buildAppBar(LocalizationService.instance.translate('edit_debt')),
         body: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -446,7 +446,7 @@ class _EditDebtRecordScreenState extends State<_EditDebtRecordScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    _label('Tarehe ya Deni'),
+                    _label(LocalizationService.instance.translate('debt_date')),
                     const SizedBox(height: 6),
                     Row(children: <Widget>[
                       Expanded(child: _value(_fmt(_date))),
@@ -454,40 +454,40 @@ class _EditDebtRecordScreenState extends State<_EditDebtRecordScreen> {
                       ElevatedButton.icon(
                           onPressed: _pickDate,
                           icon: const Icon(Icons.event),
-                          label: const Text('Chagua'),
+                          label: Text(LocalizationService.instance.translate('select')),
                           style: ElevatedButton.styleFrom(
                               backgroundColor: ThemeConstants.primaryOrange,
                               foregroundColor: Colors.white)),
                     ]),
                     const SizedBox(height: 12),
-                    _label('Kiasi cha Deni (Tsh)'),
+                    _label(LocalizationService.instance.translate('debt_amount_tsh')),
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _amount,
                       keyboardType: TextInputType.number,
                       style: const TextStyle(color: Colors.white),
-                      decoration: _input('Ingiza kiasi'),
+                      decoration: _input(LocalizationService.instance.translate('enter_the_amount')),
                       validator: (String? v) {
                         final double? a = double.tryParse((v ?? '').trim());
-                        if (a == null || a <= 0) return 'Weka kiasi sahihi';
+                        if (a == null || a <= 0) return LocalizationService.instance.translate('enter_a_valid_amount');
                         return null;
                       },
                     ),
                     const SizedBox(height: 12),
-                    _label('Maelezo (hiari)'),
+                    _label(LocalizationService.instance.translate('note_optional')),
                     const SizedBox(height: 6),
                     TextFormField(
                         controller: _notes,
                         minLines: 2,
                         maxLines: 4,
                         style: const TextStyle(color: Colors.white),
-                        decoration: _input('Andika maelezo...')),
+                        decoration: _input('${LocalizationService.instance.translate('write_details')}...')),
                     const SizedBox(height: 12),
                     CheckboxListTile(
                       value: _promised,
                       onChanged: (bool? v) =>
                           setState(() => _promised = v ?? false),
-                      title: const Text('Je, ameahidi kulipa?',
+                      title: Text('${LocalizationService.instance.translate('did_they_promise_to_pay')}?',
                           style: TextStyle(color: Colors.white)),
                       controlAffinity: ListTileControlAffinity.leading,
                       activeColor: ThemeConstants.primaryOrange,
@@ -496,13 +496,13 @@ class _EditDebtRecordScreenState extends State<_EditDebtRecordScreen> {
                       Row(children: <Widget>[
                         Expanded(
                             child: _value(_promiseDate == null
-                                ? 'Chagua tarehe'
+                                ? LocalizationService.instance.translate('select_a_date')
                                 : _fmt(_promiseDate!))),
                         const SizedBox(width: 8),
                         ElevatedButton.icon(
                             onPressed: _pickPromiseDate,
                             icon: const Icon(Icons.event),
-                            label: const Text('Chagua'),
+                            label: Text(LocalizationService.instance.translate('select')),
                             style: ElevatedButton.styleFrom(
                                 backgroundColor: ThemeConstants.primaryOrange,
                                 foregroundColor: Colors.white)),
@@ -521,7 +521,7 @@ class _EditDebtRecordScreenState extends State<_EditDebtRecordScreen> {
                                     strokeWidth: 2, color: Colors.white))
                             : const Icon(Icons.save),
                         label: Text(
-                            _saving ? 'Inahifadhi...' : 'Hifadhi Mabadiliko'),
+                            _saving ? '${LocalizationService.instance.translate('saving')}...' : LocalizationService.instance.translate('save_changes')),
                         style: ElevatedButton.styleFrom(
                             backgroundColor: ThemeConstants.primaryOrange,
                             foregroundColor: Colors.white,

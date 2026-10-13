@@ -128,10 +128,10 @@ List<_InvMenuEntry> _invEntries(LocalizationService loc) => <_InvMenuEntry>[
         pageBuilder: () => const CreditScreen(),
         visible: (UserPermissions p) => p.has('inv_view_credit'),
       ),
-      // 8 — Depot Settings (standalone)
+      // 8 — Settings (standalone)
       _InvMenuEntry(
         key: 'settings',
-        titleKey: 'depot_settings',
+        titleKey: 'settings',
         icon: Icons.settings_outlined,
         color: const Color(0xFF64748B),
         pageBuilder: () => const DepotSettingsScreen(),
@@ -139,9 +139,59 @@ List<_InvMenuEntry> _invEntries(LocalizationService loc) => <_InvMenuEntry>[
       ),
     ];
 
+/// The five buttons of the inventory footer, left to right.
+abstract final class InvFooterSlot {
+  static const int dashboard = 0;
+  static const int products = 1;
+  static const int menu = 2;
+  static const int sales = 3;
+  static const int settings = 4;
+}
+
+/// The page of the home a footer button opens, or null when the button opens no page of its own (the menu) or
+/// the business has no such section.
+int? _pageForSlot(int slot, List<_InvMenuEntry> visible) {
+  int indexOf(String key) => visible.indexWhere((_InvMenuEntry e) => e.key == key);
+  switch (slot) {
+    case InvFooterSlot.dashboard:
+      return 0;
+    case InvFooterSlot.products:
+      final int p = indexOf('products_hub');
+      return p >= 0 ? p : null;
+    case InvFooterSlot.sales:
+      final int s = indexOf('sales_hub');
+      return s >= 0 ? s : null;
+    case InvFooterSlot.settings:
+      final int st = indexOf('settings');
+      return st >= 0 ? st : visible.length - 1;
+    default:
+      return null;
+  }
+}
+
 class InventoryHome extends StatefulWidget {
   const InventoryHome({super.key, this.initialIndex = 0});
   final int initialIndex;
+
+  /// For a screen opened on top of the inventory home (the product form): what its footer buttons do. They bring
+  /// the home back to the front, on the section the button stands for, exactly as the home's own footer would.
+  /// (Without a home underneath, one is opened.)
+  static void goToFooterSlot(BuildContext context, int slot) {
+    final _InventoryHomeState? home = _InventoryHomeState._active;
+    final NavigatorState navigator = Navigator.of(context);
+    if (home != null && home.mounted) {
+      final Route<dynamic>? homeRoute = ModalRoute.of(home.context);
+      navigator.popUntil((Route<dynamic> r) => r == homeRoute || r.isFirst);
+      home._onFooterSlot(slot);
+      return;
+    }
+    final LocalizationService loc = LocalizationService.instance;
+    final UserPermissions perms = context.read<AuthProvider>().permissions;
+    final int? page = _pageForSlot(slot, _invEntries(loc).where((_InvMenuEntry e) => e.isVisible(perms)).toList());
+    navigator.pushReplacement(
+      MaterialPageRoute<void>(builder: (_) => InventoryHome(initialIndex: page ?? 0)),
+    );
+  }
 
   @override
   State<InventoryHome> createState() => _InventoryHomeState();
@@ -150,9 +200,36 @@ class InventoryHome extends StatefulWidget {
 class _InventoryHomeState extends State<InventoryHome> {
   int _index = 0;
 
+  /// The sections that have been opened. A section is built (and so starts loading its data) the first time it is
+  /// opened, then kept: opening the home used to build all eight at once, and with them about thirty requests, most
+  /// for screens nobody was looking at.
+  final Set<int> _opened = <int>{};
+
+  /// The home that is on screen, for [InventoryHome.goToFooterSlot].
+  static _InventoryHomeState? _active;
+
+  @override
+  void dispose() {
+    if (_active == this) _active = null;
+    super.dispose();
+  }
+
+  /// What a tap on a footer button does.
+  void _onFooterSlot(int slot) {
+    final LocalizationService loc = LocalizationService.instance;
+    final List<_InvMenuEntry> visible = _invEntries(loc).where((_InvMenuEntry e) => e.isVisible(_perms(context))).toList();
+    if (slot == InvFooterSlot.menu) {
+      _openQuickMenu(context); // All sections grid
+      return;
+    }
+    final int? page = _pageForSlot(slot, visible);
+    if (page != null) setState(() => _index = page);
+  }
+
   @override
   void initState() {
     super.initState();
+    _active = this;
     _index = widget.initialIndex;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<NotificationsProvider>().refreshUnreadCount();
@@ -304,6 +381,18 @@ class _InventoryHomeState extends State<InventoryHome> {
     );
   }
 
+  /// The sections, with only the ones that have been opened actually built.
+  Widget _buildPages(List<Widget> pages) {
+    final int current = _index.clamp(0, pages.length - 1);
+    _opened.add(current);
+    return IndexedStack(
+      index: current,
+      children: <Widget>[
+        for (int i = 0; i < pages.length; i++) _opened.contains(i) ? pages[i] : const SizedBox.shrink(),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = context.watch<LocalizationService>();
@@ -405,39 +494,26 @@ class _InventoryHomeState extends State<InventoryHome> {
       body: DecoratedBox(
         decoration: const BoxDecoration(color: ThemeConstants.primaryBlue),
         child: SafeArea(
-          child: IndexedStack(
-            index: _index.clamp(0, pages.length - 1),
-            children: pages,
-          ),
+          child: _buildPages(pages),
         ),
       ),
-      bottomNavigationBar: _InventoryFooter(
+      bottomNavigationBar: InventoryFooter(
         index: _index,
         salesIndex: salesIndex,
         productsIndex: productsIndex >= 0 ? productsIndex : 1,
         settingsIndex: settingsIndex >= 0 ? settingsIndex : pages.length - 1,
-        onTap: (slot) {
-          if (slot == 0) {
-            setState(() => _index = 0); // Dashboard
-          } else if (slot == 1) {
-            if (productsIndex >= 0) setState(() => _index = productsIndex);
-          } else if (slot == 2) {
-            _openQuickMenu(context); // All sections grid
-          } else if (slot == 3) {
-            if (salesIndex >= 0) setState(() => _index = salesIndex);
-          } else if (slot == 4) {
-            setState(() => _index = settingsIndex >= 0
-                ? settingsIndex
-                : pages.length - 1); // Settings
-          }
-        },
+        onTap: _onFooterSlot,
       ),
     );
   }
 }
 
-class _InventoryFooter extends StatelessWidget {
-  const _InventoryFooter({
+/// The pill-shaped bar at the bottom of the inventory: dashboard, products, all sections, sales, settings.
+/// A screen opened on top of the home (the product form) shows the same bar, with [index] / [productsIndex] saying
+/// which button to light up.
+class InventoryFooter extends StatelessWidget {
+  const InventoryFooter({
+    super.key,
     required this.index,
     required this.onTap,
     this.salesIndex = 3,

@@ -18,6 +18,7 @@ import '../../models/inv_product_unit.dart';
 import '../../providers/inventory_provider.dart';
 import '../inventory_home.dart';
 import '../widgets/inventory_widgets.dart';
+import '../widgets/joined_sections.dart';
 import 'product_form_logic.dart';
 import 'product_form_sections.dart';
 import 'product_units_screen.dart';
@@ -41,7 +42,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final TextEditingController _qty = TextEditingController();
   final TextEditingController _minStock = TextEditingController(text: '0');
   final TextEditingController _barcode = TextEditingController();
-  final TextEditingController _createdBy = TextEditingController();
   final TextEditingController _description = TextEditingController();
 
   String _unit = 'crate';
@@ -150,10 +150,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           if (mounted) setState(() => _family = family);
         });
       }
-      final authUser = context.read<AuthProvider>().user;
-      if (authUser != null && _createdBy.text.isEmpty) {
-        _createdBy.text = authUser.name.isNotEmpty ? authUser.name : authUser.email;
-      }
     });
   }
 
@@ -244,7 +240,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _minStock.dispose();
     _barcode.dispose();
     _unitFactor.dispose();
-    _createdBy.dispose();
     _description.dispose();
     _otherPrice.dispose();
     _vat.dispose();
@@ -308,7 +303,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _InventoryFooterForForm(),
+      // The inventory's own footer, lit on Products (this is where the form belongs). Its buttons bring the
+      // inventory home back to the front on the section they stand for: the gear is the inventory's Settings.
+      bottomNavigationBar: InventoryFooter(
+        index: InvFooterSlot.products,
+        productsIndex: InvFooterSlot.products,
+        salesIndex: -1,
+        settingsIndex: -1,
+        onTap: (int slot) => InventoryHome.goToFooterSlot(context, slot),
+      ),
       body: Stack(
         children: [
           const ColoredBox(
@@ -319,12 +322,13 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
             child: SingleChildScrollView(
               // Room around the card so its shadow is seen on the sides and underneath, not clipped at the edge.
               padding: EdgeInsets.fromLTRB(9.w, 12.h, 9.w, 28.h),
-              // One joined glass card, the Settings look: the sections are told apart by divider lines, not by
-              // gaps, and the fields sitting side by side by a vertical line.
+              // One joined card, the Depot settings look (glass fill, cyan edge and glow): the sections are told
+              // apart by glowing divider lines, not by gaps, and the fields sitting side by side by a vertical one.
               child: Container(
                 key: const ValueKey<String>('product_card'),
                 clipBehavior: Clip.antiAlias,
-                decoration: ThemeConstants.premiumGlassCard(),
+                decoration: joinedCardDecoration(),
+                foregroundDecoration: joinedCardBorder(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -359,7 +363,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    _isWholesale ? '🏬 Wholesale Mode (Jumla)' : '🛒 Retail Mode (Rejareja)',
+                                    _isWholesale ? LocalizationService.instance.translate('wholesale_mode') : LocalizationService.instance.translate('retail_mode'),
                                     style: ThemeConstants.bodyStyle.copyWith(
                                       fontWeight: FontWeight.bold,
                                       color: _isWholesale ? ThemeConstants.primaryCyan : ThemeConstants.primaryOrange,
@@ -367,8 +371,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                                   ),
                                   Text(
                                     _isWholesale
-                                        ? 'Jumla: Haionyeshi Variants wala Actual Price. Inatumia bei za Crate/Carton.'
-                                        : 'Rejareja (Default): Inaonyesha vipimo vya moja moja na bei za Variants/Actual Price.',
+                                        ? LocalizationService.instance.translate('wholesale_hides_variants_and_the_actual')
+                                        : LocalizationService.instance.translate('retail_default_shows_single_unit_measures'),
                                     style: ThemeConstants.captionStyle.copyWith(fontSize: 10.sp),
                                   ),
                                 ],
@@ -479,6 +483,23 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                             ),
                         ],
                       ),
+                      // ---- everything beyond the basics: other ways to sell it, sizes / colours, VAT ----
+                      _sectionDivider('extras'),
+                      _section(
+                        id: 'extras',
+                        // A depot's only extra is the VAT section, which has a title of its own.
+                        icon: caps.isDepot ? null : Icons.tune_rounded,
+                        title: caps.isDepot ? null : (sw ? 'Mengineyo (si lazima)' : 'Extra options (optional)'),
+                        children: _extras(loc, caps),
+                      ),
+                      if (_saveError != null)
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(10.w, 10.h, 10.w, 0),
+                          child: Text(_saveError!,
+                              key: const ValueKey<String>('product_save_error'),
+                              style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorRed, fontSize: 12.sp)),
+                        ),
+                      // (Who created the product is not shown here: the server records it from the signed-in user.)
                       _sectionDivider('barcode'),
                       _section(
                         id: 'barcode',
@@ -516,104 +537,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                             right: _switchRow(loc.translate('status'), _active,
                                 (v) => setState(() => _active = v)),
                           ),
-                          // QR code preview — always visible when barcode has a value
+                          // The QR code of the barcode, under it: the last thing on the page.
                           if (_barcode.text.isNotEmpty) ...[
                             SizedBox(height: 10.h),
-                            Container(
-                              padding: EdgeInsets.all(10.w),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12.r),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  QrImageView(
-                                    data: _barcode.text,
-                                    version: QrVersions.auto,
-                                    size: 80.w,
-                                    backgroundColor: Colors.white,
-                                  ),
-                                  SizedBox(width: 12.w),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(loc.translate('qr_preview'),
-                                            style: TextStyle(
-                                                color: Colors.black87,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12.sp)),
-                                        SizedBox(height: 4.h),
-                                        Text(_barcode.text,
-                                            style: TextStyle(
-                                                color: Colors.black54,
-                                                fontSize: 11.sp,
-                                                fontFamily: 'monospace'),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis),
-                                        SizedBox(height: 4.h),
-                                        Text(
-                                          _isBarcodeAutoGenerated
-                                              ? '✓ ${loc.translate('barcode_equals_sku')}'
-                                              : '⚠ ${loc.translate('custom_barcode')}',
-                                          style: TextStyle(
-                                              color: _isBarcodeAutoGenerated
-                                                  ? Colors.green.shade700
-                                                  : Colors.orange.shade700,
-                                              fontSize: 10.sp),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            _qrPreview(loc),
                           ],
                           ],
                         ],
                       ),
 
-                      // ---- everything beyond the basics: other ways to sell it, sizes / colours, VAT ----
-                      _sectionDivider('extras'),
-                      _section(
-                        id: 'extras',
-                        // A depot's only extra is the VAT section, which has a title of its own.
-                        icon: caps.isDepot ? null : Icons.tune_rounded,
-                        title: caps.isDepot ? null : (sw ? 'Njia za kuuza na zaidi' : 'Ways to sell and more'),
-                        children: _extras(loc, caps),
-                      ),
-                      if (_saveError != null)
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(10.w, 10.h, 10.w, 0),
-                          child: Text(_saveError!,
-                              key: const ValueKey<String>('product_save_error'),
-                              style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorRed, fontSize: 12.sp)),
-                        ),
-                      _sectionDivider('created_by'),
-                      _section(
-                        id: 'created_by',
-                        children: [
-                          Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _sectionTitle(loc.translate('created_by')),
-                                TextField(
-                                  controller: _createdBy,
-                                  readOnly: true,
-                                  decoration: _decoration(loc.translate('created_by')).copyWith(
-                                    prefixIcon: const Icon(Icons.person_outline,
-                                        color: Colors.white38),
-                                    filled: true,
-                                    fillColor: Colors.white.withOpacity(0.05),
-                                  ),
-                                  style: ThemeConstants.bodyStyle
-                                      .copyWith(color: Colors.white54),
-                                ),
-                              ],
-                            ),
-                        ],
-                      ),
                   ],
                 ),
               ),
@@ -625,6 +557,49 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   }
 
   // UI building blocks
+
+  /// The QR code of the barcode, with what it says. The last thing on the page: it only mirrors the barcode above.
+  Widget _qrPreview(LocalizationService loc) => Container(
+        key: const ValueKey<String>('qr_preview'),
+        padding: EdgeInsets.all(10.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            QrImageView(
+              data: _barcode.text,
+              version: QrVersions.auto,
+              size: 80.w,
+              backgroundColor: Colors.white,
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(loc.translate('qr_preview'),
+                      style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 12.sp)),
+                  SizedBox(height: 4.h),
+                  Text(_barcode.text,
+                      style: TextStyle(color: Colors.black54, fontSize: 11.sp, fontFamily: 'monospace'),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                  SizedBox(height: 4.h),
+                  Text(
+                    _isBarcodeAutoGenerated ? '✓ ${loc.translate('barcode_equals_sku')}' : '⚠ ${loc.translate('custom_barcode')}',
+                    style: TextStyle(
+                        color: _isBarcodeAutoGenerated ? Colors.green.shade700 : Colors.orange.shade700, fontSize: 10.sp),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+
 
   /// One section of the joined card: an optional icon + title, then its fields. Sections are told apart by
   /// [_sectionDivider], not by gaps or boxes of their own.
@@ -660,13 +635,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     );
   }
 
-  /// The full-width hairline between two sections (the same line Settings draws between its rows).
-  Widget _sectionDivider(String above) => Divider(
-        key: ValueKey<String>('product_section_divider_$above'),
-        color: Colors.white24,
-        height: 1,
-        thickness: 1,
-      );
+  /// The glowing line between two sections (the one Depot settings and the dashboard draw).
+  Widget _sectionDivider(String above) => SectionGlowDivider(key: ValueKey<String>('product_section_divider_$above'));
 
   /// The unit, price and stock fields. A depot's are exactly what they always were; the others quote prices
   /// per the unit they think in (a piece, a kg, a litre) and count stock in whole base units.
@@ -746,6 +716,24 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
             if (m != ProductMeasure.count) _hasVariants = false;
           }),
         ),
+        // Weighed goods: type the stock in kg or in grams (litres or millilitres) -- whole numbers either way.
+        // Right under the choice that brings them in.
+        if (weighed && creating)
+          Padding(
+            padding: EdgeInsets.only(top: 8.h),
+            child: Wrap(
+              spacing: 8.w,
+              children: [
+                for (final (int f, String label) in <(int, String)>[(1, _measure.baseUnit), (_measure.bigFactor, _measure.bigUnit)])
+                  glassChoiceChip(
+                    key: ValueKey<String>('stock_unit_$f'),
+                    label: label,
+                    selected: _stockUnitFactor == f,
+                    onSelected: (_) => setState(() => _stockUnitFactor = f),
+                  ),
+              ],
+            ),
+          ),
         SizedBox(height: 8.h),
       ],
       unitRow,
@@ -785,23 +773,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           right: _input(loc.translate('stock_alert_threshold'), _minStock,
               keyboard: TextInputType.number, hint: 'e.g. 24', inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
         ),
-        // Weighed goods: type the stock in kg or in grams -- whole numbers either way.
-        if (weighed && creating)
-          Padding(
-            padding: EdgeInsets.only(top: 6.h),
-            child: Wrap(
-              spacing: 8.w,
-              children: [
-                for (final (int f, String label) in <(int, String)>[(1, _measure.baseUnit), (_measure.bigFactor, _measure.bigUnit)])
-                  glassChoiceChip(
-                    key: ValueKey<String>('stock_unit_$f'),
-                    label: label,
-                    selected: _stockUnitFactor == f,
-                    onSelected: (_) => setState(() => _stockUnitFactor = f),
-                  ),
-              ],
-            ),
-          ),
       ],
     ];
   }
@@ -813,6 +784,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final InvProduct? p = widget.product;
 
     return <Widget>[
+      // Said once, so nobody feels they must fill these in.
+      if (!caps.isDepot) ...[
+        Text(
+          sw ? 'Ruka haya kama hayahusu bidhaa hii.' : "Skip these if they don't apply to this product.",
+          key: const ValueKey<String>('extras_hint'),
+          style: ThemeConstants.captionStyle.copyWith(fontSize: 12.sp, color: Colors.white70),
+        ),
+        SizedBox(height: 10.h),
+      ],
       // ---- other ways to sell it (the depot's own sits next to the name, in retail mode)
       if (!caps.isDepot) ...[
         if (creating)
@@ -828,7 +808,15 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
             }),
           )
         else
-          _manageUnitsButton(loc),
+          ExtraOptionCard(
+            icon: Icons.inventory_2_rounded,
+            color: ThemeConstants.warningAmber,
+            title: sw ? 'Vifurushi na katoni' : 'Packs and cartons',
+            subtitle: sw
+                ? 'Badilisha jinsi bidhaa hii inavyouzwa kwa vifurushi au katoni, na bei zake.'
+                : 'Change how this product is sold in packs or cartons, and what each costs.',
+            children: [_manageUnitsButton(loc)],
+          ),
       ] else if (!creating) ...[
         SizedBox(height: 8.h),
         _manageUnitsButton(loc),
@@ -860,8 +848,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       ],
 
       // ---- VAT, optional (nothing above it when a depot creates a product, so no gap)
-      if (!caps.isDepot || !creating) SizedBox(height: 8.h),
-      VatSection(controller: _vat, defaultPercent: caps.defaultTaxPercent, sw: sw),
+      if (!caps.isDepot || !creating) SizedBox(height: caps.isDepot ? 8.h : 12.h),
+      VatSection(controller: _vat, defaultPercent: caps.defaultTaxPercent, sw: sw, card: !caps.isDepot),
     ];
   }
 
@@ -894,7 +882,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         ),
       );
 
-  /// Two fields side by side with a vertical hairline between them. (The line is laid over the row rather
+  /// Two fields side by side with a glowing vertical line between them. (The line is laid over the row rather
   /// than made with IntrinsicHeight, which the labels' AutoSizeText cannot answer.)
   Widget _twoCol({
     required Widget left,
@@ -907,7 +895,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         builder: (BuildContext context, BoxConstraints box) {
           final double gap = 13.w;
           // The line goes in the middle of the gap, whatever the two columns' widths are.
-          final double lineLeft = (box.maxWidth - gap) * leftFlex / (leftFlex + rightFlex) + gap / 2 - 0.5;
+          const double lineWidth = SectionGlowVerticalDivider.lineWidth;
+          final double lineLeft = (box.maxWidth - gap) * leftFlex / (leftFlex + rightFlex) + gap / 2 - lineWidth / 2;
           return Stack(
             children: [
               Row(
@@ -922,12 +911,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 left: lineLeft,
                 top: 0,
                 bottom: 0,
-                width: 1,
-                child: IgnorePointer(
-                  child: Container(
-                    key: const ValueKey<String>('product_col_divider'),
-                    color: Colors.white24,
-                  ),
+                width: lineWidth,
+                child: const IgnorePointer(
+                  child: SectionGlowVerticalDivider(key: ValueKey<String>('product_col_divider')),
                 ),
               ),
             ],
@@ -966,8 +952,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         ],
       );
 
-  InputDecoration _decoration(String hint) =>
-      ThemeConstants.glassInputDecoration(hint);
+  InputDecoration _decoration(String hint) => ThemeConstants.invInputDecoration(hint);
 
   Widget _dropdown(String label, String value, List<String> items,
           ValueChanged<String?> onChanged) =>
@@ -978,9 +963,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 10.w),
             decoration: BoxDecoration(
-              color: ThemeConstants.glassFieldFill,
+              color: ThemeConstants.invFill,
               borderRadius: BorderRadius.circular(14.r),
-              border: Border.all(color: ThemeConstants.glassFieldBorder),
+              border: Border.all(color: ThemeConstants.invBorder),
             ),
             child: DropdownButton<String>(
               value: value,
@@ -1002,9 +987,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       Container(
         padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 12.h),
         decoration: BoxDecoration(
-          color: ThemeConstants.glassFieldFill,
+          color: ThemeConstants.invFill,
           borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(color: ThemeConstants.glassFieldBorder),
+          border: Border.all(color: ThemeConstants.invBorder),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1431,25 +1416,25 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         context: context,
         builder: (dCtx) => AlertDialog(
           backgroundColor: ThemeConstants.primaryBlue,
-          title: Text('Cannot Delete',
+          title: Text(LocalizationService.instance.translate('inv_cannot_delete'),
               style: ThemeConstants.bodyStyle
                   .copyWith(fontWeight: FontWeight.bold)),
           content: Text(
-            '"${p.name}" has sales history and cannot be permanently deleted.\n\n'
-            'Archive it instead? It will be deactivated but kept for records.',
+            '${LocalizationService.instance.translateWith('inv_has_sales_history', <Object?>[p.name])}\n\n'
+            '${LocalizationService.instance.translate('inv_archive_instead')}',
             style: ThemeConstants.captionStyle,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dCtx, false),
-              child: const Text('Cancel',
-                  style: TextStyle(color: Colors.white70)),
+              child: Text(LocalizationService.instance.translate('cancel_2'),
+                  style: const TextStyle(color: Colors.white70)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange),
               onPressed: () => Navigator.pop(dCtx, true),
-              child: const Text('Archive'),
+              child: Text(LocalizationService.instance.translate('inv_archive')),
             ),
           ],
         ),
@@ -1461,7 +1446,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         if (mounted) {
           if (err2 == null) {
             ThemeConstants.showSuccessSnackBar(
-                context, 'Product archived (deactivated)');
+                context, LocalizationService.instance.translate('inv_product_archived'));
             Navigator.pop(context);
           } else {
             ThemeConstants.showErrorSnackBar(context, err2);
@@ -1472,147 +1457,4 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       ThemeConstants.showErrorSnackBar(context, err);
     }
   }
-}
-
-class _InventoryFooterForForm extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: ThemeConstants.footerBarColor,
-      child: SafeArea(
-        top: false,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28.r),
-          child: Container(
-            width: double.infinity,
-            margin: EdgeInsets.symmetric(vertical: 8.h),
-            padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 10.h),
-            decoration: BoxDecoration(
-              color: ThemeConstants.footerBarColor,
-              borderRadius: BorderRadius.circular(28.r),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2)),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _footerIcon(context, Icons.calendar_today_outlined,
-                    () => _goto(context, 0)),
-                Stack(children: [
-                  _footerIcon(
-                      context, Icons.person_outline, () => _goto(context, 1)),
-                  Positioned(
-                    right: 2,
-                    top: 0,
-                    child: Container(
-                        width: 8.w,
-                        height: 8.w,
-                        decoration: const BoxDecoration(
-                            color: Colors.amber, shape: BoxShape.circle)),
-                  ),
-                ]),
-                _footerIcon(context, Icons.menu, () => _openMenu(context)),
-                _footerIcon(
-                    context, Icons.pets_outlined, () => _goto(context, 2)),
-                _footerIcon(context, Icons.settings_outlined,
-                    () => Navigator.pushNamed(context, '/settings')),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _footerIcon(BuildContext context, IconData icon, VoidCallback onTap) =>
-      InkResponse(
-        onTap: onTap,
-        radius: 28.r,
-        child: Container(
-          width: 46.w,
-          height: 46.w,
-          decoration: BoxDecoration(
-              color: ThemeConstants.primaryBlue.withValues(alpha: 0.22),
-              shape: BoxShape.circle),
-          child: Icon(icon, color: Colors.white, size: 22.sp),
-        ),
-      );
-
-  void _goto(BuildContext context, int index) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => InventoryHome(initialIndex: index)),
-    );
-  }
-
-  Future<void> _openMenu(BuildContext context) async {
-    final loc = LocalizationService.instance;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 24.h),
-        child: Container(
-          decoration: BoxDecoration(
-            color: ThemeConstants.primaryBlue.withValues(alpha: 0.95),
-            borderRadius: BorderRadius.circular(20.r),
-            border: Border.all(color: Colors.white24),
-          ),
-          padding: EdgeInsets.all(12.w),
-          child: GridView.count(
-            crossAxisCount: 3,
-            mainAxisSpacing: 12.w,
-            crossAxisSpacing: 12.w,
-            shrinkWrap: true,
-            children: [
-              _gridItem(context, Icons.dashboard, loc.translate('dashboard'),
-                  () => _goto(context, 0)),
-              _gridItem(context, Icons.inventory_2_outlined,
-                  loc.translate('products'), () => _goto(context, 1)),
-              _gridItem(context, Icons.track_changes_outlined,
-                  loc.translate('stock_levels'), () => _goto(context, 2)),
-              _gridItem(
-                  context,
-                  Icons.sync_alt_outlined,
-                  loc.translate('stock_in_out_transfer'),
-                  () => _goto(context, 3)),
-              _gridItem(context, Icons.point_of_sale_outlined,
-                  loc.translate('sales'), () => _goto(context, 4)),
-              _gridItem(context, Icons.category_outlined, 'Categories',
-                  () => _goto(context, 5)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _gridItem(BuildContext context, IconData icon, String label,
-          VoidCallback onTap) =>
-      InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16.r),
-        child: Container(
-          decoration: BoxDecoration(
-              color: ThemeConstants.invNeutralChip,
-              borderRadius: BorderRadius.circular(16.r)),
-          padding: EdgeInsets.all(10.w),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: Colors.white, size: 24.sp),
-              SizedBox(height: 8.h),
-              AutoSizeText(label,
-                  style: ThemeConstants.bodyStyle,
-                  maxLines: 2,
-                  minFontSize: 10,
-                  textAlign: TextAlign.center),
-            ],
-          ),
-        ),
-      );
 }

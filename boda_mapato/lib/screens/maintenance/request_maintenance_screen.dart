@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../../constants/theme_constants.dart';
 import '../../providers/maintenance_provider.dart';
 import '../../providers/rental_provider.dart';
+import '../../services/localization_service.dart';
+import '../../utils/maintenance_labels.dart';
 
 class RequestMaintenanceScreen extends StatefulWidget {
   const RequestMaintenanceScreen({super.key});
@@ -35,10 +37,10 @@ class _RequestMaintenanceScreenState extends State<RequestMaintenanceScreen> {
   ];
 
   final Map<String, String> _priorityMap = {
-    'low': 'Chini',
-    'medium': 'Kati',
-    'high': 'Juu',
-    'emergency': 'Dharura',
+    'low': LocalizationService.instance.translate('low'),
+    'medium': LocalizationService.instance.translate('priority_medium'),
+    'high': LocalizationService.instance.translate('high'),
+    'emergency': LocalizationService.instance.translate('urgent'),
   };
 
   @override
@@ -60,7 +62,7 @@ class _RequestMaintenanceScreenState extends State<RequestMaintenanceScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedPropertyId == null) {
-      ThemeConstants.showErrorSnackBar(context, "Tafadhali chagua mali");
+      ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('property_not_selected'));
       return;
     }
 
@@ -75,9 +77,9 @@ class _RequestMaintenanceScreenState extends State<RequestMaintenanceScreen> {
 
     if (success && mounted) {
       Navigator.pop(context);
-      ThemeConstants.showSuccessSnackBar(context, "Ombi lako limetumwa");
+      ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('your_request_has_been_sent'));
     } else if (mounted) {
-      ThemeConstants.showErrorSnackBar(context, "Imeshindikana kutuma ombi");
+      ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('could_not_send_the_request'));
     }
   }
 
@@ -87,7 +89,7 @@ class _RequestMaintenanceScreenState extends State<RequestMaintenanceScreen> {
     final maintenanceProvider = context.watch<MaintenanceProvider>();
 
     return ThemeConstants.buildScaffold(
-      title: "Omba Matengenezo",
+      title: LocalizationService.instance.translate('request_maintenance'),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 20.h),
         child: Form(
@@ -100,10 +102,10 @@ class _RequestMaintenanceScreenState extends State<RequestMaintenanceScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader("Mali & Nyumba", Icons.home_work),
+                    _buildSectionHeader(LocalizationService.instance.translate('property_house'), Icons.home_work),
                     SizedBox(height: 16.h),
                     _buildDropdown(
-                      label: "Chagua Mali",
+                      label: LocalizationService.instance.translate('select_property_2'),
                       value: _selectedPropertyId,
                       items: rentalProvider.properties.map((p) {
                         return DropdownMenuItem(
@@ -121,14 +123,14 @@ class _RequestMaintenanceScreenState extends State<RequestMaintenanceScreen> {
                     if (_selectedPropertyId != null) ...[
                       SizedBox(height: 16.h),
                       _buildDropdown(
-                        label: "Chagua Nyumba (Hiari)",
+                        label: LocalizationService.instance.translate('select_house_optional'),
                         value: _selectedHouseId,
                         items: rentalProvider.properties
                             .firstWhere((p) => p['id'].toString() == _selectedPropertyId)['houses']
                             .map<DropdownMenuItem<String>>((h) {
                           return DropdownMenuItem(
                             value: h['id'].toString(),
-                            child: Text("Unit ${h['house_number']}"),
+                            child: Text(LocalizationService.instance.translateWith('unit_2', <Object?>[h['house_number']])),
                           );
                         }).toList(),
                         onChanged: (val) => setState(() => _selectedHouseId = val),
@@ -143,16 +145,16 @@ class _RequestMaintenanceScreenState extends State<RequestMaintenanceScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader("Maelezo ya Tatizo", Icons.report_problem),
+                    _buildSectionHeader(LocalizationService.instance.translate('problem_details'), Icons.report_problem),
                     SizedBox(height: 16.h),
                     Row(
                       children: [
                         Expanded(
                           child: _buildDropdown(
-                            label: "Kundi",
+                            label: LocalizationService.instance.translate('category_2'),
                             value: _selectedCategory,
                             items: _categories.map((c) {
-                              return DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis));
+                              return DropdownMenuItem(value: c, child: Text(maintenanceCategoryLabel(c), overflow: TextOverflow.ellipsis));
                             }).toList(),
                             onChanged: (val) => setState(() => _selectedCategory = val!),
                           ),
@@ -160,7 +162,7 @@ class _RequestMaintenanceScreenState extends State<RequestMaintenanceScreen> {
                         SizedBox(width: 8.w),
                         Expanded(
                           child: _buildDropdown(
-                            label: "Kipaumbele",
+                            label: LocalizationService.instance.translate('priority'),
                             value: _selectedPriority,
                             items: _priorityMap.entries.map((e) {
                               return DropdownMenuItem(value: e.key, child: Text(e.value));
@@ -175,8 +177,8 @@ class _RequestMaintenanceScreenState extends State<RequestMaintenanceScreen> {
                       controller: _descriptionController,
                       maxLines: 4,
                       style: ThemeConstants.bodyStyle,
-                      decoration: _inputDecoration("Elezea tatizo kwa kina...", Icons.description),
-                      validator: (val) => val == null || val.isEmpty ? "Tafadhali elezea tatizo" : null,
+                      decoration: _inputDecoration("${LocalizationService.instance.translate('describe_the_problem_in_detail')}...", Icons.description),
+                      validator: (val) => val == null || val.isEmpty ? LocalizationService.instance.translate('please_describe_the_problem') : null,
                     ),
                   ],
                 ),
@@ -187,7 +189,7 @@ class _RequestMaintenanceScreenState extends State<RequestMaintenanceScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader("Picha za Tatizo", Icons.add_a_photo),
+                    _buildSectionHeader(LocalizationService.instance.translate('photos_of_the_problem'), Icons.add_a_photo),
                     SizedBox(height: 16.h),
                     GestureDetector(
                       onTap: _pickImage,
@@ -216,7 +218,7 @@ class _RequestMaintenanceScreenState extends State<RequestMaintenanceScreen> {
                                     child: Icon(Icons.camera_alt, color: ThemeConstants.footerBarColor, size: 32.sp),
                                   ),
                                   SizedBox(height: 12.h),
-                                  Text("Gusa kuongeza picha ya kielelezo", 
+                                  Text(LocalizationService.instance.translate('tap_to_add_a_sample_photo'), 
                                       style: ThemeConstants.captionStyle.copyWith(fontSize: 13.sp)),
                                 ],
                               ),
@@ -239,7 +241,7 @@ class _RequestMaintenanceScreenState extends State<RequestMaintenanceScreen> {
                   ),
                   child: maintenanceProvider.isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : Text("TUMA OMBI SASA", 
+                      : Text(LocalizationService.instance.translate('send_request_now').toUpperCase(), 
                           style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
                 ),
               ),

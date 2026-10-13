@@ -22,15 +22,15 @@ class ReceiptViewScreen extends StatelessWidget { // Can be a payment record or 
         if (payment['receipt'] != null)
           IconButton(
             icon: const Icon(Icons.send_rounded),
-            tooltip: 'Send to tenant',
+            tooltip: LocalizationService.instance.translate('send_to_tenant'),
             onPressed: () async {
               final receiptId = payment['receipt']['id'].toString();
-              ThemeConstants.showInfoSnackBar(context, "Sending receipt to tenant...");
+              ThemeConstants.showInfoSnackBar(context, LocalizationService.instance.translate('sending_receipt_to_tenant'));
               final success = await context.read<RentalProvider>().dispatchTenantReceipt(receiptId);
               if (success) {
-                ThemeConstants.showSuccessSnackBar(context, "Receipt sent successfully!");
+                ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('receipt_sent_successfully'));
               } else {
-                ThemeConstants.showErrorSnackBar(context, "Failed to send receipt.");
+                ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('failed_to_send_receipt_2'));
               }
             },
           ),
@@ -110,7 +110,7 @@ class ReceiptViewScreen extends StatelessWidget { // Can be a payment record or 
     final dateStr = payment['created_at']?.toString() ?? '';
     final formattedDate = dateStr.isNotEmpty 
         ? DateFormat('dd MMM yyyy, HH:mm').format(DateTime.tryParse(dateStr) ?? DateTime.now())
-        : 'Today';
+        : LocalizationService.instance.translate('today');
         
     final tenantName = payment['tenant']?['name'] ?? payment['bill']?['tenant']?['name'] ?? 'N/A';
     final houseObj = payment['bill']?['agreement']?['house'] ?? payment['bill']?['house'];

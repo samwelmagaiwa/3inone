@@ -159,13 +159,13 @@ class _PaymentsScreenState extends State<PaymentsScreen>
         await _loadNewPaymentsMapForThisMonth();
       } else {
         final String msg =
-            response['message'] as String? ?? 'Failed to load drivers';
+            response['message'] as String? ?? LocalizationService.instance.translate('failed_to_load_drivers');
         throw Exception(msg);
       }
     } on Exception catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Failed to load drivers: $e';
+          _errorMessage = LocalizationService.instance.translateWith('failed_to_load_drivers_2', <Object?>[e]);
           _isLoadingDrivers = false;
         });
       }
@@ -216,12 +216,12 @@ class _PaymentsScreenState extends State<PaymentsScreen>
           });
         }
       } else {
-        throw Exception(response['message'] ?? 'Failed to load debt records');
+        throw Exception(response['message'] ?? LocalizationService.instance.translate('failed_to_load_debt_records'));
       }
     } on Exception catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Failed to load debt records: $e';
+          _errorMessage = LocalizationService.instance.translateWith('failed_to_load_debt_records_2', <Object?>[e]);
           _isLoadingDebts = false;
         });
       }
@@ -298,7 +298,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
     }
 
     if (_selectedDebts.isEmpty) {
-      _showErrorDialog('Chagua angalau siku moja ya malipo');
+      _showErrorDialog(LocalizationService.instance.translate('select_at_least_one_payment_day'));
       return;
     }
 
@@ -330,10 +330,10 @@ class _PaymentsScreenState extends State<PaymentsScreen>
         } on Exception catch (_) {}
         _showSuccessDialog();
       } else {
-        throw Exception(response['message'] ?? 'Failed to record payment');
+        throw Exception(response['message'] ?? LocalizationService.instance.translate('failed_to_record_payment_2'));
       }
     } on Exception catch (e) {
-      _showErrorDialog('Hitilafu katika kuhifadhi malipo: $e');
+      _showErrorDialog(LocalizationService.instance.translateWith('error_saving_the_payment', <Object?>[e]));
     } finally {
       if (mounted) {
         setState(() {
@@ -369,8 +369,8 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Malipo Yamehifadhiwa!',
+              Text(
+                '${LocalizationService.instance.translate('payment_saved')}!',
                 style: TextStyle(
                   color: ThemeConstants.textPrimary,
                   fontSize: 20,
@@ -380,7 +380,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'Malipo ya TSh ${_formatCurrency(_amountController.text)} yamehifadhiwa kwa ${_selectedDriver?.name}',
+                LocalizationService.instance.translateWith('payment_of_tsh_saved_for', <Object?>[_formatCurrency(_amountController.text), _selectedDriver?.name]),
                 style: const TextStyle(
                   color: ThemeConstants.textSecondary,
                   fontSize: 14,
@@ -402,7 +402,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
                         Icon(
                           Icons.receipt_long,
@@ -411,7 +411,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                         ),
                         SizedBox(width: 8),
                         Text(
-                          'Maelezo ya Malipo',
+                          LocalizationService.instance.translate('payment_details'),
                           style: TextStyle(
                             color: ThemeConstants.textPrimary,
                             fontSize: 14,
@@ -426,8 +426,8 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Njia ya Malipo:',
+                        Text(
+                          '${LocalizationService.instance.translate('payment_method_label')}:',
                           style: TextStyle(
                             color: ThemeConstants.textSecondary,
                             fontSize: 12,
@@ -449,8 +449,8 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Siku Zilizolipwa:',
+                        Text(
+                          '${LocalizationService.instance.translate('covered_days')}:',
                           style: TextStyle(
                             color: ThemeConstants.textSecondary,
                             fontSize: 12,
@@ -473,8 +473,8 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Maelezo:',
+                          Text(
+                            '${LocalizationService.instance.translate('description')}:',
                             style: TextStyle(
                               color: ThemeConstants.textSecondary,
                               fontSize: 12,
@@ -515,7 +515,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Row(
+                      Row(
                         children: [
                           Icon(
                             Icons.event_available,
@@ -524,7 +524,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                           ),
                           SizedBox(width: 8),
                           Text(
-                            'Siku Zilizolipwa',
+                            LocalizationService.instance.translate('covered_days'),
                             style: TextStyle(
                               color: ThemeConstants.successGreen,
                               fontSize: 14,
@@ -584,8 +584,8 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
-                        'Malipo Mengine',
+                      child: Text(
+                        LocalizationService.instance.translate('another_payment'),
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 12,
@@ -606,8 +606,8 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
-                        'Maliza',
+                      child: Text(
+                        LocalizationService.instance.translate('finish'),
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -637,9 +637,9 @@ class _PaymentsScreenState extends State<PaymentsScreen>
           children: [
             Icon(Icons.error, color: ThemeConstants.errorRed, size: 18.sp),
             SizedBox(width: 8.w),
-            const Expanded(
+            Expanded(
               child: AutoSizeText(
-                'Hitilafu',
+                LocalizationService.instance.translate('error'),
                 style: TextStyle(
                   color: ThemeConstants.textPrimary,
                   fontSize: 18,
@@ -661,8 +661,8 @@ class _PaymentsScreenState extends State<PaymentsScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'Sawa',
+            child: Text(
+              LocalizationService.instance.translate('ok'),
               style: TextStyle(
                 color: ThemeConstants.primaryOrange,
                 fontWeight: FontWeight.w600,
@@ -944,7 +944,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                 ),
                 SizedBox(width: 8.w),
                 Text(
-                  'Muhtasari wa Deni',
+                  LocalizationService.instance.translate('debt_summary'),
                   style: TextStyle(
                     color: ThemeConstants.textPrimary,
                     fontSize: 16.sp,
@@ -958,7 +958,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
               children: [
                 Expanded(
                   child: _buildSummaryItem(
-                    'Jumla ya Deni',
+                    LocalizationService.instance.translate('total_owed'),
                     'TSh ${_formatCurrency(summary.totalDebt.toString())}',
                     ThemeConstants.errorRed,
                   ),
@@ -966,7 +966,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildSummaryItem(
-                    'Siku Zilizobakia',
+                    LocalizationService.instance.translate('days_remaining'),
                     '${summary.unpaidDays}',
                     ThemeConstants.warningAmber,
                   ),
@@ -976,7 +976,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
             if (summary.lastPaymentDate != null) ...[
               const SizedBox(height: 8),
               _buildSummaryItem(
-                'Malipo ya Mwisho',
+                LocalizationService.instance.translate('last_payment'),
                 _formatDate(summary.lastPaymentDate!),
                 ThemeConstants.successGreen,
               ),
@@ -1197,7 +1197,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                               SizedBox(width: 4.w),
                               Flexible(
                                 child: Text(
-                                  'Leseni: ${debt.licenseNumber}',
+                                  LocalizationService.instance.translateWith('license_2', <Object?>[debt.licenseNumber]),
                                   style: TextStyle(
                                       color: ThemeConstants.textSecondary,
                                       fontSize: 10.sp),
@@ -1228,8 +1228,8 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                               Flexible(
                                 child: Text(
                                   debt.promiseToPayAt == null
-                                      ? 'Ahadi ya kulipa'
-                                      : 'Ahadi: ${_formatDate(debt.promiseToPayAt!)}',
+                                      ? LocalizationService.instance.translate('promise_to_pay')
+                                      : LocalizationService.instance.translateWith('promise', <Object?>[_formatDate(debt.promiseToPayAt!)]),
                                   style: TextStyle(
                                       color: ThemeConstants.warningAmber,
                                       fontSize: 10.sp),
@@ -1272,7 +1272,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
           children: [
             Icon(
               Icons.payments,
@@ -1281,7 +1281,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
             ),
             SizedBox(width: 8),
             Text(
-              'Maelezo ya Malipo',
+              LocalizationService.instance.translate('payment_details'),
               style: TextStyle(
                 color: ThemeConstants.textPrimary,
                 fontSize: 16,
@@ -1299,7 +1299,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
               children: [
                 // Amount Field
                 Text(
-                  'Kiasi (TSh)',
+                  LocalizationService.instance.translate('amount_tsh'),
                   style: TextStyle(
                     color: ThemeConstants.textPrimary,
                     fontSize: 14.sp,
@@ -1319,7 +1319,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                     fontWeight: FontWeight.w600,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'Ingiza kiasi cha malipo',
+                    hintText: LocalizationService.instance.translate('enter_the_payment_amount'),
                     hintStyle: TextStyle(
                       color: ThemeConstants.textSecondary,
                       fontSize: 14.sp,
@@ -1353,12 +1353,12 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Ingiza kiasi cha malipo';
+                      return LocalizationService.instance.translate('enter_the_payment_amount');
                     }
 
                     final amount = double.tryParse(value);
                     if (amount == null || amount <= 0) {
-                      return 'Ingiza kiasi sahihi';
+                      return LocalizationService.instance.translate('enter_a_valid_amount_3');
                     }
 
                     return null;
@@ -1369,7 +1369,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
 
                 // Payment Channel
                 Text(
-                  'Njia ya Malipo',
+                  LocalizationService.instance.translate('payment_method_label'),
                   style: TextStyle(
                     color: ThemeConstants.textPrimary,
                     fontSize: 14.sp,
@@ -1430,7 +1430,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
 
                 // Remarks Field
                 Text(
-                  'Maelezo (Hiari)',
+                  LocalizationService.instance.translate('note_optional'),
                   style: TextStyle(
                     color: ThemeConstants.textPrimary,
                     fontSize: 14.sp,
@@ -1446,7 +1446,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                     fontSize: 14.sp,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'Andika maelezo yoyote ya ziada...',
+                    hintText: '${LocalizationService.instance.translate('write_any_extra_details')}...',
                     hintStyle: TextStyle(
                       color: ThemeConstants.textSecondary,
                       fontSize: 14.sp,
@@ -1534,8 +1534,8 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                         ],
                         Text(
                           _isSubmittingPayment
-                              ? 'Inahifadhi...'
-                              : 'Hifadhi Malipo',
+                              ? '${LocalizationService.instance.translate('saving')}...'
+                              : LocalizationService.instance.translate('save_payment'),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -1622,7 +1622,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                       borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: Text(
-                      driver.totalDebt > 0 ? 'Ana deni' : 'Hana deni',
+                      driver.totalDebt > 0 ? LocalizationService.instance.translate('has_debt_2') : LocalizationService.instance.translate('no_debt_2'),
                       style: TextStyle(
                         color: driver.totalDebt > 0
                             ? ThemeConstants.errorRed
@@ -1645,7 +1645,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                                 ThemeConstants.primaryOrange.withOpacity(0.5)),
                       ),
                       child: Text(
-                        'MPYA',
+                        LocalizationService.instance.translate('new').toUpperCase(),
                         style: TextStyle(
                           color: ThemeConstants.primaryOrange,
                           fontSize: 9.sp,
@@ -1727,8 +1727,8 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                 ),
                 child: Text(
                   hasDebt
-                      ? 'Dereva ana deni TSh ${_formatCurrency(driver.totalDebt.toString())}'
-                      : 'Dereva hana deni, unaweza kurekodi malipo mapya.',
+                      ? LocalizationService.instance.translateWith('the_driver_has_a_debt_of', <Object?>[_formatCurrency(driver.totalDebt.toString())])
+                      : '${LocalizationService.instance.translate('the_driver_has_no_debt_you')}.',
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                 ),
               ),
@@ -1748,7 +1748,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text('Madeni'),
+                        child: Text(LocalizationService.instance.translate('debts')),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1769,7 +1769,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text('Malipo Mapya'),
+                        child: Text(LocalizationService.instance.translate('new_payment')),
                       ),
                     ),
                   ],
@@ -1793,7 +1793,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('Rekodi Malipo Mapya'),
+                    child: Text(LocalizationService.instance.translate('record_new_payment')),
                   ),
                 ),
             ],
@@ -1805,7 +1805,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
 
   Widget _buildLoadingState() {
     return ThemeConstants.buildGlassCardStatic(
-      child: const Padding(
+      child: Padding(
         padding: EdgeInsets.all(40),
         child: Column(
           children: [
@@ -1815,7 +1815,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
             ),
             SizedBox(height: 16),
             Text(
-              'Inapakia...',
+              '${LocalizationService.instance.translate('loading_2')}...',
               style: TextStyle(
                 color: ThemeConstants.textSecondary,
                 fontSize: 14,
@@ -1839,8 +1839,8 @@ class _PaymentsScreenState extends State<PaymentsScreen>
               size: 48,
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Hitilafu!',
+            Text(
+              '${LocalizationService.instance.translate('error')}!',
               style: TextStyle(
                 color: ThemeConstants.textPrimary,
                 fontSize: 18,
@@ -1849,7 +1849,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              _errorMessage ?? 'Hitilafu isiyojulikana',
+              _errorMessage ?? LocalizationService.instance.translate('unknown_error'),
               style: const TextStyle(
                 color: ThemeConstants.textSecondary,
                 fontSize: 14,
@@ -1862,8 +1862,8 @@ class _PaymentsScreenState extends State<PaymentsScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: ThemeConstants.primaryOrange,
               ),
-              child: const Text(
-                'Jaribu Tena',
+              child: Text(
+                LocalizationService.instance.translate('try_again'),
                 style: TextStyle(color: Colors.white),
               ),
             ),
@@ -1875,7 +1875,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
 
   Widget _buildEmptyState() {
     return ThemeConstants.buildGlassCardStatic(
-      child: const Padding(
+      child: Padding(
         padding: EdgeInsets.all(40),
         child: Column(
           children: [
@@ -1886,7 +1886,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
             ),
             SizedBox(height: 16),
             Text(
-              'Hakuna Matokeo',
+              LocalizationService.instance.translate('no_results'),
               style: TextStyle(
                 color: ThemeConstants.textPrimary,
                 fontSize: 18,
@@ -1895,7 +1895,7 @@ class _PaymentsScreenState extends State<PaymentsScreen>
             ),
             SizedBox(height: 8),
             Text(
-              'Hakuna dereva aliyepatikana kwa utaftaji huu',
+              LocalizationService.instance.translate('no_driver_found_for_this_search'),
               style: TextStyle(
                 color: ThemeConstants.textSecondary,
                 fontSize: 14,

@@ -145,7 +145,7 @@ class _DriverRemindersScreenState extends State<DriverRemindersScreen> {
   Widget _reminderTile(Map<String, dynamic> r) {
     final String title = (r['title']?.toString() ?? '').isNotEmpty
         ? r['title'].toString()
-        : (r['reminder_type']?.toString() ?? 'Kumbusho');
+        : (r['reminder_type']?.toString() ?? LocalizationService.instance.translate('reminder'));
     final String msg = r['message']?.toString() ?? '';
     final String status = r['status']?.toString() ?? 'active';
     final String priority = r['priority']?.toString() ?? 'low';

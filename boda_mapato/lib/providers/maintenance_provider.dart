@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
 import '../services/sms_service.dart';
 import '../widgets/temporary_password_dialog.dart' show temporaryPasswordOf;
+import '../services/localization_service.dart';
 
 class MaintenanceProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -162,7 +163,7 @@ class MaintenanceProvider with ChangeNotifier {
         await fetchVendors();
         return null;
       }
-      return response['message']?.toString() ?? "Imeshindikana kuongeza fundi";
+      return response['message']?.toString() ?? LocalizationService.instance.translate('could_not_add_the_technician');
     } catch (e) {
       debugPrint("Error adding vendor: $e");
       if (e.toString().contains("ApiException")) {

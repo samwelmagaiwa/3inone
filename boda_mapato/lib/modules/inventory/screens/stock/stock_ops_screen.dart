@@ -62,7 +62,7 @@ class _StockOpsScreenState extends State<StockOpsScreen>
             Tab(text: loc.translate('stock_in')),
             Tab(text: loc.translate('stock_out')),
             Tab(text: loc.translate('stock_transfer')),
-            const Tab(text: 'Historia ya Mzigo (Audit Log)'),
+            Tab(text: LocalizationService.instance.translate('stock_history_audit_log')),
           ],
         ),
         Expanded(
@@ -322,7 +322,7 @@ class _StockInFormState extends State<_StockInForm> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: <Widget>[
                           Text(
-                            '📦 Mzigo uliopo sasa:',
+                            LocalizationService.instance.translate('current_stock'),
                             style: ThemeConstants.captionStyle,
                           ),
                           Flexible(
@@ -341,7 +341,7 @@ class _StockInFormState extends State<_StockInForm> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: <Widget>[
                             Text(
-                              '➕ Mzigo unaoongezwa:',
+                              LocalizationService.instance.translate('stock_being_added'),
                               style: ThemeConstants.captionStyle.copyWith(
                                 color: ThemeConstants.successGreen,
                               ),
@@ -367,7 +367,7 @@ class _StockInFormState extends State<_StockInForm> {
                           children: <Widget>[
                             Flexible(
                               child: Text(
-                                '📊 Jumla Mpya itakayokuwepo:',
+                                LocalizationService.instance.translate('new_total_after_this'),
                                 style: ThemeConstants.bodyStyle.copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -438,7 +438,7 @@ class _StockInFormState extends State<_StockInForm> {
               InvTextField(
                 controller: _ref,
                 label: loc.translate('reference'),
-                hint: 'e.g. Delivery note number',
+                hint: LocalizationService.instance.translate('e_g_delivery_note_number'),
                 isOptional: true,
               ),
               SizedBox(height: 16.h),
@@ -618,7 +618,7 @@ class _StockOutFormState extends State<_StockOutForm> {
               InvTextField(
                 controller: _ref,
                 label: loc.translate('note_optional'),
-                hint: 'e.g. Given to which customer, or which correction',
+                hint: LocalizationService.instance.translate('e_g_given_to_which_customer'),
                 isOptional: true,
               ),
               SizedBox(height: 16.h),
@@ -912,9 +912,9 @@ class _StockHistoryTabState extends State<_StockHistoryTab> {
               backgroundColor: Colors.white,
               color: ThemeConstants.primaryBlue,
               child: movements.isEmpty
-                  ? const InvEmptyState(
+                  ? InvEmptyState(
                       icon: Icons.history,
-                      message: 'Hakuna taarifa za kuingiza au kutoa mzigo bado.',
+                      message: LocalizationService.instance.translate('no_stock_in_or_out_records'),
                     )
                   : ListView.separated(
                       itemCount: movements.length,
@@ -947,13 +947,13 @@ class _StockHistoryTabState extends State<_StockHistoryTab> {
                                     child: Text(
                                       m.productName.isNotEmpty
                                           ? m.productName
-                                          : 'Product #${m.productId}',
+                                          : LocalizationService.instance.translateWith('product_2', <Object?>[m.productId]),
                                       style: ThemeConstants.bodyStyle
                                           .copyWith(fontWeight: FontWeight.bold),
                                     ),
                                   ),
                                   InvBadge(
-                                    label: isStockIn ? 'Mzigo Umeingia' : 'Mzigo Umetolewa',
+                                    label: isStockIn ? LocalizationService.instance.translate('stock_in_2') : LocalizationService.instance.translate('stock_out_2'),
                                     color: isStockIn
                                         ? ThemeConstants.successGreen
                                         : ThemeConstants.errorRed,
@@ -965,13 +965,13 @@ class _StockHistoryTabState extends State<_StockHistoryTab> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    '📦 Zilizokuwepo: ${m.previousQuantity}',
+                                    LocalizationService.instance.translateWith('was', <Object?>[m.previousQuantity]),
                                     style: ThemeConstants.captionStyle,
                                   ),
                                   Text(
                                     isStockIn
-                                        ? '➕ Ongezeko: +${m.quantity}'
-                                        : '➖ Punguzo: -${m.quantity}',
+                                        ? LocalizationService.instance.translateWith('added', <Object?>[m.quantity])
+                                        : LocalizationService.instance.translateWith('removed', <Object?>[m.quantity]),
                                     style: ThemeConstants.captionStyle.copyWith(
                                       color: isStockIn
                                           ? ThemeConstants.successGreen
@@ -980,7 +980,7 @@ class _StockHistoryTabState extends State<_StockHistoryTab> {
                                     ),
                                   ),
                                   Text(
-                                    '📊 Mpya: ${m.newQuantity}',
+                                    LocalizationService.instance.translateWith('now_2', <Object?>[m.newQuantity]),
                                     style: ThemeConstants.captionStyle.copyWith(
                                       color: ThemeConstants.primaryOrange,
                                       fontWeight: FontWeight.bold,

@@ -92,7 +92,7 @@ class _ReceiptViewerScreenState extends State<ReceiptViewerScreen>
         });
       } else {
         throw Exception(
-            response['message'] ?? 'Imeshindikana kupakia maelezo ya risiti');
+            response['message'] ?? LocalizationService.instance.translate('could_not_load_the_receipt_details'));
       }
     } on Exception catch (e) {
       setState(() {
@@ -678,7 +678,7 @@ class _ReceiptViewerScreenState extends State<ReceiptViewerScreen>
   String _formatPaidDates(List<String> dates) {
     if (dates.isEmpty) return '-';
     if (dates.length == 1) return _formatDateString(dates.first);
-    return '${_formatDateString(dates.first)} - ${_formatDateString(dates.last)} (${dates.length} siku)';
+    return LocalizationService.instance.translateWith('days_4', <Object?>[_formatDateString(dates.first), _formatDateString(dates.last), dates.length]);
   }
 
   String _formatDateString(String dateStr) {

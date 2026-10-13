@@ -11,6 +11,7 @@ import "../../providers/transaction_provider.dart";
 import "../../widgets/custom_card.dart";
 import "../../widgets/transaction_tile.dart";
 import "transaction_detail.dart";
+import '../../services/localization_service.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -53,7 +54,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   Widget build(final BuildContext context) => Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text(
+          title: Text(
             AppStrings.transactions,
             style: AppStyles.heading2,
           ),
@@ -180,8 +181,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     showDialog(
       context: context,
       builder: (final BuildContext context) => AlertDialog(
-        title: const AutoSizeText(
-          "Chuja Miamala",
+        title: AutoSizeText(
+          LocalizationService.instance.translate('filter_transactions'),
           maxLines: 1,
           stepGranularity: 0.5,
         ),
@@ -189,7 +190,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             _FilterOption(
-              title: "Yote",
+              title: LocalizationService.instance.translate('all_3'),
               value: "all",
               selectedValue: _selectedFilter,
               onChanged: (final String? value) {
@@ -200,7 +201,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               },
             ),
             _FilterOption(
-              title: "Mapato",
+              title: LocalizationService.instance.translate('income'),
               value: "income",
               selectedValue: _selectedFilter,
               onChanged: (final String? value) {
@@ -211,7 +212,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               },
             ),
             _FilterOption(
-              title: "Matumizi",
+              title: LocalizationService.instance.translate('expenses'),
               value: "expense",
               selectedValue: _selectedFilter,
               onChanged: (final String? value) {
@@ -303,7 +304,7 @@ class _AddTransactionSheetState extends State<_AddTransactionSheet> {
       }
     } on Exception catch (e) {
       if (mounted) {
-        ThemeConstants.showErrorSnackBar(context, "Hitilafu: $e");
+        ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translateWith('error_2', <Object?>[e]));
       }
     } finally {
       if (mounted) {
@@ -333,7 +334,7 @@ class _AddTransactionSheetState extends State<_AddTransactionSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text(
+                Text(
                   AppStrings.newTransaction,
                   style: AppStyles.heading2,
                 ),
@@ -344,7 +345,7 @@ class _AddTransactionSheetState extends State<_AddTransactionSheet> {
                   children: <Widget>[
                     Expanded(
                       child: RadioListTile<TransactionType>(
-                        title: const Text(AppStrings.income),
+                        title: Text(AppStrings.income),
                         value: TransactionType.income,
                         groupValue: _selectedType,
                         onChanged: (final TransactionType? value) {
@@ -356,7 +357,7 @@ class _AddTransactionSheetState extends State<_AddTransactionSheet> {
                     ),
                     Expanded(
                       child: RadioListTile<TransactionType>(
-                        title: const Text(AppStrings.expense),
+                        title: Text(AppStrings.expense),
                         value: TransactionType.expense,
                         groupValue: _selectedType,
                         onChanged: (final TransactionType? value) {
@@ -432,7 +433,7 @@ class _AddTransactionSheetState extends State<_AddTransactionSheet> {
                     style: AppStyles.primaryButton(context),
                     child: _isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(AppStrings.save),
+                        : Text(AppStrings.save),
                   ),
                 ),
               ],

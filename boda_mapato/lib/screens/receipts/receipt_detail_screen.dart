@@ -540,39 +540,39 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen>
                 Text(companyAddress,
                     style: label(), textAlign: TextAlign.center),
               if (companyPhone.isNotEmpty)
-                Text('WASILIANA: $companyPhone',
+                Text(LocalizationService.instance.translateWith('contact_2', <Object?>[companyPhone]).toUpperCase(),
                     style: label(), textAlign: TextAlign.center),
               const SizedBox(height: 8),
               dashedDivider(),
               const SizedBox(height: 8),
-              const Text('RISITI YA MALIPO',
+              Text(LocalizationService.instance.translate('payment_receipt').toUpperCase(),
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: Colors.black87)),
               const SizedBox(height: 6),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('TAREHE: $issueDate', style: label()),
-                Text('MUDA: $issueTime', style: label()),
+                Text(LocalizationService.instance.translateWith('date_2', <Object?>[issueDate]).toUpperCase(), style: label()),
+                Text(LocalizationService.instance.translateWith('time_3', <Object?>[issueTime]).toUpperCase(), style: label()),
               ]),
               const SizedBox(height: 8),
               dashedDivider(),
               const SizedBox(height: 8),
               // Receipt meta
-              _kv('Nambari ya Risiti', receiptNumber, label, value),
-              _kv('Mdereva', driverName, label, value),
+              _kv(LocalizationService.instance.translate('receipt_number_2'), receiptNumber, label, value),
+              _kv(LocalizationService.instance.translate('driver_2'), driverName, label, value),
               if (driverPhone.isNotEmpty)
-                _kv('Mawasiliano', driverPhone, label, value),
+                _kv(LocalizationService.instance.translate('contact'), driverPhone, label, value),
               if (vehicleInfo.isNotEmpty)
-                _kv('Usajili', vehicleInfo, label, value),
+                _kv(LocalizationService.instance.translate('registration'), vehicleInfo, label, value),
               if (coveredPeriod.isNotEmpty)
-                _kv('Kipindi', coveredPeriod, label, value),
+                _kv(LocalizationService.instance.translate('period'), coveredPeriod, label, value),
               const SizedBox(height: 8),
               dashedDivider(),
               const SizedBox(height: 8),
               // Amount
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                const Text('JUMLA',
+                Text(LocalizationService.instance.translate('total').toUpperCase(),
                     style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -584,11 +584,11 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen>
                         color: Colors.black)),
               ]),
               const SizedBox(height: 4),
-              _kv('Njia ya Malipo', paymentChannel, label, value),
+              _kv(LocalizationService.instance.translate('payment_method_label'), paymentChannel, label, value),
               const SizedBox(height: 8),
               dashedDivider(),
               const SizedBox(height: 8),
-              const Text('ASANTE KWA KUTUMIA HUDUMA ZETU!',
+              Text('${LocalizationService.instance.translate('thank_you_for_using_our_services').toUpperCase()}!',
                   style: TextStyle(color: Colors.black54, fontSize: 12)),
             ],
           ),
@@ -758,7 +758,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen>
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Deni lililosalia: TSh ${_formatAmount(remaining)} (siku $days)$sample',
+              LocalizationService.instance.translateWith('remaining_debt_tsh_days', <Object?>[_formatAmount(remaining), days, sample]),
               style: const TextStyle(
                   color: ThemeConstants.errorRed,
                   fontSize: 12,

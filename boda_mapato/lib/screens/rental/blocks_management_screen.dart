@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../constants/theme_constants.dart';
 import '../../providers/rental_provider.dart';
+import '../../services/localization_service.dart';
 
 class BlocksManagementScreen extends StatefulWidget {
   const BlocksManagementScreen(
@@ -30,7 +31,7 @@ class _BlocksManagementScreenState extends State<BlocksManagementScreen> {
 
     return ThemeConstants.buildResponsiveScaffold(
       context,
-      title: "Blocks - ${widget.propertyName}",
+      title: LocalizationService.instance.translateWith('blocks_2', <Object?>[widget.propertyName]),
       actions: [
         IconButton(
           icon: const Icon(Icons.add, color: Colors.white),
@@ -57,10 +58,10 @@ class _BlocksManagementScreenState extends State<BlocksManagementScreen> {
             child: Icon(Icons.view_module, size: 64.sp, color: Colors.white38),
           ),
           SizedBox(height: 24.h),
-          Text("Hakuna blocks",
+          Text(LocalizationService.instance.translate('no_blocks_yet'),
               style: TextStyle(color: Colors.white54, fontSize: 18.sp)),
           SizedBox(height: 8.h),
-          Text("Ongeza block kwa ajili ya upangaji",
+          Text(LocalizationService.instance.translate('add_a_block_for_renting'),
               style: TextStyle(color: Colors.white38, fontSize: 14.sp)),
           SizedBox(height: 24.h),
           ElevatedButton.icon(
@@ -70,7 +71,7 @@ class _BlocksManagementScreenState extends State<BlocksManagementScreen> {
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
             ),
             icon: const Icon(Icons.add, color: Colors.white),
-            label: const Text("Ongeza Block", style: TextStyle(color: Colors.white)),
+            label: Text(LocalizationService.instance.translate('add_block'), style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -147,7 +148,7 @@ class _BlocksManagementScreenState extends State<BlocksManagementScreen> {
                   decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12.r)),
-                  child: Text("${houses.length} vyumba",
+                  child: Text(LocalizationService.instance.translateWith('houses_3', <Object?>[houses.length]),
                       style: TextStyle(color: Colors.white70, fontSize: 12.sp)),
                 ),
               ],
@@ -187,7 +188,7 @@ class _BlocksManagementScreenState extends State<BlocksManagementScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Ongeza Block",
+                  Text(LocalizationService.instance.translate('add_block'),
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 20.sp,
@@ -207,7 +208,7 @@ class _BlocksManagementScreenState extends State<BlocksManagementScreen> {
                       controller: nameController,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
-                        labelText: "Jina la Block *",
+                        labelText: "${LocalizationService.instance.translate('block_name')} *",
                         labelStyle: const TextStyle(color: Colors.white70),
                         prefixIcon:
                             const Icon(Icons.view_module, color: Colors.white38),
@@ -224,7 +225,7 @@ class _BlocksManagementScreenState extends State<BlocksManagementScreen> {
                       maxLines: 3,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
-                        labelText: "Maelezo (Optional)",
+                        labelText: LocalizationService.instance.translate('description_optional'),
                         labelStyle: const TextStyle(color: Colors.white70),
                         filled: true,
                         fillColor: Colors.white.withOpacity(0.05),
@@ -252,7 +253,7 @@ class _BlocksManagementScreenState extends State<BlocksManagementScreen> {
                             padding: EdgeInsets.symmetric(vertical: 16.h),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12.r))),
-                        child: Text("Hifadhi",
+                        child: Text(LocalizationService.instance.translate('save'),
                             style: TextStyle(
                                 color: Colors.white, fontSize: 16.sp)),
                       ),
@@ -307,8 +308,8 @@ class _BlocksManagementScreenState extends State<BlocksManagementScreen> {
             ),
             Expanded(
               child: houses.isEmpty
-                  ? const Center(
-                      child: Text("Hakuna vyumba katika block hii",
+                  ? Center(
+                      child: Text(LocalizationService.instance.translate('no_houses_in_this_block'),
                           style: TextStyle(color: Colors.white54)))
                   : ListView.builder(
                       padding: EdgeInsets.symmetric(horizontal: 20.w),

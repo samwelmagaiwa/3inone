@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import '../models/inv_customer.dart';
 import '../models/inv_depot_models.dart';
 import '../models/inv_sale.dart';
+import '../../../services/localization_service.dart';
 
 /// Area 11 export, and the Area 5 printed/shared receipt.
 ///
@@ -47,7 +48,7 @@ class InventoryExportService {
         ),
         build: (_) => <pw.Widget>[
           if (rows.isEmpty)
-            pw.Text('No data for this period')
+            pw.Text(LocalizationService.instance.translate('no_data_for_period'))
           else
             pw.TableHelper.fromTextArray(
               headers: headers,
@@ -114,7 +115,7 @@ class InventoryExportService {
   Future<File> saleReceiptToPdf(
     InvSale sale, {
     InvCustomer? customer,
-    String depotName = 'Beverage Depot',
+    String depotName = '',
     String depotPhone = '',
     String depotAddress = '',
   }) async {
@@ -128,20 +129,21 @@ class InventoryExportService {
         build: (_) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.center,
           children: <pw.Widget>[
-            pw.Text(depotName,
-                style:
-                    pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+            if (depotName.isNotEmpty)
+              pw.Text(depotName,
+                  style:
+                      pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
             if (depotPhone.isNotEmpty)
               pw.Text(depotPhone, style: const pw.TextStyle(fontSize: 9)),
             if (depotAddress.isNotEmpty)
               pw.Text(depotAddress, style: const pw.TextStyle(fontSize: 9)),
             pw.SizedBox(height: 6),
             pw.Divider(),
-            _row('Receipt', sale.number),
-            _row('Date',
+            _row(LocalizationService.instance.translate('receipt'), sale.number),
+            _row(LocalizationService.instance.translate('receipt_date'),
                 '${sale.createdAt.day}/${sale.createdAt.month}/${sale.createdAt.year}'),
-            if (customer != null) _row('Customer', customer.name),
-            _row('Status', sale.paymentStatus.toUpperCase()),
+            if (customer != null) _row(LocalizationService.instance.translate('customer'), customer.name),
+            _row(LocalizationService.instance.translate('status'), sale.paymentStatus.toUpperCase()),
             pw.Divider(),
             pw.Table(
               columnWidths: const <int, pw.TableColumnWidth>{
@@ -151,13 +153,13 @@ class InventoryExportService {
               },
               children: <pw.TableRow>[
                 pw.TableRow(children: <pw.Widget>[
-                  pw.Text('Item',
+                  pw.Text(LocalizationService.instance.translate('export_item'),
                       style: pw.TextStyle(
                           fontWeight: pw.FontWeight.bold, fontSize: 9)),
-                  pw.Text('Qty',
+                  pw.Text(LocalizationService.instance.translate('qty_label'),
                       style: pw.TextStyle(
                           fontWeight: pw.FontWeight.bold, fontSize: 9)),
-                  pw.Text('Total',
+                  pw.Text(LocalizationService.instance.translate('total'),
                       style: pw.TextStyle(
                           fontWeight: pw.FontWeight.bold, fontSize: 9)),
                 ]),
@@ -173,16 +175,16 @@ class InventoryExportService {
               ],
             ),
             pw.Divider(),
-            _row('Subtotal', sale.subtotal.toStringAsFixed(0)),
+            _row(LocalizationService.instance.translate('subtotal'), sale.subtotal.toStringAsFixed(0)),
             if (sale.discount > 0)
-              _row('Discount', '-${sale.discount.toStringAsFixed(0)}'),
-            if (sale.tax > 0) _row('Tax', sale.tax.toStringAsFixed(0)),
-            _row('Total', sale.total.toStringAsFixed(0), bold: true),
-            _row('Paid', sale.paidTotal.toStringAsFixed(0)),
+              _row(LocalizationService.instance.translate('discount'), '-${sale.discount.toStringAsFixed(0)}'),
+            if (sale.tax > 0) _row(LocalizationService.instance.translate('export_tax'), sale.tax.toStringAsFixed(0)),
+            _row(LocalizationService.instance.translate('total'), sale.total.toStringAsFixed(0), bold: true),
+            _row(LocalizationService.instance.translate('paid_payments'), sale.paidTotal.toStringAsFixed(0)),
             if (balance > 0.009)
-              _row('Balance', balance.toStringAsFixed(0), bold: true),
+              _row(LocalizationService.instance.translate('balance'), balance.toStringAsFixed(0), bold: true),
             pw.SizedBox(height: 8),
-            pw.Text('Thank you for your business',
+            pw.Text(LocalizationService.instance.translate('thank_you_for_your_business'),
                 style: const pw.TextStyle(fontSize: 9)),
           ],
         ),

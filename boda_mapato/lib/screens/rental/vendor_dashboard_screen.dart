@@ -29,7 +29,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     final loc = LocalizationService.instance;
 
     return ThemeConstants.buildScaffold(
-      title: "Kazi Zangu", // "My Jobs"
+      title: LocalizationService.instance.translate('my_jobs'), // "My Jobs"
       actions: [
         IconButton(
           icon: const Icon(Icons.logout, color: Colors.white),
@@ -53,7 +53,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                   Icon(Icons.assignment_turned_in_outlined,
                       size: 64.sp, color: Colors.grey.withOpacity(0.4)),
                   SizedBox(height: 16.h),
-                  Text("Huna kazi zozote mpya.",
+                  Text(LocalizationService.instance.translate('you_have_no_new_jobs'),
                       style: ThemeConstants.subHeadingStyle),
                 ],
               ),
@@ -76,7 +76,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
 
   Widget _buildWorkOrderCard(BuildContext context, Map<String, dynamic> request) {
     final id = request['id'] ?? '';
-    final title = request['title'] ?? 'Kazi Mpya';
+    final title = request['title'] ?? LocalizationService.instance.translate('new_jobs');
     final status = request['status'] ?? 'pending';
     final createdAt = request['created_at'] != null
         ? request['created_at'].toString().split('T').first
@@ -120,7 +120,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                       style: ThemeConstants.bodyStyle.copyWith(
                           fontWeight: FontWeight.bold, fontSize: 16.sp)),
                   SizedBox(height: 4.h),
-                  Text("Tarehe: $createdAt", style: ThemeConstants.captionStyle),
+                  Text(LocalizationService.instance.translateWith('date_2', <Object?>[createdAt]), style: ThemeConstants.captionStyle),
                   SizedBox(height: 8.h),
                   _buildStatusChip(status),
                 ],
@@ -140,19 +140,19 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     switch (status) {
       case 'open':
         bg = ThemeConstants.primaryBlue;
-        label = 'Mpya (Imetumwa)';
+        label = LocalizationService.instance.translate('new_sent');
         break;
       case 'pending':
         bg = ThemeConstants.warningAmber;
-        label = 'Pending';
+        label = LocalizationService.instance.translate('receipt_status_pending');
         break;
       case 'in_progress':
         bg = ThemeConstants.primaryOrange;
-        label = 'Inaendelea';
+        label = LocalizationService.instance.translate('in_progress');
         break;
       case 'resolved':
         bg = ThemeConstants.successGreen;
-        label = 'Imekamilika';
+        label = LocalizationService.instance.translate('status_completed');
         break;
       default:
         bg = Colors.grey;

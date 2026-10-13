@@ -76,7 +76,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   void _showError(String code) {
     ThemeConstants.showErrorSnackBar(
       context,
-      'Code not found: $code',
+      LocalizationService.instance.translateWith('code_not_found', <Object?>[code]),
     );
   }
 
@@ -123,12 +123,12 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           IconButton(
             icon: const Icon(Icons.flash_on),
             onPressed: () => _ctrl.toggleTorch(),
-            tooltip: 'Torch',
+            tooltip: LocalizationService.instance.translate('torch'),
           ),
           IconButton(
             icon: const Icon(Icons.flip_camera_ios),
             onPressed: () => _ctrl.switchCamera(),
-            tooltip: 'Flip Camera',
+            tooltip: LocalizationService.instance.translate('flip_camera'),
           ),
         ],
       ),
@@ -246,7 +246,7 @@ class _ProductDetailSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name.isNotEmpty ? name : 'Unknown Product',
+                      Text(name.isNotEmpty ? name : LocalizationService.instance.translate('unknown_product'),
                           style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -318,7 +318,7 @@ class _ProductDetailSheet extends StatelessWidget {
                 _row(loc.isSwahili ? 'Chapa' : 'Brand', brand),
               _row(loc.isSwahili ? 'Kitengo' : 'Unit', unit),
               if (barcode.isNotEmpty)
-                _row('Barcode', barcode),
+                _row(LocalizationService.instance.translate('barcode'), barcode),
             ]),
             SizedBox(height: 20.h),
             SizedBox(

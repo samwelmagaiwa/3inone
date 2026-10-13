@@ -308,7 +308,7 @@ class _ReportScreenState extends State<ReportScreen> {
       }
     } on Exception catch (e) {
       if (mounted) {
-        ThemeConstants.showErrorSnackBar(context, "Hitilafu: $e");
+        ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translateWith('error_2', <Object?>[e]));
       }
     } finally {
       if (mounted) {
@@ -407,8 +407,8 @@ class _ReportScreenState extends State<ReportScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        const Text(
-                          "Ripoti za Biashara",
+                        Text(
+                          LocalizationService.instance.translate('business_reports'),
                           style: TextStyle(
                             color: ThemeConstants.textPrimary,
                             fontSize: 20,
@@ -417,7 +417,7 @@ class _ReportScreenState extends State<ReportScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          "Angalia mapato na matumizi yako",
+                          LocalizationService.instance.translate('view_your_income_and_expenses'),
                           style: ThemeConstants.captionStyle.copyWith(
                             fontSize: 14,
                           ),
@@ -444,9 +444,12 @@ class _ReportScreenState extends State<ReportScreen> {
                 size: 20.sp,
               ),
               const SizedBox(width: 8),
-              Text(
-                "Muhtasari wa Haraka",
-                style: ThemeConstants.headingStyle,
+              Flexible(
+                child: Text(
+                  LocalizationService.instance.translate('quick_summary'),
+                  style: ThemeConstants.headingStyle,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -461,25 +464,25 @@ class _ReportScreenState extends State<ReportScreen> {
             children: <Widget>[
               Expanded(
                 child: _buildEnhancedStatCard(
-                  title: "Miamala",
+                  title: LocalizationService.instance.translate('transactions'),
                   value: _currentReportData != null
                       ? "${_currentReportData!['transaction_count'] ?? 0}"
                       : "0",
                   icon: Icons.receipt_long,
                   color: const Color(0xFF06B6D4),
-                  subtitle: "Leo",
+                  subtitle: LocalizationService.instance.translate('today'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildEnhancedStatCard(
-                  title: "Vyombo",
+                  title: LocalizationService.instance.translate('vehicles_2'),
                   value: _currentReportData != null
                       ? "${_currentReportData!['vehicle_count'] ?? 0}"
                       : "0",
                   icon: Icons.directions_car,
                   color: const Color(0xFF8B5CF6),
-                  subtitle: "Vimefanya kazi",
+                  subtitle: LocalizationService.instance.translate('working'),
                 ),
               ),
             ],
@@ -489,19 +492,19 @@ class _ReportScreenState extends State<ReportScreen> {
             children: <Widget>[
               Expanded(
                 child: _buildEnhancedStatCard(
-                  title: "Wastani",
+                  title: LocalizationService.instance.translate('average'),
                   value: _currentReportData != null
                       ? "TSh ${_formatCurrency(_currentReportData!['average_per_day'] ?? 0)}"
                       : "TSh 0",
                   icon: Icons.trending_up,
                   color: ThemeConstants.primaryOrange,
-                  subtitle: "Kila siku",
+                  subtitle: LocalizationService.instance.translate('every_day'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildEnhancedStatCard(
-                  title: "Faida",
+                  title: LocalizationService.instance.translate('profit'),
                   value: (() {
                     final num tr =
                         (_currentReportData?['total_revenue'] as num?) ?? 0;
@@ -512,7 +515,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   })(),
                   icon: Icons.show_chart,
                   color: ThemeConstants.successGreen,
-                  subtitle: "Ya mapato",
+                  subtitle: LocalizationService.instance.translate('of_income'),
                 ),
               ),
             ],
@@ -546,8 +549,8 @@ class _ReportScreenState extends State<ReportScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        const Text(
-                          "Jumla ya Mapato",
+                        Text(
+                          LocalizationService.instance.translate('total_revenue'),
                           style: TextStyle(
                             color: ThemeConstants.textSecondary,
                             fontSize: 14,
@@ -616,7 +619,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "${((_currentReportData?['progress_percent'] as num?)?.toDouble() ?? (_currentReportData?['goal_progress'] as num?)?.toDouble() ?? 0).toStringAsFixed(0)}% ya lengo",
+                  LocalizationService.instance.translateWith('of_target', <Object?>[((_currentReportData?['progress_percent'] as num?)?.toDouble() ?? (_currentReportData?['goal_progress'] as num?)?.toDouble() ?? 0).toStringAsFixed(0)]),
                   style: const TextStyle(
                     color: ThemeConstants.textSecondary,
                     fontSize: 12,
@@ -641,7 +644,7 @@ class _ReportScreenState extends State<ReportScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                "Aina za Ripoti",
+                LocalizationService.instance.translate('report_types'),
                 style: ThemeConstants.headingStyle,
               ),
             ],
@@ -651,8 +654,8 @@ class _ReportScreenState extends State<ReportScreen> {
             children: <Widget>[
               Expanded(
                 child: _buildEnhancedReportTypeCard(
-                  title: "Leo",
-                  subtitle: "Ripoti ya siku",
+                  title: LocalizationService.instance.translate('today'),
+                  subtitle: LocalizationService.instance.translate('daily_report'),
                   icon: Icons.today,
                   color: const Color(0xFF10B981),
                   isSelected: _selectedPeriod == "daily",
@@ -669,8 +672,8 @@ class _ReportScreenState extends State<ReportScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildEnhancedReportTypeCard(
-                  title: "Wiki",
-                  subtitle: "Ripoti ya wiki",
+                  title: LocalizationService.instance.translate('week'),
+                  subtitle: LocalizationService.instance.translate('weekly_report'),
                   icon: Icons.date_range,
                   color: const Color(0xFF3B82F6),
                   isSelected: _selectedPeriod == "weekly",
@@ -688,8 +691,8 @@ class _ReportScreenState extends State<ReportScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildEnhancedReportTypeCard(
-                  title: "Mwezi",
-                  subtitle: "Ripoti ya mwezi",
+                  title: LocalizationService.instance.translate('month'),
+                  subtitle: LocalizationService.instance.translate('monthly_report'),
                   icon: Icons.calendar_month,
                   color: ThemeConstants.primaryOrange,
                   isSelected: _selectedPeriod == "monthly",
@@ -722,7 +725,7 @@ class _ReportScreenState extends State<ReportScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                "Chagua Kipindi",
+                LocalizationService.instance.translate('choose_period'),
                 style: ThemeConstants.headingStyle,
               ),
             ],
@@ -751,8 +754,8 @@ class _ReportScreenState extends State<ReportScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        const Text(
-                          "Kipindi cha Ripoti",
+                        Text(
+                          LocalizationService.instance.translate('report_period'),
                           style: TextStyle(
                             color: ThemeConstants.textPrimary,
                             fontSize: 16,
@@ -841,7 +844,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 const SizedBox(width: 12),
               ],
               Text(
-                _isGenerating ? "Inatengeneza Ripoti..." : "Tengeneza Ripoti",
+                _isGenerating ? "${LocalizationService.instance.translate('generating_report')}..." : LocalizationService.instance.translate('generate_report'),
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -1046,15 +1049,16 @@ class _ReportPreviewDialog extends StatelessWidget {
               // Header
               Row(
                 children: <Widget>[
-                  const Text(
-                    "Muhtasari wa Ripoti",
-                    style: TextStyle(
-                      color: ThemeConstants.textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      LocalizationService.instance.translate('report_summary'),
+                      style: TextStyle(
+                        color: ThemeConstants.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  const Spacer(),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close,
@@ -1067,7 +1071,7 @@ class _ReportPreviewDialog extends StatelessWidget {
 
               // Report Summary
               Text(
-                "Ripoti ya ${_getPeriodName(period)}",
+                LocalizationService.instance.translateWith('report', <Object?>[_getPeriodName(period)]),
                 style: const TextStyle(
                   color: ThemeConstants.textPrimary,
                   fontSize: 20,
@@ -1100,23 +1104,23 @@ class _ReportPreviewDialog extends StatelessWidget {
                   return Column(
                     children: <Widget>[
                       _ReportRow(
-                        "Jumla ya Mapato:",
+                        "${LocalizationService.instance.translate('total_revenue')}:",
                         "TSh ${totalRevenue.toStringAsFixed(0)}",
                       ),
                       _ReportRow(
-                        "Jumla ya Matumizi:",
+                        "${LocalizationService.instance.translate('total_expenses')}:",
                         "TSh ${totalExpenses.toStringAsFixed(0)}",
                       ),
                       _ReportRow(
-                        "Faida Halisi:",
+                        "${LocalizationService.instance.translate('net_profit')}:",
                         "TSh ${netProfit.toStringAsFixed(0)}",
                       ),
                       _ReportRow(
-                        "Idadi ya Miamala:",
+                        "${LocalizationService.instance.translate('number_of_transactions')}:",
                         "$transactionCount",
                       ),
                       _ReportRow(
-                        "Wastani wa Siku:",
+                        "${LocalizationService.instance.translate('daily_average')}:",
                         "TSh ${averagePerDay.toStringAsFixed(0)}",
                       ),
                     ],
@@ -1133,13 +1137,13 @@ class _ReportPreviewDialog extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: () {
                         Navigator.pop(context);
-                        ThemeConstants.showSuccessSnackBar(context, "Ripoti imehamishwa");
+                        ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('report_exported'));
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         foregroundColor: Colors.white,
                       ),
-                      child: const Text("Hamisha"),
+                      child: Text(LocalizationService.instance.translate('export')),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1147,13 +1151,13 @@ class _ReportPreviewDialog extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: () {
                         Navigator.pop(context);
-                        ThemeConstants.showSuccessSnackBar(context, "Ripoti imechapishwa");
+                        ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('report_printed'));
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
                       ),
-                      child: const Text("Chapisha"),
+                      child: Text(LocalizationService.instance.translate('print')),
                     ),
                   ),
                 ],
@@ -1166,13 +1170,13 @@ class _ReportPreviewDialog extends StatelessWidget {
   String _getPeriodName(final String period) {
     switch (period) {
       case "daily":
-        return "Kila Siku";
+        return LocalizationService.instance.translate('every_day');
       case "weekly":
-        return "Kila Wiki";
+        return LocalizationService.instance.translate('every_week');
       case "monthly":
-        return "Kila Mwezi";
+        return LocalizationService.instance.translate('every_month');
       default:
-        return "Maalum";
+        return LocalizationService.instance.translate('period_custom');
     }
   }
 }
@@ -1188,13 +1192,16 @@ class _ReportRow extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                color: ThemeConstants.textSecondary,
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: ThemeConstants.textSecondary,
+                ),
               ),
             ),
+            const SizedBox(width: 8),
             Text(
               value,
               style: const TextStyle(

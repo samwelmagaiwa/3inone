@@ -280,7 +280,7 @@ class _BackupScreenState extends State<BackupScreen> {
           _localizationService.translate('backup_successful'),
         );
       } else {
-        throw Exception(response['message'] ?? 'Backup failed');
+        throw Exception(response['message'] ?? LocalizationService.instance.translate('backup_failed'));
       }
     } catch (e) {
       if (!mounted) return;
@@ -385,7 +385,7 @@ class _BackupScreenState extends State<BackupScreen> {
           _localizationService.translate('restore_successful'),
         );
       } else {
-        throw Exception(response['message'] ?? 'Restore failed');
+        throw Exception(response['message'] ?? LocalizationService.instance.translate('restore_failed'));
       }
     } catch (e) {
       if (!mounted) return;

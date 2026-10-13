@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/rental_provider.dart';
 import '../../utils/rental_flow_validator.dart';
 import '../../utils/type_helpers.dart';
+import '../../services/localization_service.dart';
 
 class RentalArrearsScreen extends StatefulWidget {
   const RentalArrearsScreen({super.key});
@@ -52,7 +53,7 @@ class _RentalArrearsScreenState extends State<RentalArrearsScreen> {
 
     return ThemeConstants.buildResponsiveScaffold(
       context,
-      title: "Deni la Kodi",
+      title: LocalizationService.instance.translate('rent_debt'),
       body: Column(
         children: [
           if (_flowStage != null && _flowStage != RentalFlowStage.complete)
@@ -72,10 +73,10 @@ class _RentalArrearsScreenState extends State<RentalArrearsScreen> {
                             const Icon(Icons.check_circle,
                                 size: 64, color: ThemeConstants.successGreen),
                             SizedBox(height: 16.h),
-                            Text("Hakuna deni!",
+                            Text(LocalizationService.instance.translate('no_debt_3'),
                                 style: TextStyle(
                                     color: Colors.white54, fontSize: 16.sp)),
-                            Text("Wapangaji wote wamelipa",
+                            Text(LocalizationService.instance.translate('all_tenants_have_paid'),
                                 style: TextStyle(
                                     color: Colors.white38, fontSize: 14.sp)),
                           ],
@@ -118,16 +119,16 @@ class _RentalArrearsScreenState extends State<RentalArrearsScreen> {
             children: [
               Expanded(
                 child: _buildSummaryItem(
-                    "Jumla",
+                    LocalizationService.instance.translate('total'),
                     "TSh ${_formatCurrency(totalArrears)}",
                     ThemeConstants.errorRed),
               ),
               Expanded(
-                child: _buildSummaryItem("Overdue", overdueCount.toString(),
+                child: _buildSummaryItem(LocalizationService.instance.translate('overdue'), overdueCount.toString(),
                     ThemeConstants.errorRed),
               ),
               Expanded(
-                child: _buildSummaryItem("Sehemu", partialCount.toString(),
+                child: _buildSummaryItem(LocalizationService.instance.translate('bill_partial'), partialCount.toString(),
                     ThemeConstants.warningAmber),
               ),
             ],
@@ -185,18 +186,18 @@ class _RentalArrearsScreenState extends State<RentalArrearsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    tenant['user']?['name'] ?? tenant['name'] ?? 'Mteja',
+                    tenant['user']?['name'] ?? tenant['name'] ?? LocalizationService.instance.translate('agreement_step_tenant'),
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 16.sp,
                         fontWeight: FontWeight.w600),
                   ),
                   Text(
-                    "Nyumba: ${house['house_number'] ?? ''}",
+                    LocalizationService.instance.translateWith('house_3', <Object?>[house['house_number'] ?? '']),
                     style: TextStyle(color: Colors.white54, fontSize: 12.sp),
                   ),
                   Text(
-                    "Mwezi: ${bill['month_year'] ?? ''}",
+                    LocalizationService.instance.translateWith('month_3', <Object?>[bill['month_year'] ?? '']),
                     style: TextStyle(color: Colors.white38, fontSize: 12.sp),
                   ),
                 ],

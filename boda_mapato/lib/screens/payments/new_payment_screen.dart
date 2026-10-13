@@ -7,6 +7,7 @@ import '../../constants/theme_constants.dart';
 import '../../models/driver.dart';
 import '../../providers/debts_provider.dart';
 import '../../services/api_service.dart';
+import '../../services/localization_service.dart';
 
 class NewPaymentScreen extends StatefulWidget {
   const NewPaymentScreen({super.key, this.initialDriver});
@@ -133,13 +134,13 @@ class _NewPaymentScreenState extends State<NewPaymentScreen> {
       try {
         Provider.of<DebtsProvider>(context, listen: false).markChanged();
       } on Exception catch (_) {}
-      ThemeConstants.showSuccessSnackBar(context, 'Payment recorded');
+      ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('payment_recorded'));
       Navigator.pop(context);
     } on ApiException catch (e) {
       ThemeConstants.showErrorSnackBar(
-          context, 'Imeshindikana kuhifadhi: ${e.message}');
+          context, LocalizationService.instance.translateWith('could_not_save', <Object?>[e.message]));
     } on Exception catch (e) {
-      ThemeConstants.showErrorSnackBar(context, 'Hitilafu: $e');
+      ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translateWith('error_2', <Object?>[e]));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -148,7 +149,7 @@ class _NewPaymentScreenState extends State<NewPaymentScreen> {
   @override
   Widget build(BuildContext context) {
     return ThemeConstants.buildScaffold(
-      title: 'Rekodi Malipo Mapya',
+      title: LocalizationService.instance.translate('record_new_payment'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -167,7 +168,7 @@ class _NewPaymentScreenState extends State<NewPaymentScreen> {
                       Expanded(
                         child: Text(
                           widget.initialDriver?.name ??
-                              'Driver ID: ${_driverId ?? ''}',
+                              LocalizationService.instance.translateWith('driver_id', <Object?>[_driverId ?? '']),
                           style: const TextStyle(
                               color: Colors.white,
                               fontSize: 14,
@@ -181,7 +182,7 @@ class _NewPaymentScreenState extends State<NewPaymentScreen> {
               const SizedBox(height: 12),
 
               // Amount
-              const Text('Kiasi (TSh)',
+              Text(LocalizationService.instance.translate('amount_tsh'),
                   style: TextStyle(color: Colors.white, fontSize: 13)),
               const SizedBox(height: 6),
               TextFormField(
@@ -189,17 +190,17 @@ class _NewPaymentScreenState extends State<NewPaymentScreen> {
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration(hintText: 'Ingiza kiasi'),
+                decoration: _inputDecoration(hintText: LocalizationService.instance.translate('enter_the_amount')),
                 validator: (v) {
                   final a = double.tryParse(v ?? '');
-                  if (a == null || a <= 0) return 'Weka kiasi sahihi';
+                  if (a == null || a <= 0) return LocalizationService.instance.translate('enter_a_valid_amount');
                   return null;
                 },
               ),
               const SizedBox(height: 12),
 
               // Payment date
-              const Text('Tarehe ya Malipo',
+              Text(LocalizationService.instance.translate('payment_date'),
                   style: TextStyle(color: Colors.white, fontSize: 13)),
               const SizedBox(height: 6),
               TextFormField(
@@ -217,18 +218,18 @@ class _NewPaymentScreenState extends State<NewPaymentScreen> {
               const SizedBox(height: 12),
 
               // Month for
-              const Text('Mwezi Unaohusika (hiari)',
+              Text(LocalizationService.instance.translate('related_month_optional'),
                   style: TextStyle(color: Colors.white, fontSize: 13)),
               const SizedBox(height: 6),
               TextFormField(
                 controller: _monthForCtrl,
                 style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration(hintText: 'Mfano: 2025-10'),
+                decoration: _inputDecoration(hintText: LocalizationService.instance.translate('example_2025_10')),
               ),
               const SizedBox(height: 12),
 
               // Notes
-              const Text('Maelezo (hiari)',
+              Text(LocalizationService.instance.translate('note_optional'),
                   style: TextStyle(color: Colors.white, fontSize: 13)),
               const SizedBox(height: 6),
               TextFormField(
@@ -263,7 +264,7 @@ class _NewPaymentScreenState extends State<NewPaymentScreen> {
                         ),
                         const SizedBox(width: 8),
                       ],
-                      const Text('Hifadhi Malipo'),
+                      Text(LocalizationService.instance.translate('save_payment')),
                     ],
                   ),
                 ),

@@ -332,7 +332,7 @@ class _SalesScreenState extends State<SalesScreen>
                     if (inv.cart.isNotEmpty) ...[
                       SizedBox(width: 6.w),
                       IconButton(
-                        tooltip: 'Clear Cart',
+                        tooltip: LocalizationService.instance.translate('clear_cart'),
                         icon: const Icon(Icons.delete_outline,
                             color: ThemeConstants.errorRed),
                         onPressed: () => inv.clearCart(),
@@ -376,7 +376,7 @@ class _SalesScreenState extends State<SalesScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Cart Items (${inv.cart.length})',
+                        LocalizationService.instance.translateWith('cart_items', <Object?>[inv.cart.length]),
                         style: ThemeConstants.headingStyle,
                       ),
                       Text(
@@ -411,7 +411,7 @@ class _SalesScreenState extends State<SalesScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Payment & Customer',
+                  LocalizationService.instance.translate('payment_customer'),
                   style: ThemeConstants.headingStyle,
                 ),
                 SizedBox(height: 10.h),
@@ -532,6 +532,7 @@ class _SalesScreenState extends State<SalesScreen>
                       inv.selectedCustomerId!,
                     ),
                     swahili: loc.isSwahili,
+                    isDepot: inv.capabilities.isDepot,
                   ),
 
                 // Customer name + phone (always shown, optional)
@@ -791,7 +792,7 @@ class _SalesScreenState extends State<SalesScreen>
                         : Icon(Icons.payments_outlined, size: 22.sp),
                     label: Text(
                       _checkingOut
-                          ? 'Inatuma...'
+                          ? '${LocalizationService.instance.translate('sending_2')}...'
                           : '${loc.translate('checkout')} • TZS ${inv.cartTotal.toStringAsFixed(0)}',
                       style: TextStyle(
                         fontSize: 15.sp,
@@ -892,7 +893,7 @@ class _SalesScreenState extends State<SalesScreen>
               controller: _searchCtrl,
               style: ThemeConstants.bodyStyle,
               decoration: InputDecoration(
-                hintText: 'Tafuta nambari ya risiti, mteja...',
+                hintText: '${LocalizationService.instance.translate('search_receipt_number_customer')}...',
                 hintStyle: ThemeConstants.captionStyle,
                 prefixIcon: const Icon(Icons.search, color: Colors.white54),
                 suffixIcon: _searchCtrl.text.isNotEmpty
@@ -954,7 +955,7 @@ class _SalesScreenState extends State<SalesScreen>
                   },
                   icon: const Icon(Icons.date_range, color: Colors.white70),
                   label: Text(
-                    _from != null ? _from!.toLocal().toString().split(' ').first : 'Kutoka',
+                    _from != null ? _from!.toLocal().toString().split(' ').first : LocalizationService.instance.translate('from_2'),
                     style: ThemeConstants.captionStyle,
                   ),
                 ),
@@ -982,7 +983,7 @@ class _SalesScreenState extends State<SalesScreen>
                   },
                   icon: const Icon(Icons.date_range, color: Colors.white70),
                   label: Text(
-                    _to != null ? _to!.toLocal().toString().split(' ').first : 'Hadi',
+                    _to != null ? _to!.toLocal().toString().split(' ').first : LocalizationService.instance.translate('to_2'),
                     style: ThemeConstants.captionStyle,
                   ),
                 ),
@@ -1080,7 +1081,7 @@ class _SalesScreenState extends State<SalesScreen>
                 }
 
                 final statusLabel = s.isCancelled
-                    ? 'IMEGHAIRIWA'
+                    ? LocalizationService.instance.translate('cancelled').toUpperCase()
                     : s.paymentStatus.toUpperCase();
 
                 return Container(
@@ -1404,9 +1405,14 @@ class _SalesScreenState extends State<SalesScreen>
     if (action == null || !context.mounted) return;
 
     try {
+      // The receipt carries the business's own name, phone and address (set in Settings).
+      final Map<String, String> shop = context.read<DepotProvider>().settings;
       final File file = await _exportService.saleReceiptToPdf(
         sale,
         customer: matches.isEmpty ? null : matches.first,
+        depotName: shop['depot_name'] ?? '',
+        depotPhone: shop['depot_phone'] ?? '',
+        depotAddress: shop['depot_address'] ?? '',
       );
       if (!context.mounted) return;
       if (action == 'print') {
@@ -1772,9 +1778,9 @@ class _ProductPickTile extends StatelessWidget {
         ),
         onPressed: () {
           inv.addProductToCart(product);
-          ThemeConstants.showSuccessSnackBar(context, 'Added to cart');
+          ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('added_to_cart'));
         },
-        child: Text('+ Add', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp)),
+        child: Text(LocalizationService.instance.translate('add_2'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp)),
       ),
     );
   }

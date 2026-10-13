@@ -6,6 +6,7 @@ library;
 
 import "dart:convert";
 import "package:flutter/foundation.dart" show immutable;
+import '../services/localization_service.dart';
 
 class TypeHelpers {
   /// Safely cast dynamic to Map<String, dynamic>
@@ -193,25 +194,25 @@ class FilterOption {
 
 /// Common filter options for the app
 class CommonFilters {
-  static const List<FilterOption> transactionFilters = <FilterOption>[
-    FilterOption(key: "all", label: "Yote"),
-    FilterOption(key: "income", label: "Mapato"),
-    FilterOption(key: "expense", label: "Matumizi"),
-    FilterOption(key: "today", label: "Leo"),
-    FilterOption(key: "week", label: "Wiki hii"),
-    FilterOption(key: "month", label: "Mwezi huu"),
+  static List<FilterOption> get transactionFilters => <FilterOption>[
+    FilterOption(key: "all", label: LocalizationService.instance.translate('all_3')),
+    FilterOption(key: "income", label: LocalizationService.instance.translate('income')),
+    FilterOption(key: "expense", label: LocalizationService.instance.translate('expenses')),
+    FilterOption(key: "today", label: LocalizationService.instance.translate('today')),
+    FilterOption(key: "week", label: LocalizationService.instance.translate('this_week')),
+    FilterOption(key: "month", label: LocalizationService.instance.translate('this_month')),
   ];
 
-  static const List<FilterOption> paymentStatusFilters = <FilterOption>[
-    FilterOption(key: "all", label: "Yote"),
-    FilterOption(key: "paid", label: "Yaliyolipwa"),
-    FilterOption(key: "pending", label: "Yanayosubiri"),
-    FilterOption(key: "overdue", label: "Yaliyochelewa"),
+  static List<FilterOption> get paymentStatusFilters => <FilterOption>[
+    FilterOption(key: "all", label: LocalizationService.instance.translate('all_3')),
+    FilterOption(key: "paid", label: LocalizationService.instance.translate('filter_paid_only')),
+    FilterOption(key: "pending", label: LocalizationService.instance.translate('pending_4')),
+    FilterOption(key: "overdue", label: LocalizationService.instance.translate('late_2')),
   ];
 
-  static const List<FilterOption> driverStatusFilters = <FilterOption>[
-    FilterOption(key: "all", label: "Wote"),
-    FilterOption(key: "active", label: "Hai"),
-    FilterOption(key: "inactive", label: "Si hai"),
+  static List<FilterOption> get driverStatusFilters => <FilterOption>[
+    FilterOption(key: "all", label: LocalizationService.instance.translate('all_2')),
+    FilterOption(key: "active", label: LocalizationService.instance.translate('active')),
+    FilterOption(key: "inactive", label: LocalizationService.instance.translate('inactive_2')),
   ];
 }

@@ -140,9 +140,9 @@ class _LeaseAgreementWizardScreenState extends State<LeaseAgreementWizardScreen>
         context: context,
         fetchData: (p) => p.fetchTenants(),
         condition: (p) => p.tenants.isNotEmpty,
-        title: "No Tenants Found",
-        message: "You need to onboard a tenant before creating a lease agreement.",
-        actionLabel: "Onboard Tenant",
+        title: LocalizationService.instance.translate('no_tenants'),
+        message: LocalizationService.instance.translate('you_need_to_onboard_a_tenant'),
+        actionLabel: LocalizationService.instance.translate('onboard_tenant'),
         onAction: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const OnboardTenantScreen())),
       ).then((_) {
         if (!mounted) return;
@@ -151,9 +151,9 @@ class _LeaseAgreementWizardScreenState extends State<LeaseAgreementWizardScreen>
           context: context,
           fetchData: (p) => p.fetchProperties(),
           condition: (p) => RentalFlowValidator.hasHouses(p),
-          title: "No Houses Found",
-          message: "You need to have a property with a house to create an agreement.",
-          actionLabel: "Add Property",
+          title: LocalizationService.instance.translate('no_houses_found'),
+          message: LocalizationService.instance.translate('you_need_to_have_a_property'),
+          actionLabel: LocalizationService.instance.translate('add_property'),
           onAction: () => Navigator.pushReplacementNamed(context, '/rental/add-property'),
         );
       });
@@ -1004,7 +1004,7 @@ class _LeaseAgreementWizardScreenState extends State<LeaseAgreementWizardScreen>
         });
       }
     } catch (e) {
-      if (mounted) ThemeConstants.showErrorSnackBar(context, 'Error picking document: $e');
+      if (mounted) ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translateWith('error_picking_document', <Object?>[e]));
     }
   }
 
@@ -1321,8 +1321,8 @@ class _LeaseAgreementWizardScreenState extends State<LeaseAgreementWizardScreen>
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
             backgroundColor: ThemeConstants.bgMid,
-            title: Text('Lease Created', style: const TextStyle(color: Colors.white)),
-            content: Text('Do you want to record the first payment for this tenant now?', style: const TextStyle(color: Colors.white70)),
+            title: Text(LocalizationService.instance.translate('agreement_created'), style: const TextStyle(color: Colors.white)),
+            content: Text(LocalizationService.instance.translate('do_you_want_to_record_the'), style: const TextStyle(color: Colors.white70)),
             actions: [
               TextButton(
                 onPressed: () {
@@ -1330,7 +1330,7 @@ class _LeaseAgreementWizardScreenState extends State<LeaseAgreementWizardScreen>
                   nav.pop(); // close dialog
                   nav.pop(); // close wizard
                 },
-                child: Text('Not Now', style: const TextStyle(color: Colors.white54)),
+                child: Text(LocalizationService.instance.translate('not_now'), style: const TextStyle(color: Colors.white54)),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -1344,7 +1344,7 @@ class _LeaseAgreementWizardScreenState extends State<LeaseAgreementWizardScreen>
                   ));
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: ThemeConstants.primaryOrange),
-                child: Text('Yes, Record Payment', style: const TextStyle(color: Colors.white)),
+                child: Text(LocalizationService.instance.translate('yes_record_payment'), style: const TextStyle(color: Colors.white)),
               ),
             ],
           ),

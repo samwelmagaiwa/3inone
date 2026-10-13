@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/theme_constants.dart';
 import '../providers/rental_provider.dart';
+import '../services/localization_service.dart';
 
 /// Defines the sequential stages of the rental service flow.
 /// Each stage is a prerequisite for the next.
@@ -132,41 +133,41 @@ class RentalFlowValidator {
       case RentalFlowStage.hasNoProperties:
         return {
           'icon': Icons.business_center_outlined,
-          'title': 'Ongeza Mali kwanza',
-          'message': 'Huna mali yoyote. Anza kwa kuongeza mali yako ya kukodisha.',
-          'actionLabel': 'Ongeza Mali',
+          'title': LocalizationService.instance.translate('add_a_property_first'),
+          'message': LocalizationService.instance.translate('you_have_no_properties_start_by'),
+          'actionLabel': LocalizationService.instance.translate('add_property_2'),
           'actionRoute': '/rental/add-property',
         };
       case RentalFlowStage.hasNoHouses:
         return {
           'icon': Icons.home_work_outlined,
-          'title': 'Ongeza Nyumba kwanza',
-          'message': 'Mali ipo lakini bado hujaweka vyumba. Ongeza vyumba vya kukodisha.',
-          'actionLabel': 'Ongeza Nyumba',
+          'title': LocalizationService.instance.translate('add_a_house_first'),
+          'message': LocalizationService.instance.translate('you_have_a_property_but_no'),
+          'actionLabel': LocalizationService.instance.translate('add_house'),
           'actionRoute': '/rental/properties',
         };
       case RentalFlowStage.hasNoTenants:
         return {
           'icon': Icons.person_add_outlined,
-          'title': 'Ingiza Mpangaji kwanza',
-          'message': 'Nyumba zipo lakini bado huna wapangaji walioingia.',
-          'actionLabel': 'Ingiza Mpangaji',
+          'title': LocalizationService.instance.translate('add_a_tenant_first'),
+          'message': LocalizationService.instance.translate('you_have_houses_but_no_tenants'),
+          'actionLabel': LocalizationService.instance.translate('add_tenant'),
           'actionRoute': '/rental/onboard-tenant',
         };
       case RentalFlowStage.hasNoAgreements:
         return {
           'icon': Icons.description_outlined,
-          'title': 'Tengeneza Mkataba kwanza',
-          'message': 'Wapangaji wamesajiliwa lakini bado hakuna mkataba hai.',
-          'actionLabel': 'Tengeneza Mkataba',
+          'title': LocalizationService.instance.translate('create_an_agreement_first'),
+          'message': LocalizationService.instance.translate('tenants_are_registered_but_there_is'),
+          'actionLabel': LocalizationService.instance.translate('create_lease'),
           'actionRoute': '/rental/agreements',
         };
       case RentalFlowStage.hasNoBills:
         return {
           'icon': Icons.receipt_long_outlined,
-          'title': 'Hana bili zilizo wazi',
-          'message': 'Hakuna bili zinazohitaji malipo. Bili zinapotengenezwa kiotomatiki kwa mujibu wa mkataba.',
-          'actionLabel': 'Angalia Mikataba',
+          'title': LocalizationService.instance.translate('no_open_bills_3'),
+          'message': LocalizationService.instance.translate('no_bills_need_payment_bills_are'),
+          'actionLabel': LocalizationService.instance.translate('view_agreements'),
           'actionRoute': '/rental/agreements',
         };
       case RentalFlowStage.complete:
@@ -265,7 +266,7 @@ class _RentalFlowDialog extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('Rudi', style: TextStyle(color: Colors.white70)),
+                      child: Text(LocalizationService.instance.translate('back'), style: TextStyle(color: Colors.white70)),
                     ),
                   ),
                   const SizedBox(width: 12),

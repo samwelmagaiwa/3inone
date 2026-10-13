@@ -316,7 +316,7 @@ class _SupplierFormSheetState extends State<_SupplierFormSheet> {
               InvTextField(
                 controller: _name,
                 label: loc.translate('name'),
-                hint: 'e.g. Coca-Cola Kwanza Ltd',
+                hint: LocalizationService.instance.translate('e_g_coca_cola_kwanza_ltd'),
                 validator: (String? v) => (v == null || v.trim().isEmpty)
                     ? loc.translate('field_required')
                     : null,
@@ -333,7 +333,7 @@ class _SupplierFormSheetState extends State<_SupplierFormSheet> {
               InvTextField(
                 controller: _contact,
                 label: loc.translate('contact_person'),
-                hint: 'e.g. Juma Mwalimu',
+                hint: LocalizationService.instance.translate('e_g_juma_mwalimu'),
                 isOptional: true,
               ),
               SizedBox(height: 10.h),
@@ -481,7 +481,7 @@ class _PaySupplierSheetState extends State<_PaySupplierSheet> {
               InvTextField(
                 controller: _reference,
                 label: loc.translate('reference'),
-                hint: 'e.g. Bank slip or M-Pesa code',
+                hint: LocalizationService.instance.translate('e_g_bank_slip_or_m'),
                 isOptional: true,
               ),
               SizedBox(height: 16.h),
@@ -862,7 +862,7 @@ class _ReceiveGoodsSheetState extends State<ReceiveGoodsSheet> {
               InvTextField(
                 controller: _invoiceNumber,
                 label: loc.translate('supplier_invoice_number'),
-                hint: 'e.g. INV-00123',
+                hint: LocalizationService.instance.translate('e_g_inv_00123'),
                 isOptional: true,
               ),
               SizedBox(height: 16.h),

@@ -18,8 +18,11 @@ class CrateDepositCard extends StatelessWidget {
     required this.onUpdate,
     required this.onDelete,
     required this.swahili,
+    this.joined = false,
   });
 
+  /// Drawn as a section of a joined card: no box of its own.
+  final bool joined;
   final List<InvCrateType> types;
   final Future<String?> Function(String name, double deposit) onCreate;
   final Future<String?> Function(
@@ -42,8 +45,8 @@ class CrateDepositCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: ThemeConstants.glassCardDecoration,
-      padding: EdgeInsets.all(12.w),
+      decoration: joined ? null : ThemeConstants.glassCardDecoration,
+      padding: joined ? null : EdgeInsets.all(12.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[

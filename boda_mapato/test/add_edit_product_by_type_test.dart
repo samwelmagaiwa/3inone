@@ -2,6 +2,8 @@ import 'package:boda_mapato/constants/theme_constants.dart';
 import 'package:boda_mapato/modules/inventory/providers/depot_provider.dart';
 import 'package:boda_mapato/modules/inventory/providers/inventory_provider.dart';
 import 'package:boda_mapato/modules/inventory/screens/products/add_edit_product_screen.dart';
+import 'package:boda_mapato/modules/inventory/screens/products/product_form_sections.dart' show ExtraOptionCard;
+import 'package:boda_mapato/modules/inventory/screens/widgets/joined_sections.dart';
 import 'package:boda_mapato/providers/auth_provider.dart';
 import 'package:boda_mapato/services/api_service.dart';
 import 'package:boda_mapato/services/localization_service.dart';
@@ -344,6 +346,49 @@ void main() {
       expect((units.single as Map<String, dynamic>)['retail_price'], 2200);
     });
 
+    testWidgets('the g | kg choice sits right under "How is it sold?", before the unit, price and stock fields', (t) async {
+      await _openPage(t, settings: _retailShop);
+      await t.tap(_key('measure_weight'));
+      await t.pump();
+
+      final Rect lowestMeasure = <String>['measure_count', 'measure_weight', 'measure_volume']
+          .map((String k) => t.getRect(_key(k)))
+          .reduce((Rect a, Rect b) => a.bottom > b.bottom ? a : b);
+      expect(_key('stock_unit_1'), findsOneWidget);
+      expect(_key('stock_unit_1000'), findsOneWidget);
+      final Rect grams = t.getRect(_key('stock_unit_1'));
+      final Rect kilos = t.getRect(_key('stock_unit_1000'));
+
+      // The three choices are followed by one line saying what the choice means; the g | kg chips come after it.
+      final Rect explanation = t.getRect(find.byWidgetPredicate(
+          (Widget w) => w is Text && RegExp('No decimals|Hakuna desimali').hasMatch(w.data ?? '')));
+      expect(explanation.top, greaterThanOrEqualTo(lowestMeasure.bottom - 1), reason: 'the explanation is under the choices');
+      expect(grams.top, greaterThanOrEqualTo(explanation.bottom), reason: 'below the three choices and what they mean');
+      expect(grams.top - explanation.bottom, lessThan(24), reason: 'directly after them, no other field in between');
+      expect(kilos.top, grams.top, reason: 'g and kg are one row');
+      expect(grams.left, lessThan(kilos.left));
+      expect(grams.bottom, lessThanOrEqualTo(t.getTopLeft(_hint('e.g. 20,000')).dy), reason: 'above the cost price');
+      expect(grams.bottom, lessThanOrEqualTo(t.getTopLeft(_hint('e.g. 100')).dy), reason: 'above the quantity it chooses the unit of');
+    });
+
+    testWidgets('litres: the ml | litre choice is under the three choices too, and only there', (t) async {
+      await _openPage(t, settings: _retailShop);
+      await t.tap(_key('measure_volume'));
+      await t.pump();
+
+      expect(_key('stock_unit_1'), findsOneWidget, reason: 'one set of chips, not one under the choices and one under the stock');
+      expect(_key('stock_unit_1000'), findsOneWidget);
+      expect(t.getTopLeft(_key('stock_unit_1')).dy, lessThan(t.getTopLeft(_hint('e.g. 100')).dy));
+      expect(t.getTopLeft(_key('stock_unit_1')).dy, greaterThan(t.getRect(_key('measure_volume')).bottom - 1));
+    });
+
+    testWidgets('counted goods have no g | kg choice', (t) async {
+      await _openPage(t, settings: _retailShop);
+
+      expect(_key('stock_unit_1'), findsNothing);
+      expect(_key('stock_unit_1000'), findsNothing);
+    });
+
     testWidgets('stock typed in grams stays in grams', (t) async {
       await _openPage(t, settings: _retailShop);
       await t.tap(_key('measure_weight'));
@@ -399,17 +444,17 @@ void main() {
   });
 
   group('the page is one joined card, told apart by divider lines', () {
-    const List<String> retailSections = <String>['details', 'pricing', 'barcode', 'extras', 'created_by'];
+    const List<String> retailSections = <String>['details', 'pricing', 'extras', 'barcode'];
     Finder section(String id) => _key('product_section_$id');
     Finder inside(String id, Finder f) => find.descendant(of: section(id), matching: f);
 
-    /// The section dividers (the full-width hairlines), top to bottom.
+    /// The section dividers (the full-width glowing lines), top to bottom.
     final Finder dividerFinder = find.byWidgetPredicate(
-        (Widget w) => w is Divider && w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('product_section_divider_'));
+        (Widget w) => w is SectionGlowDivider && w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('product_section_divider_'));
     List<double> dividerTops(WidgetTester t) =>
         dividerFinder.evaluate().map((Element e) => (e.renderObject! as RenderBox).localToGlobal(Offset.zero).dy).toList()..sort();
 
-    testWidgets('a retail shop gets details, pricing, barcode, extras and created-by, in that order', (t) async {
+    testWidgets('a retail shop gets details, pricing, extras and barcode, in that order', (t) async {
       await _openPage(t, settings: _retailShop);
 
       double previousTop = -1;
@@ -453,41 +498,30 @@ void main() {
       expect(find.byKey(const ValueKey<String>('product_section_pricing')), findsOneWidget);
     });
 
-    testWidgets('the card is Settings glass: the same translucent white, rounded, with the hairline white edge', (t) async {
+    testWidgets('the card is the Depot settings card: glass fill, 20 radius, cyan edge and glow', (t) async {
       await _openPage(t, settings: _retailShop);
 
-      final BoxDecoration d = t.widget<Container>(_key('product_card')).decoration! as BoxDecoration;
-      expect(d.color, isNull, reason: 'the fill is the sheen below, not a second layer on top of it');
-      expect(d.borderRadius, BorderRadius.circular(20.r), reason: 'the same 20 radius as the Settings cards');
-      expect(d.border, isNotNull);
+      final Container card = t.widget<Container>(_key('product_card'));
+      final BoxDecoration d = card.decoration! as BoxDecoration;
+      expect(d.color, ThemeConstants.cardColor, reason: 'the same glass fill as the Settings cards');
+      expect(d.gradient, isNull, reason: 'no separate sheen: the fill is the Settings colour');
+      expect(d.borderRadius, BorderRadius.circular(20));
+      expect(d, joinedCardDecoration(), reason: 'built by the same helper Depot settings uses, so the two cannot drift apart');
 
-      // A sheen that is lighter at the top. Both ends are translucent WHITE, and together they average out to
-      // the ~10% white that the Settings glass card is, so the page keeps the Settings colour.
-      final LinearGradient g = d.gradient! as LinearGradient;
-      expect(g.colors, hasLength(2));
-      for (final Color c in g.colors) {
-        expect((c.r * 255).round(), 255);
-        expect((c.g * 255).round(), 255);
-        expect((c.b * 255).round(), 255);
-      }
-      expect(g.colors.first.a, greaterThan(g.colors.last.a), reason: 'lighter at the top');
-      expect((g.colors.first.a + g.colors.last.a) / 2, closeTo(ThemeConstants.cardColor.a, 0.01), reason: 'averages to the Settings glass');
+      final BoxDecoration edge = card.foregroundDecoration! as BoxDecoration;
+      expect(edge, joinedCardBorder());
+      final Border border = edge.border! as Border;
+      expect(border.top.color.b, greaterThan(border.top.color.r), reason: 'the edge is cyan, not white');
+      expect(border.top.width, 1.8);
     });
 
-    testWidgets('the shadow is strong: wide and dark for lift, tight for contact, a cyan glow for the premium feel', (t) async {
+    testWidgets('the glow is cyan: a bright one at the top edge and a wider one around the card', (t) async {
       await _openPage(t, settings: _retailShop);
 
       final BoxDecoration d = t.widget<Container>(_key('product_card')).decoration! as BoxDecoration;
-      final List<BoxShadow> shadows = d.boxShadow!;
-      expect(shadows.length, 3);
-
-      final BoxShadow lift = shadows.firstWhere((BoxShadow b) => b.color.a >= 0.5 && b.blurRadius >= 30);
-      expect(lift.offset.dy, greaterThan(0), reason: 'it falls below the card');
-      final BoxShadow contact = shadows.firstWhere((BoxShadow b) => b.blurRadius < 16 && b.color.a >= 0.3);
-      expect(contact, isNotNull);
-      final BoxShadow glow = shadows.firstWhere((BoxShadow b) => b.color.b > b.color.r);
-      expect(glow.color.a, greaterThan(0.1), reason: 'a visible cyan glow, not a hint');
-      expect(glow.spreadRadius, lessThan(0), reason: 'the glow hugs the card instead of flooding the page');
+      final List<BoxShadow> cyan = d.boxShadow!.where((BoxShadow b) => b.color.b > b.color.r).toList();
+      expect(cyan.length, greaterThanOrEqualTo(2));
+      expect(cyan.every((BoxShadow b) => b.color.a >= 0.15), isTrue, reason: 'visible glows, not hints');
     });
 
     testWidgets('there is room around the card for its shadow to be seen at the sides and underneath', (t) async {
@@ -505,25 +539,25 @@ void main() {
       expect(find.byWidgetPredicate((Widget w) => w is ColoredBox && w.color == ThemeConstants.primaryBlue), findsWidgets);
     });
 
-    testWidgets('fields wear the muted glass fill and hairline border, not the vivid teal', (t) async {
+    testWidgets('fields wear the Depot settings teal fill and border', (t) async {
       await _openPage(t, settings: _retailShop);
 
       final InputDecoration name = t.widget<TextField>(_hint('e.g. Coca-Cola 350ml')).decoration!;
-      expect(name.fillColor, ThemeConstants.glassFieldFill);
+      expect(name.fillColor, ThemeConstants.invFill);
       final OutlineInputBorder border = name.enabledBorder! as OutlineInputBorder;
-      expect(border.borderSide.color, ThemeConstants.glassFieldBorder);
+      expect(border.borderSide.color, ThemeConstants.invBorder);
     });
 
-    testWidgets('fields side by side are split by a vertical line, in the gap between them', (t) async {
+    testWidgets('fields side by side are split by a glowing vertical line, in the gap between them', (t) async {
       await _openPage(t, settings: _retailShop);
 
       final Finder lines = find.byKey(const ValueKey<String>('product_col_divider'));
-      // name | SKU, category | brand, cost | price, stock | alert threshold, barcode | status  (nothing beside "created by")
+      expect(find.byType(SectionGlowVerticalDivider), findsNWidgets(5), reason: 'the lines are the glowing ones');
+      // name | SKU, category | brand, cost | price, stock | alert threshold, barcode | status  (nothing beside the QR code)
       expect(lines, findsNWidgets(5));
       expect(inside('details', lines), findsOneWidget);
       expect(inside('pricing', lines), findsNWidgets(3));
       expect(inside('barcode', lines), findsOneWidget);
-      expect(inside('created_by', lines), findsNothing, reason: 'nothing beside it, so no line');
 
       // The line in the details row sits between the name field and the SKU field, not on top of either.
       final Rect nameBox = t.getRect(_hint('e.g. Coca-Cola 350ml'));
@@ -548,6 +582,90 @@ void main() {
       expect(inside('extras', _key('vat_section')), findsOneWidget);
     });
 
+    testWidgets('there is no "Created by" box any more: no section, no label, no read-only name field', (t) async {
+      await _openPage(t, settings: _retailShop);
+
+      expect(section('created_by'), findsNothing);
+      expect(find.byKey(const ValueKey<String>('product_section_divider_created_by')), findsNothing);
+      expect(find.byIcon(Icons.person_outline), findsNothing, reason: 'the name field had a person icon');
+      expect(find.text(LocalizationService.instance.translate('created_by')), findsNothing);
+    });
+
+    testWidgets('and the same for a depot', (t) async {
+      await _openPage(t);
+
+      expect(section('created_by'), findsNothing);
+      expect(find.byIcon(Icons.person_outline), findsNothing);
+    });
+
+    testWidgets('the save request names no creator: the server records the signed-in user', (t) async {
+      await _openPage(t, settings: _retailShop);
+      await _fillBasics(t, name: 'Soap', cost: '700', price: '1000', qty: '30');
+      await _save(t);
+
+      final Map<String, dynamic> body = _api.created.single;
+      expect(body.keys.where((String k) => k.contains('created') || k.contains('user')), isEmpty,
+          reason: 'nothing about who is sending it: the token says');
+    });
+
+    testWidgets('Barcode & status is the last section, and the QR code is the last field in it', (t) async {
+      await _openPage(t, settings: _retailShop);
+
+      // the section: last of all
+      for (final String id in retailSections.where((String s) => s != 'barcode')) {
+        expect(t.getTopLeft(section('barcode')).dy, greaterThan(t.getTopLeft(section(id)).dy), reason: 'below the $id section');
+      }
+      // its fields: the barcode and the status, then the QR code under them
+      final Finder qr = _key('qr_preview');
+      expect(inside('barcode', qr), findsOneWidget, reason: 'the QR code stays with its barcode');
+      expect(inside('barcode', find.byType(Switch)), findsOneWidget, reason: 'the status switch');
+      final Rect barcodeField = t.getRect(inside('barcode', find.byType(TextField)).first);
+      expect(t.getTopLeft(qr).dy, greaterThanOrEqualTo(barcodeField.bottom), reason: 'the QR code is under the barcode box');
+      // ... and the QR code is the last thing in the card
+      expect(t.getRect(_key('product_card')).bottom - t.getRect(qr).bottom, lessThan(40));
+    });
+
+    testWidgets('while sizes / colours each carry their own barcode there is no QR code', (t) async {
+      await _openPage(t, settings: _retailShop);
+      expect(_key('qr_preview'), findsOneWidget);
+
+      await t.tap(_key('variant_toggle'));
+      await t.pump();
+      expect(_key('qr_preview'), findsNothing);
+    });
+
+    testWidgets('the extras are three cards, in order, under a line saying they can be skipped', (t) async {
+      await _openPage(t, settings: _retailShop);
+
+      expect(inside('extras', _key('extras_hint')), findsOneWidget);
+      expect(find.byType(ExtraOptionCard), findsNWidgets(2), reason: 'packs, and sizes / colours; the VAT card shares their look');
+      final double hint = t.getTopLeft(_key('extras_hint')).dy;
+      final double packs = t.getTopLeft(_key('units_editor')).dy;
+      final double sizes = t.getTopLeft(_key('variants_editor')).dy;
+      final double vat = t.getTopLeft(_key('vat_section')).dy;
+      expect(hint < packs && packs < sizes && sizes < vat, isTrue, reason: 'hint, packs, sizes / colours, VAT from top to bottom');
+      // cards are separated by a gap, the page's section lines stay between sections
+      expect(t.getRect(_key('vat_section')).top - t.getRect(_key('variants_editor')).bottom, greaterThan(4));
+    });
+
+    testWidgets('a depot\'s extras are what they were: no hint, no cards, the plain VAT row', (t) async {
+      await _openPage(t);
+
+      expect(_key('extras_hint'), findsNothing);
+      expect(find.byType(ExtraOptionCard), findsNothing);
+      expect(find.textContaining('own VAT rate'), findsNothing);
+      expect(_key('vat_section'), findsOneWidget);
+    });
+
+    testWidgets('a depot in retail mode keeps its compact packs section too', (t) async {
+      await _openPage(t);
+      await t.tap(find.byType(Switch).first);
+      await t.pump();
+
+      expect(_key('units_editor'), findsOneWidget);
+      expect(find.byType(ExtraOptionCard), findsNothing, reason: 'the depot does not get the guided cards');
+    });
+
     testWidgets('a depot keeps its mode banner as the first row; retail mode adds the packs section', (t) async {
       await _openPage(t);
 
@@ -561,7 +679,8 @@ void main() {
       expect(inside('pricing', lines), findsNWidgets(4), reason: 'category|brand, unit|qty per unit, cost|price, stock|alert');
       final Rect unitBox = t.getRect(find.byType(DropdownButton<String>).first);
       final Rect factorBox = t.getRect(_hint('e.g. 1'));
-      final double unitLineX = inside('pricing', lines).evaluate().map((Element e) => t.getCenter(find.byWidget(e.widget)).dx).firstWhere((double x) => x > unitBox.right - 1 && x < factorBox.left + 1, orElse: () => -1);
+      final double unitLineX = List<double>.generate(4, (int i) => t.getCenter(inside('pricing', lines).at(i)).dx)
+          .firstWhere((double x) => x > unitBox.right - 1 && x < factorBox.left + 1, orElse: () => -1);
       expect(unitLineX, isNot(-1), reason: 'a line sits between the unit box and the quantity-per-unit box');
       // The banner is above the details, with a divider under it.
       expect(dividerTops(t), hasLength(retailSections.length), reason: 'one more divider: under the banner');

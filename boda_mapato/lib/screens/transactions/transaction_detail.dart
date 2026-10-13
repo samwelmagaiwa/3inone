@@ -11,6 +11,7 @@ import "../../providers/transaction_provider.dart";
 import "../../utils/date_utils.dart";
 import "../../widgets/custom_button.dart";
 import "../../widgets/custom_card.dart";
+import '../../services/localization_service.dart';
 
 class TransactionDetailScreen extends StatelessWidget {
   const TransactionDetailScreen({
@@ -23,7 +24,7 @@ class TransactionDetailScreen extends StatelessWidget {
   Widget build(final BuildContext context) => Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text(
+          title: Text(
             AppStrings.transactionDetails,
             style: AppStyles.heading2,
           ),
@@ -112,8 +113,8 @@ class TransactionDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      const Text(
-                        "Maelezo ya Muamala",
+                      Text(
+                        LocalizationService.instance.translate('transaction_details'),
                         style: AppStyles.heading3,
                       ),
                       const SizedBox(height: AppStyles.spacingM),
@@ -126,7 +127,7 @@ class TransactionDetailScreen extends StatelessWidget {
                         value: transaction.category,
                       ),
                       _DetailRow(
-                        label: "Hali",
+                        label: LocalizationService.instance.translate('status'),
                         value: transaction.status.name,
                       ),
                       _DetailRow(
@@ -149,7 +150,7 @@ class TransactionDetailScreen extends StatelessWidget {
                         ),
                       if (transaction.notes != null)
                         _DetailRow(
-                          label: "Maelezo ya Ziada",
+                          label: LocalizationService.instance.translate('extra_details'),
                           value: transaction.notes!,
                         ),
                     ],
@@ -164,7 +165,7 @@ class TransactionDetailScreen extends StatelessWidget {
                 children: <Widget>[
                   Expanded(
                     child: CustomButton(
-                      text: "Hariri",
+                      text: LocalizationService.instance.translate('edit'),
                       onPressed: () => _showEditDialog(context),
                       backgroundColor: AppColors.info,
                     ),
@@ -172,7 +173,7 @@ class TransactionDetailScreen extends StatelessWidget {
                   const SizedBox(width: AppStyles.spacingM),
                   Expanded(
                     child: CustomButton(
-                      text: "Futa",
+                      text: LocalizationService.instance.translate('delete'),
                       onPressed: () => _showDeleteDialog(context),
                       backgroundColor: AppColors.error,
                     ),
@@ -186,23 +187,23 @@ class TransactionDetailScreen extends StatelessWidget {
 
   void _showEditDialog(final BuildContext context) {
     // TODO(dev): Implement edit transaction dialog
-    ThemeConstants.showInfoSnackBar(context, "Uhariri wa muamala utaongezwa hivi karibuni");
+    ThemeConstants.showInfoSnackBar(context, LocalizationService.instance.translate('transaction_editing_will_be_added_soon'));
   }
 
   void _showDeleteDialog(final BuildContext context) {
     showDialog(
       context: context,
       builder: (final BuildContext context) => AlertDialog(
-        title: const AutoSizeText(
-          "Futa Muamala",
+        title: AutoSizeText(
+          LocalizationService.instance.translate('delete_transaction'),
           maxLines: 1,
           stepGranularity: 0.5,
         ),
-        content: const Text("Je, una uhakika unataka kufuta muamala huu?"),
+        content: Text("${LocalizationService.instance.translate('are_you_sure_you_want_to_7')}?"),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(AppStrings.cancel),
+            child: Text(AppStrings.cancel),
           ),
           TextButton(
             onPressed: () async {
@@ -213,16 +214,16 @@ class TransactionDetailScreen extends StatelessWidget {
                 if (context.mounted) {
                   Navigator.pop(context); // Close dialog
                   Navigator.pop(context); // Go back to transactions list
-                  ThemeConstants.showSuccessSnackBar(context, "Muamala umefutwa");
+                  ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('transaction_deleted'));
                 }
               } on Exception catch (e) {
                 if (context.mounted) {
                   Navigator.pop(context);
-                  ThemeConstants.showErrorSnackBar(context, "Hitilafu: $e");
+                  ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translateWith('error_2', <Object?>[e]));
                 }
               }
             },
-            child: const Text(
+            child: Text(
               AppStrings.delete,
               style: TextStyle(color: AppColors.error),
             ),

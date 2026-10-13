@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../utils/responsive_helper.dart';
 import '../widgets/loading/faux_3d_loading_widget.dart';
+import '../services/localization_service.dart';
 
 class ThemeConstants {
   // Modern theme colors - matching admin dashboard
@@ -162,60 +163,10 @@ class ThemeConstants {
         contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
       );
 
-  // The Settings glass card with depth: the same translucent white (about 10% on average, so it is the same
-  // colour as Settings) but with a sheen that is lighter at the top, a brighter hairline edge, and a strong
-  // shadow in three layers -- a wide dark one for lift, a tight one for contact, a faint cyan glow for the
-  // premium feel. A dark shadow on a dark teal page is only seen when it is strong, hence the strength.
-  static BoxDecoration premiumGlassCard() => BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[
-            Colors.white.withValues(alpha: 0.135),
-            Colors.white.withValues(alpha: 0.075),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.60),
-            blurRadius: 36.r,
-            offset: Offset(0, 18.h),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 10.r,
-            offset: Offset(0, 4.h),
-          ),
-          BoxShadow(
-            color: invAccent.withValues(alpha: 0.18),
-            blurRadius: 42.r,
-            spreadRadius: -6.r,
-          ),
-        ],
-      );
-
-  // Fields on the flat glass card (the Settings look): a faint white fill and a hairline white border,
-  // instead of the vivid teal fill the other inventory forms use.
+  // Choice chips and option tiles (the kind-of-business chips, the pack-size chips): a faint white fill and a
+  // hairline white border. Text fields use the teal invFill / invBorder above.
   static const Color glassFieldFill = Color(0x14FFFFFF); // white 8%
   static const Color glassFieldBorder = Color(0x2EFFFFFF); // white 18%
-
-  static InputDecoration glassInputDecoration(String hint) => invInputDecoration(hint).copyWith(
-        fillColor: glassFieldFill,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14.r),
-          borderSide: const BorderSide(color: glassFieldBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14.r),
-          borderSide: const BorderSide(color: glassFieldBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14.r),
-          borderSide: const BorderSide(color: invAccent, width: 1.4),
-        ),
-      );
 
   // Standard scaffold with blue background
   static Widget buildScaffold({
@@ -251,7 +202,7 @@ class ThemeConstants {
             ),
             SizedBox(height: 24.h),
             Text(
-              "Inapakia...",
+              "${LocalizationService.instance.translate('loading_2')}...",
               style: TextStyle(
                 color: textSecondary,
                 fontSize: 16.sp,

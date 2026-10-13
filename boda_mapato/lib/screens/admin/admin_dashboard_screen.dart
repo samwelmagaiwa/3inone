@@ -88,6 +88,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   String _chartPeriod = 'weekly'; // 'weekly' or 'monthly'
   bool _chartLoading = false;
 
+  /// Short month names (Jan ... Dec) in the language chosen in the app.
+  List<String> _monthLabels() => List<String>.generate(
+      12, (int i) => LocalizationService.instance.translate('month_short_${i + 1}'));
+
   Future<void> _loadChartData() async {
     setState(() => _chartLoading = true);
     try {
@@ -124,20 +128,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         final List<double> monthly = _aggregateMonthly(raw);
         setState(() {
           _chartPoints = monthly;
-          _chartLabels = const <String>[
-            'Jan',
-            'Feb',
-            'Mar',
-            'Apr',
-            'May',
-            'Jun',
-            'Jul',
-            'Aug',
-            'Sep',
-            'Oct',
-            'Nov',
-            'Dec'
-          ];
+          _chartLabels = _monthLabels();
         });
       }
       if (mounted) {
@@ -260,7 +251,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           _isLoading = false;
         });
         _showErrorSnackBar(
-            "Backend haipatikani. Tafadhali jaribu tena baadaye.");
+            LocalizationService.instance.translate('the_server_is_not_reachable_please'));
       }
     }
   }
@@ -396,11 +387,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
           icon: const Icon(Icons.menu, color: textPrimary, size: 24),
         ),
-        const Expanded(
+        Expanded(
           child: Column(
             children: <Widget>[
               Text(
-                "Admin Dashboard",
+                LocalizationService.instance.translate('admin_dashboard'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: textPrimary,
@@ -454,7 +445,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Karibu, ${user?.name ?? "Admin"}!",
+                      LocalizationService.instance.translateWith('welcome_2', <Object?>[user?.name ?? "Admin"]),
                       style: const TextStyle(
                         color: textPrimary,
                         fontSize: 14,
@@ -478,7 +469,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      "Mapato ya Mwezi +${_toDouble(_dashboardData["revenue_growth"] ?? 0).toStringAsFixed(1)}%",
+                      LocalizationService.instance.translateWith('income_this_month', <Object?>[_toDouble(_dashboardData["revenue_growth"] ?? 0).toStringAsFixed(1)]),
                       style:
                           const TextStyle(color: textSecondary, fontSize: 11),
                       maxLines: 1,
@@ -510,7 +501,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           if (canViewDrivers)
             Expanded(
               child: _buildStatCard(
-                "Madereva",
+                LocalizationService.instance.translate('drivers'),
                 _getFormattedStatValue("drivers"),
                 "+${_toDouble(_dashboardData["driver_growth"] ?? 0).toStringAsFixed(1)}%",
                 Icons.people,
@@ -522,7 +513,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           if (canViewVehicles)
             Expanded(
               child: _buildStatCard(
-                "Magari",
+                LocalizationService.instance.translate('vehicles_3'),
                 _getFormattedStatValue("vehicles"),
                 "${_toDouble(_dashboardData["vehicle_utilization"] ?? 0).toStringAsFixed(1)}%",
                 Icons.directions_car,
@@ -533,9 +524,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           if (canViewPayments)
             Expanded(
               child: _buildStatCard(
-                "Malipo",
+                LocalizationService.instance.translate('payments_section'),
                 "${_dashboardData["pending_payments"] ?? 0}",
-                "Yanahitaji",
+                LocalizationService.instance.translate('need_attention'),
                 Icons.pending_actions,
                 false,
               ),
@@ -616,8 +607,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Text(
-              "Miamala ya Hivi Karibuni",
+            Text(
+              LocalizationService.instance.translate('recent_transactions'),
               style: TextStyle(
                 color: textPrimary,
                 fontSize: 18,
@@ -709,8 +700,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             children: [
               Row(
                 children: [
-                  const Text(
-                    'Mapato',
+                  Text(
+                    LocalizationService.instance.translate('income'),
                     style: TextStyle(
                         color: textPrimary,
                         fontSize: 16,
@@ -718,7 +709,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   ),
                   const Spacer(),
                   ChoiceChip(
-                    label: const Text('Wiki'),
+                    label: Text(LocalizationService.instance.translate('week')),
                     selected: _chartPeriod == 'weekly',
                     onSelected: (v) async {
                       if (!v) return;
@@ -728,7 +719,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   ),
                   const SizedBox(width: 8),
                   ChoiceChip(
-                    label: const Text('Mwezi'),
+                    label: Text(LocalizationService.instance.translate('month')),
                     selected: _chartPeriod == 'monthly',
                     onSelected: (v) async {
                       if (!v) return;
@@ -745,9 +736,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     ? const Center(child: CircularProgressIndicator())
                     : Builder(builder: (context) {
                         if (_chartPoints.isEmpty) {
-                          return const Center(
+                          return Center(
                             child: Text(
-                              'Hakuna data ya chart kupatikana',
+                              LocalizationService.instance.translate('no_chart_data_found'),
                               style: TextStyle(color: Colors.white70),
                             ),
                           );
@@ -815,20 +806,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                       final List<String> months =
                                           _chartLabels.isNotEmpty
                                               ? _chartLabels
-                                              : const <String>[
-                                                  'Jan',
-                                                  'Feb',
-                                                  'Mar',
-                                                  'Apr',
-                                                  'May',
-                                                  'Jun',
-                                                  'Jul',
-                                                  'Aug',
-                                                  'Sep',
-                                                  'Oct',
-                                                  'Nov',
-                                                  'Dec'
-                                                ];
+                                              : _monthLabels();
                                       final String text =
                                           (i >= 0 && i < months.length)
                                               ? months[i]
@@ -861,20 +839,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                       final List<String> months =
                                           _chartLabels.isNotEmpty
                                               ? _chartLabels
-                                              : const <String>[
-                                                  'Jan',
-                                                  'Feb',
-                                                  'Mar',
-                                                  'Apr',
-                                                  'May',
-                                                  'Jun',
-                                                  'Jul',
-                                                  'Aug',
-                                                  'Sep',
-                                                  'Oct',
-                                                  'Nov',
-                                                  'Dec'
-                                                ];
+                                              : _monthLabels();
                                       label = (i >= 0 && i < months.length)
                                           ? months[i]
                                           : '';
@@ -939,13 +904,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: <Widget>[
-              _buildActionButton(Icons.bar_chart, "Ripoti", () {
+              _buildActionButton(Icons.bar_chart, LocalizationService.instance.translate('reports'), () {
                 _navigateToPage("reports");
               }),
-              _buildActionButton(Icons.people, "Madereva", () {
+              _buildActionButton(Icons.people, LocalizationService.instance.translate('drivers'), () {
                 _navigateToPage("drivers");
               }),
-              _buildActionButton(Icons.directions_car, "Magari", () {
+              _buildActionButton(Icons.directions_car, LocalizationService.instance.translate('vehicles_3'), () {
                 _navigateToPage("vehicles");
               }),
             ],
@@ -1123,12 +1088,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Inakuja Hivi Karibuni"),
-        content: Text("Kipengele cha $feature kinatengenezwa. Subiri kidogo!"),
+        title: Text(LocalizationService.instance.translate('coming_soon_2')),
+        content: Text(LocalizationService.instance.translateWith('the_feature_is_being_built_please', <Object?>[feature])),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Sawa"),
+            child: Text(LocalizationService.instance.translate('ok')),
           ),
         ],
       ),

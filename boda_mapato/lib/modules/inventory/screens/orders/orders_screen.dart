@@ -235,6 +235,21 @@ class _StatusDropdown extends StatefulWidget {
 class _StatusDropdownState extends State<_StatusDropdown> {
   late String _value;
   final _items = const ['Pending', 'Received', 'Canceled'];
+
+  /// The value stays Pending / Received / Canceled (that is what is saved); this is what it reads as.
+  String _label(String value) {
+    final LocalizationService loc = LocalizationService.instance;
+    switch (value) {
+      case 'Pending':
+        return loc.translate('pending');
+      case 'Received':
+        return loc.translate('received');
+      case 'Canceled':
+        return loc.translate('cancelled');
+      default:
+        return value;
+    }
+  }
   @override
   void initState() {
     super.initState();
@@ -260,7 +275,7 @@ class _StatusDropdownState extends State<_StatusDropdown> {
             icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
             style: ThemeConstants.bodyStyle,
             items: _items
-                .map((e) => DropdownMenuItem<String>(value: e, child: Text(e)))
+                .map((e) => DropdownMenuItem<String>(value: e, child: Text(_label(e))))
                 .toList(),
             onChanged: (v) => setState(() => _value = v ?? _value),
           ),

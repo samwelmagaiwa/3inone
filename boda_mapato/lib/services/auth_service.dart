@@ -2,7 +2,7 @@ import "dart:convert";
 import "dart:developer" as developer;
 
 import "package:flutter/foundation.dart"; // for kDebugMode, debugPrint
-import "package:http/http.dart" as http;
+import "http_client.dart" as http;
 import "package:shared_preferences/shared_preferences.dart";
 import "../config/api_config.dart";
 import "../models/business_registration.dart";

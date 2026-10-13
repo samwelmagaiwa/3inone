@@ -10,6 +10,7 @@ import "../../providers/device_provider.dart";
 import "../../providers/transaction_provider.dart";
 import "../../widgets/custom_card.dart";
 import "../../widgets/transaction_tile.dart";
+import '../../services/localization_service.dart';
 
 class RevenueCardsSection extends StatelessWidget {
   const RevenueCardsSection({super.key});
@@ -201,7 +202,7 @@ class RecentTransactionsSection extends StatelessWidget {
                     ),
                     const SizedBox(height: AppStyles.spacingM),
                     Text(
-                      "Hakuna miamala ya hivi karibuni",
+                      LocalizationService.instance.translate('no_recent_transactions'),
                       style: AppStyles.bodyMedium.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -290,7 +291,7 @@ class DeviceStatusSection extends StatelessWidget {
                     ),
                     const SizedBox(height: AppStyles.spacingM),
                     Text(
-                      "Hakuna vyombo vilivyosajiliwa",
+                      LocalizationService.instance.translate('no_registered_vehicles'),
                       style: AppStyles.bodyMedium.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -407,7 +408,7 @@ class _DeviceStatusTile extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    "Leo",
+                    LocalizationService.instance.translate('today'),
                     style: AppStyles.bodySmall.copyWith(
                       color: AppColors.textSecondary,
                     ),

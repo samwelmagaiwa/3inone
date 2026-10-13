@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 import '../../constants/theme_constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/rental_provider.dart';
+import '../../services/localization_service.dart';
 
 class TenantsListScreen extends StatefulWidget {
   final bool isSubView;
@@ -30,14 +31,14 @@ class _TenantsListScreenState extends State<TenantsListScreen> {
 
   Future<void> _callTenant(String? phone) async {
     if (phone == null || phone.isEmpty) {
-      ThemeConstants.showErrorSnackBar(context, "Namba ya simu haipatikani");
+      ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('phone_number_not_available'));
       return;
     }
     final String urlString = "tel:$phone";
     if (await canLaunchUrlString(urlString)) {
       await launchUrlString(urlString, mode: LaunchMode.externalApplication);
     } else {
-      ThemeConstants.showErrorSnackBar(context, "Imeshindikana kupiga simu");
+      ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('could_not_make_the_call'));
     }
   }
 
@@ -55,7 +56,7 @@ class _TenantsListScreenState extends State<TenantsListScreen> {
               children: [
                 Icon(Icons.people_outline, size: 64.sp, color: Colors.grey.withOpacity(0.4)),
                 SizedBox(height: 16.h),
-                Text("Hakuna wapangaji waliorekodiwa", style: ThemeConstants.subHeadingStyle),
+                Text(LocalizationService.instance.translate('no_tenants_recorded'), style: ThemeConstants.subHeadingStyle),
               ],
             ),
           );
@@ -93,14 +94,14 @@ class _TenantsListScreenState extends State<TenantsListScreen> {
                          crossAxisAlignment: CrossAxisAlignment.start,
                          children: [
                            Text(
-                             tenant['name'] ?? 'Jina halijulikani',
+                             tenant['name'] ?? LocalizationService.instance.translate('unknown_name'),
                              maxLines: 1,
                              overflow: TextOverflow.ellipsis,
                              style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 16.sp),
                            ),
                            SizedBox(height: 4.h),
                            Text(
-                             "Nyumba: ${house['house_number'] ?? 'N/A'} - ${house['property_name'] ?? 'N/A'}",
+                             LocalizationService.instance.translateWith('house_4', <Object?>[house['house_number'] ?? 'N/A', house['property_name'] ?? 'N/A']),
                              maxLines: 1,
                              overflow: TextOverflow.ellipsis,
                              style: TextStyle(color: Colors.grey, fontSize: 13.sp),
@@ -160,7 +161,7 @@ class _TenantsListScreenState extends State<TenantsListScreen> {
       return _buildBody();
     }
     return ThemeConstants.buildScaffold(
-      title: "Wapangaji / Tenants",
+      title: LocalizationService.instance.translate('rental_tenants_title'),
       body: _buildBody(),
     );
   }

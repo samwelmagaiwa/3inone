@@ -1,3 +1,5 @@
+import '../services/localization_service.dart';
+
 class DriverAgreement {
   DriverAgreement({
     required this.driverId,
@@ -150,13 +152,16 @@ class DriverAgreement {
 
 // Agreement Type Enum
 enum AgreementType {
-  kwaMkataba('kwa_mkataba', 'Kwa Mkataba'),
-  deiWaka('dei_waka', 'Dei Waka');
+  kwaMkataba('kwa_mkataba'),
+  deiWaka('dei_waka');
 
-  const AgreementType(this.value, this.displayName);
+  const AgreementType(this.value);
 
   final String value;
-  final String displayName;
+
+  /// The name shown for the agreement type, in the language chosen in the app.
+  String get displayName => LocalizationService.instance.translate(
+      this == AgreementType.kwaMkataba ? 'agreement_type_contract' : 'agreement_type_day_worker');
 
   static AgreementType fromString(String value) {
     return AgreementType.values.firstWhere(
@@ -168,14 +173,25 @@ enum AgreementType {
 
 // Payment Frequency Enum
 enum PaymentFrequency {
-  kilaSiku('kila_siku', 'Kila Siku'),
-  kilaWiki('kila_wiki', 'Kila Wiki'),
-  kilaMwezi('kila_mwezi', 'Kila Mwezi');
+  kilaSiku('kila_siku'),
+  kilaWiki('kila_wiki'),
+  kilaMwezi('kila_mwezi');
 
-  const PaymentFrequency(this.value, this.displayName);
+  const PaymentFrequency(this.value);
 
   final String value;
-  final String displayName;
+
+  /// The name shown for the payment frequency, in the language chosen in the app.
+  String get displayName {
+    switch (this) {
+      case PaymentFrequency.kilaSiku:
+        return LocalizationService.instance.translate('every_day');
+      case PaymentFrequency.kilaWiki:
+        return LocalizationService.instance.translate('every_week');
+      case PaymentFrequency.kilaMwezi:
+        return LocalizationService.instance.translate('every_month');
+    }
+  }
 
   static PaymentFrequency fromString(String value) {
     return PaymentFrequency.values.firstWhere(
@@ -187,15 +203,28 @@ enum PaymentFrequency {
 
 // Agreement Status Enum
 enum AgreementStatus {
-  active('active', 'Hai'),
-  inactive('inactive', 'Hahai'),
-  completed('completed', 'Imekamilika'),
-  terminated('terminated', 'Imefutwa');
+  active('active'),
+  inactive('inactive'),
+  completed('completed'),
+  terminated('terminated');
 
-  const AgreementStatus(this.value, this.displayName);
+  const AgreementStatus(this.value);
 
   final String value;
-  final String displayName;
+
+  /// The name shown for the status, in the language chosen in the app.
+  String get displayName {
+    switch (this) {
+      case AgreementStatus.active:
+        return LocalizationService.instance.translate('active');
+      case AgreementStatus.inactive:
+        return LocalizationService.instance.translate('inactive_driver');
+      case AgreementStatus.completed:
+        return LocalizationService.instance.translate('status_completed');
+      case AgreementStatus.terminated:
+        return LocalizationService.instance.translate('deleted');
+    }
+  }
 
   static AgreementStatus fromString(String value) {
     return AgreementStatus.values.firstWhere(

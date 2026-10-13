@@ -493,8 +493,12 @@ class InvTabScaffold extends StatefulWidget {
   State<InvTabScaffold> createState() => _InvTabScaffoldState();
 }
 
+// TickerProviderStateMixin, not the Single one: when the number of tabs changes (a hub dropping its crates tab
+// for a business without crates) a new TabController is made, and the Single mixin allows one ticker for the
+// whole life of the State, even after the first controller was disposed -- debug builds then stop with
+// "multiple tickers were created".
 class _InvTabScaffoldState extends State<InvTabScaffold>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _ctrl;
   bool _atEnd = false;
 

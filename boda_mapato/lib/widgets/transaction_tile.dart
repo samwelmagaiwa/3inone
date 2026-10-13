@@ -5,6 +5,7 @@ import "../models/transaction.dart";
 import "../utils/date_utils.dart";
 import "../utils/responsive_utils.dart";
 import "responsive_wrapper.dart";
+import '../services/localization_service.dart';
 
 class TransactionTile extends StatelessWidget {
   const TransactionTile({
@@ -228,7 +229,7 @@ class TransactionSummaryTile extends StatelessWidget {
                     maxLines: 1,
                   ),
                   Text(
-                    "$count miamala",
+                    LocalizationService.instance.translateWith('transactions_2', <Object?>[count]),
                     style: AppStyles.bodySmallResponsive(context).copyWith(
                       color: AppColors.textSecondary,
                     ),

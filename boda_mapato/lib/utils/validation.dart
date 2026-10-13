@@ -1,3 +1,4 @@
+import '../services/localization_service.dart';
 class ValidationUtils {
   // Email validation
   static bool isValidEmail(final String email) {
@@ -199,48 +200,48 @@ class ValidationUtils {
 
   // Validation error messages
   static String? getEmailError(final String email) {
-    if (email.isEmpty) return "Barua pepe inahitajika";
-    if (!isValidEmail(email)) return "Barua pepe si sahihi";
+    if (email.isEmpty) return LocalizationService.instance.translate('email_is_required_2');
+    if (!isValidEmail(email)) return LocalizationService.instance.translate('email_is_not_valid');
     return null;
   }
 
   static String? getPhoneError(final String phone) {
-    if (phone.isEmpty) return "Nambari ya simu inahitajika";
-    if (!isValidPhoneNumber(phone)) return "Nambari ya simu si sahihi";
+    if (phone.isEmpty) return LocalizationService.instance.translate('phone_number_is_required_2');
+    if (!isValidPhoneNumber(phone)) return LocalizationService.instance.translate('phone_number_is_not_valid_2');
     return null;
   }
 
   static String? getPasswordError(final String password) {
-    if (password.isEmpty) return "Nenosiri linahitajika";
+    if (password.isEmpty) return LocalizationService.instance.translate('password_is_required');
     if (!isValidSimplePassword(password)) {
-      return "Nenosiri lazima liwe na angalau herufi 6";
+      return LocalizationService.instance.translate('password_must_have_at_least_6');
     }
     return null;
   }
 
   static String? getStrongPasswordError(final String password) {
-    if (password.isEmpty) return "Nenosiri linahitajika";
+    if (password.isEmpty) return LocalizationService.instance.translate('password_is_required');
     if (!isValidPassword(password)) {
-      return "Nenosiri lazima liwe na angalau herufi 8, herufi kubwa, ndogo na nambari";
+      return LocalizationService.instance.translate('password_must_have_at_least_8');
     }
     return null;
   }
 
   static String? getAmountError(final String amount) {
-    if (amount.isEmpty) return "Kiasi kinahitajika";
-    if (!isValidAmount(amount)) return "Kiasi si sahihi";
+    if (amount.isEmpty) return LocalizationService.instance.translate('amount_is_required');
+    if (!isValidAmount(amount)) return LocalizationService.instance.translate('invalid_amount');
     return null;
   }
 
   static String? getNameError(final String name) {
-    if (name.isEmpty) return "Jina linahitajika";
-    if (!isValidName(name)) return "Jina si sahihi";
+    if (name.isEmpty) return LocalizationService.instance.translate('name_is_required_2');
+    if (!isValidName(name)) return LocalizationService.instance.translate('name_is_not_valid');
     return null;
   }
 
   static String? getPlateNumberError(final String plateNumber) {
-    if (plateNumber.isEmpty) return "Nambari ya bango inahitajika";
-    if (!isValidPlateNumber(plateNumber)) return "Nambari ya bango si sahihi";
+    if (plateNumber.isEmpty) return LocalizationService.instance.translate('plate_number_is_required');
+    if (!isValidPlateNumber(plateNumber)) return LocalizationService.instance.translate('plate_number_is_not_valid');
     return null;
   }
 
@@ -259,10 +260,10 @@ class ValidationUtils {
     final int? maxLength,
   ]) {
     if (value.length < minLength) {
-      return "$fieldName lazima iwe na angalau herufi $minLength";
+      return LocalizationService.instance.translateWith('must_have_at_least_characters', <Object?>[fieldName, minLength]);
     }
     if (maxLength != null && value.length > maxLength) {
-      return "$fieldName haiwezi kuwa na herufi zaidi ya $maxLength";
+      return LocalizationService.instance.translateWith('cannot_have_more_than_characters', <Object?>[fieldName, maxLength]);
     }
     return null;
   }
@@ -272,8 +273,8 @@ class ValidationUtils {
     final String password,
     final String confirmPassword,
   ) {
-    if (confirmPassword.isEmpty) return "Thibitisha nenosiri";
-    if (password != confirmPassword) return "Nenosiri hazifanani";
+    if (confirmPassword.isEmpty) return LocalizationService.instance.translate('confirm_the_password');
+    if (password != confirmPassword) return LocalizationService.instance.translate('passwords_do_not_match_2');
     return null;
   }
 
@@ -282,25 +283,25 @@ class ValidationUtils {
     final DateTime? startDate,
     final DateTime? endDate,
   ) {
-    if (startDate == null) return "Tarehe ya mwanzo inahitajika";
-    if (endDate == null) return "Tarehe ya mwisho inahitajika";
+    if (startDate == null) return LocalizationService.instance.translate('start_date_is_required');
+    if (endDate == null) return LocalizationService.instance.translate('end_date_is_required');
     if (startDate.isAfter(endDate)) {
-      return "Tarehe ya mwanzo haiwezi kuwa baada ya tarehe ya mwisho";
+      return LocalizationService.instance.translate('the_start_date_cannot_be_after');
     }
     return null;
   }
 
   // Future date validation
   static String? getFutureDateError(final DateTime? date) {
-    if (date == null) return "Tarehe inahitajika";
-    if (date.isBefore(DateTime.now())) return "Tarehe lazima iwe ya baadaye";
+    if (date == null) return LocalizationService.instance.translate('date_is_required');
+    if (date.isBefore(DateTime.now())) return LocalizationService.instance.translate('the_date_must_be_in_the');
     return null;
   }
 
   // Past date validation
   static String? getPastDateError(final DateTime? date) {
-    if (date == null) return "Tarehe inahitajika";
-    if (date.isAfter(DateTime.now())) return "Tarehe lazima iwe ya zamani";
+    if (date == null) return LocalizationService.instance.translate('date_is_required');
+    if (date.isAfter(DateTime.now())) return LocalizationService.instance.translate('the_date_must_be_in_the_2');
     return null;
   }
 }

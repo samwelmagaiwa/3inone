@@ -109,7 +109,7 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
       _filterVehicles();
     } on Exception catch (e) {
       if (mounted) {
-        _showErrorSnackBar("Hitilafu katika kupakia magari: $e");
+        _showErrorSnackBar(LocalizationService.instance.translateWith('error_loading_vehicles', <Object?>[e]));
       }
     } finally {
       if (mounted) {
@@ -231,8 +231,8 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
   }
 
   PreferredSizeWidget _buildAppBar() => AppBar(
-        title: const Text(
-          "Simamia Magari",
+        title: Text(
+          LocalizationService.instance.translate('manage_vehicles'),
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -263,23 +263,23 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
             },
             itemBuilder: (final BuildContext context) =>
                 <PopupMenuEntry<String>>[
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: "export",
                 child: Row(
                   children: <Widget>[
                     Icon(Icons.download, color: ThemeConstants.primaryBlue),
                     SizedBox(width: 8),
-                    Text("Hamisha Data"),
+                    Text(LocalizationService.instance.translate('export_data')),
                   ],
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: "import",
                 child: Row(
                   children: <Widget>[
                     Icon(Icons.upload, color: Colors.orange),
                     SizedBox(width: 8),
-                    Text("Ingiza Data"),
+                    Text(LocalizationService.instance.translate('import_data')),
                   ],
                 ),
               ),
@@ -294,8 +294,8 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
           children: <Widget>[
             const CircularProgressIndicator(),
             SizedBox(height: 16.h),
-            const Text(
-              "Inapakia magari...",
+            Text(
+              "${LocalizationService.instance.translate('loading_vehicles')}...",
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.black54,
@@ -341,7 +341,7 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
                 onChanged: _onSearchChanged,
                 style: ThemeConstants.bodyStyle, // White text
                 decoration: InputDecoration(
-                  hintText: "Tafuta gari, namba, aina, au dereva...",
+                  hintText: "${LocalizationService.instance.translate('search_vehicle_number_type_or_driver')}...",
                   hintStyle: ThemeConstants.captionStyle.copyWith(
                     color: ThemeConstants.textSecondary,
                   ),
@@ -377,23 +377,23 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: <Widget>[
-                  _buildFilterChip("all", "Yote", _vehicles.length),
+                  _buildFilterChip("all", LocalizationService.instance.translate('all_3'), _vehicles.length),
                   const SizedBox(width: 8),
                   _buildFilterChip(
                     "active",
-                    "Hai",
+                    LocalizationService.instance.translate('active'),
                     _vehicles.where((final Vehicle v) => v.isActive).length,
                   ),
                   const SizedBox(width: 8),
                   _buildFilterChip(
                     "inactive",
-                    "Hahai",
+                    LocalizationService.instance.translate('inactive_driver'),
                     _vehicles.where((final Vehicle v) => !v.isActive).length,
                   ),
                   const SizedBox(width: 8),
                   _buildFilterChip(
                     "assigned",
-                    "Yamepewa",
+                    LocalizationService.instance.translate('assigned'),
                     _vehicles
                         .where((final Vehicle v) => v.driverName != null)
                         .length,
@@ -401,7 +401,7 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
                   const SizedBox(width: 8),
                   _buildFilterChip(
                     "unassigned",
-                    "Hayajapewa",
+                    LocalizationService.instance.translate('unassigned'),
                     _vehicles
                         .where((final Vehicle v) => v.driverName == null)
                         .length,
@@ -461,7 +461,7 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
         children: <Widget>[
           Expanded(
             child: _buildStatCard(
-              title: "Magari Hai",
+              title: LocalizationService.instance.translate('active_vehicles_2'),
               value: "$activeVehicles/${_vehicles.length}",
               icon: Icons.directions_car,
               color: ThemeConstants.successGreen,
@@ -470,7 +470,7 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
           const SizedBox(width: 12),
           Expanded(
             child: _buildStatCard(
-              title: "Yamepewa Madereva",
+              title: LocalizationService.instance.translate('assigned_to_drivers'),
               value: "$assignedVehicles/${_vehicles.length}",
               icon: Icons.assignment_ind,
               color: Colors.orange,
@@ -479,7 +479,7 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
           const SizedBox(width: 12),
           Expanded(
             child: _buildStatCard(
-              title: "Kiwango cha Matumizi",
+              title: LocalizationService.instance.translate('utilization_rate'),
               value: "${utilizationRate.toStringAsFixed(1)}%",
               icon: Icons.trending_up,
               color: Colors.amber,
@@ -541,8 +541,8 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
             const SizedBox(height: 16),
             Text(
               _searchQuery.isNotEmpty
-                  ? "Hakuna chombo kilichopatikana"
-                  : "Hakuna vyombo bado",
+                  ? LocalizationService.instance.translate('no_vehicle_found')
+                  : LocalizationService.instance.translate('no_vehicles_yet'),
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w500,
@@ -553,8 +553,8 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
             const SizedBox(height: 8),
             Text(
               _searchQuery.isNotEmpty
-                  ? "Jaribu kutafuta kwa jina lingine"
-                  : "Sajili chombo cha kwanza",
+                  ? LocalizationService.instance.translate('try_searching_with_another_name')
+                  : LocalizationService.instance.translate('register_your_first_vehicle'),
               style: const TextStyle(
                 fontSize: 14,
                 color: ThemeConstants
@@ -566,8 +566,8 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
               ElevatedButton.icon(
                 onPressed: _showAddVehicleDialog,
                 icon: const Icon(Icons.add, color: Colors.white),
-                label: const Text(
-                  "Sajili Chombo",
+                label: Text(
+                  LocalizationService.instance.translate('register_vehicle'),
                   style: TextStyle(color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -673,7 +673,7 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
                                 ),
                               ),
                               child: Text(
-                                isActive ? "HAI" : "HAHAI",
+                                isActive ? LocalizationService.instance.translate('active').toUpperCase() : LocalizationService.instance.translate('inactive_driver').toUpperCase(),
                                 style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
@@ -745,24 +745,24 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
                         _handleVehicleAction(value, vehicle),
                     itemBuilder: (final BuildContext context) =>
                         <PopupMenuEntry<String>>[
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: "view",
                         child: Row(
                           children: <Widget>[
                             Icon(Icons.visibility,
                                 color: ThemeConstants.primaryBlue),
                             SizedBox(width: 8),
-                            Text("Ona"),
+                            Text(LocalizationService.instance.translate('view')),
                           ],
                         ),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: "edit",
                         child: Row(
                           children: <Widget>[
                             Icon(Icons.edit, color: Colors.orange),
                             SizedBox(width: 8),
-                            Text("Hariri"),
+                            Text(LocalizationService.instance.translate('edit')),
                           ],
                         ),
                       ),
@@ -779,7 +779,7 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
                                   : ThemeConstants.successGreen,
                             ),
                             const SizedBox(width: 8),
-                            Text(isAssigned ? "Ondoa Dereva" : "Weka Dereva"),
+                            Text(isAssigned ? LocalizationService.instance.translate('remove_driver') : LocalizationService.instance.translate('assign_driver')),
                           ],
                         ),
                       ),
@@ -794,17 +794,17 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
                                   : ThemeConstants.successGreen,
                             ),
                             const SizedBox(width: 8),
-                            Text(isActive ? "Zima" : "Washa"),
+                            Text(isActive ? LocalizationService.instance.translate('deactivate') : LocalizationService.instance.translate('activate')),
                           ],
                         ),
                       ),
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: "delete",
                         child: Row(
                           children: <Widget>[
                             Icon(Icons.delete, color: ThemeConstants.errorRed),
                             SizedBox(width: 8),
-                            Text("Futa"),
+                            Text(LocalizationService.instance.translate('delete')),
                           ],
                         ),
                       ),
@@ -849,8 +849,8 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
             ThemeConstants.primaryOrange, // Use theme orange like drivers page
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
-        label: const Text(
-          "Sajili Chombo",
+        label: Text(
+          LocalizationService.instance.translate('register_vehicle'),
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
       );
@@ -872,11 +872,11 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
   String _getVehicleTypeDisplay(final String vehicleType) {
     switch (vehicleType.toLowerCase()) {
       case "bajaji":
-        return "Bajaji";
+        return LocalizationService.instance.translate('vehicle_type_bajaji');
       case "pikipiki":
-        return "Pikipiki";
+        return LocalizationService.instance.translate('vehicle_type_pikipiki');
       case "gari":
-        return "Gari";
+        return LocalizationService.instance.translate('vehicle_type_gari');
       default:
         return vehicleType;
     }
@@ -908,7 +908,7 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
             ThemeConstants.primaryBlue, // Blue background like other cards
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          "Maelezo ya ${vehicle.name}",
+          LocalizationService.instance.translateWith('details_of', <Object?>[vehicle.name]),
           style: const TextStyle(
             color: ThemeConstants.textPrimary, // White text on blue background
             fontWeight: FontWeight.bold,
@@ -919,26 +919,26 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              _buildDetailRow("Jina:", vehicle.name),
-              _buildDetailRow("Namba ya Chombo:", vehicle.plateNumber),
-              _buildDetailRow("Aina:", _getVehicleTypeDisplay(vehicle.type)),
-              _buildDetailRow("Hali:", vehicle.isActive ? "Hai" : "Hahai"),
+              _buildDetailRow("${LocalizationService.instance.translate('name')}:", vehicle.name),
+              _buildDetailRow("${LocalizationService.instance.translate('vehicle_number')}:", vehicle.plateNumber),
+              _buildDetailRow("${LocalizationService.instance.translate('type')}:", _getVehicleTypeDisplay(vehicle.type)),
+              _buildDetailRow("${LocalizationService.instance.translate('status')}:", vehicle.isActive ? LocalizationService.instance.translate('active') : LocalizationService.instance.translate('inactive_driver')),
               _buildDetailRow(
-                "Dereva:",
-                vehicle.driverName ?? "Hajapewa dereva",
+                "${LocalizationService.instance.translate('driver')}:",
+                vehicle.driverName ?? LocalizationService.instance.translate('no_driver_assigned'),
               ),
               if (vehicle.description != null &&
                   vehicle.description!.isNotEmpty)
-                _buildDetailRow("Maelezo:", vehicle.description!),
-              _buildDetailRow("Ilisajiliwa:", _formatDate(vehicle.createdAt)),
+                _buildDetailRow("${LocalizationService.instance.translate('description')}:", vehicle.description!),
+              _buildDetailRow("${LocalizationService.instance.translate('registered_on')}:", _formatDate(vehicle.createdAt)),
             ],
           ),
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
-              "Funga",
+            child: Text(
+              LocalizationService.instance.translate('close'),
               style: TextStyle(
                 color:
                     ThemeConstants.textPrimary, // White text on blue background
@@ -1035,14 +1035,14 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
       context: context,
       builder: (final BuildContext context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Ondoa Dereva"),
+        title: Text(LocalizationService.instance.translate('remove_driver')),
         content: Text(
-          "Je, una uhakika unataka kuondoa ${vehicle.driverName} kutoka kwa gari ${vehicle.plateNumber}?",
+          "${LocalizationService.instance.translateWith('are_you_sure_you_want_to', <Object?>[vehicle.driverName, vehicle.plateNumber])}?",
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Hapana"),
+            child: Text(LocalizationService.instance.translate('no')),
           ),
           TextButton(
             onPressed: () async {
@@ -1059,15 +1059,15 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
                 });
                 _filterVehicles();
                 _showSuccessSnackBar(
-                    "Dereva ameondolewa kwenye ${vehicle.plateNumber}");
+                    LocalizationService.instance.translateWith('driver_removed_from', <Object?>[vehicle.plateNumber]));
               } on Exception catch (e) {
                 if (mounted) {
-                  _showErrorSnackBar("Imeshindikana kuondoa dereva: $e");
+                  _showErrorSnackBar(LocalizationService.instance.translateWith('could_not_remove_the_driver', <Object?>[e]));
                 }
               }
             },
-            child: const Text(
-              "Ondoa",
+            child: Text(
+              LocalizationService.instance.translate('remove'),
               style: TextStyle(color: Colors.amber),
             ),
           ),
@@ -1083,16 +1083,16 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
       context: context,
       builder: (final BuildContext context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(isActive ? "Zima Gari" : "Washa Gari"),
+        title: Text(isActive ? LocalizationService.instance.translate('deactivate_vehicle') : LocalizationService.instance.translate('activate_vehicle')),
         content: Text(
           isActive
-              ? "Je, una uhakika unataka kuzima gari ${vehicle.plateNumber}?"
-              : "Je, una uhakika unataka kuwasha gari ${vehicle.plateNumber}?",
+              ? "${LocalizationService.instance.translateWith('are_you_sure_you_want_to_2', <Object?>[vehicle.plateNumber])}?"
+              : "${LocalizationService.instance.translateWith('are_you_sure_you_want_to_3', <Object?>[vehicle.plateNumber])}?",
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Hapana"),
+            child: Text(LocalizationService.instance.translate('no')),
           ),
           TextButton(
             onPressed: () async {
@@ -1113,16 +1113,16 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
                 });
                 _filterVehicles();
                 _showSuccessSnackBar(
-                    newActive ? "Chombo kimewashwa" : "Chombo kimezimwa");
+                    newActive ? LocalizationService.instance.translate('vehicle_activated') : LocalizationService.instance.translate('vehicle_deactivated'));
               } on Exception catch (e) {
                 if (mounted) {
                   _showErrorSnackBar(
-                      "Imeshindikana kubadilisha hali ya chombo: $e");
+                      LocalizationService.instance.translateWith('could_not_change_the_vehicle_status', <Object?>[e]));
                 }
               }
             },
             child: Text(
-              isActive ? "Zima" : "Washa",
+              isActive ? LocalizationService.instance.translate('deactivate') : LocalizationService.instance.translate('activate'),
               style: TextStyle(
                 color: isActive
                     ? ThemeConstants.errorRed
@@ -1140,14 +1140,14 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
       context: context,
       builder: (final BuildContext context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Futa Gari"),
+        title: Text(LocalizationService.instance.translate('delete_vehicle')),
         content: Text(
-          "Je, una uhakika unataka kufuta gari ${vehicle.plateNumber}? Kitendo hiki hakiwezi kurudishwa.",
+          LocalizationService.instance.translateWith('are_you_sure_you_want_to_4', <Object?>[vehicle.plateNumber]),
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Hapana"),
+            child: Text(LocalizationService.instance.translate('no')),
           ),
           TextButton(
             onPressed: () async {
@@ -1158,15 +1158,15 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
                 setState(() =>
                     _vehicles.removeWhere((final v) => v.id == vehicle.id));
                 _filterVehicles();
-                _showSuccessSnackBar("Chombo kimefutwa");
+                _showSuccessSnackBar(LocalizationService.instance.translate('vehicle_deleted'));
               } on Exception catch (e) {
                 if (mounted) {
-                  _showErrorSnackBar("Imeshindikana kufuta chombo: $e");
+                  _showErrorSnackBar(LocalizationService.instance.translateWith('could_not_delete_the_vehicle', <Object?>[e]));
                 }
               }
             },
-            child: const Text(
-              "Futa",
+            child: Text(
+              LocalizationService.instance.translate('delete'),
               style: TextStyle(color: ThemeConstants.errorRed),
             ),
           ),
@@ -1177,12 +1177,12 @@ class _VehiclesManagementScreenState extends State<VehiclesManagementScreen>
 
   void _exportVehicles() {
     // TODO(dev): Implement export functionality
-    ThemeConstants.showInfoSnackBar(context, "Kipengele cha kuhamisha kinatengenezwa...");
+    ThemeConstants.showInfoSnackBar(context, LocalizationService.instance.translate('export_in_development'));
   }
 
   void _importVehicles() {
     // TODO(dev): Implement import functionality
-    ThemeConstants.showInfoSnackBar(context, "Kipengele cha kuingiza kinatengenezwa...");
+    ThemeConstants.showInfoSnackBar(context, LocalizationService.instance.translate('import_in_development'));
   }
 }
 
@@ -1208,10 +1208,10 @@ class _EditVehicleDialogState extends State<_EditVehicleDialog> {
   late bool _isActive;
   bool _saving = false;
 
-  final Map<String, String> _vehicleTypes = const {
-    'bajaji': 'Bajaji',
-    'pikipiki': 'Pikipiki',
-    'gari': 'Gari',
+  final Map<String, String> _vehicleTypes = {
+    'bajaji': LocalizationService.instance.translate('vehicle_type_bajaji'),
+    'pikipiki': LocalizationService.instance.translate('vehicle_type_pikipiki'),
+    'gari': LocalizationService.instance.translate('vehicle_type_gari'),
   };
 
   InputDecoration _inputDecoration(String label, {IconData? icon}) {
@@ -1278,10 +1278,10 @@ class _EditVehicleDialogState extends State<_EditVehicleDialog> {
       if (!mounted) return;
       Navigator.pop(context);
       widget.onVehicleUpdated(updated);
-      ThemeConstants.showSuccessSnackBar(context, 'Taarifa za chombo zimehifadhiwa.');
+      ThemeConstants.showSuccessSnackBar(context, '${LocalizationService.instance.translate('vehicle_details_saved')}.');
     } on Exception catch (e) {
       if (!mounted) return;
-      ThemeConstants.showErrorSnackBar(context, 'Hitilafu: $e');
+      ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translateWith('error_2', <Object?>[e]));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -1292,7 +1292,7 @@ class _EditVehicleDialogState extends State<_EditVehicleDialog> {
     return AlertDialog(
       backgroundColor: ThemeConstants.primaryBlue,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text('Hariri ${widget.vehicle.name}',
+      title: Text(LocalizationService.instance.translateWith('edit_2', <Object?>[widget.vehicle.name]),
           style: ThemeConstants.headingStyle),
       content: SingleChildScrollView(
         child: Form(
@@ -1303,19 +1303,19 @@ class _EditVehicleDialogState extends State<_EditVehicleDialog> {
               TextFormField(
                 controller: _nameController,
                 style: const TextStyle(color: ThemeConstants.textPrimary),
-                decoration: _inputDecoration('Jina',
+                decoration: _inputDecoration(LocalizationService.instance.translate('name'),
                     icon: Icons.drive_file_rename_outline),
                 validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Weka jina' : null,
+                    (v == null || v.trim().isEmpty) ? LocalizationService.instance.translate('enter_a_name') : null,
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _plateController,
                 style: const TextStyle(color: ThemeConstants.textPrimary),
-                decoration: _inputDecoration('Namba ya Chombo',
+                decoration: _inputDecoration(LocalizationService.instance.translate('vehicle_number'),
                     icon: Icons.confirmation_number),
                 validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Weka namba ya chombo'
+                    ? LocalizationService.instance.translate('enter_the_vehicle_number')
                     : null,
               ),
               const SizedBox(height: 8),
@@ -1330,21 +1330,21 @@ class _EditVehicleDialogState extends State<_EditVehicleDialog> {
                 onChanged: (val) =>
                     setState(() => _vehicleType = val ?? _vehicleType),
                 decoration:
-                    _inputDecoration('Aina ya Chombo', icon: Icons.category),
+                    _inputDecoration(LocalizationService.instance.translate('vehicle_type'), icon: Icons.category),
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _descController,
                 style: const TextStyle(color: ThemeConstants.textPrimary),
                 decoration:
-                    _inputDecoration('Maelezo (hiari)', icon: Icons.notes),
+                    _inputDecoration(LocalizationService.instance.translate('note_optional'), icon: Icons.notes),
                 maxLines: 2,
               ),
               const SizedBox(height: 8),
               SwitchListTile(
                 value: _isActive,
                 title: Text(
-                  'Hali: ${_isActive ? 'Hai' : 'Hahai'}',
+                  '${LocalizationService.instance.translate('status')}: ${_isActive ? LocalizationService.instance.translate('active') : LocalizationService.instance.translate('inactive_driver')}',
                   style: const TextStyle(color: ThemeConstants.textPrimary),
                 ),
                 onChanged: (val) => setState(() => _isActive = val),
@@ -1357,7 +1357,7 @@ class _EditVehicleDialogState extends State<_EditVehicleDialog> {
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.pop(context),
-          child: const Text('Ghairi', style: TextStyle(color: Colors.white)),
+          child: Text(LocalizationService.instance.translate('cancel_2'), style: TextStyle(color: Colors.white)),
         ),
         ElevatedButton(
           onPressed: _saving ? null : _save,
@@ -1369,7 +1369,7 @@ class _EditVehicleDialogState extends State<_EditVehicleDialog> {
                   height: 18,
                   width: 18,
                   child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Hifadhi'),
+              : Text(LocalizationService.instance.translate('save')),
         ),
       ],
     );
@@ -1432,10 +1432,10 @@ class _AssignDriverDialogState extends State<_AssignDriverDialog> {
       if (!mounted) return;
       Navigator.pop(context);
       widget.onAssigned(updated);
-      ThemeConstants.showSuccessSnackBar(context, 'Dereva amewekwa kwa chombo.');
+      ThemeConstants.showSuccessSnackBar(context, '${LocalizationService.instance.translate('driver_assigned_to_the_vehicle')}.');
     } on Exception catch (e) {
       if (!mounted) return;
-      ThemeConstants.showErrorSnackBar(context, 'Hitilafu: $e');
+      ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translateWith('error_2', <Object?>[e]));
     }
   }
 
@@ -1444,7 +1444,7 @@ class _AssignDriverDialogState extends State<_AssignDriverDialog> {
     return AlertDialog(
       backgroundColor: ThemeConstants.primaryBlue,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text('Weka Dereva kwa ${widget.vehicle.name}',
+      title: Text(LocalizationService.instance.translateWith('assign_driver_to', <Object?>[widget.vehicle.name]),
           style: ThemeConstants.headingStyle),
       content: _loading
           ? const SizedBox(
@@ -1470,7 +1470,7 @@ class _AssignDriverDialogState extends State<_AssignDriverDialog> {
                 });
               },
               decoration: InputDecoration(
-                labelText: 'Chagua Dereva',
+                labelText: LocalizationService.instance.translate('select_driver'),
                 labelStyle:
                     const TextStyle(color: ThemeConstants.textSecondary),
                 filled: true,
@@ -1491,14 +1491,14 @@ class _AssignDriverDialogState extends State<_AssignDriverDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Ghairi', style: TextStyle(color: Colors.white)),
+          child: Text(LocalizationService.instance.translate('cancel_2'), style: TextStyle(color: Colors.white)),
         ),
         ElevatedButton(
           onPressed: _selectedDriverId == null ? null : _assign,
           style: ElevatedButton.styleFrom(
               backgroundColor: ThemeConstants.primaryOrange,
               foregroundColor: Colors.white),
-          child: const Text('Weka'),
+          child: Text(LocalizationService.instance.translate('assign')),
         ),
       ],
     );
@@ -1530,9 +1530,9 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
 
   // Vehicle types
   final Map<String, String> _vehicleTypes = <String, String>{
-    "bajaji": "Bajaji",
-    "pikipiki": "Pikipiki",
-    "gari": "Gari",
+    "bajaji": LocalizationService.instance.translate('vehicle_type_bajaji'),
+    "pikipiki": LocalizationService.instance.translate('vehicle_type_pikipiki'),
+    "gari": LocalizationService.instance.translate('vehicle_type_gari'),
   };
 
   // Colors (aligned with ThemeConstants)
@@ -1600,11 +1600,11 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
         Navigator.pop(context);
         widget.onVehicleAdded();
 
-        ThemeConstants.showSuccessSnackBar(context, "Chombo ${_plateNumberController.text} kimesajiliwa kikamilifu!");
+        ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translateWith('vehicle_was_registered_successfully', <Object?>[_plateNumberController.text]));
       }
     } on Exception catch (e) {
       if (mounted) {
-        ThemeConstants.showErrorSnackBar(context, "Hitilafu katika kusajili chombo: $e");
+        ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translateWith('error_registering_vehicle', <Object?>[e]));
       }
     } finally {
       if (mounted) {
@@ -1642,9 +1642,9 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
                       size: 28,
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        "Sajili Chombo Kipya",
+                        LocalizationService.instance.translate('register_new_vehicle'),
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -1678,16 +1678,16 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
                           style: const TextStyle(
                               color: ThemeConstants.textPrimary),
                           decoration: _inputDecoration(
-                            'Jina la Chombo *',
-                            hint: 'Mfano: Bajaji ya Kwanza',
+                            '${LocalizationService.instance.translate('vehicle_name')} *',
+                            hint: LocalizationService.instance.translate('example_first_tuk_tuk'),
                             icon: Icons.label,
                           ),
                           validator: (final String? value) {
                             if (value == null || value.trim().isEmpty) {
-                              return "Jina la gari ni lazima";
+                              return LocalizationService.instance.translate('vehicle_name_is_required');
                             }
                             if (value.trim().length < 2) {
-                              return "Jina lazima liwe na angalau herufi 2";
+                              return LocalizationService.instance.translate('name_must_have_at_least_2');
                             }
                             return null;
                           },
@@ -1701,7 +1701,7 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
                           dropdownColor: ThemeConstants.primaryBlue,
                           style: const TextStyle(
                               color: ThemeConstants.textPrimary),
-                          decoration: _inputDecoration('Aina ya Chombo *',
+                          decoration: _inputDecoration('${LocalizationService.instance.translate('vehicle_type')} *',
                               icon: Icons.category),
                           items: _vehicleTypes.entries
                               .map(
@@ -1730,15 +1730,15 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
                           controller: _plateNumberController,
                           style: const TextStyle(
                               color: ThemeConstants.textPrimary),
-                          decoration: _inputDecoration('Namba ya Chombo *',
+                          decoration: _inputDecoration('${LocalizationService.instance.translate('vehicle_number')} *',
                               hint: 'T123ABC', icon: Icons.confirmation_number),
                           textCapitalization: TextCapitalization.characters,
                           validator: (final String? value) {
                             if (value == null || value.trim().isEmpty) {
-                              return "Namba ya chombo ni lazima";
+                              return LocalizationService.instance.translate('vehicle_number_is_required');
                             }
                             if (value.trim().length < 3) {
-                              return "Namba ya chombo si sahihi";
+                              return LocalizationService.instance.translate('vehicle_number_is_not_valid');
                             }
                             return null;
                           },
@@ -1751,8 +1751,8 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
                           controller: _descriptionController,
                           style: const TextStyle(
                               color: ThemeConstants.textPrimary),
-                          decoration: _inputDecoration('Maelezo (Hiari)',
-                              hint: 'Maelezo ya ziada kuhusu gari',
+                          decoration: _inputDecoration(LocalizationService.instance.translate('note_optional'),
+                              hint: LocalizationService.instance.translate('extra_details_about_the_vehicle'),
                               icon: Icons.description),
                           maxLines: 3,
                         ),
@@ -1760,15 +1760,19 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
                         const SizedBox(height: 8),
 
                         // Status switch (Hali)
-                        SwitchListTile(
-                          value: _isActive,
-                          title: Text(
-                            'Hali: ${_isActive ? 'Hai' : 'Hahai'}',
-                            style: const TextStyle(
-                                color: ThemeConstants.textPrimary),
+                        // The row sits on a coloured box, so it gets its own Material to paint on.
+                        Material(
+                          type: MaterialType.transparency,
+                          child: SwitchListTile(
+                            value: _isActive,
+                            title: Text(
+                              '${LocalizationService.instance.translate('status')}: ${_isActive ? LocalizationService.instance.translate('active') : LocalizationService.instance.translate('inactive_driver')}',
+                              style: const TextStyle(
+                                  color: ThemeConstants.textPrimary),
+                            ),
+                            onChanged: (val) => setState(() => _isActive = val),
+                            contentPadding: EdgeInsets.zero,
                           ),
-                          onChanged: (val) => setState(() => _isActive = val),
-                          contentPadding: EdgeInsets.zero,
                         ),
                       ],
                     ),
@@ -1800,8 +1804,8 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
                           ),
                           foregroundColor: Colors.white,
                         ),
-                        child: const Text(
-                          "Ghairi",
+                        child: Text(
+                          LocalizationService.instance.translate('cancel_2'),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -1833,8 +1837,8 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
                                   ),
                                 ),
                               )
-                            : const Text(
-                                "Sajili Chombo",
+                            : Text(
+                                LocalizationService.instance.translate('register_vehicle'),
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,

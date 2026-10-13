@@ -135,7 +135,7 @@ class AuthProvider extends ChangeNotifier {
         unawaited(fetchSuperAdminContact());
       }
     } on Exception catch (e) {
-      _setError("Failed to initialize auth: $e");
+      _setError(LocalizationService.instance.translateWith('failed_to_initialize_auth', <Object?>[e]));
     } finally {
       _setLoading(false);
     }
@@ -165,7 +165,7 @@ class AuthProvider extends ChangeNotifier {
             url.contains('10.0.2.2') ||
             url.contains('192.168.');
         final String msg = isLocalBackend
-            ? 'Seva haipatikani: $url/health. Hakikisha simu yako na kompyuta yako ziko kwenye mtandao mmoja na bandari 8000 inaruhusiwa.'
+            ? LocalizationService.instance.translateWith('the_server_is_not_reachable_health', <Object?>[url])
             : 'Seva haipatikani: $url/health. Hakikisha kifaa chako kina intaneti inayofanya kazi, kisha jaribu tena.';
         _setError(msg);
         _errorMessage = msg;
@@ -193,7 +193,7 @@ class AuthProvider extends ChangeNotifier {
           await AuthService.getCurrentUser();
       if (freshUser == null) {
         throw Exception(
-            "Imeshindikana kupata taarifa za mtumiaji baada ya kuingia.");
+            LocalizationService.instance.translate('could_not_get_the_user_details'));
       }
       _user = UserData.fromJson(freshUser);
 
@@ -325,7 +325,7 @@ class AuthProvider extends ChangeNotifier {
 
       // Force-logout if account was deactivated remotely.
       if (!newUser.isActive && oldActive) {
-        AppMessenger.show('Akaunti yako imezimwa. Tafadhali wasiliana na msimamizi.');
+        AppMessenger.show(LocalizationService.instance.translate('your_account_has_been_deactivated_please'));
         await logout();
         return;
       }
@@ -432,7 +432,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on Exception catch (e) {
-      _setError("Failed to update profile: $e");
+      _setError(LocalizationService.instance.translateWith('failed_to_update_profile', <Object?>[e]));
       return false;
     } finally {
       _setLoading(false);
@@ -466,7 +466,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on Exception catch (e) {
-      _setError("Failed to upload image: $e");
+      _setError(LocalizationService.instance.translateWith('failed_to_upload_image_2', <Object?>[e]));
       return false;
     } finally {
       _setLoading(false);
@@ -494,7 +494,7 @@ class AuthProvider extends ChangeNotifier {
       );
       return true;
     } on Exception catch (e) {
-      _setError("Failed to change password: $e");
+      _setError(LocalizationService.instance.translateWith('failed_to_change_password_2', <Object?>[e]));
       return false;
     } finally {
       _setLoading(false);
@@ -540,7 +540,7 @@ class AuthProvider extends ChangeNotifier {
   // Get user display name
   String get userDisplayName {
     if (_user == null) {
-      return "Guest";
+      return LocalizationService.instance.translate('guest');
     }
     return _user!.name.isNotEmpty ? _user!.name : _user!.email;
   }

@@ -128,7 +128,7 @@ class _DriverReceiptViewer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ThemeConstants.buildScaffold(
-      title: 'Risiti',
+      title: LocalizationService.instance.translate('receipt'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: ThemeConstants.buildGlassCardStatic(
@@ -167,11 +167,11 @@ class _DriverReceiptViewer extends StatelessWidget {
                   _row(LocalizationService.instance.translate('remarks'),
                       receipt.remarks!),
                 _row(
-                    'Safari (Trips)',
+                    LocalizationService.instance.translate('driver_trips'),
                     receipt.paidDates.isNotEmpty
                         ? receipt.paidDates.length.toString()
                         : ''),
-                _row('Deni linalobaki', _formatOutstanding(receipt)),
+                _row(LocalizationService.instance.translate('outstanding_balance'), _formatOutstanding(receipt)),
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerLeft,
@@ -208,6 +208,6 @@ class _DriverReceiptViewer extends StatelessWidget {
       );
   String _formatOutstanding(Receipt r) {
     // r doesn't carry outstanding fields; keep placeholder text instructive
-    return 'Angalia ujumbe wa risiti kwa maelezo ya deni';
+    return LocalizationService.instance.translate('see_the_receipt_message_for_debt');
   }
 }

@@ -419,7 +419,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         // password). Logging out here as well would sign the user out for no reason.
         return;
       } else {
-        throw Exception(response['message'] ?? 'Failed to change password');
+        throw Exception(response['message'] ?? LocalizationService.instance.translate('failed_to_change_password'));
       }
     } catch (e) {
       if (!mounted) return;

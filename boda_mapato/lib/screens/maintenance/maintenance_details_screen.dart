@@ -6,6 +6,8 @@ import 'package:url_launcher/url_launcher_string.dart';
 import '../../constants/theme_constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/maintenance_provider.dart';
+import '../../services/localization_service.dart';
+import '../../utils/maintenance_labels.dart';
 
 class MaintenanceDetailsScreen extends StatefulWidget {
   const MaintenanceDetailsScreen({required this.request, super.key});
@@ -27,14 +29,14 @@ class _MaintenanceDetailsScreenState extends State<MaintenanceDetailsScreen> {
 
   Future<void> _callVendor(String? phone) async {
     if (phone == null || phone.isEmpty) {
-      if (mounted) ThemeConstants.showErrorSnackBar(context, "Namba ya simu haikupatikana");
+      if (mounted) ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('phone_number_not_found'));
       return;
     }
     final String urlString = "tel:$phone";
     if (await canLaunchUrlString(urlString)) {
       await launchUrlString(urlString, mode: LaunchMode.externalApplication);
     } else {
-      if (mounted) ThemeConstants.showErrorSnackBar(context, "Imeshindikana kupiga simu");
+      if (mounted) ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('could_not_make_the_call'));
     }
   }
 
@@ -70,7 +72,7 @@ class _MaintenanceDetailsScreenState extends State<MaintenanceDetailsScreen> {
                   decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10.r)),
                 ),
               ),
-              Text("Panga Fundi wa Matengenezo", 
+              Text(LocalizationService.instance.translate('assign_a_maintenance_technician'), 
                   style: ThemeConstants.headingStyle.copyWith(fontSize: 18.sp)),
               SizedBox(height: 12.h),
               ThemeConstants.buildResponsiveGlassCardStatic(
@@ -79,9 +81,9 @@ class _MaintenanceDetailsScreenState extends State<MaintenanceDetailsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Maelezo ya Ombi:", style: TextStyle(color: ThemeConstants.footerBarColor, fontSize: 11.sp, fontWeight: FontWeight.bold)),
+                    Text("${LocalizationService.instance.translate('request_details')}:", style: TextStyle(color: ThemeConstants.footerBarColor, fontSize: 11.sp, fontWeight: FontWeight.bold)),
                     SizedBox(height: 4.h),
-                    Text("${widget.request['category']} - ${widget.request['property']?['name'] ?? ''}", style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.bold)),
+                    Text("${maintenanceCategoryLabel(widget.request['category']?.toString())} - ${widget.request['property']?['name'] ?? ''}", style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.bold)),
                     SizedBox(height: 2.h),
                     Text(widget.request['description'] ?? '', style: TextStyle(color: Colors.white70, fontSize: 12.sp)),
                   ],
@@ -91,7 +93,7 @@ class _MaintenanceDetailsScreenState extends State<MaintenanceDetailsScreen> {
               DropdownButtonFormField<String>(
                 dropdownColor: const Color(0xFF1E293B),
                 style: ThemeConstants.bodyStyle,
-                decoration: _inputDecoration("Chagua Fundi"),
+                decoration: _inputDecoration(LocalizationService.instance.translate('select_technician')),
                 items: provider.vendors.map((v) {
                   return DropdownMenuItem(value: v['id'].toString(), child: Text(v['name']));
                 }).toList(),
@@ -102,7 +104,7 @@ class _MaintenanceDetailsScreenState extends State<MaintenanceDetailsScreen> {
                 controller: _costController,
                 keyboardType: TextInputType.number,
                 style: ThemeConstants.bodyStyle,
-                decoration: _inputDecoration("Gharama Inayokadiriwa (TZS)"),
+                decoration: _inputDecoration(LocalizationService.instance.translate('estimated_cost_tzs')),
               ),
               SizedBox(height: 32.h),
               SizedBox(
@@ -111,26 +113,26 @@ class _MaintenanceDetailsScreenState extends State<MaintenanceDetailsScreen> {
                 child: ElevatedButton(
                   onPressed: () async {
                     if (_selectedVendorId == null) {
-                      ThemeConstants.showErrorSnackBar(context, "Tafadhali chagua fundi");
+                      ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('please_select_a_technician'));
                       return;
                     }
                     final success = await provider.assignWorkOrder(
                       requestId: widget.request['id'].toString(),
                       vendorId: _selectedVendorId!,
-                      title: "Matengenezo ya ${widget.request['category']}",
+                      title: LocalizationService.instance.translateWith('maintenance_for', <Object?>[maintenanceCategoryLabel(widget.request['category']?.toString())]),
                       estimatedCost: double.tryParse(_costController.text),
                     );
                     if (success && mounted) {
                       Navigator.pop(context);
                       Navigator.pop(context);
-                      ThemeConstants.showSuccessSnackBar(context, "Fundi amepangiwa kikamilifu");
+                      ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('technician_assigned_successfully'));
                     }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ThemeConstants.footerBarColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
                   ),
-                  child: Text("HIFADHI MPANGO", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16.sp)),
+                  child: Text(LocalizationService.instance.translate('save_plan').toUpperCase(), style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16.sp)),
                 ),
               ),
               SizedBox(height: 30.h),
@@ -148,7 +150,7 @@ class _MaintenanceDetailsScreenState extends State<MaintenanceDetailsScreen> {
     );
     if (success && mounted) {
       if (Navigator.canPop(context)) Navigator.pop(context);
-      ThemeConstants.showSuccessSnackBar(context, "Hali ya ombi imesasishwa");
+      ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('request_status_updated'));
     }
   }
 
@@ -161,7 +163,7 @@ class _MaintenanceDetailsScreenState extends State<MaintenanceDetailsScreen> {
     final workOrder = request['work_order'];
 
     return ThemeConstants.buildScaffold(
-      title: "Maelezo ya Maombi",
+      title: LocalizationService.instance.translate('request_details_2'),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
@@ -203,7 +205,7 @@ class _MaintenanceDetailsScreenState extends State<MaintenanceDetailsScreen> {
                                 ],
                               ),
                               SizedBox(height: 16.h),
-                              Text(request['category'] ?? 'General',
+                              Text(maintenanceCategoryLabel(request['category']?.toString()),
                                   style: TextStyle(color: ThemeConstants.footerBarColor, fontSize: 13.sp, fontWeight: FontWeight.bold)),
                               SizedBox(height: 8.h),
                               Text(request['description'] ?? '',
@@ -215,20 +217,20 @@ class _MaintenanceDetailsScreenState extends State<MaintenanceDetailsScreen> {
                     ),
                   ),
                   SizedBox(height: 20.h),
-                  _buildSectionTitle("Mahali na Mali"),
+                  _buildSectionTitle(LocalizationService.instance.translate('location_and_property')),
                   ThemeConstants.buildResponsiveGlassCardStatic(
                     context,
                     child: Row(
                       children: [
-                        Expanded(child: _buildInfoColumn(Icons.home, "Mali", request['property']?['name'] ?? 'N/A')),
+                        Expanded(child: _buildInfoColumn(Icons.home, LocalizationService.instance.translate('property_label'), request['property']?['name'] ?? 'N/A')),
                         if (request['house'] != null)
-                          Expanded(child: _buildInfoColumn(Icons.door_front_door, "Nyumba", "Unit ${request['house']['house_number']}")),
+                          Expanded(child: _buildInfoColumn(Icons.door_front_door, LocalizationService.instance.translate('house_label'), LocalizationService.instance.translateWith('unit_2', <Object?>[request['house']['house_number']]))),
                       ],
                     ),
                   ),
                   SizedBox(height: 20.h),
                   if (workOrder != null) ...[
-                    _buildSectionTitle("Kazi ya Matengenezo (Work Order)"),
+                    _buildSectionTitle(LocalizationService.instance.translate('maintenance_job_work_order')),
                     ThemeConstants.buildResponsiveGlassCardStatic(
                       context,
                       child: Column(
@@ -236,7 +238,7 @@ class _MaintenanceDetailsScreenState extends State<MaintenanceDetailsScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              _buildInfoRow(Icons.person_outline, "Fundi", workOrder['vendor']?['name'] ?? 'N/A'),
+                              _buildInfoRow(Icons.person_outline, LocalizationService.instance.translate('technician'), workOrder['vendor']?['name'] ?? 'N/A'),
                               if (workOrder['vendor']?['phone'] != null)
                                 IconButton(
                                   onPressed: () => _callVendor(workOrder['vendor']['phone'].toString()),
@@ -254,8 +256,8 @@ class _MaintenanceDetailsScreenState extends State<MaintenanceDetailsScreen> {
                           Divider(color: Colors.white.withOpacity(0.08), height: 24.h),
                           Row(
                             children: [
-                              Expanded(child: _buildInfoColumn(Icons.payments_outlined, "Kadirio", "TZS ${workOrder['estimated_cost']}")),
-                              Expanded(child: _buildInfoColumn(Icons.calendar_month_outlined, "Tarehe", workOrder['scheduled_date'] ?? 'Pending')),
+                              Expanded(child: _buildInfoColumn(Icons.payments_outlined, LocalizationService.instance.translate('estimate'), "TZS ${workOrder['estimated_cost']}")),
+                              Expanded(child: _buildInfoColumn(Icons.calendar_month_outlined, LocalizationService.instance.translate('date'), workOrder['scheduled_date'] ?? LocalizationService.instance.translate('receipt_status_pending'))),
                             ],
                           ),
                         ],
@@ -264,16 +266,16 @@ class _MaintenanceDetailsScreenState extends State<MaintenanceDetailsScreen> {
                   ],
                   SizedBox(height: 40.h),
                   if (isLandlord && request['status'] == 'open')
-                    _buildActionButton("PANGA FUNDI SASA", Icons.assignment_ind, _assignVendor),
+                    _buildActionButton(LocalizationService.instance.translate('assign_technician_now').toUpperCase(), Icons.assignment_ind, _assignVendor),
                   if (isLandlord && request['status'] == 'pending')
-                    _buildActionButton("ANZA MATENGENEZO (LANDLORD)", Icons.play_circle_fill, () => _updateStatus('in_progress')),
+                    _buildActionButton(LocalizationService.instance.translate('start_maintenance_landlord').toUpperCase(), Icons.play_circle_fill, () => _updateStatus('in_progress')),
                   if (isLandlord && request['status'] == 'in_progress')
-                    _buildActionButton("SULUHISHA / KAMILISHA (LANDLORD)", Icons.check_circle, () => _updateStatus('resolved'), color: ThemeConstants.successGreen),
+                    _buildActionButton(LocalizationService.instance.translate('resolve_complete_landlord').toUpperCase(), Icons.check_circle, () => _updateStatus('resolved'), color: ThemeConstants.successGreen),
                     
                   if (isVendor && request['status'] == 'pending')
-                    _buildActionButton("ANZA KAZI HII", Icons.play_circle_fill, () => _updateStatus('in_progress')),
+                    _buildActionButton(LocalizationService.instance.translate('start_this_job').toUpperCase(), Icons.play_circle_fill, () => _updateStatus('in_progress')),
                   if (isVendor && request['status'] == 'in_progress')
-                    _buildActionButton("KAMILISHA KAZI (RESOLVE)", Icons.check_circle, () => _updateStatus('resolved'), color: ThemeConstants.successGreen),
+                    _buildActionButton(LocalizationService.instance.translate('complete_job_resolve').toUpperCase(), Icons.check_circle, () => _updateStatus('resolved'), color: ThemeConstants.successGreen),
                   SizedBox(height: 40.h),
                 ],
               ),

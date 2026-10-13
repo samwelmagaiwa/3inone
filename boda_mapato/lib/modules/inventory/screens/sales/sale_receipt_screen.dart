@@ -55,12 +55,12 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
 
   // ── Thermal 80mm plain text (48 chars wide) ─────────────────────────────────
   String _buildThermalText(Map<String, String> s) {
-    final shopName = _s(s, 'depot_name', 'DUKA LAKO');
+    final shopName = _s(s, 'depot_name', LocalizationService.instance.translate('your_shop'));
     final address  = _s(s, 'depot_address');
     final phone    = _s(s, 'depot_phone');
     final tin      = _s(s, 'receipt_tin');
     final footer   = _s(s, 'receipt_footer_note',
-        'Karibu tena! Bidhaa zilizouzwa haziruhusiwi kurudishwa bila risiti.');
+        LocalizationService.instance.translate('receipt_footer_default'));
 
     const w = 48;
     String c(String t) {
@@ -77,24 +77,24 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
     final sb = StringBuffer();
     sb.writeln(c(shopName.toUpperCase()));
     if (address.isNotEmpty) sb.writeln(c(address));
-    if (phone.isNotEmpty)   sb.writeln(c('Tel: $phone'));
+    if (phone.isNotEmpty)   sb.writeln(c(LocalizationService.instance.translateWith('phone', <Object?>[phone])));
     if (tin.isNotEmpty)     sb.writeln(c('TIN: $tin'));
     sb.writeln(line('='));
-    sb.writeln(c('RISITI YA MAUZO'));
+    sb.writeln(c(LocalizationService.instance.translate('sale_receipt').toUpperCase()));
     sb.writeln(line('='));
 
-    final custName  = sale.customerName?.isNotEmpty  == true ? sale.customerName!  : 'WALK-IN CUSTOMER';
+    final custName  = sale.customerName?.isNotEmpty  == true ? sale.customerName!  : LocalizationService.instance.translate('walk_in_customer').toUpperCase();
     final custPhone = sale.customerPhone?.isNotEmpty == true ? sale.customerPhone! : null;
     sb.writeln(c(custName.toUpperCase()));
     if (custPhone != null) sb.writeln(c(custPhone));
     sb.writeln(line());
 
     final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(sale.createdAt);
-    sb.writeln(lr('Nambari: ${sale.number}', dateStr));
+    sb.writeln(lr(LocalizationService.instance.translateWith('number', <Object?>[sale.number]), dateStr));
     sb.writeln(line());
 
     // Items
-    sb.writeln(lr('BIDHAA', 'JUMLA'));
+    sb.writeln(lr('BIDHAA', LocalizationService.instance.translate('total').toUpperCase()));
     sb.writeln(line('-'));
     for (final item in sale.items) {
       final name = item.name.length > 28 ? item.name.substring(0, 28) : item.name;
@@ -105,18 +105,18 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
     }
     sb.writeln(line());
 
-    if (sale.discount > 0) sb.writeln(lr('Punguzo:', '- TZS ${_fmt(sale.discount)}'));
-    if (sale.tax > 0)      sb.writeln(lr('Kodi (VAT):', 'TZS ${_fmt(sale.tax)}'));
-    sb.writeln(lr('JUMLA YOTE:', 'TZS ${_fmt(sale.total)}'));
+    if (sale.discount > 0) sb.writeln(lr('${LocalizationService.instance.translate('discount')}:', '- TZS ${_fmt(sale.discount)}'));
+    if (sale.tax > 0)      sb.writeln(lr('${LocalizationService.instance.translate('tax_vat')}:', 'TZS ${_fmt(sale.tax)}'));
+    sb.writeln(lr('${LocalizationService.instance.translate('grand_total').toUpperCase()}:', 'TZS ${_fmt(sale.total)}'));
     sb.writeln(line('='));
 
     // Payments
-    sb.writeln(c('MALIPO'));
+    sb.writeln(c(LocalizationService.instance.translate('payments_section').toUpperCase()));
     sb.writeln(line('-'));
     if (sale.payments.isEmpty && sale.paidTotal > 0) {
-      sb.writeln(lr('Kilicholipwa:', 'TZS ${_fmt(sale.paidTotal)}'));
+      sb.writeln(lr('${LocalizationService.instance.translate('paid_3')}:', 'TZS ${_fmt(sale.paidTotal)}'));
     } else if (sale.payments.isEmpty) {
-      sb.writeln(lr('Njia ya Malipo:', '—'));
+      sb.writeln(lr('${LocalizationService.instance.translate('payment_method_label')}:', '—'));
     } else {
       for (final p in sale.payments) {
         final method = _methodLabel(p.method);
@@ -124,19 +124,19 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
         sb.writeln(lr('$method ($dateP):', 'TZS ${_fmt(p.amount)}'));
       }
     }
-    sb.writeln(lr('Jumla Iliyolipwa:', 'TZS ${_fmt(sale.paidTotal)}'));
+    sb.writeln(lr('${LocalizationService.instance.translate('total_paid')}:', 'TZS ${_fmt(sale.paidTotal)}'));
 
     final change      = (sale.paidTotal - sale.total).clamp(0, double.infinity);
     final outstanding = (sale.total    - sale.paidTotal).clamp(0, double.infinity);
-    if (change > 0)      sb.writeln(lr('Chenji:', 'TZS ${_fmt(change as double)}'));
-    if (outstanding > 0) sb.writeln(lr('*** DENI LINALOBAKI:', 'TZS ${_fmt(outstanding as double)}'));
+    if (change > 0)      sb.writeln(lr('${LocalizationService.instance.translate('change')}:', 'TZS ${_fmt(change as double)}'));
+    if (outstanding > 0) sb.writeln(lr('${LocalizationService.instance.translate('balance_due').toUpperCase()}:', 'TZS ${_fmt(outstanding as double)}'));
 
-    final status = sale.paymentStatus == 'paid' ? '[OK] MALIPO KAMILI' :
-                   sale.paymentStatus == 'debt'  ? '[X]  DENI' : '[~]  SEHEMU';
+    final status = sale.paymentStatus == 'paid' ? LocalizationService.instance.translate('ok_fully_paid').toUpperCase() :
+                   sale.paymentStatus == 'debt'  ? LocalizationService.instance.translate('x_debt').toUpperCase() : LocalizationService.instance.translate('partial_2').toUpperCase();
     sb.writeln(line('='));
     sb.writeln(c(status));
     sb.writeln(line('='));
-    sb.writeln(c('*** ASANTE SANA! ***'));
+    sb.writeln(c(LocalizationService.instance.translate('thank_you_2').toUpperCase()));
 
     sb.writeln(c(footer));
     sb.writeln(line());
@@ -145,24 +145,24 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
 
   String _methodLabel(String m) {
     switch (m.toLowerCase()) {
-      case 'cash':          return 'Taslimu';
+      case 'cash':          return LocalizationService.instance.translate('method_cash');
       case 'mobile_money':
-      case 'mobile':        return 'M-Pesa/Simu';
+      case 'mobile':        return LocalizationService.instance.translate('m_pesa_mobile');
       case 'bank_transfer':
-      case 'bank':          return 'Benki';
-      case 'cheque':        return 'Hundi';
+      case 'bank':          return LocalizationService.instance.translate('payment_channel_bank');
+      case 'cheque':        return LocalizationService.instance.translate('method_cheque');
       default:              return m;
     }
   }
 
   // ── PDF generation ── styled to match on-screen receipt ────────────────────
   Future<pw.Document> _buildPdf(Map<String, String> s) async {
-    final shopName  = _s(s, 'depot_name', 'DUKA LAKO');
+    final shopName  = _s(s, 'depot_name', LocalizationService.instance.translate('your_shop'));
     final address   = _s(s, 'depot_address');
     final phone     = _s(s, 'depot_phone');
     final tin       = _s(s, 'receipt_tin');
     final footer    = _s(s, 'receipt_footer_note',
-        'Karibu tena! Bidhaa zilizouzwa haziruhusiwi kurudishwa bila risiti.');
+        LocalizationService.instance.translate('receipt_footer_default'));
     final showTin   = (s['receipt_show_tin'] ?? '1') == '1';
 
     final doc       = pw.Document();
@@ -182,7 +182,7 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
     final orangeLight=PdfColor.fromHex('#FFF3E0');
 
     final custName  = sale.customerName?.isNotEmpty  == true
-        ? sale.customerName!.toUpperCase() : 'WALK-IN CUSTOMER';
+        ? sale.customerName!.toUpperCase() : LocalizationService.instance.translate('walk_in_customer').toUpperCase();
     final custPhone = sale.customerPhone?.isNotEmpty == true
         ? sale.customerPhone! : null;
     final dateStr   = DateFormat('dd MMM yyyy').format(sale.createdAt);
@@ -272,7 +272,7 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
           // Phone left — TIN right
           pw.Row(children: [
             if (phone.isNotEmpty)
-              pw.Text('Tel: $phone', style: ts(9, b: true)),
+              pw.Text(LocalizationService.instance.translateWith('phone', <Object?>[phone]), style: ts(9, b: true)),
             pw.Spacer(),
             if (showTin && tin.isNotEmpty)
               pw.Text('TIN: $tin', style: ts(9, b: true)),
@@ -280,7 +280,7 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
           thick(),
 
           // ── Receipt title ────────────────────────────────────────────────
-          banner('RISITI YA MAUZO'),
+          banner(LocalizationService.instance.translate('sale_receipt').toUpperCase()),
 
           // ── Customer ─────────────────────────────────────────────────────
           pw.SizedBox(height: 4),
@@ -306,23 +306,23 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
                 pw.Expanded(child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('Nambari', style: ts(7.5, color: muted)),
+                    pw.Text(LocalizationService.instance.translate('receipt_number_label'), style: ts(7.5, color: muted)),
                     pw.Text(sale.number, style: ts(9, b: true)),
                     pw.SizedBox(height: 4),
-                    pw.Text('Saa', style: ts(7.5, color: muted)),
+                    pw.Text(LocalizationService.instance.translate('receipt_time'), style: ts(7.5, color: muted)),
                     pw.Text(timeStr, style: ts(9, b: true)),
                   ],
                 )),
                 pw.Expanded(child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
-                    pw.Text('Tarehe', style: ts(7.5, color: muted)),
+                    pw.Text(LocalizationService.instance.translate('date'), style: ts(7.5, color: muted)),
                     pw.Text(dateStr, style: ts(9, b: true)),
                     pw.SizedBox(height: 4),
-                    pw.Text('Hali ya Malipo', style: ts(7.5, color: muted)),
+                    pw.Text(LocalizationService.instance.translate('payment_status_label'), style: ts(7.5, color: muted)),
                     pw.Text(
-                      sale.paymentStatus == 'paid' ? 'Imelipwa'
-                        : sale.paymentStatus == 'debt' ? 'Deni' : 'Sehemu',
+                      sale.paymentStatus == 'paid' ? LocalizationService.instance.translate('bill_paid')
+                        : sale.paymentStatus == 'debt' ? LocalizationService.instance.translate('status_debt_label') : LocalizationService.instance.translate('bill_partial'),
                       style: ts(9, b: true,
                           color: sale.paymentStatus == 'paid' ? greenDark
                             : sale.paymentStatus == 'debt' ? redDark : orangeDark),
@@ -336,12 +336,12 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
 
           // ── Items table ──────────────────────────────────────────────────
           pw.Row(children: [
-            pw.Expanded(child: pw.Text('BIDHAA', style: ts(9, b: true))),
+            pw.Expanded(child: pw.Text(LocalizationService.instance.translate('items_header'), style: ts(9, b: true))),
             pw.SizedBox(width: 30,
-                child: pw.Text('QTY', style: ts(9, b: true),
+                child: pw.Text(LocalizationService.instance.translate('qty').toUpperCase(), style: ts(9, b: true),
                     textAlign: pw.TextAlign.center)),
             pw.SizedBox(width: 55,
-                child: pw.Text('JUMLA', style: ts(9, b: true),
+                child: pw.Text(LocalizationService.instance.translate('total').toUpperCase(), style: ts(9, b: true),
                     textAlign: pw.TextAlign.right)),
           ]),
           thin(),
@@ -390,15 +390,15 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
 
           // ── Subtotals ────────────────────────────────────────────────────
           if (sale.discount > 0)
-            row('Punguzo', '- TZS ${_fmt(sale.discount)}', color: redDark),
+            row(LocalizationService.instance.translate('discount'), '- TZS ${_fmt(sale.discount)}', color: redDark),
           if (sale.tax > 0)
-            row('Kodi (VAT)', 'TZS ${_fmt(sale.tax)}'),
+            row(LocalizationService.instance.translate('tax_vat'), 'TZS ${_fmt(sale.tax)}'),
 
           // Grand total
           pw.Padding(
             padding: const pw.EdgeInsets.symmetric(vertical: 4),
             child: pw.Row(children: [
-              pw.Expanded(child: pw.Text('JUMLA YOTE',
+              pw.Expanded(child: pw.Text(LocalizationService.instance.translate('grand_total').toUpperCase(),
                   style: ts(14, b: true))),
               pw.Text('TZS ${_fmt(sale.total)}',
                   style: ts(14, b: true),
@@ -408,20 +408,20 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
           thick(),
 
           // ── Payments ─────────────────────────────────────────────────────
-          banner('MALIPO'),
+          banner(LocalizationService.instance.translate('payments_section').toUpperCase()),
           if (sale.payments.isEmpty && sale.paidTotal > 0)
-            row('Kilicholipwa', 'TZS ${_fmt(sale.paidTotal)}')
+            row(LocalizationService.instance.translate('paid_3'), 'TZS ${_fmt(sale.paidTotal)}')
           else if (sale.payments.isEmpty)
-            row('Njia ya Malipo', '—')
+            row(LocalizationService.instance.translate('payment_method_label'), '—')
           else
             ...sale.payments.map((p) => row(
                   _methodLabel(p.method),
                   'TZS ${_fmt(p.amount)}',
                   sub: DateFormat('dd/MM/yyyy HH:mm').format(p.paidAt),
                 )),
-          row('Jumla Iliyolipwa', 'TZS ${_fmt(sale.paidTotal)}', b: true),
+          row(LocalizationService.instance.translate('total_paid'), 'TZS ${_fmt(sale.paidTotal)}', b: true),
           if (change > 0)
-            row('Chenji', 'TZS ${_fmt(change)}'),
+            row(LocalizationService.instance.translate('change'), 'TZS ${_fmt(change)}'),
           if (outstanding > 0) ...[
             pw.SizedBox(height: 4),
             pw.Container(
@@ -432,7 +432,7 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
                 borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
               ),
               child: pw.Row(children: [
-                pw.Expanded(child: pw.Text('Deni linalobaki',
+                pw.Expanded(child: pw.Text(LocalizationService.instance.translate('outstanding_balance'),
                     style: ts(9, color: redDark))),
                 pw.Text('TZS ${_fmt(outstanding)}',
                     style: ts(9, b: true, color: redDark),
@@ -452,9 +452,9 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
               borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
             ),
             child: pw.Text(
-              sale.paymentStatus == 'paid'  ? 'MALIPO KAMILI'
-                : sale.paymentStatus == 'debt' ? 'DENI'
-                : 'SEHEMU',
+              sale.paymentStatus == 'paid'  ? LocalizationService.instance.translate('status_paid_label').toUpperCase()
+                : sale.paymentStatus == 'debt' ? LocalizationService.instance.translate('status_debt_label').toUpperCase()
+                : LocalizationService.instance.translate('bill_partial').toUpperCase(),
               textAlign: pw.TextAlign.center,
               style: ts(13, b: true,
                   color: sale.paymentStatus == 'paid' ? greenDark
@@ -465,7 +465,7 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
 
           // ── Footer ───────────────────────────────────────────────────────
           pw.SizedBox(height: 4),
-          pw.Center(child: pw.Text('ASANTE SANA!',
+          pw.Center(child: pw.Text('${LocalizationService.instance.translate('thank_you_3').toUpperCase()}!',
               style: ts(14, b: true), textAlign: pw.TextAlign.center)),
           pw.SizedBox(height: 4),
           pw.Center(child: pw.Text(footer,
@@ -494,7 +494,7 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
     final tmp  = await getTemporaryDirectory();
     final file = File('${tmp.path}/Risiti-${sale.number}.png');
     await file.writeAsBytes(png);
-    await Share.shareXFiles([XFile(file.path)], subject: 'Risiti ${sale.number}');
+    await Share.shareXFiles([XFile(file.path)], subject: LocalizationService.instance.translateWith('receipt_2', <Object?>[sale.number]));
   }
 
   Future<void> _printReceiptImage() async {
@@ -556,7 +556,7 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
           final file = File('${tmp.path}/Risiti-${sale.number}-thermal.txt');
           await file.writeAsString(text);
           await Share.shareXFiles([XFile(file.path)],
-              subject: 'Risiti ${sale.number}',
+              subject: LocalizationService.instance.translateWith('receipt_2', <Object?>[sale.number]),
               text: text);
         },
       ),
@@ -573,7 +573,7 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
     // Saving depot/receipt settings is gated server-side by inv_manage_settings.
     final canConfigure = context.select<AuthProvider, UserPermissions>((AuthProvider a) => a.permissions).has('inv_manage_settings');
 
-    final shopName   = _s(s, 'depot_name', 'DUKA LAKO');
+    final shopName   = _s(s, 'depot_name', LocalizationService.instance.translate('your_shop'));
     final tagline    = _s(s, 'receipt_tagline');
     final address    = _s(s, 'depot_address');
     final phone      = _s(s, 'depot_phone');
@@ -986,7 +986,7 @@ class _ReceiptPaper extends StatelessWidget {
                 const SizedBox(height: 12),
 
                 // ── Receipt title banner ──────────────────────────────────
-                _SectionBanner(label: 'RISITI YA MAUZO'),
+                _SectionBanner(label: LocalizationService.instance.translate('sale_receipt').toUpperCase()),
                 const SizedBox(height: 12),
 
                 // ── Customer name (always shown, transparent bg) ─────────
@@ -1001,7 +1001,7 @@ class _ReceiptPaper extends StatelessWidget {
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              custName != null ? custName.toUpperCase() : 'WALK-IN CUSTOMER',
+                              custName != null ? custName.toUpperCase() : LocalizationService.instance.translate('walk_in_customer').toUpperCase(),
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontFamily: 'Courier', fontSize: 13,
@@ -1177,7 +1177,7 @@ class _ReceiptPaper extends StatelessWidget {
                 Text(
                   footerNote.isNotEmpty
                       ? footerNote
-                      : 'Karibu tena!\nBidhaa zilizouzwa haziruhusiwi kurudishwa bila risiti.',
+                      : LocalizationService.instance.translate('receipt_footer_default_lines'),
                   style: _label.copyWith(fontSize: 10, height: 1.4, color: const Color(0xFF2A2A2A)),
                   textAlign: TextAlign.center,
                 ),
@@ -1272,7 +1272,7 @@ class _ContactLine extends StatelessWidget {
     bool _ok(String v) => v.isNotEmpty && v != 'null';
     final parts = [
       if (_ok(address)) address,
-      if (_ok(phone)) 'Tel: $phone',
+      if (_ok(phone)) LocalizationService.instance.translateWith('phone', <Object?>[phone]),
       if (_ok(email)) email,
       if (_ok(website)) website,
       if (_ok(tin)) 'TIN: $tin',

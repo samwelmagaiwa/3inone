@@ -148,7 +148,7 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
       });
     } on Exception catch (e) {
       if (mounted) {
-        ThemeConstants.showErrorSnackBar(context, "Hitilafu: $e");
+        ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translateWith('error_2', <Object?>[e]));
       }
     } finally {
       if (mounted) {
@@ -189,14 +189,14 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
                 value: "logout",
                 child: ResponsiveRow(
                   spacing: ResponsiveUtils.getResponsiveSpacing(context, 8),
-                  children: const <Widget>[
+                  children: <Widget>[
                     Icon(
                       Icons.logout,
                       color: Colors.white,
                       size: 20,
                     ),
                     Text(
-                      "Toka",
+                      LocalizationService.instance.translate('logout'),
                       style: TextStyle(color: Colors.white),
                     ),
                   ],
@@ -586,8 +586,8 @@ class _DriverDashboardScreenState extends State<DriverDashboardScreen> {
           _driverAgreement?['kiasi_cha_makubaliano']);
       final double perWeek =
           _toDouble(_driverAgreement?['amount_per_week'] ?? 0);
-      if (perWeek > 0) return 'TSh ${perWeek.toStringAsFixed(0)} / Wiki';
-      return 'TSh ${perDay.toStringAsFixed(0)} / Siku';
+      if (perWeek > 0) return LocalizationService.instance.translateWith('tsh_week', <Object?>[perWeek.toStringAsFixed(0)]);
+      return LocalizationService.instance.translateWith('tsh_day', <Object?>[perDay.toStringAsFixed(0)]);
     }
     final double remaining = _toDouble(_driverAgreement?['remaining_total'] ??
         _driverAgreement?['total_expected']);
@@ -701,11 +701,11 @@ class _PaymentRequestDialogState extends State<_PaymentRequestDialog> {
 
       if (mounted) {
         Navigator.pop(context);
-        ThemeConstants.showSuccessSnackBar(context, "Ombi la malipo limetumwa. Inasubiri idhini ya admin.");
+        ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('payment_request_sent_waiting_for_admin'));
       }
     } on Exception catch (e) {
       if (mounted) {
-        ThemeConstants.showErrorSnackBar(context, "Hitilafu: $e");
+        ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translateWith('error_2', <Object?>[e]));
       }
     } finally {
       if (mounted) {
@@ -729,24 +729,24 @@ class _PaymentRequestDialogState extends State<_PaymentRequestDialog> {
                 spacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
                 children: <Widget>[
                   Text(
-                    "Omba Malipo",
+                    LocalizationService.instance.translate('request_payment'),
                     style: AppStyles.heading3Responsive(context),
                   ),
                   TextFormField(
                     controller: _amountController,
                     style: AppStyles.bodyMediumResponsive(context),
                     decoration: AppStyles.inputDecoration(context).copyWith(
-                      labelText: "Kiasi (TSh)",
+                      labelText: LocalizationService.instance.translate('amount_tsh'),
                       prefixText: "TSh ",
                     ),
                     keyboardType: TextInputType.number,
                     validator: (final String? value) {
                       if (value == null || value.trim().isEmpty) {
-                        return "Kiasi kinahitajika";
+                        return LocalizationService.instance.translate('amount_is_required');
                       }
                       if (double.tryParse(value) == null ||
                           double.parse(value) <= 0) {
-                        return "Kiasi si sahihi";
+                        return LocalizationService.instance.translate('invalid_amount');
                       }
                       return null;
                     },
@@ -755,12 +755,12 @@ class _PaymentRequestDialogState extends State<_PaymentRequestDialog> {
                     controller: _descriptionController,
                     style: AppStyles.bodyMediumResponsive(context),
                     decoration: AppStyles.inputDecoration(context).copyWith(
-                      labelText: "Maelezo",
+                      labelText: LocalizationService.instance.translate('description'),
                     ),
                     maxLines: 3,
                     validator: (final String? value) {
                       if (value == null || value.trim().isEmpty) {
-                        return "Maelezo yanahitajika";
+                        return LocalizationService.instance.translate('description_is_required');
                       }
                       return null;
                     },
@@ -769,13 +769,13 @@ class _PaymentRequestDialogState extends State<_PaymentRequestDialog> {
                     initialValue: _paymentMethod,
                     style: AppStyles.bodyMediumResponsive(context),
                     decoration: AppStyles.inputDecoration(context).copyWith(
-                      labelText: "Njia ya Malipo",
+                      labelText: LocalizationService.instance.translate('payment_method_label'),
                     ),
                     items: <DropdownMenuItem<String>>[
                       DropdownMenuItem(
                         value: "cash",
                         child: Text(
-                          "Fedha Taslimu",
+                          LocalizationService.instance.translate('cash'),
                           style: AppStyles.bodyMediumResponsive(context),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
@@ -784,7 +784,7 @@ class _PaymentRequestDialogState extends State<_PaymentRequestDialog> {
                       DropdownMenuItem(
                         value: "mobile_money",
                         child: Text(
-                          "Pesa za Simu",
+                          LocalizationService.instance.translate('mobile_money'),
                           style: AppStyles.bodyMediumResponsive(context),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
@@ -793,7 +793,7 @@ class _PaymentRequestDialogState extends State<_PaymentRequestDialog> {
                       DropdownMenuItem(
                         value: "bank_transfer",
                         child: Text(
-                          "Uhamisho wa Benki",
+                          LocalizationService.instance.translate('bank_transfer'),
                           style: AppStyles.bodyMediumResponsive(context),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
@@ -811,14 +811,14 @@ class _PaymentRequestDialogState extends State<_PaymentRequestDialog> {
                     children: <Widget>[
                       Expanded(
                         child: CustomButton(
-                          text: "Ghairi",
+                          text: LocalizationService.instance.translate('cancel_2'),
                           onPressed: () => Navigator.pop(context),
                           isOutlined: true,
                         ),
                       ),
                       Expanded(
                         child: CustomButton(
-                          text: _isLoading ? "Inatuma..." : "Tuma Ombi",
+                          text: _isLoading ? "${LocalizationService.instance.translate('sending_2')}..." : LocalizationService.instance.translate('send_request'),
                           onPressed: _isLoading ? null : _submitPaymentRequest,
                           isLoading: _isLoading,
                         ),

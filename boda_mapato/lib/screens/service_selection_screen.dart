@@ -105,11 +105,7 @@ class ServiceSelectionScreen extends StatelessWidget {
               SizedBox(height: 16.h),
               Expanded(
                 child: _hasAnyVisible
-                    ? GridView.count(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12.w,
-                        mainAxisSpacing: 12.h,
-                        childAspectRatio: 1.05,
+                    ? _ServiceRows(
                         children: [
                           if (_allows('inventory'))
                             _ServiceTile(
@@ -239,6 +235,38 @@ class _NoServiceAccessState extends State<_NoServiceAccess> {
   }
 }
 
+/// The services in rows of up to three, every row centred: three services sit side by side, two or one in the
+/// middle, and a fourth would start a new row, also centred. (A two-column grid left the third service alone at the
+/// left of a second row.)
+class _ServiceRows extends StatelessWidget {
+  const _ServiceRows({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints box) {
+        final double gap = 12.w;
+        final double tileWidth = (box.maxWidth - 2 * gap) / 3;
+        return SingleChildScrollView(
+          child: SizedBox(
+            width: double.infinity,
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              spacing: gap,
+              runSpacing: 20.h,
+              children: <Widget>[
+                for (final Widget tile in children) SizedBox(width: tileWidth, child: tile),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _ServiceTile extends StatelessWidget {
   const _ServiceTile(
       {required this.icon, required this.label, required this.onTap});
@@ -254,7 +282,7 @@ class _ServiceTile extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 8.w),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: 80.w,
@@ -273,19 +301,17 @@ class _ServiceTile extends StatelessWidget {
               child: Icon(icon, color: Colors.white, size: 40.sp),
             ),
             SizedBox(height: 8.h),
-            Flexible(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4.w),
-                child: AutoSizeText(
-                  label,
-                  maxLines: 2,
-                  minFontSize: 10,
-                  maxFontSize: 14,
-                  overflow: TextOverflow.ellipsis,
-                  style: ThemeConstants.bodyStyle
-                      .copyWith(fontWeight: FontWeight.w600),
-                  textAlign: TextAlign.center,
-                ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4.w),
+              child: AutoSizeText(
+                label,
+                maxLines: 2,
+                minFontSize: 10,
+                maxFontSize: 14,
+                overflow: TextOverflow.ellipsis,
+                style: ThemeConstants.bodyStyle
+                    .copyWith(fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center,
               ),
             ),
           ],

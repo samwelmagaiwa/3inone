@@ -381,8 +381,8 @@ class _AddHouseBottomSheetState extends State<AddHouseBottomSheet> {
                               bool isExceeded = remaining < 0;
                               return Text(
                                 isExceeded 
-                                  ? "Kiasi kinazidi lengo kwa TZS ${remaining.abs().toStringAsFixed(0)}"
-                                  : "Baki la Lengo: TZS ${remaining.toStringAsFixed(0)}",
+                                  ? LocalizationService.instance.translateWith('amount_is_above_the_target_by', <Object?>[remaining.abs().toStringAsFixed(0)])
+                                  : LocalizationService.instance.translateWith('remaining_target_tzs', <Object?>[remaining.toStringAsFixed(0)]),
                                 style: TextStyle(
                                   color: isExceeded ? ThemeConstants.errorRed : ThemeConstants.successGreen,
                                   fontSize: 11.sp,
@@ -538,10 +538,10 @@ class _AddHouseBottomSheetState extends State<AddHouseBottomSheet> {
                     ],
                   ),
                   SizedBox(height: 16.h),
-                  _buildSwitch("Bili za Huduma (Maji/Umeme)", _utilityBillingEnabled, 
+                  _buildSwitch(LocalizationService.instance.translate('utility_bills_water_electricity'), _utilityBillingEnabled, 
                     (v) => setState(() => _utilityBillingEnabled = v), Icons.electrical_services),
                   SizedBox(height: 8.h),
-                  _buildTextField(_ownershipNotesCtrl, "Maelezo ya Umiliki", Icons.note_alt_outlined, maxLines: 3),
+                  _buildTextField(_ownershipNotesCtrl, LocalizationService.instance.translate('ownership_details'), Icons.note_alt_outlined, maxLines: 3),
                   SizedBox(height: 16.h),
                   _buildTextField(_notesCtrl, _loc.translate('notes'), Icons.description, maxLines: 3),
 
@@ -833,7 +833,7 @@ class _AddHouseBottomSheetState extends State<AddHouseBottomSheet> {
           Icon(Icons.calendar_today, color: ThemeConstants.primaryOrange, size: 20.sp),
           SizedBox(width: 12.w),
           Expanded(child: Text(
-            value != null ? "${value.day}/${value.month}/${value.year}" : "$label (Tap to select)",
+            value != null ? "${value.day}/${value.month}/${value.year}" : LocalizationService.instance.translateWith('tap_to_select', <Object?>[label]),
             style: TextStyle(color: value != null ? Colors.white : Colors.white38, fontSize: 14.sp),
           )),
         ]),
@@ -856,7 +856,7 @@ class _AddHouseBottomSheetState extends State<AddHouseBottomSheet> {
       if (remaining < 0) {
         if (mounted) {
           ThemeConstants.showErrorSnackBar(
-              context, "Kiasi cha kodi kinazidi lengo la jengo.");
+              context, LocalizationService.instance.translate('the_rent_amount_is_above_the'));
         }
         setState(() => _attemptedSubmit = false);
         return;
@@ -955,8 +955,8 @@ class _AddHouseBottomSheetState extends State<AddHouseBottomSheet> {
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
             backgroundColor: ThemeConstants.bgMid,
-            title: Text('House Created', style: const TextStyle(color: Colors.white)),
-            content: Text('Do you want to onboard a tenant or create a lease agreement for this house now?', style: const TextStyle(color: Colors.white70)),
+            title: Text(LocalizationService.instance.translate('house_created'), style: const TextStyle(color: Colors.white)),
+            content: Text(LocalizationService.instance.translate('do_you_want_to_onboard_a'), style: const TextStyle(color: Colors.white70)),
             actions: [
               TextButton(
                 onPressed: () {
@@ -965,7 +965,7 @@ class _AddHouseBottomSheetState extends State<AddHouseBottomSheet> {
                   nav.pop(); // bottom sheet
                   widget.onSaved();
                 },
-                child: Text('Not Now', style: const TextStyle(color: Colors.white54)),
+                child: Text(LocalizationService.instance.translate('not_now'), style: const TextStyle(color: Colors.white54)),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -981,7 +981,7 @@ class _AddHouseBottomSheetState extends State<AddHouseBottomSheet> {
                   ));
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: ThemeConstants.primaryOrange),
-                child: Text('Yes, Onboard Tenant', style: const TextStyle(color: Colors.white)),
+                child: Text(LocalizationService.instance.translate('yes_onboard_tenant'), style: const TextStyle(color: Colors.white)),
               ),
             ],
           ),

@@ -280,7 +280,7 @@ class _HouseDetailsScreenState extends State<HouseDetailsScreen> {
     if (status == 'occupied') statusColor = _kOrange;
     if (status == 'maintenance') statusColor = _kRed;
 
-    final String propertyName = h['property']?['name'] ?? h['property_name'] ?? 'Mali ya Upangaji';
+    final String propertyName = h['property']?['name'] ?? h['property_name'] ?? LocalizationService.instance.translate('rental_property');
     final String type = loc.translate(h['type']?.toString().toLowerCase() ?? 'room').toUpperCase();
     final String houseNumber = h['house_number'] ?? '';
 
@@ -378,7 +378,7 @@ class _HouseDetailsScreenState extends State<HouseDetailsScreen> {
           child: _buildPriceStatItem(
             loc.translate("rent"),
             "Tsh ${_formatCurrency(h['rent_amount'])}",
-            "/ mwezi",
+            LocalizationService.instance.translate('month_2'),
             Icons.payments_outlined,
             _kOrange,
           ),
@@ -447,7 +447,7 @@ class _HouseDetailsScreenState extends State<HouseDetailsScreen> {
   }
 
   String _resolveTenantPhone(dynamic tenant) {
-    if (tenant == null || tenant is! Map) return 'Hakuna Namba ya Simu';
+    if (tenant == null || tenant is! Map) return LocalizationService.instance.translate('no_phone_number');
     const phoneKeys = ['phone_number', 'phone', 'mobile', 'telephone'];
 
     String? _extract(Map m) {
@@ -470,7 +470,7 @@ class _HouseDetailsScreenState extends State<HouseDetailsScreen> {
         if (found != null) return found;
       }
     }
-    return 'Hakuna Namba ya Simu';
+    return LocalizationService.instance.translate('no_phone_number');
   }
 
   Widget _buildTenantSection(Map<String, dynamic> h) {
@@ -600,16 +600,16 @@ class _HouseDetailsScreenState extends State<HouseDetailsScreen> {
               _buildInfoRow(loc.translate("bedrooms"), (h['bedrooms'] ?? 0).toString(), Icons.bed_outlined, showBorder: true),
               _buildInfoRow(loc.translate("bathrooms"), (h['bathrooms'] ?? 0).toString(), Icons.shower_outlined, showBorder: h['floor'] != null && h['floor'].toString() != '0' || h['square_meters'] != null && h['square_meters'].toString() != '0'),
               if (h['floor'] != null && h['floor'].toString() != '0')
-                _buildInfoRow("Floor", h['floor'].toString(), Icons.layers_outlined, showBorder: h['square_meters'] != null && h['square_meters'].toString() != '0'),
+                _buildInfoRow(LocalizationService.instance.translate('floor'), h['floor'].toString(), Icons.layers_outlined, showBorder: h['square_meters'] != null && h['square_meters'].toString() != '0'),
               if (h['square_meters'] != null && h['square_meters'].toString() != '0')
-                _buildInfoRow("Square Meters", "${h['square_meters']} m²", Icons.square_foot_outlined, showBorder: false),
+                _buildInfoRow(LocalizationService.instance.translate('square_meters'), "${h['square_meters']} m²", Icons.square_foot_outlined, showBorder: false),
             ],
           ),
         ),
         
         SizedBox(height: 16.h),
         Text(
-          "SIFA ZA NYUMBA",
+          LocalizationService.instance.translate('house_features_2').toUpperCase(),
           style: TextStyle(
             color: Colors.white38,
             fontSize: 9.sp,
@@ -622,11 +622,11 @@ class _HouseDetailsScreenState extends State<HouseDetailsScreen> {
           spacing: 8.w,
           runSpacing: 8.h,
           children: [
-            _buildFeatureChip("Vigae (Tiles)", hasTiles, Icons.grid_view_rounded),
-            _buildFeatureChip("Uzio (Fence)", hasFence, Icons.fence_outlined),
-            _buildFeatureChip("Jiko (Kitchen)", hasKitchen, Icons.kitchen_outlined),
-            _buildFeatureChip("Sebule (Sitting Room)", hasSittingRoom, Icons.chair_outlined),
-            _buildFeatureChip("Master Bedroom", hasMasterBedroom, Icons.king_bed_outlined),
+            _buildFeatureChip(LocalizationService.instance.translate('feature_tiles'), hasTiles, Icons.grid_view_rounded),
+            _buildFeatureChip(LocalizationService.instance.translate('feature_fence'), hasFence, Icons.fence_outlined),
+            _buildFeatureChip(LocalizationService.instance.translate('feature_kitchen'), hasKitchen, Icons.kitchen_outlined),
+            _buildFeatureChip(LocalizationService.instance.translate('feature_sitting_room'), hasSittingRoom, Icons.chair_outlined),
+            _buildFeatureChip(LocalizationService.instance.translate('master_bedroom'), hasMasterBedroom, Icons.king_bed_outlined),
           ],
         ),
         

@@ -1,4 +1,5 @@
 import "package:flutter/foundation.dart";
+import '../services/localization_service.dart';
 
 enum DeviceType {
   bajaji,
@@ -10,11 +11,11 @@ extension DeviceTypeExtension on DeviceType {
   String get name {
     switch (this) {
       case DeviceType.bajaji:
-        return "Bajaji";
+        return LocalizationService.instance.translate('vehicle_type_bajaji');
       case DeviceType.pikipiki:
-        return "Pikipiki";
+        return LocalizationService.instance.translate('vehicle_type_pikipiki');
       case DeviceType.gari:
-        return "Gari";
+        return LocalizationService.instance.translate('vehicle_type_gari');
     }
   }
 

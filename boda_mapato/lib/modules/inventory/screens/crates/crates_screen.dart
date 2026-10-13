@@ -45,6 +45,7 @@ class _CratesScreenState extends State<CratesScreen> {
   @override
   Widget build(BuildContext context) {
     final LocalizationService loc = context.watch<LocalizationService>();
+    final bool isDepot = context.select<DepotProvider, bool>((DepotProvider d) => d.capabilities.isDepot);
 
     if (_loading) {
       return const Scaffold(
@@ -56,7 +57,7 @@ class _CratesScreenState extends State<CratesScreen> {
     return InvTabScaffold(
       title: '',
       tabs: <String>[
-        loc.translate('depot_position'),
+        loc.translateForKind('depot_position', isDepot: isDepot),
         loc.translate('customers'),
       ],
       views: <Widget>[

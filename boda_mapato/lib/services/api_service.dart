@@ -2,13 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 // ignore_for_file: avoid_dynamic_calls, avoid_positional_boolean_parameters, cascade_invocations, avoid_catches_without_on_clauses
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'http_client.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
 import '../models/dashboard_report.dart';
 import '../models/revenue_report.dart';
 import 'auth_events.dart';
+import 'localization_service.dart';
 
 class ApiService {
   // API Configuration - Updated for Laravel backend
@@ -242,9 +243,9 @@ class ApiService {
       }
       throw ApiException("Server returned status ${response.statusCode}");
     } on SocketException catch (e) {
-      throw ApiException("Hakuna muunganisho wa mtandao: ${e.message}");
+      throw ApiException(LocalizationService.instance.translateWith('no_network_connection', <Object?>[e.message]));
     } on Exception catch (e) {
-      throw ApiException("Hitilafu ya kupata PDF: $e");
+      throw ApiException(LocalizationService.instance.translateWith('error_getting_the_pdf', <Object?>[e]));
     }
   }
 
@@ -278,7 +279,7 @@ class ApiService {
 
       // If auth is required but no token present, avoid hitting the server at all
       if (requireAuth && !headers.containsKey("Authorization")) {
-        throw ApiException("Hauruhusiwi - tafadhali ingia tena");
+        throw ApiException(LocalizationService.instance.translate('not_allowed_please_log_in_again'));
       }
 
       final Uri uri = Uri.parse("$baseUrl$endpoint").replace(
@@ -286,25 +287,37 @@ class ApiService {
             queryParams?.map((key, value) => MapEntry(key, value.toString())),
       );
 
-      final http.Response response = await http
-          .get(
-            uri,
-            headers: headers,
-          )
-          .timeout(timeoutDuration);
+      final http.Response response = await _sharedGet(uri, headers);
 
       return _handleResponse(response);
     } on SocketException catch (e) {
-      throw ApiException("Hakuna muunganisho wa mtandao: ${e.message}");
+      throw ApiException(LocalizationService.instance.translateWith('no_network_connection', <Object?>[e.message]));
     } on HttpException catch (e) {
-      throw ApiException("Hitilafu ya seva: ${e.message}");
+      throw ApiException(LocalizationService.instance.translateWith('server_error_2', <Object?>[e.message]));
     } on FormatException catch (e) {
       throw ApiException("Jibu la seva halieleweki: ${e.message}");
     } on ApiException {
       rethrow;
     } on Exception catch (e) {
-      throw ApiException("Hitilafu isiyojulikana: $e");
+      throw ApiException(LocalizationService.instance.translateWith('unknown_error_2', <Object?>[e]));
     }
+  }
+
+  /// GETs that are on their way right now, by who is asking and what for. Opening a screen makes several
+  /// providers ask for the same thing in the same moment (the business settings, the crate types, the sales
+  /// officers ...): they now share one request. Only while it is in flight: the moment it answers it is forgotten,
+  /// so nobody ever receives an old answer. Each caller decodes the response for itself.
+  static final Map<String, Future<http.Response>> _inFlight = <String, Future<http.Response>>{};
+
+  Future<http.Response> _sharedGet(final Uri uri, final Map<String, String> headers) {
+    final String key = '${headers["Authorization"] ?? ""} $uri';
+    final Future<http.Response>? running = _inFlight[key];
+    if (running != null) return running;
+
+    final Future<http.Response> request = http.get(uri, headers: headers).timeout(timeoutDuration);
+    _inFlight[key] = request;
+    request.then<void>((_) => _inFlight.remove(key), onError: (final Object _) => _inFlight.remove(key));
+    return request;
   }
 
   Future<Map<String, dynamic>> _post(
@@ -316,7 +329,7 @@ class ApiService {
       final Map<String, String> headers =
           requireAuth ? await _authHeaders : _headers;
       if (requireAuth && !headers.containsKey("Authorization")) {
-        throw ApiException("Hauruhusiwi - tafadhali ingia tena");
+        throw ApiException(LocalizationService.instance.translate('not_allowed_please_log_in_again'));
       }
 
       final String fullUrl = "$baseUrl$endpoint";
@@ -334,15 +347,15 @@ class ApiService {
 
       return _handleResponse(response);
     } on SocketException catch (e) {
-      throw ApiException("Hakuna muunganisho wa mtandao: ${e.message}");
+      throw ApiException(LocalizationService.instance.translateWith('no_network_connection', <Object?>[e.message]));
     } on HttpException catch (e) {
-      throw ApiException("Hitilafu ya seva: ${e.message}");
+      throw ApiException(LocalizationService.instance.translateWith('server_error_2', <Object?>[e.message]));
     } on FormatException catch (e) {
       throw ApiException("Jibu la seva halieleweki: ${e.message}");
     } on ApiException {
       rethrow;
     } on Exception catch (e) {
-      throw ApiException("Hitilafu isiyojulikana: $e");
+      throw ApiException(LocalizationService.instance.translateWith('unknown_error_2', <Object?>[e]));
     }
   }
 
@@ -353,7 +366,7 @@ class ApiService {
     try {
       final Map<String, String> headers = await _authHeaders;
       if (!headers.containsKey("Authorization")) {
-        throw ApiException("Hauruhusiwi - tafadhali ingia tena");
+        throw ApiException(LocalizationService.instance.translate('not_allowed_please_log_in_again'));
       }
       final http.Response response = await http
           .put(
@@ -365,15 +378,15 @@ class ApiService {
 
       return _handleResponse(response);
     } on SocketException catch (e) {
-      throw ApiException("Hakuna muunganisho wa mtandao: ${e.message}");
+      throw ApiException(LocalizationService.instance.translateWith('no_network_connection', <Object?>[e.message]));
     } on HttpException catch (e) {
-      throw ApiException("Hitilafu ya seva: ${e.message}");
+      throw ApiException(LocalizationService.instance.translateWith('server_error_2', <Object?>[e.message]));
     } on FormatException catch (e) {
       throw ApiException("Jibu la seva halieleweki: ${e.message}");
     } on ApiException {
       rethrow;
     } on Exception catch (e) {
-      throw ApiException("Hitilafu isiyojulikana: $e");
+      throw ApiException(LocalizationService.instance.translateWith('unknown_error_2', <Object?>[e]));
     }
   }
 
@@ -381,7 +394,7 @@ class ApiService {
     try {
       final Map<String, String> headers = await _authHeaders;
       if (!headers.containsKey("Authorization")) {
-        throw ApiException("Hauruhusiwi - tafadhali ingia tena");
+        throw ApiException(LocalizationService.instance.translate('not_allowed_please_log_in_again'));
       }
       final http.Response response = await http
           .delete(
@@ -392,15 +405,15 @@ class ApiService {
 
       return _handleResponse(response);
     } on SocketException catch (e) {
-      throw ApiException("Hakuna muunganisho wa mtandao: ${e.message}");
+      throw ApiException(LocalizationService.instance.translateWith('no_network_connection', <Object?>[e.message]));
     } on HttpException catch (e) {
-      throw ApiException("Hitilafu ya seva: ${e.message}");
+      throw ApiException(LocalizationService.instance.translateWith('server_error_2', <Object?>[e.message]));
     } on FormatException catch (e) {
       throw ApiException("Jibu la seva halieleweki: ${e.message}");
     } on ApiException {
       rethrow;
     } on Exception catch (e) {
-      throw ApiException("Hitilafu isiyojulikana: $e");
+      throw ApiException(LocalizationService.instance.translateWith('unknown_error_2', <Object?>[e]));
     }
   }
 
@@ -424,7 +437,7 @@ class ApiService {
     try {
       data = json.decode(response.body);
     } on Exception {
-      throw ApiException("Jibu la seva halieleweki");
+      throw ApiException(LocalizationService.instance.translate('the_server_s_answer_is_not'));
     }
 
     // Debug logging in debug mode only
@@ -444,28 +457,28 @@ class ApiService {
       case 201:
         return data;
       case 400:
-        throw ApiException(data["message"] ?? "Ombi si sahihi");
+        throw ApiException(data["message"] ?? LocalizationService.instance.translate('invalid_request'));
       case 401:
         // Broadcast unauthorized — AuthProvider will verify the token before
         // actually logging the user out (prevents false logouts from transient
         // 401s on polling or non-critical endpoints).
         AuthEvents.instance.emit(AuthEvent.unauthorized);
-        throw ApiException("Hauruhusiwi - tafadhali ingia tena");
+        throw ApiException(LocalizationService.instance.translate('not_allowed_please_log_in_again'));
       case 403:
         // A service this business was never given deserves its own message, not
         // a generic "not allowed" that looks like a bug.
         if (data["code"] == "service_not_assigned") {
           throw ApiException(data["message"] ??
-              "Akaunti yako haijapewa huduma hii. Wasiliana na msimamizi wako.");
+              LocalizationService.instance.translate('your_account_has_not_been_given'));
         }
-        throw ApiException("Hauruhusiwi kufikia rasilimali hii");
+        throw ApiException(LocalizationService.instance.translate('you_are_not_allowed_to_access'));
       case 404:
         throw ApiException("Rasilimali haipatikani");
       case 409:
         // e.g. "already approved" / "inventory is held by another business":
         // the server's explanation is what the user needs.
         throw ApiException(
-            data["message"] ?? "Ombi linapingana na hali ya sasa");
+            data["message"] ?? LocalizationService.instance.translate('the_request_conflicts_with_the_current'));
       case 422:
         final Map<String, dynamic>? errors =
             data["errors"] as Map<String, dynamic>?;
@@ -475,12 +488,12 @@ class ApiService {
             throw ApiException(firstError.first.toString());
           }
         }
-        throw ApiException(data["message"] ?? "Data si sahihi");
+        throw ApiException(data["message"] ?? LocalizationService.instance.translate('invalid_data'));
       case 500:
-        throw ApiException(data["message"] ?? "Hitilafu ya seva ya ndani");
+        throw ApiException(data["message"] ?? LocalizationService.instance.translate('internal_server_error'));
       default:
         throw ApiException(data["message"] ??
-            "Hitilafu isiyojulikana: ${response.statusCode}");
+            LocalizationService.instance.translateWith('unknown_error_2', <Object?>[response.statusCode]));
     }
   }
 
@@ -596,7 +609,7 @@ class ApiService {
   }) async {
     final Map<String, String> headers = await _authHeaders;
     if (!headers.containsKey("Authorization")) {
-      throw ApiException("Hauruhusiwi - tafadhali ingia tena");
+      throw ApiException(LocalizationService.instance.translate('not_allowed_please_log_in_again'));
     }
     final http.MultipartRequest request = http.MultipartRequest("POST", Uri.parse("$baseUrl/business/logo"));
     final Map<String, String> h = Map<String, String>.of(headers)..remove("Content-Type");
@@ -848,7 +861,7 @@ class ApiService {
   }) async {
     final Map<String, String> headers = await _authHeaders;
     if (!headers.containsKey("Authorization")) {
-      throw ApiException("Hauruhusiwi - tafadhali ingia tena");
+      throw ApiException(LocalizationService.instance.translate('not_allowed_please_log_in_again'));
     }
 
     Future<Map<String, dynamic>> send(String endpoint, String fieldName) async {

@@ -6,6 +6,7 @@ import "../../services/api_service.dart";
 import "../../services/app_events.dart";
 import "../../widgets/custom_button.dart";
 import "../../widgets/custom_card.dart";
+import '../../services/localization_service.dart';
 
 class RecordPaymentScreen extends StatefulWidget {
   const RecordPaymentScreen({super.key});
@@ -45,22 +46,22 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
 
   // Payment categories
   final Map<String, String> _paymentCategories = <String, String>{
-    "daily_payment": "Malipo ya Kila Siku",
-    "weekly_payment": "Malipo ya Kila Wiki",
-    "trip_payment": "Malipo ya Safari",
-    "delivery_payment": "Malipo ya Uwasilishaji",
-    "rental_payment": "Malipo ya Kukodisha",
-    "fuel_contribution": "Mchango wa Mafuta",
-    "maintenance_fee": "Ada ya Matengenezo",
-    "other_payment": "Malipo Mengine",
+    "daily_payment": LocalizationService.instance.translate('daily_payment'),
+    "weekly_payment": LocalizationService.instance.translate('weekly_payment'),
+    "trip_payment": LocalizationService.instance.translate('trip_payment'),
+    "delivery_payment": LocalizationService.instance.translate('delivery_payment'),
+    "rental_payment": LocalizationService.instance.translate('rental_payment'),
+    "fuel_contribution": LocalizationService.instance.translate('fuel_contribution'),
+    "maintenance_fee": LocalizationService.instance.translate('maintenance_fee'),
+    "other_payment": LocalizationService.instance.translate('other_payments'),
   };
 
   // Payment methods
   final Map<String, String> _paymentMethods = <String, String>{
-    "cash": "Fedha Taslimu",
-    "mobile_money": "Pesa za Simu",
-    "bank_transfer": "Uhamisho wa Benki",
-    "card": "Kadi",
+    "cash": LocalizationService.instance.translate('cash'),
+    "mobile_money": LocalizationService.instance.translate('mobile_money'),
+    "bank_transfer": LocalizationService.instance.translate('bank_transfer'),
+    "card": LocalizationService.instance.translate('card'),
   };
 
   @override
@@ -126,7 +127,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
       }
     } on Exception catch (e) {
       if (mounted) {
-        _showErrorSnackBar("Hitilafu katika kupakia madereva: $e");
+        _showErrorSnackBar(LocalizationService.instance.translateWith('error_loading_drivers', <Object?>[e]));
       }
     } finally {
       if (mounted) {
@@ -183,7 +184,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
       }
     } on Exception catch (e) {
       if (mounted) {
-        _showErrorSnackBar("Hitilafu katika kupakia magari: $e");
+        _showErrorSnackBar(LocalizationService.instance.translateWith('error_loading_vehicles', <Object?>[e]));
       }
     } finally {
       if (mounted) {
@@ -200,7 +201,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
     }
 
     if (_selectedDriverId == null) {
-      _showErrorSnackBar("Tafadhali chagua dereva");
+      _showErrorSnackBar(LocalizationService.instance.translate('please_select_a_driver'));
       return;
     }
 
@@ -233,7 +234,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
       await _apiService.recordPayment(paymentData);
 
       if (mounted) {
-        _showSuccessSnackBar("Malipo yamerekodiwa kikamilifu!");
+        _showSuccessSnackBar("${LocalizationService.instance.translate('payment_recorded_successfully')}!");
         _clearForm();
 
         // Emit events to notify other screens about payment updates
@@ -243,7 +244,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
       }
     } on Exception catch (e) {
       if (mounted) {
-        _showErrorSnackBar("Hitilafu katika kurekodi malipo: $e");
+        _showErrorSnackBar(LocalizationService.instance.translateWith('error_recording_the_payment', <Object?>[e]));
       }
     } finally {
       if (mounted) {
@@ -284,8 +285,8 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
   Widget build(final BuildContext context) => Scaffold(
         backgroundColor: grayBackground,
         appBar: AppBar(
-          title: const Text(
-            "Rekodi Malipo",
+          title: Text(
+            LocalizationService.instance.translate('record_payment'),
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -330,12 +331,12 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                             ),
                           ),
                           const SizedBox(width: 16),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: <Widget>[
                                 Text(
-                                  "Rekodi Malipo ya Dereva",
+                                  LocalizationService.instance.translate('record_driver_payment'),
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -346,7 +347,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                                 ),
                                 SizedBox(height: 8),
                                 Text(
-                                  "Ingiza taarifa za malipo ya dereva",
+                                  LocalizationService.instance.translate('enter_the_driver_s_payment_details'),
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: Colors.black54,
@@ -371,8 +372,8 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          const Text(
-                            "Chagua Dereva",
+                          Text(
+                            LocalizationService.instance.translate('select_driver'),
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -384,9 +385,10 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                             const Center(child: CircularProgressIndicator())
                           else
                             DropdownButtonFormField<String>(
+                              isExpanded: true,
                               initialValue: _selectedDriverId,
                               decoration: InputDecoration(
-                                labelText: "Dereva",
+                                labelText: LocalizationService.instance.translate('driver'),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -415,7 +417,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                               },
                               validator: (final String? value) {
                                 if (value == null || value.isEmpty) {
-                                  return "Tafadhali chagua dereva";
+                                  return LocalizationService.instance.translate('please_select_a_driver');
                                 }
                                 return null;
                               },
@@ -434,8 +436,8 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          const Text(
-                            "Chagua Gari (Hiari)",
+                          Text(
+                            LocalizationService.instance.translate('select_vehicle_optional'),
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -447,17 +449,18 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                             const Center(child: CircularProgressIndicator())
                           else
                             DropdownButtonFormField<String>(
+                              isExpanded: true,
                               initialValue: _selectedVehicleId,
                               decoration: InputDecoration(
-                                labelText: "Gari",
+                                labelText: LocalizationService.instance.translate('vehicle_2'),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 prefixIcon: const Icon(Icons.directions_car),
                               ),
                               items: <DropdownMenuItem<String>>[
-                                const DropdownMenuItem<String>(
-                                  child: Text("Hakuna gari"),
+                                DropdownMenuItem<String>(
+                                  child: Text(LocalizationService.instance.translate('no_vehicle')),
                                 ),
                                 ..._vehicles.map(
                                   (final Map<String, dynamic> vehicle) =>
@@ -492,8 +495,8 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          const Text(
-                            "Taarifa za Malipo",
+                          Text(
+                            LocalizationService.instance.translate('payment_information'),
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -507,7 +510,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                             controller: _amountController,
                             keyboardType: TextInputType.number,
                             decoration: InputDecoration(
-                              labelText: "Kiasi (TSH)",
+                              labelText: LocalizationService.instance.translate('amount_tsh'),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -516,13 +519,13 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                             ),
                             validator: (final String? value) {
                               if (value == null || value.isEmpty) {
-                                return "Tafadhali ingiza kiasi";
+                                return LocalizationService.instance.translate('please_enter_the_amount');
                               }
                               if (double.tryParse(value) == null) {
-                                return "Ingiza kiasi sahihi";
+                                return LocalizationService.instance.translate('enter_a_valid_amount_3');
                               }
                               if (double.parse(value) <= 0) {
-                                return "Kiasi lazima kiwe zaidi ya sifuri";
+                                return LocalizationService.instance.translate('the_amount_must_be_greater_than');
                               }
                               return null;
                             },
@@ -532,9 +535,10 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
 
                           // Category
                           DropdownButtonFormField<String>(
+                            isExpanded: true,
                             initialValue: _selectedCategory,
                             decoration: InputDecoration(
-                              labelText: "Aina ya Malipo",
+                              labelText: LocalizationService.instance.translate('payment_mode'),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -565,9 +569,10 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
 
                           // Payment Method
                           DropdownButtonFormField<String>(
+                            isExpanded: true,
                             initialValue: _selectedPaymentMethod,
                             decoration: InputDecoration(
-                              labelText: "Njia ya Malipo",
+                              labelText: LocalizationService.instance.translate('payment_method_label'),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -601,7 +606,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                             controller: _descriptionController,
                             maxLines: 3,
                             decoration: InputDecoration(
-                              labelText: "Maelezo",
+                              labelText: LocalizationService.instance.translate('description'),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -609,7 +614,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                             ),
                             validator: (final String? value) {
                               if (value == null || value.isEmpty) {
-                                return "Tafadhali ingiza maelezo";
+                                return LocalizationService.instance.translate('please_enter_a_description');
                               }
                               return null;
                             },
@@ -628,8 +633,8 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          const Text(
-                            "Taarifa za Mteja (Hiari)",
+                          Text(
+                            LocalizationService.instance.translate('customer_information_optional'),
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -642,7 +647,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                           TextFormField(
                             controller: _customerNameController,
                             decoration: InputDecoration(
-                              labelText: "Jina la Mteja",
+                              labelText: LocalizationService.instance.translate('customer_name'),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -657,7 +662,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                             controller: _customerPhoneController,
                             keyboardType: TextInputType.phone,
                             decoration: InputDecoration(
-                              labelText: "Namba ya Simu ya Mteja",
+                              labelText: LocalizationService.instance.translate('customer_phone_number'),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -672,7 +677,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                             controller: _notesController,
                             maxLines: 2,
                             decoration: InputDecoration(
-                              labelText: "Maelezo ya Ziada (Hiari)",
+                              labelText: LocalizationService.instance.translate('extra_details_optional'),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -688,7 +693,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
 
                   // Submit Button
                   CustomButton(
-                    text: "Rekodi Malipo",
+                    text: LocalizationService.instance.translate('record_payment'),
                     onPressed: _isLoading ? null : _recordPayment,
                     isLoading: _isLoading,
                     backgroundColor: successGreen,
@@ -699,7 +704,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
 
                   // Clear Button
                   CustomButton(
-                    text: "Futa Fomu",
+                    text: LocalizationService.instance.translate('clear_form'),
                     onPressed: _isLoading ? null : _clearForm,
                     backgroundColor: Colors.grey,
                     height: 48,

@@ -5,6 +5,7 @@ import '../constants/styles.dart';
 import '../constants/theme_constants.dart';
 import '../models/reminder.dart';
 import '../utils/date_utils.dart';
+import '../services/localization_service.dart';
 
 class ReminderTile extends StatelessWidget {
   const ReminderTile({
@@ -134,7 +135,7 @@ class ReminderTile extends StatelessWidget {
                             ),
                           ),
                           child: Text(
-                            "Imechelewa",
+                            LocalizationService.instance.translate('late'),
                             style: AppStyles.bodySmall.copyWith(
                               color: AppColors.error,
                               fontWeight: FontWeight.w600,
@@ -162,7 +163,7 @@ class ReminderTile extends StatelessWidget {
                                 children: <Widget>[
                                   Icon(Icons.check, size: 16.sp),
                                   const SizedBox(width: 8),
-                                  const Text("Kamilisha"),
+                                  Text(LocalizationService.instance.translate('complete')),
                                 ],
                               ),
                             ),
@@ -172,7 +173,7 @@ class ReminderTile extends StatelessWidget {
                               children: <Widget>[
                                 Icon(Icons.edit, size: 16.sp),
                                 const SizedBox(width: 8),
-                                const Text("Hariri"),
+                                Text(LocalizationService.instance.translate('edit')),
                               ],
                             ),
                           ),
@@ -186,8 +187,8 @@ class ReminderTile extends StatelessWidget {
                                   color: AppColors.error,
                                 ),
                                 const SizedBox(width: 8),
-                                const Text(
-                                  "Futa",
+                                Text(
+                                  LocalizationService.instance.translate('delete'),
                                   style: TextStyle(color: AppColors.error),
                                 ),
                               ],
@@ -214,7 +215,7 @@ class ReminderTile extends StatelessWidget {
                       child: OutlinedButton.icon(
                         onPressed: onComplete,
                         icon: Icon(Icons.check, size: 16.sp),
-                        label: const Text("Kamilisha"),
+                        label: Text(LocalizationService.instance.translate('complete')),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.success,
                           side: const BorderSide(color: AppColors.success),
@@ -226,10 +227,10 @@ class ReminderTile extends StatelessWidget {
                       child: OutlinedButton.icon(
                         onPressed: () {
                           // Snooze reminder (add 1 hour)
-                          ThemeConstants.showInfoSnackBar(context, "Kikumbusho kimesongwa kwa saa 1");
+                          ThemeConstants.showInfoSnackBar(context, LocalizationService.instance.translate('reminder_snoozed_for_1_hour'));
                         },
                         icon: Icon(Icons.snooze, size: 16.sp),
-                        label: const Text("Songeza"),
+                        label: Text(LocalizationService.instance.translate('snooze_2')),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.warning,
                           side: const BorderSide(color: AppColors.warning),
@@ -290,25 +291,25 @@ class ReminderTile extends StatelessWidget {
     if (isOverdue) {
       final Duration difference = now.difference(reminderTime);
       if (difference.inDays > 0) {
-        return "Imechelewa kwa siku ${difference.inDays}";
+        return LocalizationService.instance.translateWith('overdue_by_days', <Object?>[difference.inDays]);
       } else if (difference.inHours > 0) {
-        return "Imechelewa kwa saa ${difference.inHours}";
+        return LocalizationService.instance.translateWith('overdue_by_hours', <Object?>[difference.inHours]);
       } else {
-        return "Imechelewa kwa dakika ${difference.inMinutes}";
+        return LocalizationService.instance.translateWith('overdue_by_minutes', <Object?>[difference.inMinutes]);
       }
     }
 
     if (reminderTime.day == now.day &&
         reminderTime.month == now.month &&
         reminderTime.year == now.year) {
-      return "Leo ${AppDateUtils.formatTime(reminderTime)}";
+      return LocalizationService.instance.translateWith('today_2', <Object?>[AppDateUtils.formatTime(reminderTime)]);
     }
 
     final DateTime tomorrow = now.add(const Duration(days: 1));
     if (reminderTime.day == tomorrow.day &&
         reminderTime.month == tomorrow.month &&
         reminderTime.year == tomorrow.year) {
-      return "Kesho ${AppDateUtils.formatTime(reminderTime)}";
+      return LocalizationService.instance.translateWith('tomorrow', <Object?>[AppDateUtils.formatTime(reminderTime)]);
     }
 
     return "${AppDateUtils.formatDate(reminderTime)} ${AppDateUtils.formatTime(reminderTime)}";

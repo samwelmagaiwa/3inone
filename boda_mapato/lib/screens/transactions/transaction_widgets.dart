@@ -4,6 +4,7 @@ import "../../constants/styles.dart";
 import "../../models/transaction.dart";
 import "../../utils/date_utils.dart";
 import "../../utils/type_helpers.dart";
+import '../../services/localization_service.dart';
 
 class TransactionSummaryCard extends StatelessWidget {
   const TransactionSummaryCard({
@@ -57,7 +58,7 @@ class TransactionSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: AppStyles.spacingS),
           Text(
-            "${transactions.length} miamala",
+            LocalizationService.instance.translateWith('transactions_2', <Object?>[transactions.length]),
             style: AppStyles.bodySmall.copyWith(
               color: AppColors.textSecondary,
             ),
@@ -80,7 +81,7 @@ class TransactionFilterChips extends StatelessWidget {
   @override
   Widget build(final BuildContext context) {
     // Use type-safe filter options to prevent InvalidType errors
-    const List<FilterOption> filters = CommonFilters.transactionFilters;
+    final List<FilterOption> filters = CommonFilters.transactionFilters;
 
     return SizedBox(
       height: 40,
@@ -137,7 +138,7 @@ class TransactionChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            "Mchoro wa Mapato - $period",
+            LocalizationService.instance.translateWith('income_chart', <Object?>[period]),
             style: AppStyles.heading3,
           ),
           const SizedBox(height: AppStyles.spacingM),
@@ -145,7 +146,7 @@ class TransactionChart extends StatelessWidget {
             child: groupedTransactions.isEmpty
                 ? Center(
                     child: Text(
-                      "Hakuna data ya kuonyesha",
+                      LocalizationService.instance.translate('no_data_to_show'),
                       style: AppStyles.bodyMedium.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -173,8 +174,8 @@ class TransactionChart extends StatelessWidget {
 
   Widget _buildChart(final Map<String, double> data) {
     if (data.isEmpty) {
-      return const Center(
-        child: Text("Hakuna data ya kuonyesha"),
+      return Center(
+        child: Text(LocalizationService.instance.translate('no_data_to_show')),
       );
     }
 

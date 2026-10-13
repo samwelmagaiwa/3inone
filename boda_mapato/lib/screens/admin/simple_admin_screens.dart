@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 
 import '../../constants/theme_constants.dart';
 import '../../utils/responsive_helper.dart';
+import '../../services/localization_service.dart';
 
 class SimpleDriversManagementScreen extends StatelessWidget {
   const SimpleDriversManagementScreen({super.key});
@@ -11,7 +12,7 @@ class SimpleDriversManagementScreen extends StatelessWidget {
     ResponsiveHelper.init(context);
     return ThemeConstants.buildResponsiveScaffold(
       context,
-      title: "Madereva",
+      title: LocalizationService.instance.translate('drivers'),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -23,7 +24,7 @@ class SimpleDriversManagementScreen extends StatelessWidget {
             ),
             ResponsiveHelper.verticalSpace(2.5),
             Text(
-              "Usimamizi wa Madereva",
+              LocalizationService.instance.translate('drivers_management'),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: ResponsiveHelper.h2,
@@ -32,7 +33,7 @@ class SimpleDriversManagementScreen extends StatelessWidget {
             ),
             ResponsiveHelper.verticalSpace(1.2),
             Text(
-              "Ukurasa huu bado unajengwa",
+              LocalizationService.instance.translate('this_page_is_still_being_built'),
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: ResponsiveHelper.bodyL,
@@ -52,12 +53,12 @@ class SimpleVehiclesManagementScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Magari"),
+        title: Text(LocalizationService.instance.translate('vehicles_3')),
         backgroundColor: ThemeConstants.primaryBlue,
         foregroundColor: Colors.white,
       ),
       backgroundColor: ThemeConstants.primaryBlue,
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -68,7 +69,7 @@ class SimpleVehiclesManagementScreen extends StatelessWidget {
             ),
             SizedBox(height: 20),
             Text(
-              "Usimamizi wa Magari",
+              LocalizationService.instance.translate('vehicle_management'),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 24,
@@ -77,7 +78,7 @@ class SimpleVehiclesManagementScreen extends StatelessWidget {
             ),
             SizedBox(height: 10),
             Text(
-              "Ukurasa huu bado unajengwa",
+              LocalizationService.instance.translate('this_page_is_still_being_built'),
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
@@ -97,12 +98,12 @@ class SimplePaymentsManagementScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Malipo"),
+        title: Text(LocalizationService.instance.translate('payments_section')),
         backgroundColor: ThemeConstants.primaryBlue,
         foregroundColor: Colors.white,
       ),
       backgroundColor: ThemeConstants.primaryBlue,
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -113,7 +114,7 @@ class SimplePaymentsManagementScreen extends StatelessWidget {
             ),
             SizedBox(height: 20),
             Text(
-              "Usimamizi wa Malipo",
+              LocalizationService.instance.translate('payments_management'),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 24,
@@ -122,7 +123,7 @@ class SimplePaymentsManagementScreen extends StatelessWidget {
             ),
             SizedBox(height: 10),
             Text(
-              "Ukurasa huu bado unajengwa",
+              LocalizationService.instance.translate('this_page_is_still_being_built'),
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
@@ -142,12 +143,12 @@ class SimpleAnalyticsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Takwimu"),
+        title: Text(LocalizationService.instance.translate('analytics')),
         backgroundColor: ThemeConstants.primaryBlue,
         foregroundColor: Colors.white,
       ),
       backgroundColor: ThemeConstants.primaryBlue,
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -158,7 +159,7 @@ class SimpleAnalyticsScreen extends StatelessWidget {
             ),
             SizedBox(height: 20),
             Text(
-              "Takwimu",
+              LocalizationService.instance.translate('analytics'),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 24,
@@ -167,7 +168,7 @@ class SimpleAnalyticsScreen extends StatelessWidget {
             ),
             SizedBox(height: 10),
             Text(
-              "Ukurasa huu bado unajengwa",
+              LocalizationService.instance.translate('this_page_is_still_being_built'),
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
@@ -187,12 +188,12 @@ class SimpleReportsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Ripoti"),
+        title: Text(LocalizationService.instance.translate('reports')),
         backgroundColor: ThemeConstants.primaryBlue,
         foregroundColor: Colors.white,
       ),
       backgroundColor: ThemeConstants.primaryBlue,
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -203,7 +204,7 @@ class SimpleReportsScreen extends StatelessWidget {
             ),
             SizedBox(height: 20),
             Text(
-              "Ripoti",
+              LocalizationService.instance.translate('reports'),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 24,
@@ -212,7 +213,7 @@ class SimpleReportsScreen extends StatelessWidget {
             ),
             SizedBox(height: 10),
             Text(
-              "Ukurasa huu bado unajengwa",
+              LocalizationService.instance.translate('this_page_is_still_being_built'),
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
@@ -232,12 +233,12 @@ class SimpleRemindersScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Mikumbuzo"),
+        title: Text(LocalizationService.instance.translate('reminders')),
         backgroundColor: ThemeConstants.primaryBlue,
         foregroundColor: Colors.white,
       ),
       backgroundColor: ThemeConstants.primaryBlue,
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -248,7 +249,7 @@ class SimpleRemindersScreen extends StatelessWidget {
             ),
             SizedBox(height: 20),
             Text(
-              "Mikumbuzo",
+              LocalizationService.instance.translate('reminders'),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 24,
@@ -257,7 +258,7 @@ class SimpleRemindersScreen extends StatelessWidget {
             ),
             SizedBox(height: 10),
             Text(
-              "Ukurasa huu bado unajengwa",
+              LocalizationService.instance.translate('this_page_is_still_being_built'),
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
@@ -277,12 +278,12 @@ class SimpleReportScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Ripoti"),
+        title: Text(LocalizationService.instance.translate('reports')),
         backgroundColor: ThemeConstants.primaryBlue,
         foregroundColor: Colors.white,
       ),
       backgroundColor: ThemeConstants.primaryBlue,
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -293,7 +294,7 @@ class SimpleReportScreen extends StatelessWidget {
             ),
             SizedBox(height: 20),
             Text(
-              "Ripoti",
+              LocalizationService.instance.translate('reports'),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 24,
@@ -302,7 +303,7 @@ class SimpleReportScreen extends StatelessWidget {
             ),
             SizedBox(height: 10),
             Text(
-              "Ukurasa huu bado unajengwa",
+              LocalizationService.instance.translate('this_page_is_still_being_built'),
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 16,

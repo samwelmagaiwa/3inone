@@ -17,6 +17,7 @@ import '../models/inv_product_unit.dart';
 import '../models/inv_reminder.dart';
 import '../models/inv_sale.dart';
 import '../services/inv_event_bus.dart';
+import '../../../services/localization_service.dart';
 
 class InventoryProvider extends ChangeNotifier {
   /// [api] lets tests supply canned answers; the app uses the real client.
@@ -1144,7 +1145,7 @@ class InventoryProvider extends ChangeNotifier {
     int? crateQty,
     String? crateDirection, // 'issued' or 'returned'
   }) async {
-    if (_cart.isEmpty) return (false, 'Cart is empty');
+    if (_cart.isEmpty) return (false, LocalizationService.instance.translate('cart_is_empty'));
 
     if ((_paymentMode == 'debt' || _paymentMode == 'partial') &&
         _selectedCustomerId == null) {
@@ -1256,8 +1257,8 @@ class InventoryProvider extends ChangeNotifier {
       _reminders.add(InvReminder(
         id: id++,
         type: 'low_stock',
-        title: 'Low Stock',
-        description: '${p.name} is below minimum stock.',
+        title: LocalizationService.instance.translate('low_stock'),
+        description: LocalizationService.instance.translateWith('is_below_minimum_stock', <Object?>[p.name]),
         dueAt: DateTime.now(),
         relatedId: p.id,
       ));
@@ -1272,8 +1273,8 @@ class InventoryProvider extends ChangeNotifier {
       _reminders.add(InvReminder(
         id: id++,
         type: 'payment_due',
-        title: 'Payment Due',
-        description: 'Sale #${s.number} has outstanding balance.',
+        title: LocalizationService.instance.translate('payment_due'),
+        description: LocalizationService.instance.translateWith('sale_has_outstanding_balance', <Object?>[s.number]),
         dueAt: s.dueDate ?? DateTime.now().add(const Duration(days: 3)),
         relatedId: s.id,
       ));

@@ -678,7 +678,7 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: ThemeConstants.primaryBlue,
-      appBar: ThemeConstants.buildAppBar('Rekodi Deni'),
+      appBar: ThemeConstants.buildAppBar(LocalizationService.instance.translate('record_debt')),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints c) =>
@@ -694,7 +694,7 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
                   children: <Widget>[
                     _buildDriverSelector(),
                     const SizedBox(height: 16),
-                    _sectionTitle('Tarehe Deni Lilianza'),
+                    _sectionTitle(LocalizationService.instance.translate('debt_start_date')),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -710,7 +710,7 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
                             backgroundColor: Colors.white.withOpacity(0.06),
                           ),
                           icon: const Icon(Icons.add),
-                          label: const Text('Ongeza Tarehe'),
+                          label: Text(LocalizationService.instance.translate('add_date')),
                         ),
                       ],
                     ),
@@ -718,13 +718,13 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
                     // Per-date amounts
                     ..._buildPerDateAmountFields(),
                     const SizedBox(height: 12),
-                    _labelValue('Mwezi / Mwaka', _monthYearText()),
+                    _labelValue(LocalizationService.instance.translate('month_year'), _monthYearText()),
                     const SizedBox(height: 8),
                     // Subtotal row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: <Widget>[
-                        const Text('Jumla (tarehe x kiasi):',
+                        Text('${LocalizationService.instance.translate('total_dates_x_amount')}:',
                             style: TextStyle(color: Colors.white70)),
                         Text(
                           _subtotalText(),
@@ -740,13 +740,13 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
                       maxLines: 4,
                       style: const TextStyle(color: Colors.white),
                       decoration: _inputDecorationWithIcon(
-                          'Maelezo ya Deni (hiari)', Icons.notes),
+                          LocalizationService.instance.translate('debt_details_optional'), Icons.notes),
                     ),
                     const SizedBox(height: 12),
                     SwitchListTile.adaptive(
                       value: _promised,
                       onChanged: (bool v) => setState(() => _promised = v),
-                      title: const Text('Je, ameahidi kulipa?',
+                      title: Text('${LocalizationService.instance.translate('did_they_promise_to_pay')}?',
                           style: TextStyle(color: Colors.white)),
                       activeColor: ThemeConstants.primaryOrange,
                       contentPadding: EdgeInsets.zero,
@@ -757,9 +757,9 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
                         children: <Widget>[
                           Expanded(
                             child: _labelValue(
-                              'Tarehe ya ahadi kulipa',
+                              LocalizationService.instance.translate('promised_payment_date'),
                               _promiseDate == null
-                                  ? 'Chagua tarehe'
+                                  ? LocalizationService.instance.translate('select_a_date')
                                   : _fmt(_promiseDate!),
                             ),
                           ),
@@ -771,7 +771,7 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
                               foregroundColor: Colors.white,
                             ),
                             icon: const Icon(Icons.event),
-                            label: const Text('Chagua'),
+                            label: Text(LocalizationService.instance.translate('select')),
                           )
                         ],
                       ),
@@ -790,7 +790,7 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
                               )
                             : const Icon(Icons.save),
                         label: Text(
-                            _submitting ? 'Inahifadhi...' : 'Hifadhi Deni'),
+                            _submitting ? '${LocalizationService.instance.translate('saving')}...' : LocalizationService.instance.translate('save_debt')),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: ThemeConstants.primaryOrange,
                           foregroundColor: Colors.white,
@@ -859,8 +859,8 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
               ),
-              child: const Text(
-                'Dereva aliyetolewa si sahihi kwenye mfumo. Tafadhali bofya "Badilisha dereva" kisha chagua dereva halali. ',
+              child: Text(
+                LocalizationService.instance.translate('the_driver_provided_is_not_valid'),
                 style: TextStyle(color: Colors.white),
               ),
             ),
@@ -872,7 +872,7 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
               onPressed: () => setState(() => _selectedDriver = null),
               icon:
                   const Icon(Icons.swap_horiz, color: Colors.white70, size: 18),
-              label: const Text('Badilisha dereva',
+              label: Text(LocalizationService.instance.translate('change_driver'),
                   style: TextStyle(color: Colors.white70)),
             ),
           ),
@@ -890,16 +890,16 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  const Text('Makubaliano Yanayotumika',
+                  Text(LocalizationService.instance.translate('active_agreement'),
                       style: TextStyle(color: Colors.white70, fontSize: 12)),
                   const SizedBox(height: 6),
                   if (_agreementFrequencies.isNotEmpty)
-                    Text('Mzunguko: ${_agreementFrequencies.join(', ')}',
+                    Text(LocalizationService.instance.translateWith('cycle', <Object?>[_agreementFrequencies.join(', ')]),
                         style: const TextStyle(
                             color: Colors.white, fontWeight: FontWeight.w600)),
                   if (_agreementDefaultAmount != null)
                     Text(
-                        'Kiasi chaguo-msingi: TSH ${_agreementDefaultAmount!.toStringAsFixed(0)}',
+                        LocalizationService.instance.translateWith('default_amount_tsh', <Object?>[_agreementDefaultAmount!.toStringAsFixed(0)]),
                         style: const TextStyle(
                             color: Colors.white, fontWeight: FontWeight.w600)),
                 ],
@@ -913,7 +913,7 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        _sectionTitle('Chagua Dereva'),
+        _sectionTitle(LocalizationService.instance.translate('select_driver')),
         const SizedBox(height: 8),
         if (_loadingDrivers)
           Container(
@@ -921,7 +921,7 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
             decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(12)),
-            child: const Row(
+            child: Row(
               children: <Widget>[
                 SizedBox(
                     width: 18,
@@ -929,7 +929,7 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: Colors.white)),
                 SizedBox(width: 8),
-                Text('Inapakia madereva...',
+                Text('${LocalizationService.instance.translate('loading_drivers')}...',
                     style: TextStyle(color: Colors.white70)),
               ],
             ),
@@ -949,7 +949,7 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
                         style: const TextStyle(color: Colors.white))),
                 TextButton(
                   onPressed: _fetchDrivers,
-                  child: const Text('Jaribu tena',
+                  child: Text(LocalizationService.instance.translate('try_again'),
                       style: TextStyle(color: Colors.white)),
                 ),
               ],
@@ -961,7 +961,7 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
             controller: _driverSearch,
             style: const TextStyle(color: Colors.white),
             decoration: _inputDecorationWithIcon(
-                    'Tafuta dereva kwa jina, simu, gari au leseni',
+                    LocalizationService.instance.translate('search_driver_by_name_phone_vehicle'),
                     Icons.search)
                 .copyWith(
               suffixIcon: _driverSearch.text.isEmpty
@@ -981,14 +981,14 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
               decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.06),
                   borderRadius: BorderRadius.circular(12)),
-              child: const Text('Hakuna matokeo ya utafutaji',
+              child: Text(LocalizationService.instance.translate('no_search_results'),
                   style: TextStyle(color: Colors.white70)),
             )
           else
             DropdownButtonFormField<String>(
               isExpanded: true,
               decoration:
-                  _inputDecorationWithIcon('Chagua dereva', Icons.person),
+                  _inputDecorationWithIcon(LocalizationService.instance.translate('select_driver'), Icons.person),
               dropdownColor: ThemeConstants.primaryBlue,
               iconEnabledColor: Colors.white70,
               style: const TextStyle(color: Colors.white),
@@ -1012,7 +1012,7 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
                 }
               },
               validator: (String? v) =>
-                  (_selectedDriver == null) ? 'Chagua dereva' : null,
+                  (_selectedDriver == null) ? LocalizationService.instance.translate('select_driver') : null,
             ),
         ],
       ],
@@ -1052,7 +1052,7 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
                         style: const TextStyle(
                             color: Colors.white, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 2),
-                    Text('Leseni: ${license.isNotEmpty ? license : '-'}',
+                    Text(LocalizationService.instance.translateWith('license_2', <Object?>[license.isNotEmpty ? license : '-']),
                         style: const TextStyle(
                             color: Colors.white70, fontSize: 12)),
                   ],
@@ -1062,13 +1062,13 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
           ),
           if (license.isEmpty || license == '-') ...<Widget>[
             const SizedBox(height: 8),
-            const Row(
+            Row(
               children: <Widget>[
                 Icon(Icons.info_outline, color: Colors.white70, size: 16),
                 SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Hakuna leseni iliyohifadhiwa kwenye wasifu kwa sasa.',
+                    '${LocalizationService.instance.translate('no_license_is_saved_on_the')}.',
                     style: TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ),
@@ -1229,11 +1229,11 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
                 keyboardType: TextInputType.number,
                 style: const TextStyle(color: Colors.white),
                 decoration: _inputDecorationWithIcon(
-                    'Kiasi kwa tarehe hii', Icons.payments),
+                    LocalizationService.instance.translate('amount_for_this_date'), Icons.payments),
                 onChanged: (_) => setState(() {}),
                 validator: (String? v) {
                   final double? val = double.tryParse((v ?? '').trim());
-                  if (val == null || val <= 0) return 'Weka kiasi sahihi';
+                  if (val == null || val <= 0) return LocalizationService.instance.translate('enter_a_valid_amount');
                   return null;
                 },
               ),
@@ -1248,14 +1248,14 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
 
   Future<void> _submit() async {
     if (_selectedDates.isEmpty) {
-      _showSnack('Ongeza angalau tarehe moja ya deni');
+      _showSnack(LocalizationService.instance.translate('add_at_least_one_debt_date'));
       return;
     }
     if (!_formKey.currentState!.validate()) return;
 
     final String driverId = _selectedDriver?.id.trim() ?? widget.driver?.id.trim() ?? '';
     if (driverId.isEmpty || !_isKnownDriver(driverId)) {
-      _showSnack('Tafadhali chagua dereva sahihi kwanza');
+      _showSnack(LocalizationService.instance.translate('please_select_a_valid_driver_first'));
       // If drivers not loaded yet, fetch to populate dropdown
       if (_allDrivers.isEmpty) {
         await _fetchDrivers();
@@ -1272,7 +1272,7 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
         final double? val =
             ctrl == null ? null : double.tryParse(ctrl.text.trim());
         if (val == null || val <= 0) {
-          _showSnack('Weka kiasi sahihi kwa tarehe ${_fmt(d)}');
+          _showSnack(LocalizationService.instance.translateWith('enter_a_valid_amount_for_date', <Object?>[_fmt(d)]));
           setState(() => _submitting = false);
           return;
         }
@@ -1298,10 +1298,10 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
       AppEvents.instance.emit(AppEventType.receiptsUpdated);
       AppEvents.instance.emit(AppEventType.dashboardShouldRefresh);
 
-      _showSnack('Madeni yamehifadhiwa kikamilifu', success: true);
+      _showSnack(LocalizationService.instance.translate('debts_saved_successfully'), success: true);
       Navigator.pop(context, true);
     } on Exception catch (e) {
-      _showSnack('Hitilafu: $e');
+      _showSnack(LocalizationService.instance.translateWith('error_2', <Object?>[e]));
     } finally {
       setState(() => _submitting = false);
     }

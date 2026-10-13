@@ -92,7 +92,7 @@ class _ReceiptHeaderScreenState extends State<ReceiptHeaderScreen>
       _saving
           ? ''
           : ok
-              ? 'Mipangilio ya risiti imehifadhiwa'
+              ? LocalizationService.instance.translate('receipt_settings_saved')
               : LocalizationService.instance.translate('operation_failed'),
     );
   }
@@ -163,7 +163,7 @@ class _ReceiptHeaderScreenState extends State<ReceiptHeaderScreen>
             icon: Icons.store_rounded,
             title: loc.translate('shop_identity'),
             children: [
-              _field(_cName,    loc.translate('shop_name_required'), hint: 'e.g. DEPOT DODOMA', required: true),
+              _field(_cName,    loc.translate('shop_name_required'), hint: context.watch<DepotProvider>().capabilities.isDepot ? 'e.g. DEPOT DODOMA' : 'e.g. MAMA ASHA SHOP', required: true),
               _field(_cTagline, loc.translate('tagline'), hint: 'e.g. Karibu Kununua!'),
             ],
           ),
@@ -199,7 +199,7 @@ class _ReceiptHeaderScreenState extends State<ReceiptHeaderScreen>
               _fieldMultiline(
                 _cFooter,
                 loc.translate('footer_note'),
-                hint: 'e.g. No returns without a receipt.',
+                hint: LocalizationService.instance.translate('e_g_no_returns_without_a'),
               ),
               _toggle(
                 label: loc.translate('show_barcode_on_receipt'),
@@ -291,7 +291,7 @@ class _ReceiptHeaderScreenState extends State<ReceiptHeaderScreen>
           label: label,
           hint: hint,
           validator: required
-              ? (v) => (v == null || v.trim().isEmpty) ? '$label inahitajika' : null
+              ? (v) => (v == null || v.trim().isEmpty) ? LocalizationService.instance.translateWith('field_x_required', <Object?>[label]) : null
               : null,
         ),
       );
@@ -344,9 +344,9 @@ class _ReceiptHeaderScreenState extends State<ReceiptHeaderScreen>
                 children: [
                   const Icon(Icons.info_outline_rounded, color: Colors.amber, size: 16),
                   SizedBox(width: 8.w),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Muundo huu unabadilika moja kwa moja unapofanya mabadiliko kwenye tab ya Mipangilio.',
+                      LocalizationService.instance.translate('this_layout_changes_automatically_when_you'),
                       style: TextStyle(color: Colors.amber, fontSize: 11),
                     ),
                   ),
@@ -360,7 +360,7 @@ class _ReceiptHeaderScreenState extends State<ReceiptHeaderScreen>
                 _cEmail, _cWebsite, _cTin, _cFooter,
               ]),
               builder: (context, _) => _ReceiptPreview(
-                shopName:    _cName.text.trim().isEmpty    ? 'JINA LA DUKA' : _cName.text.trim(),
+                shopName:    _cName.text.trim().isEmpty    ? LocalizationService.instance.translate('shop_name').toUpperCase() : _cName.text.trim(),
                 tagline:     _cTagline.text.trim(),
                 address:     _cAddress.text.trim(),
                 phone:       _cPhone.text.trim(),
@@ -449,7 +449,7 @@ class _ReceiptPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name    = _v(shopName).isEmpty ? 'JINA LA DUKA' : _v(shopName);
+    final name    = _v(shopName).isEmpty ? LocalizationService.instance.translate('shop_name').toUpperCase() : _v(shopName);
     final tag     = _v(tagline);
     final addr    = _v(address);
     final ph      = _v(phone);
@@ -527,9 +527,9 @@ class _ReceiptPreview extends StatelessWidget {
               // ── Receipt title
               Row(children: [
                 const Expanded(child: Divider(color: Color(0xFF0D0D0D), thickness: 1)),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Text('RISITI YA MAUZO',
+                  child: Text(LocalizationService.instance.translate('sale_receipt').toUpperCase(),
                       style: TextStyle(fontFamily: 'Courier', fontSize: 11,
                           fontWeight: FontWeight.w900, letterSpacing: 3, color: Color(0xFF0D0D0D))),
                 ),
@@ -538,39 +538,39 @@ class _ReceiptPreview extends StatelessWidget {
               const SizedBox(height: 8),
 
               // ── Sample meta row
-              _metaRow('🧾', 'Nambari', 'S-20260903-0001', '📅', 'Tarehe', '03 Sep 2026'),
+              _metaRow('🧾', LocalizationService.instance.translate('receipt_number_label'), 'S-20260903-0001', '📅', LocalizationService.instance.translate('date'), '03 Sep 2026'),
               const SizedBox(height: 4),
-              _metaRow('⏰', 'Saa', '12:00', '💳', 'Hali ya Malipo', 'Imelipwa'),
+              _metaRow('⏰', LocalizationService.instance.translate('receipt_time'), '12:00', '💳', LocalizationService.instance.translate('payment_status_label'), LocalizationService.instance.translate('bill_paid')),
               const SizedBox(height: 8),
 
               // ── Items header
               Row(children: [
-                Expanded(child: Text('BIDHAA', style: _bodyBold.copyWith(fontSize: 10, letterSpacing: 1))),
-                Text('QTY', style: _sub.copyWith(fontWeight: FontWeight.w700)),
+                Expanded(child: Text(LocalizationService.instance.translate('items_header'), style: _bodyBold.copyWith(fontSize: 10, letterSpacing: 1))),
+                Text(LocalizationService.instance.translate('qty').toUpperCase(), style: _sub.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(width: 8),
-                SizedBox(width: 64, child: Text('JUMLA', style: _sub.copyWith(fontWeight: FontWeight.w700), textAlign: TextAlign.right)),
+                SizedBox(width: 64, child: Text(LocalizationService.instance.translate('total').toUpperCase(), style: _sub.copyWith(fontWeight: FontWeight.w700), textAlign: TextAlign.right)),
               ]),
               _dash(),
               _itemRow('Soda 300ml', '×12', '14,400'),
-              _itemRow('Maji Baridi', '×6',  '3,000'),
+              _itemRow(LocalizationService.instance.translate('cold_water'), '×6',  '3,000'),
               _dash(),
 
               // ── Totals
-              _tRow('JUMLA YOTE', 'TZS 16,900', bold: true),
+              _tRow(LocalizationService.instance.translate('grand_total').toUpperCase(), 'TZS 16,900', bold: true),
               const SizedBox(height: 4),
               Row(children: [
                 const Expanded(child: Divider(color: Color(0xFF0D0D0D), thickness: 1)),
-                const Padding(padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('MALIPO', style: TextStyle(fontFamily: 'Courier', fontSize: 10,
+                Padding(padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(LocalizationService.instance.translate('payments_section').toUpperCase(), style: TextStyle(fontFamily: 'Courier', fontSize: 10,
                         fontWeight: FontWeight.w900, letterSpacing: 3, color: Color(0xFF0D0D0D)))),
                 const Expanded(child: Divider(color: Color(0xFF0D0D0D), thickness: 1)),
               ]),
               const SizedBox(height: 2),
-              _tRow('Njia ya Malipo', 'Taslimu'),
-              _tRow('Kilicholipwa', 'TZS 20,000', bold: true),
-              _tRow('Chenji', 'TZS 3,100'),
+              _tRow(LocalizationService.instance.translate('payment_method_label'), LocalizationService.instance.translate('method_cash')),
+              _tRow(LocalizationService.instance.translate('paid_3'), 'TZS 20,000', bold: true),
+              _tRow(LocalizationService.instance.translate('change'), 'TZS 3,100'),
               const SizedBox(height: 6),
-              const Text('✓  MALIPO KAMILI',
+              Text(LocalizationService.instance.translate('fully_paid').toUpperCase(),
                   textAlign: TextAlign.center,
                   style: TextStyle(fontFamily: 'Courier', fontSize: 12,
                       fontWeight: FontWeight.w900, letterSpacing: 2, color: Color(0xFF1B5E20))),
@@ -579,13 +579,13 @@ class _ReceiptPreview extends StatelessWidget {
               // ── Footer
               Text(_stars, style: _starStyle),
               const SizedBox(height: 4),
-              const Text('★  ASANTE SANA!  ★',
+              Text(LocalizationService.instance.translate('thank_you_4').toUpperCase(),
                   textAlign: TextAlign.center,
                   style: TextStyle(fontFamily: 'Courier', fontSize: 13,
                       fontWeight: FontWeight.w900, letterSpacing: 3, color: Color(0xFF0D0D0D))),
               const SizedBox(height: 3),
               Text(
-                footer.isNotEmpty ? footer : 'Bidhaa zilizouzwa haziruhusiwi kurudishwa bila risiti.',
+                footer.isNotEmpty ? footer : LocalizationService.instance.translate('sold_goods_cannot_be_returned_without'),
                 style: _sub.copyWith(fontSize: 10, height: 1.4),
                 textAlign: TextAlign.center,
               ),

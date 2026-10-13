@@ -75,6 +75,30 @@ void main() {
       expect(find.text('Depot owes them: 3 × Crate'), findsOneWidget);
     });
 
+    Future<void> pumpNotDepot(WidgetTester t, CratesOwed owed, {bool swahili = false}) async {
+      t.view.physicalSize = const Size(1170, 2532);
+      t.view.devicePixelRatio = 3;
+      addTearDown(t.view.reset);
+      await t.pumpWidget(ScreenUtilInit(
+        designSize: const Size(390, 844),
+        builder: (_, __) => MaterialApp(
+          home: Scaffold(body: CratesOwedNote(owed: owed, swahili: swahili, isDepot: false)),
+        ),
+      ));
+    }
+
+    testWidgets('a business that is not a depot says "We owe them", not "Depot owes them"', (t) async {
+      await pumpNotDepot(t, CratesOwed.forCustomer(<InvCrateBalance>[_bal(4, 'Crate', -3, 0)], 4));
+      expect(find.text('We owe them: 3 × Crate'), findsOneWidget);
+      expect(find.textContaining('Depot'), findsNothing);
+    });
+
+    testWidgets('and in Swahili it does not say "Ghala"', (t) async {
+      await pumpNotDepot(t, CratesOwed.forCustomer(<InvCrateBalance>[_bal(4, 'Crate', -3, 0)], 4), swahili: true);
+      expect(find.text('Anatudai makreti: 3 × Crate'), findsOneWidget);
+      expect(find.textContaining('Ghala'), findsNothing);
+    });
+
     testWidgets('Swahili', (t) async {
       await pump(t, CratesOwed.forCustomer(<InvCrateBalance>[_bal(2, 'Crate', 10, 20000)], 2),
           swahili: true);

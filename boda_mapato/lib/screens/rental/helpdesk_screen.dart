@@ -29,7 +29,7 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
     final loc = LocalizationService.instance;
     return ThemeConstants.buildResponsiveScaffold(
       context,
-      title: "Helpdesk",
+      title: LocalizationService.instance.translate('helpdesk'),
       body: Stack(
         children: [
           _buildBackground(),
@@ -299,13 +299,13 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
                   if (hasPhone)
                     _buildSupportButton(
                       icon: Icons.phone,
-                      label: "Call",
+                      label: LocalizationService.instance.translate('call_2'),
                       onTap: () async {
                         final Uri url = Uri.parse("tel:${auth.supportPhone}");
                         if (await canLaunchUrl(url)) {
                           await launchUrl(url);
                         } else {
-                          AppMessenger.showError("Could not launch dialer");
+                          AppMessenger.showError(LocalizationService.instance.translate('could_not_launch_dialer'));
                         }
                       },
                       color: ThemeConstants.primaryOrange,
@@ -314,13 +314,13 @@ class _HelpdeskScreenState extends State<HelpdeskScreen> {
                   if (hasEmail)
                     _buildSupportButton(
                       icon: Icons.email,
-                      label: "Email",
+                      label: LocalizationService.instance.translate('email_message'),
                       onTap: () async {
                         final Uri url = Uri.parse("mailto:${auth.supportEmail}");
                         if (await canLaunchUrl(url)) {
                           await launchUrl(url);
                         } else {
-                          AppMessenger.showError("Could not launch email client");
+                          AppMessenger.showError(LocalizationService.instance.translate('could_not_launch_email_client'));
                         }
                       },
                       color: Colors.white24,

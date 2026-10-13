@@ -9,6 +9,7 @@ import '../../constants/theme_constants.dart';
 import '../../providers/rental_provider.dart';
 import '../../services/localization_service.dart';
 import '../../widgets/location_selector.dart';
+import '../../utils/rental_labels.dart';
 
 class EditPropertyScreen extends StatefulWidget {
   const EditPropertyScreen({required this.property, super.key});
@@ -378,11 +379,5 @@ class _EditPropertyScreenState extends State<EditPropertyScreen> {
     );
   }
 
-  String _formatType(String type) {
-    return type
-        .replaceAll('_', ' ')
-        .split(' ')
-        .map((w) => w.isNotEmpty ? "${w[0].toUpperCase()}${w.substring(1)}" : "")
-        .join(' ');
-  }
+  String _formatType(String type) => rentalValueLabel(type);
 }

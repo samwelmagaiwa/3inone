@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../constants/theme_constants.dart';
 import '../../providers/rental_provider.dart';
+import '../../services/localization_service.dart';
 
 class RentalTenantsScreen extends StatefulWidget {
   const RentalTenantsScreen({super.key});
@@ -62,7 +63,7 @@ class _RentalTenantsScreenState extends State<RentalTenantsScreen> {
 
     return ThemeConstants.buildResponsiveScaffold(
       context,
-      title: "Wapangaji",
+      title: LocalizationService.instance.translate('rental_tenants_title'),
       actions: [
         IconButton(
             icon: const Icon(Icons.person_add, color: Colors.white),
@@ -95,7 +96,7 @@ class _RentalTenantsScreenState extends State<RentalTenantsScreen> {
             onChanged: _onSearchChanged,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              hintText: "Tafuta mwenyeji...",
+              hintText: LocalizationService.instance.translate('search_tenant'),
               hintStyle: const TextStyle(color: Colors.white38),
               prefixIcon: const Icon(Icons.search, color: Colors.white38),
               suffixIcon: _searchQuery.isNotEmpty
@@ -120,19 +121,19 @@ class _RentalTenantsScreenState extends State<RentalTenantsScreen> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildFilterChip("All", null, _selectedStatus == null),
+                _buildFilterChip(LocalizationService.instance.translate('all'), null, _selectedStatus == null),
                 SizedBox(width: 8.w),
                 _buildFilterChip(
-                    "Mstaafu", "active", _selectedStatus == "active"),
+                    LocalizationService.instance.translate('tenant_status_active'), "active", _selectedStatus == "active"),
                 SizedBox(width: 8.w),
                 _buildFilterChip(
-                    "Notisi", "notice", _selectedStatus == "notice"),
+                    LocalizationService.instance.translate('tenant_status_notice'), "notice", _selectedStatus == "notice"),
                 SizedBox(width: 8.w),
                 _buildFilterChip(
-                    "Mhalifu", "defaulter", _selectedStatus == "defaulter"),
+                    LocalizationService.instance.translate('tenant_status_defaulter'), "defaulter", _selectedStatus == "defaulter"),
                 SizedBox(width: 8.w),
                 _buildFilterChip(
-                    "Ameondoka", "terminated", _selectedStatus == "terminated"),
+                    LocalizationService.instance.translate('tenant_status_left'), "terminated", _selectedStatus == "terminated"),
               ],
             ),
           ),
@@ -172,13 +173,13 @@ class _RentalTenantsScreenState extends State<RentalTenantsScreen> {
                 Icon(Icons.people_outline, size: 64.sp, color: Colors.white38),
           ),
           SizedBox(height: 24.h),
-          Text("Hakuna wapangaji",
+          Text(LocalizationService.instance.translate('no_tenants'),
               style: TextStyle(
                   color: Colors.white54,
                   fontSize: 18.sp,
                   fontWeight: FontWeight.w500)),
           SizedBox(height: 8.h),
-          Text("M Registered tenants will appear here",
+          Text(LocalizationService.instance.translate('registered_tenants_will_appear_here'),
               style: TextStyle(color: Colors.white38, fontSize: 14.sp)),
           SizedBox(height: 24.h),
           ElevatedButton.icon(
@@ -191,7 +192,7 @@ class _RentalTenantsScreenState extends State<RentalTenantsScreen> {
                   borderRadius: BorderRadius.circular(12.r)),
             ),
             icon: const Icon(Icons.person_add, color: Colors.white),
-            label: Text("Ongeza Mpagaji",
+            label: Text(LocalizationService.instance.translate('add_tenant_2'),
                 style: TextStyle(color: Colors.white, fontSize: 16.sp)),
           ),
         ],
@@ -220,16 +221,16 @@ class _RentalTenantsScreenState extends State<RentalTenantsScreen> {
     switch (status) {
       case 'active':
         statusColor = ThemeConstants.successGreen;
-        statusLabel = 'Mstaafu';
+        statusLabel = LocalizationService.instance.translate('tenant_status_active');
       case 'notice':
         statusColor = ThemeConstants.warningAmber;
-        statusLabel = 'Notisi';
+        statusLabel = LocalizationService.instance.translate('tenant_status_notice');
       case 'defaulter':
         statusColor = ThemeConstants.errorRed;
-        statusLabel = 'Mhalifu';
+        statusLabel = LocalizationService.instance.translate('tenant_status_defaulter');
       case 'terminated':
         statusColor = Colors.white38;
-        statusLabel = 'Ameondoka';
+        statusLabel = LocalizationService.instance.translate('tenant_status_left');
       default:
         statusColor = Colors.white54;
         statusLabel = status.toString();

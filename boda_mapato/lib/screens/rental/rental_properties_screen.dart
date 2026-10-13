@@ -7,6 +7,8 @@ import '../../constants/theme_constants.dart';
 import '../../providers/rental_provider.dart';
 import '../../widgets/backgrounds/starfield_background.dart';
 import '../../widgets/location_selector.dart';
+import '../../services/localization_service.dart';
+import '../../utils/rental_labels.dart';
 
 class RentalPropertiesScreen extends StatefulWidget {
   const RentalPropertiesScreen({super.key});
@@ -96,7 +98,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
             onPressed: () => Navigator.pop(context),
           ),
           title: Text(
-            "Properties".toUpperCase(),
+            LocalizationService.instance.translate('properties').toUpperCase(),
             style: TextStyle(
               color: Colors.white,
               fontSize: 18.sp,
@@ -151,7 +153,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                   onChanged: _onSearchChanged,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: "Search Properties...",
+                    hintText: "${LocalizationService.instance.translate('search_properties')}...",
                     hintStyle: const TextStyle(color: Colors.white38),
                     prefixIcon: Icon(Icons.search, color: cyberCyan.withValues(alpha: 0.6)),
                     suffixIcon: _searchQuery.isNotEmpty
@@ -172,22 +174,22 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildFilterChip("All", null,
+                _buildFilterChip(LocalizationService.instance.translate('all'), null,
                     _selectedStatus == null && _selectedType == null),
                 SizedBox(width: 8.w),
-                _buildFilterChip("Hai", "active", _selectedStatus == "active"),
+                _buildFilterChip(LocalizationService.instance.translate('active'), "active", _selectedStatus == "active"),
                 SizedBox(width: 8.w),
                 _buildFilterChip(
-                    "Si Hai", "inactive", _selectedStatus == "inactive"),
+                    LocalizationService.instance.translate('inactive_2'), "inactive", _selectedStatus == "inactive"),
                 SizedBox(width: 8.w),
-                _buildFilterChip("Matengenezo", "under_maintenance",
+                _buildFilterChip(LocalizationService.instance.translate('maintenance'), "under_maintenance",
                     _selectedStatus == "under_maintenance"),
                 SizedBox(width: 8.w),
                 _buildFilterChip(
-                    "Apartment", "apartment", _selectedType == "apartment",
+                    LocalizationService.instance.translate('apartment'), "apartment", _selectedType == "apartment",
                     isType: true),
                 SizedBox(width: 8.w),
-                _buildFilterChip("Hostel", "hostel", _selectedType == "hostel",
+                _buildFilterChip(LocalizationService.instance.translate('hostel'), "hostel", _selectedType == "hostel",
                     isType: true),
               ],
             ),
@@ -245,7 +247,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
           ),
           SizedBox(height: 24.h),
           Text(
-            "No properties found",
+            LocalizationService.instance.translate('no_properties_found'),
             style: TextStyle(
                 color: Colors.white,
                 fontSize: 18.sp,
@@ -254,7 +256,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
           ),
           SizedBox(height: 8.h),
           Text(
-            "Click the button above to add your first property",
+            LocalizationService.instance.translate('click_the_button_above_to_add'),
             style: TextStyle(color: Colors.white38, fontSize: 13.sp),
           ),
         ],
@@ -387,15 +389,15 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildStatItem(Icons.home_outlined, "${houses.length}", "UNITS", cyberCyan),
+                          child: _buildStatItem(Icons.home_outlined, "${houses.length}", LocalizationService.instance.translate('units').toUpperCase(), cyberCyan),
                         ),
                         Container(width: 1, height: 30.h, color: Colors.white.withValues(alpha: 0.1)),
                         Expanded(
-                          child: _buildStatItem(Icons.person_outline, "$occupiedCount", "OCCUPIED", cyberCyan),
+                          child: _buildStatItem(Icons.person_outline, "$occupiedCount", LocalizationService.instance.translate('occupied').toUpperCase(), cyberCyan),
                         ),
                         Container(width: 1, height: 30.h, color: Colors.white.withValues(alpha: 0.1)),
                         Expanded(
-                          child: _buildStatItem(Icons.meeting_room_outlined, "${houses.length - occupiedCount}", "VACANT", 
+                          child: _buildStatItem(Icons.meeting_room_outlined, "${houses.length - occupiedCount}", LocalizationService.instance.translate('vacant').toUpperCase(), 
                             houses.length - occupiedCount > 0 ? ThemeConstants.successGreen : Colors.white38,
                             isMain: true),
                         ),
@@ -408,7 +410,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                           _buildInfoChip(_formatPropertyType(property['property_type']), cyberCyan),
                         SizedBox(width: 8.w),
                         if (property['default_billing_cycle'] != null)
-                          _buildInfoChip(property['default_billing_cycle'].toString().toUpperCase(), Colors.white38),
+                          _buildInfoChip(rentalValueLabel(property['default_billing_cycle'].toString()).toUpperCase(), Colors.white38),
                       ],
                     ),
                   ],
@@ -460,14 +462,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
     );
   }
 
-  String _formatPropertyType(String type) {
-    return type
-        .replaceAll('_', ' ')
-        .split(' ')
-        .map(
-            (w) => w.isNotEmpty ? "${w[0].toUpperCase()}${w.substring(1)}" : "")
-        .join(' ');
-  }
+  String _formatPropertyType(String type) => rentalValueLabel(type);
 
   void _showAddPropertyDialog(BuildContext context) {
     final nameController = TextEditingController();
@@ -537,18 +532,18 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                       // Section 1: Basic Information
                       _buildSectionPlate(
                         icon: Icons.info_outline,
-                        title: "Basic Information",
+                        title: LocalizationService.instance.translate('basic_information'),
                         accentColor: primaryOrange,
                         children: [
                           _buildModernInput(
                             controller: nameController,
-                            label: "Property Name *",
+                            label: "${LocalizationService.instance.translate('property_name')} *",
                             icon: Icons.apartment,
                             cyberCyan: cyberCyan,
                           ),
                           SizedBox(height: 16.h),
                           _buildModernDropdown(
-                            label: "Property Type",
+                            label: LocalizationService.instance.translate('property_type'),
                             value: selectedType,
                             items: _propertyTypes,
                             onChanged: (v) => setState(() => selectedType = v),
@@ -558,7 +553,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                           SizedBox(height: 16.h),
                           _buildModernInput(
                             controller: addressController,
-                            label: "Description",
+                            label: LocalizationService.instance.translate('description'),
                             icon: Icons.description_outlined,
                             cyberCyan: cyberCyan,
                             maxLines: 3,
@@ -571,7 +566,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                       // Section 2: Location
                       _buildSectionPlate(
                         icon: Icons.location_on_outlined,
-                        title: "Location",
+                        title: LocalizationService.instance.translate('location'),
                         accentColor: primaryOrange,
                         children: [
                           LocationSelector(
@@ -586,7 +581,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                           SizedBox(height: 16.h),
                           _buildModernInput(
                             controller: addressController, // Reusing address for clarity
-                            label: "Specific Address *",
+                            label: "${LocalizationService.instance.translate('specific_address')} *",
                             icon: Icons.home_outlined,
                             cyberCyan: cyberCyan,
                           ),
@@ -598,7 +593,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                       // Section 3: Configuration
                       _buildSectionPlate(
                         icon: Icons.settings_outlined,
-                        title: "Configuration",
+                        title: LocalizationService.instance.translate('configuration'),
                         accentColor: primaryOrange,
                         children: [
                           Row(
@@ -606,7 +601,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                               Expanded(
                                 child: _buildModernInput(
                                   controller: blocksController,
-                                  label: "Blocks",
+                                  label: LocalizationService.instance.translate('blocks'),
                                   icon: Icons.grid_view,
                                   cyberCyan: cyberCyan,
                                   keyboardType: TextInputType.number,
@@ -616,7 +611,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                               Expanded(
                                 child: _buildModernInput(
                                   controller: housesController,
-                                  label: "Total Units",
+                                  label: LocalizationService.instance.translate('total_units'),
                                   icon: Icons.home,
                                   cyberCyan: cyberCyan,
                                   keyboardType: TextInputType.number,
@@ -629,18 +624,18 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                             children: [
                               Expanded(
                                 child: _buildModernDropdown(
-                                  label: "Billing Cycle",
+                                  label: LocalizationService.instance.translate('billing_cycle'),
                                   value: selectedBillingCycle,
                                   items: ["monthly", "quarterly", "yearly"],
                                   onChanged: (v) => setState(() => selectedBillingCycle = v),
-                                  formatter: (v) => v.toUpperCase(),
+                                  formatter: (v) => rentalValueLabel(v).toUpperCase(),
                                   cyberCyan: cyberCyan,
                                 ),
                               ),
                               SizedBox(width: 12.w),
                               Expanded(
                                 child: _buildModernDropdown(
-                                  label: "Currency",
+                                  label: LocalizationService.instance.translate('currency'),
                                   value: selectedCurrency,
                                   items: ["TZS", "USD"],
                                   onChanged: (v) => setState(() => selectedCurrency = v),
@@ -886,12 +881,12 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                     children: [
                       _buildSectionPlate(
                         icon: Icons.door_front_door_outlined,
-                        title: "Unit Information",
+                        title: LocalizationService.instance.translate('unit_information'),
                         accentColor: primaryOrange,
                         children: [
                           _buildModernInput(
                             controller: houseNumberController,
-                            label: "House/Unit Number *",
+                            label: "${LocalizationService.instance.translate('house_unit_number')} *",
                             icon: Icons.numbers,
                             cyberCyan: cyberCyan,
                           ),
@@ -900,21 +895,21 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                             children: [
                               Expanded(
                                 child: _buildModernDropdown(
-                                    label: "Type",
+                                    label: LocalizationService.instance.translate('type'),
                                     value: selectedType,
                                     items: ['room', 'apartment', 'studio', 'commercial', 'bedsitter', 'one_bedroom'],
                                     onChanged: (v) => setState(() => selectedType = v),
-                                    formatter: (v) => v.toUpperCase(),
+                                    formatter: (v) => rentalValueLabel(v).toUpperCase(),
                                     cyberCyan: cyberCyan),
                               ),
                               SizedBox(width: 12.w),
                               Expanded(
                                 child: _buildModernDropdown(
-                                    label: "Status",
+                                    label: LocalizationService.instance.translate('status'),
                                     value: selectedStatus,
                                     items: ['vacant', 'occupied', 'maintenance'],
                                     onChanged: (v) => setState(() => selectedStatus = v),
-                                    formatter: (v) => v.toUpperCase(),
+                                    formatter: (v) => rentalValueLabel(v).toUpperCase(),
                                     cyberCyan: cyberCyan),
                               ),
                             ],
@@ -926,7 +921,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
 
                       _buildSectionPlate(
                         icon: Icons.payments_outlined,
-                        title: "Financials",
+                        title: LocalizationService.instance.translate('financials'),
                         accentColor: primaryOrange,
                         children: [
                           Row(
@@ -934,7 +929,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                               Expanded(
                                 child: _buildModernInput(
                                   controller: rentController,
-                                  label: "Monthly Rent *",
+                                  label: "${LocalizationService.instance.translate('rent_monthly')} *",
                                   icon: Icons.price_change_outlined,
                                   cyberCyan: cyberCyan,
                                   keyboardType: TextInputType.number,
@@ -944,7 +939,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                               Expanded(
                                 child: _buildModernInput(
                                   controller: depositController,
-                                  label: "Security Deposit",
+                                  label: LocalizationService.instance.translate('deposit'),
                                   icon: Icons.account_balance_wallet_outlined,
                                   cyberCyan: cyberCyan,
                                   keyboardType: TextInputType.number,
@@ -959,7 +954,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
 
                       _buildSectionPlate(
                         icon: Icons.bolt_outlined,
-                        title: "Utilities",
+                        title: LocalizationService.instance.translate('utilities'),
                         accentColor: primaryOrange,
                         children: [
                           Row(
@@ -967,7 +962,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                               Expanded(
                                 child: _buildModernInput(
                                   controller: electricityController,
-                                  label: "Electricity Meter",
+                                  label: LocalizationService.instance.translate('electricity_meter'),
                                   icon: Icons.electric_bolt,
                                   cyberCyan: cyberCyan,
                                   keyboardType: TextInputType.number,
@@ -977,7 +972,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                               Expanded(
                                 child: _buildModernInput(
                                   controller: waterController,
-                                  label: "Water Meter",
+                                  label: LocalizationService.instance.translate('water_meter'),
                                   icon: Icons.water_drop,
                                   cyberCyan: cyberCyan,
                                   keyboardType: TextInputType.number,
@@ -1106,14 +1101,14 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                     
                     _buildSectionPlate(
                       icon: Icons.location_on_outlined,
-                      title: "Location Details",
+                      title: LocalizationService.instance.translate('location_details'),
                       accentColor: cyberCyan,
                       children: [
-                        _buildDetailRow("Region", property['region'] ?? '-'),
-                        _buildDetailRow("District", property['district'] ?? '-'),
-                        _buildDetailRow("Ward", property['ward'] ?? '-'),
-                        _buildDetailRow("Street", property['street'] ?? '-'),
-                        _buildDetailRow("Place", property['place'] ?? '-'),
+                        _buildDetailRow(LocalizationService.instance.translate('region'), property['region'] ?? '-'),
+                        _buildDetailRow(LocalizationService.instance.translate('district'), property['district'] ?? '-'),
+                        _buildDetailRow(LocalizationService.instance.translate('ward'), property['ward'] ?? '-'),
+                        _buildDetailRow(LocalizationService.instance.translate('street_2'), property['street'] ?? '-'),
+                        _buildDetailRow(LocalizationService.instance.translate('place_label'), property['place'] ?? '-'),
                       ],
                     ),
 
@@ -1121,13 +1116,13 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
 
                     _buildSectionPlate(
                       icon: Icons.settings_outlined,
-                      title: "Management",
+                      title: LocalizationService.instance.translate('management'),
                       accentColor: cyberCyan,
                       children: [
-                        _buildDetailRow("Type", _formatPropertyType(property['property_type'] ?? 'N/A')),
-                        _buildDetailRow("Billing", (property['default_billing_cycle'] as String?)?.toUpperCase().replaceAll('_', ' ') ?? '-'),
-                        _buildDetailRow("Default Rent", "TSh ${property['default_rent_amount'] ?? 0}"),
-                        _buildDetailRow("Status", (property['status'] as String?)?.toUpperCase().replaceAll('_', ' ') ?? 'ACTIVE'),
+                        _buildDetailRow(LocalizationService.instance.translate('type'), _formatPropertyType(property['property_type'] ?? 'N/A')),
+                        _buildDetailRow(LocalizationService.instance.translate('lipisha'), (property['default_billing_cycle'] as String?) != null ? rentalValueLabel(property['default_billing_cycle'] as String?).toUpperCase() : '-'),
+                        _buildDetailRow(LocalizationService.instance.translate('default_rent'), "TSh ${property['default_rent_amount'] ?? 0}"),
+                        _buildDetailRow(LocalizationService.instance.translate('status'), (property['status'] as String?) != null ? rentalValueLabel(property['status'] as String?).toUpperCase() : LocalizationService.instance.translate('active').toUpperCase()),
                       ],
                     ),
 
@@ -1136,7 +1131,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text("UNITS (${houses.length})",
+                        Text(LocalizationService.instance.translateWith('units_2', <Object?>[houses.length]).toUpperCase(),
                             style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 18.sp,
@@ -1160,7 +1155,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                             children: [
                               Icon(Icons.home_work_outlined, size: 48.sp, color: Colors.white10),
                               SizedBox(height: 12.h),
-                              Text("No units registered yet", style: TextStyle(color: Colors.white10, fontSize: 13.sp)),
+                              Text(LocalizationService.instance.translate('no_units_registered_yet'), style: TextStyle(color: Colors.white10, fontSize: 13.sp)),
                             ],
                           ),
                         ),
@@ -1236,7 +1231,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
                           color: Colors.white,
                           fontSize: 16.sp,
                           fontWeight: FontWeight.w900)),
-                  Text("TSh ${house['rent_amount']}/MONTH",
+                  Text(LocalizationService.instance.translateWith('tsh_month', <Object?>[house['rent_amount']]),
                       style: TextStyle(color: Colors.white38, fontSize: 11.sp, fontWeight: FontWeight.bold)),
                 ],
               ),

@@ -7,6 +7,7 @@ import '../../providers/rental_provider.dart';
 import '../../utils/rental_flow_validator.dart';
 import 'lease_agreement_wizard_screen.dart';
 import 'receipt_view_screen.dart';
+import '../../services/localization_service.dart';
 
 // ─────────────────────────────────────────────
 // Color palette
@@ -42,8 +43,8 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
   late final Animation<Offset>    _slideAnim;
 
   final List<Map<String, dynamic>> _paymentMethods = [
-    {'value': 'cash',          'label': 'Cash',          'icon': Icons.payments_outlined,        'color': _kGreen},
-    {'value': 'bank_transfer', 'label': 'Bank Transfer', 'icon': Icons.account_balance_outlined, 'color': _kCyan},
+    {'value': 'cash',          'label': LocalizationService.instance.translate('method_cash'),          'icon': Icons.payments_outlined,        'color': _kGreen},
+    {'value': 'bank_transfer', 'label': LocalizationService.instance.translate('method_bank'), 'icon': Icons.account_balance_outlined, 'color': _kCyan},
     {'value': 'mpesa',         'label': 'M-Pesa',        'icon': Icons.phone_android_outlined,   'color': _kGreen},
     {'value': 'airtel_money',  'label': 'Airtel Money',  'icon': Icons.phone_iphone_outlined,    'color': _kRed},
     {'value': 'tigo_pesa',     'label': 'Tigo Pesa',     'icon': Icons.smartphone_outlined,      'color': _kCyan},
@@ -74,10 +75,10 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
             b['status'] == 'unpaid' ||
             b['status'] == 'partial' ||
             b['status'] == 'overdue'),
-        title: "No Unpaid Bills",
+        title: LocalizationService.instance.translate('no_unpaid_bills'),
         message:
-            "There are no active unpaid bills to record payment for. Ensure leases are created first.",
-        actionLabel: "Create Lease",
+            LocalizationService.instance.translate('there_are_no_active_unpaid_bills'),
+        actionLabel: LocalizationService.instance.translate('create_lease'),
         onAction: () => Navigator.pushReplacement(context,
             MaterialPageRoute(builder: (_) => const LeaseAgreementWizardScreen())),
       );
@@ -108,10 +109,10 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
 
   String _formatStatus(String status) {
     return switch (status) {
-      'overdue' => 'Overdue',
-      'partial' => 'Sehemu',
-      'paid'    => 'Imelipwa',
-      _         => 'Bado'
+      'overdue' => LocalizationService.instance.translate('overdue'),
+      'partial' => LocalizationService.instance.translate('bill_partial'),
+      'paid'    => LocalizationService.instance.translate('bill_paid'),
+      _         => LocalizationService.instance.translate('bill_unpaid')
     };
   }
 
@@ -246,7 +247,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
       children: [
         _SectionTitle(
           icon: Icons.person_rounded,
-          label: 'Chagua Mteja',
+          label: LocalizationService.instance.translate('select_tenant_title'),
           trailing: _selectedTenant != null
               ? Container(
                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
@@ -258,7 +259,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
                     Icon(Icons.check_circle_rounded,
                         color: _kGreen, size: 10.sp),
                     SizedBox(width: 4.w),
-                    Text('Amechaguliwa',
+                    Text(LocalizationService.instance.translate('selected'),
                         style: TextStyle(
                             color: _kGreen,
                             fontSize: 9.sp,
@@ -281,7 +282,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
             ),
           )
         else if (tenants.isEmpty)
-          _buildEmptyState(Icons.person_off_outlined, 'Hakuna wapangaji')
+          _buildEmptyState(Icons.person_off_outlined, LocalizationService.instance.translate('no_tenants'))
         else
           ...tenants.map((dynamic t) =>
               _buildTenantItem(t as Map<String, dynamic>)),
@@ -372,7 +373,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
                           Icon(Icons.home_outlined,
                               color: Colors.white38, size: 12.sp),
                           SizedBox(width: 4.w),
-                          Text('Nyumba: ${house['house_number'] ?? '—'}',
+                          Text(LocalizationService.instance.translateWith('house_3', <Object?>[house['house_number'] ?? '—']),
                               style: TextStyle(
                                   color: Colors.white38, fontSize: 11.sp)),
                         ],
@@ -414,7 +415,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
       children: [
         _SectionTitle(
           icon: Icons.receipt_long_rounded,
-          label: 'Chagua Kipindi cha Kodi',
+          label: LocalizationService.instance.translate('select_rent_period'),
           trailing: _selectedBill != null
               ? Container(
                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
@@ -426,7 +427,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
                     Icon(Icons.check_circle_rounded,
                         color: _kGreen, size: 10.sp),
                     SizedBox(width: 4.w),
-                    Text('Kimechaguliwa',
+                    Text(LocalizationService.instance.translate('selected_item'),
                         style: TextStyle(
                             color: _kGreen,
                             fontSize: 9.sp,
@@ -438,7 +439,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
         Divider(height: 24.h, color: Colors.white10),
         if (bills.isEmpty)
           _buildEmptyState(
-              Icons.receipt_long_outlined, 'Hakuna bili zilizo wazi')
+              Icons.receipt_long_outlined, LocalizationService.instance.translate('no_open_bills'))
         else
           ...bills.map((dynamic b) =>
               _buildBillItem(b as Map<String, dynamic>)),
@@ -522,11 +523,11 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
                       Row(
                         children: [
                           _MiniChip(
-                              label: 'Kodi: TSh ${_formatCurrency(amountDue)}',
+                              label: LocalizationService.instance.translateWith('rent_tsh', <Object?>[_formatCurrency(amountDue)]),
                               color: Colors.white38),
                           SizedBox(width: 6.w),
                           _MiniChip(
-                              label: 'Baki: TSh ${_formatCurrency(balance)}',
+                              label: LocalizationService.instance.translateWith('balance_tsh', <Object?>[_formatCurrency(balance)]),
                               color: statusColor),
                         ],
                       ),
@@ -566,9 +567,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle(
+        _SectionTitle(
           icon: Icons.monetization_on_rounded,
-          label: 'Kiasi cha Malipo',
+          label: LocalizationService.instance.translate('payment_amount_2'),
         ),
         Divider(height: 24.h, color: Colors.white10),
 
@@ -628,13 +629,13 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _InfoChip(
-                    label: 'Kodi',
+                    label: LocalizationService.instance.translate('rent_label'),
                     value: 'TSh ${_formatFullCurrency(amountDue)}',
                     color: Colors.white54,
                   ),
                   SizedBox(width: 12.w),
                   _InfoChip(
-                    label: 'Baki',
+                    label: LocalizationService.instance.translate('balance_label'),
                     value: 'TSh ${_formatFullCurrency(balance)}',
                     color: _kAmber,
                   ),
@@ -652,9 +653,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle(
+        _SectionTitle(
           icon: Icons.payment_rounded,
-          label: 'Njia ya Malipo',
+          label: LocalizationService.instance.translate('payment_method_label'),
         ),
         Divider(height: 24.h, color: Colors.white10),
         Wrap(
@@ -740,9 +741,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle(
+        _SectionTitle(
           icon: Icons.tag_rounded,
-          label: 'Rejea / Nambari ya Malipo',
+          label: LocalizationService.instance.translate('reference_payment_number'),
         ),
         Divider(height: 24.h, color: Colors.white10),
         Container(
@@ -755,7 +756,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
             controller: _referenceController,
             style: TextStyle(color: Colors.white, fontSize: 14.sp),
             decoration: InputDecoration(
-              hintText: 'Mfano: TRX12345 (si lazima)',
+              hintText: LocalizationService.instance.translate('example_trx12345_optional'),
               hintStyle: TextStyle(color: Colors.white24, fontSize: 12.sp),
               prefixIcon: Padding(
                 padding: EdgeInsets.all(12.w),
@@ -827,7 +828,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
                             canSubmit ? Colors.white : Colors.white24,
                         size: 20.sp),
                     SizedBox(width: 10.w),
-                    Text('Hifadhi Malipo',
+                    Text(LocalizationService.instance.translate('save_payment'),
                         style: TextStyle(
                           color:
                               canSubmit ? Colors.white : Colors.white24,
@@ -881,12 +882,12 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
         if (paymentId != null) {
           _showSuccessDialog(provider.lastPayment ?? {'id': paymentId});
         } else {
-          _showErrorDialog("Malipo hayafaulu. Jaribu tena.");
+          _showErrorDialog(LocalizationService.instance.translate('the_payment_did_not_go_through'));
         }
       }
     } catch (e) {
       if (mounted) {
-        _showErrorDialog("Hitilafu: $e");
+        _showErrorDialog(LocalizationService.instance.translateWith('error_2', <Object?>[e]));
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -925,14 +926,14 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
               ),
             ),
             SizedBox(height: 16.h),
-            Text("Malipo Yamehifadhiwa!",
+            Text("${LocalizationService.instance.translate('payment_saved')}!",
                 style: TextStyle(
                     color: Colors.white,
                     fontSize: 18.sp,
                     fontWeight: FontWeight.bold)),
             SizedBox(height: 8.h),
             Text(
-                "Je, ungependa kuona na kushiriki risiti ya malipo haya?",
+                LocalizationService.instance.translate('would_you_like_to_view_and'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: Colors.white54, fontSize: 13.sp)),
@@ -944,7 +945,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
               Navigator.pop(context);
               Navigator.pop(context);
             },
-            child: Text("Baadaye",
+            child: Text(LocalizationService.instance.translate('later'),
                 style: TextStyle(
                     color: Colors.white54, fontSize: 13.sp)),
           ),
@@ -979,7 +980,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen>
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10.r)),
               ),
-              child: Text("Ndiyo, Risiti",
+              child: Text(LocalizationService.instance.translate('yes_receipt'),
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: 13.sp,
@@ -1116,7 +1117,7 @@ class _HeroHeader extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 10.h),
-              Text('Rekodi Malipo',
+              Text(LocalizationService.instance.translate('record_payment'),
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18.sp,
@@ -1132,19 +1133,19 @@ class _HeroHeader extends StatelessWidget {
                   children: [
                     _StepDot(
                         num: 1,
-                        label: 'Mteja',
+                        label: LocalizationService.instance.translate('agreement_step_tenant'),
                         isActive: step >= 1,
                         isCurrent: step == 1),
                     _StepLine(isActive: step >= 2),
                     _StepDot(
                         num: 2,
-                        label: 'Bili',
+                        label: LocalizationService.instance.translate('bill'),
                         isActive: step >= 2,
                         isCurrent: step == 2),
                     _StepLine(isActive: step >= 3),
                     _StepDot(
                         num: 3,
-                        label: 'Malipo',
+                        label: LocalizationService.instance.translate('payment_label'),
                         isActive: step >= 3,
                         isCurrent: step == 3),
                   ],

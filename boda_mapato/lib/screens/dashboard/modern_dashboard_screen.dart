@@ -206,7 +206,7 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
           unawaited(_animationController.forward());
         } on Exception catch (_) {}
         _showErrorSnackBar(
-            "Backend haipatikani. Tafadhali jaribu tena baadaye.");
+            LocalizationService.instance.translate('the_server_is_not_reachable_please'));
       }
     }
   }
@@ -325,7 +325,7 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
       // Initialize with empty data if all fails
       _dashboardData = _getEmptyDashboardData();
       if (mounted) {
-        _showErrorSnackBar("Imeshindikana kupakia data za dashboard: ${e}");
+        _showErrorSnackBar(LocalizationService.instance.translateWith('could_not_load_the_dashboard_data', <Object?>[e]));
       }
     }
   }

@@ -1,3 +1,4 @@
+import '../services/localization_service.dart';
 class Communication {
   Communication({
     required this.driverId,
@@ -106,7 +107,7 @@ class Communication {
 
   // Get truncated response for table display
   String get truncatedResponse {
-    if (!hasResponse) return "Hakuna jibu";
+    if (!hasResponse) return LocalizationService.instance.translate('no_reply');
     if (response!.length <= 30) return response!;
     return "${response!.substring(0, 27)}...";
   }
@@ -119,16 +120,29 @@ class Communication {
 
 // Enum for communication modes
 enum CommunicationMode {
-  sms("sms", "SMS", "📱"),
-  call("call", "Simu", "📞"),
-  whatsapp("whatsapp", "WhatsApp", "💬"),
-  systemNote("system_note", "Kumbuka za Mfumo", "📝");
+  sms("sms", "📱"),
+  call("call", "📞"),
+  whatsapp("whatsapp", "💬"),
+  systemNote("system_note", "📝");
 
-  const CommunicationMode(this.value, this.displayName, this.icon);
+  const CommunicationMode(this.value, this.icon);
 
   final String value;
-  final String displayName;
   final String icon;
+
+  /// The name shown for the mode, in the language chosen in the app.
+  String get displayName {
+    switch (this) {
+      case CommunicationMode.sms:
+        return "SMS";
+      case CommunicationMode.call:
+        return LocalizationService.instance.translate('call');
+      case CommunicationMode.whatsapp:
+        return "WhatsApp";
+      case CommunicationMode.systemNote:
+        return LocalizationService.instance.translate('system_notes');
+    }
+  }
 
   // Create from string value
   static CommunicationMode fromString(String value) {

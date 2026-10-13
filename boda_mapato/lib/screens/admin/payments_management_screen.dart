@@ -72,7 +72,7 @@ class _PaymentsManagementScreenState extends State<PaymentsManagementScreen> {
       }
     } on Exception catch (e) {
       if (!mounted) return;
-      _error = 'Imeshindikana kupakia data: $e';
+      _error = LocalizationService.instance.translateWith('could_not_load_data', <Object?>[e]);
     } finally {
       if (mounted) setState(() => _loadingDrivers = false);
     }
@@ -92,7 +92,7 @@ class _PaymentsManagementScreenState extends State<PaymentsManagementScreen> {
       _summary = (res['data'] as Map?)?.cast<String, dynamic>();
     } on Exception catch (e) {
       if (!mounted) return;
-      _error = 'Imeshindikana kupakia muhtasari: $e';
+      _error = LocalizationService.instance.translateWith('could_not_load_the_summary', <Object?>[e]);
     } finally {
       if (mounted) setState(() => _loadingSummary = false);
     }
@@ -162,8 +162,8 @@ class _PaymentsManagementScreenState extends State<PaymentsManagementScreen> {
 
   Widget _buildDriversList() {
     if (_drivers.isEmpty) {
-      return const Center(
-        child: Text('Hakuna madereva kupatikana',
+      return Center(
+        child: Text(LocalizationService.instance.translate('no_drivers_found_2'),
             style: TextStyle(color: Colors.white70)),
       );
     }
@@ -220,7 +220,7 @@ class _PaymentsManagementScreenState extends State<PaymentsManagementScreen> {
                     Text('TSH ${_formatCurrency(debt)}',
                         style: const TextStyle(
                             color: Colors.white, fontWeight: FontWeight.bold)),
-                    Text('$days siku',
+                    Text(LocalizationService.instance.translateWith('days_2', <Object?>[days]),
                         style: const TextStyle(
                             color: Colors.white70, fontSize: 12)),
                   ],
@@ -239,8 +239,8 @@ class _PaymentsManagementScreenState extends State<PaymentsManagementScreen> {
 
   Widget _buildSummaryPane() {
     if (_selectedDriverId == null) {
-      return const Center(
-        child: Text('Chagua dereva upande wa kushoto',
+      return Center(
+        child: Text(LocalizationService.instance.translate('select_a_driver_on_the_left'),
             style: TextStyle(color: Colors.white70)),
       );
     }
@@ -279,17 +279,17 @@ class _PaymentsManagementScreenState extends State<PaymentsManagementScreen> {
                         fontSize: 16,
                         fontWeight: FontWeight.w700)),
                 const SizedBox(height: 6),
-                Text('Jumla ya deni: TSH ${_formatCurrency(totalDebt)}',
+                Text(LocalizationService.instance.translateWith('total_debt_tsh', <Object?>[_formatCurrency(totalDebt)]),
                     style: const TextStyle(color: Colors.white70)),
               ],
             ),
           ),
           const SizedBox(height: 12),
-          const Text('Siku ambazo hazijalipwa',
+          Text(LocalizationService.instance.translate('unpaid_days'),
               style: TextStyle(color: Colors.white70)),
           const SizedBox(height: 8),
           if (unpaid.isEmpty)
-            const Text('Hakuna deni linalosubiri',
+            Text(LocalizationService.instance.translate('no_pending_debt'),
                 style: TextStyle(color: Colors.white, fontSize: 12))
           else
             Wrap(
@@ -347,8 +347,8 @@ class _PaymentsManagementScreenState extends State<PaymentsManagementScreen> {
             backgroundColor: ThemeConstants.primaryBlue,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Text(
-              'Rekodi Malipo',
+            title: Text(
+              LocalizationService.instance.translate('record_payment'),
               style: TextStyle(color: Colors.white),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -363,35 +363,35 @@ class _PaymentsManagementScreenState extends State<PaymentsManagementScreen> {
                     TextFormField(
                       controller: amountCtrl,
                       keyboardType: TextInputType.number,
-                      decoration: _input('Kiasi (TSh)'),
+                      decoration: _input(LocalizationService.instance.translate('amount_tsh')),
                       style: const TextStyle(color: Colors.white),
                       validator: (v) {
                         final double? a = double.tryParse((v ?? '').trim());
-                        if (a == null || a <= 0) return 'Weka kiasi sahihi';
+                        if (a == null || a <= 0) return LocalizationService.instance.translate('enter_a_valid_amount');
                         return null;
                       },
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
                       initialValue: channel,
-                      decoration: _input('Njia ya Malipo'),
+                      decoration: _input(LocalizationService.instance.translate('payment_method_label')),
                       dropdownColor: ThemeConstants.primaryBlue,
                       style: const TextStyle(color: Colors.white),
-                      items: const [
+                      items: [
                         DropdownMenuItem(
-                            value: 'cash', child: Text('Fedha taslimu')),
+                            value: 'cash', child: Text(LocalizationService.instance.translate('cash'))),
                         DropdownMenuItem(
-                            value: 'mobile', child: Text('Pesa za simu')),
+                            value: 'mobile', child: Text(LocalizationService.instance.translate('mobile_money'))),
                         DropdownMenuItem(
-                            value: 'bank', child: Text('Uhamisho wa benki')),
+                            value: 'bank', child: Text(LocalizationService.instance.translate('bank_transfer'))),
                         DropdownMenuItem(
-                            value: 'other', child: Text('Nyingine')),
+                            value: 'other', child: Text(LocalizationService.instance.translate('other'))),
                       ],
                       onChanged: (v) =>
                           setStateDialog(() => channel = v ?? channel),
                     ),
                     const SizedBox(height: 10),
-                    const Text('Chagua siku zinazolipwa',
+                    Text(LocalizationService.instance.translate('select_the_days_being_paid'),
                         style: TextStyle(color: Colors.white70)),
                     const SizedBox(height: 6),
                     Wrap(
@@ -423,7 +423,7 @@ class _PaymentsManagementScreenState extends State<PaymentsManagementScreen> {
                     TextFormField(
                       controller: remarksCtrl,
                       maxLines: 3,
-                      decoration: _input('Maelezo (hiari)'),
+                      decoration: _input(LocalizationService.instance.translate('note_optional')),
                       style: const TextStyle(color: Colors.white),
                     ),
                   ],
@@ -433,7 +433,7 @@ class _PaymentsManagementScreenState extends State<PaymentsManagementScreen> {
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Ghairi'),
+                child: Text(LocalizationService.instance.translate('cancel_2')),
               ),
               TextButton(
                 onPressed: () async {
@@ -451,15 +451,15 @@ class _PaymentsManagementScreenState extends State<PaymentsManagementScreen> {
                     };
                     await _api.recordPayment(payload);
                     if (!mounted) return;
-                    ThemeConstants.showSuccessSnackBar(context, 'Malipo yamehifadhiwa kikamilifu');
+                    ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('payment_saved_successfully'));
                     await _loadSummary(_selectedDriverId!);
                     await _loadDrivers();
                   } on Exception catch (e) {
                     if (!mounted) return;
-                    ThemeConstants.showErrorSnackBar(context, 'Imeshindikana kuhifadhi: $e');
+                    ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translateWith('could_not_save', <Object?>[e]));
                   }
                 },
-                child: const Text('Hifadhi'),
+                child: Text(LocalizationService.instance.translate('save')),
               ),
             ],
           );

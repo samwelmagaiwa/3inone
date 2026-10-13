@@ -14,6 +14,7 @@ import "../../providers/auth_provider.dart";
 import "../../services/api_service.dart";
 import "../../widgets/custom_button.dart";
 import "../../widgets/custom_card.dart";
+import '../../services/localization_service.dart';
 
 class ReceiptScreen extends StatefulWidget {
   const ReceiptScreen({super.key});
@@ -76,7 +77,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
           _isLoadingReceipts = false;
         });
         ThemeConstants.showErrorSnackBar(
-            context, "Hitilafu katika kupakia risiti: $e");
+            context, LocalizationService.instance.translateWith('error_loading_receipts', <Object?>[e]));
       }
     }
   }
@@ -110,7 +111,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     } on Exception catch (e) {
       if (mounted) {
         ThemeConstants.showErrorSnackBar(
-            context, "Hitilafu katika kutengeneza risiti: $e");
+            context, LocalizationService.instance.translateWith('error_creating_the_receipt', <Object?>[e]));
       }
     } finally {
       if (mounted) {
@@ -149,7 +150,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   Widget build(final BuildContext context) => Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text(
+          title: Text(
             AppStrings.receipts,
             style: AppStyles.heading2,
           ),
@@ -180,13 +181,13 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              const Text(
+                              Text(
                                 AppStrings.generateReceipt,
                                 style: AppStyles.heading3,
                               ),
                               const SizedBox(height: AppStyles.spacingXS),
                               Text(
-                                "Tengeneza risiti kwa ajili ya huduma uliyotoa",
+                                LocalizationService.instance.translate('create_a_receipt_for_the_service'),
                                 style: AppStyles.bodySmall.copyWith(
                                   color: AppColors.textSecondary,
                                 ),
@@ -202,8 +203,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                 const SizedBox(height: AppStyles.spacingL),
 
                 // Form Fields
-                const Text(
-                  "Taarifa za Risiti",
+                Text(
+                  LocalizationService.instance.translate('receipt_information'),
                   style: AppStyles.heading3,
                 ),
                 const SizedBox(height: AppStyles.spacingM),
@@ -213,7 +214,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                   controller: _customerNameController,
                   decoration: AppStyles.inputDecoration(context).copyWith(
                     labelText: AppStrings.customerName,
-                    hintText: "Jina la mteja",
+                    hintText: LocalizationService.instance.translate('customer_name'),
                     prefixIcon: const Icon(Icons.person),
                   ),
                   validator: (final String? value) {
@@ -254,7 +255,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                   controller: _serviceTypeController,
                   decoration: AppStyles.inputDecoration(context).copyWith(
                     labelText: AppStrings.serviceType,
-                    hintText: "Mfano: Safari ya Boda",
+                    hintText: LocalizationService.instance.translate('example_boda_trip'),
                     prefixIcon: const Icon(Icons.work),
                   ),
                   validator: (final String? value) {
@@ -271,8 +272,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                 TextFormField(
                   controller: _notesController,
                   decoration: AppStyles.inputDecoration(context).copyWith(
-                    labelText: "Maelezo ya Ziada (Si lazima)",
-                    hintText: "Maelezo mengine...",
+                    labelText: LocalizationService.instance.translate('extra_details_not_required'),
+                    hintText: "${LocalizationService.instance.translate('other_details')}...",
                     prefixIcon: const Icon(Icons.note),
                   ),
                   maxLines: 3,
@@ -285,7 +286,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                   width: double.infinity,
                   child: CustomButton(
                     text: _isGenerating
-                        ? "Inatengeneza..."
+                        ? "${LocalizationService.instance.translate('creating')}..."
                         : AppStrings.generateReceipt,
                     onPressed: _isGenerating ? null : _generateReceipt,
                     isLoading: _isGenerating,
@@ -298,14 +299,14 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: <Widget>[
-                    const Text(
-                      "Risiti za Hivi Karibuni",
+                    Text(
+                      LocalizationService.instance.translate('recent_receipts'),
                       style: AppStyles.heading3,
                     ),
                     if (!_isLoadingReceipts && _recentReceipts.isNotEmpty)
                       TextButton(
                         onPressed: _loadRecentReceipts,
-                        child: const Text("Onyesha Zote"),
+                        child: Text(LocalizationService.instance.translate('show_all')),
                       ),
                   ],
                 ),
@@ -327,7 +328,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                           ),
                           const SizedBox(height: AppStyles.spacingM),
                           Text(
-                            "Hakuna risiti za hivi karibuni",
+                            LocalizationService.instance.translate('no_recent_receipts'),
                             style: AppStyles.bodyMedium.copyWith(
                               color: AppColors.textSecondary,
                             ),
@@ -432,9 +433,9 @@ class _ReceiptPreviewDialog extends StatelessWidget {
             // Header
             Row(
               children: <Widget>[
-                const Expanded(
+                Expanded(
                   child: AutoSizeText(
-                    "Muhtasari wa Risiti",
+                    LocalizationService.instance.translate('receipt_summary'),
                     style: AppStyles.heading3,
                     maxLines: 1,
                     stepGranularity: 0.5,
@@ -471,9 +472,9 @@ class _ReceiptPreviewDialog extends StatelessWidget {
                     ),
                   ),
                   if (business == null)
-                    const Center(
+                    Center(
                       child: Text(
-                        "Mfumo wa Usimamizi wa Mapato",
+                        LocalizationService.instance.translate('income_management_system'),
                         style: AppStyles.bodySmall,
                       ),
                     )
@@ -481,7 +482,7 @@ class _ReceiptPreviewDialog extends StatelessWidget {
                     if (business.address.isNotEmpty)
                       Center(child: Text(business.address, textAlign: TextAlign.center, style: AppStyles.bodySmall)),
                     if (business.phone.isNotEmpty)
-                      Center(child: Text("Simu: ${business.phone}", style: AppStyles.bodySmall)),
+                      Center(child: Text(LocalizationService.instance.translateWith('phone', <Object?>[business.phone]), style: AppStyles.bodySmall)),
                     if (business.tin.isNotEmpty)
                       Center(child: Text("TIN: ${business.tin}", style: AppStyles.bodySmall)),
                   ],
@@ -490,13 +491,13 @@ class _ReceiptPreviewDialog extends StatelessWidget {
                   const Divider(),
 
                   // Receipt Details
-                  _ReceiptRow("Nambari ya Risiti:", receiptNumber),
+                  _ReceiptRow("${LocalizationService.instance.translate('receipt_number_2')}:", receiptNumber),
                   _ReceiptRow(
-                    "Tarehe:",
+                    "${LocalizationService.instance.translate('date')}:",
                     "${currentDate.day}/${currentDate.month}/${currentDate.year}",
                   ),
                   _ReceiptRow(
-                    "Muda:",
+                    "${LocalizationService.instance.translate('time_2')}:",
                     "${currentDate.hour}:${currentDate.minute.toString().padLeft(2, "0")}",
                   ),
 
@@ -504,9 +505,9 @@ class _ReceiptPreviewDialog extends StatelessWidget {
                   const Divider(),
 
                   // Customer & Service Details
-                  _ReceiptRow("Mteja:", customerName),
-                  _ReceiptRow("Huduma:", serviceType),
-                  if (notes.isNotEmpty) _ReceiptRow("Maelezo:", notes),
+                  _ReceiptRow("${LocalizationService.instance.translate('customer')}:", customerName),
+                  _ReceiptRow("${LocalizationService.instance.translate('service_label')}:", serviceType),
+                  if (notes.isNotEmpty) _ReceiptRow("${LocalizationService.instance.translate('description')}:", notes),
 
                   const SizedBox(height: AppStyles.spacingM),
                   const Divider(),
@@ -515,8 +516,8 @@ class _ReceiptPreviewDialog extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: <Widget>[
-                      const Text(
-                        "JUMLA:",
+                      Text(
+                        "${LocalizationService.instance.translate('total').toUpperCase()}:",
                         style: AppStyles.heading3,
                       ),
                       Text(
@@ -532,9 +533,9 @@ class _ReceiptPreviewDialog extends StatelessWidget {
                   const Divider(),
 
                   // Footer
-                  const Center(
+                  Center(
                     child: Text(
-                      "Asante kwa kutumia huduma zetu!",
+                      "${LocalizationService.instance.translate('thank_you_for_using_our_services')}!",
                       style: AppStyles.bodySmall,
                     ),
                   ),
@@ -561,11 +562,11 @@ class _ReceiptPreviewDialog extends StatelessWidget {
                 const SizedBox(width: AppStyles.spacingM),
                 Expanded(
                   child: CustomButton(
-                    text: "Hifadhi",
+                    text: LocalizationService.instance.translate('save'),
                     onPressed: () {
                       Navigator.pop(context);
                       ThemeConstants.showSuccessSnackBar(
-                          context, "Risiti imehifadhiwa");
+                          context, LocalizationService.instance.translate('receipt_saved'));
                     },
                     backgroundColor: AppColors.success,
                   ),

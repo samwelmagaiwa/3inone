@@ -10,6 +10,7 @@ import '../../providers/rental_provider.dart';
 import '../../services/localization_service.dart';
 import '../../widgets/location_selector.dart';
 import 'add_house_bottom_sheet.dart';
+import '../../utils/rental_labels.dart';
 
 class CreatePropertyScreen extends StatefulWidget {
   const CreatePropertyScreen({super.key});
@@ -104,15 +105,15 @@ class _CreatePropertyScreenState extends State<CreatePropertyScreen> {
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
           backgroundColor: ThemeConstants.bgMid,
-          title: Text('Property Created', style: const TextStyle(color: Colors.white)),
-          content: Text('Do you want to add a house to this property now?', style: const TextStyle(color: Colors.white70)),
+          title: Text(LocalizationService.instance.translate('property_created_2'), style: const TextStyle(color: Colors.white)),
+          content: Text(LocalizationService.instance.translate('do_you_want_to_add_a'), style: const TextStyle(color: Colors.white70)),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.pop(ctx);
                 Navigator.pop(context);
               },
-              child: Text('Not Now', style: const TextStyle(color: Colors.white54)),
+              child: Text(LocalizationService.instance.translate('not_now'), style: const TextStyle(color: Colors.white54)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -130,7 +131,7 @@ class _CreatePropertyScreenState extends State<CreatePropertyScreen> {
                 });
               },
               style: ElevatedButton.styleFrom(backgroundColor: ThemeConstants.primaryOrange),
-              child: Text('Yes, Add House', style: const TextStyle(color: Colors.white)),
+              child: Text(LocalizationService.instance.translate('yes_add_house'), style: const TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -420,11 +421,5 @@ class _CreatePropertyScreenState extends State<CreatePropertyScreen> {
     );
   }
 
-  String _formatType(String type) {
-    return type
-        .replaceAll('_', ' ')
-        .split(' ')
-        .map((w) => w.isNotEmpty ? "${w[0].toUpperCase()}${w.substring(1)}" : "")
-        .join(' ');
-  }
+  String _formatType(String type) => rentalValueLabel(type);
 }

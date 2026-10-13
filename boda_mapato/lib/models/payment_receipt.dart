@@ -1,3 +1,4 @@
+import '../services/localization_service.dart';
 class PaymentReceipt {
   PaymentReceipt({
     required this.id,
@@ -288,9 +289,9 @@ enum ReceiptSendMethod {
       case ReceiptSendMethod.whatsapp:
         return 'WhatsApp';
       case ReceiptSendMethod.email:
-        return 'Barua Pepe';
+        return LocalizationService.instance.translate('email_message');
       case ReceiptSendMethod.system:
-        return 'Ujumbe wa Mfumo';
+        return LocalizationService.instance.translate('system_message');
     }
   }
 

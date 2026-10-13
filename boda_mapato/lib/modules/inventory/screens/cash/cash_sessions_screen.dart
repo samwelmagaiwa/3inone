@@ -444,7 +444,7 @@ class _CashSessionDetailScreenState extends State<CashSessionDetailScreen> {
             InvTextField(
               controller: desc,
               label: loc.translate('description'),
-              hint: 'e.g. Fuel for delivery motorbike',
+              hint: LocalizationService.instance.translate('e_g_fuel_for_delivery_motorbike'),
             ),
             SizedBox(height: 10.h),
             InvTextField(
@@ -548,7 +548,7 @@ class _CashSessionDetailScreenState extends State<CashSessionDetailScreen> {
                     InvTextField(
                       controller: reason,
                       label: loc.translate('explain_difference'),
-                      hint: 'e.g. Gave change from a torn note',
+                      hint: LocalizationService.instance.translate('e_g_gave_change_from_a'),
                     ),
                   ],
                 ],

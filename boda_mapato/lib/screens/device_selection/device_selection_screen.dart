@@ -9,6 +9,7 @@ import "../../models/device.dart";
 import "../../providers/device_provider.dart";
 import "../../widgets/custom_button.dart";
 import "../../widgets/custom_card.dart";
+import '../../services/localization_service.dart';
 
 class DeviceSelectionScreen extends StatefulWidget {
   const DeviceSelectionScreen({super.key});
@@ -35,7 +36,7 @@ class _DeviceSelectionScreenState extends State<DeviceSelectionScreen> {
 
   Future<void> _saveDevice() async {
     if (!_formKey.currentState!.validate() || selectedDeviceType == null) {
-      ThemeConstants.showErrorSnackBar(context, "Tafadhali jaza taarifa zote zinazohitajika");
+      ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('please_fill_in_all_required_information'));
       return;
     }
 
@@ -61,12 +62,12 @@ class _DeviceSelectionScreenState extends State<DeviceSelectionScreen> {
           .addDevice(device);
 
       if (mounted) {
-        ThemeConstants.showSuccessSnackBar(context, "Chombo kimesajiliwa kwa mafanikio");
+        ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('vehicle_registered_successfully'));
         Navigator.pop(context);
       }
     } on Exception catch (e) {
       if (mounted) {
-        ThemeConstants.showErrorSnackBar(context, "Hitilafu: $e");
+        ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translateWith('error_2', <Object?>[e]));
       }
     } finally {
       if (mounted) {
@@ -81,7 +82,7 @@ class _DeviceSelectionScreenState extends State<DeviceSelectionScreen> {
   Widget build(final BuildContext context) => Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text(
+          title: Text(
             AppStrings.selectDevice,
             style: AppStyles.heading2,
           ),
@@ -97,7 +98,7 @@ class _DeviceSelectionScreenState extends State<DeviceSelectionScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 // Device Type Selection
-                const Text(
+                Text(
                   AppStrings.deviceType,
                   style: AppStyles.heading3,
                 ),
@@ -114,8 +115,8 @@ class _DeviceSelectionScreenState extends State<DeviceSelectionScreen> {
                 const SizedBox(height: AppStyles.spacingL),
 
                 // Device Details Form
-                const Text(
-                  "Taarifa za Chombo",
+                Text(
+                  LocalizationService.instance.translate('vehicle_information'),
                   style: AppStyles.heading3,
                 ),
                 const SizedBox(height: AppStyles.spacingM),
@@ -124,8 +125,8 @@ class _DeviceSelectionScreenState extends State<DeviceSelectionScreen> {
                 TextFormField(
                   controller: _nameController,
                   decoration: AppStyles.inputDecoration(context).copyWith(
-                    labelText: "Jina la Chombo",
-                    hintText: "Mfano: Bajaji ya Kwanza",
+                    labelText: LocalizationService.instance.translate('vehicle_name'),
+                    hintText: LocalizationService.instance.translate('example_first_tuk_tuk'),
                   ),
                   validator: (final String? value) {
                     if (value == null || value.trim().isEmpty) {
@@ -141,8 +142,8 @@ class _DeviceSelectionScreenState extends State<DeviceSelectionScreen> {
                 TextFormField(
                   controller: _plateNumberController,
                   decoration: AppStyles.inputDecoration(context).copyWith(
-                    labelText: "Nambari ya Bango",
-                    hintText: "Mfano: T123ABC",
+                    labelText: LocalizationService.instance.translate('plate_number_2'),
+                    hintText: LocalizationService.instance.translate('example_t123abc'),
                   ),
                   textCapitalization: TextCapitalization.characters,
                   validator: (final String? value) {
@@ -159,8 +160,8 @@ class _DeviceSelectionScreenState extends State<DeviceSelectionScreen> {
                 TextFormField(
                   controller: _descriptionController,
                   decoration: AppStyles.inputDecoration(context).copyWith(
-                    labelText: "Maelezo (Si lazima)",
-                    hintText: "Maelezo ya ziada kuhusu chombo",
+                    labelText: LocalizationService.instance.translate('description_not_required'),
+                    hintText: LocalizationService.instance.translate('extra_details_about_the_vehicle_2'),
                   ),
                   maxLines: 3,
                 ),
@@ -280,11 +281,11 @@ class _DeviceTypeSelector extends StatelessWidget {
   String _getDeviceDescription(final DeviceType type) {
     switch (type) {
       case DeviceType.bajaji:
-        return "Bajaji au rickshaw ya abiria";
+        return LocalizationService.instance.translate('passenger_tuk_tuk_or_rickshaw');
       case DeviceType.pikipiki:
-        return "Pikipiki ya abiria (boda boda)";
+        return LocalizationService.instance.translate('passenger_motorcycle_boda_boda');
       case DeviceType.gari:
-        return "Gari la abiria au mizigo";
+        return LocalizationService.instance.translate('passenger_or_cargo_car');
     }
   }
 }

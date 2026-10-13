@@ -15,6 +15,7 @@ import '../../../../screens/settings/user_management_screen.dart';
 import '../../models/inv_depot_models.dart';
 import '../../providers/depot_provider.dart';
 import '../widgets/inventory_widgets.dart';
+import '../widgets/joined_sections.dart';
 import 'business_kind_card.dart';
 import 'crate_deposit_card.dart';
 import 'receipt_header_screen.dart';
@@ -93,13 +94,13 @@ class _SettingsTabState extends State<_SettingsTab> {
 
   /// Grouped so the form reads like the settings it configures, and each
   /// field knows whether it is text or a number.
-  static final Map<String, List<_Field>> _groups = <String, List<_Field>>{
+  static Map<String, List<_Field>> get _groups => <String, List<_Field>>{
     'depot_details': <_Field>[
-      const _Field('depot_name', 'depot_name',
-          hint: 'e.g. Beverage Depot Dodoma'),
+      _Field('depot_name', 'depot_name',
+          hint: LocalizationService.instance.translate('e_g_beverage_depot_dodoma')),
       const _Field('depot_phone', 'phone', hint: 'e.g. +255 700 000 000', phone: true),
-      const _Field('depot_address', 'address',
-          hint: 'e.g. Main Street, Block B'),
+      _Field('depot_address', 'address',
+          hint: LocalizationService.instance.translate('e_g_main_street_block_b')),
     ],
     'invoicing': <_Field>[
       const _Field('invoice_prefix', 'invoice_prefix', hint: 'e.g. INV'),
@@ -169,28 +170,122 @@ class _SettingsTabState extends State<_SettingsTab> {
     }
   }
 
-  String? _validateField(_Field f, String? value) {
+  String? _validateField(_Field f, String? value, {required bool isDepot}) {
     final v = value?.trim() ?? '';
     if (f.key == 'depot_name' && v.isEmpty) {
-      return 'Depot name is required';
+      final bool sw = LocalizationService.instance.isSwahili;
+      if (isDepot) return sw ? 'Jina la ghala linahitajika' : 'Depot name is required';
+      return sw ? 'Jina la biashara linahitajika' : 'Business name is required';
     }
     if (f.numeric && v.isNotEmpty) {
       final n = double.tryParse(v);
       if (n == null || n < 0) {
-        return 'Enter a valid non-negative number';
+        return LocalizationService.instance.translate('enter_a_valid_non_negative_number');
       }
       if (f.key.contains('percent') && n > 100) {
-        return 'Percentage cannot exceed 100%';
+        return LocalizationService.instance.translate('percentage_cannot_exceed_100');
       }
     }
     return null;
   }
 
+  /// The grey example in a box. Only the name has a depot-flavoured one.
+  String? _hintFor(_Field f, {required bool isDepot, required bool sw}) {
+    if (f.key == 'depot_name' && !isDepot) return sw ? 'mf. Duka la Mama Asha' : 'e.g. Mama Asha Shop';
+    return f.hint;
+  }
+
   @override
   Widget build(BuildContext context) {
     final LocalizationService loc = context.watch<LocalizationService>();
+    final DepotProvider depot = context.watch<DepotProvider>();
+    // "Depot details" / "Depot name" are for a depot; any other kind of business reads "Business ...".
+    final bool isDepot = depot.capabilities.isDepot;
+    final user = context.watch<AuthProvider>().user;
     final bool canManageSettings = context.select<AuthProvider, bool>(
         (AuthProvider a) => a.permissions.has('inv_manage_settings'));
+    final String role = user?.role ?? '';
+
+    // One card, no gaps: every section below is separated from the next by a glowing divider line, like the
+    // dashboard's joined sections.
+    final List<Widget> sections = <Widget>[
+      // What kind of business this is: the first thing an owner looks for here, because it decides how the
+      // product page and the till behave.
+      BusinessKindCard(
+        joined: true,
+        // A server that has never heard of kinds does not send one with the settings.
+        serverKnowsKinds: depot.settings.containsKey('inventory_type'),
+        current: depot.capabilities.inventoryType,
+        canChange: user?.isBusinessOwner ?? false,
+        onChange: depot.changeBusinessKind,
+        sw: loc.isSwahili,
+      ),
+      ..._groups.entries.map(
+        (MapEntry<String, List<_Field>> group) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            AutoSizeText(
+              loc.translateForKind(group.key, isDepot: isDepot),
+              maxLines: 1,
+              minFontSize: 11,
+              overflow: TextOverflow.ellipsis,
+              style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700),
+            ),
+            SizedBox(height: 10.h),
+            for (int i = 0; i < group.value.length; i++) ...<Widget>[
+              if (i > 0) SizedBox(height: 10.h),
+              InvTextField(
+                controller: _controllers[group.value[i].key]!,
+                label: loc.translateForKind(group.value[i].labelKey, isDepot: isDepot),
+                hint: _hintFor(group.value[i], isDepot: isDepot, sw: loc.isSwahili),
+                validator: (String? v) => _validateField(group.value[i], v, isDepot: isDepot),
+                keyboardType: group.value[i].numeric
+                    ? const TextInputType.numberWithOptions(decimal: true)
+                    : group.value[i].phone
+                        ? TextInputType.phone
+                        : TextInputType.text,
+              ),
+            ],
+          ],
+        ),
+      ),
+      // -- Security deposit charged per crate (one row per crate type) --
+      // Only for a business that uses returnable packaging.
+      if (canManageSettings && depot.capabilities.useCrates)
+        CrateDepositCard(
+          joined: true,
+          swahili: loc.isSwahili,
+          types: depot.crateTypes,
+          onCreate: (String name, double deposit) => depot.createCrateType(name: name, deposit: deposit),
+          onUpdate: (InvCrateType t, String name, double deposit, bool active) =>
+              depot.updateCrateType(t.id, name: name, deposit: deposit, active: active),
+          onDelete: (InvCrateType t) => depot.deleteCrateType(t.id),
+        ),
+      // -- Quick-link to user management (admin / super_admin only) --
+      // Lets an admin create staff for their own bound service, and a
+      // super_admin manage every account across every service.
+      if (user?.isAdmin == true || user?.isSuperAdmin == true)
+        FlushSection(
+          child: _SettingsLinkRow(
+            icon: Icons.people_alt_rounded,
+            title: loc.translate('users_management'),
+            subtitle: loc.translate('users_subtitle'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const UserManagementScreen()),
+            ),
+          ),
+        ),
+      // -- Quick-link to receipt header settings (admin / manager only) --
+      if (role == 'admin' || role == 'manager')
+        FlushSection(
+          child: _SettingsLinkRow(
+            icon: Icons.receipt_long_rounded,
+            title: LocalizationService.instance.translate('receipt_settings'),
+            subtitle: LocalizationService.instance.translate('name_address_tin_footer_note_and'),
+            onTap: () => Navigator.of(context).push(ReceiptHeaderScreen.route()),
+          ),
+        ),
+    ];
 
     return Form(
       key: _formKey,
@@ -200,197 +295,61 @@ class _SettingsTabState extends State<_SettingsTab> {
         ),
         padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 24.h),
         children: <Widget>[
-          // What kind of business this is: the first thing an owner looks for here, because it decides how the
-          // product page and the till behave.
-          Padding(
-            padding: EdgeInsets.only(bottom: 12.h),
-            child: Consumer2<DepotProvider, AuthProvider>(
-              builder: (BuildContext _, DepotProvider depot, AuthProvider auth, Widget? __) => BusinessKindCard(
-                // A server that has never heard of kinds does not send one with the settings.
-                serverKnowsKinds: depot.settings.containsKey('inventory_type'),
-                current: depot.capabilities.inventoryType,
-                canChange: auth.user?.isBusinessOwner ?? false,
-                onChange: depot.changeBusinessKind,
-                sw: loc.isSwahili,
-              ),
-            ),
-          ),
-          ..._groups.entries.map(
-            (MapEntry<String, List<_Field>> group) => Padding(
-              padding: EdgeInsets.only(bottom: 12.h),
-              child: Container(
-                decoration: ThemeConstants.glassCardDecoration,
-                padding: EdgeInsets.all(12.w),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    AutoSizeText(
-                      loc.translate(group.key),
-                      maxLines: 1,
-                      minFontSize: 11,
-                      overflow: TextOverflow.ellipsis,
-                      style: ThemeConstants.bodyStyle
-                          .copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    SizedBox(height: 10.h),
-                    ...group.value.map(
-                      (_Field f) => Padding(
-                        padding: EdgeInsets.only(bottom: 10.h),
-                        child: InvTextField(
-                          controller: _controllers[f.key]!,
-                          label: loc.translate(f.labelKey),
-                          hint: f.hint,
-                          validator: (v) => _validateField(f, v),
-                          keyboardType: f.numeric
-                              ? const TextInputType.numberWithOptions(decimal: true)
-                              : f.phone
-                                  ? TextInputType.phone
-                                  : TextInputType.text,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // -- Security deposit charged per crate (one row per crate type) --
-          // Only for a business that uses returnable packaging.
-          if (canManageSettings && context.watch<DepotProvider>().capabilities.useCrates)
-            Padding(
-              padding: EdgeInsets.only(bottom: 12.h),
-              child: Consumer<DepotProvider>(
-                builder: (BuildContext _, DepotProvider depot, Widget? __) =>
-                    CrateDepositCard(
-                  swahili: loc.isSwahili,
-                  types: depot.crateTypes,
-                  onCreate: (String name, double deposit) =>
-                      depot.createCrateType(name: name, deposit: deposit),
-                  onUpdate: (InvCrateType t, String name, double deposit,
-                          bool active) =>
-                      depot.updateCrateType(t.id,
-                          name: name, deposit: deposit, active: active),
-                  onDelete: (InvCrateType t) => depot.deleteCrateType(t.id),
-                ),
-              ),
-            ),
-          // -- Quick-link to user management (admin / super_admin only) --
-          // Lets an admin create staff for their own bound service, and a
-          // super_admin manage every account across every service.
-          Builder(
-            builder: (context) {
-              final user = context.watch<AuthProvider>().user;
-              if (user?.isAdmin != true && user?.isSuperAdmin != true) {
-                return const SizedBox.shrink();
-              }
-              return Padding(
-                padding: EdgeInsets.only(bottom: 12.h),
-                child: InkWell(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const UserManagementScreen(),
-                    ),
-                  ),
-                  borderRadius: BorderRadius.circular(14.r),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.07),
-                      borderRadius: BorderRadius.circular(14.r),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: ThemeConstants.primaryBlue.withOpacity(0.4),
-                            borderRadius: BorderRadius.circular(10.r),
-                          ),
-                          child: Icon(Icons.people_alt_rounded, color: Colors.white, size: 20.sp),
-                        ),
-                        SizedBox(width: 12.w),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                loc.translate('users_management'),
-                                style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700),
-                              ),
-                              SizedBox(height: 2.h),
-                              Text(
-                                loc.translate('users_subtitle'),
-                                style: ThemeConstants.captionStyle,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(Icons.arrow_forward_ios_rounded, color: Colors.white38, size: 14.sp),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-          // -- Quick-link to receipt header settings (admin / manager only) --
-          Builder(
-            builder: (context) {
-              final role = context.watch<AuthProvider>().user?.role ?? '';
-              if (role != 'admin' && role != 'manager') return const SizedBox.shrink();
-              return Padding(
-                padding: EdgeInsets.only(bottom: 12.h),
-                child: InkWell(
-                  onTap: () => Navigator.of(context).push(ReceiptHeaderScreen.route()),
-                  borderRadius: BorderRadius.circular(14.r),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.07),
-                      borderRadius: BorderRadius.circular(14.r),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: ThemeConstants.primaryBlue.withOpacity(0.4),
-                            borderRadius: BorderRadius.circular(10.r),
-                          ),
-                          child: Icon(Icons.receipt_long_rounded, color: Colors.white, size: 20.sp),
-                        ),
-                        SizedBox(width: 12.w),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Mpangilio wa Risiti',
-                                style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700),
-                              ),
-                              SizedBox(height: 2.h),
-                              Text(
-                                'Jina, anwani, TIN, ujumbe wa chini na zaidi',
-                                style: ThemeConstants.captionStyle,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(Icons.arrow_forward_ios_rounded, color: Colors.white38, size: 14.sp),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
+          JoinedSectionsCard(sections: sections),
+          SizedBox(height: 12.h),
           InvPrimaryButton(busy: _saving, onPressed: _save),
         ],
       ),
     );
   }
+}
+
+/// A row of the joined settings card that opens another screen. No box of its own: the card and its divider
+/// lines are the frame.
+class _SettingsLinkRow extends StatelessWidget {
+  const _SettingsLinkRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
+          child: Row(
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: ThemeConstants.primaryBlue.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+                child: Icon(icon, color: Colors.white, size: 20.sp),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(title, style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
+                    SizedBox(height: 2.h),
+                    Text(subtitle, style: ThemeConstants.captionStyle),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded, color: Colors.white38, size: 14.sp),
+            ],
+          ),
+        ),
+      );
 }
 
 /// "Ulinzi" tab — renders the full app settings page (same design as
@@ -457,8 +416,8 @@ class _AppSettingsTab extends StatelessWidget {
             () => go(const UserManagementScreen())),
         if (isSuperAdmin) ...[
           d,
-          tile(Icons.admin_panel_settings, 'Permissions',
-              'Manage service module permissions',
+          tile(Icons.admin_panel_settings, LocalizationService.instance.translate('permissions'),
+              LocalizationService.instance.translate('manage_service_module_permissions'),
               () => go(const PermissionsScreen())),
         ],
         d,
@@ -556,9 +515,9 @@ class _AppSettingsTab extends StatelessWidget {
                         const SizedBox(width: 6),
                         Text(
                           isSuperAdmin
-                              ? 'SUPER ADMIN'
+                              ? LocalizationService.instance.translate('super_admin').toUpperCase()
                               : isAdmin
-                                  ? 'ADMIN'
+                                  ? LocalizationService.instance.translate('admin').toUpperCase()
                                   : (user?.role?.toUpperCase() ?? ''),
                           style: TextStyle(
                             fontSize: 11,

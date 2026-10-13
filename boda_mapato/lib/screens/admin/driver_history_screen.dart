@@ -16,6 +16,7 @@ import "../../models/driver.dart";
 import "../../models/payment.dart";
 import "../../services/api_service.dart";
 import "../../utils/responsive_helper.dart";
+import '../../services/localization_service.dart';
 
 class DriverHistoryScreen extends StatefulWidget {
   const DriverHistoryScreen({
@@ -119,7 +120,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
       // Load chart data (attempt API first, fallback to generated data)
       await _loadChartData();
     } on Exception catch (e) {
-      _showErrorSnackBar("Hitilafu katika kupakia data: $e");
+      _showErrorSnackBar(LocalizationService.instance.translateWith('error_loading_data', <Object?>[e]));
     } finally {
       setState(() {
         _isLoading = false;
@@ -269,11 +270,11 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
   String _paymentConsistencyDisplay() {
     switch (_paymentConsistencyRating.toLowerCase()) {
       case 'consistent':
-        return 'Thabiti';
+        return LocalizationService.instance.translate('consistent');
       case 'inconsistent':
-        return 'Si thabiti';
+        return LocalizationService.instance.translate('inconsistent');
       case 'late':
-        return 'Huchelewa';
+        return LocalizationService.instance.translate('often_late');
       default:
         return _paymentConsistencyRating;
     }
@@ -341,7 +342,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
         _averagePaymentDelay = avgDelay;
       });
     } on Exception catch (e) {
-      _showErrorSnackBar("Imeshindikana kupata muhtasari wa kifedha: $e");
+      _showErrorSnackBar(LocalizationService.instance.translateWith('could_not_get_the_financial_summary', <Object?>[e]));
     }
   }
 
@@ -403,7 +404,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
         _paymentHistory = payments;
       });
     } on Exception catch (e) {
-      _showErrorSnackBar("Imeshindikana kupakia historia ya malipo: $e");
+      _showErrorSnackBar(LocalizationService.instance.translateWith('could_not_load_the_payment_history', <Object?>[e]));
       setState(() {
         _paymentHistory = [];
       });
@@ -424,7 +425,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
         _debtHistory = debts;
       });
     } on Exception catch (e) {
-      _showErrorSnackBar("Imeshindikana kupakia historia ya madeni: $e");
+      _showErrorSnackBar(LocalizationService.instance.translateWith('could_not_load_the_debt_history', <Object?>[e]));
       setState(() {
         _debtHistory = [];
       });
@@ -445,7 +446,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
     ResponsiveHelper.init(context);
     return ThemeConstants.buildResponsiveScaffold(
       context,
-      title: "Historia ya ${widget.driver.name}",
+      title: LocalizationService.instance.translateWith('history_of', <Object?>[widget.driver.name]),
       body: _isLoading
           ? ThemeConstants.buildResponsiveLoadingWidget(context)
           : SingleChildScrollView(
@@ -482,8 +483,8 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
             color: Colors.white,
             size: 20,
           ),
-          label: const Text(
-            "Tengeneza Ripoti (PDF)",
+          label: Text(
+            LocalizationService.instance.translate('generate_report_pdf'),
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -523,7 +524,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  "Inaandaa ripoti...",
+                  "${LocalizationService.instance.translate('preparing_the_report')}...",
                   style: ThemeConstants.responsiveBodyStyle(context),
                 ),
               ],
@@ -568,7 +569,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      "Ripoti Imeundwa!",
+                      "${LocalizationService.instance.translate('report_created')}!",
                       style: ThemeConstants.headingStyle,
                     ),
                   ],
@@ -577,13 +578,13 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    const Text(
-                      "Ripoti ya PDF imeundwa kikamilifu!",
+                    Text(
+                      "${LocalizationService.instance.translate('the_pdf_report_was_created_successfully')}!",
                       style: TextStyle(color: ThemeConstants.textSecondary),
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      "Jina la faili: $fileName",
+                      LocalizationService.instance.translateWith('file_name', <Object?>[fileName]),
                       style: const TextStyle(
                         color: ThemeConstants.textSecondary,
                         fontSize: 12,
@@ -591,7 +592,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "Ukubwa: ${((backendPdf!.length) / 1024).toStringAsFixed(1)} KB",
+                      LocalizationService.instance.translateWith('size_kb', <Object?>[((backendPdf!.length) / 1024).toStringAsFixed(1)]),
                       style: const TextStyle(
                         color: ThemeConstants.textSecondary,
                         fontSize: 12,
@@ -602,8 +603,8 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                 actions: <Widget>[
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text(
-                      "Funga",
+                    child: Text(
+                      LocalizationService.instance.translate('close'),
                       style: TextStyle(color: Colors.white),
                     ),
                   ),
@@ -612,7 +613,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                       final bytes = _lastGeneratedPdf;
                       if (bytes == null) {
                         Navigator.pop(context);
-                        _showErrorSnackBar("Hakuna faili la kufungua.");
+                        _showErrorSnackBar("${LocalizationService.instance.translate('there_is_no_file_to_open')}.");
                         return;
                       }
                       await Printing.layoutPdf(
@@ -625,7 +626,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                       backgroundColor: ThemeConstants.primaryOrange,
                       foregroundColor: Colors.white,
                     ),
-                    child: const Text("Fungua"),
+                    child: Text(LocalizationService.instance.translate('open_2')),
                   ),
                 ],
               );
@@ -685,7 +686,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
             // Helpers
             String currency(num v) => 'TSh ${NumberFormat('#,###').format(v)}';
             final driver = widget.driver;
-            final statusText = driver.status == 'active' ? 'Hai' : 'Hahai';
+            final statusText = driver.status == 'active' ? LocalizationService.instance.translate('active') : LocalizationService.instance.translate('inactive_driver');
             const headerColor = PdfColors.blue800;
             const accent = PdfColors.orange;
 
@@ -730,7 +731,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                     pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text('Ripoti ya Dereva',
+                          pw.Text(LocalizationService.instance.translate('driver_report_2'),
                               style: pw.TextStyle(
                                   fontSize: 22,
                                   fontWeight: pw.FontWeight.bold,
@@ -741,7 +742,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                                   fontSize: 12, color: PdfColors.grey700)),
                         ]),
                     pw.Text(
-                        'Tarehe: ${DateFormat('dd/MM/yyyy').format(DateTime.now())}',
+                        LocalizationService.instance.translateWith('date_2', <Object?>[DateFormat('dd/MM/yyyy').format(DateTime.now())]),
                         style: const pw.TextStyle(
                             fontSize: 10, color: PdfColors.grey700)),
                   ],
@@ -783,13 +784,13 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                         children: [
                           pw.Row(children: [
                             pw.Expanded(
-                                child: pw.Text('Simu: ${driver.phone}',
+                                child: pw.Text(LocalizationService.instance.translateWith('phone', <Object?>[driver.phone]),
                                     style: const pw.TextStyle(fontSize: 10))),
                             pw.Container(
                               padding: const pw.EdgeInsets.symmetric(
                                   vertical: 2, horizontal: 6),
                               decoration: pw.BoxDecoration(
-                                  color: statusText == 'Hai'
+                                  color: statusText == LocalizationService.instance.translate('active')
                                       ? PdfColors.green300
                                       : PdfColors.red300,
                                   borderRadius: pw.BorderRadius.circular(4)),
@@ -800,24 +801,24 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                             ),
                           ]),
                           pw.SizedBox(height: 4),
-                          pw.Text('Barua pepe: ${driver.email}',
+                          pw.Text(LocalizationService.instance.translateWith('email_2', <Object?>[driver.email]),
                               style: const pw.TextStyle(fontSize: 10)),
                           pw.SizedBox(height: 6),
                           pw.Wrap(spacing: 8, runSpacing: 6, children: [
-                            statCard('Leseni', driver.licenseNumber ?? 'Hakuna',
+                            statCard(LocalizationService.instance.translate('license'), driver.licenseNumber ?? LocalizationService.instance.translate('none'),
                                 PdfColors.blueGrey800),
                             statCard(
-                                'Gari',
-                                '${driver.vehicleNumber ?? 'N/A'} (${driver.vehicleType ?? 'N/A'})',
+                                LocalizationService.instance.translate('vehicle_2'),
+                                '${driver.vehicleNumber ?? LocalizationService.instance.translate('not_available_short')} (${LocalizationService.instance.vehicleTypeLabel(driver.vehicleType)})',
                                 PdfColors.indigo),
                             statCard(
-                                'Aliungana',
+                                LocalizationService.instance.translate('joined_on'),
                                 DateFormat('dd/MM/yyyy')
                                     .format(driver.joinedDate),
                                 PdfColors.deepPurple),
-                            statCard('Kiwango', driver.rating.toString(),
+                            statCard(LocalizationService.instance.translate('rating'), driver.rating.toString(),
                                 PdfColors.amber800),
-                            statCard('Safari', driver.tripsCompleted.toString(),
+                            statCard(LocalizationService.instance.translate('driver_trips'), driver.tripsCompleted.toString(),
                                 PdfColors.cyan800),
                           ]),
                         ],
@@ -839,26 +840,26 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                 child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text('Muhtasari wa Kifedha',
+                      pw.Text(LocalizationService.instance.translate('financial_summary'),
                           style: pw.TextStyle(
                               fontSize: 14,
                               fontWeight: pw.FontWeight.bold,
                               color: accent)),
                       pw.SizedBox(height: 8),
                       pw.Wrap(spacing: 8, runSpacing: 8, children: [
-                        statCard('Jumla iliyoripotiwa',
+                        statCard(LocalizationService.instance.translate('total_reported'),
                             currency(_totalAmountSubmitted), PdfColors.indigo),
-                        statCard('Jumla ya Madeni',
+                        statCard(LocalizationService.instance.translate('total_debts_2'),
                             currency(_totalDebtsRecorded), PdfColors.red800),
                         statCard(
-                            'Deni Linalosalia',
+                            LocalizationService.instance.translate('remaining_debt'),
                             currency(_totalOutstandingDebt),
                             PdfColors.deepOrange),
-                        statCard('Jumla Alizolipa', currency(_totalPaid),
+                        statCard(LocalizationService.instance.translate('total_paid_2'), currency(_totalPaid),
                             PdfColors.green800),
-                        statCard('Wastani wa kuchelewa',
-                            '$_averagePaymentDelay siku', PdfColors.deepOrange),
-                        statCard('Kiwango cha ulipaji',
+                        statCard(LocalizationService.instance.translate('average_delay'),
+                            LocalizationService.instance.translateWith('days_2', <Object?>[_averagePaymentDelay]), PdfColors.deepOrange),
+                        statCard(LocalizationService.instance.translate('payment_rate'),
                             _paymentConsistencyDisplay(), PdfColors.teal800),
                       ]),
                     ]),
@@ -867,14 +868,14 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
               pw.SizedBox(height: 14),
 
               // Payments table
-              pw.Text('Historia ya Malipo',
+              pw.Text(LocalizationService.instance.translate('payment_history'),
                   style: pw.TextStyle(
                       fontSize: 13,
                       fontWeight: pw.FontWeight.bold,
                       color: PdfColors.green800)),
               pw.SizedBox(height: 8),
               if (_paymentHistory.isEmpty)
-                pw.Text('Hakuna malipo yaliyopatikana',
+                pw.Text(LocalizationService.instance.translate('no_payments_found'),
                     style: const pw.TextStyle(fontSize: 10))
               else
                 pw.Table(
@@ -887,22 +888,22 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                       children: [
                         pw.Padding(
                             padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text('Tarehe',
+                            child: pw.Text(LocalizationService.instance.translate('date'),
                                 style: pw.TextStyle(
                                     fontWeight: pw.FontWeight.bold))),
                         pw.Padding(
                             padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text('Kiasi',
+                            child: pw.Text(LocalizationService.instance.translate('amount'),
                                 style: pw.TextStyle(
                                     fontWeight: pw.FontWeight.bold))),
                         pw.Padding(
                             padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text('Njia ya Malipo',
+                            child: pw.Text(LocalizationService.instance.translate('payment_method_label'),
                                 style: pw.TextStyle(
                                     fontWeight: pw.FontWeight.bold))),
                         pw.Padding(
                             padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text('Marejeo',
+                            child: pw.Text(LocalizationService.instance.translate('reference'),
                                 style: pw.TextStyle(
                                     fontWeight: pw.FontWeight.bold))),
                       ],
@@ -928,14 +929,14 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
               pw.SizedBox(height: 14),
 
               // Debts table
-              pw.Text('Historia ya Madeni',
+              pw.Text(LocalizationService.instance.translate('debt_history'),
                   style: pw.TextStyle(
                       fontSize: 13,
                       fontWeight: pw.FontWeight.bold,
                       color: PdfColors.red800)),
               pw.SizedBox(height: 8),
               if (_debtHistory.isEmpty)
-                pw.Text('Hakuna rekodi za madeni',
+                pw.Text(LocalizationService.instance.translate('no_debt_records'),
                     style: const pw.TextStyle(fontSize: 10))
               else
                 pw.Table(
@@ -948,22 +949,22 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                       children: [
                         pw.Padding(
                             padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text('Tarehe',
+                            child: pw.Text(LocalizationService.instance.translate('date'),
                                 style: pw.TextStyle(
                                     fontWeight: pw.FontWeight.bold))),
                         pw.Padding(
                             padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text('Inayotarajiwa',
+                            child: pw.Text(LocalizationService.instance.translate('expected'),
                                 style: pw.TextStyle(
                                     fontWeight: pw.FontWeight.bold))),
                         pw.Padding(
                             padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text('Aliyolipa',
+                            child: pw.Text(LocalizationService.instance.translate('paid_2'),
                                 style: pw.TextStyle(
                                     fontWeight: pw.FontWeight.bold))),
                         pw.Padding(
                             padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text('Hali',
+                            child: pw.Text(LocalizationService.instance.translate('status'),
                                 style: pw.TextStyle(
                                     fontWeight: pw.FontWeight.bold))),
                       ],
@@ -990,7 +991,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                                   borderRadius: pw.BorderRadius.circular(4),
                                 ),
                                 child: pw.Text(
-                                    d.isPaid ? 'Imelipwa' : 'Haijalipwa',
+                                    d.isPaid ? LocalizationService.instance.translate('settled') : LocalizationService.instance.translate('unpaid_2'),
                                     style: pw.TextStyle(
                                         fontWeight: pw.FontWeight.bold,
                                         fontSize: 9)),
@@ -1029,7 +1030,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    "Ripoti Imeundwa!",
+                    "${LocalizationService.instance.translate('report_created')}!",
                     style: ThemeConstants.headingStyle,
                   ),
                 ],
@@ -1038,13 +1039,13 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  const Text(
-                    "Ripoti ya PDF imeundwa kikamilifu!",
+                  Text(
+                    "${LocalizationService.instance.translate('the_pdf_report_was_created_successfully')}!",
                     style: TextStyle(color: ThemeConstants.textSecondary),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    "Jina la faili: $fileName",
+                    LocalizationService.instance.translateWith('file_name', <Object?>[fileName]),
                     style: const TextStyle(
                       color: ThemeConstants.textSecondary,
                       fontSize: 12,
@@ -1052,7 +1053,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "Ukubwa: ${(pdfData.length / 1024).toStringAsFixed(1)} KB",
+                    LocalizationService.instance.translateWith('size_kb', <Object?>[(pdfData.length / 1024).toStringAsFixed(1)]),
                     style: const TextStyle(
                       color: ThemeConstants.textSecondary,
                       fontSize: 12,
@@ -1063,8 +1064,8 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
               actions: <Widget>[
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    "Funga",
+                  child: Text(
+                    LocalizationService.instance.translate('close'),
                     style: TextStyle(color: Colors.white),
                   ),
                 ),
@@ -1073,7 +1074,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                     final bytes = _lastGeneratedPdf;
                     if (bytes == null) {
                       Navigator.pop(context);
-                      _showErrorSnackBar("Hakuna faili la kufungua.");
+                      _showErrorSnackBar("${LocalizationService.instance.translate('there_is_no_file_to_open')}.");
                       return;
                     }
                     // Open PDF preview/print dialog
@@ -1087,7 +1088,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                     backgroundColor: ThemeConstants.primaryOrange,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text("Fungua"),
+                  child: Text(LocalizationService.instance.translate('open_2')),
                 ),
               ],
             );
@@ -1101,7 +1102,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
       }
 
       if (mounted) {
-        _showErrorSnackBar("Hitilafu katika kuunda ripoti: $e");
+        _showErrorSnackBar(LocalizationService.instance.translateWith('error_creating_the_report', <Object?>[e]));
       }
     }
   }
@@ -1161,24 +1162,24 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
               ),
               ResponsiveHelper.horizontalSpace(2),
               Text(
-                "Taarifa za Msingi",
+                LocalizationService.instance.translate('basic_info'),
                 style: ThemeConstants.responsiveHeadingStyle(context),
               ),
             ],
           ),
           ResponsiveHelper.verticalSpace(1),
-          _buildInfoRow("Jina Kamili", widget.driver.name),
+          _buildInfoRow(LocalizationService.instance.translate('full_name'), widget.driver.name),
           _buildInfoRow(
-              "Nambari ya Leseni", widget.driver.licenseNumber ?? "Hakuna"),
-          _buildInfoRow("Simu", widget.driver.phone),
+              LocalizationService.instance.translate('driver_license'), widget.driver.licenseNumber ?? LocalizationService.instance.translate('none')),
+          _buildInfoRow(LocalizationService.instance.translate('call'), widget.driver.phone),
           _buildInfoRow(
-              "Aina ya Chombo", widget.driver.vehicleType ?? "Boda Boda"),
+              LocalizationService.instance.translate('vehicle_type'), LocalizationService.instance.vehicleTypeLabel(widget.driver.vehicleType)),
           _buildInfoRow(
-              "Nambari ya Chombo", widget.driver.vehicleNumber ?? "Hakuna"),
-          _buildInfoRow("Tarehe ya Kuanza Kazi",
+              LocalizationService.instance.translate('vehicle_number_2'), widget.driver.vehicleNumber ?? LocalizationService.instance.translate('none')),
+          _buildInfoRow(LocalizationService.instance.translate('start_date_2'),
               DateFormat("dd/MM/yyyy").format(widget.driver.joinedDate)),
-          _buildInfoRow("Hali ya Sasa",
-              widget.driver.status == "active" ? "Hai" : "Haipo"),
+          _buildInfoRow(LocalizationService.instance.translate('current_status'),
+              widget.driver.status == "active" ? LocalizationService.instance.translate('active') : LocalizationService.instance.translate('inactive_driver')),
         ],
       ),
     );
@@ -1213,7 +1214,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text(
-          "Muhtasari wa Kifedha",
+          LocalizationService.instance.translate('financial_summary'),
           style: ThemeConstants.responsiveHeadingStyle(context),
         ),
         ResponsiveHelper.verticalSpace(1),
@@ -1240,25 +1241,25 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
       crossAxisSpacing: ResponsiveHelper.spacingM,
       children: <Widget>[
         _buildFinancialCard(
-          "Jumla Iliyowasilishwa",
+          LocalizationService.instance.translate('total_submitted'),
           _totalAmountSubmitted,
           Icons.upload,
           ThemeConstants.primaryOrange,
         ),
         _buildFinancialCard(
-          "Deni Linalosalia",
+          LocalizationService.instance.translate('remaining_debt'),
           _totalOutstandingDebt,
           Icons.warning,
           ThemeConstants.errorRed,
         ),
         _buildFinancialCard(
-          "Jumla ya Madeni",
+          LocalizationService.instance.translate('total_debts_2'),
           _totalDebtsRecorded,
           Icons.history,
           ThemeConstants.warningAmber,
         ),
         _buildFinancialCard(
-          "Jumla Alipolipa",
+          LocalizationService.instance.translate('total_paid_3'),
           _totalPaid,
           Icons.paid,
           ThemeConstants.successGreen,
@@ -1342,7 +1343,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      "Kiwango cha Ulipaji",
+                      LocalizationService.instance.translate('payment_rate'),
                       maxLines: 2,
                       softWrap: true,
                       overflow: TextOverflow.ellipsis,
@@ -1376,7 +1377,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: <Widget>[
                     Text(
-                      "Wastani wa Kuchelewa",
+                      LocalizationService.instance.translate('average_delay'),
                       maxLines: 2,
                       softWrap: true,
                       overflow: TextOverflow.ellipsis,
@@ -1389,7 +1390,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerRight,
                       child: Text(
-                        "$_averagePaymentDelay siku",
+                        LocalizationService.instance.translateWith('days_2', <Object?>[_averagePaymentDelay]),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: ThemeConstants.responsiveHeadingStyle(context)
@@ -1414,7 +1415,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text(
-          "Mchoro wa Takwimu",
+          LocalizationService.instance.translate('data_chart'),
           style: ThemeConstants.responsiveHeadingStyle(context),
         ),
         ResponsiveHelper.verticalSpace(1),
@@ -1461,7 +1462,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                             const SizedBox(width: 6),
                             Flexible(
                               child: Text(
-                                "Mwelekeo wa Deni",
+                                LocalizationService.instance.translate('debt_trend'),
                                 style: TextStyle(
                                   color: _selectedChartType == "debt"
                                       ? Colors.white
@@ -1511,7 +1512,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                             const SizedBox(width: 6),
                             Flexible(
                               child: Text(
-                                "Mwelekeo wa Malipo",
+                                LocalizationService.instance.translate('payment_trend'),
                                 style: TextStyle(
                                   color: _selectedChartType == "payment"
                                       ? Colors.white
@@ -1566,7 +1567,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                               const SizedBox(width: 6),
                               Flexible(
                                 child: Text(
-                                  "Mwelekeo wa Deni",
+                                  LocalizationService.instance.translate('debt_trend'),
                                   style: TextStyle(
                                     color: _selectedChartType == "debt"
                                         ? Colors.white
@@ -1619,7 +1620,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                               const SizedBox(width: 6),
                               Flexible(
                                 child: Text(
-                                  "Mwelekeo wa Malipo",
+                                  LocalizationService.instance.translate('payment_trend'),
                                   style: TextStyle(
                                     color: _selectedChartType == "payment"
                                         ? Colors.white
@@ -1673,8 +1674,8 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                         const SizedBox(width: 4),
                         Text(
                           _apiEndpointsAvailable
-                              ? "Data kutoka API"
-                              : "Data ya mfano (API haipo)",
+                              ? LocalizationService.instance.translate('data_from_the_api')
+                              : LocalizationService.instance.translate('sample_data_api_not_available'),
                           style: TextStyle(
                             fontSize: 11,
                             color: _apiEndpointsAvailable
@@ -1708,7 +1709,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   ResponsiveHelper.verticalSpace(1),
                   Container(
                     margin: const EdgeInsets.only(bottom: 8),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
@@ -1718,7 +1719,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                         ),
                         SizedBox(width: 4),
                         Text(
-                          "Miezi",
+                          LocalizationService.instance.translate('months'),
                           style: TextStyle(
                             fontSize: 11,
                             color: ThemeConstants.textSecondary,
@@ -1752,7 +1753,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                "Hakuna data ya madeni",
+                LocalizationService.instance.translate('no_debt_data'),
                 style: ThemeConstants.responsiveBodyStyle(context),
               ),
             ],
@@ -1900,7 +1901,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                "Hakuna data ya malipo",
+                LocalizationService.instance.translate('no_payment_data'),
                 style: ThemeConstants.responsiveBodyStyle(context),
               ),
             ],
@@ -2041,7 +2042,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text(
-          "Historia ya Malipo",
+          LocalizationService.instance.translate('payment_history'),
           style: ThemeConstants.responsiveHeadingStyle(context),
         ),
         ResponsiveHelper.verticalSpace(1),
@@ -2058,21 +2059,21 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   children: <Widget>[
                     Expanded(
                         flex: 2,
-                        child: Text("Tarehe",
+                        child: Text(LocalizationService.instance.translate('date'),
                             style: ThemeConstants.responsiveCaptionStyle(
                                 context))),
                     Expanded(
                         flex: 2,
-                        child: Text("Kiasi",
+                        child: Text(LocalizationService.instance.translate('amount'),
                             style: ThemeConstants.responsiveCaptionStyle(
                                 context))),
                     Expanded(
                         flex: 2,
-                        child: Text("Njia",
+                        child: Text(LocalizationService.instance.translate('method'),
                             style: ThemeConstants.responsiveCaptionStyle(
                                 context))),
                     Expanded(
-                        child: Text("Risiti",
+                        child: Text(LocalizationService.instance.translate('receipt'),
                             style: ThemeConstants.responsiveCaptionStyle(
                                 context))),
                   ],
@@ -2152,7 +2153,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text(
-          "Historia ya Madeni",
+          LocalizationService.instance.translate('debt_history'),
           style: ThemeConstants.responsiveHeadingStyle(context),
         ),
         ResponsiveHelper.verticalSpace(1),
@@ -2169,17 +2170,17 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
                   children: <Widget>[
                     Expanded(
                         flex: 2,
-                        child: Text("Tarehe",
+                        child: Text(LocalizationService.instance.translate('date'),
                             style: ThemeConstants.responsiveCaptionStyle(
                                 context))),
                     Expanded(
                         flex: 2,
-                        child: Text("Kiasi",
+                        child: Text(LocalizationService.instance.translate('amount'),
                             style: ThemeConstants.responsiveCaptionStyle(
                                 context))),
                     Expanded(
                         flex: 2,
-                        child: Text("Hali",
+                        child: Text(LocalizationService.instance.translate('status'),
                             style: ThemeConstants.responsiveCaptionStyle(
                                 context))),
                   ],
@@ -2270,11 +2271,11 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
 
   String _getDebtStatusText(DebtRecord debt) {
     if (debt.isPaid) {
-      return "Imeshalipwa";
+      return LocalizationService.instance.translate('already_paid');
     } else if (debt.isOverdue) {
-      return "Imechelewa";
+      return LocalizationService.instance.translate('late');
     } else {
-      return "Haijalipwa";
+      return LocalizationService.instance.translate('unpaid_2');
     }
   }
 
@@ -2285,7 +2286,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
         return AlertDialog(
           backgroundColor: ThemeConstants.primaryBlue.withOpacity(0.9),
           title: Text(
-            "Risiti ya Malipo",
+            LocalizationService.instance.translate('payment_receipt'),
             style: ThemeConstants.responsiveHeadingStyle(context),
           ),
           content: Column(
@@ -2293,13 +2294,13 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                  "Tarehe: ${DateFormat("dd/MM/yyyy").format(payment.createdAt)}",
+                  LocalizationService.instance.translateWith('date_2', <Object?>[DateFormat("dd/MM/yyyy").format(payment.createdAt)]),
                   style: ThemeConstants.responsiveBodyStyle(context)),
-              Text("Kiasi: TSh ${NumberFormat('#,###').format(payment.amount)}",
+              Text(LocalizationService.instance.translateWith('amount_tsh_2', <Object?>[NumberFormat('#,###').format(payment.amount)]),
                   style: ThemeConstants.responsiveBodyStyle(context)),
-              Text("Njia ya Malipo: ${payment.paymentChannel.displayName}",
+              Text(LocalizationService.instance.translateWith('payment_method_2', <Object?>[payment.paymentChannel.displayName]),
                   style: ThemeConstants.responsiveBodyStyle(context)),
-              Text("Rejea: ${payment.referenceNumber ?? '-'}",
+              Text(LocalizationService.instance.translateWith('reference_2', <Object?>[payment.referenceNumber ?? '-']),
                   style: ThemeConstants.responsiveBodyStyle(context)),
             ],
           ),
@@ -2307,7 +2308,7 @@ class _DriverHistoryScreenState extends State<DriverHistoryScreen> {
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: Text(
-                "Funga",
+                LocalizationService.instance.translate('close'),
                 style: ThemeConstants.responsiveBodyStyle(context).copyWith(
                   color: ThemeConstants.primaryOrange,
                 ),

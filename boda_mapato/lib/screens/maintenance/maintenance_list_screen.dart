@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../../constants/theme_constants.dart';
 import '../../providers/maintenance_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/localization_service.dart';
+import '../../utils/maintenance_labels.dart';
 
 class MaintenanceListScreen extends StatefulWidget {
   const MaintenanceListScreen({super.key});
@@ -25,7 +27,7 @@ class _MaintenanceListScreenState extends State<MaintenanceListScreen> {
   @override
   Widget build(final BuildContext context) {
     return ThemeConstants.buildScaffold(
-      title: "Usimamizi wa Matengenezo",
+      title: LocalizationService.instance.translate('maintenance_management'),
       actions: [
         IconButton(
           onPressed: () => context.read<MaintenanceProvider>().fetchRequests(),
@@ -64,7 +66,7 @@ class _MaintenanceListScreenState extends State<MaintenanceListScreen> {
               backgroundColor: ThemeConstants.footerBarColor,
               elevation: 6,
               icon: Icon(Icons.add_circle, color: Colors.white, size: 24.sp),
-              label: Text("Omba Huduma", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp)),
+              label: Text(LocalizationService.instance.translate('request_service'), style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp)),
             ),
           )
         : null,
@@ -85,9 +87,9 @@ class _MaintenanceListScreenState extends State<MaintenanceListScreen> {
             child: Icon(Icons.handyman_outlined, size: 64.sp, color: Colors.grey.withOpacity(0.5)),
           ),
           SizedBox(height: 16.h),
-          Text("Hakuna maombi bado", style: ThemeConstants.subHeadingStyle),
+          Text(LocalizationService.instance.translate('no_requests_yet'), style: ThemeConstants.subHeadingStyle),
           SizedBox(height: 8.h),
-          Text("Maombi yako yataonekana hapa", style: ThemeConstants.captionStyle),
+          Text(LocalizationService.instance.translate('your_requests_will_appear_here'), style: ThemeConstants.captionStyle),
         ],
       ),
     );
@@ -96,7 +98,7 @@ class _MaintenanceListScreenState extends State<MaintenanceListScreen> {
   Widget _buildRequestCard(BuildContext context, Map<String, dynamic> request) {
     final status = request['status'] ?? 'open';
     final priority = request['priority'] ?? 'medium';
-    final category = request['category'] ?? 'General';
+    final category = maintenanceCategoryLabel(request['category']?.toString());
     final date = request['created_at'] != null 
       ? DateTime.parse(request['created_at']).toString().split(' ')[0]
       : 'N/A';
@@ -120,7 +122,7 @@ class _MaintenanceListScreenState extends State<MaintenanceListScreen> {
           ),
           SizedBox(height: 14.h),
           Text(
-            request['description'] ?? 'No description',
+            request['description'] ?? LocalizationService.instance.translate('no_description'),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: ThemeConstants.bodyStyle.copyWith(fontSize: 15.sp, fontWeight: FontWeight.w600),
@@ -162,10 +164,10 @@ class _MaintenanceListScreenState extends State<MaintenanceListScreen> {
 
   String _getPriorityLabel(String p) {
     switch (p) {
-      case 'low': return 'Chini';
-      case 'medium': return 'Kati';
-      case 'high': return 'Juu';
-      case 'emergency': return 'Dharura';
+      case 'low': return LocalizationService.instance.translate('low');
+      case 'medium': return LocalizationService.instance.translate('priority_medium');
+      case 'high': return LocalizationService.instance.translate('high');
+      case 'emergency': return LocalizationService.instance.translate('urgent');
       default: return p;
     }
   }
@@ -193,19 +195,19 @@ class _StatusChip extends StatelessWidget {
     switch (status) {
       case 'open':
         color = Colors.lightBlueAccent;
-        label = 'WAZI';
+        label = LocalizationService.instance.translate('open').toUpperCase();
       case 'pending':
         color = Colors.orangeAccent;
-        label = 'INASUBIRI';
+        label = LocalizationService.instance.translate('pending_2').toUpperCase();
       case 'in_progress':
         color = Colors.purpleAccent;
-        label = 'INAFANYIWA KAZI';
+        label = LocalizationService.instance.translate('in_progress_2').toUpperCase();
       case 'resolved':
         color = Colors.greenAccent;
-        label = 'IMEISHA';
+        label = LocalizationService.instance.translate('status_resolved').toUpperCase();
       case 'cancelled':
         color = Colors.redAccent;
-        label = 'IMEGHAIRIWA';
+        label = LocalizationService.instance.translate('cancelled').toUpperCase();
       default:
         color = Colors.grey;
         label = status.toUpperCase();

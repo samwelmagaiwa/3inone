@@ -65,7 +65,7 @@ class _RentalReceiptsScreenState extends State<RentalReceiptsScreen> {
       final details = receipt['details'] ?? {};
       
       final receiptNumber = (details['receipt_number'] ?? receipt['receipt_number'] ?? '').toString().toLowerCase();
-      final tenantName = (tenant['name'] ?? 'Mteja').toString().toLowerCase();
+      final tenantName = (tenant['name'] ?? LocalizationService.instance.translate('agreement_step_tenant')).toString().toLowerCase();
       final propertyName = (details['property_name'] ?? '').toString().toLowerCase();
       final houseNumber = (details['house_number'] ?? '').toString().toLowerCase();
       final paymentMethod = (details['payment_method'] ?? 'Cash').toString().toLowerCase();
@@ -120,7 +120,7 @@ class _RentalReceiptsScreenState extends State<RentalReceiptsScreen> {
         children: [
           Expanded(
             child: _buildStatCard(
-              title: "Jumla ya Risiti",
+              title: LocalizationService.instance.translate('total_receipts'),
               value: count.toString(),
               icon: Icons.receipt_long,
               gradient: const LinearGradient(
@@ -131,7 +131,7 @@ class _RentalReceiptsScreenState extends State<RentalReceiptsScreen> {
           SizedBox(width: 14.w),
           Expanded(
             child: _buildStatCard(
-              title: "Kiasi Kilicholipwa",
+              title: LocalizationService.instance.translate('paid_amount'),
               value: "TZS ${_formatCompact(total)}",
               icon: Icons.account_balance_wallet,
               gradient: const LinearGradient(
@@ -235,7 +235,7 @@ class _RentalReceiptsScreenState extends State<RentalReceiptsScreen> {
                   },
                   style: TextStyle(color: Colors.white, fontSize: 14.sp),
                   decoration: InputDecoration(
-                    hintText: "Tafuta kwa mteja, nyumba, risiti...",
+                    hintText: LocalizationService.instance.translate('search_by_tenant_house_receipt'),
                     hintStyle: TextStyle(color: Colors.white38, fontSize: 13.sp),
                     prefixIcon: Icon(Icons.search, color: ThemeConstants.primaryOrange, size: 20.sp),
                     suffixIcon: _searchQuery.isNotEmpty
@@ -276,11 +276,11 @@ class _RentalReceiptsScreenState extends State<RentalReceiptsScreen> {
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                _buildFilterChip("All"),
+                _buildFilterChip("All", shown: LocalizationService.instance.translate('all')),
                 SizedBox(width: 8.w),
-                _buildFilterChip("Cash"),
+                _buildFilterChip("Cash", shown: LocalizationService.instance.translate('cash')),
                 SizedBox(width: 8.w),
-                _buildFilterChip("Bank"),
+                _buildFilterChip("Bank", shown: LocalizationService.instance.translate('payment_channel_bank')),
                 SizedBox(width: 8.w),
                 _buildFilterChip("M-Pesa"),
                 SizedBox(width: 8.w),
@@ -293,7 +293,8 @@ class _RentalReceiptsScreenState extends State<RentalReceiptsScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label) {
+  /// [label] is the value the list is filtered by; [shown] is what the chip reads in the chosen language.
+  Widget _buildFilterChip(String label, {String? shown}) {
     final isSelected = _selectedPaymentMethod == label;
     return GestureDetector(
       onTap: () {
@@ -324,7 +325,7 @@ class _RentalReceiptsScreenState extends State<RentalReceiptsScreen> {
               : null,
         ),
         child: Text(
-          label,
+          shown ?? label,
           style: TextStyle(
             color: isSelected ? Colors.white : Colors.white70,
             fontSize: 12.sp,
@@ -352,12 +353,12 @@ class _RentalReceiptsScreenState extends State<RentalReceiptsScreen> {
             ),
             SizedBox(height: 20.h),
             Text(
-              "Hakuna Risiti Zilizopatikana",
+              LocalizationService.instance.translate('no_receipts_found'),
               style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 8.h),
             Text(
-              "Bado hakuna malipo yaliyorekodiwa yenye risiti hapa.",
+              LocalizationService.instance.translate('no_payments_with_receipts_have_been'),
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white54, fontSize: 13.sp),
             ),
@@ -386,12 +387,12 @@ class _RentalReceiptsScreenState extends State<RentalReceiptsScreen> {
     final amount = TypeHelpers.toDouble(details['amount_paid'] ?? payment['amount_paid']);
     final paymentMethod = (details['payment_method'] ?? 'Cash').toString();
     final receiptNumber = (details['receipt_number'] ?? receipt['receipt_number'] ?? 'RCP-xxx').toString();
-    final tenantName = (tenant['name'] ?? 'Mteja').toString();
-    final property = (details['property_name'] ?? 'Mali').toString();
+    final tenantName = (tenant['name'] ?? LocalizationService.instance.translate('agreement_step_tenant')).toString();
+    final property = (details['property_name'] ?? LocalizationService.instance.translate('property_label')).toString();
     final house = (details['house_number'] ?? '').toString();
 
     String dateStr = receipt['created_at'] ?? payment['payment_date'] ?? '';
-    String formattedDate = 'Leo';
+    String formattedDate = LocalizationService.instance.translate('today');
     if (dateStr.isNotEmpty) {
       try {
         formattedDate = DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(dateStr));
@@ -515,7 +516,7 @@ class _RentalReceiptsScreenState extends State<RentalReceiptsScreen> {
                         ),
                         SizedBox(height: 2.h),
                         Text(
-                          "$property ${house.isNotEmpty ? '- Nyumba $house' : ''}",
+                          "$property ${house.isNotEmpty ? '- ${LocalizationService.instance.translate('house_label')} $house' : ''}",
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

@@ -150,8 +150,9 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
                           ThemeConstants.invInputDecoration(loc.translate('description'))
                               .copyWith(
                         labelText: '${loc.translate('description')} (${loc.translate('optional')})',
-                        hintText:
-                            'e.g. Carbonated beverages sold in crates or bottles',
+                        hintText: inv.capabilities.isDepot
+                            ? 'e.g. Carbonated beverages sold in crates or bottles'
+                            : 'e.g. Shirts and trousers in different sizes',
                       ),
                       maxLines: 3,
                     ),

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../constants/theme_constants.dart';
 import '../../providers/rental_provider.dart';
 import '../../utils/type_helpers.dart';
+import '../../services/localization_service.dart';
 
 class RentalPaymentsScreen extends StatefulWidget {
   const RentalPaymentsScreen({super.key});
@@ -28,7 +29,7 @@ class _RentalPaymentsScreenState extends State<RentalPaymentsScreen> {
 
     return ThemeConstants.buildResponsiveScaffold(
       context,
-      title: "Malipo",
+      title: LocalizationService.instance.translate('payments_section'),
       body: rentalProvider.isLoading && payments.isEmpty
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : payments.isEmpty
@@ -38,7 +39,7 @@ class _RentalPaymentsScreenState extends State<RentalPaymentsScreen> {
                     children: [
                       const Icon(Icons.payment, size: 64, color: Colors.white38),
                       SizedBox(height: 16.h),
-                      Text("Hakuna malipo",
+                      Text(LocalizationService.instance.translate('no_payments'),
                           style: TextStyle(
                               color: Colors.white54, fontSize: 16.sp)),
                     ],
@@ -83,14 +84,14 @@ class _RentalPaymentsScreenState extends State<RentalPaymentsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    tenant['name'] ?? 'Mteja',
+                    tenant['name'] ?? LocalizationService.instance.translate('agreement_step_tenant'),
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 16.sp,
                         fontWeight: FontWeight.w600),
                   ),
                   Text(
-                    "Nyumba: ${house['house_number'] ?? ''}",
+                    LocalizationService.instance.translateWith('house_3', <Object?>[house['house_number'] ?? '']),
                     style: TextStyle(color: Colors.white54, fontSize: 12.sp),
                   ),
                   Text(

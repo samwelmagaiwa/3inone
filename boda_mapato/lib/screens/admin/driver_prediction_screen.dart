@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../utils/responsive_helper.dart';
+import '../../services/localization_service.dart';
 
 enum PredictionMode { auto, average, regression }
 
@@ -129,7 +130,7 @@ class _DriverPredictionScreenState extends State<DriverPredictionScreen> {
           await _api.getDriverAgreementByDriverId(widget.driverId);
       final dynamic aData = agreementResp['data'] ?? agreementResp;
       if (aData is! Map<String, dynamic>) {
-        throw Exception('Agreement not found');
+        throw Exception(LocalizationService.instance.translate('agreement_not_found'));
       }
 
       _totalAmount = _parseNum(aData['total_amount']) ??
@@ -488,7 +489,7 @@ class _DriverPredictionScreenState extends State<DriverPredictionScreen> {
     ResponsiveHelper.init(context);
     return ThemeConstants.buildResponsiveScaffold(
       context,
-      title: 'Utabiri: ${widget.driverName}',
+      title: LocalizationService.instance.translateWith('prediction_2', <Object?>[widget.driverName]),
       body: _loading
           ? ThemeConstants.buildResponsiveLoadingWidget(context)
           : _error != null
@@ -528,7 +529,7 @@ class _DriverPredictionScreenState extends State<DriverPredictionScreen> {
             runSpacing: 8,
             children: [
               ChoiceChip(
-                label: const Text('Auto (Bora)'),
+                label: Text(LocalizationService.instance.translate('auto_best')),
                 selected: _mode == PredictionMode.auto,
                 onSelected: (sel) {
                   if (sel) {
@@ -540,7 +541,7 @@ class _DriverPredictionScreenState extends State<DriverPredictionScreen> {
                 },
               ),
               ChoiceChip(
-                label: const Text('Wastani kwa siku'),
+                label: Text(LocalizationService.instance.translate('daily_average_2')),
                 selected: _mode == PredictionMode.average,
                 onSelected: (sel) {
                   if (sel) {
@@ -552,7 +553,7 @@ class _DriverPredictionScreenState extends State<DriverPredictionScreen> {
                 },
               ),
               ChoiceChip(
-                label: const Text('Regression (Mstari)'),
+                label: Text(LocalizationService.instance.translate('regression_linear')),
                 selected: _mode == PredictionMode.regression,
                 onSelected: (sel) {
                   if (sel) {
@@ -572,17 +573,17 @@ class _DriverPredictionScreenState extends State<DriverPredictionScreen> {
             runSpacing: 12,
             children: <Widget>[
               _summaryCard(
-                  'Jumla ya Malipo',
-                  'TSH ${_ts(_totalPaid)} kati ya ${_ts(_totalAmount)}',
+                  LocalizationService.instance.translate('payments_total_label'),
+                  LocalizationService.instance.translateWith('tsh_of', <Object?>[_ts(_totalPaid), _ts(_totalAmount)]),
                   Icons.payments,
                   ThemeConstants.primaryOrange),
-              _summaryCard('Deni lililobaki', 'TSH ${_ts(balance)}',
+              _summaryCard(LocalizationService.instance.translate('remaining_debt_2'), 'TSH ${_ts(balance)}',
                   Icons.account_balance_wallet, ThemeConstants.warningAmber),
               _summaryCard(
-                  'Maendeleo ya Mkataba',
+                  LocalizationService.instance.translate('agreement_progress'),
                   _endDate == null
-                      ? 'Siku $daysPassed'
-                      : 'Siku $daysPassed kati ya $totalDays',
+                      ? LocalizationService.instance.translateWith('days_3', <Object?>[daysPassed])
+                      : LocalizationService.instance.translateWith('of_days', <Object?>[daysPassed, totalDays]),
                   Icons.calendar_today,
                   Colors.lightBlueAccent),
             ],
@@ -597,9 +598,9 @@ class _DriverPredictionScreenState extends State<DriverPredictionScreen> {
                 height: 260,
                 width: double.infinity,
                 child: _spots.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Text(
-                          'Hakuna historia ya malipo ya kuonyesha',
+                          LocalizationService.instance.translate('no_payment_history_to_show'),
                           style: TextStyle(color: Colors.white70),
                         ),
                       )
@@ -706,25 +707,25 @@ class _DriverPredictionScreenState extends State<DriverPredictionScreen> {
 
   Widget _buildPredictionWidget() {
     if (_predictedDate == null) {
-      return const Text(
-        'Haiwezekani kufanya utabiri: Hakuna data ya kutosha au mkataba hauna tarehe.',
+      return Text(
+        LocalizationService.instance.translate('a_prediction_is_not_possible_there'),
         style: TextStyle(color: Colors.white70),
       );
     }
 
     final String dateStr = DateFormat('dd/MM/yyyy').format(_predictedDate!);
     final String message = _onTrack
-        ? 'Dereva yupo kwenye mstari. Anatarajiwa kumaliza kufikia $dateStr'
-        : 'Huenda asimalize kwa wakati. Makadirio ya kuchelewa: $_estimatedDelayDays siku (kukamilika mnamo $dateStr)';
+        ? LocalizationService.instance.translateWith('the_driver_is_on_track_expected', <Object?>[dateStr])
+        : LocalizationService.instance.translateWith('may_not_finish_on_time_estimated', <Object?>[_estimatedDelayDays, dateStr]);
 
     final String modeLabel = () {
       switch (_mode) {
         case PredictionMode.auto:
-          return 'Njia: Auto';
+          return LocalizationService.instance.translate('method_auto');
         case PredictionMode.regression:
-          return 'Njia: Regression';
+          return LocalizationService.instance.translate('method_regression');
         case PredictionMode.average:
-          return 'Njia: Wastani';
+          return LocalizationService.instance.translate('method_average');
       }
     }();
 
@@ -756,14 +757,14 @@ class _DriverPredictionScreenState extends State<DriverPredictionScreen> {
             ),
             if (_confidenceDays != null)
               Text(
-                'Uhakika: ±$_confidenceDays siku',
+                LocalizationService.instance.translateWith('confidence_days', <Object?>[_confidenceDays]),
                 style: const TextStyle(color: Colors.white60, fontSize: 12),
               ),
           ],
         ),
         const SizedBox(height: 8),
-        const Text(
-          "Ufafanuzi: Utabiri huu ni makadirio yanayotokana na historia ya malipo na sheria za mkataba (kama wikendi zinahesabika au la). Utabiri husasishwa kila malipo mapya yanapowekwa na unaweza kubadilika; si ahadi ya tarehe halisi ya kukamilisha.",
+        Text(
+          LocalizationService.instance.translate('explanation_this_prediction_is_an_estimate'),
           style: TextStyle(color: Colors.white60, fontSize: 12),
         ),
       ],

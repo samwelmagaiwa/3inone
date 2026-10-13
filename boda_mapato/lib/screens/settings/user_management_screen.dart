@@ -75,29 +75,29 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   List<DropdownMenuItem<String>> get _allRoleDropdownItems {
     if (_isRental) {
-      return const [
-        DropdownMenuItem(value: 'admin', child: Text('Admin')),
-        DropdownMenuItem(value: 'landlord', child: Text('Landlord')),
-        DropdownMenuItem(value: 'caretaker', child: Text('Caretaker')),
-        DropdownMenuItem(value: 'tenant', child: Text('Tenant')),
-        DropdownMenuItem(value: 'viewer', child: Text('Viewer')),
+      return [
+        DropdownMenuItem(value: 'admin', child: Text(LocalizationService.instance.translate('admin'))),
+        DropdownMenuItem(value: 'landlord', child: Text(LocalizationService.instance.translate('landlord'))),
+        DropdownMenuItem(value: 'caretaker', child: Text(LocalizationService.instance.translate('caretaker'))),
+        DropdownMenuItem(value: 'tenant', child: Text(LocalizationService.instance.translate('tenant'))),
+        DropdownMenuItem(value: 'viewer', child: Text(LocalizationService.instance.translate('viewer'))),
       ];
     }
     if (_isInventory) {
-      return const [
-        DropdownMenuItem(value: 'admin', child: Text('Admin')),
-        DropdownMenuItem(value: 'manager', child: Text('Manager')),
-        DropdownMenuItem(value: 'sales_officer', child: Text('Sales Officer')),
-        DropdownMenuItem(value: 'operator', child: Text('Operator')),
-        DropdownMenuItem(value: 'viewer', child: Text('Viewer')),
+      return [
+        DropdownMenuItem(value: 'admin', child: Text(LocalizationService.instance.translate('admin'))),
+        DropdownMenuItem(value: 'manager', child: Text(LocalizationService.instance.translate('manager'))),
+        DropdownMenuItem(value: 'sales_officer', child: Text(LocalizationService.instance.translate('sales_officer'))),
+        DropdownMenuItem(value: 'operator', child: Text(LocalizationService.instance.translate('operator'))),
+        DropdownMenuItem(value: 'viewer', child: Text(LocalizationService.instance.translate('viewer'))),
       ];
     }
-    return const [
-      DropdownMenuItem(value: 'admin', child: Text('Admin')),
-      DropdownMenuItem(value: 'manager', child: Text('Manager')),
-      DropdownMenuItem(value: 'operator', child: Text('Operator')),
-      DropdownMenuItem(value: 'viewer', child: Text('Viewer')),
-      DropdownMenuItem(value: 'driver', child: Text('Driver')),
+    return [
+      DropdownMenuItem(value: 'admin', child: Text(LocalizationService.instance.translate('admin'))),
+      DropdownMenuItem(value: 'manager', child: Text(LocalizationService.instance.translate('manager'))),
+      DropdownMenuItem(value: 'operator', child: Text(LocalizationService.instance.translate('operator'))),
+      DropdownMenuItem(value: 'viewer', child: Text(LocalizationService.instance.translate('viewer'))),
+      DropdownMenuItem(value: 'driver', child: Text(LocalizationService.instance.translate('driver'))),
     ];
   }
 
@@ -451,7 +451,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                 Navigator.pop(ctx, true);
                               } else {
                                 throw Exception(
-                                    res['message'] ?? 'Failed to create user');
+                                    res['message'] ?? LocalizationService.instance.translate('failed_to_create_user'));
                               }
                             } catch (e) {
                               if (mounted) {
@@ -540,8 +540,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               const Divider(height: 1, color: Colors.white24),
               ListTile(
                 leading: const Icon(Icons.manage_accounts, color: ThemeConstants.primaryOrange),
-                title: const Text(
-                  'Change Role',
+                title: Text(
+                  LocalizationService.instance.translate('change_role'),
                   style: TextStyle(color: ThemeConstants.primaryOrange),
                 ),
                 onTap: () async {
@@ -751,7 +751,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             return AlertDialog(
               backgroundColor: ThemeConstants.primaryBlue,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text('Change Role', style: TextStyle(color: ThemeConstants.textPrimary)),
+              title: Text(LocalizationService.instance.translate('change_role'), style: TextStyle(color: ThemeConstants.textPrimary)),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [

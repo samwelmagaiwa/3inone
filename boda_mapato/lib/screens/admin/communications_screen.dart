@@ -91,7 +91,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
       // Load summary
       await _loadCommunicationSummary();
     } on Exception catch (e) {
-      _showErrorSnackBar("Hitilafu katika kupakia data: $e");
+      _showErrorSnackBar(LocalizationService.instance.translateWith('error_loading_data', <Object?>[e]));
     } finally {
       setState(() {
         _isLoading = false;
@@ -177,7 +177,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
         _availableDrivers = _getMockDrivers();
       }
     } on Exception catch (e) {
-      debugPrint('Failed to load drivers: $e');
+      debugPrint(LocalizationService.instance.translateWith('failed_to_load_drivers_2', <Object?>[e]));
       _availableDrivers = _getMockDrivers();
     }
   }
@@ -291,9 +291,9 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
         driverName: "Juma Mwalimu",
         messageDate: now.subtract(const Duration(days: 2)),
         messageContent:
-            "Naomba kukujuza kuwa sitaweza kufika kazini kesho kwa sababu za dharura za familia. Naomba msamaha.",
+            LocalizationService.instance.translate('i_would_like_to_inform_you'),
         response:
-            "Tumepokea ujumbe wako. Unahitaji siku ngapi za mapumziko? Tafadhali tupatie maelezo zaidi.",
+            LocalizationService.instance.translate('we_received_your_message_how_many'),
         mode: CommunicationMode.sms,
         createdAt: now.subtract(const Duration(days: 2)),
         updatedAt: now.subtract(const Duration(days: 1)),
@@ -304,7 +304,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
         driverName: "Mary Kibwana",
         messageDate: now.subtract(const Duration(days: 5)),
         messageContent:
-            "Simu ya dereva imezima. Hatuwezi kumufikia kwa mazungumzo ya mapito ya malipo ya leo.",
+            LocalizationService.instance.translate('the_driver_s_phone_is_off'),
         mode: CommunicationMode.systemNote,
         createdAt: now.subtract(const Duration(days: 5)),
         updatedAt: now.subtract(const Duration(days: 5)),
@@ -315,9 +315,9 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
         driverName: "Juma Mwalimu",
         messageDate: now.subtract(const Duration(days: 7)),
         messageContent:
-            "Kumradhi, naomba kujua ikiwa kuna uwezekano wa kupata mapito mazuri ya kuvuta abiria zaidi?",
+            LocalizationService.instance.translate('excuse_me_i_would_like_to'),
         response:
-            "Tunashiriki majeraha mapya wiki hii. Ngoja ujumbe mwingine kesho.",
+            LocalizationService.instance.translate('we_are_sharing_new_updates_this'),
         mode: CommunicationMode.whatsapp,
         createdAt: now.subtract(const Duration(days: 7)),
         updatedAt: now.subtract(const Duration(days: 6)),
@@ -328,8 +328,8 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
         driverName: "Hassan Mwangi",
         messageDate: now.subtract(const Duration(days: 10)),
         messageContent:
-            "Mazungumzo ya simu kuhusu malipo ya deni la wiki iliyopita.",
-        response: "Ameahidi kulipa sehemu ya malipo Jumatatu.",
+            LocalizationService.instance.translate('phone_conversation_about_last_week_s'),
+        response: LocalizationService.instance.translate('promised_to_pay_part_of_the'),
         mode: CommunicationMode.call,
         createdAt: now.subtract(const Duration(days: 10)),
         updatedAt: now.subtract(const Duration(days: 9)),
@@ -506,7 +506,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                       color: _kOrange, strokeWidth: 2.5),
                 ),
                 SizedBox(height: 16.h),
-                Text("Inapakia...",
+                Text("${LocalizationService.instance.translate('loading_2')}...",
                     style: TextStyle(
                         color: Colors.white38, fontSize: 13.sp)),
               ],
@@ -1139,7 +1139,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                           ),
                           SizedBox(width: 8.w),
                           Text(
-                            "Inasubiri jibu",
+                            LocalizationService.instance.translate('waiting_for_a_reply'),
                             style: TextStyle(
                               color: _kAmber.withOpacity(0.8),
                               fontSize: 11.sp,
@@ -1225,7 +1225,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Maelezo ya Mawasiliano",
+                                  LocalizationService.instance.translate('communication_details'),
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 16.sp,
@@ -1263,14 +1263,14 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
 
                       // Info rows
                       _buildGlassDetailRow(
-                          Icons.person_outline, "Dereva", communication.driverName),
+                          Icons.person_outline, LocalizationService.instance.translate('driver'), communication.driverName),
                       SizedBox(height: 8.h),
                       _buildGlassDetailRow(Icons.calendar_today_outlined,
-                          "Tarehe", communication.formattedDateTime),
+                          LocalizationService.instance.translate('date'), communication.formattedDateTime),
                       SizedBox(height: 16.h),
 
                       // Message
-                      Text("Ujumbe",
+                      Text(LocalizationService.instance.translate('reminder_message'),
                           style: TextStyle(
                               color: Colors.white54,
                               fontSize: 10.sp,
@@ -1299,7 +1299,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                       SizedBox(height: 16.h),
 
                       // Response
-                      Text("Jibu",
+                      Text(LocalizationService.instance.translate('reply'),
                           style: TextStyle(
                               color: Colors.white54,
                               fontSize: 10.sp,
@@ -1336,7 +1336,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                             Expanded(
                               child: Text(
                                 communication.response ??
-                                    "Hakuna jibu bado",
+                                    LocalizationService.instance.translate('no_reply_yet'),
                                 style: TextStyle(
                                   color: communication.hasResponse
                                       ? Colors.white70
@@ -1361,7 +1361,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                         children: [
                           if (!communication.hasResponse)
                             _buildGlassButton(
-                              label: "Ongeza Jibu",
+                              label: LocalizationService.instance.translate('add_reply'),
                               icon: Icons.reply_rounded,
                               color: _kOrange,
                               filled: true,
@@ -1373,7 +1373,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                           if (!communication.hasResponse)
                             SizedBox(width: 10.w),
                           _buildGlassButton(
-                            label: "Funga",
+                            label: LocalizationService.instance.translate('close'),
                             icon: Icons.close_rounded,
                             color: Colors.white54,
                             onTap: () => Navigator.pop(context),
@@ -1545,7 +1545,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                               SizedBox(width: 12.w),
                               Expanded(
                                 child: Text(
-                                  "Ongeza Mawasiliano",
+                                  LocalizationService.instance.translate('add_communication'),
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 16.sp,
@@ -1574,7 +1574,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                           SizedBox(height: 20.h),
 
                           // Driver selection
-                          Text("Chagua Dereva",
+                          Text(LocalizationService.instance.translate('select_driver'),
                               style: TextStyle(
                                   color: Colors.white54,
                                   fontSize: 10.sp,
@@ -1595,7 +1595,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                               child: DropdownButton<Driver>(
                                 value: selectedDriver,
                                 hint: Text(
-                                  "Chagua dereva...",
+                                  "${LocalizationService.instance.translate('select_driver')}...",
                                   style: TextStyle(
                                       color: Colors.white38,
                                       fontSize: 13.sp),
@@ -1625,7 +1625,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                           SizedBox(height: 16.h),
 
                           // Communication mode
-                          Text("Aina ya Mawasiliano",
+                          Text(LocalizationService.instance.translate('communication_type'),
                               style: TextStyle(
                                   color: Colors.white54,
                                   fontSize: 10.sp,
@@ -1679,7 +1679,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                           SizedBox(height: 16.h),
 
                           // Message
-                          Text("Ujumbe",
+                          Text(LocalizationService.instance.translate('reminder_message'),
                               style: TextStyle(
                                   color: Colors.white54,
                                   fontSize: 10.sp,
@@ -1699,7 +1699,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                                   color: Colors.white, fontSize: 13.sp),
                               maxLines: 4,
                               decoration: InputDecoration(
-                                hintText: "Andika ujumbe hapa...",
+                                hintText: "${LocalizationService.instance.translate('write_the_message_here')}...",
                                 hintStyle: TextStyle(
                                     color: Colors.white38,
                                     fontSize: 12.sp),
@@ -1717,7 +1717,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               _buildGlassButton(
-                                label: "Ghairi",
+                                label: LocalizationService.instance.translate('cancel_2'),
                                 icon: Icons.close_rounded,
                                 color: Colors.white54,
                                 onTap: () {
@@ -1727,7 +1727,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                               ),
                               SizedBox(width: 10.w),
                               _buildGlassButton(
-                                label: "Hifadhi",
+                                label: LocalizationService.instance.translate('save'),
                                 icon: Icons.save_rounded,
                                 color: _kOrange,
                                 filled: true,
@@ -1745,7 +1745,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                                     Navigator.pop(ctx);
                                   } else {
                                     _showErrorSnackBar(
-                                        "Tafadhali jaza sehemu zote zinazohitajika");
+                                        LocalizationService.instance.translate('please_fill_in_all_required_fields'));
                                   }
                                 },
                               ),
@@ -1821,7 +1821,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                           SizedBox(width: 12.w),
                           Expanded(
                             child: Text(
-                              "Ongeza Jibu",
+                              LocalizationService.instance.translate('add_reply'),
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16.sp,
@@ -1850,7 +1850,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                       SizedBox(height: 20.h),
 
                       // Original message
-                      Text("Ujumbe wa Awali",
+                      Text(LocalizationService.instance.translate('original_message'),
                           style: TextStyle(
                               color: Colors.white54,
                               fontSize: 10.sp,
@@ -1879,7 +1879,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                       SizedBox(height: 16.h),
 
                       // Response
-                      Text("Jibu Lako",
+                      Text(LocalizationService.instance.translate('your_reply'),
                           style: TextStyle(
                               color: Colors.white54,
                               fontSize: 10.sp,
@@ -1899,7 +1899,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                               color: Colors.white, fontSize: 13.sp),
                           maxLines: 4,
                           decoration: InputDecoration(
-                            hintText: "Andika jibu lako hapa...",
+                            hintText: "${LocalizationService.instance.translate('write_your_reply_here')}...",
                             hintStyle: TextStyle(
                                 color: Colors.white38, fontSize: 12.sp),
                             filled: false,
@@ -1916,7 +1916,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           _buildGlassButton(
-                            label: "Ghairi",
+                            label: LocalizationService.instance.translate('cancel_2'),
                             icon: Icons.close_rounded,
                             color: Colors.white54,
                             onTap: () {
@@ -1926,7 +1926,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                           ),
                           SizedBox(width: 10.w),
                           _buildGlassButton(
-                            label: "Tuma Jibu",
+                            label: LocalizationService.instance.translate('send_reply'),
                             icon: Icons.send_rounded,
                             color: _kOrange,
                             filled: true,
@@ -1940,7 +1940,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
                                 Navigator.pop(ctx);
                               } else {
                                 _showErrorSnackBar(
-                                    "Tafadhali andika jibu");
+                                    LocalizationService.instance.translate('please_write_a_reply'));
                               }
                             },
                           ),
@@ -1991,7 +1991,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
             // Reload communications from API
             await _loadCommunications();
             await _loadCommunicationSummary();
-            _showSuccessSnackBar("Mawasiliano yamehifadhiwa kikamilifu!");
+            _showSuccessSnackBar("${LocalizationService.instance.translate('communication_saved_successfully')}!");
             return;
           }
         } on Exception catch (apiError) {
@@ -2017,9 +2017,9 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
         }
       });
 
-      _showSuccessSnackBar("Mawasiliano yamehifadhiwa (mfano)!");
+      _showSuccessSnackBar("${LocalizationService.instance.translate('communication_saved_sample')}!");
     } on Exception catch (e) {
-      _showErrorSnackBar("Hitilafu katika kuhifadhi: $e");
+      _showErrorSnackBar(LocalizationService.instance.translateWith('error_saving', <Object?>[e]));
     }
   }
 
@@ -2038,7 +2038,7 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
             // Reload communications from API
             await _loadCommunications();
             await _loadCommunicationSummary();
-            _showSuccessSnackBar("Jibu limehifadhiwa kikamilifu!");
+            _showSuccessSnackBar("${LocalizationService.instance.translate('reply_saved_successfully')}!");
             return;
           }
         } on Exception catch (apiError) {
@@ -2069,9 +2069,9 @@ class _CommunicationsScreenState extends State<CommunicationsScreen>
         }
       });
 
-      _showSuccessSnackBar("Jibu limehifadhiwa (mfano)!");
+      _showSuccessSnackBar("${LocalizationService.instance.translate('reply_saved_sample')}!");
     } on Exception catch (e) {
-      _showErrorSnackBar("Hitilafu katika kuhifadhi jibu: $e");
+      _showErrorSnackBar(LocalizationService.instance.translateWith('error_saving_the_reply', <Object?>[e]));
     }
   }
 }

@@ -151,7 +151,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
           });
         }
       } else {
-        throw Exception(response['message'] ?? 'Imeshindikana kupakia risiti');
+        throw Exception(response['message'] ?? LocalizationService.instance.translate('could_not_load_the_receipts'));
       }
     } on Exception catch (e) {
       setState(() {

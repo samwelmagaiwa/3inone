@@ -121,7 +121,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
 
       if (mounted) _filterDrivers();
     } on Exception catch (e) {
-      if (mounted) _showErrorSnackBar("Hitilafu katika kupakia madereva: $e");
+      if (mounted) _showErrorSnackBar(LocalizationService.instance.translateWith('error_loading_drivers', <Object?>[e]));
     } finally {
       if (mounted) {
         setState(() {
@@ -187,8 +187,8 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
   }
 
   PreferredSizeWidget _buildAppBar() => AppBar(
-        title: const Text(
-          "Simamia Madereva",
+        title: Text(
+          LocalizationService.instance.translate('manage_drivers'),
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -221,33 +221,33 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
             },
             itemBuilder: (final BuildContext context) =>
                 <PopupMenuEntry<String>>[
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: "export",
                 child: Row(
                   children: <Widget>[
                     Icon(Icons.download, color: ThemeConstants.primaryBlue),
                     SizedBox(width: 8),
-                    Text("Hamisha Data"),
+                    Text(LocalizationService.instance.translate('export_data')),
                   ],
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: "import",
                 child: Row(
                   children: <Widget>[
                     Icon(Icons.upload, color: Colors.orange),
                     SizedBox(width: 8),
-                    Text("Ingiza Data"),
+                    Text(LocalizationService.instance.translate('import_data')),
                   ],
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: "template",
                 child: Row(
                   children: <Widget>[
                     Icon(Icons.description, color: Colors.green),
                     SizedBox(width: 8),
-                    Text("Pakua Template (CSV)"),
+                    Text(LocalizationService.instance.translate('download_template_csv')),
                   ],
                 ),
               ),
@@ -256,7 +256,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
         ],
       );
 
-  Widget _buildLoadingScreen() => const Center(
+  Widget _buildLoadingScreen() => Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
@@ -265,7 +265,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
             ),
             SizedBox(height: 16),
             Text(
-              "Inapakia madereva...",
+              "${LocalizationService.instance.translate('loading_drivers')}...",
               style: TextStyle(
                 fontSize: 16,
                 color: ThemeConstants
@@ -348,11 +348,11 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: <Widget>[
-                  _buildFilterChip("all", "Wote", _drivers.length),
+                  _buildFilterChip("all", LocalizationService.instance.translate('all_2'), _drivers.length),
                   const SizedBox(width: 8),
                   _buildFilterChip(
                     "active",
-                    "Hai",
+                    LocalizationService.instance.translate('active'),
                     _drivers
                         .where((final Driver d) => d.status == "active")
                         .length,
@@ -360,7 +360,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
                   const SizedBox(width: 8),
                   _buildFilterChip(
                     "inactive",
-                    "Hahai",
+                    LocalizationService.instance.translate('inactive_driver'),
                     _drivers
                         .where((final Driver d) => d.status == "inactive")
                         .length,
@@ -425,7 +425,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
         children: <Widget>[
           Expanded(
             child: _buildStatCard(
-              title: "Madereva Hai",
+              title: LocalizationService.instance.translate('active_drivers'),
               value: "$activeDrivers/${_drivers.length}",
               icon: Icons.people,
               color: ThemeConstants.successGreen,
@@ -434,7 +434,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
           const SizedBox(width: 12),
           Expanded(
             child: _buildStatCard(
-              title: "Jumla ya Malipo",
+              title: LocalizationService.instance.translate('payments_total_label'),
               value: "TSH ${_formatCurrency(totalPayments)}",
               icon: Icons.payments,
               color: ThemeConstants.primaryOrange,
@@ -443,7 +443,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
           const SizedBox(width: 12),
           Expanded(
             child: _buildStatCard(
-              title: "Kiwango cha Wastani",
+              title: LocalizationService.instance.translate('average_rating'),
               value: avgRating.toStringAsFixed(1),
               icon: Icons.star,
               color: ThemeConstants.warningAmber,
@@ -505,8 +505,8 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
             const SizedBox(height: 16),
             Text(
               _searchQuery.isNotEmpty
-                  ? "Hakuna dereva aliyepatikana"
-                  : "Hakuna madereva bado",
+                  ? LocalizationService.instance.translate('no_driver_found')
+                  : LocalizationService.instance.translate('no_drivers_yet'),
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w500,
@@ -517,8 +517,8 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
             const SizedBox(height: 8),
             Text(
               _searchQuery.isNotEmpty
-                  ? "Jaribu kutafuta kwa jina lingine"
-                  : "Ongeza dereva wa kwanza",
+                  ? LocalizationService.instance.translate('try_searching_with_another_name')
+                  : LocalizationService.instance.translate('add_your_first_driver'),
               style: const TextStyle(
                 fontSize: 14,
                 color: ThemeConstants
@@ -530,8 +530,8 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
               ElevatedButton.icon(
                 onPressed: _showAddDriverDialog,
                 icon: const Icon(Icons.add, color: Colors.white),
-                label: const Text(
-                  "Ongeza Dereva",
+                label: Text(
+                  LocalizationService.instance.translate('add_driver'),
                   style: TextStyle(color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -645,7 +645,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
                                   color: ThemeConstants.primaryOrange,
                                 ),
                               ),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: <Widget>[
                                   Icon(
@@ -655,7 +655,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
                                   ),
                                   SizedBox(width: 2),
                                   Text(
-                                    "MAKUBALIANO",
+                                    LocalizationService.instance.translate('agreement').toUpperCase(),
                                     style: TextStyle(
                                       fontSize: 8,
                                       fontWeight: FontWeight.bold,
@@ -683,7 +683,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
                               ),
                             ),
                             child: Text(
-                              isActive ? "HAI" : "HAHAI",
+                              isActive ? LocalizationService.instance.translate('active').toUpperCase() : LocalizationService.instance.translate('inactive_driver').toUpperCase(),
                               style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
@@ -716,7 +716,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              "${driver.vehicleNumber ?? "N/A"} (${driver.vehicleType ?? "N/A"})",
+                              "${driver.vehicleNumber ?? LocalizationService.instance.translate('not_available_short')} (${LocalizationService.instance.vehicleTypeLabel(driver.vehicleType)})",
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -741,79 +741,79 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
                       _handleDriverAction(value, driver),
                   itemBuilder: (final BuildContext context) =>
                       <PopupMenuEntry<String>>[
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: "view",
                       child: Row(
                         children: <Widget>[
                           Icon(Icons.visibility,
                               color: ThemeConstants.primaryBlue),
                           SizedBox(width: 8),
-                          Text("Ona"),
+                          Text(LocalizationService.instance.translate('view')),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: "edit",
                       child: Row(
                         children: <Widget>[
                           Icon(Icons.edit, color: Colors.orange),
                           SizedBox(width: 8),
-                          Text("Hariri"),
+                          Text(LocalizationService.instance.translate('edit')),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: "history",
                       child: Row(
                         children: <Widget>[
                           Icon(Icons.history,
                               color: ThemeConstants.primaryOrange),
                           SizedBox(width: 8),
-                          Text("Ona Historia"),
+                          Text(LocalizationService.instance.translate('view_history')),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: "predict",
                       child: Row(
                         children: <Widget>[
                           Icon(Icons.trending_up, color: Colors.greenAccent),
                           SizedBox(width: 8),
-                          Text("Utabiri"),
+                          Text(LocalizationService.instance.translate('prediction')),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: "record_payment",
                       child: Row(
                         children: <Widget>[
                           Icon(Icons.payments,
                               color: ThemeConstants.primaryOrange),
                           SizedBox(width: 8),
-                          Text("Rekodi Malipo"),
+                          Text(LocalizationService.instance.translate('record_payment')),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: "record_debt",
                       child: Row(
                         children: <Widget>[
                           Icon(Icons.receipt_long, color: Colors.amber),
                           SizedBox(width: 8),
-                          Text("Rekodi Deni"),
+                          Text(LocalizationService.instance.translate('record_debt')),
                         ],
                       ),
                     ),
                     // Show "Complete Agreement" option if not completed
                     if (!driver.hasCompletedAgreement)
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: "complete_agreement",
                         child: Row(
                           children: <Widget>[
                             Icon(Icons.assignment_outlined,
                                 color: ThemeConstants.primaryOrange),
                             SizedBox(width: 8),
-                            Text("Kamilisha Makubaliano"),
+                            Text(LocalizationService.instance.translate('complete_agreement')),
                           ],
                         ),
                       ),
@@ -828,17 +828,17 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
                                 : ThemeConstants.successGreen,
                           ),
                           const SizedBox(width: 8),
-                          Text(isActive ? "Zima" : "Washa"),
+                          Text(isActive ? LocalizationService.instance.translate('deactivate') : LocalizationService.instance.translate('activate')),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: "delete",
                       child: Row(
                         children: <Widget>[
                           Icon(Icons.delete, color: ThemeConstants.errorRed),
                           SizedBox(width: 8),
-                          Text("Futa"),
+                          Text(LocalizationService.instance.translate('delete')),
                         ],
                       ),
                     ),
@@ -852,7 +852,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
               children: <Widget>[
                 Expanded(
                   child: _buildDriverStat(
-                    "Malipo",
+                    LocalizationService.instance.translate('payments_section'),
                     "TSH ${_formatCurrency(driver.totalPayments)}",
                     Icons.payments,
                     ThemeConstants.primaryOrange, // Use theme orange
@@ -860,7 +860,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
                 ),
                 Expanded(
                   child: _buildDriverStat(
-                    "Safari",
+                    LocalizationService.instance.translate('driver_trips'),
                     "${driver.tripsCompleted}",
                     Icons.route,
                     Colors.white, // White for better contrast
@@ -868,7 +868,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
                 ),
                 Expanded(
                   child: _buildDriverStat(
-                    "Kiwango",
+                    LocalizationService.instance.translate('rating'),
                     "${driver.rating}",
                     Icons.star,
                     ThemeConstants.warningAmber, // Use theme amber
@@ -876,10 +876,10 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
                 ),
                 Expanded(
                   child: _buildDriverStat(
-                    "Malipo ya Mwisho",
+                    LocalizationService.instance.translate('last_payment'),
                     driver.lastPayment != null
                         ? _formatDateTime(driver.lastPayment!)
-                        : "Hakuna",
+                        : LocalizationService.instance.translate('none'),
                     Icons.schedule,
                     ThemeConstants.successGreen,
                   ),
@@ -984,7 +984,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
     } else if (difference.inMinutes > 0) {
       return "${difference.inMinutes}m";
     } else {
-      return "Sasa";
+      return LocalizationService.instance.translate('now');
     }
   }
 
@@ -1034,7 +1034,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
         backgroundColor: ThemeConstants.primaryBlue,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          "Maelezo ya ${driver.name}",
+          LocalizationService.instance.translateWith('details_of', <Object?>[driver.name]),
           style: ThemeConstants.headingStyle,
         ),
         content: SingleChildScrollView(
@@ -1042,39 +1042,39 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              _buildDetailRow("Jina:", driver.name),
-              _buildDetailRow("Barua pepe:", driver.email),
-              _buildDetailRow("Simu:", driver.phone),
-              _buildDetailRow("Leseni:", driver.licenseNumber),
+              _buildDetailRow("${LocalizationService.instance.translate('name')}:", driver.name),
+              _buildDetailRow("${LocalizationService.instance.translate('email_message')}:", driver.email),
+              _buildDetailRow("${LocalizationService.instance.translate('call')}:", driver.phone),
+              _buildDetailRow("${LocalizationService.instance.translate('license')}:", driver.licenseNumber),
               _buildDetailRow(
-                "Chombo:",
-                "${driver.vehicleNumber ?? "N/A"} (${driver.vehicleType ?? "N/A"})",
+                "${LocalizationService.instance.translate('vehicle_2')}:",
+                "${driver.vehicleNumber ?? LocalizationService.instance.translate('not_available_short')} (${LocalizationService.instance.vehicleTypeLabel(driver.vehicleType)})",
               ),
               _buildDetailRow(
-                "Hali:",
-                driver.status == "active" ? "Hai" : "Hahai",
+                "${LocalizationService.instance.translate('status')}:",
+                driver.status == "active" ? LocalizationService.instance.translate('active') : LocalizationService.instance.translate('inactive_driver'),
               ),
               _buildDetailRow(
-                "Jumla ya Malipo:",
+                "${LocalizationService.instance.translate('payments_total_label')}:",
                 paymentsText ?? "TSH ${_formatThousands(driver.totalPayments)}",
               ),
               _buildDetailRow(
-                "Leo ni siku ya:",
+                "${LocalizationService.instance.translate('today_is_day')}:",
                 daysText ?? "-",
               ),
               _buildDetailRow(
-                "Deni:",
+                "${LocalizationService.instance.translate('status_debt_label')}:",
                 debtText ?? "TSH ${_formatThousands(0)}",
               ),
-              _buildDetailRow("Aliungana:", _formatDate(driver.joinedDate)),
+              _buildDetailRow("${LocalizationService.instance.translate('joined_on')}:", _formatDate(driver.joinedDate)),
             ],
           ),
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
-              "Funga",
+            child: Text(
+              LocalizationService.instance.translate('close'),
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -1189,7 +1189,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
       // Handle both {data: {...}} and direct map
       final dynamic data = resp.containsKey('data') ? resp['data'] : resp;
       if (data is! Map<String, dynamic>) {
-        throw Exception('Invalid driver response');
+        throw Exception(LocalizationService.instance.translate('invalid_driver_response'));
       }
 
       final Driver fresh = Driver.fromJson(data);
@@ -1247,7 +1247,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
       }
       if (agreementTotal != null && agreementTotal > 0) {
         paymentsText =
-            "TSH ${_formatThousands(totalPaid)} kati ya ${_formatThousands(agreementTotal)}";
+            LocalizationService.instance.translateWith('tsh_of', <Object?>[_formatThousands(totalPaid), _formatThousands(agreementTotal)]);
       } else {
         paymentsText = "TSH ${_formatThousands(totalPaid)}";
       }
@@ -1287,7 +1287,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
             }
 
             daysText = totalDays != null
-                ? "$dayNumber kati ya $totalDays"
+                ? LocalizationService.instance.translateWith('of', <Object?>[dayNumber, totalDays])
                 : "$dayNumber";
           }
         } on Exception catch (_) {}
@@ -1307,7 +1307,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
         Navigator.pop(context); // close loader
         // Fall back to showing existing data, but inform user
         _showDriverDetails(driver);
-        _showErrorSnackBar('Imeshindikana kupata taarifa mpya za dereva: $e');
+        _showErrorSnackBar(LocalizationService.instance.translateWith('could_not_get_the_driver_s', <Object?>[e]));
       }
     }
   }
@@ -1391,20 +1391,20 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
         backgroundColor: ThemeConstants.primaryBlue,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          isActive ? "Zima Dereva" : "Washa Dereva",
+          isActive ? LocalizationService.instance.translate('deactivate_driver') : LocalizationService.instance.translate('activate_driver'),
           style: ThemeConstants.headingStyle,
         ),
         content: Text(
           isActive
-              ? "Je, una uhakika unataka kuzima ${driver.name}?"
-              : "Je, una uhakika unataka kuwasha ${driver.name}?",
+              ? LocalizationService.instance.translateWith('are_you_sure_you_want_to_deactivate', <Object?>[driver.name])
+              : LocalizationService.instance.translateWith('are_you_sure_you_want_to_activate', <Object?>[driver.name]),
           style: const TextStyle(color: ThemeConstants.textSecondary),
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
-              "Hapana",
+            child: Text(
+              LocalizationService.instance.translate('no'),
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -1434,8 +1434,8 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
                 }
 
                 final String message = isActive
-                    ? "${driver.name} amezimwa"
-                    : "${driver.name} amewashwa";
+                    ? LocalizationService.instance.translateWith('has_been_deactivated', <Object?>[driver.name])
+                    : LocalizationService.instance.translateWith('has_been_activated', <Object?>[driver.name]);
                 ThemeConstants.showTopBanner(
                   overlay,
                   message,
@@ -1446,14 +1446,14 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
               } on Exception catch (e) {
                 ThemeConstants.showTopBanner(
                   overlay,
-                  "Hitilafu katika kubadilisha hali: $e",
+                  LocalizationService.instance.translateWith('error_changing_status', <Object?>[e]),
                   backgroundColor: ThemeConstants.errorRed,
                   icon: Icons.error,
                 );
               }
             },
             child: Text(
-              isActive ? "Zima" : "Washa",
+              isActive ? LocalizationService.instance.translate('deactivate') : LocalizationService.instance.translate('activate'),
               style: TextStyle(
                 color: isActive
                     ? ThemeConstants.errorRed
@@ -1473,18 +1473,18 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
         backgroundColor: ThemeConstants.primaryBlue,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          "Futa Dereva",
+          LocalizationService.instance.translate('delete_driver'),
           style: ThemeConstants.headingStyle,
         ),
         content: Text(
-          "Je, una uhakika unataka kumfuta ${driver.name}? Kitendo hiki hakiwezi kurudishwa.",
+          LocalizationService.instance.translateWith('are_you_sure_you_want_to_8', <Object?>[driver.name]),
           style: const TextStyle(color: ThemeConstants.textSecondary),
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
-              "Hapana",
+            child: Text(
+              LocalizationService.instance.translate('no'),
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -1507,20 +1507,20 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
 
                 ThemeConstants.showTopBanner(
                   overlay,
-                  "${driver.name} amefutwa",
+                  LocalizationService.instance.translateWith('has_been_deleted', <Object?>[driver.name]),
                   icon: Icons.check_circle,
                 );
               } on Exception catch (e) {
                 ThemeConstants.showTopBanner(
                   overlay,
-                  "Hitilafu katika kufuta dereva: $e",
+                  LocalizationService.instance.translateWith('error_deleting_driver', <Object?>[e]),
                   backgroundColor: ThemeConstants.errorRed,
                   icon: Icons.error,
                 );
               }
             },
-            child: const Text(
-              "Futa",
+            child: Text(
+              LocalizationService.instance.translate('delete'),
               style: TextStyle(color: ThemeConstants.errorRed),
             ),
           ),
@@ -1532,7 +1532,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
   Future<void> _exportDrivers() async {
     if (kIsWeb) {
       ThemeConstants.showErrorSnackBar(context,
-          "Uhamishaji wa faili haupatikani kwenye web. Tumia simu/desktop.");
+          LocalizationService.instance.translate('file_export_is_not_available_on'));
       return;
     }
 
@@ -1549,10 +1549,10 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
 
       if (!mounted) return;
       ThemeConstants.showSuccessSnackBar(
-          context, "Faili limehifadhiwa: $filePath");
+          context, LocalizationService.instance.translateWith('file_saved', <Object?>[filePath]));
     } on Exception catch (e) {
       if (!mounted) return;
-      _showErrorSnackBar("Imeshindikana kuhamisha data: $e");
+      _showErrorSnackBar(LocalizationService.instance.translateWith('could_not_export_data', <Object?>[e]));
     }
   }
 
@@ -1615,14 +1615,14 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
       } else if (file.path != null) {
         csvContent = await File(file.path!).readAsString();
       } else {
-        _showErrorSnackBar("Imeshindikana kusoma faili");
+        _showErrorSnackBar(LocalizationService.instance.translate('could_not_read_the_file'));
         return;
       }
 
       // Parse CSV
       final List<Map<String, String>> rows = _parseDriversCsv(csvContent);
       if (rows.isEmpty) {
-        if (mounted) _showErrorSnackBar("Hakuna rekodi kwenye faili");
+        if (mounted) _showErrorSnackBar(LocalizationService.instance.translate('there_are_no_records_in_the'));
         return;
       }
       // Validate headers
@@ -1631,7 +1631,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
       if (!headers.containsAll(required)) {
         if (mounted) {
           _showErrorSnackBar(
-              "Faili halina vichwa sahihi. Vinavyotakiwa: name, phone_number");
+              LocalizationService.instance.translate('the_file_does_not_have_the'));
         }
         return;
       }
@@ -1672,7 +1672,7 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
       }
 
       final String message =
-          "Uingizaji umekamilika: $success mafanikio, $failed imeshindikana";
+          LocalizationService.instance.translateWith('import_finished_succeeded_failed', <Object?>[success, failed]);
       if (!mounted) return;
       if (failed == 0) {
         ThemeConstants.showSuccessSnackBar(context, message);
@@ -1688,14 +1688,14 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
       // Refresh list
       await _loadDrivers(refresh: true);
     } on Exception catch (e) {
-      if (mounted) _showErrorSnackBar("Imeshindikana kuingiza data: $e");
+      if (mounted) _showErrorSnackBar(LocalizationService.instance.translateWith('could_not_import_data', <Object?>[e]));
     }
   }
 
   Future<void> _exportDriversTemplate() async {
     if (kIsWeb) {
       ThemeConstants.showErrorSnackBar(
-          context, "Upakuaji wa faili kwenye web haupatikani");
+          context, LocalizationService.instance.translate('file_download_is_not_available_on'));
       return;
     }
     try {
@@ -1709,9 +1709,9 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
       await File(filePath).writeAsString(csv);
       if (!mounted) return;
       ThemeConstants.showSuccessSnackBar(
-          context, "Template imehifadhiwa: $filePath");
+          context, LocalizationService.instance.translateWith('template_saved', <Object?>[filePath]));
     } on Exception catch (e) {
-      _showErrorSnackBar("Imeshindikana kutengeneza template: $e");
+      _showErrorSnackBar(LocalizationService.instance.translateWith('could_not_create_the_template', <Object?>[e]));
     }
   }
 
@@ -1786,13 +1786,13 @@ class _EditDriverDialogState extends State<_EditDriverDialog> {
   late String _selectedStatus;
 
   final Map<String, String> _vehicleTypes = <String, String>{
-    "bajaji": "Bajaji",
-    "pikipiki": "Pikipiki",
-    "gari": "Gari",
+    "bajaji": LocalizationService.instance.translate('vehicle_type_bajaji'),
+    "pikipiki": LocalizationService.instance.translate('vehicle_type_pikipiki'),
+    "gari": LocalizationService.instance.translate('vehicle_type_gari'),
   };
   final Map<String, String> _statusOptions = <String, String>{
-    "active": "Hai",
-    "inactive": "Hahai",
+    "active": LocalizationService.instance.translate('active'),
+    "inactive": LocalizationService.instance.translate('inactive_driver'),
   };
 
   InputDecoration _inputDecoration(String label, {IconData? icon}) {
@@ -1880,10 +1880,10 @@ class _EditDriverDialogState extends State<_EditDriverDialog> {
       widget.onDriverUpdated(updated);
 
       ThemeConstants.showSuccessSnackBar(
-          context, "Taarifa za dereva zimehifadhiwa.");
+          context, "${LocalizationService.instance.translate('driver_details_saved')}.");
     } on Exception catch (e) {
       if (!mounted) return;
-      ThemeConstants.showErrorSnackBar(context, "Hitilafu katika kuhariri: $e");
+      ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translateWith('error_while_editing', <Object?>[e]));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -1895,7 +1895,7 @@ class _EditDriverDialogState extends State<_EditDriverDialog> {
       backgroundColor: ThemeConstants.primaryBlue,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text(
-        "Hariri ${widget.driver.name}",
+        LocalizationService.instance.translateWith('edit_2', <Object?>[widget.driver.name]),
         style: ThemeConstants.headingStyle,
       ),
       content: ConstrainedBox(
@@ -1909,37 +1909,37 @@ class _EditDriverDialogState extends State<_EditDriverDialog> {
                 TextFormField(
                   controller: _nameController,
                   style: const TextStyle(color: ThemeConstants.textPrimary),
-                  decoration: _inputDecoration("Jina", icon: Icons.person),
+                  decoration: _inputDecoration(LocalizationService.instance.translate('name'), icon: Icons.person),
                   validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? "Weka jina" : null,
+                      (v == null || v.trim().isEmpty) ? LocalizationService.instance.translate('enter_a_name') : null,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _emailController,
                   style: const TextStyle(color: ThemeConstants.textPrimary),
-                  decoration: _inputDecoration("Barua pepe", icon: Icons.email),
+                  decoration: _inputDecoration(LocalizationService.instance.translate('email_message'), icon: Icons.email),
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _phoneController,
                   style: const TextStyle(color: ThemeConstants.textPrimary),
-                  decoration: _inputDecoration("Simu", icon: Icons.phone),
+                  decoration: _inputDecoration(LocalizationService.instance.translate('call'), icon: Icons.phone),
                   validator: (v) => (v == null || v.trim().isEmpty)
-                      ? "Weka namba ya simu"
+                      ? LocalizationService.instance.translate('enter_a_phone_number')
                       : null,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _licenseController,
                   style: const TextStyle(color: ThemeConstants.textPrimary),
-                  decoration: _inputDecoration("Namba ya Leseni",
+                  decoration: _inputDecoration(LocalizationService.instance.translate('license_number'),
                       icon: Icons.credit_card),
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _vehicleNumberController,
                   style: const TextStyle(color: ThemeConstants.textPrimary),
-                  decoration: _inputDecoration("Namba ya Chombo",
+                  decoration: _inputDecoration(LocalizationService.instance.translate('vehicle_number'),
                       icon: Icons.directions_car),
                 ),
                 const SizedBox(height: 12),
@@ -1951,7 +1951,7 @@ class _EditDriverDialogState extends State<_EditDriverDialog> {
                         dropdownColor: ThemeConstants.primaryBlue,
                         style:
                             const TextStyle(color: ThemeConstants.textPrimary),
-                        decoration: _inputDecoration("Aina ya Chombo",
+                        decoration: _inputDecoration(LocalizationService.instance.translate('vehicle_type'),
                             icon: Icons.category),
                         items: _vehicleTypes.entries
                             .map((e) => DropdownMenuItem<String>(
@@ -1971,7 +1971,7 @@ class _EditDriverDialogState extends State<_EditDriverDialog> {
                         style:
                             const TextStyle(color: ThemeConstants.textPrimary),
                         decoration:
-                            _inputDecoration("Hali", icon: Icons.toggle_on),
+                            _inputDecoration(LocalizationService.instance.translate('status'), icon: Icons.toggle_on),
                         items: _statusOptions.entries
                             .map((e) => DropdownMenuItem<String>(
                                   value: e.key,
@@ -1992,7 +1992,7 @@ class _EditDriverDialogState extends State<_EditDriverDialog> {
       actions: <Widget>[
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text("Ghairi", style: TextStyle(color: Colors.white)),
+          child: Text(LocalizationService.instance.translate('cancel_2'), style: TextStyle(color: Colors.white)),
         ),
         ElevatedButton(
           onPressed: _isSaving ? null : _save,
@@ -2006,7 +2006,7 @@ class _EditDriverDialogState extends State<_EditDriverDialog> {
                   width: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text("Hifadhi"),
+              : Text(LocalizationService.instance.translate('save')),
         ),
       ],
     );
@@ -2055,15 +2055,15 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
 
   // Vehicle types
   final Map<String, String> _vehicleTypes = <String, String>{
-    "bajaji": "Bajaji",
-    "pikipiki": "Pikipiki",
-    "gari": "Gari",
+    "bajaji": LocalizationService.instance.translate('vehicle_type_bajaji'),
+    "pikipiki": LocalizationService.instance.translate('vehicle_type_pikipiki'),
+    "gari": LocalizationService.instance.translate('vehicle_type_gari'),
   };
 
   // Status options
   final Map<String, String> _statusOptions = <String, String>{
-    "active": "Hai",
-    "inactive": "Hahai",
+    "active": LocalizationService.instance.translate('active'),
+    "inactive": LocalizationService.instance.translate('inactive_driver'),
   };
 
   // Using theme constants for colors
@@ -2169,7 +2169,7 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
         widget.onDriverAdded();
 
         ThemeConstants.showSuccessSnackBar(
-            context, "Dereva $driverName ameongezwa kikamilifu!");
+            context, LocalizationService.instance.translateWith('driver_was_added_successfully', <Object?>[driverName]));
 
         // Debug: Print the response
         debugPrint('Driver creation response: $response');
@@ -2220,7 +2220,7 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
               if (!mounted) return;
               // Show error to user
               ThemeConstants.showErrorSnackBar(context,
-                  'Hitilafu katika kuongoza kwenye makubaliano: $navError');
+                  LocalizationService.instance.translateWith('error_opening_the_agreement', <Object?>[navError]));
             }
           } else {
             debugPrint(
@@ -2235,7 +2235,7 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
     } on Exception catch (e) {
       if (mounted) {
         ThemeConstants.showErrorSnackBar(
-            context, "Hitilafu katika kuongeza dereva: $e");
+            context, LocalizationService.instance.translateWith('error_adding_driver', <Object?>[e]));
       }
     } finally {
       if (mounted) {
@@ -2284,9 +2284,9 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                     size: 28,
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      "Ongeza Dereva Mpya",
+                      LocalizationService.instance.translate('add_new_driver'),
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -2319,8 +2319,8 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         // Personal Information Section
-                        const Text(
-                          "Taarifa za Kibinafsi",
+                        Text(
+                          LocalizationService.instance.translate('personal_information'),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -2335,16 +2335,16 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                           style: const TextStyle(
                               color: ThemeConstants.textPrimary),
                           decoration: _getBlueInputDecoration(
-                            "Jina Kamili *",
+                            "${LocalizationService.instance.translate('full_name')} *",
                             icon: Icons.person,
-                            hintText: "Ingiza jina kamili la dereva",
+                            hintText: LocalizationService.instance.translate('enter_the_driver_s_full_name'),
                           ),
                           validator: (final String? value) {
                             if (value == null || value.trim().isEmpty) {
-                              return "Jina ni lazima";
+                              return LocalizationService.instance.translate('name_is_required');
                             }
                             if (value.trim().length < 2) {
-                              return "Jina lazima liwe na angalau herufi 2";
+                              return LocalizationService.instance.translate('name_must_have_at_least_2');
                             }
                             return null;
                           },
@@ -2359,17 +2359,17 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                           style: const TextStyle(
                               color: ThemeConstants.textPrimary),
                           decoration: _getBlueInputDecoration(
-                            "Barua Pepe *",
+                            "${LocalizationService.instance.translate('email_message')} *",
                             icon: Icons.email,
-                            hintText: "mfano@email.com",
+                            hintText: LocalizationService.instance.translate('email_example_hint'),
                           ),
                           validator: (final String? value) {
                             if (value == null || value.trim().isEmpty) {
-                              return "Barua pepe ni lazima";
+                              return LocalizationService.instance.translate('email_is_required');
                             }
                             if (!RegExp(r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$")
                                 .hasMatch(value)) {
-                              return "Ingiza barua pepe sahihi";
+                              return LocalizationService.instance.translate('enter_a_valid_email');
                             }
                             return null;
                           },
@@ -2384,16 +2384,16 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                           style: const TextStyle(
                               color: ThemeConstants.textPrimary),
                           decoration: _getBlueInputDecoration(
-                            "Namba ya Simu *",
+                            "${LocalizationService.instance.translate('phone_number_label')} *",
                             icon: Icons.phone,
                             hintText: "+255XXXXXXXXX",
                           ),
                           validator: (final String? value) {
                             if (value == null || value.trim().isEmpty) {
-                              return "Namba ya simu ni lazima";
+                              return LocalizationService.instance.translate('phone_number_is_required');
                             }
                             if (value.trim().length < 10) {
-                              return "Namba ya simu si sahihi";
+                              return LocalizationService.instance.translate('phone_number_is_not_valid');
                             }
                             return null;
                           },
@@ -2407,13 +2407,13 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                           style: const TextStyle(
                               color: ThemeConstants.textPrimary),
                           decoration: _getBlueInputDecoration(
-                            "Namba ya Leseni *",
+                            "${LocalizationService.instance.translate('license_number')} *",
                             icon: Icons.credit_card,
                             hintText: "DL123456789",
                           ),
                           validator: (final String? value) {
                             if (value == null || value.trim().isEmpty) {
-                              return "Namba ya leseni ni lazima";
+                              return LocalizationService.instance.translate('license_number_is_required');
                             }
                             return null;
                           },
@@ -2442,16 +2442,16 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                             }
                           },
                           decoration: _getBlueInputDecoration(
-                            "Tarehe ya Mwisho wa Leseni *",
+                            "${LocalizationService.instance.translate('license_expiry_date')} *",
                             icon: Icons.calendar_today,
-                            hintText: "Chagua tarehe",
+                            hintText: LocalizationService.instance.translate('select_a_date'),
                           ).copyWith(
                             suffixIcon: const Icon(Icons.arrow_drop_down,
                                 color: ThemeConstants.textSecondary),
                           ),
                           validator: (final String? value) {
                             if (value == null || value.trim().isEmpty) {
-                              return "Tarehe ya mwisho wa leseni ni lazima";
+                              return LocalizationService.instance.translate('license_expiry_date_is_required');
                             }
                             return null;
                           },
@@ -2489,7 +2489,7 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                           decoration: _getBlueInputDecoration(
                             LocalizationService.instance.translate('address'),
                             icon: Icons.location_on,
-                            hintText: "Ingiza anuani kamili",
+                            hintText: LocalizationService.instance.translate('enter_the_full_address'),
                           ),
                         ),
 
@@ -2502,16 +2502,16 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                           style: const TextStyle(
                               color: ThemeConstants.textPrimary),
                           decoration: _getBlueInputDecoration(
-                            "Simu ya Dharura *",
+                            "${LocalizationService.instance.translate('emergency_phone')} *",
                             icon: Icons.emergency,
                             hintText: "+255XXXXXXXXX",
                           ),
                           validator: (final String? value) {
                             if (value == null || value.trim().isEmpty) {
-                              return "Simu ya dharura ni lazima";
+                              return LocalizationService.instance.translate('emergency_phone_is_required');
                             }
                             if (value.trim().length < 10) {
-                              return "Namba ya simu si sahihi";
+                              return LocalizationService.instance.translate('phone_number_is_not_valid');
                             }
                             return null;
                           },
@@ -2525,9 +2525,9 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                           style: const TextStyle(
                               color: ThemeConstants.textPrimary),
                           decoration: _getBlueInputDecoration(
-                            "Namba ya Kitambulisho (Hiari)",
+                            LocalizationService.instance.translate('id_number_optional'),
                             icon: Icons.badge,
-                            hintText: "Ingiza namba ya kitambulisho",
+                            hintText: LocalizationService.instance.translate('enter_the_id_number'),
                           ),
                         ),
 
@@ -2555,9 +2555,9 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                             }
                           },
                           decoration: _getBlueInputDecoration(
-                            "Tarehe ya Kuzaliwa (Hiari)",
+                            LocalizationService.instance.translate('date_of_birth_optional'),
                             icon: Icons.cake,
-                            hintText: "Chagua tarehe ya kuzaliwa",
+                            hintText: LocalizationService.instance.translate('select_the_date_of_birth'),
                           ).copyWith(
                             suffixIcon: const Icon(Icons.arrow_drop_down,
                                 color: ThemeConstants.textSecondary),
@@ -2567,8 +2567,8 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                         const SizedBox(height: 24),
 
                         // Vehicle Information Section
-                        const Text(
-                          "Taarifa za Gari (Hiari)",
+                        Text(
+                          LocalizationService.instance.translate('vehicle_information_optional'),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -2583,9 +2583,9 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                           style: const TextStyle(
                               color: ThemeConstants.textPrimary),
                           decoration: _getBlueInputDecoration(
-                            "Namba ya Chombo",
+                            LocalizationService.instance.translate('vehicle_number'),
                             icon: Icons.directions_car,
-                            hintText: "T123ABC (hiari)",
+                            hintText: LocalizationService.instance.translate('t123abc_optional'),
                           ),
                         ),
 
@@ -2598,7 +2598,7 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                           style: const TextStyle(
                               color: ThemeConstants.textPrimary),
                           decoration: _getBlueInputDecoration(
-                            "Aina ya Chombo",
+                            LocalizationService.instance.translate('vehicle_type'),
                             icon: Icons.category,
                           ),
                           items: _vehicleTypes.entries
@@ -2630,7 +2630,7 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                           style: const TextStyle(
                               color: ThemeConstants.textPrimary),
                           decoration: _getBlueInputDecoration(
-                            "Hali ya Dereva",
+                            LocalizationService.instance.translate('driver_status_2'),
                             icon: Icons.toggle_on,
                           ),
                           items: _statusOptions.entries
@@ -2683,8 +2683,8 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                               color: ThemeConstants.textSecondary),
                         ),
                       ),
-                      child: const Text(
-                        "Ghairi",
+                      child: Text(
+                        LocalizationService.instance.translate('cancel_2'),
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -2716,8 +2716,8 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                                 ),
                               ),
                             )
-                          : const Text(
-                              "Ongeza Dereva",
+                          : Text(
+                              LocalizationService.instance.translate('add_driver'),
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,

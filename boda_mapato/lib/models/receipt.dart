@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_dynamic_calls, avoid_redundant_argument_values
 import 'package:flutter/foundation.dart';
+import '../services/localization_service.dart';
 
 @immutable
 class Receipt {
@@ -181,13 +182,13 @@ class Receipt {
   String get paymentChannelDisplayName {
     switch (paymentChannel.toLowerCase()) {
       case 'cash':
-        return 'Fedha taslimu';
+        return LocalizationService.instance.translate('cash');
       case 'mobile':
-        return 'Pesa za simu';
+        return LocalizationService.instance.translate('mobile_money');
       case 'bank':
-        return 'Uhamisho wa benki';
+        return LocalizationService.instance.translate('bank_transfer');
       case 'other':
-        return 'Njia nyingine';
+        return LocalizationService.instance.translate('other_method');
       default:
         return paymentChannel;
     }
@@ -196,13 +197,13 @@ class Receipt {
   String get statusDisplayName {
     switch (status.toLowerCase()) {
       case 'generated':
-        return 'Imetengenezwa';
+        return LocalizationService.instance.translate('receipt_status_generated');
       case 'sent':
-        return 'Imetumwa';
+        return LocalizationService.instance.translate('receipt_status_sent');
       case 'cancelled':
-        return 'Imeghairiwa';
+        return LocalizationService.instance.translate('cancelled');
       case 'pending':
-        return 'Inazosubiri';
+        return LocalizationService.instance.translate('pending_3');
       default:
         return status;
     }

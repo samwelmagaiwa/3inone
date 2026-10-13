@@ -1061,7 +1061,7 @@ class _PersonalInfoCard extends StatelessWidget {
 
           if (notes.isNotEmpty) ...[
             SizedBox(height: 14.h),
-            Text('MAELEZO',
+            Text(LocalizationService.instance.translate('description').toUpperCase(),
                 style: TextStyle(
                     color: Colors.white38,
                     fontSize: 9.sp,
@@ -1090,7 +1090,7 @@ class _PersonalInfoCard extends StatelessWidget {
                   Icon(Icons.check_circle_rounded,
                       color: _kGreen, size: 13.sp),
                   SizedBox(width: 5.w),
-                  Text('Picha Imepakiwa',
+                  Text(LocalizationService.instance.translate('photo_uploaded'),
                       style: TextStyle(
                           color: _kGreen,
                           fontSize: 11.sp,

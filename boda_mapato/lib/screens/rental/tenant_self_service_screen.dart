@@ -6,6 +6,7 @@ import '../../constants/theme_constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import 'tenant_receipt_repository_screen.dart';
+import '../../services/localization_service.dart';
 
 class TenantSelfServiceScreen extends StatefulWidget {
   const TenantSelfServiceScreen({super.key});
@@ -84,7 +85,7 @@ class _TenantSelfServiceScreenState extends State<TenantSelfServiceScreen>
       debugPrint('Error loading tenant self-service data: $e');
       if (mounted) {
         setState(() => _isLoading = false);
-        ThemeConstants.showErrorSnackBar(context, "Failed to load account data");
+        ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('failed_to_load_account_data'));
       }
     }
   }
@@ -158,7 +159,7 @@ class _TenantSelfServiceScreenState extends State<TenantSelfServiceScreen>
                 icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
               ),
               Text(
-                "My Account",
+                LocalizationService.instance.translate('tenant_self_service'),
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22.sp,
@@ -179,7 +180,7 @@ class _TenantSelfServiceScreenState extends State<TenantSelfServiceScreen>
 
   Widget _buildContent() {
     final user = Provider.of<AuthProvider>(context).user;
-    final name = user?.name ?? "Mteja";
+    final name = user?.name ?? LocalizationService.instance.translate('agreement_step_tenant');
     final house = _tenantData?['house'] ?? '...';
     final property = _tenantData?['property'] ?? '...';
     final balance = _tenantData?['balance'] ?? 0;
@@ -245,7 +246,7 @@ class _TenantSelfServiceScreenState extends State<TenantSelfServiceScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      house != 'N/A' ? "$house - $property" : "Gundua Ankara Zako",
+                      house != 'N/A' ? "$house - $property" : LocalizationService.instance.translate('see_your_bills'),
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 14.sp,
@@ -262,7 +263,7 @@ class _TenantSelfServiceScreenState extends State<TenantSelfServiceScreen>
                         borderRadius: BorderRadius.circular(8.r),
                       ),
                       child: Text(
-                        "Baki Malipo: TSh $balance",
+                        LocalizationService.instance.translateWith('balance_due_tsh', <Object?>[balance]),
                         style: TextStyle(
                           color: balance > 0 ? ThemeConstants.errorRed : ThemeConstants.successGreen,
                           fontSize: 11.sp,
@@ -293,7 +294,7 @@ class _TenantSelfServiceScreenState extends State<TenantSelfServiceScreen>
                     Icon(Icons.folder_shared_outlined, color: ThemeConstants.primaryOrange, size: 20.sp),
                     SizedBox(height: 2.h),
                     Text(
-                      "Risiti",
+                      LocalizationService.instance.translate('receipt'),
                       style: TextStyle(
                         color: ThemeConstants.primaryOrange,
                         fontSize: 10.sp,
@@ -358,10 +359,10 @@ class _TenantSelfServiceScreenState extends State<TenantSelfServiceScreen>
         unselectedLabelStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.normal),
         labelColor: Colors.white,
         unselectedLabelColor: Colors.white54,
-        tabs: const [
-          Tab(text: "Ankara"),
-          Tab(text: "Malipo"),
-          Tab(text: "Risiti"),
+        tabs: [
+          Tab(text: LocalizationService.instance.translate('bills_label')),
+          Tab(text: LocalizationService.instance.translate('payments_section')),
+          Tab(text: LocalizationService.instance.translate('receipt')),
         ],
       ),
     );
@@ -378,7 +379,7 @@ class _TenantSelfServiceScreenState extends State<TenantSelfServiceScreen>
 
   Widget _buildInvoiceList() {
     final bills = _tenantData?['bills'] as List? ?? [];
-    if (bills.isEmpty) return _buildEmptyTab("Hakuna Ankara Bado");
+    if (bills.isEmpty) return _buildEmptyTab(LocalizationService.instance.translate('no_bills_yet'));
 
     return ListView.builder(
       shrinkWrap: true,
@@ -386,13 +387,13 @@ class _TenantSelfServiceScreenState extends State<TenantSelfServiceScreen>
       itemCount: bills.length,
       itemBuilder: (context, index) {
         final bill = bills[index];
-        final isPaid = bill['status'] == 'paid' || bill['status'] == 'Imelipwa';
+        final isPaid = bill['status'] == 'paid' || bill['status'] == LocalizationService.instance.translate('bill_paid');
         return _buildModernCard(
-          title: "Kodi ya Pango",
+          title: LocalizationService.instance.translate('rent_2'),
           subtitle: bill['month_year'] ?? "N/A",
           amount: "TSh ${bill['amount_due']}",
           icon: isPaid ? Icons.check_circle_outline : Icons.pending_outlined,
-          status: isPaid ? "Imelipwa" : "Haijalipwa",
+          status: isPaid ? LocalizationService.instance.translate('bill_paid') : LocalizationService.instance.translate('unpaid_2'),
           statusColor: isPaid ? ThemeConstants.successGreen : ThemeConstants.warningAmber,
         );
       },
@@ -401,7 +402,7 @@ class _TenantSelfServiceScreenState extends State<TenantSelfServiceScreen>
 
   Widget _buildPaymentHistory() {
     final payments = _tenantData?['payments'] as List? ?? [];
-    if (payments.isEmpty) return _buildEmptyTab("Hakuna Malipo Yaliyofanyika");
+    if (payments.isEmpty) return _buildEmptyTab(LocalizationService.instance.translate('no_payments_made'));
 
     return ListView.builder(
       shrinkWrap: true,
@@ -410,11 +411,11 @@ class _TenantSelfServiceScreenState extends State<TenantSelfServiceScreen>
       itemBuilder: (context, index) {
         final payment = payments[index];
         return _buildModernCard(
-          title: "Malipo ya Kodi",
+          title: LocalizationService.instance.translate('rent_payments'),
           subtitle: payment['payment_date'] ?? "N/A",
           amount: "TSh ${payment['amount']}",
           icon: Icons.account_balance_wallet_outlined,
-          status: "Yamethibitishwa",
+          status: LocalizationService.instance.translate('confirmed'),
           statusColor: ThemeConstants.successGreen,
         );
       },
@@ -422,7 +423,7 @@ class _TenantSelfServiceScreenState extends State<TenantSelfServiceScreen>
   }
 
   Widget _buildReceiptSummary() {
-    return _buildEmptyTab("Angalia Repository kwa Risiti Zote");
+    return _buildEmptyTab(LocalizationService.instance.translate('see_the_repository_for_all_receipts'));
   }
 
   Widget _buildModernCard({

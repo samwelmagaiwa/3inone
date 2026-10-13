@@ -1,3 +1,4 @@
+import '../services/localization_service.dart';
 class Payment {
   Payment({
     required this.driverId,
@@ -72,15 +73,28 @@ class Payment {
 }
 
 enum PaymentChannel {
-  cash('cash', 'Mkononi'),
-  bank('bank', 'Benki'),
-  mobile('mobile', 'Simu'),
-  other('other', 'Nyingine');
+  cash('cash'),
+  bank('bank'),
+  mobile('mobile'),
+  other('other');
 
-  const PaymentChannel(this.value, this.displayName);
+  const PaymentChannel(this.value);
 
   final String value;
-  final String displayName;
+
+  /// The name shown for the channel, in the language chosen in the app.
+  String get displayName {
+    switch (this) {
+      case PaymentChannel.cash:
+        return LocalizationService.instance.translate('payment_channel_cash');
+      case PaymentChannel.bank:
+        return LocalizationService.instance.translate('payment_channel_bank');
+      case PaymentChannel.mobile:
+        return LocalizationService.instance.translate('mobile_money');
+      case PaymentChannel.other:
+        return LocalizationService.instance.translate('other');
+    }
+  }
 
   static PaymentChannel fromString(String value) {
     return PaymentChannel.values.firstWhere(

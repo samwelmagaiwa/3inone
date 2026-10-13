@@ -106,9 +106,9 @@ class _OnboardTenantScreenState extends State<OnboardTenantScreen> {
         context: context,
         fetchData: (p) => p.fetchProperties(),
         condition: (p) => RentalFlowValidator.hasHouses(p),
-        title: "Hakuna Nyumba",
-        message: "Unahitaji kuwa na mali na nyumba kabla ya kusajili mpangaji.",
-        actionLabel: "Ongeza Mali",
+        title: LocalizationService.instance.translate('no_houses_found'),
+        message: LocalizationService.instance.translate('you_need_a_property_and_a'),
+        actionLabel: LocalizationService.instance.translate('add_property_2'),
         actionRoute: "/rental/add-property",
       );
       context.read<RentalProvider>().fetchTenants();
@@ -339,14 +339,14 @@ class _OnboardTenantScreenState extends State<OnboardTenantScreen> {
             children: [
               Expanded(
                 child: Text(
-                  "Is this user already registered?",
+                  LocalizationService.instance.translate('is_this_user_already_registered'),
                   style: TextStyle(color: Colors.white70, fontSize: 12.sp),
                 ),
               ),
               ElevatedButton.icon(
                 onPressed: _showExistingTenantSearch,
                 icon: const Icon(Icons.search, size: 16),
-                label: const Text("Select User"),
+                label: Text(LocalizationService.instance.translate('select_user')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: ThemeConstants.primaryBlue,
                   foregroundColor: Colors.white,
@@ -976,7 +976,7 @@ class _OnboardTenantScreenState extends State<OnboardTenantScreen> {
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20.w),
                     child: Text(
-                      "Search Existing Users",
+                      LocalizationService.instance.translate('search_existing_users'),
                       style: ThemeConstants.subHeadingStyle,
                     ),
                   ),
@@ -986,7 +986,7 @@ class _OnboardTenantScreenState extends State<OnboardTenantScreen> {
                     child: TextField(
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
-                        hintText: "Search name, email, or phone...",
+                        hintText: LocalizationService.instance.translate('search_name_email_or_phone'),
                         hintStyle: const TextStyle(color: Colors.white38),
                         prefixIcon: const Icon(Icons.search, color: Colors.white54),
                         filled: true,
@@ -1006,7 +1006,7 @@ class _OnboardTenantScreenState extends State<OnboardTenantScreen> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(backgroundColor: ThemeConstants.primaryOrange),
                         onPressed: performSearch,
-                        child: const Text("Search", style: TextStyle(color: Colors.white)),
+                        child: Text(LocalizationService.instance.translate('search'), style: TextStyle(color: Colors.white)),
                       ),
                     ),
                   ),
@@ -1015,7 +1015,7 @@ class _OnboardTenantScreenState extends State<OnboardTenantScreen> {
                         ? const Center(child: CircularProgressIndicator())
                         : results.isEmpty
                             ? Center(
-                                child: Text("No users found", style: TextStyle(color: Colors.white54, fontSize: 14.sp)),
+                                child: Text(LocalizationService.instance.translate('no_users_found'), style: TextStyle(color: Colors.white54, fontSize: 14.sp)),
                               )
                             : ListView.builder(
                                 padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
@@ -1152,8 +1152,8 @@ class _OnboardTenantScreenState extends State<OnboardTenantScreen> {
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
             backgroundColor: ThemeConstants.bgMid,
-            title: Text('Tenant Onboarded', style: const TextStyle(color: Colors.white)),
-            content: Text('Do you want to record the first payment for this tenant now?', style: const TextStyle(color: Colors.white70)),
+            title: Text(LocalizationService.instance.translate('tenant_onboarded'), style: const TextStyle(color: Colors.white)),
+            content: Text(LocalizationService.instance.translate('do_you_want_to_record_the'), style: const TextStyle(color: Colors.white70)),
             actions: [
               TextButton(
                 onPressed: () {
@@ -1161,7 +1161,7 @@ class _OnboardTenantScreenState extends State<OnboardTenantScreen> {
                   nav.pop(); // close dialog
                   nav.pop(); // close onboard screen
                 },
-                child: Text('Not Now', style: const TextStyle(color: Colors.white54)),
+                child: Text(LocalizationService.instance.translate('not_now'), style: const TextStyle(color: Colors.white54)),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -1175,7 +1175,7 @@ class _OnboardTenantScreenState extends State<OnboardTenantScreen> {
                   ));
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: ThemeConstants.primaryOrange),
-                child: Text('Yes, Record Payment', style: const TextStyle(color: Colors.white)),
+                child: Text(LocalizationService.instance.translate('yes_record_payment'), style: const TextStyle(color: Colors.white)),
               ),
             ],
           ),

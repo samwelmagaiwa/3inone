@@ -3,6 +3,7 @@ import "package:flutter/foundation.dart";
 import "../models/transaction.dart";
 import "../services/api_service.dart";
 import "../services/auth_service.dart";
+import '../services/localization_service.dart';
 
 class TransactionProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
@@ -50,7 +51,7 @@ class TransactionProvider extends ChangeNotifier {
           .toList();
       _applyFilters();
     } on Exception catch (e) {
-      _setError("Failed to load transactions: $e");
+      _setError(LocalizationService.instance.translateWith('failed_to_load_transactions', <Object?>[e]));
       _transactions = <Transaction>[]; // Empty list instead of mock data
       _applyFilters();
     } finally {
@@ -71,7 +72,7 @@ class TransactionProvider extends ChangeNotifier {
       _applyFilters();
       return true;
     } on Exception catch (e) {
-      _setError("Failed to add transaction: $e");
+      _setError(LocalizationService.instance.translateWith('failed_to_add_transaction', <Object?>[e]));
       return false;
     }
   }
@@ -94,7 +95,7 @@ class TransactionProvider extends ChangeNotifier {
       }
       return true;
     } on Exception catch (e) {
-      _setError("Failed to update transaction: $e");
+      _setError(LocalizationService.instance.translateWith('failed_to_update_transaction', <Object?>[e]));
       return false;
     }
   }
@@ -107,7 +108,7 @@ class TransactionProvider extends ChangeNotifier {
       _applyFilters();
       return true;
     } on Exception catch (e) {
-      _setError("Failed to delete transaction: $e");
+      _setError(LocalizationService.instance.translateWith('failed_to_delete_transaction', <Object?>[e]));
       return false;
     }
   }

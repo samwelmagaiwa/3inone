@@ -12,10 +12,14 @@ class CratesOwedNote extends StatelessWidget {
     super.key,
     required this.owed,
     required this.swahili,
+    this.isDepot = true,
   });
 
   final CratesOwed owed;
   final bool swahili;
+
+  /// A depot says "the depot owes them"; any other business says "we owe them".
+  final bool isDepot;
 
   static String _tzs(double v) => 'TZS ${v.toStringAsFixed(0)}';
 
@@ -30,8 +34,8 @@ class CratesOwedNote extends StatelessWidget {
             : 'Crates owed: ${owed.heldSummary} (deposit ${_tzs(owed.depositAtRisk)})',
       if (owed.owedToCustomer.isNotEmpty)
         swahili
-            ? 'Ghala linamdai makreti: ${owed.owedToCustomerSummary}'
-            : 'Depot owes them: ${owed.owedToCustomerSummary}',
+            ? '${isDepot ? 'Ghala linamdai makreti' : 'Anatudai makreti'}: ${owed.owedToCustomerSummary}'
+            : '${isDepot ? 'Depot owes them' : 'We owe them'}: ${owed.owedToCustomerSummary}',
     ];
 
     return Container(

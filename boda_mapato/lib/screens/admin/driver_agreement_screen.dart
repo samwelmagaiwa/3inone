@@ -8,6 +8,7 @@ import "../../constants/theme_constants.dart";
 import "../../services/api_service.dart";
 import "../../utils/responsive_helper.dart";
 import "../../widgets/custom_button.dart";
+import '../../services/localization_service.dart';
 
 // Material state properties - use standard MaterialState/MaterialStateProperty types
 
@@ -323,7 +324,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
     if (!_dailyPayment && !_weeklyPayment && !_monthlyPayment) {
       ThemeConstants.showWarningSnackBar(
         context,
-        "Chagua angalau mzunguko mmoja wa malipo",
+        LocalizationService.instance.translate('select_at_least_one_payment_cycle'),
       );
       _submitLock = false;
       return;
@@ -347,7 +348,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
           if (mounted) {
             ThemeConstants.showWarningSnackBar(
               context,
-              "Dereva tayari anayo makubaliano hai.",
+              "${LocalizationService.instance.translate('the_driver_already_has_an_active')}.",
             );
           }
           _submitLock = false;
@@ -364,7 +365,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
         if (mounted) {
           ThemeConstants.showWarningSnackBar(
             context,
-            "Chagua tarehe za kuanza na kumaliza kwa mkataba",
+            LocalizationService.instance.translate('select_the_start_and_end_dates'),
           );
         }
         _submitLock = false;
@@ -374,7 +375,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
         if (mounted) {
           ThemeConstants.showWarningSnackBar(
             context,
-            "Tarehe ya kumaliza lazima iwe baada ya tarehe ya kuanza",
+            LocalizationService.instance.translate('the_end_date_must_be_after'),
           );
         }
         _submitLock = false;
@@ -434,7 +435,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
         if (mounted) {
           ThemeConstants.showSuccessSnackBar(
             context,
-            "Makubaliano yamehifadhiwa kwa mafanikio",
+            LocalizationService.instance.translate('agreement_saved_successfully'),
           );
 
           // Call the callback if provided
@@ -454,7 +455,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
       if (mounted) {
         ThemeConstants.showErrorSnackBar(
           context,
-          "Hitilafu katika kuhifadhi: $e",
+          LocalizationService.instance.translateWith('error_saving', <Object?>[e]),
         );
       }
     } finally {
@@ -470,7 +471,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
     ResponsiveHelper.init(context);
     return ThemeConstants.buildResponsiveScaffold(
       context,
-      title: "Makubaliano na Dereva",
+      title: LocalizationService.instance.translate('driver_agreement'),
       body: Theme(
         data: Theme.of(context).copyWith(
           checkboxTheme: CheckboxThemeData(
@@ -512,7 +513,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
                             Text(
-                              "Dereva:",
+                              "${LocalizationService.instance.translate('driver')}:",
                               style: ThemeConstants.responsiveSubHeadingStyle(
                                   context),
                             ),
@@ -538,7 +539,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                         Expanded(
                           child: RadioListTile<String>(
                             title: Text(
-                              "Kwa Mkataba",
+                              LocalizationService.instance.translate('agreement_type_contract'),
                               style:
                                   ThemeConstants.responsiveBodyStyle(context),
                             ),
@@ -571,7 +572,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                         Expanded(
                           child: RadioListTile<String>(
                             title: Text(
-                              "Dei Waka",
+                              LocalizationService.instance.translate('agreement_type_day_worker'),
                               style:
                                   ThemeConstants.responsiveBodyStyle(context),
                             ),
@@ -613,7 +614,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                       controller: _startDateController,
                       style: const TextStyle(color: ThemeConstants.textPrimary),
                       decoration: _getFormFieldDecoration(
-                        "Tarehe ya Kuanza Kazi",
+                        LocalizationService.instance.translate('start_date_2'),
                         suffixIcon: const Icon(
                           Icons.calendar_today,
                           color: ThemeConstants.textSecondary,
@@ -623,7 +624,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                       onTap: _selectStartDate,
                       validator: (String? value) {
                         if (value == null || value.isEmpty) {
-                          return "Chagua tarehe ya kuanza kazi";
+                          return LocalizationService.instance.translate('select_the_start_date');
                         }
                         return null;
                       },
@@ -639,7 +640,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                         style:
                             const TextStyle(color: ThemeConstants.textPrimary),
                         decoration: _getFormFieldDecoration(
-                          "Tarehe ya Kumaliza",
+                          LocalizationService.instance.translate('end_date'),
                           suffixIcon: const Icon(
                             Icons.calendar_today,
                             color: ThemeConstants.textSecondary,
@@ -649,7 +650,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                         onTap: _selectEndDate,
                         validator: (String? value) {
                           if (value == null || value.isEmpty) {
-                            return "Chagua tarehe ya kumaliza";
+                            return LocalizationService.instance.translate('select_the_end_date');
                           }
                           return null;
                         },
@@ -688,7 +689,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: <Widget>[
                                     Text(
-                                      "Miezi ya Mkataba",
+                                      LocalizationService.instance.translate('contract_months'),
                                       style: ThemeConstants
                                               .responsiveSubHeadingStyle(
                                                   context)
@@ -722,7 +723,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                   _buildBlueBlendGlassCard(
                     child: CheckboxListTile(
                       title: Text(
-                        "Wikendi Zinahesabika?",
+                        "${LocalizationService.instance.translate('do_weekends_count')}?",
                         style: ThemeConstants.responsiveBodyStyle(context),
                       ),
                       value: _weekendsCountable,
@@ -759,7 +760,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                         children: <Widget>[
                           CheckboxListTile(
                             title: Text(
-                              "Jumamosi",
+                              LocalizationService.instance.translate('saturday'),
                               style:
                                   ThemeConstants.responsiveBodyStyle(context),
                             ),
@@ -787,7 +788,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                           ),
                           CheckboxListTile(
                             title: Text(
-                              "Jumapili",
+                              LocalizationService.instance.translate('sunday'),
                               style:
                                   ThemeConstants.responsiveBodyStyle(context),
                             ),
@@ -826,7 +827,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                       controller: _agreedAmountController,
                       style: const TextStyle(color: ThemeConstants.textPrimary),
                       decoration: _getFormFieldDecoration(
-                        "Kiasi cha Makubaliano (TSh)",
+                        LocalizationService.instance.translate('agreement_amount_tsh'),
                         prefixIcon: Icons.attach_money,
                       ),
                       keyboardType: TextInputType.number,
@@ -835,11 +836,11 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                       ],
                       validator: (String? value) {
                         if (value == null || value.isEmpty) {
-                          return "Ingiza kiasi cha makubaliano";
+                          return LocalizationService.instance.translate('enter_the_agreement_amount');
                         }
                         if (double.tryParse(value) == null ||
                             double.parse(value) <= 0) {
-                          return "Ingiza kiasi halali";
+                          return LocalizationService.instance.translate('enter_a_valid_amount_2');
                         }
                         return null;
                       },
@@ -881,7 +882,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: <Widget>[
                                   Text(
-                                    "Faida Jumla",
+                                    LocalizationService.instance.translate('total_profit'),
                                     style: ThemeConstants
                                             .responsiveSubHeadingStyle(context)
                                         .copyWith(
@@ -913,7 +914,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
 
                   // Payment frequency options
                   Text(
-                    "Mzunguko wa Malipo:",
+                    "${LocalizationService.instance.translate('payment_cycle')}:",
                     style: ThemeConstants.responsiveHeadingStyle(context),
                   ),
                   ResponsiveHelper.verticalSpace(0.75),
@@ -925,7 +926,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                           child: CheckboxListTile(
                             contentPadding: EdgeInsets.zero,
                             title: Text(
-                              "Kila Siku",
+                              LocalizationService.instance.translate('every_day'),
                               style:
                                   ThemeConstants.responsiveBodyStyle(context),
                             ),
@@ -955,7 +956,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                           child: CheckboxListTile(
                             contentPadding: EdgeInsets.zero,
                             title: Text(
-                              "Kila Wiki",
+                              LocalizationService.instance.translate('every_week'),
                               style:
                                   ThemeConstants.responsiveBodyStyle(context),
                             ),
@@ -985,7 +986,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                           child: CheckboxListTile(
                             contentPadding: EdgeInsets.zero,
                             title: Text(
-                              "Kila Mwezi",
+                              LocalizationService.instance.translate('every_month'),
                               style:
                                   ThemeConstants.responsiveBodyStyle(context),
                             ),
@@ -1021,7 +1022,7 @@ class _DriverAgreementScreenState extends State<DriverAgreementScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: CustomButton(
-                      text: "Hifadhi Makubaliano",
+                      text: LocalizationService.instance.translate('save_agreement'),
                       onPressed: _isLoading ? null : _saveAgreement,
                       isLoading: _isLoading,
                       backgroundColor: ThemeConstants.primaryOrange,

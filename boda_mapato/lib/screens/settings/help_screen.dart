@@ -322,8 +322,8 @@ class HelpScreen extends StatelessWidget {
           children: [
             Icon(Icons.info, color: ThemeConstants.primaryOrange, size: 18.sp),
             SizedBox(width: 8.w),
-            const Expanded(
-              child: AutoSizeText('Info',
+            Expanded(
+              child: AutoSizeText(LocalizationService.instance.translate('info'),
                   style: TextStyle(color: ThemeConstants.textPrimary),
                   maxLines: 1,
                   stepGranularity: 0.5),

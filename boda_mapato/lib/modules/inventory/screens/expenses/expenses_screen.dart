@@ -802,7 +802,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Imeshindwa: $e',
+            content: Text(LocalizationService.instance.translateWith('failed', <Object?>[e]),
                 style: const TextStyle(color: Colors.white)),
             backgroundColor: Colors.redAccent,
           ),

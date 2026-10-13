@@ -311,7 +311,7 @@ class _TableHeader extends StatelessWidget {
         SizedBox(width: 50.w,  child: Text(loc.translate('code'), style: style)),
         SizedBox(
           width: 30.w,
-          child: Text('QTY', style: style, textAlign: TextAlign.center),
+          child: Text(LocalizationService.instance.translate('qty').toUpperCase(), style: style, textAlign: TextAlign.center),
         ),
         SizedBox(width: 6.w),
         Expanded(

@@ -55,9 +55,9 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
           context: context,
           fetchData: (_) async {},
           condition: RentalFlowValidator.hasTenants,
-          title: 'Ingiza Mpangaji Kwanza',
-          message: 'Huna wapangaji walioingia. Ingiza mpangaji kabla ya kutengeneza mkataba.',
-          actionLabel: 'Ingiza Mpangaji',
+          title: LocalizationService.instance.translate('add_a_tenant_first'),
+          message: LocalizationService.instance.translate('you_have_no_tenants_yet_add'),
+          actionLabel: LocalizationService.instance.translate('add_tenant'),
           actionRoute: '/rental/onboard-tenant',
         );
         return;
@@ -69,9 +69,9 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
           context: context,
           fetchData: (_) async {},
           condition: RentalFlowValidator.hasVacantHouses,
-          title: 'Hakuna Nyumba Wazi',
-          message: 'Nyumba zote zimekaliwa. Ongeza nyumba mpya au angalia nyumba zilizo wazi.',
-          actionLabel: 'Angalia Mali',
+          title: LocalizationService.instance.translate('no_vacant_houses'),
+          message: LocalizationService.instance.translate('all_houses_are_occupied_add_a'),
+          actionLabel: LocalizationService.instance.translate('view_properties'),
           actionRoute: '/rental/properties',
         );
         return;
@@ -90,7 +90,7 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
   Widget build(BuildContext context) {
     return ThemeConstants.buildResponsiveScaffold(
       context,
-      title: "Mkataba Mpya",
+      title: LocalizationService.instance.translate('new_agreement'),
       body: Column(
         children: [
           _buildStepper(),
@@ -118,11 +118,11 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
           color: Colors.white.withOpacity(0.08),
           borderRadius: BorderRadius.circular(16.r)),
       child: Row(children: [
-        _step(1, "Mteja", _currentStep >= 0),
+        _step(1, LocalizationService.instance.translate('agreement_step_tenant'), _currentStep >= 0),
         _stepLine(_currentStep >= 1),
-        _step(2, "Masharti", _currentStep >= 1),
+        _step(2, LocalizationService.instance.translate('payment_terms'), _currentStep >= 1),
         _stepLine(_currentStep >= 2),
-        _step(3, "Kagua", _currentStep >= 2),
+        _step(3, LocalizationService.instance.translate('review'), _currentStep >= 2),
       ]),
     );
   }
@@ -163,9 +163,9 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
     return SingleChildScrollView(
       padding: EdgeInsets.all(16.w),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _sectionTitle("Select Tenant & Property"),
+        _sectionTitle(LocalizationService.instance.translate('select_tenant_property')),
         SizedBox(height: 16.h),
-        Text("Mteja", style: TextStyle(color: Colors.white70, fontSize: 12.sp)),
+        Text(LocalizationService.instance.translate('agreement_step_tenant'), style: TextStyle(color: Colors.white70, fontSize: 12.sp)),
         SizedBox(height: 8.h),
         Container(
           padding: EdgeInsets.symmetric(horizontal: 12.w),
@@ -179,7 +179,7 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
             dropdownColor: ThemeConstants.primaryBlue,
             underline: const SizedBox(),
             style: TextStyle(color: Colors.white, fontSize: 14.sp),
-            hint: const Text("Chagua mteja", style: TextStyle(color: Colors.white38)),
+            hint: Text(LocalizationService.instance.translate('select_tenant'), style: TextStyle(color: Colors.white38)),
             items: tenants
                 .map<DropdownMenuItem<String>>((t) => DropdownMenuItem<String>(
                     value: t['id'].toString(), child: Text(t['name'] ?? '')))
@@ -193,7 +193,7 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
             child: Text(LocalizationService.instance.translate('field_required'), style: TextStyle(color: Colors.redAccent, fontSize: 12.sp)),
           ),
         SizedBox(height: 16.h),
-        Text("Nyumba",
+        Text(LocalizationService.instance.translate('house_label'),
             style: TextStyle(color: Colors.white70, fontSize: 12.sp)),
         SizedBox(height: 8.h),
         Container(
@@ -209,7 +209,7 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
             underline: const SizedBox(),
             style: TextStyle(color: Colors.white, fontSize: 14.sp),
             hint:
-                const Text("Chagua nyumba", style: TextStyle(color: Colors.white38)),
+                Text(LocalizationService.instance.translate('select_house_2'), style: TextStyle(color: Colors.white38)),
             items: houses
                 .where((h) => h['status'] == 'vacant')
                 .map<DropdownMenuItem<String>>((h) => DropdownMenuItem<String>(
@@ -238,12 +238,12 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
     return SingleChildScrollView(
       padding: EdgeInsets.all(16.w),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _sectionTitle("Masharti ya Mkataba"),
+        _sectionTitle(LocalizationService.instance.translate('lease_terms')),
         SizedBox(height: 16.h),
         Row(children: [
           Expanded(
               child: _field(
-                  _rentCtrl, "Kodi ya Mwezi (TSh)", Icons.monetization_on, onChanged: (v) => setState(() {}),
+                  _rentCtrl, LocalizationService.instance.translate('monthly_rent_tsh'), Icons.monetization_on, onChanged: (v) => setState(() {}),
                   errorText: _attemptedSubmit && _rentCtrl.text.isEmpty
                       ? LocalizationService.instance.translate('field_required')
                       : (_attemptedSubmit && double.tryParse(_rentCtrl.text) == null
@@ -258,46 +258,46 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
                       : null)),
         ]),
         SizedBox(height: 16.h),
-        Text("Kipindi cha Malipo",
+        Text(LocalizationService.instance.translate('payment_period_2'),
             style: TextStyle(color: Colors.white70, fontSize: 12.sp)),
         SizedBox(height: 8.h),
-        _cycleChip("Mwezi", "monthly"),
+        _cycleChip(LocalizationService.instance.translate('cycle_monthly'), "monthly"),
         SizedBox(width: 8.w),
-        _cycleChip("Robo Mwaka", "quarterly"),
+        _cycleChip(LocalizationService.instance.translate('cycle_quarterly'), "quarterly"),
         SizedBox(width: 8.w),
-        _cycleChip("Mwaka", "yearly"),
+        _cycleChip(LocalizationService.instance.translate('cycle_yearly'), "yearly"),
         SizedBox(height: 16.h),
-        Text("Hali ya Mkataba",
+        Text(LocalizationService.instance.translate('agreement_status'),
             style: TextStyle(color: Colors.white70, fontSize: 12.sp)),
         SizedBox(height: 8.h),
-        _dropdown("Status", _status, ["active", "notice", "terminated", "defaulter"], (v) => setState(() => _status = v)),
+        _dropdown(LocalizationService.instance.translate('status'), _status, ["active", "notice", "terminated", "defaulter"], (v) => setState(() => _status = v)),
         SizedBox(height: 16.h),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
               child: _dateField(
-                  "Tarehe ya Kuanza", _startDate, () => _pickDate(true),
+                  LocalizationService.instance.translate('start_date'), _startDate, () => _pickDate(true),
                   isError: _attemptedSubmit && _startDate == null)),
           SizedBox(width: 12.w),
           Expanded(
               child: _dateField(
-                  "Tarehe ya Kuisha", _endDate, () => _pickDate(false),
+                  LocalizationService.instance.translate('agreement_end_date'), _endDate, () => _pickDate(false),
                   isError: _attemptedSubmit && (_endDate == null || (_startDate != null && _endDate!.isBefore(_startDate!))))),
         ]),
         SizedBox(height: 24.h),
-        _sectionTitle("Sera & Maelezo Ziada"),
+        _sectionTitle(LocalizationService.instance.translate('policy_extra_details')),
         SizedBox(height: 16.h),
         Row(children: [
           Expanded(
-            child: _field(_noticePeriodCtrl, "Notisi (Siku)", Icons.timer),
+            child: _field(_noticePeriodCtrl, LocalizationService.instance.translate('notice_days'), Icons.timer),
           ),
           SizedBox(width: 12.w),
           Expanded(
-            child: _field(_penaltyCtrl, "Faini/Siku (TSh)", Icons.gavel),
+            child: _field(_penaltyCtrl, LocalizationService.instance.translate('penalty_day_tsh'), Icons.gavel),
           ),
         ]),
         SizedBox(height: 16.h),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text("Auto-Renew Agreement",
+          Text(LocalizationService.instance.translate('auto_renew_agreement'),
               style: TextStyle(color: Colors.white70, fontSize: 13.sp)),
           Switch(
             value: _autoRenew,
@@ -306,14 +306,14 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
           ),
         ]),
         SizedBox(height: 16.h),
-        _field(_notesCtrl, "Maelezo ya Ziada", Icons.note_alt),
+        _field(_notesCtrl, LocalizationService.instance.translate('extra_details'), Icons.note_alt),
         SizedBox(height: 24.h),
-        _sectionTitle("Nyaraka"),
+        _sectionTitle(LocalizationService.instance.translate('documents')),
         SizedBox(height: 12.h),
-        _checkItem("Mkataba uliosainiwa", _hasSignedContract,
+        _checkItem(LocalizationService.instance.translate('signed_agreement'), _hasSignedContract,
             (v) => setState(() => _hasSignedContract = v)),
         SizedBox(height: 8.h),
-        _checkItem("Nakala ya Kitambulisho", _hasIdCopy,
+        _checkItem(LocalizationService.instance.translate('id_copy'), _hasIdCopy,
             (v) => setState(() => _hasIdCopy = v)),
       ]),
     );
@@ -323,7 +323,7 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
     return SingleChildScrollView(
       padding: EdgeInsets.all(16.w),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _sectionTitle("Kagua Mkataba"),
+        _sectionTitle(LocalizationService.instance.translate('review_agreement')),
         SizedBox(height: 20.h),
         Container(
           padding: EdgeInsets.all(20.w),
@@ -336,35 +336,35 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
             Icon(Icons.description,
                 color: ThemeConstants.primaryOrange, size: 48.sp),
             SizedBox(height: 12.h),
-            Text("MKATABA WA UKODISHAJI",
+            Text(LocalizationService.instance.translate('lease_agreement_2').toUpperCase(),
                 style: TextStyle(
                     color: Colors.white,
                     fontSize: 18.sp,
                     fontWeight: FontWeight.bold)),
             SizedBox(height: 4.h),
             Text(
-                "Nyumba ${houses.firstWhere((h) => h['id'] == _selectedHouse, orElse: () => {
+                LocalizationService.instance.translateWith('house_2', <Object?>[houses.firstWhere((h) => h['id'] == _selectedHouse, orElse: () => {
                       'house_number': ''
-                    })['house_number']}",
+                    })['house_number']]),
                 style: const TextStyle(color: Colors.white54)),
             Divider(color: Colors.white12, height: 24.h),
             _rw(
-                "Mteja",
+                LocalizationService.instance.translate('agreement_step_tenant'),
                 tenants.firstWhere((t) => t['id'] == _selectedTenant,
                         orElse: () => {'name': ''})['name'] ??
                     ''),
-            _rw("Kodi", "TSh ${_fmt(double.tryParse(_rentCtrl.text) ?? 0)}"),
+            _rw(LocalizationService.instance.translate('rent_label'), "TSh ${_fmt(double.tryParse(_rentCtrl.text) ?? 0)}"),
             _rw(LocalizationService.instance.translate('deposit'),
                 "TSh ${_fmt(double.tryParse(_depositCtrl.text) ?? 0)}"),
             _rw(
-                "Kipindi",
+                LocalizationService.instance.translate('period'),
                 _cycle == 'monthly'
                     ? 'Mwezi'
                     : _cycle == 'quarterly'
-                        ? 'Robo Mwaka'
-                        : 'Mwaka'),
-            _rw("Kuanzia", _startDate?.toString().split(' ')[0] ?? '-'),
-            _rw("Mpaka", _endDate?.toString().split(' ')[0] ?? '-'),
+                        ? LocalizationService.instance.translate('cycle_quarterly')
+                        : LocalizationService.instance.translate('cycle_yearly')),
+            _rw(LocalizationService.instance.translate('from'), _startDate?.toString().split(' ')[0] ?? '-'),
+            _rw(LocalizationService.instance.translate('to'), _endDate?.toString().split(' ')[0] ?? '-'),
             SizedBox(height: 16.h),
             SizedBox(
               width: double.infinity,
@@ -400,7 +400,7 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
 
                           if (success != null && mounted) {
                             ThemeConstants.showSuccessSnackBar(
-                                context, "Mkataba umeundwa!");
+                                context, "${LocalizationService.instance.translate('agreement_created')}!");
                             Navigator.pop(context);
                           }
                         } finally {
@@ -419,7 +419,7 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
                         width: 20.w,
                         child: const CircularProgressIndicator(
                             color: Colors.white, strokeWidth: 2))
-                    : Text("Hifadhi Mkataba",
+                    : Text(LocalizationService.instance.translate('save_agreement_2'),
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 16.sp,
@@ -507,7 +507,7 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
           child: Row(children: [
             Icon(Icons.calendar_today, color: Colors.white38, size: 16.sp),
             SizedBox(width: 8.w),
-            Text(d?.toString().split(' ')[0] ?? "Chagua tarehe",
+            Text(d?.toString().split(' ')[0] ?? LocalizationService.instance.translate('select_a_date'),
                 style: TextStyle(
                     color: d != null ? Colors.white : Colors.white38,
                     fontSize: 14.sp)),
@@ -572,7 +572,7 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
               style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.white24),
                   padding: EdgeInsets.symmetric(vertical: 14.h)),
-              child: const Text("Nyuma", style: TextStyle(color: Colors.white)),
+              child: Text(LocalizationService.instance.translate('previous'), style: TextStyle(color: Colors.white)),
             ),
           ),
         if (_currentStep > 0) SizedBox(width: 12.w),
@@ -595,7 +595,7 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
                   _attemptedSubmit = false;
                 });
               } else {
-                ThemeConstants.showSuccessSnackBar(context, "Mkataba umeundwa!");
+                ThemeConstants.showSuccessSnackBar(context, "${LocalizationService.instance.translate('agreement_created')}!");
                 Navigator.pop(context);
               }
             },
@@ -605,7 +605,7 @@ class _CreateAgreementScreenState extends State<CreateAgreementScreen> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12.r)),
             ),
-            child: Text(_currentStep == 2 ? "Maliza" : "Mbele",
+            child: Text(_currentStep == 2 ? LocalizationService.instance.translate('finish') : LocalizationService.instance.translate('next'),
                 style: const TextStyle(
                     color: Colors.white, fontWeight: FontWeight.w600)),
           ),

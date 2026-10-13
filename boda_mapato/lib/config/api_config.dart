@@ -2,7 +2,7 @@
 /// This file manages API endpoints for the Boda Mapato app
 library;
 
-import "package:http/http.dart" as http;
+import "../services/http_client.dart" as http;
 
 mixin ApiConfig {
   // Environment enum

@@ -1,4 +1,5 @@
 import "package:flutter/foundation.dart";
+import '../services/localization_service.dart';
 
 enum ReminderType {
   daily,
@@ -17,13 +18,13 @@ extension ReminderTypeExtension on ReminderType {
   String get name {
     switch (this) {
       case ReminderType.daily:
-        return "Kila Siku";
+        return LocalizationService.instance.translate('every_day');
       case ReminderType.weekly:
-        return "Kila Wiki";
+        return LocalizationService.instance.translate('every_week');
       case ReminderType.monthly:
-        return "Kila Mwezi";
+        return LocalizationService.instance.translate('every_month');
       case ReminderType.oneTime:
-        return "Mara Moja";
+        return LocalizationService.instance.translate('once');
     }
   }
 }
@@ -32,11 +33,11 @@ extension ReminderStatusExtension on ReminderStatus {
   String get name {
     switch (this) {
       case ReminderStatus.active:
-        return "Inatumika";
+        return LocalizationService.instance.translate('status_active');
       case ReminderStatus.completed:
-        return "Imekamilika";
+        return LocalizationService.instance.translate('status_completed');
       case ReminderStatus.cancelled:
-        return "Imeghairiwa";
+        return LocalizationService.instance.translate('cancelled');
     }
   }
 }

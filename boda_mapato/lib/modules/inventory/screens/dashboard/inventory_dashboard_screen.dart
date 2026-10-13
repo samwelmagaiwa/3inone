@@ -56,20 +56,9 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
   DateTime? _customStart;
   DateTime? _customEnd;
 
-  static const List<String> months = <String>[
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
+  /// Short month names (Jan ... Dec) in the language chosen in the app.
+  static List<String> get months => List<String>.generate(
+      12, (int i) => LocalizationService.instance.translate('month_short_${i + 1}'));
 
   @override
   void initState() {
@@ -391,10 +380,10 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
 
   String _roleDisplay(String role) {
     switch (role.toLowerCase()) {
-      case 'sales_officer': return 'Sales Officer';
-      case 'manager':       return 'Manager';
-      case 'operator':      return 'Operator';
-      case 'viewer':        return 'Viewer';
+      case 'sales_officer': return LocalizationService.instance.translate('sales_officer');
+      case 'manager':       return LocalizationService.instance.translate('manager');
+      case 'operator':      return LocalizationService.instance.translate('operator');
+      case 'viewer':        return LocalizationService.instance.translate('viewer');
       default:              return role.replaceAll('_', ' ');
     }
   }
@@ -1456,7 +1445,7 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    '$totalProducts Products · $totalUnits Units',
+                    LocalizationService.instance.translateWith('products_units', <Object?>[totalProducts, totalUnits]),
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: ResponsiveHelper.bodyS,

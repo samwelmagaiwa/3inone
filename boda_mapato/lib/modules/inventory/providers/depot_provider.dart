@@ -6,6 +6,7 @@ import '../../../services/api_service.dart';
 import '../models/inv_capabilities.dart';
 import '../models/inv_depot_models.dart';
 import '../services/inv_event_bus.dart';
+import '../../../services/localization_service.dart';
 
 /// State for Areas 4–13: purchasing, credit, cash, crates, POS extras,
 /// dispatch, barcodes, reports, alerts, audit and settings.
@@ -113,6 +114,10 @@ class DepotProvider extends ChangeNotifier {
   /// What this business's inventory is set up to do (crates or not, which price the till uses, VAT ...).
   /// Anything the server did not send reads as the depot's behaviour, which is what it always was.
   InvCapabilities get capabilities => InvCapabilities.fromSettings(_settings);
+
+  /// Crates exist only for a business that sells returnable packaging. Until the settings have arrived nobody knows
+  /// yet, so the depot's behaviour (crates) is assumed, as everywhere else.
+  bool get _cratesWanted => _settings.isEmpty || capabilities.useCrates;
 
   /// Fetch everything the depot dashboard and menus need, in parallel.
   Future<void> bootstrap() async {
@@ -634,6 +639,7 @@ class DepotProvider extends ChangeNotifier {
   // ---- Area 8: crates ----------------------------------------------------
 
   Future<void> fetchCrateTypes() async {
+    if (!_cratesWanted) return;
     final List<InvCrateType> rows =
         await _getList('/inventory/crate-types', InvCrateType.fromJson);
     _crateTypes
@@ -678,6 +684,7 @@ class DepotProvider extends ChangeNotifier {
   }
 
   Future<void> fetchCrateBalances({int? customerId}) async {
+    if (!_cratesWanted) return;
     final List<InvCrateBalance> rows = await _getList(
       '/inventory/crate-balances${_query(<String, String?>{
             'customer_id': customerId?.toString(),
@@ -691,6 +698,7 @@ class DepotProvider extends ChangeNotifier {
   }
 
   Future<void> fetchCratePosition() async {
+    if (!_cratesWanted) return;
     final List<InvCrateBalance> rows =
         await _getList('/inventory/crate-position', InvCrateBalance.fromJson);
     _cratePosition
@@ -1038,7 +1046,7 @@ class DepotProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       return e.message;
     } on Exception {
-      return 'Could not reach the server. Check your connection and try again.';
+      return LocalizationService.instance.translate('could_not_reach_the_server_check');
     }
   }
 

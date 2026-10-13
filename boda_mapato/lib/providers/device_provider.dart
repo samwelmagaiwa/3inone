@@ -2,6 +2,7 @@ import "package:flutter/foundation.dart";
 import "../models/device.dart";
 import "../services/api_service.dart";
 import "../services/auth_service.dart";
+import '../services/localization_service.dart';
 
 class DeviceProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
@@ -47,7 +48,7 @@ class DeviceProvider extends ChangeNotifier {
         _selectedDevice = _devices.first;
       }
     } on Exception catch (e) {
-      _setError("Failed to load devices: $e");
+      _setError(LocalizationService.instance.translateWith('failed_to_load_devices', <Object?>[e]));
     } finally {
       _setLoading(false);
     }
@@ -69,7 +70,7 @@ class DeviceProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on Exception catch (e) {
-      _setError("Failed to add device: $e");
+      _setError(LocalizationService.instance.translateWith('failed_to_add_device', <Object?>[e]));
       return false;
     }
   }
@@ -96,7 +97,7 @@ class DeviceProvider extends ChangeNotifier {
       }
       return true;
     } on Exception catch (e) {
-      _setError("Failed to update device: $e");
+      _setError(LocalizationService.instance.translateWith('failed_to_update_device', <Object?>[e]));
       return false;
     }
   }
@@ -115,7 +116,7 @@ class DeviceProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on Exception catch (e) {
-      _setError("Failed to delete device: $e");
+      _setError(LocalizationService.instance.translateWith('could_not_delete_the_vehicle', <Object?>[e]));
       return false;
     }
   }

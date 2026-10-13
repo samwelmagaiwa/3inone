@@ -191,6 +191,7 @@ class _CreditCustomerCard extends StatelessWidget {
               owed: CratesOwed.forCustomer(
                   context.watch<DepotProvider>().crateBalances, customer.id),
               swahili: loc.isSwahili,
+              isDepot: context.watch<DepotProvider>().capabilities.isDepot,
             ),
             if (customer.hasLimit) ...<Widget>[
               SizedBox(height: 8.h),
@@ -359,7 +360,7 @@ class _CreditSettingsSheetState extends State<_CreditSettingsSheet> {
           InvTextField(
             controller: _reason,
             label: loc.translate('block_reason'),
-            hint: 'e.g. Not paying overdue invoices',
+            hint: LocalizationService.instance.translate('e_g_not_paying_overdue_invoices'),
             isOptional: true,
           ),
         ],
@@ -441,7 +442,7 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
     if (allocations.isEmpty) {
       ThemeConstants.showErrorSnackBar(
         context,
-        'Select at least one debt and enter an amount.',
+        LocalizationService.instance.translate('select_at_least_one_debt_and'),
       );
       return;
     }
@@ -518,14 +519,14 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
           Padding(
             padding: EdgeInsets.symmetric(vertical: 16.h),
             child: Text(
-              'No outstanding debts found.',
+              LocalizationService.instance.translate('no_outstanding_debts_found'),
               style: ThemeConstants.captionStyle,
               textAlign: TextAlign.center,
             ),
           )
         else ...[
           Text(
-            'Select debts to pay:',
+            LocalizationService.instance.translate('select_debts_to_pay'),
             style: ThemeConstants.captionStyle.copyWith(color: Colors.white70),
           ),
           SizedBox(height: 8.h),
@@ -602,7 +603,7 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
                                     if (due != null) ...[
                                       Text(' · ', style: ThemeConstants.captionStyle),
                                       Text(
-                                        'Due: ${due.day}/${due.month}/${due.year}',
+                                        LocalizationService.instance.translateWith('due_2', <Object?>[due.day, due.month, due.year]),
                                         style: ThemeConstants.captionStyle.copyWith(
                                           color: overdue
                                               ? ThemeConstants.errorRed
@@ -629,7 +630,7 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
                               ),
                               if (status == 'partial')
                                 Text(
-                                  'Partial · paid ${paidTotal.toStringAsFixed(0)}',
+                                  LocalizationService.instance.translateWith('partial_paid', <Object?>[paidTotal.toStringAsFixed(0)]),
                                   style: ThemeConstants.captionStyle.copyWith(
                                     fontSize: 10.sp,
                                   ),
@@ -651,7 +652,7 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
                         decoration: ThemeConstants.invInputDecoration(
                           'Amount to pay (TSH)',
                         ).copyWith(
-                          hintText: 'Max: ${outstanding.toStringAsFixed(0)}',
+                          hintText: LocalizationService.instance.translateWith('max', <Object?>[outstanding.toStringAsFixed(0)]),
                         ),
                         style: ThemeConstants.bodyStyle,
                       ),
@@ -667,7 +668,7 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text('Total payment: ', style: ThemeConstants.captionStyle),
+                Text('${LocalizationService.instance.translate('total_payment')}: ', style: ThemeConstants.captionStyle),
                 Text(
                   'TSH ${_totalEntered.toStringAsFixed(0)}',
                   style: ThemeConstants.bodyStyle.copyWith(
@@ -703,7 +704,7 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
         InvTextField(
           controller: _reference,
           label: loc.translate('reference'),
-          hint: 'e.g. M-Pesa code or receipt no.',
+          hint: LocalizationService.instance.translate('e_g_m_pesa_code_or'),
           isOptional: true,
         ),
         SizedBox(height: 16.h),
@@ -933,6 +934,7 @@ class _CustomerStatementScreenState extends State<CustomerStatementScreen> {
                               context.watch<DepotProvider>().crateBalances,
                               widget.customerId),
                           swahili: loc.isSwahili,
+                          isDepot: context.watch<DepotProvider>().capabilities.isDepot,
                         ),
                         SizedBox(height: 12.h),
                         if (s.lines.isEmpty)

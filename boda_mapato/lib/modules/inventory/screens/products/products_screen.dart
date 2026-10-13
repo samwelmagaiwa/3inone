@@ -12,6 +12,7 @@ import '../../providers/inventory_provider.dart';
 import '../widgets/inv_units_ui.dart';
 import '../widgets/inventory_widgets.dart';
 import 'add_edit_product_screen.dart';
+import 'business_kind_chooser.dart';
 import '../../providers/depot_provider.dart';
 import '../scanning/barcode_scanner_screen.dart';
 import 'product_units_screen.dart';
@@ -46,6 +47,35 @@ class _ProductsScreenState extends State<ProductsScreen> {
       _query = result.productName.isNotEmpty ? result.productName : code;
       _page = 0;
     });
+  }
+
+  /// Opens the product page. The owner is asked first what kind of business this is (the page is laid out by
+  /// the answer); staff cannot change it, and an older server does not know kinds, so for them the page
+  /// just opens.
+  Future<void> _addProduct(BuildContext context) async {
+    final DepotProvider depot = context.read<DepotProvider>();
+    final bool owner = context.read<AuthProvider>().user?.isBusinessOwner ?? false;
+    if (owner) {
+      // Landing straight on this screen, the settings may not have been read yet.
+      if (depot.settings.isEmpty) await depot.fetchSettings();
+      if (!context.mounted) return;
+      if (depot.settings.containsKey('inventory_type')) {
+        final bool picked = await chooseBusinessKind(
+          context,
+          current: depot.capabilities.inventoryType,
+          onChange: depot.changeBusinessKind,
+          sw: LocalizationService.instance.isSwahili,
+        );
+        if (!picked || !context.mounted) return;
+        // The product page reads the kind through the inventory provider: have the new one before it opens.
+        await context.read<InventoryProvider>().fetchCapabilities();
+        if (!context.mounted) return;
+      }
+    }
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(builder: (_) => const AddEditProductScreen()),
+    );
   }
 
   @override
@@ -105,12 +135,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 SizedBox(width: 4.w),
                 if (canCreate)
                   ElevatedButton.icon(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AddEditProductScreen(),
-                      ),
-                    ),
+                    onPressed: () => _addProduct(context),
                     icon: Icon(Icons.add, size: 18.sp),
                     label: FittedBox(
                       fit: BoxFit.scaleDown,
@@ -240,25 +265,25 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                               context: context,
                                               builder: (dCtx) => AlertDialog(
                                                 backgroundColor: ThemeConstants.primaryBlue,
-                                                title: Text('Cannot Delete',
+                                                title: Text(LocalizationService.instance.translate('inv_cannot_delete'),
                                                     style: ThemeConstants.bodyStyle.copyWith(
                                                         fontWeight: FontWeight.bold)),
                                                 content: Text(
-                                                  '"${p.name}" has sales history and cannot be permanently deleted.\n\n'
-                                                  'Archive it instead? It will be deactivated but kept for records.',
+                                                  '${LocalizationService.instance.translateWith('inv_has_sales_history', <Object?>[p.name])}\n\n'
+            '${LocalizationService.instance.translate('inv_archive_instead')}',
                                                   style: ThemeConstants.captionStyle,
                                                 ),
                                                 actions: [
                                                   TextButton(
                                                     onPressed: () => Navigator.pop(dCtx, false),
-                                                    child: const Text('Cancel',
-                                                        style: TextStyle(color: Colors.white70)),
+                                                    child: Text(LocalizationService.instance.translate('cancel_2'),
+                  style: const TextStyle(color: Colors.white70)),
                                                   ),
                                                   ElevatedButton(
                                                     style: ElevatedButton.styleFrom(
                                                         backgroundColor: Colors.orange),
                                                     onPressed: () => Navigator.pop(dCtx, true),
-                                                    child: const Text('Archive'),
+                                                    child: Text(LocalizationService.instance.translate('inv_archive')),
                                                   ),
                                                 ],
                                               ),
@@ -268,7 +293,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                               if (context.mounted) {
                                                 if (err2 == null) {
                                                   ThemeConstants.showSuccessSnackBar(
-                                                      context, 'Product archived (deactivated)');
+                                                      context, LocalizationService.instance.translate('inv_product_archived'));
                                                 } else {
                                                   ThemeConstants.showErrorSnackBar(context, err2);
                                                 }

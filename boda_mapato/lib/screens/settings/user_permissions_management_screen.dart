@@ -35,45 +35,45 @@ class _UserPermissionsManagementScreenState
   final Map<String, List<Map<String, String>>> _allPermissionGroups = {
     'inventory': [
       // Products & Stock
-      {'id': 'inv_view_products',    'name': 'View Products',    'icon': 'inventory_2'},
-      {'id': 'inv_create_products',  'name': 'Add New Products', 'icon': 'add_box'},
-      {'id': 'inv_manage_products',  'name': 'Manage Products',  'icon': 'edit'},
-      {'id': 'inv_manage_stock',     'name': 'Manage Stock',     'icon': 'track_changes'},
-      {'id': 'inv_report_damage',    'name': 'Report Damaged Stock', 'icon': 'report_problem'},
+      {'id': 'inv_view_products',    'name': LocalizationService.instance.translate('view_products'),    'icon': 'inventory_2'},
+      {'id': 'inv_create_products',  'name': LocalizationService.instance.translate('add_new_products'), 'icon': 'add_box'},
+      {'id': 'inv_manage_products',  'name': LocalizationService.instance.translate('manage_products'),  'icon': 'edit'},
+      {'id': 'inv_manage_stock',     'name': LocalizationService.instance.translate('manage_stock'),     'icon': 'track_changes'},
+      {'id': 'inv_report_damage',    'name': LocalizationService.instance.translate('report_damaged_stock'), 'icon': 'report_problem'},
       // Sales
-      {'id': 'inv_create_sales',     'name': 'Create Sales',     'icon': 'point_of_sale'},
-      {'id': 'inv_manage_sales',     'name': 'Manage Sales',     'icon': 'manage_accounts'},
+      {'id': 'inv_create_sales',     'name': LocalizationService.instance.translate('create_sales'),     'icon': 'point_of_sale'},
+      {'id': 'inv_manage_sales',     'name': LocalizationService.instance.translate('manage_sales'),     'icon': 'manage_accounts'},
       // Financials
-      {'id': 'inv_view_credit',      'name': 'Credit / Debt',    'icon': 'credit_card'},
-      {'id': 'inv_view_cash',        'name': 'Daily Cash',       'icon': 'payments'},
-      {'id': 'inv_view_crates',      'name': 'Crates / Empties', 'icon': 'inbox'},
-      {'id': 'inv_view_expenses',    'name': 'View Expenses',    'icon': 'receipt_long'},
-      {'id': 'inv_manage_expenses',  'name': 'Record Expenses',  'icon': 'edit_note'},
+      {'id': 'inv_view_credit',      'name': LocalizationService.instance.translate('credit_debt'),    'icon': 'credit_card'},
+      {'id': 'inv_view_cash',        'name': LocalizationService.instance.translate('daily_cash'),       'icon': 'payments'},
+      {'id': 'inv_view_crates',      'name': LocalizationService.instance.translate('crates_empties'), 'icon': 'inbox'},
+      {'id': 'inv_view_expenses',    'name': LocalizationService.instance.translate('view_expenses'),    'icon': 'receipt_long'},
+      {'id': 'inv_manage_expenses',  'name': LocalizationService.instance.translate('record_expenses'),  'icon': 'edit_note'},
       // Supply chain
-      {'id': 'inv_view_purchasing',  'name': 'Purchasing',       'icon': 'local_shipping'},
+      {'id': 'inv_view_purchasing',  'name': LocalizationService.instance.translate('purchasing'),       'icon': 'local_shipping'},
       // Insights
-      {'id': 'inv_view_reports',     'name': 'Reports',          'icon': 'bar_chart'},
+      {'id': 'inv_view_reports',     'name': LocalizationService.instance.translate('reports'),          'icon': 'bar_chart'},
       // Misc
-      {'id': 'inv_view_reminders',   'name': 'Reminders',        'icon': 'notifications'},
-      {'id': 'inv_manage_settings',  'name': 'Depot Settings',   'icon': 'settings'},
+      {'id': 'inv_view_reminders',   'name': LocalizationService.instance.translate('reminders'),        'icon': 'notifications'},
+      {'id': 'inv_manage_settings',  'name': LocalizationService.instance.translate('settings'),         'icon': 'settings'},
     ],
     'rental': [
-      {'id': 'manage_properties_rental', 'name': 'Properties',  'icon': 'home_work'},
-      {'id': 'manage_houses_rental',     'name': 'Houses',       'icon': 'house'},
-      {'id': 'onboard_tenants_rental',   'name': 'Onboarding',  'icon': 'person_add'},
-      {'id': 'manage_agreements_rental', 'name': 'Agreements',  'icon': 'handshake'},
-      {'id': 'manage_billing_rental',    'name': 'Billing',      'icon': 'receipt'},
-      {'id': 'view_reports_rental',      'name': 'Reports',      'icon': 'bar_chart'},
-      {'id': 'manage_maintenance_rental','name': 'Maintenance',  'icon': 'build'},
+      {'id': 'manage_properties_rental', 'name': LocalizationService.instance.translate('properties'),  'icon': 'home_work'},
+      {'id': 'manage_houses_rental',     'name': LocalizationService.instance.translate('houses'),       'icon': 'house'},
+      {'id': 'onboard_tenants_rental',   'name': LocalizationService.instance.translate('onboarding'),  'icon': 'person_add'},
+      {'id': 'manage_agreements_rental', 'name': LocalizationService.instance.translate('agreements'),  'icon': 'handshake'},
+      {'id': 'manage_billing_rental',    'name': LocalizationService.instance.translate('lipisha'),      'icon': 'receipt'},
+      {'id': 'view_reports_rental',      'name': LocalizationService.instance.translate('reports'),      'icon': 'bar_chart'},
+      {'id': 'manage_maintenance_rental','name': LocalizationService.instance.translate('maintenance'),  'icon': 'build'},
     ],
     'transport': [
-      {'id': 'manage_vehicles_transport',   'name': 'Vehicles',   'icon': 'directions_car'},
-      {'id': 'manage_drivers_transport',    'name': 'Drivers',    'icon': 'person'},
-      {'id': 'manage_agreements_transport', 'name': 'Agreements', 'icon': 'handshake'},
-      {'id': 'manage_payments_transport',   'name': 'Payments',   'icon': 'payments'},
-      {'id': 'manage_debts_transport',      'name': 'Debts',      'icon': 'money_off'},
-      {'id': 'view_reports_transport',      'name': 'Reports',    'icon': 'bar_chart'},
-      {'id': 'manage_reminders_transport',  'name': 'Reminders',  'icon': 'notifications'},
+      {'id': 'manage_vehicles_transport',   'name': LocalizationService.instance.translate('vehicles'),   'icon': 'directions_car'},
+      {'id': 'manage_drivers_transport',    'name': LocalizationService.instance.translate('drivers'),    'icon': 'person'},
+      {'id': 'manage_agreements_transport', 'name': LocalizationService.instance.translate('agreements'), 'icon': 'handshake'},
+      {'id': 'manage_payments_transport',   'name': LocalizationService.instance.translate('payments_section'),   'icon': 'payments'},
+      {'id': 'manage_debts_transport',      'name': LocalizationService.instance.translate('debts'),      'icon': 'money_off'},
+      {'id': 'view_reports_transport',      'name': LocalizationService.instance.translate('reports'),    'icon': 'bar_chart'},
+      {'id': 'manage_reminders_transport',  'name': LocalizationService.instance.translate('reminders'),  'icon': 'notifications'},
     ],
   };
 
@@ -133,11 +133,11 @@ class _UserPermissionsManagementScreenState
           Navigator.pop(context);
         }
       } else {
-        throw Exception(res['message'] ?? 'Failed to update');
+        throw Exception(res['message'] ?? LocalizationService.instance.translate('failed_to_update'));
       }
     } catch (e) {
       if (mounted) {
-        ThemeConstants.showErrorSnackBar(context, 'Error: $e');
+        ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translateWith('error_2', <Object?>[e]));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -145,10 +145,10 @@ class _UserPermissionsManagementScreenState
   }
 
   String get _serviceName {
-    if (widget.serviceType == 'rental') return 'Rental Service';
-    if (widget.serviceType == 'transport') return 'Transport Service';
-    if (widget.serviceType == 'inventory') return 'Inventory / Depot';
-    return '${widget.serviceType.toUpperCase()} Service';
+    if (widget.serviceType == 'rental') return LocalizationService.instance.translate('rental_service_title');
+    if (widget.serviceType == 'transport') return LocalizationService.instance.translate('transport_service_2');
+    if (widget.serviceType == 'inventory') return LocalizationService.instance.translate('inventory_service');
+    return LocalizationService.instance.translateWith('service', <Object?>[widget.serviceType.toUpperCase()]);
   }
 
   /// Three-state logic for each permission tile:
@@ -231,7 +231,7 @@ class _UserPermissionsManagementScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(widget.user['name'] ?? 'Unknown User',
+                      Text(widget.user['name'] ?? LocalizationService.instance.translate('unknown_user'),
                           style: const TextStyle(
                               color: ThemeConstants.textPrimary,
                               fontSize: 16, fontWeight: FontWeight.bold)),
