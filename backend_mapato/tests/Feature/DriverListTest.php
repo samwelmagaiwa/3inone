@@ -24,7 +24,7 @@ class DriverListTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $this->admin = $this->givenServices(User::factory()->create(['role' => 'admin', 'is_active' => true]), 'transport');
 
         // Transactions need a device to point at; one shared device is enough.
         $this->deviceId = (string) Str::uuid();
@@ -94,7 +94,7 @@ class DriverListTest extends TestCase
         $this->agreement($c, 'terminated');                                           // neither active nor completed
 
         // Another admin's driver with a completed agreement must not rub off on A/B/C.
-        $other = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $other = $this->givenServices(User::factory()->create(['role' => 'admin', 'is_active' => true]), 'transport');
         $this->agreement($this->driver('Elsewhere', $other), 'completed');
 
         $rows = $this->list();

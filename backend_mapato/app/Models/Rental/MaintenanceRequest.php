@@ -11,6 +11,14 @@ class MaintenanceRequest extends Model
 {
     use HasFactory, HasUuids;
 
+    use \App\Models\Concerns\ScopedToAccount;
+
+    /** Fail-closed account scope: the maintenance requests the viewer may see (see App\Support\Tenancy\RentalAccess). */
+    public function constrainToAccount(\Illuminate\Database\Eloquent\Builder $query, \App\Models\User $user): void
+    {
+        $query->whereIn($this->qualifyColumn('id'), \App\Support\Tenancy\RentalAccess::requestIds($user));
+    }
+
     protected $table = 'rental_maintenance_requests';
 
     protected $fillable = [

@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\PerBusiness;
+use App\Rules\UniquePhoneInBusiness;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Http\FormRequest;
 
 class RegisterDriverRequest extends FormRequest
@@ -19,12 +22,16 @@ class RegisterDriverRequest extends FormRequest
      */
     public function rules(): array
     {
+        $owner = TenantContext::writeOwner();
+
         return [
             'name' => 'required|string|max:255',
+            // The email is the sign-in name: unique across the platform. Phone and licence only
+            // have to be unique inside this business.
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'phone' => 'required|string|max:20',
-'license_number' => 'nullable|string|unique:drivers,license_number',
+            'phone' => ['required', 'string', 'max:20', new UniquePhoneInBusiness($owner)],
+'license_number' => ['nullable', 'string', PerBusiness::unique('drivers', 'license_number', $owner)],
 'license_expiry' => 'nullable|date|after:today',
             'address' => 'nullable|string|max:255',
             'emergency_contact' => 'nullable|string|max:20',

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedThroughDriver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\HasUuid;
@@ -9,7 +10,7 @@ use App\Enums\PaymentStatus;
 
 class Transaction extends Model
 {
-    use HasFactory, HasUuid;
+    use HasFactory, HasUuid, ScopedThroughDriver;
 
     /**
      * The attributes that are mass assignable.

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\UserInAccount;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -40,7 +41,7 @@ class StorePropertyRequest extends FormRequest
             'status' => ['sometimes', Rule::in(['active', 'inactive', 'under_maintenance', 'archived'])],
             'total_units' => ['nullable', 'integer', 'min:0'],
             'number_of_blocks' => ['nullable', 'integer', 'min:1'],
-            'caretaker_id' => ['nullable', 'exists:users,id'],
+            'caretaker_id' => ['nullable', new UserInAccount($this->user())],
             'default_rent_amount' => ['nullable', 'numeric', 'min:0'],
             'default_deposit_amount' => ['nullable', 'numeric', 'min:0'],
             'utility_billing_enabled' => ['sometimes', 'boolean'],

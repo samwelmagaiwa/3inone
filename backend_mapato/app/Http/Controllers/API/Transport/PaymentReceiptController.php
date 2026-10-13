@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\API\Transport;
 
+use App\Rules\InAccount;
 use App\Http\Controllers\Controller;
+use App\Models\Driver;
 use App\Models\Payment;
 use App\Models\DebtRecord;
 use App\Models\PaymentReceipt;
@@ -113,6 +115,9 @@ class PaymentReceiptController extends Controller
                     'count' => $pending->count(),
                 ]
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error fetching pending receipts: ' . $e->getMessage());
             return response()->json([
@@ -161,7 +166,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     public function generateReceipt(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'payment_id' => 'required|integer|exists:payments,id',
+            'payment_id' => ['required', 'integer', new InAccount(Payment::class)],
         ]);
 
         if ($validator->fails()) {
@@ -213,6 +218,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'message' => 'Receipt generated successfully',
                 'data' => $receipt->getPreviewData(),
             ], 201);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error generating receipt: ' . $e->getMessage());
@@ -282,6 +291,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'message' => 'Receipt preview retrieved successfully',
                 'data' => $data,
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error getting receipt preview: ' . $e->getMessage());
             return response()->json([
@@ -336,7 +348,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     public function sendReceipt(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'receipt_id' => 'required|integer|exists:payment_receipts,id',
+            'receipt_id' => ['required', 'integer', new InAccount(PaymentReceipt::class)],
             'send_via' => 'required|in:whatsapp,email,system',
             'contact_info' => 'required|string',
             'message' => 'nullable|string|max:2000',
@@ -392,6 +404,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'message_sent' => $humanMessage,
                 ]),
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error sending receipt: ' . $e->getMessage());
@@ -483,6 +499,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     ],
                 ],
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error fetching receipts: ' . $e->getMessage());
             return response()->json([
@@ -507,10 +526,16 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     private function buildReceiptData(Payment $payment): array
     {
         $driver = $payment->driver;
+        // Whose receipt it is: the driver's own business (name, address, phone, TIN, logo), not the
+        // platform's name -- every business's customers would otherwise read "Boda Mapato".
+        $company = \App\Models\Business::identityForDriver($driver instanceof \App\Models\Driver ? $driver : null);
         return [
-            'company_name' => config('app.name', 'Boda Mapato'),
-            'company_address' => '',
-            'company_phone' => '',
+            'company_name' => $company['name'],
+            'company_address' => $company['address'],
+            'company_phone' => $company['phone'],
+            'company_tin' => $company['tin'],
+            'company_email' => $company['email'],
+            'company_logo_url' => $company['logo_url'],
             'issue_date' => now()->format('d/m/Y'),
             'issue_time' => now()->format('H:i'),
             'driver_name' => $driver->name ?? '',
@@ -579,6 +604,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'message' => 'Receipt status updated successfully',
                 'data' => $receipt->getPreviewData(),
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error updating receipt status: ' . $e->getMessage());
             return response()->json([
@@ -613,6 +641,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'message' => 'Receipt cancelled successfully',
                 'data' => $receipt->getPreviewData(),
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error cancelling receipt: ' . $e->getMessage());
             return response()->json([
@@ -646,6 +677,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'success' => true,
                 'message' => 'Receipt deleted successfully',
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error deleting receipt: ' . $e->getMessage());
             return response()->json([
@@ -696,6 +730,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'message' => 'Receipt statistics retrieved successfully',
                 'data' => $stats,
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error getting receipt statistics: ' . $e->getMessage());
             return response()->json([
@@ -734,7 +771,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         $validator = Validator::make($request->all(), [
             'format' => 'required|in:pdf,excel',
             'status' => 'nullable|in:generated,sent,delivered,cancelled',
-            'driver_id' => 'nullable|integer|exists:drivers,id',
+            'driver_id' => ['nullable', 'integer', new InAccount(Driver::class)],
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
         ]);
@@ -758,6 +795,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'filters' => $request->only(['status', 'driver_id', 'date_from', 'date_to']),
                 ],
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error exporting receipts: ' . $e->getMessage());
             return response()->json([
@@ -791,7 +831,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         $validator = Validator::make($request->all(), [
             'payment_ids' => 'required|array|min:1',
-            'payment_ids.*' => 'integer|exists:payments,id',
+            'payment_ids.*' => ['integer', new InAccount(Payment::class)],
         ]);
 
         if ($validator->fails()) {
@@ -845,6 +885,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                         'status' => 'success',
                         'message' => 'Receipt generated successfully',
                     ];
+                } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+                    // Also what a scoped lookup returns for another account's record.
+                    return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
                 } catch (\Exception $e) {
                     $errors[] = [
                         'payment_id' => $paymentId,
@@ -870,6 +913,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     ],
                 ],
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error in bulk receipt generation: ' . $e->getMessage());
@@ -950,6 +997,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'search_query' => $searchQuery,
                 ],
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error searching receipts: ' . $e->getMessage());
             return response()->json([

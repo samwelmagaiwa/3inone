@@ -6,6 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Helpers\ResponseHelper;
+use App\Rules\PerBusiness;
 
 class CreateVehicleRequest extends FormRequest
 {
@@ -21,12 +22,25 @@ class CreateVehicleRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      */
+    /**
+     * Plates are stored in capitals, so they are checked in capitals too (otherwise "t123abc"
+     * would slip past a check against "T123ABC" on a case-sensitive database).
+     */
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('plate_number'))) {
+            $this->merge(['plate_number' => strtoupper(trim($this->input('plate_number')))]);
+        }
+    }
+
     public function rules(): array
     {
         return [
             'name' => 'required|string|max:255',
             'type' => 'required|in:bajaji,pikipiki,gari',
-            'plate_number' => 'required|string|max:50|unique:devices,plate_number',
+            // Unique inside this business only: another business may have its own vehicle with
+            // the same plate (one sold from a business to another, for instance).
+            'plate_number' => ['required', 'string', 'max:50', PerBusiness::unique('devices', 'plate_number')],
             'description' => 'nullable|string|max:500',
             'driver_id' => 'nullable|uuid|exists:users,id',
         ];

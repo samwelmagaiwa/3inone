@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\Transport;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Models\Driver;
 use App\Models\DriverAgreement;
 use App\Models\Payment;
 use Carbon\Carbon;
@@ -53,6 +54,16 @@ class PredictionController extends Controller
     public function getDriverPrediction(string $driverId, Request $request): JsonResponse
     {
         try {
+            // Accept drivers.id or users.id (the driver list hands the app a user
+            // id) and resolve to the canonical driver. Driver is account-scoped,
+            // so one outside the caller's account is "not found", not an empty
+            // prediction.
+            $driver = Driver::where('id', $driverId)->orWhere('user_id', $driverId)->first();
+            if (!$driver) {
+                return response()->json(['success' => false, 'message' => 'Driver not found'], 404);
+            }
+            $driverId = $driver->id;
+
             $mode = strtolower($request->query('mode', 'auto'));
             // Optional history window: from/to (YYYY-MM-DD) or days (int, defaults to 365)
             $fromParam = $request->query('from');

@@ -10,6 +10,20 @@ class PreventiveMaintenance extends Model
 {
     use HasFactory, HasUuids;
 
+    use \App\Models\Concerns\ScopedToAccount;
+
+    /** Fail-closed account scope: the maintenance plans of properties the viewer manages (see App\Support\Tenancy\RentalAccess). */
+    public function constrainToAccount(\Illuminate\Database\Eloquent\Builder $query, \App\Models\User $user): void
+    {
+        if (!\App\Support\Tenancy\RentalAccess::managesProperties($user)) {
+            $query->whereRaw('1 = 0'); // a landlord's plans are not for tenants or vendors
+
+            return;
+        }
+
+        $query->whereIn($this->qualifyColumn('property_id'), \App\Support\Tenancy\RentalAccess::propertyIds($user));
+    }
+
     protected $table = 'rental_preventive_maintenance';
 
     protected $fillable = [

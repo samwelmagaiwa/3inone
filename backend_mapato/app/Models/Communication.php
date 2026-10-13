@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedThroughDriver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
 class Communication extends Model
 {
-    use HasFactory;
+    use HasFactory, ScopedThroughDriver;
 
     /**
      * The attributes that are mass assignable.

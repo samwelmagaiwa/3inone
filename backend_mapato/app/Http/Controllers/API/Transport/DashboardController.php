@@ -10,6 +10,7 @@ use App\Models\Device;
 use App\Models\DebtRecord;
 use App\Models\User;
 use App\Helpers\ResponseHelper;
+use App\Support\SqlDate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -257,8 +258,8 @@ class DashboardController extends Controller
         
         $monthlyPayments = Payment::where('status', 'completed')
                                  ->where('payment_date', '>=', $twelveMonthsAgo)
-                                 ->selectRaw('YEAR(payment_date) as year, MONTH(payment_date) as month, SUM(amount) as amount, COUNT(*) as count')
-                                 ->groupBy(DB::raw('YEAR(payment_date), MONTH(payment_date)'))
+                                 ->selectRaw(SqlDate::year('payment_date') . ' as year, ' . SqlDate::month('payment_date') . ' as month, SUM(amount) as amount, COUNT(*) as count')
+                                 ->groupBy(DB::raw(SqlDate::year('payment_date') . ', ' . SqlDate::month('payment_date')))
                                  ->orderBy('year')
                                  ->orderBy('month')
                                  ->get();

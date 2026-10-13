@@ -11,6 +11,14 @@ class RentalAgreement extends Model
 {
     use HasFactory, HasUuid;
 
+    use \App\Models\Concerns\ScopedToAccount;
+
+    /** Fail-closed account scope: the leases the viewer may see (see App\Support\Tenancy\RentalAccess). */
+    public function constrainToAccount(\Illuminate\Database\Eloquent\Builder $query, \App\Models\User $user): void
+    {
+        $query->whereIn($this->qualifyColumn('id'), \App\Support\Tenancy\RentalAccess::agreementIds($user));
+    }
+
     protected $table = 'rental_agreements';
 
     protected $fillable = [
@@ -80,5 +88,25 @@ class RentalAgreement extends Model
     public function payments()
     {
         return $this->hasMany(RentalPayment::class, 'tenant_id', 'tenant_id');
+    }
+
+    /**
+     * In API responses each uploaded document carries a short-lived signed `url` (the lease
+     * documents are signed contracts and ID cards, so they are not publicly reachable).
+     */
+    public function attributesToArray()
+    {
+        $attributes = parent::attributesToArray();
+
+        if (!empty($attributes['documents']) && is_array($attributes['documents'])) {
+            $attributes['documents'] = array_map(
+                fn ($doc) => is_array($doc) && !empty($doc['path'])
+                    ? array_merge($doc, ['url' => \App\Support\PrivateFile::url($doc['path'])])
+                    : $doc,
+                $attributes['documents']
+            );
+        }
+
+        return $attributes;
     }
 }

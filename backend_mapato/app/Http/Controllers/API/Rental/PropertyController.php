@@ -51,8 +51,7 @@ class PropertyController extends Controller
         $perPage = Pagination::perPage($request, 15);
 
         $properties = $this->propertyService
-            ->setOwner($request->user()->id)
-            ->setUnrestricted($request->user()->isSuperAdmin())
+            ->forUser($request->user())
             ->getAll($filters, $perPage);
 
         return ResponseHelper::paginate($properties, PropertyResource::class);
@@ -72,8 +71,7 @@ class PropertyController extends Controller
     public function stats(Request $request)
     {
         $stats = $this->propertyService
-            ->setOwner($request->user()->id)
-            ->setUnrestricted($request->user()->isSuperAdmin())
+            ->forUser($request->user())
             ->getStatistics();
 
         return ResponseHelper::success($stats);
@@ -96,8 +94,7 @@ class PropertyController extends Controller
     public function show(Request $request, string $id)
     {
         $property = $this->propertyService
-            ->setOwner($request->user()->id)
-            ->setUnrestricted($request->user()->isSuperAdmin())
+            ->forUser($request->user())
             ->getById($id);
 
         return ResponseHelper::success(new PropertyResource($property));
@@ -144,8 +141,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         try {
             $property = $this->propertyService
-                ->setOwner($request->user()->id)
-            ->setUnrestricted($request->user()->isSuperAdmin())
+                ->forUser($request->user())
                 ->create($request->validated());
 
             return ResponseHelper::success(
@@ -201,8 +197,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         try {
             $property = $this->propertyService
-                ->setOwner($request->user()->id)
-            ->setUnrestricted($request->user()->isSuperAdmin())
+                ->forUser($request->user())
                 ->update($id, $request->validated());
 
             return ResponseHelper::success(
@@ -232,8 +227,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         try {
             $this->propertyService
-                ->setOwner($request->user()->id)
-            ->setUnrestricted($request->user()->isSuperAdmin())
+                ->forUser($request->user())
                 ->delete($id);
 
             return ResponseHelper::success(null, 'Mali imefutwa');
@@ -260,8 +254,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         try {
             $property = $this->propertyService
-                ->setOwner($request->user()->id)
-            ->setUnrestricted($request->user()->isSuperAdmin())
+                ->forUser($request->user())
                 ->restore($id);
 
             return ResponseHelper::success(
@@ -287,8 +280,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     public function trashed(Request $request)
     {
         $properties = $this->propertyService
-            ->setOwner($request->user()->id)
-            ->setUnrestricted($request->user()->isSuperAdmin())
+            ->forUser($request->user())
             ->getDeleted();
 
         return ResponseHelper::success(PropertyResource::collection($properties));
@@ -331,7 +323,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         $property = Property::when(
             !$request->user()->isSuperAdmin(),
-            fn($q) => $q->where('owner_id', $request->user()->id)
+            fn($q) => $q->whereIn('owner_id', $request->user()->accountMemberIds())
         )->findOrFail($propertyId);
 
         $request->validate([
@@ -339,7 +331,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'rent_amount' => 'required|numeric|min:0',
             'type' => 'sometimes|in:apartment,room,commercial,studio,bedsitter,one_bedroom,two_bedroom',
             'deposit_amount' => 'sometimes|numeric|min:0',
-            'block_id' => 'nullable|exists:rental_blocks,id',
+            'block_id' => ['nullable', new \App\Rules\BlockOnProperty($property->id)],
             'electricity_meter' => 'nullable|string|max:50',
             'water_meter' => 'nullable|string|max:50',
             'bedrooms' => 'nullable|integer|min:0',

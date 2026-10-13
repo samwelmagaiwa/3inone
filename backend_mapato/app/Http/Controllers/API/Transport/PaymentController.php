@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\Transport;
 
+use App\Rules\InAccount;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\DebtRecord;
@@ -106,6 +107,9 @@ class PaymentController extends Controller
                 ]
             ]);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error fetching drivers with debts: ' . $e->getMessage());
 
@@ -147,6 +151,9 @@ class PaymentController extends Controller
                 ])
             ]);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error fetching driver debt summary: ' . $e->getMessage());
 
@@ -202,6 +209,9 @@ class PaymentController extends Controller
                 ]
             ]);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error fetching driver debt records: ' . $e->getMessage());
 
@@ -239,7 +249,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     public function recordPayment(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'driver_id' => 'required|exists:drivers,id',
+            'driver_id' => ['required', new InAccount(Driver::class)],
             'amount' => 'required|numeric|min:0.01',
             'payment_channel' => 'required|in:cash,mpesa,bank,mobile,other',
             'covers_days' => 'required|array|min:1',
@@ -351,6 +361,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 ]
             ], 201);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error recording payment: ' . $e->getMessage(), [
@@ -428,6 +442,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 ]
             ]);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error fetching payment history: ' . $e->getMessage());
 
@@ -489,6 +506,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'message' => 'Payment updated successfully',
                 'data' => $payment->toApiResponse()
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error updating payment: ' . $e->getMessage());
             return response()->json([
@@ -536,6 +556,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'message' => 'Payment deleted successfully and debt records reset'
             ]);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            DB::rollBack();
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error deleting payment: ' . $e->getMessage());
@@ -617,6 +641,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 ]
             ], 200);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error fetching payment summary: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
@@ -654,7 +681,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     public function markDebtAsPaid(int $debtId, Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'payment_id' => 'required|integer|exists:payments,id',
+            'payment_id' => ['required', 'integer', new InAccount(Payment::class)],
         ]);
 
         if ($validator->fails()) {
@@ -677,6 +704,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'data' => $debtRecord->toApiResponse()
             ]);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error marking debt as paid: ' . $e->getMessage());
 
@@ -756,6 +786,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'message' => 'Payment recorded',
                 'data' => $payment->toApiResponse(),
             ], 201);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             Log::error('Error saving new payment: ' . $e->getMessage());
             return response()->json([
@@ -817,6 +850,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'drivers' => $rows,
                 ],
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -845,10 +881,16 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     private function buildReceiptDataForPayment(Payment $payment, array $paidDays): array
     {
         $driver = $payment->driver;
+        // Whose receipt it is: the driver's own business (name, address, phone, TIN, logo), not the
+        // platform's name -- every business's customers would otherwise read "Boda Mapato".
+        $company = \App\Models\Business::identityForDriver($driver instanceof \App\Models\Driver ? $driver : null);
         return [
-            'company_name' => config('app.name', 'Boda Mapato'),
-            'company_address' => '',
-            'company_phone' => '',
+            'company_name' => $company['name'],
+            'company_address' => $company['address'],
+            'company_phone' => $company['phone'],
+            'company_tin' => $company['tin'],
+            'company_email' => $company['email'],
+            'company_logo_url' => $company['logo_url'],
             'issue_date' => now()->format('d/m/Y'),
             'issue_time' => now()->format('H:i'),
             'driver_name' => $driver->name ?? '',

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\API\Inventory;
 
 use App\Services\Inventory\AuditTrail;
 use App\Services\Inventory\CrateLedgerService;
+use App\Services\Inventory\ProductUnits;
 use App\Services\Inventory\StockLedger;
+use App\Support\SqlDate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -18,6 +20,7 @@ class SalesController extends Controller
         private readonly StockLedger        $ledger,
         private readonly AuditTrail         $audit,
         private readonly CrateLedgerService $crateLedger,
+        private readonly ProductUnits       $units,
     ) {
     }
 
@@ -141,18 +144,7 @@ class SalesController extends Controller
             $sArray['total']      = (int) $s->total;
             $sArray['paid_total'] = (int) $s->paid_total;
             $sItems = $itemsBySale[$s->id] ?? collect();
-            $sArray['items'] = $sItems->map(function ($it) {
-                return [
-                    'id' => (int) $it->id,
-                    'product_id' => (int) $it->product_id,
-                    'product_name' => $it->product_name ?? 'Product #' . $it->product_id,
-                    'quantity' => (int) $it->quantity,
-                    'qty' => (int) $it->quantity,
-                    'unit_price' => (int) $it->unit_price,
-                    'unit_cost_snapshot' => (int) $it->unit_cost_snapshot,
-                    'total' => (int) $it->total,
-                ];
-            })->values()->all();
+            $sArray['items'] = $sItems->map(fn ($it) => $this->itemPayload($it))->values()->all();
             $sPayments = $paymentsBySale[$s->id] ?? collect();
             $sArray['payments'] = $sPayments->map(function ($p) {
                 return [
@@ -231,18 +223,7 @@ class SalesController extends Controller
             ->select('si.*', 'p.name as product_name', 'p.sku as product_sku')
             ->get();
 
-        $saleArray['items'] = $items->map(function ($it) {
-            return [
-                'id' => (int) $it->id,
-                'product_id' => (int) $it->product_id,
-                'product_name' => $it->product_name ?? 'Product #' . $it->product_id,
-                'quantity' => (int) $it->quantity,
-                'qty' => (int) $it->quantity,
-                'unit_price' => (int) $it->unit_price,
-                'unit_cost_snapshot' => (int) $it->unit_cost_snapshot,
-                'total' => (int) $it->total,
-            ];
-        })->values()->all();
+        $saleArray['items'] = $items->map(fn ($it) => $this->itemPayload($it))->values()->all();
 
         // Cast sale-level decimals to int
         $saleArray['subtotal']   = (int) $sale->subtotal;
@@ -434,10 +415,10 @@ class SalesController extends Controller
                 ->whereDate('created_at', '>=', $from)
                 ->whereDate('created_at', '<=', $to),
             $request,
-        )->groupBy(DB::raw('DAY(created_at)'))
-            ->orderBy(DB::raw('DAY(created_at)'))
+        )->groupBy(DB::raw(SqlDate::day('created_at')))
+            ->orderBy(DB::raw(SqlDate::day('created_at')))
             ->get([
-                DB::raw('DAY(created_at) as day'),
+                DB::raw(SqlDate::day('created_at') . ' as day'),
                 DB::raw('COALESCE(SUM(total),0) as total'),
                 DB::raw('COUNT(*) as count'),
             ]);
@@ -732,8 +713,13 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             return response()->json(['data' => []]);
         }
 
+        $viewer = $request->user();
+
+        // `users` is shared by every business, so it is limited here by hand: a
+        // business lists its own officers, never another's. (super_admin: all.)
         $officers = DB::table('users')
             ->whereIn('role', ['sales_officer', 'manager', 'operator'])
+            ->when(!$viewer->seesAllAccounts(), fn ($q) => $q->whereIn('id', $viewer->accountMemberIds()))
             ->orderBy('name')
             ->get(['id', 'name', 'role']);
 
@@ -871,6 +857,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'nullable|numeric|min:0',
             'items.*.unit_cost_snapshot' => 'nullable|numeric|min:0',
+            // Sold in a selling unit (crate, kg, ...): `quantity` is then a count of THAT unit, always whole.
+            'items.*.unit_id' => 'nullable|integer',
+            'items.*.tax_percent' => 'nullable|numeric|min:0|max:100',
+            'items.*.tier' => 'nullable|in:retail,wholesale',
             'payments' => 'sometimes|array',
             'payments.*.amount' => 'required|numeric|min:0.01',
             'payments.*.method' => 'required|in:cash,mobile_money,bank_transfer',
@@ -890,7 +880,31 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             return response()->json(['message' => 'Customer required for debt/partial'], 422);
         }
 
-        return DB::transaction(function () use ($request) {
+        // Each chosen selling unit must be an active unit of that very product.
+        $units = [];
+        foreach ($request->items as $index => $item) {
+            if (empty($item['unit_id'])) {
+                continue;
+            }
+            $unit = DB::table('inventory_product_units')
+                ->where('id', (int) $item['unit_id'])
+                ->where('product_id', (int) $item['product_id'])
+                ->where('status', 'active')
+                ->first();
+            if (! $unit) {
+                return response()->json(['message' => 'That unit is not available for this product'], 422);
+            }
+            $units[$index] = $unit;
+        }
+
+        return DB::transaction(function () use ($request, $units) {
+            // The business's own till settings: its VAT default, whether prices include VAT, which price level.
+            $tillSettings = DB::table('inventory_settings')
+                ->whereIn('key', ['tax_percent', 'prices_include_vat', 'sale_tier'])
+                ->pluck('value', 'key')
+                ->all();
+            $taxTotal = 0.0;
+
             // Insert with a placeholder number first so we can derive the
             // number from the guaranteed-unique auto-increment ID, avoiding the
             // max(id)+1 race condition under concurrent checkouts.
@@ -915,13 +929,17 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             DB::table('inventory_sales')->where('id', $saleId)->update(['number' => $number]);
 
             $insertedItems = [];
-            foreach ($request->items as $item) {
+            foreach ($request->items as $index => $item) {
                 $product = DB::table('inventory_products')->find($item['product_id']);
                 if (!$product) {
                     throw new \RuntimeException('Product not found: ' . $item['product_id']);
                 }
 
-                $qty = (int) $item['quantity'];
+                // How many of the chosen selling unit were sold, and how many BASE units that takes out of stock.
+                $unit = $units[$index] ?? null;
+                $factor = $unit ? ProductUnits::factorOf($unit) : 1;
+                $unitQty = (int) $item['quantity'];
+                $qty = $unitQty * $factor;
                 $fallbackUnitCost = (float) ($item['unit_cost_snapshot'] ?? $product->cost_price ?? 0);
 
                 try {
@@ -947,17 +965,37 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     $issuedCost += $a['cost_price'] * $a['quantity'];
                 }
 
-                $unitPrice = isset($item['unit_price']) ? (float) $item['unit_price'] : (float) ($product->selling_price ?? 0);
+                // The price is per SELLING unit (a crate, a kg), the way it is shown and rung up. A line with
+                // no price asked for one is priced the way the till would: that unit's price for the tier,
+                // else (a unit with no price yet) the base unit's price times what the unit holds.
+                $unitPrice = isset($item['unit_price'])
+                    ? (float) $item['unit_price']
+                    : $this->defaultUnitPrice($product, $unit, $item, $tillSettings, $request->integer('customer_id', 0) ?: null);
                 $unitCost = $issuedQty > 0 ? ($issuedCost / $issuedQty) : $fallbackUnitCost;
-                $lineTotal = $unitPrice * $qty;
+                $lineTotal = round($unitPrice * $unitQty, 2);
+
+                // VAT on this line: the rate the till sent, else the product's own, else the business's default.
+                $rate = (float) ($item['tax_percent'] ?? $product->tax_percent ?? ($tillSettings['tax_percent'] ?? 0));
+                $includesVat = ($tillSettings['prices_include_vat'] ?? '1') !== '0';
+                $taxAmount = $rate > 0
+                    ? round($includesVat ? $lineTotal * $rate / (100 + $rate) : $lineTotal * $rate / 100, 2)
+                    : 0.0;
+                $taxTotal += $taxAmount;
 
                 $itemId = DB::table('inventory_sale_items')->insertGetId([
                     'sale_id' => (int) $saleId,
                     'product_id' => (int) $item['product_id'],
+                    // `quantity` is always BASE units, so stock, cost and every report keep adding up.
                     'quantity' => $qty,
                     'unit_price' => $unitPrice,
                     'unit_cost_snapshot' => $unitCost,
                     'total' => $lineTotal,
+                    'unit_id' => $unit?->id,
+                    'unit_name' => $unit?->name,
+                    'unit_factor' => $factor,
+                    'unit_qty' => $unitQty,
+                    'tax_percent' => $rate > 0 ? $rate : null,
+                    'tax_amount' => $taxAmount,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -966,12 +1004,23 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'id' => (int) $itemId,
                     'product_id' => (int) $item['product_id'],
                     'product_name' => $product->name,
-                    'quantity' => $qty,
-                    'qty' => $qty,
+                    'quantity' => $unitQty,
+                    'qty' => $unitQty,
+                    'base_quantity' => $qty,
+                    'unit_id' => $unit?->id,
+                    'unit_name' => $unit?->name,
+                    'unit_factor' => $factor,
                     'unit_price' => $unitPrice,
                     'unit_cost_snapshot' => $unitCost,
+                    'tax_percent' => $rate > 0 ? $rate : null,
+                    'tax_amount' => $taxAmount,
                     'total' => $lineTotal,
                 ];
+            }
+
+            // The VAT the sale carries is what its lines say (not what a client added up).
+            if ($taxTotal > 0) {
+                DB::table('inventory_sales')->where('id', $saleId)->update(['tax' => $taxTotal, 'updated_at' => now()]);
             }
 
             if (is_array($request->payments)) {
@@ -1069,11 +1118,67 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'customer_id' => $request->customer_id,
                     'payment_status' => $request->payment_status,
                     'subtotal' => (float) $request->subtotal,
+                    'tax' => $taxTotal > 0 ? $taxTotal : (float) ($request->tax ?? 0),
                     'total' => (float) $request->total,
                     'paid_total' => (float) $request->paid_total,
                     'items' => $insertedItems,
                 ],
             ], 201);
         });
+    }
+
+    /**
+     * What the till would charge for one selling unit when the request did not say: that unit's price for the
+     * tier (a customer's special price first), else -- for a unit with no price yet -- the base unit's price
+     * times how many base units it holds. A line sold in the product's own unit with no unit chosen keeps the
+     * product's selling price, exactly as before.
+     *
+     * @param  array<string, string>  $tillSettings
+     */
+    private function defaultUnitPrice(object $product, ?object $unit, array $item, array $tillSettings, ?int $customerId): float
+    {
+        if ($unit === null) {
+            return (float) ($product->selling_price ?? 0);
+        }
+
+        $tier = $item['tier'] ?? (in_array($tillSettings['sale_tier'] ?? '', ['retail', 'wholesale'], true) ? $tillSettings['sale_tier'] : 'retail');
+
+        return $this->units->priceFor((int) $product->id, (int) $unit->id, $tier, $customerId)
+            ?? (float) ($product->selling_price ?? 0) * ProductUnits::factorOf($unit);
+    }
+
+    /**
+     * One sale line as the apps read it. `quantity` and `unit_price` are in the unit the line was sold in, so
+     * quantity x unit_price = total always holds; `base_quantity` is what left the stock. Lines from before
+     * selling units existed read exactly as they did (their unit is the base unit).
+     */
+    private function itemPayload(object $it): array
+    {
+        $unitQty = isset($it->unit_qty) ? (int) $it->unit_qty : (int) $it->quantity;
+
+        return [
+            'id' => (int) $it->id,
+            'product_id' => (int) $it->product_id,
+            'product_name' => $it->product_name ?? 'Product #' . $it->product_id,
+            'quantity' => $unitQty,
+            'qty' => $unitQty,
+            'base_quantity' => (int) $it->quantity,
+            'unit_id' => isset($it->unit_id) ? (int) $it->unit_id : null,
+            'unit_name' => $it->unit_name ?? null,
+            'unit_factor' => (int) ($it->unit_factor ?? 1),
+            'unit_price' => self::money($it->unit_price),
+            'unit_cost_snapshot' => self::money($it->unit_cost_snapshot),
+            'tax_percent' => isset($it->tax_percent) ? (float) $it->tax_percent : null,
+            'tax_amount' => self::money($it->tax_amount ?? 0),
+            'total' => self::money($it->total),
+        ];
+    }
+
+    /** Whole amounts stay whole numbers (as the apps always received them); only real fractions are kept. */
+    private static function money(mixed $value): int|float
+    {
+        $amount = (float) $value;
+
+        return $amount == floor($amount) ? (int) $amount : $amount;
     }
 }

@@ -41,7 +41,7 @@ class HouseController extends Controller
         $isSuperAdmin = $request->user()->isSuperAdmin();
         $query = House::query()->when(!$isSuperAdmin, function ($hq) use ($request) {
             $hq->whereHas('property', function ($q) use ($request) {
-                $q->where('owner_id', $request->user()->id);
+                $q->whereIn('owner_id', $request->user()->accountMemberIds());
             });
         });
 
@@ -92,7 +92,7 @@ class HouseController extends Controller
         // see any landlord's properties)
         $property = Property::when(
             !$request->user()->isSuperAdmin(),
-            fn($q) => $q->where('owner_id', $request->user()->id)
+            fn($q) => $q->whereIn('owner_id', $request->user()->accountMemberIds())
         )->findOrFail($propertyId);
 
         $houses = House::where('property_id', $propertyId)
@@ -147,7 +147,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         $property = Property::when(
             !$request->user()->isSuperAdmin(),
-            fn($q) => $q->where('owner_id', $request->user()->id)
+            fn($q) => $q->whereIn('owner_id', $request->user()->accountMemberIds())
         )->findOrFail($request->property_id);
 
         $currentSum = House::where('property_id', $request->property_id)->sum('rent_amount');
@@ -155,7 +155,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         $request->validate([
             'property_id' => 'required|exists:rental_properties,id',
-            'block_id' => 'nullable|exists:rental_blocks,id',
+            'block_id' => ['nullable', new \App\Rules\BlockOnProperty($request->property_id)],
             'house_number' => 'required|string|max:50',
             'type' => 'required|in:apartment,room,commercial,studio,bedsitter,one_bedroom,two_bedroom,three_bedroom',
             'rent_amount' => [
@@ -244,7 +244,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         $house = House::when(!$request->user()->isSuperAdmin(), function ($hq) use ($request) {
             $hq->whereHas('property', function ($q) use ($request) {
-                $q->where('owner_id', $request->user()->id);
+                $q->whereIn('owner_id', $request->user()->accountMemberIds());
             });
         })->with('property', 'block', 'currentTenant.tenantProfile', 'activeAgreement.tenant')
           ->findOrFail($id);
@@ -302,7 +302,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         $house = House::when(!$request->user()->isSuperAdmin(), function ($hq) use ($request) {
             $hq->whereHas('property', function ($q) use ($request) {
-                $q->where('owner_id', $request->user()->id);
+                $q->whereIn('owner_id', $request->user()->accountMemberIds());
             });
         })->with('property')->findOrFail($id);
 
@@ -313,7 +313,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         $request->validate([
             'house_number' => 'sometimes|string|max:50',
-            'block_id' => 'nullable|exists:rental_blocks,id',
+            'block_id' => ['nullable', new \App\Rules\BlockOnProperty($house->property_id)],
             'type' => 'sometimes|in:apartment,room,commercial,studio,bedsitter,one_bedroom,two_bedroom,three_bedroom',
             'rent_amount' => [
                 'sometimes',
@@ -417,7 +417,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         $house = House::when(!$request->user()->isSuperAdmin(), function ($hq) use ($request) {
             $hq->whereHas('property', function ($q) use ($request) {
-                $q->where('owner_id', $request->user()->id);
+                $q->whereIn('owner_id', $request->user()->accountMemberIds());
             });
         })->findOrFail($id);
 

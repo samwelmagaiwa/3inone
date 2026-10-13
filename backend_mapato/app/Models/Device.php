@@ -4,17 +4,70 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\HasBusinessOwner;
+use App\Models\Concerns\ScopedToAccount;
+use App\Support\Tenancy\BusinessOwner;
+use App\Support\Tenancy\TenantContext;
 use App\Traits\HasUuid;
+use Illuminate\Database\Eloquent\Builder;
 
 class Device extends Model
 {
-    use HasFactory, HasUuid;
+    use HasFactory, HasUuid, ScopedToAccount, HasBusinessOwner;
+
+    /**
+     * The business a new vehicle belongs to: its creator's, else its driver's, else the
+     * business of whoever is signed in. A plate number is unique inside that business only.
+     */
+    protected function resolveBusinessOwnerId(): ?string
+    {
+        if ($this->created_by) {
+            return BusinessOwner::ofUser((string) $this->created_by);
+        }
+
+        if ($this->driver_id) {
+            $driver = Driver::withoutAccountScope()->find($this->driver_id);
+            if ($driver) {
+                return $driver->owner_id ?: BusinessOwner::ofUser((string) $driver->user_id);
+            }
+        }
+
+        return TenantContext::writeOwner();
+    }
+
+    /**
+     * A vehicle belongs to the account that created it, or -- for vehicles
+     * that predate created_by -- the account of the driver it is assigned to.
+     * A driver sees only the vehicle they drive.
+     */
+    public function constrainToAccount(Builder $query, User $user): void
+    {
+        $table = $this->getTable();
+        $drivers = Driver::query()->select('drivers.id')->toBase();
+
+        if ($user->isPortalUser()) {
+            $query->where(function (Builder $scope) use ($table, $user, $drivers) {
+                $scope->whereIn("{$table}.driver_id", $drivers);
+                if ($user->device_id) {
+                    $scope->orWhere("{$table}.id", $user->device_id);
+                }
+            });
+
+            return;
+        }
+
+        $query->where(function (Builder $scope) use ($table, $user, $drivers) {
+            $scope->whereIn("{$table}.created_by", $user->accountMemberIds())
+                ->orWhereIn("{$table}.driver_id", $drivers);
+        });
+    }
 
     /**
      * The attributes that are mass assignable.
      */
     protected $fillable = [
         'driver_id',
+        'created_by',
         'name',
         'type',
         'plate_number',

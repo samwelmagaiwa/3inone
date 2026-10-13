@@ -19,6 +19,22 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       QUEUE_CONNECTION: database
       CACHE_STORE: database
+      # Text messages (password reset codes, registration phone check, receipts). The
+      # values live in the .env next to this file on the server, never in git. Without
+      # SMS_ENABLED=true and the key/secret, messages are only logged and the app refuses
+      # anything that needs a code to reach someone's phone.
+      SMS_DRIVER: ${SMS_DRIVER:-log}
+      SMS_ENABLED: ${SMS_ENABLED:-false}
+      SMS_API_URL: ${SMS_API_URL:-https://messaging.kilakona.co.tz/api/v1/vendor/message/send}
+      SMS_API_KEY: ${SMS_API_KEY:-}
+      SMS_SECRET_KEY: ${SMS_SECRET_KEY:-}
+      SMS_SENDER_ID: ${SMS_SENDER_ID:-}
+      SMS_COUNTRY_CODE: ${SMS_COUNTRY_CODE:-255}
+      # Plans / paid-until dates. Recorded for every business, but nothing is locked unless
+      # BILLING_ENFORCE=true is set in the .env next to this file (see config/billing.php).
+      BILLING_ENFORCE: ${BILLING_ENFORCE:-false}
+      BILLING_TRIAL_DAYS: ${BILLING_TRIAL_DAYS:-30}
+      BILLING_GRACE_DAYS: ${BILLING_GRACE_DAYS:-7}
     volumes:
       - depot_storage:/var/www/html/storage
     ports:

@@ -12,6 +12,14 @@ class House extends Model
 {
     use HasFactory, HasUuid, SoftDeletes;
 
+    use \App\Models\Concerns\ScopedToAccount;
+
+    /** Fail-closed account scope: the houses the viewer may see (see App\Support\Tenancy\RentalAccess). */
+    public function constrainToAccount(\Illuminate\Database\Eloquent\Builder $query, \App\Models\User $user): void
+    {
+        $query->whereIn($this->qualifyColumn('id'), \App\Support\Tenancy\RentalAccess::houseIds($user));
+    }
+
     protected $table = 'rental_houses';
 
     protected $fillable = [

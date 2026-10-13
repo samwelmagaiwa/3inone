@@ -45,7 +45,7 @@ class TenantController extends Controller
 
         $agreements = RentalAgreement::when(!$user->isSuperAdmin(), function ($aq) use ($user) {
             $aq->whereHas('house.property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
+                $query->whereIn('owner_id', $user->accountMemberIds());
             });
         })->with('tenant.profile', 'house.property', 'house.block')->get();
 
@@ -97,7 +97,7 @@ class TenantController extends Controller
 
         // Return ONLY users created by this landlord who have the 'tenant' role
         // (super_admin sees every tenant regardless of who created them)
-        $query = User::when(!$user->isSuperAdmin(), fn($q) => $q->where('created_by', $user->id))
+        $query = User::when(!$user->isSuperAdmin(), fn($q) => $q->whereIn('created_by', $user->accountMemberIds()))
             ->where('role', 'tenant');
 
         if ($search) {
@@ -130,7 +130,7 @@ class TenantController extends Controller
 
         $agreement = RentalAgreement::when(!$isSuperAdmin, function ($aq) use ($request) {
             $aq->whereHas('house.property', function ($query) use ($request) {
-                $query->where('owner_id', $request->user()->id);
+                $query->whereIn('owner_id', $request->user()->accountMemberIds());
             });
         })->where('tenant_id', $id)
             ->with('tenant.profile', 'house.property', 'house.block', 'bills', 'payments.receipt')
@@ -152,7 +152,7 @@ class TenantController extends Controller
         $tenantQuery = User::where('id', $id)->where('role', 'tenant');
         if (!$isSuperAdmin) {
             $tenantQuery->where(function ($query) use ($request) {
-                $query->where('created_by', $request->user()->id)
+                $query->whereIn('created_by', $request->user()->accountMemberIds())
                     ->orWhereExists(function ($q) use ($request) {
                         $q->select(DB::raw(1))
                             ->from('rental_houses')
@@ -168,7 +168,7 @@ class TenantController extends Controller
         $house = House::where('current_tenant_id', $id)
             ->when(!$isSuperAdmin, function ($query) use ($request) {
                 $query->whereHas('property', function ($q) use ($request) {
-                    $q->where('owner_id', $request->user()->id);
+                    $q->whereIn('owner_id', $request->user()->accountMemberIds());
                 });
             })->with('property', 'block')->first();
 
@@ -239,8 +239,19 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'tenant_photo' => 'nullable|image|max:2048', // 2MB max
         ]);
 
+        // `exists:` accepts any landlord's house; the house must be on a property
+        // this account owns (super_admin may onboard into any).
+        $actor = $request->user();
+        $house = House::query()
+            ->when(!$actor->seesAllAccounts(), fn ($q) => $q->whereHas(
+                'property',
+                fn ($p) => $p->whereIn('owner_id', $actor->accountMemberIds())
+            ))
+            ->findOrFail($request->rental_house_id);
+
         try {
             $data = $request->all();
+            $data['created_by'] = $actor->id;
 
             // Multipart sends JSON arrays as strings, so we must decode them
             $jsonFields = ['emergency_contact', 'id_details', 'employment', 'history', 'occupants', 'pets'];
@@ -260,16 +271,18 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             // Handle Photo Upload
             if ($request->hasFile('tenant_photo')) {
-                $path = $request->file('tenant_photo')->store('tenant_photos', 'public');
+                $path = \App\Support\PrivateFile::store($request->file('tenant_photo'), 'tenant_photos');
                 $data['photo_url'] = $path;
             }
             $result = $this->rentalService->onboardTenant($data);
 
-            // Send welcome SMS
-            $house = House::find($request->house_id);
-            SmsService::sendTenantWelcome($result['user'], $house);
+            // Send welcome SMS (the house was resolved and checked above; the app
+            // sends `rental_house_id`, not `house_id`).
+            SmsService::sendTenantWelcome($result['user'], $house, \App\Models\Business::identityForProperty($house->property));
 
             return ResponseHelper::success($result, 'Tenant onboarded successfully', 201);
+        } catch (\InvalidArgumentException $e) {
+            return ResponseHelper::error($e->getMessage(), 422);
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage(), 500);
         }
@@ -307,7 +320,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         $agreement = RentalAgreement::when(!$isSuperAdmin, function ($aq) use ($request) {
             $aq->whereHas('house.property', function ($query) use ($request) {
-                $query->where('owner_id', $request->user()->id);
+                $query->whereIn('owner_id', $request->user()->accountMemberIds());
             });
         })->where('tenant_id', $id)->first();
 
@@ -323,7 +336,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             if ($request->status === 'terminated') {
                 $house = House::when(!$isSuperAdmin, function ($query) use ($request) {
                     $query->whereHas('property', function ($q) use ($request) {
-                        $q->where('owner_id', $request->user()->id);
+                        $q->whereIn('owner_id', $request->user()->accountMemberIds());
                     });
                 })->where('current_tenant_id', $id)->first();
 
@@ -359,7 +372,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         $agreement = RentalAgreement::when(!$isSuperAdmin, function ($aq) use ($request) {
             $aq->whereHas('house.property', function ($query) use ($request) {
-                $query->where('owner_id', $request->user()->id);
+                $query->whereIn('owner_id', $request->user()->accountMemberIds());
             });
         })->where('tenant_id', $id)->first();
 
@@ -373,7 +386,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             // If there's no agreement, but there's a house currently occupied by this tenant
             $house = House::when(!$isSuperAdmin, function ($query) use ($request) {
                 $query->whereHas('property', function ($q) use ($request) {
-                    $q->where('owner_id', $request->user()->id);
+                    $q->whereIn('owner_id', $request->user()->accountMemberIds());
                 });
             })->where('current_tenant_id', $id)->first();
 
@@ -383,7 +396,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 // If there's no agreement and no house, but the user is a tenant, check access
                 $user = User::where('id', $id)
                     ->where('role', 'tenant')
-                    ->when(!$isSuperAdmin, fn($q) => $q->where('created_by', $request->user()->id))
+                    ->when(!$isSuperAdmin, fn($q) => $q->whereIn('created_by', $request->user()->accountMemberIds()))
                     ->first();
 
                 if (!$user) {

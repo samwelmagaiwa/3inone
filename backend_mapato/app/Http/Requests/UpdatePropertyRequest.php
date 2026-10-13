@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\UserInAccount;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -40,7 +41,10 @@ class UpdatePropertyRequest extends FormRequest
             'status' => ['sometimes', Rule::in(['active', 'inactive', 'under_maintenance', 'archived'])],
             'total_units' => ['sometimes', 'integer', 'min:0'],
             'number_of_blocks' => ['sometimes', 'integer', 'min:1'],
-            'caretaker_id' => ['nullable', 'exists:users,id'],
+            'caretaker_id' => ['nullable', new UserInAccount(
+                $this->user(),
+                \App\Models\Rental\Property::withTrashed()->whereKey($this->route('id'))->value('caretaker_id')
+            )],
             'default_rent_amount' => [
                 'nullable', 
                 'numeric', 

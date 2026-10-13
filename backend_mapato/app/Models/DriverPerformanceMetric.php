@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DriverPerformanceMetric extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Models\Concerns\ScopedThroughDriver;
 
     protected $fillable = [
         'driver_id',

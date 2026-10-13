@@ -4,7 +4,10 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Rules\UniquePhoneInBusiness;
 use App\Services\Inventory\AuditTrail;
+use App\Services\ServiceAssignment;
+use App\Support\Tenancy\BusinessOwner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -14,22 +17,22 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Admin / Users', description: "Staff account management, shared by all three services. An admin sees only the staff they created; super_admin sees everyone.")]
 class UserManagementController extends Controller
 {
-    public function __construct(private readonly AuditTrail $audit)
-    {
+    public function __construct(
+        private readonly AuditTrail $audit,
+        private readonly ServiceAssignment $assignment,
+    ) {
     }
 
     // List users visible to the authenticated user.
     //
     // super_admin → sees everyone.
-    // admin       → sees all users bound to their own service(s); if they
-    //               somehow have no service binding they see only themselves
-    //               (an unbound admin cannot manage staff).
-    // others      → only their own created_by records.
+    // everyone else → their own account: themself plus the users they or their
+    //               staff created (see User::scopeInAccountOf).
     #[OA\Get(
         path: '/admin/users/mine',
         summary: 'List staff visible to the caller',
-        description: 'super_admin sees everyone; admin sees staff bound to their own service(s); '
-            . 'anyone else sees only accounts they personally created.',
+        description: 'super_admin sees everyone; anyone else sees themself plus the accounts '
+            . 'they or their staff created.',
         security: [['bearerAuth' => []]],
         tags: ['Admin / Users'],
         parameters: [
@@ -50,8 +53,8 @@ class UserManagementController extends Controller
     #[OA\Get(
         path: '/admin/users',
         summary: 'List staff visible to the caller',
-        description: 'super_admin sees everyone; admin sees staff bound to their own service(s); '
-            . 'anyone else sees only accounts they personally created.',
+        description: 'super_admin sees everyone; anyone else sees themself plus the accounts '
+            . 'they or their staff created.',
         security: [['bearerAuth' => []]],
         tags: ['Admin / Users'],
         parameters: [
@@ -84,17 +87,11 @@ class UserManagementController extends Controller
             $query->where('role', 'super_admin');
         } elseif ($user->isSuperAdmin() || $user->full_access) {
             // no extra filter — see everyone
-        } elseif (strtolower($user->role ?? '') === 'admin' || strtolower($user->role ?? '') === 'administrator') {
-            // Admin sees all users whose service bindings overlap with their own.
-            $ownServices = $user->services()->pluck('service_type')->all();
-            if (empty($ownServices)) {
-                // Unbound admin: no service assigned yet — see only themselves.
-                $query->where('id', $user->id);
-            } else {
-                $query->whereHas('services', fn ($q) => $q->whereIn('service_type', $ownServices));
-            }
         } else {
-            $query->where('created_by', $user->id);
+            // Everyone else sees their own account only: themself, plus the users
+            // they or their staff created. Sharing a service with another admin
+            // does not make that admin's staff, drivers or tenants visible.
+            $query->inAccountOf($user);
         }
 
         if ($role = $request->query('role')) {
@@ -233,10 +230,21 @@ class UserManagementController extends Controller
     public function store(Request $request)
     {
         $auth = $request->user();
-        $data = $request->only(['name', 'email', 'password', 'password_confirmation', 'phone_number', 'role', 'is_active', 'service_type', 'service_types', 'full_access', 'permissions']);
+        $data = $request->only(['name', 'email', 'password', 'password_confirmation', 'phone_number', 'role', 'is_active', 'service_type', 'service_types', 'full_access', 'permissions', 'business_owner_id']);
+
+        // The business the new account joins decides whose phone numbers it must not clash with: a
+        // number only has to be unique inside one business. A brand-new owner starts a business of
+        // their own, so there is nobody there yet to clash with.
+        $joinsOwnerAccount = in_array($data['role'] ?? 'driver', ['super_admin', 'admin', 'administrator', 'landlord'], true);
+        $phoneBusiness = ($auth->isSuperAdmin() && $joinsOwnerAccount)
+            ? null
+            : BusinessOwner::ofRequest($auth->isSuperAdmin() ? ($data['business_owner_id'] ?? null) : null);
 
         $validator = Validator::make($data, [
+            // Super admin only: put the new account inside this business (see below).
+            'business_owner_id' => 'nullable|uuid|exists:users,id',
             'name' => 'required|string|max:255',
+            // The email is the sign-in name, so it is unique across the platform.
             'email' => 'required|email|unique:users,email',
             // Length-only: the app's own default-password generator
             // (surname repeated to 8 chars, e.g. "MAGAIWA" -> "MAGAIWAM")
@@ -245,7 +253,7 @@ class UserManagementController extends Controller
             'password' => ['required', 'confirmed', Password::min(8)],
             // Required: login verifies the phone number, so an account without
             // one could never sign in.
-            'phone_number' => 'required|string|max:50|unique:users,phone_number',
+            'phone_number' => ['required', 'string', 'max:50', new UniquePhoneInBusiness($phoneBusiness)],
             'role' => 'nullable|string|in:super_admin,admin,driver,landlord,caretaker,tenant,viewer,manager,operator,sales_officer',
             'is_active' => 'nullable|boolean',
             // Legacy single value - still accepted for old clients.
@@ -284,12 +292,14 @@ class UserManagementController extends Controller
         }
 
         if (!$auth->isSuperAdmin()) {
-            // Only super admin may grant admin-level roles -- a plain admin
-            // creating staff cannot escalate them to their own level or above.
-            if (in_array($role, ['admin', 'super_admin'], true)) {
+            // Only super admin may create account-owner roles. A business owner
+            // creates STAFF; another owner (admin / landlord) is a separate
+            // business that registers itself or is created by a super admin --
+            // creating one here would hand out an account the creator can never see.
+            if (in_array($role, ['admin', 'administrator', 'landlord', 'super_admin'], true)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Only a super admin can create admin accounts.',
+                    'message' => 'Only a super admin can create admin or landlord accounts. You can create staff for your own business.',
                 ], 403);
             }
 
@@ -318,6 +328,29 @@ class UserManagementController extends Controller
             }
         }
 
+        // A super admin has no business of their own, so staff they create would belong to no
+        // business and see an empty one. Naming the owner puts the new account inside that
+        // business instead. Ignored for everyone else: an owner's staff always join their own.
+        $creator = $auth;
+        if ($auth->isSuperAdmin() && !empty($data['business_owner_id'])) {
+            $business = User::query()->find($data['business_owner_id']);
+
+            if (!$business || !in_array(strtolower((string) $business->role), User::ACCOUNT_HEAD_ROLES, true)) {
+                return response()->json(['success' => false, 'message' => 'business_owner_id must be the owner (admin / landlord) of a business.'], 422);
+            }
+            if (in_array($role, ['super_admin', 'admin', 'administrator', 'landlord'], true)) {
+                return response()->json(['success' => false, 'message' => 'An owner account cannot be placed inside another business.'], 422);
+            }
+            if (!empty(array_diff($serviceTypes, $business->serviceTypes()))) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'That business was not given: ' . implode(', ', array_diff($serviceTypes, $business->serviceTypes())) . '.',
+                ], 422);
+            }
+
+            $creator = $business;
+        }
+
         $user = new User();
         $user->name = $data['name'];
         $user->email = $data['email'];
@@ -328,7 +361,7 @@ class UserManagementController extends Controller
         $user->full_access = array_key_exists('full_access', $data) ? (bool) $data['full_access'] : false;
         $user->permissions = $data['permissions'] ?? [];
         $user->is_active = array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true;
-        $user->created_by = $auth->id;
+        $user->created_by = $creator->id;
         $user->must_change_password = true;
         $user->save();
 
@@ -389,6 +422,9 @@ class UserManagementController extends Controller
         foreach (array_unique($serviceTypes) as $type) {
             $user->services()->create(['service_type' => $type]);
         }
+
+        // A business given inventory gets its own settings and default crate types.
+        $this->assignment->prepareServices($user);
     }
 
     private function userPayload(User $user, ?array $serviceTypes = null): array
@@ -449,7 +485,8 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         $validator = Validator::make($data, [
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|unique:users,email,' . $user->id . ',id',
-            'phone_number' => 'sometimes|required|string|max:50|unique:users,phone_number,' . $user->id . ',id',
+            // Unique inside this person's own business only.
+            'phone_number' => ['sometimes', 'required', 'string', 'max:50', new UniquePhoneInBusiness(BusinessOwner::ofUser($user->id), (string) $user->id)],
             'role' => 'sometimes|string|in:super_admin,admin,driver,landlord,caretaker,tenant,viewer,manager,operator,sales_officer',
             'is_active' => 'sometimes|boolean',
             'service_type' => 'nullable|string|in:rental,transport,inventory',
@@ -479,7 +516,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         // Same escalation guard as store(): a plain admin editing an existing
         // account cannot promote it to admin/super_admin either.
         if (!$auth->isSuperAdmin() && array_key_exists('role', $data)
-            && in_array($data['role'], ['admin', 'super_admin'], true)
+            && in_array($data['role'], ['admin', 'administrator', 'landlord', 'super_admin'], true)
             && $user->role !== $data['role']
         ) {
             return response()->json([

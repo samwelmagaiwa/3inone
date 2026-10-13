@@ -6,6 +6,9 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use App\Helpers\ResponseHelper;
+use App\Rules\PerBusiness;
+use App\Rules\UniquePhoneInBusiness;
+use App\Support\Tenancy\TenantContext;
 
 class CreateDriverRequest extends FormRequest
 {
@@ -23,12 +26,17 @@ class CreateDriverRequest extends FormRequest
      */
     public function rules(): array
     {
+        // The email is the driver's sign-in name, so it stays unique across the platform. The phone
+        // number and licence number only have to be unique inside this business: another business
+        // may have its own driver on the same number.
+        $owner = TenantContext::writeOwner();
+
         return [
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email',
-            'phone' => 'required_without:phone_number|string|max:20',
-            'phone_number' => 'required_without:phone|string|max:20',
-            'license_number' => 'required|string|max:50|unique:drivers,license_number',
+            'phone' => ['required_without:phone_number', 'string', 'max:20', new UniquePhoneInBusiness($owner)],
+            'phone_number' => ['required_without:phone', 'string', 'max:20', new UniquePhoneInBusiness($owner)],
+            'license_number' => ['required', 'string', 'max:50', PerBusiness::unique('drivers', 'license_number', $owner)],
             'license_expiry' => 'required|date|after:today',
             'address' => 'required|string|max:500',
             'emergency_contact' => 'required|string|max:20',
@@ -111,11 +119,14 @@ class CreateDriverRequest extends FormRequest
     }
 
     /**
-     * Get the password or generate a default one
+     * The password the admin chose, or null when they gave none -- in which case the
+     * controller generates a one-time one. There is no shared default any more.
      */
-    public function getPassword(): string
+    public function getPassword(): ?string
     {
-        return $this->input('password') ?? 'password123';
+        $password = $this->input('password');
+
+        return is_string($password) && $password !== '' ? $password : null;
     }
 
     /**

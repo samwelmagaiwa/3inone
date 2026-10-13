@@ -3,6 +3,7 @@
 namespace App\Services\Inventory;
 
 use App\Models\User;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -28,8 +29,13 @@ class InventoryNotifier
         array $data = [],
         ?string $excludeUserId = null,
     ): void {
+        // `users` is shared by every business: only people in the business that is
+        // acting are told. (With nobody signed in, e.g. a queued job, nothing narrows it.)
+        $members = TenantContext::viewer()?->accountMemberIds();
+
         $recipientIds = User::query()
             ->where('is_active', true)
+            ->when($members !== null, fn ($q) => $q->whereIn('id', $members))
             ->get(['id', 'role', 'full_access', 'permissions'])
             ->filter(fn (User $u) => $excludeUserId === null || $u->id !== $excludeUserId)
             ->filter(fn (User $u) => collect($permissions)

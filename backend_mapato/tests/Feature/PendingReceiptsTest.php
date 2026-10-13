@@ -21,12 +21,15 @@ class PendingReceiptsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $this->admin = $this->givenServices(User::factory()->create(['role' => 'admin', 'is_active' => true]), 'transport');
     }
 
     private function driver(string $name): string
     {
-        $user = User::factory()->create(['name' => $name, 'role' => 'driver', 'is_active' => true]);
+        // A driver belongs to the account of whoever created them (as the app does).
+        $user = User::factory()->create([
+            'name' => $name, 'role' => 'driver', 'is_active' => true, 'created_by' => $this->admin->id,
+        ]);
         $id = (string) Str::uuid();
         DB::table('drivers')->insert([
             'id' => $id, 'user_id' => $user->id, 'license_number' => 'LIC-' . Str::random(8),

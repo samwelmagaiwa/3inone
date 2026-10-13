@@ -2,11 +2,21 @@
 
 namespace App\Database;
 
+use App\Database\Concerns\CreatesTenantQueries;
 use Illuminate\Database\MySqlConnection;
 use PDOException;
 
 class MySqlConnection57 extends MySqlConnection
 {
+    // Per-business data isolation for the raw-SQL (Inventory) tables: see
+    // App\Support\Tenancy\TenantTables. Everything else behaves exactly as before.
+    use CreatesTenantQueries;
+
+    protected function getDefaultQueryGrammar()
+    {
+        return new TenantMySqlGrammar($this);
+    }
+
     /**
      * Get the number of active connections.
      * Override to work with MySQL 5.7 which doesn't have performance_schema.session_status

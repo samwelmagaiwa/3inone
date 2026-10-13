@@ -27,7 +27,9 @@ class InventoryDepotOperationsTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::factory()->create(['role' => 'admin']);
+        $this->admin = $this->actAsBusiness(
+            $this->givenServices(User::factory()->create(['role' => 'admin']), 'inventory')
+        );
 
         $this->productId = DB::table('inventory_products')->insertGetId([
             'name' => 'Test Soda 500ml',
@@ -301,8 +303,13 @@ class InventoryDepotOperationsTest extends TestCase
 
         $qtyBeforeApproval = DB::table('inventory_products')->find($this->productId)->quantity;
 
-        // The requester may not approve their own return, so a second admin decides.
-        $this->actingAs(User::factory()->create(['role' => 'admin']), 'sanctum')
+        // The requester may not approve their own return, so a second person in the same
+        // business decides: a manager the owner created.
+        $manager = $this->givenServices(
+            User::factory()->create(['role' => 'manager', 'created_by' => $this->admin->id]),
+            'inventory'
+        );
+        $this->actingAs($manager, 'sanctum')
             ->postJson("/api/inventory/returns/{$returnId}/decide", ['decision' => 'approved'])
             ->assertOk();
 

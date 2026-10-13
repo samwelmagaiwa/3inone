@@ -338,11 +338,17 @@ class AlertController extends Controller
 
     public function settings()
     {
-        // Stored values win; any setting that has no row yet reads as its default.
+        // Stored values win; any setting that has no row yet reads as its default (with the
+        // business's own name, contact and TIN where it has them).
+        $viewer = \App\Support\Tenancy\TenantContext::viewer();
+
         return response()->json([
             'data' => array_merge(
-                InventoryDefaults::SETTINGS,
+                InventoryDefaults::defaultsFor($viewer),
                 DB::table('inventory_settings')->pluck('value', 'key')->all(),
+                // What kind of business this is (retail, wholesale, mixed, depot). Read from the business,
+                // never stored with the settings; an unset one is a depot.
+                ['inventory_type' => \App\Models\Business::forUser($viewer)?->inventory_type ?: 'depot'],
             ),
         ]);
     }

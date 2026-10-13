@@ -22,8 +22,10 @@ class CustomersAndDefaultsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
-        $this->admin->services()->create(['service_type' => 'inventory']);
+        // A business owner given inventory: it gets its own settings and crate types.
+        $this->admin = $this->actAsBusiness(
+            $this->givenServices(User::factory()->create(['role' => 'admin', 'is_active' => true]), 'inventory')
+        );
     }
 
     private function api(string $method, string $uri, array $body = [])
@@ -147,7 +149,8 @@ class CustomersAndDefaultsTest extends TestCase
         DB::table('inventory_settings')->delete();
 
         $read = $this->api('GET', '/api/inventory/settings')->assertOk()->json('data');
-        $this->assertSame('Beverage Depot', $read['depot_name']);
+        // A depot with no stored name reads as the business it belongs to, not a platform placeholder.
+        $this->assertSame($this->admin->name, $read['depot_name']);
         $this->assertSame('10', $read['max_discount_percent']);
 
         $this->api('PUT', '/api/inventory/settings', ['depot_name' => 'Remagwe Depot', 'bogus_key' => 'x'])
@@ -190,8 +193,10 @@ class CustomersAndDefaultsTest extends TestCase
 
         $this->assertEqualsCanonicalizing(['Crate', 'Empty bottle'], DB::table('inventory_crate_types')->pluck('name')->all());
         $this->assertSame(2000.0, (float) DB::table('inventory_crate_types')->where('name', 'Crate')->value('deposit_value'));
+        // Everything the migration knew about. The settings added later (READ_TIME_DEFAULTS) are not rows a
+        // migration restores: with no row they read as their default, and seedFor() writes them.
         $this->assertEqualsCanonicalizing(
-            array_keys(InventoryDefaults::SETTINGS),
+            array_values(array_diff(array_keys(InventoryDefaults::SETTINGS), InventoryDefaults::READ_TIME_DEFAULTS)),
             DB::table('inventory_settings')->pluck('key')->all(),
         );
     }

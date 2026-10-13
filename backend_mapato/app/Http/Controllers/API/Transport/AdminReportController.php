@@ -15,37 +15,25 @@ use OpenApi\Attributes as OA;
 class AdminReportController extends Controller
 {
     /**
-     * Every query in this controller used to run unscoped across ALL
-     * admins' drivers/transactions -- one admin's revenue report showed
-     * every other admin's revenue, customer names/phones and live
-     * transaction feed too. These three helpers are the single place that
-     * restricts a query to "this admin's own drivers" (via
-     * driver.user.created_by, since transactions have no created_by of
-     * their own), bypassed entirely for super_admin -- matching the same
-     * pattern already fixed in AdminController.
+     * Transaction, Driver and Device carry the account scope themselves (see
+     * App\Models\Scopes\AccountScope): a signed-in admin or staff member only
+     * ever reaches their own account's rows, and super_admin sees everything.
+     * These helpers keep the call sites below readable; they add no filtering
+     * of their own, so there is exactly one place the rule lives.
      */
     private function scopedTransactions($admin)
     {
-        return Transaction::query()->when(
-            $admin && !$admin->isSuperAdmin(),
-            fn ($q) => $q->whereHas('driver.user', fn ($dq) => $dq->where('created_by', $admin->id))
-        );
+        return Transaction::query();
     }
 
     private function scopedDrivers($admin)
     {
-        return Driver::query()->when(
-            $admin && !$admin->isSuperAdmin(),
-            fn ($q) => $q->whereHas('user', fn ($uq) => $uq->where('created_by', $admin->id))
-        );
+        return Driver::query();
     }
 
     private function scopedDevices($admin)
     {
-        return Device::query()->when(
-            $admin && !$admin->isSuperAdmin(),
-            fn ($q) => $q->whereHas('driver.user', fn ($uq) => $uq->where('created_by', $admin->id))
-        );
+        return Device::query();
     }
 
     /** Percent change from $previous to $current, 0 when there's no baseline. */

@@ -17,7 +17,7 @@ class MaintenanceRequestResource extends JsonResource
             'description' => $this->description,
             'status' => $this->status,
             'status_display' => $this->formatStatus($this->status),
-            'photo_url' => $this->photo_url ? asset('storage/' . $this->photo_url) : null,
+            'photo_url' => \App\Support\PrivateFile::url($this->photo_url),
             'resolved_at' => $this->resolved_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
             'property' => [
@@ -58,53 +58,5 @@ class MaintenanceRequestResource extends JsonResource
             'cancelled' => 'Imeahirishwa',
             default => $s,
         };
-    }
-}
-
-class WorkOrderResource extends JsonResource
-{
-    public function toArray(Request $request): array
-    {
-        return [
-            'id' => $this->id,
-            'title' => $this->title,
-            'instructions' => $this->instructions,
-            'estimated_cost' => $this->estimated_cost,
-            'actual_cost' => $this->actual_cost,
-            'status' => $this->status,
-            'status_display' => $this->formatStatus($this->status),
-            'scheduled_date' => $this->scheduled_date?->toDateString(),
-            'completion_date' => $this->completion_date?->toDateString(),
-            'vendor' => new VendorResource($this->whenLoaded('vendor')),
-        ];
-    }
-
-    private function formatStatus(string $s): string
-    {
-        return match ($s) {
-            'draft' => 'Rasimu',
-            'scheduled' => 'Imepangwa',
-            'in_progress' => 'Inafanyiwa Kazi',
-            'completed' => 'Imeisha',
-            'cancelled' => 'Imeahirishwa',
-            default => $s,
-        };
-    }
-}
-
-class VendorResource extends JsonResource
-{
-    public function toArray(Request $request): array
-    {
-        return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'business_name' => $this->business_name,
-            'phone' => $this->phone,
-            'email' => $this->email,
-            'specialty' => $this->specialty,
-            'address' => $this->address,
-            'is_active' => $this->is_active,
-        ];
     }
 }

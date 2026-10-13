@@ -5,10 +5,12 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterDriverRequest;
+use App\Models\Business;
 use App\Models\User;
 use App\Models\Driver;
 use App\Models\Device;
 use App\Helpers\ResponseHelper;
+use App\Services\Sms\SmsCodes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -124,6 +126,29 @@ class AuthController extends Controller
                 return ResponseHelper::error('Invalid credentials', 401);
             }
 
+            // A business that registered itself cannot sign in until a super admin
+            // approves it. Say so plainly rather than "account is inactive" -- the
+            // password was correct, so this is not an enumeration risk.
+            if (!$user->is_active) {
+                $registration = $user->registration;
+                if ($registration && $registration->status === \App\Models\BusinessRegistration::PENDING) {
+                    return ResponseHelper::error(
+                        'Usajili wako unasubiri idhini ya super admin. Utaweza kuingia baada ya kukubaliwa. / '
+                        . 'Your registration is awaiting super admin approval. You can sign in once it is approved.',
+                        403,
+                        ['code' => 'registration_pending']
+                    );
+                }
+                if ($registration && $registration->status === \App\Models\BusinessRegistration::REJECTED) {
+                    return ResponseHelper::error(
+                        'Usajili wako haukukubaliwa. Sababu: ' . ($registration->rejection_reason ?: '-') . ' / '
+                        . 'Your registration was not approved. Reason: ' . ($registration->rejection_reason ?: '-'),
+                        403,
+                        ['code' => 'registration_rejected']
+                    );
+                }
+            }
+
             // Check if user is active
             if (!$user->is_active) {
                 Log::warning('Login failed - Account inactive', [
@@ -135,6 +160,36 @@ class AuthController extends Controller
                     'timestamp' => now()->toISOString(),
                 ]);
                 return ResponseHelper::error('Account is inactive', 403);
+            }
+
+            // Everyone working for a business whose owner has been deactivated is shut out with
+            // them. Nothing is deleted: re-activating the owner opens it all again.
+            if (!$user->accountIsActive()) {
+                Log::warning('Login failed - Business suspended', [
+                    'user_id' => $user->id,
+                    'email' => $request->email,
+                    'ip_address' => $request->ip(),
+                    'reason' => 'business_suspended',
+                ]);
+                return ResponseHelper::error(
+                    'Biashara yako imesimamishwa. Wasiliana na msimamizi wako. / Your business has been suspended. Contact your administrator.',
+                    403,
+                    ['code' => 'business_suspended']
+                );
+            }
+
+            // A business that has not paid (past its grace period, with billing enforced) cannot
+            // sign in. Its drivers and tenants are its customers and are not held to this.
+            if (!$user->seesAllAccounts() && !$user->isPortalUser()) {
+                $business = Business::forUser($user);
+                if ($business !== null && $business->blocksAccess()) {
+                    return ResponseHelper::error(
+                        'Usajili wa biashara yako umeisha. Wasiliana na msimamizi ili kuuhuisha. / '
+                        . 'Your business subscription has expired. Contact your administrator to renew it.',
+                        402,
+                        ['code' => 'subscription_expired', 'plan' => $business->plan, 'valid_until' => $business->valid_until?->toIso8601String()]
+                    );
+                }
             }
 
             // Verify phone number matches (comparing last 9 digits for maximum compatibility)
@@ -171,7 +226,7 @@ class AuthController extends Controller
                 ]);
             }
 
-            // Other devices stay signed in; only sessions beyond the cap are dropped.
+            // Other devices stay signed in. (Only if a cap was configured are sessions beyond it dropped.)
             $tokensRevoked = $this->makeRoomForNewSession($user);
 
             $token = $user->createToken('auth_token')->plainTextToken;
@@ -301,41 +356,35 @@ class AuthController extends Controller
     }
 
     /**
-     * Step 1 of password recovery -- verify the account by the SAME two
-     * factors login itself uses (email + registered phone number), then
-     * issue a short-lived, single-use reset token.
+     * Step 1 of password recovery. Whoever asks must know the account's email AND the
+     * phone number on it; a one-time code is then TEXTED to that phone. Nothing that proves
+     * identity is ever returned in the response: the code reaches only whoever really holds
+     * the phone.
      *
-     * Deliberately returns the identical generic error whether the email
-     * doesn't exist, the account is inactive, or the phone doesn't match --
-     * never reveals which one failed, so this can't be used to enumerate
-     * registered emails or phone numbers. Rate-limited via the `throttle`
-     * middleware on the route for the same reason.
+     * The answer is identical whether or not the details matched, so this cannot be used to
+     * find out which emails or numbers are registered. Rate-limited on the route.
      */
     #[OA\Post(
         path: '/auth/forgot-password',
-        summary: 'Forgot password',
+        summary: 'Forgot password: text a one-time code to the registered phone',
         tags: ['Auth'],
-                requestBody: new OA\RequestBody(
+        requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-            required: ['email', 'phone_number'],
+                required: ['email', 'phone_number'],
                 properties: [
-                new OA\Property(property: 'email', type: 'string', format: 'email'),
-                new OA\Property(property: 'phone_number', type: 'string'),
+                    new OA\Property(property: 'email', type: 'string', format: 'email'),
+                    new OA\Property(property: 'phone_number', type: 'string'),
                 ],
             ),
         ),
-responses: [new OA\Response(response: 200, description: 'Success')],
+        responses: [
+            new OA\Response(response: 200, description: 'A code was sent if the details are correct'),
+            new OA\Response(response: 503, description: 'Text messages are not available'),
+        ],
     )]
-    public function forgotPassword(Request $request)
+    public function forgotPassword(Request $request, SmsCodes $codes)
     {
-        Log::info('Password reset verification started', [
-            'email' => $request->email,
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'timestamp' => now()->toISOString(),
-        ]);
-
         try {
             $request->validate(
                 [
@@ -347,146 +396,106 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'phone_number.regex' => 'Namba ya simu si sahihi. Tumia namba ya ndani (mfano: 0743519100) au ya kimataifa (mfano: +255743519100).',
                 ]
             );
-
-            $user = User::where('email', $request->email)->first();
-            $genericError = 'Barua pepe na namba ya simu havikubaliani na taarifa tulizonazo.';
-
-            if (!$user || !$user->is_active || !$this->phoneMatches($user, $request->phone_number)) {
-                Log::warning('Password reset verification failed', [
-                    'email' => $request->email,
-                    'ip_address' => $request->ip(),
-                    'reason' => !$user ? 'user_not_found' : (!$user->is_active ? 'account_inactive' : 'phone_mismatch'),
-                    'timestamp' => now()->toISOString(),
-                ]);
-                return ResponseHelper::error($genericError, 422);
-            }
-
-            // Clear out any earlier unused tokens for this user so only the
-            // token just issued is valid -- a stale one from an abandoned
-            // reset attempt can't be replayed later.
-            DB::table('password_reset_codes')->where('user_id', $user->id)->delete();
-
-            $rawToken = Str::random(64);
-            DB::table('password_reset_codes')->insert([
-                'user_id' => $user->id,
-                'token_hash' => hash('sha256', $rawToken),
-                'expires_at' => now()->addMinutes(10),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            Log::info('Password reset token issued', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'ip_address' => $request->ip(),
-                'timestamp' => now()->toISOString(),
-            ]);
-
-            return ResponseHelper::success([
-                'reset_token' => $rawToken,
-                'expires_in_minutes' => 10,
-            ], 'Identity verified. Choose a new password within 10 minutes.');
         } catch (ValidationException $e) {
             return ResponseHelper::error('Validation failed', 422, $e->errors());
-        } catch (\Exception $e) {
-            Log::error('Password reset verification - system error', [
+        }
+
+        // If no code can be texted at all, say so for everybody: that tells an outsider nothing
+        // about any account, and it stops a reset from "succeeding" with a code nobody receives.
+        if (!$codes->available()) {
+            Log::error('Password reset unavailable: no SMS provider is switched on.');
+
+            return ResponseHelper::error(
+                'Huduma ya ujumbe mfupi haipatikani sasa. Wasiliana na msimamizi wako akubadilishie nywila. / '
+                . 'Text messages are not available right now. Ask your administrator to reset your password.',
+                503,
+                ['code' => 'sms_unavailable']
+            );
+        }
+
+        $user = User::where('email', $request->email)->first();
+
+        if ($user && $user->is_active && $user->accountIsActive() && $this->phoneMatches($user, $request->phone_number)) {
+            $result = $codes->issue(
+                $user,
+                SmsCodes::PASSWORD_RESET,
+                'Nambari yako ya kubadili nywila ni :code. Inatumika kwa dakika 10. Usimpe mtu yeyote.'
+            );
+            Log::info('Password reset code requested', ['user_id' => $user->id, 'result' => $result, 'ip_address' => $request->ip()]);
+        } else {
+            Log::warning('Password reset requested with details that do not match an active account', [
                 'email' => $request->email,
                 'ip_address' => $request->ip(),
-                'error_message' => $e->getMessage(),
-                'timestamp' => now()->toISOString(),
             ]);
-            return ResponseHelper::error('Failed to process password reset request', 500);
         }
+
+        return ResponseHelper::success(
+            ['code_sent' => true, 'expires_in_minutes' => 10],
+            'Kama taarifa ni sahihi, nambari ya kuthibitisha imetumwa kwa simu yako. / '
+            . 'If the details are correct, a verification code has been sent to your phone.'
+        );
     }
 
     /**
-     * Step 2 -- spend the token issued by forgotPassword() to actually set
-     * a new password. Every existing session is revoked afterwards so a
-     * device that had the old, possibly-compromised password stays logged
-     * out until it authenticates with the new one.
+     * Step 2: the code texted in step 1 plus the new password. Five wrong tries, or ten
+     * minutes, and the code is dead; a right one is used up. Every device is signed out.
      */
     #[OA\Post(
         path: '/auth/reset-password',
-        summary: 'Reset password',
+        summary: 'Reset password with the code that was texted',
         tags: ['Auth'],
-                requestBody: new OA\RequestBody(
+        requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-            required: ['email', 'reset_token', 'password'],
+                required: ['email', 'code', 'password', 'password_confirmation'],
                 properties: [
-                new OA\Property(property: 'email', type: 'string', format: 'email'),
-                new OA\Property(property: 'reset_token', type: 'string'),
-                new OA\Property(property: 'password', type: 'string'),
+                    new OA\Property(property: 'email', type: 'string', format: 'email'),
+                    new OA\Property(property: 'code', type: 'string', example: '123456'),
+                    new OA\Property(property: 'password', type: 'string'),
+                    new OA\Property(property: 'password_confirmation', type: 'string'),
                 ],
             ),
         ),
-responses: [new OA\Response(response: 200, description: 'Success')],
+        responses: [new OA\Response(response: 200, description: 'Password changed')],
     )]
-    public function resetPassword(Request $request)
+    public function resetPassword(Request $request, SmsCodes $codes)
     {
         try {
             $request->validate([
                 'email' => 'required|email',
-                'reset_token' => 'required|string',
+                'code' => ['required', 'digits:6'],
                 'password' => 'required|string|min:8|confirmed',
             ]);
-
-            $user = User::where('email', $request->email)->first();
-            $genericError = 'Muda wa kubadili nywila umekwisha au ombi si sahihi. Anza upya.';
-
-            if (!$user) {
-                return ResponseHelper::error($genericError, 422);
-            }
-
-            $tokenHash = hash('sha256', $request->reset_token);
-            $tokenRow = DB::table('password_reset_codes')
-                ->where('user_id', $user->id)
-                ->where('token_hash', $tokenHash)
-                ->whereNull('used_at')
-                ->where('expires_at', '>', now())
-                ->orderByDesc('id')
-                ->first();
-
-            if (!$tokenRow) {
-                Log::warning('Password reset failed - invalid or expired token', [
-                    'user_id' => $user->id,
-                    'email' => $request->email,
-                    'ip_address' => $request->ip(),
-                    'timestamp' => now()->toISOString(),
-                ]);
-                return ResponseHelper::error($genericError, 422);
-            }
-
-            $user->update(['password' => Hash::make($request->password)]);
-
-            DB::table('password_reset_codes')->where('id', $tokenRow->id)->update([
-                'used_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            // Force every device to sign in again with the new password.
-            $user->tokens()->delete();
-
-            Log::info('Password reset completed', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'ip_address' => $request->ip(),
-                'timestamp' => now()->toISOString(),
-            ]);
-
-            return ResponseHelper::success(null, 'Password reset successfully');
         } catch (ValidationException $e) {
             return ResponseHelper::error('Validation failed', 422, $e->errors());
-        } catch (\Exception $e) {
-            Log::error('Password reset - system error', [
-                'email' => $request->email,
-                'ip_address' => $request->ip(),
-                'error_message' => $e->getMessage(),
-                'timestamp' => now()->toISOString(),
-            ]);
-            return ResponseHelper::error('Failed to reset password', 500);
         }
+
+        $generic = 'Nambari si sahihi au imeisha muda. Omba nambari mpya. / The code is wrong or has expired. Request a new one.';
+
+        $user = User::where('email', $request->email)->first();
+
+        if (
+            !$user
+            || !$user->is_active
+            || !$user->accountIsActive()
+            || !$codes->verify($user, SmsCodes::PASSWORD_RESET, (string) $request->code)
+        ) {
+            Log::warning('Password reset failed: bad email or code', ['email' => $request->email, 'ip_address' => $request->ip()]);
+
+            return ResponseHelper::error($generic, 422);
+        }
+
+        // They chose this one themselves, so it is no longer a temporary password.
+        $user->forceFill(['password' => Hash::make($request->password), 'must_change_password' => false])->save();
+
+        // Force every device to sign in again with the new password.
+        $user->tokens()->delete();
+
+        Log::info('Password reset completed', ['user_id' => $user->id, 'ip_address' => $request->ip()]);
+
+        return ResponseHelper::success(null, 'Password reset successfully');
     }
+
 
     /**
      * Same last-9-digit comparison used everywhere a login-time phone check
@@ -728,7 +737,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             }
 
             // Store new avatar on public disk
-            $path = $file->storeAs('avatars', $user->id.'_'.time().'.'.$ext, 'public');
+            $path = $file->storeAs('avatars', $user->id.'_'.Str::random(16).'.'.$ext, 'public'); // random, not the time: the name cannot be guessed
             $publicUrl = '/storage/'.$path;
 
             // Persist path on user (requires nullable column `avatar_url`)
@@ -773,7 +782,12 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             })
             ->delete();
 
-        $max = max((int) config('sanctum.max_sessions', 5), 1);
+        // No cap unless one was configured: signing in somewhere new never signs anyone out.
+        $max = (int) config('sanctum.max_sessions', 0);
+        if ($max <= 0) {
+            return 0;
+        }
+
         $live = $user->tokens()->whereNull('expires_at')->orderBy('id')->pluck('id');
 
         $excess = $live->count() - ($max - 1);   // leave room for the new one
@@ -801,11 +815,13 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         try {
             $user = $request->user();
 
-            // Retire the current token after a short grace period instead of deleting
-            // it: if the response is lost on a flaky mobile connection the app still
-            // holds the old token, which must keep working long enough to retry.
+            // Retire the current token after a grace period instead of deleting it: if
+            // the response is lost on a flaky mobile connection the app still holds the
+            // old token, which must keep working long enough to retry -- even if the phone
+            // is offline for days. Only THIS device's token is touched; the user's other
+            // devices are unaffected.
             $request->user()->currentAccessToken()->forceFill([
-                'expires_at' => now()->addMinutes(10),
+                'expires_at' => now()->addMinutes((int) config('sanctum.refresh_grace_minutes', 60 * 24 * 7)),
             ])->save();
 
             $token = $user->createToken('auth_token')->plainTextToken;
@@ -852,6 +868,14 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             $user->load('services'); // reload with the newly added rows
         }
 
+        // What the app lists is what the API will actually serve: the services the
+        // user was given AND the account head above them still has. A staff member
+        // whose business lost a service must not be shown it just to get a 403.
+        $effective = $user->effectiveServiceTypes();
+        $user->setRelation('services', $user->services->filter(
+            fn ($s) => in_array($s->service_type, $effective, true)
+        )->values());
+
         switch ($user->role) {
             case 'driver':
                 $user->load('driver', 'assignedDevice');
@@ -867,6 +891,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         // Append resolved permission set as a virtual attribute so the app
         // knows the full effective access without calling a separate endpoint.
         $user->setAttribute('effective_permissions', $user->effectiveInventoryPermissions());
+
+        // The business this person works for (name, address, TIN, logo) and its plan, so the app
+        // can show whose business it is and warn before the paid-until date. Null for a super admin.
+        $user->setAttribute('business', Business::forUser($user)?->toApiArray());
 
         return $user;
     }
@@ -914,7 +942,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         $allowed = $user->full_access
             ? ['inventory', 'rental', 'transport']
-            : $user->allowedServiceTypes();
+            : $user->effectiveServiceTypes();
 
         return response()->json([
             'services'    => $allowed,

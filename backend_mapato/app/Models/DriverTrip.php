@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedThroughDriver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DriverTrip extends Model
 {
-    use HasFactory;
+    use HasFactory, ScopedThroughDriver;
 
     protected $fillable = [
         'driver_id',

@@ -47,20 +47,61 @@ return [
     |
     */
 
-    'expiration' => (int) env('SANCTUM_TOKEN_EXPIRATION_MINUTES', 60 * 24 * 30),
+    // No fixed lifetime: a device stays signed in for as long as it is used (see
+    // App\Support\SessionPolicy). Set minutes here only to bring back a hard limit, which
+    // signs out everyone that long after they signed in, however busy they are.
+    'expiration' => env('SANCTUM_TOKEN_EXPIRATION_MINUTES') ? (int) env('SANCTUM_TOKEN_EXPIRATION_MINUTES') : null,
 
     /*
     |--------------------------------------------------------------------------
     | Concurrent Sessions
     |--------------------------------------------------------------------------
     |
-    | How many devices one account may be signed in on at once. Signing in on
-    | another device no longer ends the others; once an account is at this
-    | limit, the OLDEST session is the one that gets signed out.
+    | How many devices one account may be signed in on at once. 0 (the default) means
+    | no limit: signing in on another device never ends any other. Set a number only
+    | if you want a cap, in which case the OLDEST session is the one signed out.
     |
     */
 
-    'max_sessions' => (int) env('SANCTUM_MAX_SESSIONS', 5),
+    'max_sessions' => (int) env('SANCTUM_MAX_SESSIONS', 0),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Idle Limit
+    |--------------------------------------------------------------------------
+    |
+    | Days a device may go completely unused before its session is dropped. Measured
+    | from its last use, so a device in regular use never reaches it. 0 = never.
+    |
+    */
+
+    'idle_days' => (int) env('SANCTUM_IDLE_DAYS', 365),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Token Renewal Grace
+    |--------------------------------------------------------------------------
+    |
+    | When the app swaps its token for a fresh one, the old token keeps working for
+    | this many minutes (7 days by default): if the reply is lost on a bad connection
+    | and the phone is offline for a while, it must not wake up signed out.
+    |
+    */
+
+    'refresh_grace_minutes' => (int) env('SANCTUM_REFRESH_GRACE_MINUTES', 60 * 24 * 7),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Password Change
+    |--------------------------------------------------------------------------
+    |
+    | Changing the password keeps the device it was changed on signed in. With true
+    | (the default) the person's OTHER devices are signed out, which is the point of
+    | changing a password you think someone else knows; false leaves them signed in.
+    |
+    */
+
+    'revoke_other_devices_on_password_change' => (bool) env('SANCTUM_REVOKE_OTHERS_ON_PASSWORD_CHANGE', true),
 
     /*
     |--------------------------------------------------------------------------

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\Transport;
 use App\Http\Controllers\Controller;
 use App\Models\Driver;
 use App\Helpers\ResponseHelper;
+use App\Rules\PerBusiness;
 use Illuminate\Http\Request;
 
 class DriverController extends Controller
@@ -31,7 +32,10 @@ class DriverController extends Controller
     {
         try {
             $request->validate([
-                'license_number' => 'sometimes|string|unique:drivers,license_number,' . $request->user()->driver->id,
+                // Unique inside this driver's business only.
+                'license_number' => ['sometimes', 'string', PerBusiness::unique(
+                    'drivers', 'license_number', $request->user()->driver->owner_id, $request->user()->driver->id
+                )],
                 'license_expiry' => 'sometimes|date|after:today',
                 'address' => 'sometimes|string|max:255',
                 'emergency_contact' => 'sometimes|string|max:20',

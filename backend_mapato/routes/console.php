@@ -23,3 +23,9 @@ Schedule::command('rental:mark-overdue')
 // Expired API tokens are already rejected; this just removes the dead rows.
 Schedule::command('sanctum:prune-expired --hours=24')
     ->daily();
+
+// Devices nobody has used for a very long time (SANCTUM_IDLE_DAYS, a year by default) are
+// already refused; this removes their rows. A device in regular use is never touched.
+Schedule::call(fn () => \App\Support\SessionPolicy::pruneIdle())
+    ->name('prune-idle-device-sessions')
+    ->daily();

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\Inventory;
 
 use App\Services\Inventory\AuditTrail;
+use App\Services\Inventory\ProductUnits;
 use App\Services\Inventory\SkuGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,7 @@ class ProductController extends Controller
     public function __construct(
         private readonly SkuGenerator $skuGenerator,
         private readonly AuditTrail   $audit,
+        private readonly ProductUnits $units,
     ) {
     }
 
@@ -30,6 +32,8 @@ class ProductController extends Controller
             new OA\Parameter(name: 'low_stock', in: 'query', schema: new OA\Schema(type: 'boolean')),
             new OA\Parameter(name: 'category_id', in: 'query', schema: new OA\Schema(type: 'integer')),
             new OA\Parameter(name: 'brand_id', in: 'query', schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'family_id', in: 'query', description: 'Every size / colour of one product', schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'with_units', in: 'query', description: 'Include each product\'s selling units and prices', schema: new OA\Schema(type: 'boolean')),
         ],
         responses: [
             new OA\Response(
@@ -102,10 +106,38 @@ class ProductController extends Controller
         if ($brandId = $request->query('brand_id')) {
             $query->where('p.brand_id', (int) $brandId);
         }
+        // Every size / colour of one product (the family is the id of its first member).
+        if ($family = $request->query('family_id')) {
+            $query->where(fn ($w) => $w->where('p.family_id', (int) $family)->orWhere('p.id', (int) $family));
+        }
 
         $products = $query->orderByDesc('p.id')->paginate(20);
+        $items = $products->items();
+
+        // `with_units=1`: each product comes with its selling units and their prices, so the till can offer
+        // "crate / bottle" or "kg / g" without asking for every product's units one by one.
+        if ($request->boolean('with_units') && $items !== []) {
+            $units = DB::table('inventory_product_units')
+                ->whereIn('product_id', array_map(fn ($p) => $p->id, $items))
+                ->orderByDesc('is_base')->orderBy('factor')
+                ->get()
+                ->groupBy('product_id');
+            $prices = DB::table('inventory_product_prices')
+                ->whereIn('product_unit_id', $units->flatten(1)->pluck('id'))
+                ->get()
+                ->groupBy('product_unit_id');
+
+            foreach ($items as $product) {
+                $product->units = ($units[$product->id] ?? collect())->map(function ($unit) use ($prices) {
+                    $unit->prices = array_values(($prices[$unit->id] ?? collect())->all());
+
+                    return $unit;
+                })->values()->all();
+            }
+        }
+
         return response()->json([
-            'data' => $products->items(),
+            'data' => $items,
             'meta' => [
                 'current_page' => $products->currentPage(),
                 'last_page' => $products->lastPage(),
@@ -157,7 +189,7 @@ class ProductController extends Controller
     )]
     public function store(Request $request)
     {
-        $data = $request->validate([
+        $data = $request->validate(array_merge([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             // Leave blank to have the depot generate one automatically.
@@ -170,82 +202,350 @@ class ProductController extends Controller
             'unit' => 'nullable|string|max:32',
             // How many of this unit the cost/selling price cover, e.g. "per 5 KG".
             'unit_factor' => 'nullable|integer|min:1',
-            'quantity' => 'required|integer|min:0',
+            // Whole numbers only, always: stock is counted in the smallest unit (pieces, grams, millilitres).
+            'quantity' => 'required_without:variants|nullable|integer|min:0',
             'min_stock' => 'required|integer|min:0',
             'status' => 'required|in:active,inactive',
             'barcode' => 'nullable|string|max:255',
             'price_tier' => 'nullable|in:retail,wholesale',
-        ]);
+        ], $this->extraRules()));
 
-        $created = DB::transaction(function () use ($data, $request) {
-            $sku = $data['sku'] ?? $this->generateSku($data);
-            $unitFactor = $data['unit_factor'] ?? 1;
-            $id = DB::table('inventory_products')->insertGetId([
-                'name' => $data['name'],
-                'description' => $data['description'] ?? null,
-                'sku' => $sku,
-                'category' => $data['category'] ?? null,
-                'category_id' => $data['category_id'] ?? null,
-                'brand_id' => $data['brand_id'] ?? null,
-                'cost_price' => $data['cost_price'],
-                'selling_price' => $data['selling_price'],
-                'unit' => $data['unit'] ?? 'pcs',
-                'unit_factor' => $unitFactor,
-                'quantity' => $data['quantity'],
-                'min_stock' => $data['min_stock'],
-                'status' => $data['status'],
-                'barcode' => $data['barcode'] ?? null,
-                'price_tier' => $data['price_tier'] ?? 'retail',
-                'created_by' => optional($request->user())->id,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        $this->assertUnitNamesAreFree($data['unit'] ?? null, $data['units'] ?? [], $data['measure'] ?? 'count');
 
-            // Every product needs a base selling unit so it can be priced and sold.
-            $unitId = DB::table('inventory_product_units')->insertGetId([
-                'product_id' => $id,
-                'name' => $data['unit'] ?? 'pcs',
-                'factor' => $unitFactor,
-                'is_base' => true,
-                'barcode' => $data['barcode'] ?? null,
-                'status' => 'active',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-            $priceTier = $data['price_tier'] ?? 'retail';
-            DB::table('inventory_product_prices')->insert([
-                'product_unit_id' => $unitId,
-                'tier' => $priceTier,
-                'customer_id' => null,
-                'price' => $data['selling_price'],
-                'effective_from' => now()->toDateString(),
-                'created_by' => optional($request->user())->id,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-            DB::table('inventory_price_changes')->insert([
-                'product_unit_id' => $unitId,
-                'tier' => $priceTier,
-                'customer_id' => null,
-                'old_price' => null,
-                'new_price' => $data['selling_price'],
-                'reason' => 'Product created',
-                'changed_by' => optional($request->user())->id,
-                'created_at' => now(),
-            ]);
+        $userId = optional($request->user())->id;
+        $created = DB::transaction(function () use ($data, $userId) {
+            $baseSku = $data['sku'] ?? $this->generateSku($data);
 
-            return ['id' => $id, 'sku' => $sku];
+            if (empty($data['variants'])) {
+                $row = $this->makeProduct($data, $baseSku, $userId);
+
+                return ['id' => $row['id'], 'sku' => $row['sku'], 'ids' => [$row['id']]];
+            }
+
+            // Sizes / colours: each one is its own stock item (own SKU, barcode, quantity), all grouped
+            // by family_id (the id of the first). Every one carries the same selling units.
+            $ids = [];
+            foreach ($data['variants'] as $variant) {
+                $row = $this->makeProduct(
+                    $this->variantRow($data, $variant),
+                    $this->variantSku($baseSku, $variant),
+                    $userId,
+                );
+                $ids[] = $row['id'];
+            }
+            DB::table('inventory_products')->whereIn('id', $ids)->update(['family_id' => $ids[0]]);
+
+            return ['id' => $ids[0], 'sku' => $baseSku, 'ids' => $ids];
         });
 
         $this->audit->record($request, 'product', (int) $created['id'], 'created', null, [
             'name' => $data['name'],
             'sku'  => $created['sku'],
+            'variants' => count($created['ids']) > 1 ? count($created['ids']) : null,
         ], $data['name']);
 
         return response()->json([
             'message' => 'Product created',
-            'data' => ['id' => (int) $created['id'], 'sku' => $created['sku']],
+            'data' => ['id' => (int) $created['id'], 'sku' => $created['sku'], 'ids' => array_map('intval', $created['ids'])],
         ], 201);
+    }
+
+    /** The rules for everything beyond the basics: VAT, kind of goods, selling units and variants. */
+    private function extraRules(): array
+    {
+        return [
+            // This product's VAT rate; leave out to use the business's default (0 unless it set one).
+            'tax_percent' => 'nullable|numeric|min:0|max:100',
+            'measure' => 'nullable|in:count,weight,volume',
+            'variant_label' => 'nullable|string|max:100',
+            // The product's own unit's price at the OTHER level: `selling_price` is stored at the product's
+            // price_tier (retail or wholesale); this is the same unit's price at the one that is left.
+            'other_price' => 'nullable|numeric|min:0',
+
+            // Extra ways to sell it, each holding a whole number of base units (a crate of 24, a kg of 1,000 g).
+            'units' => 'nullable|array|max:10',
+            'units.*.name' => 'required|string|max:32|distinct',
+            'units.*.factor' => 'required|integer|min:1',
+            'units.*.barcode' => 'nullable|string|max:255',
+            'units.*.retail_price' => 'nullable|numeric|min:0',
+            'units.*.wholesale_price' => 'nullable|numeric|min:0',
+
+            // Sizes / colours, created together as separate stock.
+            'variants' => 'nullable|array|max:100',
+            'variants.*.label' => 'required|string|max:100|distinct',
+            'variants.*.sku' => 'nullable|string|max:255|distinct|unique:inventory_products,sku',
+            'variants.*.barcode' => 'nullable|string|max:255',
+            'variants.*.quantity' => 'nullable|integer|min:0',
+            'variants.*.min_stock' => 'nullable|integer|min:0',
+            'variants.*.cost_price' => 'nullable|numeric|min:0',
+            'variants.*.selling_price' => 'nullable|numeric|min:0',
+        ];
+    }
+
+    /** The base unit's name: what was typed, else grams / millilitres for weighed goods, else pieces. */
+    private function baseUnitName(?string $unit, string $measure): string
+    {
+        return $unit ?: (ProductUnits::MEASURES[$measure]['base'] ?? 'pcs');
+    }
+
+    /** A selling unit may not reuse the base unit's name (one product, one unit of each name). */
+    private function assertUnitNamesAreFree(?string $unit, array $units, string $measure): void
+    {
+        $base = mb_strtolower($this->baseUnitName($unit, $measure));
+        foreach ($units as $i => $extra) {
+            if (mb_strtolower((string) $extra['name']) === $base) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    "units.{$i}.name" => ["\"{$extra['name']}\" is already this product's own unit."],
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Insert one product with its base selling unit, the price that unit starts with, the change-log row,
+     * and any extra selling units. Call inside a transaction.
+     *
+     * @return array{id: int, sku: string}
+     */
+    private function makeProduct(array $p, string $sku, int|string|null $userId): array
+    {
+        $extraUnits = $p['units'] ?? [];
+        $measure = $p['measure'] ?? 'count';
+        $unitName = $this->baseUnitName($p['unit'] ?? null, $measure);
+        $unitFactor = $p['unit_factor'] ?? 1;
+        $tier = $p['price_tier'] ?? 'retail';
+
+        $id = DB::table('inventory_products')->insertGetId([
+            'name' => $p['name'],
+            'description' => $p['description'] ?? null,
+            'sku' => $sku,
+            'category' => $p['category'] ?? null,
+            'category_id' => $p['category_id'] ?? null,
+            'brand_id' => $p['brand_id'] ?? null,
+            'cost_price' => $p['cost_price'],
+            'selling_price' => $p['selling_price'],
+            'unit' => $unitName,
+            'unit_factor' => $unitFactor,
+            'quantity' => $p['quantity'] ?? 0,
+            'min_stock' => $p['min_stock'],
+            'status' => $p['status'],
+            'barcode' => $p['barcode'] ?? null,
+            'price_tier' => $tier,
+            'tax_percent' => $p['tax_percent'] ?? null,
+            'variant_label' => $p['variant_label'] ?? null,
+            'measure' => $measure,
+            'created_by' => $userId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Every product needs a base selling unit so it can be priced and sold.
+        $unitId = DB::table('inventory_product_units')->insertGetId([
+            'product_id' => $id,
+            'name' => $unitName,
+            'factor' => $unitFactor,
+            'is_base' => true,
+            'barcode' => $p['barcode'] ?? null,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('inventory_product_prices')->insert([
+            'product_unit_id' => $unitId,
+            'tier' => $tier,
+            'customer_id' => null,
+            'price' => $p['selling_price'],
+            'effective_from' => now()->toDateString(),
+            'created_by' => $userId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('inventory_price_changes')->insert([
+            'product_unit_id' => $unitId,
+            'tier' => $tier,
+            'customer_id' => null,
+            'old_price' => null,
+            'new_price' => $p['selling_price'],
+            'reason' => 'Product created',
+            'changed_by' => $userId,
+            'created_at' => now(),
+        ]);
+
+        if (isset($p['other_price'])) {
+            $this->units->writePrice($unitId, $tier === 'wholesale' ? 'retail' : 'wholesale', null, (float) $p['other_price'], 'Product created', $userId);
+        }
+
+        foreach ($extraUnits as $extra) {
+            $this->units->add($id, $extra, $userId, 'Product created');
+        }
+
+        return ['id' => (int) $id, 'sku' => $sku];
+    }
+
+    /** One variant's product row: the parent's details, with the variant's own name, stock and (optional) prices. */
+    private function variantRow(array $parent, array $variant): array
+    {
+        return array_merge($parent, [
+            'name' => $parent['name'] . ' — ' . trim($variant['label']),
+            'variant_label' => trim($variant['label']),
+            'barcode' => $variant['barcode'] ?? null,
+            'quantity' => $variant['quantity'] ?? 0,
+            'min_stock' => $variant['min_stock'] ?? $parent['min_stock'],
+            'cost_price' => $variant['cost_price'] ?? $parent['cost_price'],
+            'selling_price' => $variant['selling_price'] ?? $parent['selling_price'],
+            'units' => $parent['units'] ?? [],
+        ]);
+    }
+
+    /** "TSHIRT" + "M / Red" -> "TSHIRT-M-RED" (or the SKU the user typed), made unique within the business. */
+    private function variantSku(string $baseSku, array $variant): string
+    {
+        if (! empty($variant['sku'])) {
+            return $variant['sku'];
+        }
+
+        $suffix = strtoupper(trim(preg_replace('/[^A-Za-z0-9]+/', '-', $variant['label']) ?? '', '-')) ?: 'V';
+        $sku = $baseSku . '-' . substr($suffix, 0, 24);
+        $candidate = $sku;
+        for ($n = 2; DB::table('inventory_products')->where('sku', $candidate)->exists(); $n++) {
+            $candidate = $sku . '-' . $n;
+        }
+
+        return $candidate;
+    }
+
+    /**
+     * POST /inventory/products/{id}/variants
+     *
+     * Add more sizes / colours to an existing product. Each one is a new stock item that copies the
+     * product's details, prices and selling units, with its own label, SKU, barcode and quantity. The
+     * product joins (or starts) a family so all its sizes / colours can be listed together.
+     */
+    #[OA\Post(
+        path: '/inventory/products/{id}/variants',
+        summary: 'Add sizes / colours to a product',
+        security: [['bearerAuth' => []]],
+        tags: ['Inventory / Products'],
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))],
+        responses: [new OA\Response(response: 201, description: 'Variants created')],
+    )]
+    public function addVariants(Request $request, int $id)
+    {
+        $source = DB::table('inventory_products')->where('id', $id)->first();
+        if (! $source) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+
+        $data = $request->validate([
+            'variants' => 'required|array|min:1|max:100',
+            'variants.*.label' => 'required|string|max:100|distinct',
+            'variants.*.sku' => 'nullable|string|max:255|distinct|unique:inventory_products,sku',
+            'variants.*.barcode' => 'nullable|string|max:255',
+            'variants.*.quantity' => 'nullable|integer|min:0',
+            'variants.*.min_stock' => 'nullable|integer|min:0',
+            'variants.*.cost_price' => 'nullable|numeric|min:0',
+            'variants.*.selling_price' => 'nullable|numeric|min:0',
+        ]);
+
+        $familyId = (int) ($source->family_id ?: $source->id);
+        $taken = DB::table('inventory_products')
+            ->where(fn ($w) => $w->where('family_id', $familyId)->orWhere('id', $familyId))
+            ->whereNotNull('variant_label')
+            ->pluck('variant_label')
+            ->map(fn ($l) => mb_strtolower(trim((string) $l)))
+            ->all();
+        foreach ($data['variants'] as $i => $variant) {
+            if (in_array(mb_strtolower(trim($variant['label'])), $taken, true)) {
+                return response()->json(['message' => "\"{$variant['label']}\" already exists for this product"], 422);
+            }
+        }
+
+        $suffix = $source->variant_label ? ' — ' . $source->variant_label : null;
+        $baseName = ($suffix && str_ends_with((string) $source->name, $suffix))
+            ? substr((string) $source->name, 0, -strlen($suffix))
+            : $source->name;
+
+        $parent = [
+            'name' => $baseName,
+            'description' => $source->description,
+            'category' => $source->category,
+            'category_id' => $source->category_id,
+            'brand_id' => $source->brand_id,
+            'cost_price' => (float) $source->cost_price,
+            'selling_price' => (float) $source->selling_price,
+            'unit' => $source->unit,
+            'unit_factor' => $source->unit_factor,
+            'min_stock' => (int) $source->min_stock,
+            'status' => $source->status,
+            'price_tier' => $source->price_tier,
+            'tax_percent' => $source->tax_percent,
+            'measure' => $source->measure ?? 'count',
+            'units' => $this->unitsOf($id),
+        ];
+
+        $userId = optional($request->user())->id;
+        $baseSku = $this->familyBaseSku($source);
+
+        $ids = DB::transaction(function () use ($data, $parent, $baseSku, $familyId, $source, $userId) {
+            $ids = [];
+            foreach ($data['variants'] as $variant) {
+                $row = $this->makeProduct(
+                    $this->variantRow($parent, $variant),
+                    $this->variantSku($baseSku, $variant),
+                    $userId,
+                );
+                $ids[] = $row['id'];
+            }
+            DB::table('inventory_products')->whereIn('id', $ids)->update(['family_id' => $familyId]);
+            if (! $source->family_id) {
+                DB::table('inventory_products')->where('id', $source->id)->update(['family_id' => $familyId]);
+            }
+
+            return $ids;
+        });
+
+        $this->audit->record($request, 'product', $id, 'variants_added', null, ['count' => count($ids)], $source->name);
+
+        return response()->json([
+            'message' => 'Variants created',
+            'data' => ['ids' => array_map('intval', $ids), 'family_id' => $familyId],
+        ], 201);
+    }
+
+    /** A product's extra selling units with their retail / wholesale prices, in the shape makeProduct() takes. */
+    private function unitsOf(int $productId): array
+    {
+        $units = DB::table('inventory_product_units')->where('product_id', $productId)->where('is_base', false)->get();
+        $prices = DB::table('inventory_product_prices')
+            ->whereIn('product_unit_id', $units->pluck('id'))
+            ->whereNull('customer_id')
+            ->get()
+            ->groupBy('product_unit_id');
+
+        return $units->map(function ($u) use ($prices) {
+            $byTier = ($prices[$u->id] ?? collect())->keyBy('tier');
+
+            return [
+                'name' => $u->name,
+                'factor' => (int) $u->factor,
+                'barcode' => null,
+                'retail_price' => isset($byTier['retail']) ? (float) $byTier['retail']->price : null,
+                'wholesale_price' => isset($byTier['wholesale']) ? (float) $byTier['wholesale']->price : null,
+            ];
+        })->values()->all();
+    }
+
+    /** The SKU a family's variants hang their suffix on: this product's, without its own size / colour suffix. */
+    private function familyBaseSku(object $source): string
+    {
+        if ($source->variant_label) {
+            $suffix = '-' . strtoupper(trim(preg_replace('/[^A-Za-z0-9]+/', '-', $source->variant_label) ?? '', '-'));
+            if ($suffix !== '-' && str_ends_with(strtoupper((string) $source->sku), strtoupper(substr($suffix, 0, 25)))) {
+                return substr((string) $source->sku, 0, -strlen(substr($suffix, 0, 25)));
+            }
+        }
+
+        return (string) $source->sku;
     }
 
     /** Auto-generate a structured SKU: BRAND-PRODUCT-SIZE-UNIT. */
@@ -322,7 +622,20 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'status' => 'sometimes|required|in:active,inactive',
             'barcode' => 'nullable|string|max:255',
             'price_tier' => 'nullable|in:retail,wholesale',
+            'tax_percent' => 'nullable|numeric|min:0|max:100',
+            'measure' => 'nullable|in:count,weight,volume',
+            'variant_label' => 'nullable|string|max:100',
         ]);
+
+        // Renaming a size/colour renames the product too ("T-Shirt — M" -> "T-Shirt — L"), unless the
+        // name was changed on purpose in the same request.
+        if (array_key_exists('variant_label', $data) && ! array_key_exists('name', $data) && $existing->variant_label) {
+            $suffix = ' — ' . $existing->variant_label;
+            if (str_ends_with((string) $existing->name, $suffix)) {
+                $label = trim((string) ($data['variant_label'] ?? ''));
+                $data['name'] = substr((string) $existing->name, 0, -strlen($suffix)) . ($label !== '' ? ' — ' . $label : '');
+            }
+        }
 
         DB::transaction(function () use ($id, $data) {
             DB::table('inventory_products')->where('id', $id)->update(array_merge($data, [

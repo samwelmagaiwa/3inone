@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers\API\Transport;
 
+use App\Rules\InAccount;
+use App\Rules\PerBusiness;
+use App\Rules\UniquePhoneInBusiness;
+use App\Support\Tenancy\TenantContext;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Driver;
@@ -12,6 +16,7 @@ use App\Models\DriverAgreement;
 use App\Helpers\ResponseHelper;
 use App\Http\Requests\CreateDriverRequest;
 use App\Http\Requests\CreateVehicleRequest;
+use App\Support\TemporaryPassword;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
@@ -91,6 +96,9 @@ class AdminController extends Controller
 
             return ResponseHelper::success($stats, 'Dashboard data retrieved successfully');
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to retrieve dashboard data: ' . $e->getMessage(), 500);
         }
@@ -147,7 +155,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             
             // If admin is authenticated, ensure driver belongs to admin
             if ($admin && !$admin->isSuperAdmin()) {
-                $driverQuery->where('created_by', $admin->id);
+                $driverQuery->whereIn('created_by', $admin->accountMemberIds());
             }
             
             $driver = $driverQuery->firstOrFail();
@@ -180,6 +188,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             return ResponseHelper::success($transaction, 'Payment recorded successfully', 201);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to record payment: ' . $e->getMessage(), 500);
         }
@@ -224,7 +235,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             $transaction = Transaction::when(!$admin->isSuperAdmin(), function ($tq) use ($admin) {
                 $tq->whereHas('driver', function ($query) use ($admin) {
                     $query->whereHas('user', function ($q) use ($admin) {
-                        $q->where('created_by', $admin->id);
+                        $q->whereIn('created_by', $admin->accountMemberIds());
                     });
                 });
             })
@@ -250,6 +261,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             return ResponseHelper::success($receipt, 'Receipt generated successfully', 201);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to generate receipt: ' . $e->getMessage(), 500);
         }
@@ -287,7 +301,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             // If admin is authenticated, filter by admin's drivers
             if ($admin && !$admin->isSuperAdmin()) {
-                $query->where('created_by', $admin->id);
+                $query->whereIn('created_by', $admin->accountMemberIds());
             }
 
             // Get total count for pagination
@@ -374,6 +388,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             return ResponseHelper::success($response, 'Drivers retrieved successfully');
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to retrieve drivers: ' . $e->getMessage(), 500);
         }
@@ -410,21 +427,28 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             // Use helper methods from the Form Request
             $phoneNumber = $request->getPhoneNumber();
-            $password = $request->getPassword();
             $isActive = $request->getIsActive();
 
+            // No shared default password: unless the admin chose one, a one-time password is
+            // generated and returned once for them to hand over. The driver must replace it
+            // at first sign-in either way.
+            $chosenPassword = $request->getPassword();
+            $temporaryPassword = $chosenPassword === null ? TemporaryPassword::generate() : null;
+
             // Create user account
-            $user = User::create([
+            $user = new User([
                 'name' => $request->name,
                 'email' => $request->email,
                 'phone_number' => $phoneNumber,
-                'password' => Hash::make($password),
+                'password' => Hash::make($chosenPassword ?? $temporaryPassword),
                 'role' => 'driver',
                 'created_by' => $admin?->id,
                 'is_active' => $isActive,
                 'email_verified' => false,
                 'phone_verified' => false,
             ]);
+            $user->must_change_password = true;
+            $user->save();
 
             // Create driver profile
             $driver = Driver::create([
@@ -485,12 +509,17 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'trips_completed' => 0,
                 'driver_profile' => $driver,
                 'vehicle' => $device,
+                // Shown once to the admin; null when they chose the password themselves.
+                'temporary_password' => $temporaryPassword,
             ];
 
             return ResponseHelper::success($responseData, 'Driver created successfully', 201);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return ResponseHelper::validationError($e->errors(), 'Validation failed');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to create driver: ' . $e->getMessage(), 500);
         }
@@ -526,14 +555,20 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     public function updateDriver(Request $request, $id)
     {
         try {
+            // The email is the sign-in name (unique across the platform); a phone or licence number
+            // only has to be unique inside this driver's business. The scoped lookup means another
+            // business's driver id finds nothing here (and is a 404 below).
+            $driverProfile = Driver::where('user_id', $id)->first();
+            $business = $driverProfile?->owner_id ?? TenantContext::writeOwner();
+
             $request->validate([
                 'name' => 'sometimes|string|max:255',
                 'email' => 'sometimes|email|max:255|unique:users,email,' . $id,
                 // accept both phone_number and phone from clients
-                'phone_number' => 'sometimes|string|max:20',
-                'phone' => 'sometimes|string|max:20',
+                'phone_number' => ['sometimes', 'string', 'max:20', new UniquePhoneInBusiness($business, (string) $id)],
+                'phone' => ['sometimes', 'string', 'max:20', new UniquePhoneInBusiness($business, (string) $id)],
                 'status' => 'sometimes|in:active,inactive',
-                'license_number' => 'sometimes|string|max:50',
+                'license_number' => ['sometimes', 'string', 'max:50', PerBusiness::unique('drivers', 'license_number', $business, $driverProfile?->id)],
                 'address' => 'sometimes|string|max:500',
                 'emergency_contact' => 'sometimes|string|max:20',
                 // vehicle updates
@@ -548,7 +583,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             
             // If admin is authenticated, ensure they can only update their own drivers
             if ($admin && !$admin->isSuperAdmin()) {
-                $query->where('created_by', $admin->id);
+                $query->whereIn('created_by', $admin->accountMemberIds());
             }
             
             $user = $query->firstOrFail();
@@ -639,6 +674,13 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             return ResponseHelper::success($response, 'Driver updated successfully');
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // A refused value is the caller's mistake (422), not a server failure (it used to fall
+            // through to the generic handler below and come back as a 500).
+            return ResponseHelper::validationError($e->errors(), 'Validation failed');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to update driver: ' . $e->getMessage(), 500);
         }
@@ -667,7 +709,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             
             // If admin is authenticated, ensure they can only delete their own drivers
             if ($admin && !$admin->isSuperAdmin()) {
-                $query->where('created_by', $admin->id);
+                $query->whereIn('created_by', $admin->accountMemberIds());
             }
             
             $user = $query->firstOrFail();
@@ -695,6 +737,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'message' => 'Driver deactivated successfully'
             ], 'Driver deactivated successfully');
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to delete driver: ' . $e->getMessage(), 500);
         }
@@ -722,22 +767,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             $limit = $request->get('limit', 20);
             $offset = ($page - 1) * $limit;
 
-            // Build query for vehicles
+            // Device carries the account scope: the caller sees the vehicles their
+            // account created or whose driver belongs to it -- never another
+            // account's, and no longer every unassigned vehicle in the system.
             $query = Device::with(['driver.user']);
-
-            // If admin is authenticated, include:
-            // - vehicles whose driver belongs to this admin, OR
-            // - unassigned vehicles (driver_id is null)
-            if ($admin && !$admin->isSuperAdmin()) {
-                $query->where(function ($scope) use ($admin) {
-                    $scope->whereHas('driver', function ($q) use ($admin) {
-                        $q->whereHas('user', function ($userQuery) use ($admin) {
-                            $userQuery->where('created_by', $admin->id);
-                        });
-                    })
-                    ->orWhereNull('driver_id');
-                });
-            }
 
             // Get total count for pagination
             $total = $query->count();
@@ -784,6 +817,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             return ResponseHelper::success($response, 'Vehicles retrieved successfully');
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to retrieve vehicles: ' . $e->getMessage(), 500);
         }
@@ -817,13 +853,20 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     public function updateVehicle(Request $request, $id)
     {
         try {
+            // A plate only has to be unique inside the vehicle's own business, so another
+            // business's identical plate is no obstacle (and says nothing about it).
+            $device = Device::find($id);
+            if ($request->has('plate_number') && is_string($request->plate_number)) {
+                $request->merge(['plate_number' => strtoupper(trim($request->plate_number))]);
+            }
+
             $request->validate([
                 'name' => 'sometimes|string|max:255',
                 'type' => 'sometimes|in:bajaji,pikipiki,gari',
-                'plate_number' => 'sometimes|string|max:20|unique:devices,plate_number,' . $id,
+                'plate_number' => ['sometimes', 'string', 'max:20', PerBusiness::unique('devices', 'plate_number', $device?->owner_id, $id)],
                 'description' => 'sometimes|nullable|string',
                 'is_active' => 'sometimes|boolean',
-                'driver_id' => 'sometimes|nullable|uuid|exists:drivers,id',
+                'driver_id' => ['sometimes', 'nullable', 'uuid', new InAccount(Driver::class)],
             ]);
 
             $vehicle = Device::findOrFail($id);
@@ -834,12 +877,15 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             }
 
             if ($request->has('driver_id')) {
+                // `exists:drivers` only proves the id exists somewhere; the scoped
+                // lookup proves it is a driver this account is allowed to assign.
+                $driver = $request->driver_id ? Driver::findOrFail($request->driver_id) : null;
+
                 $vehicle->driver_id = $request->driver_id; // can be null to unassign
                 $vehicle->save();
 
                 // Sync user's assigned device if possible
                 if ($request->driver_id) {
-                    $driver = Driver::find($request->driver_id);
                     if ($driver) {
                         $driver->user()?->update(['device_id' => $vehicle->id]);
                     }
@@ -869,6 +915,11 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'created_at' => $vehicle->created_at->toISOString(),
                 'updated_at' => $vehicle->updated_at->toISOString(),
             ], 'Vehicle updated successfully');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return ResponseHelper::validationError($e->errors(), 'Validation failed');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to update vehicle: ' . $e->getMessage(), 500);
         }
@@ -900,6 +951,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'id' => $vehicle->id,
                 'driver' => null,
             ], 'Driver unassigned successfully');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to unassign driver: ' . $e->getMessage(), 500);
         }
@@ -942,7 +996,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 
                 // If admin is authenticated, ensure driver belongs to admin
                 if ($admin && !$admin->isSuperAdmin()) {
-                    $driverQuery->where('created_by', $admin->id);
+                    $driverQuery->whereIn('created_by', $admin->accountMemberIds());
                 }
                 
                 $driver = $driverQuery->firstOrFail();
@@ -951,6 +1005,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             // Create vehicle using helper methods from Form Request
             $vehicle = Device::create([
                 'driver_id' => $driver?->driver?->id,
+                'created_by' => $admin?->id,
                 'name' => $request->getVehicleName(),
                 'type' => $request->type,
                 'plate_number' => $request->getPlateNumber(),
@@ -989,6 +1044,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return ResponseHelper::validationError($e->errors(), 'Validation failed');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to create vehicle: ' . $e->getMessage(), 500);
         }
@@ -1029,7 +1087,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                          ->where('role', 'driver')
                          ->with('driver');
             if ($admin && !$admin->isSuperAdmin()) {
-                $driverQuery->where('created_by', $admin->id);
+                $driverQuery->whereIn('created_by', $admin->accountMemberIds());
             }
             $driver = $driverQuery->first();
             if (!$driver) {
@@ -1057,6 +1115,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'vehicle' => $vehicle,
             ], 'Driver assigned to vehicle successfully');
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to assign driver to vehicle: ' . $e->getMessage(), 500);
         }
@@ -1083,6 +1144,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             \App\Models\User::where('device_id', $vehicle->id)->update(['device_id' => null]);
             $vehicle->delete();
             return ResponseHelper::success(null, 'Vehicle deleted successfully');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to delete vehicle: ' . $e->getMessage(), 500);
         }
@@ -1129,7 +1193,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             if ($admin && !$admin->isSuperAdmin()) {
                 $query->whereHas('driver', function ($q) use ($admin) {
                     $q->whereHas('user', function ($userQuery) use ($admin) {
-                        $userQuery->where('created_by', $admin->id);
+                        $userQuery->whereIn('created_by', $admin->accountMemberIds());
                     });
                 });
             }
@@ -1224,6 +1288,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             return ResponseHelper::success($response, 'Payment history retrieved successfully');
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to retrieve payment history: ' . $e->getMessage(), 500);
         }
@@ -1271,7 +1338,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             // set a reminder for any admin's driver)
             if ($request->driver_id) {
                 $driver = User::where('id', $request->driver_id)
-                             ->when(!$admin->isSuperAdmin(), fn($q) => $q->where('created_by', $admin->id))
+                             ->when(!$admin->isSuperAdmin(), fn($q) => $q->whereIn('created_by', $admin->accountMemberIds()))
                              ->where('role', 'driver')
                              ->with('driver')
                              ->firstOrFail();
@@ -1294,6 +1361,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             return ResponseHelper::success($reminder, 'Reminder added successfully', 201);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to add reminder: ' . $e->getMessage(), 500);
         }
@@ -1361,6 +1431,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             return ResponseHelper::success($dashboardData, 'Dashboard data retrieved successfully');
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             // Return fallback data if database fails
             $fallbackData = [
@@ -1433,6 +1506,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             return ResponseHelper::success($response, 'Reminders retrieved successfully');
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to retrieve reminders: ' . $e->getMessage(), 500);
         }
@@ -1483,6 +1559,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             return ResponseHelper::success($reminder, 'Reminder updated successfully');
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to update reminder: ' . $e->getMessage(), 500);
         }
@@ -1509,6 +1588,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             return ResponseHelper::success(null, 'Reminder deleted successfully');
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to delete reminder: ' . $e->getMessage(), 500);
         }
@@ -1555,6 +1637,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             return ResponseHelper::success($response, 'Receipts retrieved successfully');
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to retrieve receipts: ' . $e->getMessage(), 500);
         }
@@ -1584,7 +1669,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             
             // If admin is authenticated, ensure driver belongs to admin
             if ($admin && !$admin->isSuperAdmin()) {
-                $query->where('created_by', $admin->id);
+                $query->whereIn('created_by', $admin->accountMemberIds());
             }
             
             $user = $query->firstOrFail();
@@ -1637,6 +1722,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             return ResponseHelper::success($driverData, 'Driver information retrieved successfully');
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to retrieve driver information: ' . $e->getMessage(), 500);
         }
@@ -1669,7 +1757,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                         ->with(['driver']);
             
             if ($admin && !$admin->isSuperAdmin()) {
-                $query->where('created_by', $admin->id);
+                $query->whereIn('created_by', $admin->accountMemberIds());
             }
             
             $user = $query->firstOrFail();
@@ -1718,6 +1806,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             return ResponseHelper::success($response, 'Driver debt trends retrieved successfully');
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to retrieve driver debt trends: ' . $e->getMessage(), 500);
         }
@@ -1750,7 +1841,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                         ->with(['driver']);
             
             if ($admin && !$admin->isSuperAdmin()) {
-                $query->where('created_by', $admin->id);
+                $query->whereIn('created_by', $admin->accountMemberIds());
             }
             
             $user = $query->firstOrFail();
@@ -1813,6 +1904,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             return ResponseHelper::success($response, 'Driver payment trends retrieved successfully');
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Exception $e) {
             return ResponseHelper::error('Failed to retrieve driver payment trends: ' . $e->getMessage(), 500);
         }

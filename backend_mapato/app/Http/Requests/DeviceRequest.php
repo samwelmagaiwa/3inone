@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\PerBusiness;
 use Illuminate\Foundation\Http\FormRequest;
 
 class DeviceRequest extends FormRequest
@@ -29,7 +30,8 @@ class DeviceRequest extends FormRequest
                 'string',
                 'max:20',
                 'regex:/^[A-Z]{1,2}\s?\d{3}\s?[A-Z]{3}$/i',
-                'unique:devices,plate_number,' . $deviceId
+                // Unique inside this business only (see PerBusiness).
+                PerBusiness::unique('devices', 'plate_number', ignoreId: $deviceId),
             ],
             'description' => 'nullable|string|max:500',
         ];

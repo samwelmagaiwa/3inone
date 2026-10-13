@@ -4,7 +4,6 @@ namespace App\Http\Controllers\API\Rental;
 
 use App\Http\Controllers\Controller;
 use App\Services\Rental\RentalService;
-use App\Services\SmsService;
 use App\Models\Rental\RentBill;
 use App\Models\Rental\RentalPayment;
 use App\Models\Rental\RentalReceipt;
@@ -40,22 +39,48 @@ class BillingController extends Controller
         if ($user->isSuperAdmin()) {
             // Sees every landlord's bills, not scoped to any single owner.
             $bills = RentBill::with('agreement.tenant', 'agreement.house.property', 'payments.receipt')->get();
-        } elseif ($user->isLandlord() || $user->role === 'admin') {
-            $bills = RentBill::whereHas('agreement.house.property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
-            })->with('agreement.tenant', 'agreement.house.property', 'payments.receipt')->get();
         } elseif ($user->role === 'tenant') {
             $bills = RentBill::whereHas('agreement', function ($query) use ($user) {
                 $query->where('tenant_id', $user->id);
             })->with('agreement.house.property', 'payments.receipt')->get();
-        } else {
-            // Caretaker - show all bills for assigned properties
+        } elseif ($user->role === 'caretaker') {
+            // A caretaker works only the properties they are assigned to.
             $bills = RentBill::whereHas('agreement.house.property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
+                $query->where('caretaker_id', $user->id);
             })->with('agreement.tenant', 'agreement.house.property', 'payments.receipt')->get();
+        } else {
+            // Landlord, admin, or staff of that account: the account's whole portfolio.
+            $bills = $this->ownedBills($request)
+                ->with('agreement.tenant', 'agreement.house.property', 'payments.receipt')->get();
         }
 
         return ResponseHelper::success($bills);
+    }
+
+    /** Bills on properties the caller's account owns (super_admin: every bill). */
+    private function ownedBills(Request $request)
+    {
+        $user = $request->user();
+
+        return RentBill::query()->when(
+            !$user->seesAllAccounts(),
+            fn ($q) => $q->whereHas('agreement.house.property', function ($query) use ($user) {
+                $query->whereIn('owner_id', $user->accountMemberIds());
+            })
+        );
+    }
+
+    /** Receipts for payments on properties the caller's account owns (super_admin: all). */
+    private function ownedReceipts(Request $request)
+    {
+        $user = $request->user();
+
+        return RentalReceipt::query()->when(
+            !$user->seesAllAccounts(),
+            fn ($q) => $q->whereHas('payment.bill.agreement.house.property', function ($query) use ($user) {
+                $query->whereIn('owner_id', $user->accountMemberIds());
+            })
+        );
     }
 
     /**
@@ -74,7 +99,7 @@ class BillingController extends Controller
 
         $payments = RentalPayment::when(!$user->isSuperAdmin(), function ($q) use ($user) {
             $q->whereHas('bill.agreement.house.property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
+                $query->whereIn('owner_id', $user->accountMemberIds());
             });
         })->with('bill.agreement.house.property', 'tenant', 'collector', 'receipt')
             ->orderBy('payment_date', 'desc')
@@ -99,7 +124,7 @@ class BillingController extends Controller
 
         $receipts = RentalReceipt::when(!$user->isSuperAdmin(), function ($q) use ($user) {
             $q->whereHas('payment.bill.agreement.house.property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
+                $query->whereIn('owner_id', $user->accountMemberIds());
             });
         })->with('payment.tenant', 'payment.bill.agreement.house.property', 'payment.collector', 'payment.receipt')
             ->orderBy('created_at', 'desc')
@@ -123,7 +148,8 @@ class BillingController extends Controller
     )]
     public function getReceipt(Request $request, $id)
     {
-        $receipt = RentalReceipt::with('payment.tenant', 'payment.bill.agreement.house.property', 'payment.collector', 'payment.receipt')
+        $receipt = $this->ownedReceipts($request)
+            ->with('payment.tenant', 'payment.bill.agreement.house.property', 'payment.collector', 'payment.receipt')
             ->findOrFail($id);
 
         return ResponseHelper::success($receipt);
@@ -164,6 +190,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'notes' => 'nullable|string',
         ]);
 
+        // `exists:` only proves the bill exists somewhere; this proves it is on a
+        // property this account owns before any money is recorded against it.
+        $this->ownedBills($request)->findOrFail($request->bill_id);
+
         try {
             $data = $request->all();
             $data['collector_id'] = $request->user()->id;
@@ -171,14 +201,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             $payment = $this->rentalService->recordPayment($data);
             $payment->load('bill.agreement.house.property', 'tenant', 'receipt');
 
-            // Send SMS confirmation
-            SmsService::sendPaymentReceipt(
-                $payment->tenant->phone_number,
-                $payment->amount_paid,
-                $payment->receipt->receipt_number,
-                $payment->bill->balance
-            );
-
+            // The tenant's SMS is sent once, by the service, after the payment is saved.
             return ResponseHelper::success($payment, 'Payment recorded successfully');
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage(), 500);
@@ -200,20 +223,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     )]
     public function dispatchReceipt(Request $request, $id)
     {
-        $receipt = RentalReceipt::findOrFail($id);
-
-        // Ensure user owns property associated with this receipt
-        // (super_admin bypasses -- they can dispatch any landlord's receipt)
-        $user = $request->user();
-        if (!$user->isSuperAdmin() && $user->role !== 'admin') {
-            $ownerCheck = RentalReceipt::where('id', $id)->whereHas('payment.bill.agreement.house.property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
-            })->exists();
-
-            if (!$ownerCheck) {
-                return ResponseHelper::error('Unauthorized', 403);
-            }
-        }
+        // Only a receipt on this account's own properties (super_admin: any).
+        // An admin is not exempt: admin is an account, not a platform, role.
+        $receipt = $this->ownedReceipts($request)->findOrFail($id);
 
         $receipt->update(['is_dispatched' => true]);
 
@@ -238,26 +250,26 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         $isSuperAdmin = $user->isSuperAdmin();
 
         // Total properties
-        $totalProperties = \App\Models\Rental\Property::when(!$isSuperAdmin, fn($q) => $q->where('owner_id', $user->id))->count();
+        $totalProperties = \App\Models\Rental\Property::when(!$isSuperAdmin, fn($q) => $q->whereIn('owner_id', $user->accountMemberIds()))->count();
 
         // Total houses
         $totalHouses = \App\Models\Rental\House::when(!$isSuperAdmin, function ($q) use ($user) {
             $q->whereHas('property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
+                $query->whereIn('owner_id', $user->accountMemberIds());
             });
         })->count();
 
         // Occupied houses
         $occupiedHouses = \App\Models\Rental\House::when(!$isSuperAdmin, function ($q) use ($user) {
             $q->whereHas('property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
+                $query->whereIn('owner_id', $user->accountMemberIds());
             });
         })->where('status', 'occupied')->count();
 
         // Active tenants
         $activeTenants = RentalAgreement::when(!$isSuperAdmin, function ($q) use ($user) {
             $q->whereHas('house.property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
+                $query->whereIn('owner_id', $user->accountMemberIds());
             });
         })->where('status', 'active')->count();
 
@@ -265,7 +277,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         $thisMonth = Carbon::now()->format('m-Y');
         $monthlyRevenue = RentalPayment::when(!$isSuperAdmin, function ($q) use ($user) {
             $q->whereHas('bill.agreement.house.property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
+                $query->whereIn('owner_id', $user->accountMemberIds());
             });
         })->whereHas('bill', function ($query) use ($thisMonth) {
             $query->where('month_year', $thisMonth);
@@ -274,28 +286,28 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         // Pending bills (unpaid + partial)
         $pendingBills = RentBill::when(!$isSuperAdmin, function ($q) use ($user) {
             $q->whereHas('agreement.house.property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
+                $query->whereIn('owner_id', $user->accountMemberIds());
             });
         })->whereIn('status', ['unpaid', 'partial'])->count();
 
         // Overdue bills
         $overdueBills = RentBill::when(!$isSuperAdmin, function ($q) use ($user) {
             $q->whereHas('agreement.house.property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
+                $query->whereIn('owner_id', $user->accountMemberIds());
             });
         })->where('status', 'overdue')->count();
 
         // Total arrears amount
         $totalArrears = RentBill::when(!$isSuperAdmin, function ($q) use ($user) {
             $q->whereHas('agreement.house.property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
+                $query->whereIn('owner_id', $user->accountMemberIds());
             });
         })->whereIn('status', ['unpaid', 'partial', 'overdue'])->sum('balance');
 
         // Recent payments
         $recentPayments = RentalPayment::when(!$isSuperAdmin, function ($q) use ($user) {
             $q->whereHas('bill.agreement.house.property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
+                $query->whereIn('owner_id', $user->accountMemberIds());
             });
         })->with('tenant', 'bill.agreement.house')->orderBy('payment_date', 'desc')->limit(5)->get();
 
@@ -329,7 +341,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         $arrears = RentBill::when(!$user->isSuperAdmin(), function ($q) use ($user) {
             $q->whereHas('agreement.house.property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
+                $query->whereIn('owner_id', $user->accountMemberIds());
             });
         })->whereIn('status', ['unpaid', 'partial', 'overdue'])
             ->with('agreement.tenant.user', 'agreement.house.property')
@@ -375,7 +387,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             // Last 12 months
             $payments = RentalPayment::when(!$isSuperAdmin, function ($q) use ($user) {
                 $q->whereHas('bill.agreement.house.property', function ($query) use ($user) {
-                    $query->where('owner_id', $user->id);
+                    $query->whereIn('owner_id', $user->accountMemberIds());
                 });
             })->where('payment_date', '>=', now()->subMonths(12))
                 ->get();
@@ -390,7 +402,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             // Last 30 days
             $payments = RentalPayment::when(!$isSuperAdmin, function ($q) use ($user) {
                 $q->whereHas('bill.agreement.house.property', function ($query) use ($user) {
-                    $query->where('owner_id', $user->id);
+                    $query->whereIn('owner_id', $user->accountMemberIds());
                 });
             })->where('payment_date', '>=', now()->subDays(30))
                 ->get();
@@ -428,21 +440,21 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         $isSuperAdmin = $user->isSuperAdmin();
 
         // Get all properties with house counts
-        $properties = \App\Models\Rental\Property::when(!$isSuperAdmin, fn($q) => $q->where('owner_id', $user->id))
+        $properties = \App\Models\Rental\Property::when(!$isSuperAdmin, fn($q) => $q->whereIn('owner_id', $user->accountMemberIds()))
             ->withCount('houses')
             ->get();
 
         $totalHouses = $properties->sum('houses_count');
         $occupiedHouses = \App\Models\Rental\House::when(!$isSuperAdmin, function ($q) use ($user) {
             $q->whereHas('property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
+                $query->whereIn('owner_id', $user->accountMemberIds());
             });
         })->where('status', 'occupied')->count();
 
         $vacantHouses = $totalHouses - $occupiedHouses;
         $maintenanceHouses = \App\Models\Rental\House::when(!$isSuperAdmin, function ($q) use ($user) {
             $q->whereHas('property', function ($query) use ($user) {
-                $query->where('owner_id', $user->id);
+                $query->whereIn('owner_id', $user->accountMemberIds());
             });
         })->where('status', 'maintenance')->count();
 

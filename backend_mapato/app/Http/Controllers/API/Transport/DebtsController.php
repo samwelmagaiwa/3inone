@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\Transport;
 
+use App\Rules\InAccount;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -92,6 +93,9 @@ class DebtsController extends Controller
                     ],
                 ],
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Throwable $e) {
             Log::error('Error listing drivers for debts: ' . $e->getMessage());
             return response()->json([
@@ -129,7 +133,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     public function bulkCreate(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'driver_id' => 'required|exists:drivers,id',
+            'driver_id' => ['required', new InAccount(Driver::class)],
             // Support either items[] (date+amount) OR dates[] + amount
             'items' => 'sometimes|array|min:1',
             'items.*.date' => 'required_with:items|date',
@@ -272,6 +276,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'count' => $records->count(),
                 ],
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Throwable $e) {
             Log::error('Error listing driver debt records: '.$e->getMessage());
             return response()->json([
@@ -363,6 +370,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'message' => 'Debt record updated successfully',
                 'data' => $record->toApiResponse(),
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Throwable $e) {
             Log::error('Error updating debt record: '.$e->getMessage());
             return response()->json([
@@ -401,6 +411,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'success' => true,
                 'message' => 'Debt record deleted successfully',
             ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Also what a scoped lookup returns for another account's record.
+            return response()->json(['status' => 'error', 'success' => false, 'message' => 'Not found'], 404);
         } catch (\Throwable $e) {
             Log::error('Error deleting debt record: '.$e->getMessage());
             return response()->json([

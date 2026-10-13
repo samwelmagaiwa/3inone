@@ -4,12 +4,35 @@ namespace App\Http\Controllers\API\Rental;
 
 use App\Http\Controllers\Controller;
 use App\Models\Rental\Block;
+use App\Models\Rental\Property;
 use App\Helpers\ResponseHelper;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
 class BlockController extends Controller
 {
+    /** Properties the caller's account owns (super_admin: all). */
+    private function ownedProperties(Request $request)
+    {
+        $user = $request->user();
+
+        return Property::query()->when(
+            !$user->seesAllAccounts(),
+            fn ($q) => $q->whereIn('owner_id', $user->accountMemberIds())
+        );
+    }
+
+    /** Blocks that belong to a property the caller's account owns (super_admin: all). */
+    private function ownedBlocks(Request $request)
+    {
+        $user = $request->user();
+
+        return Block::query()->when(
+            !$user->seesAllAccounts(),
+            fn ($q) => $q->whereHas('property', fn ($p) => $p->whereIn('owner_id', $user->accountMemberIds()))
+        );
+    }
+
     #[OA\Get(
         path: '/rental/blocks/{propertyId}',
         summary: 'List resources',
@@ -22,7 +45,9 @@ class BlockController extends Controller
     )]
     public function index(Request $request, $propertyId)
     {
-        $blocks = Block::where('property_id', $propertyId)
+        $property = $this->ownedProperties($request)->findOrFail($propertyId);
+
+        $blocks = Block::where('property_id', $property->id)
             ->with('houses')
             ->get();
         return ResponseHelper::success($blocks);
@@ -65,8 +90,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'description' => 'nullable|string',
         ]);
 
+        $property = $this->ownedProperties($request)->findOrFail($propertyId);
+
         $block = Block::create([
-            'property_id' => $propertyId,
+            'property_id' => $property->id,
             'name' => $request->name,
             'description' => $request->description,
         ]);
@@ -94,9 +121,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
     )]
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        $block = Block::with(['property', 'houses'])->findOrFail($id);
+        $block = $this->ownedBlocks($request)->with(['property', 'houses'])->findOrFail($id);
         return ResponseHelper::success($block);
     }
 
@@ -131,7 +158,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
     public function update(Request $request, $id)
     {
-        $block = Block::findOrFail($id);
+        $block = $this->ownedBlocks($request)->findOrFail($id);
         
         $request->validate([
             'name' => 'sometimes|string',
@@ -163,9 +190,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
     )]
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $block = Block::findOrFail($id);
+        $block = $this->ownedBlocks($request)->findOrFail($id);
         
         if ($block->houses()->count() > 0) {
             return ResponseHelper::error('Cannot delete block with houses. Remove houses first.', 400);

@@ -19,12 +19,16 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->api(prepend: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+        ], append: [
+            // Does nothing unless BILLING_ENFORCE is on (config/billing.php).
+            \App\Http\Middleware\EnsureSubscriptionActive::class,
         ]);
         
         $middleware->alias([
             'role'     => \App\Http\Middleware\RoleMiddleware::class,
             'role_any' => \App\Http\Middleware\RoleAny::class,
             'inv_perm' => \App\Http\Middleware\CheckInventoryPermission::class,
+            'service'  => \App\Http\Middleware\EnsureServiceAccess::class,
         ]);
         
         $middleware->validateCsrfTokens(except: [

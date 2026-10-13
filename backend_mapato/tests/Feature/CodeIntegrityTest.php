@@ -57,6 +57,42 @@ class CodeIntegrityTest extends TestCase
         $this->assertSame([], $missing, "Imports of classes that do not exist:\n" . implode("\n", $missing));
     }
 
+    /**
+     * The same class declared in two files crashes PHP ("Cannot declare class ... already in use") as soon
+     * as both get loaded in one process -- and until then silently picks whichever file loaded first, so
+     * the same endpoint answers with different fields depending on what ran before it. A copy of
+     * VendorResource hidden inside MaintenanceRequestResource.php did exactly that.
+     */
+    public function test_no_class_is_declared_in_two_files(): void
+    {
+        $bs = chr(92);
+        $declaredIn = [];
+
+        $files = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator(base_path('app'), FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($files as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $source = file_get_contents($file->getPathname());
+            if (preg_match('/^namespace\s+([^;]+);/m', $source, $namespace) !== 1) {
+                continue;
+            }
+
+            preg_match_all('/^(?:final\s+|abstract\s+)?class\s+(\w+)/m', $source, $classes);
+            foreach ($classes[1] as $class) {
+                $declaredIn[$namespace[1] . $bs . $class][] = str_replace($bs, '/', substr($file->getPathname(), strlen(base_path()) + 1));
+            }
+        }
+
+        $twice = array_map(fn (array $where) => implode(', ', $where), array_filter($declaredIn, fn (array $where) => count($where) > 1));
+
+        $this->assertSame([], $twice, "Classes declared in more than one file:\n" . print_r($twice, true));
+    }
+
     public function test_every_routed_controller_method_exists(): void
     {
         $problems = [];

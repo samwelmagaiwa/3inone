@@ -21,7 +21,7 @@ class DevicePerformanceReportTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+        $this->admin = $this->givenServices(User::factory()->create(['role' => 'admin', 'is_active' => true]), 'transport');
     }
 
     /** A device driven by a driver this admin created. Returns the device id. */

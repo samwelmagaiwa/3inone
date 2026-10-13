@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use App\Services\Inventory\StockLedger;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,10 @@ class InventoryDepotFlowTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // A depot belongs to a business that was given the inventory service: that is
+        // what gives it its settings and default crate types, and owns what is seeded below.
+        $this->actAsBusiness($this->givenServices(User::factory()->create(['role' => 'admin', 'is_active' => true]), 'inventory'));
 
         $this->productId = DB::table('inventory_products')->insertGetId([
             'name' => 'Test Soda 500ml',

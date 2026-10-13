@@ -134,7 +134,8 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         $data = $request->validate([
             'vehicle' => 'nullable|string|max:64',
-            'agent_id' => 'nullable|integer|exists:users,id',
+            // `exists:users` would accept any business's user; the agent must be in this one.
+            'agent_id' => ['nullable', 'integer', new \App\Rules\UserInAccount($request->user())],
             'route' => 'nullable|string|max:255',
             'dispatch_date' => 'nullable|date',
             'note' => 'nullable|string|max:255',

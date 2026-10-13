@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ScopedThroughDriver;
 use Illuminate\Database\Eloquent\Model;
 
 class DriverPredictionCache extends Model
 {
+    use ScopedThroughDriver;
+
     protected $fillable = [
         'driver_id',
         'start_date',

@@ -4,11 +4,50 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\HasBusinessOwner;
+use App\Models\Concerns\ScopedToAccount;
+use App\Support\Tenancy\BusinessOwner;
+use App\Support\Tenancy\TenantContext;
 use App\Traits\HasUuid;
+use Illuminate\Database\Eloquent\Builder;
 
 class Driver extends Model
 {
-    use HasFactory, HasUuid;
+    use HasFactory, HasUuid, ScopedToAccount, HasBusinessOwner;
+
+    /**
+     * The business a new driver belongs to: the business of the login they were given (the
+     * creator chain), else the signed-in user's. A licence number is unique inside it only.
+     */
+    protected function resolveBusinessOwnerId(): ?string
+    {
+        return $this->user_id
+            ? BusinessOwner::ofUser((string) $this->user_id)
+            : TenantContext::writeOwner();
+    }
+
+    /**
+     * A driver belongs to the account of whoever created the driver's login.
+     * The driver themself only ever sees their own row.
+     */
+    public function constrainToAccount(Builder $query, User $user): void
+    {
+        $table = $this->getTable();
+
+        if ($user->isPortalUser()) {
+            $query->where("{$table}.user_id", $user->id);
+
+            return;
+        }
+
+        $query->where(function (Builder $scope) use ($table, $user) {
+            $scope->where("{$table}.user_id", $user->id)
+                ->orWhereIn(
+                    "{$table}.user_id",
+                    User::query()->select('id')->whereIn('created_by', $user->accountMemberIds())
+                );
+        });
+    }
 
     /**
      * The attributes that are mass assignable.

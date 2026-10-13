@@ -76,9 +76,16 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             $user->must_change_password = false;
             $user->save();
 
-            // Revoke every token so all other devices must re-login.
+            // The device the password was changed on stays signed in; the person's OTHER devices
+            // are signed out (unless configured otherwise), since changing a password usually
+            // means someone else may know the old one.
             try {
-                $user->tokens()->delete();
+                if (config('sanctum.revoke_other_devices_on_password_change', true)) {
+                    $current = $request->user()->currentAccessToken();
+                    $user->tokens()
+                        ->when($current?->id, fn ($q, $id) => $q->where('id', '!=', $id))
+                        ->delete();
+                }
             } catch (\Exception $e) {
                 Log::warning('Failed revoking tokens after password change', [
                     'user_id' => $user->id,
@@ -88,7 +95,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             $this->audit->record(
                 $request, 'security', null, 'password_changed', null, null,
-                "{$user->name} changed their password — all sessions revoked",
+                "{$user->name} changed their password — their other sessions were ended",
             );
 
             Log::info('Password changed', [

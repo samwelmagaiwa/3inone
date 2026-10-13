@@ -22,8 +22,9 @@ class InventoryReportsRunTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
-        $this->admin->services()->create(['service_type' => 'inventory']);
+        $this->admin = $this->actAsBusiness(
+            $this->givenServices(User::factory()->create(['role' => 'admin', 'is_active' => true]), 'inventory')
+        );
     }
 
     private function fetch(string $uri)

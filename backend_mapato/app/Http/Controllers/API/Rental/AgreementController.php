@@ -40,7 +40,7 @@ class AgreementController extends Controller
     {
         $query = RentalAgreement::when(!$request->user()->isSuperAdmin(), function ($hq) use ($request) {
             $hq->whereHas('house.property', function ($q) use ($request) {
-                $q->where('owner_id', $request->user()->id);
+                $q->whereIn('owner_id', $request->user()->accountMemberIds());
             });
         })->with('tenant', 'house.property', 'house.block');
 
@@ -89,7 +89,7 @@ class AgreementController extends Controller
     {
         $agreement = RentalAgreement::when(!$request->user()->isSuperAdmin(), function ($hq) use ($request) {
             $hq->whereHas('house.property', function ($q) use ($request) {
-                $q->where('owner_id', $request->user()->id);
+                $q->whereIn('owner_id', $request->user()->accountMemberIds());
             });
         })->with('tenant', 'tenant.profile', 'house.property', 'house.block', 'bills', 'payments.receipt')->findOrFail($id);
 
@@ -161,7 +161,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         // any landlord's house)
         $house = House::when(!$request->user()->isSuperAdmin(), function ($hq) use ($request) {
             $hq->whereHas('property', function ($q) use ($request) {
-                $q->where('owner_id', $request->user()->id);
+                $q->whereIn('owner_id', $request->user()->accountMemberIds());
             });
         })->findOrFail($request->house_id);
 
@@ -240,7 +240,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         $agreement = RentalAgreement::when(!$request->user()->isSuperAdmin(), function ($hq) use ($request) {
             $hq->whereHas('house.property', function ($q) use ($request) {
-                $q->where('owner_id', $request->user()->id);
+                $q->whereIn('owner_id', $request->user()->accountMemberIds());
             });
         })->findOrFail($id);
 
@@ -285,7 +285,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         $agreement = RentalAgreement::when(!$request->user()->isSuperAdmin(), function ($hq) use ($request) {
             $hq->whereHas('house.property', function ($q) use ($request) {
-                $q->where('owner_id', $request->user()->id);
+                $q->whereIn('owner_id', $request->user()->accountMemberIds());
             });
         })->findOrFail($id);
 
@@ -336,7 +336,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         $agreement = RentalAgreement::when(!$request->user()->isSuperAdmin(), function ($hq) use ($request) {
             $hq->whereHas('house.property', function ($q) use ($request) {
-                $q->where('owner_id', $request->user()->id);
+                $q->whereIn('owner_id', $request->user()->accountMemberIds());
             });
         })->findOrFail($id);
 
@@ -346,7 +346,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         ]);
 
         // Store the document
-        $path = $request->file('document')->store('agreements/' . $agreement->id, 'public');
+        $path = \App\Support\PrivateFile::store($request->file('document'), 'agreements/' . $agreement->id);
 
         $documents = $agreement->documents ?? [];
         $documents[] = [
@@ -375,7 +375,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         $agreements = RentalAgreement::when(!$request->user()->isSuperAdmin(), function ($hq) use ($request) {
             $hq->whereHas('house.property', function ($q) use ($request) {
-                $q->where('owner_id', $request->user()->id);
+                $q->whereIn('owner_id', $request->user()->accountMemberIds());
             });
         })->where('status', 'active')
             ->where('end_date', '>=', now())

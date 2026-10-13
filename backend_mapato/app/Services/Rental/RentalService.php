@@ -10,7 +10,13 @@ use App\Models\Rental\RentalAgreement;
 use App\Models\Rental\RentBill;
 use App\Models\Rental\RentalPayment;
 use App\Models\Rental\RentalReceipt;
+use App\Rules\UniquePhoneInBusiness;
+use App\Services\SmsService;
+use App\Support\Tenancy\BusinessOwner;
+use App\Support\Tenancy\TenantContext;
+use App\Support\TemporaryPassword;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
@@ -22,26 +28,55 @@ class RentalService
     public function onboardTenant(array $data)
     {
         return DB::transaction(function () use ($data) {
-            // 1. Create User account if not exists
-            $user = User::where('email', $data['email'])->orWhere('phone_number', $data['phone_number'])->first();
+            // 1. Create User account if not exists. The email is the tenant's sign-in name and
+            // names the same person whichever landlord onboards them. A phone number does not:
+            // another business's driver or tenant may use the same number, so by phone we only
+            // recognise someone inside THIS landlord's own business.
+            $user = User::where('email', $data['email'])->first();
+
+            if (!$user && !empty($data['phone_number'])) {
+                $business = BusinessOwner::ofUser($data['created_by'] ?? null) ?? TenantContext::writeOwner();
+                $user = (new UniquePhoneInBusiness($business))->findUser((string) $data['phone_number']);
+            }
+
+            $temporaryPassword = null;
 
             if (!$user) {
-                $user = User::create([
+                // No shared default: a password the landlord was not given is a password
+                // anyone can try on every tenant. A one-time one is generated, handed back
+                // once so the landlord can pass it on, and must be replaced at first sign-in.
+                $password = $data['password'] ?? null;
+                if ($password === null || $password === '') {
+                    $password = $temporaryPassword = TemporaryPassword::generate();
+                }
+
+                $user = new User([
                     'name' => $data['name'],
                     'email' => $data['email'],
                     'phone_number' => $data['phone_number'],
-                    'password' => bcrypt($data['password'] ?? 'tenant123'),
+                    'password' => bcrypt($password),
                     'role' => 'tenant',
                     'service_type' => 'rental',
+                    // Whoever onboarded them: this ties the tenant to that account.
+                    'created_by' => $data['created_by'] ?? null,
                     'is_active' => true,
                 ]);
-            } else {
-                // Ensure existing user is promoted to tenant role if onboarding as one
-                $user->update(['role' => 'tenant']);
+                $user->must_change_password = true;
+                $user->save();
+            } elseif (strtolower((string) $user->role) !== 'tenant') {
+                // An existing account is reused only when it already is a tenant.
+                // Rewriting the role of whoever the email or phone happens to match
+                // would silently demote a landlord, admin or staff member.
+                throw new \InvalidArgumentException(
+                    'This email or phone number already belongs to an account that is not a tenant.'
+                );
             }
 
             // 2. Create Tenant Profile
-            TenantProfile::updateOrCreate(
+            // A tenant is one person even when several landlords deal with them, so look
+            // for an existing profile across businesses and only fill it in the first
+            // time: one landlord's onboarding must never rewrite what another recorded.
+            TenantProfile::withoutAccountScope()->firstOrCreate(
                 ['user_id' => $user->id],
                 [
                     'gender' => $data['gender'] ?? null,
@@ -86,6 +121,9 @@ class RentalService
             return [
                 'user' => $user,
                 'agreement' => $agreement,
+                // Only set when this call created the account; null for a tenant who
+                // already had one (they keep the password they chose).
+                'temporary_password' => $temporaryPassword,
             ];
         });
     }
@@ -133,7 +171,7 @@ class RentalService
      */
     public function recordPayment(array $data)
     {
-        return DB::transaction(function () use ($data) {
+        $payment = DB::transaction(function () use ($data) {
             $bill = RentBill::findOrFail($data['bill_id']);
             $amountPaid = $data['amount_paid'];
 
@@ -168,18 +206,42 @@ class RentalService
             ]);
 
             // 3. Generate Receipt
-            $receipt = $this->generateReceipt($payment);
-
-            // 4. Send SMS Notification
-            \App\Services\SmsService::sendPaymentReceipt(
-                $payment->tenant->phone_number,
-                $payment->amount_paid,
-                $receipt->receipt_number,
-                $bill->balance
-            );
+            $this->generateReceipt($payment);
 
             return $payment;
         });
+
+        // The tenant is told once, and only after the payment is safely recorded: a text
+        // sent inside the transaction would go out even if it were rolled back, and a
+        // failing SMS must never undo a payment that was taken.
+        $this->sendReceiptSms($payment);
+
+        return $payment;
+    }
+
+    /** The business a rental receipt or text is from: the landlord's (see Business::identityForProperty). */
+    private function businessOfProperty(?Property $property): array
+    {
+        return \App\Models\Business::identityForProperty($property);
+    }
+
+    private function sendReceiptSms(RentalPayment $payment): void
+    {
+        try {
+            $payment->loadMissing('tenant', 'receipt', 'bill');
+
+            $payment->loadMissing('bill.agreement.house.property');
+
+            SmsService::sendPaymentReceipt(
+                $payment->tenant->phone_number,
+                $payment->amount_paid,
+                $payment->receipt->receipt_number,
+                $payment->bill->balance,
+                $this->businessOfProperty($payment->bill->agreement->house->property),
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Payment receipt SMS could not be sent.', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
+        }
     }
 
     /**
@@ -191,9 +253,18 @@ class RentalService
 
         $receiptNumber = 'RCP-' . strtoupper(Str::random(8));
 
+        // Whose receipt it is: the landlord's business, so the tenant can see who they paid.
+        $business = $this->businessOfProperty($payment->bill->agreement->house->property);
+
         $details = [
             'receipt_number' => $receiptNumber,
             'date' => Carbon::parse($payment->payment_date)->format('Y-m-d'),
+            'business_name' => $business['name'],
+            'business_address' => $business['address'],
+            'business_phone' => $business['phone'],
+            'business_tin' => $business['tin'],
+            'business_email' => $business['email'],
+            'business_logo_url' => $business['logo_url'],
             'tenant_name' => $payment->tenant->name,
             'house_number' => $payment->bill->agreement->house->house_number,
             'property_name' => $payment->bill->agreement->house->property->name,
@@ -245,11 +316,12 @@ class RentalService
             /** @var \App\Models\Rental\RentBill $bill */
             $bill->update(['status' => 'overdue']);
 
-            // Trigger SMS notification
-            \App\Services\SmsService::sendOverdueAlert(
+            // Trigger SMS notification, from the landlord's business
+            SmsService::sendOverdueAlert(
                 $bill->agreement->tenant->phone_number,
                 $bill->agreement->house->house_number,
-                $bill->balance
+                $bill->balance,
+                $this->businessOfProperty($bill->agreement->house->property),
             );
         }
 

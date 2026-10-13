@@ -3,6 +3,8 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\RegistrationController;
+use App\Http\Controllers\API\BusinessController;
 use App\Http\Controllers\API\LocationController;
 use App\Http\Controllers\API\Transport\AdminController;
 use App\Http\Controllers\API\Transport\AdminReportController;
@@ -77,6 +79,12 @@ Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login');
     // Rate-limited: both steps are unauthenticated and check identity by
     // email/phone, so without a limit they'd be a brute-force target.
+    // A business owner registers themselves; a super admin then reviews and assigns
+    // services. Public, so it is rate-limited per IP.
+    Route::post('register', [RegistrationController::class, 'register'])->middleware('throttle:10,10');
+    // The applicant proves the phone number is theirs with the code texted at registration.
+    Route::post('register/verify-phone', [RegistrationController::class, 'verifyPhone'])->middleware('throttle:10,10');
+    Route::post('register/resend-code', [RegistrationController::class, 'resendCode'])->middleware('throttle:5,10');
     Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
     Route::post('reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
 });
@@ -86,7 +94,7 @@ Route::get('public/houses', [HouseController::class, 'publicListing']);
 
 // Payment Receipt routes - PROTECTED
 // Transport receipts across all drivers: admin-level only (or the payments grant).
-Route::middleware(['auth:sanctum', 'role:admin'])->prefix('payment-receipts')->group(function () {
+Route::middleware(['auth:sanctum', 'role:admin', 'service:transport'])->prefix('payment-receipts')->group(function () {
     Route::get('pending', [PaymentReceiptController::class, 'getPendingReceipts']);
     Route::post('generate', [PaymentReceiptController::class, 'generateReceipt']);
     Route::get('{receiptId}/preview', [PaymentReceiptController::class, 'getReceiptPreview']);
@@ -95,8 +103,42 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('payment-receipts')->g
     Route::get('{receiptId}', [PaymentReceiptController::class, 'getReceiptPreview']);
 });
 
-// PROTECTED ADMIN ROUTES
+// ACCOUNT MANAGEMENT -- staff of the caller's own business. Not tied to one service:
+// an owner may create staff for whichever services they were given (the controller
+// checks that), so these are deliberately outside the service: gates below.
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
+    // Users management
+    Route::prefix('users')->group(function () {
+        Route::get('mine', [\App\Http\Controllers\API\UserManagementController::class, 'myUsers']);
+        Route::get('by-service', [\App\Http\Controllers\API\UserManagementController::class, 'usersByService']);
+        Route::get('', [\App\Http\Controllers\API\UserManagementController::class, 'myUsers']); // fallback with created_by=me assumption
+        Route::post('', [\App\Http\Controllers\API\UserManagementController::class, 'store']);
+        Route::put('{id}', [\App\Http\Controllers\API\UserManagementController::class, 'update']);
+        Route::put('{id}/services', [\App\Http\Controllers\API\UserManagementController::class, 'bindServices']); // super_admin only
+        Route::delete('{id}', [\App\Http\Controllers\API\UserManagementController::class, 'destroy']);
+        Route::post('{id}/reset-password', [\App\Http\Controllers\API\UserManagementController::class, 'resetPassword']);
+    });
+});
+
+// BUSINESS REGISTRATIONS -- super admin only. A business owner registers themselves
+// (POST /auth/register); the super admin reviews the details here and assigns services.
+Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/registrations')->group(function () {
+    Route::get('', [RegistrationController::class, 'index']);
+    Route::get('{id}', [RegistrationController::class, 'show']);
+    Route::post('{id}/approve', [RegistrationController::class, 'approve']);
+    Route::post('{id}/reject', [RegistrationController::class, 'reject']);
+});
+
+// BUSINESSES -- super admin only: every business with its owner, services and plan, and the one
+// place a plan / valid_until is changed (an owner can never change their own billing).
+Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/businesses')->group(function () {
+    Route::get('', [BusinessController::class, 'adminIndex']);
+    Route::get('{id}', [BusinessController::class, 'adminShow']);
+    Route::put('{id}', [BusinessController::class, 'adminUpdate']);
+});
+
+// PROTECTED ADMIN ROUTES -- the Transport service
+Route::middleware(['auth:sanctum', 'role:admin', 'service:transport'])->prefix('admin')->group(function () {
     // Dashboard
     Route::get('dashboard', [AdminController::class, 'dashboard']);
     Route::get('dashboard-data', [DashboardController::class, 'index']);
@@ -112,18 +154,6 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
         Route::get('daily-revenue', [DashboardController::class, 'getDailyRevenueApi']);
         Route::get('weekly-revenue', [DashboardController::class, 'getWeeklyRevenueApi']);
         Route::get('monthly-revenue', [DashboardController::class, 'getMonthlyRevenueApi']);
-    });
-
-    // Users management
-    Route::prefix('users')->group(function () {
-        Route::get('mine', [\App\Http\Controllers\API\UserManagementController::class, 'myUsers']);
-        Route::get('by-service', [\App\Http\Controllers\API\UserManagementController::class, 'usersByService']);
-        Route::get('', [\App\Http\Controllers\API\UserManagementController::class, 'myUsers']); // fallback with created_by=me assumption
-        Route::post('', [\App\Http\Controllers\API\UserManagementController::class, 'store']);
-        Route::put('{id}', [\App\Http\Controllers\API\UserManagementController::class, 'update']);
-        Route::put('{id}/services', [\App\Http\Controllers\API\UserManagementController::class, 'bindServices']); // super_admin only
-        Route::delete('{id}', [\App\Http\Controllers\API\UserManagementController::class, 'destroy']);
-        Route::post('{id}/reset-password', [\App\Http\Controllers\API\UserManagementController::class, 'resetPassword']);
     });
 
     // Drivers
@@ -227,8 +257,25 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
 // Public file proxy for web images (CORS-enabled)
 Route::get('files/public/{path}', [\App\Http\Controllers\API\MediaController::class, 'publicFile'])->where('path', '.*');
 
+// Private uploads (lease documents, tenant and repair photos, reports): only through a signed,
+// expiring link that the API gives to people allowed to see the record. Signed on the path alone
+// ("relative") so it still validates behind the proxy that turns https into http.
+Route::get('files/private/{path}', [\App\Http\Controllers\API\MediaController::class, 'privateFile'])
+    ->where('path', '.*')
+    ->middleware(['signed:relative', 'throttle:240,1'])
+    ->name('files.private');
+
 // Protected routes (authentication required)
 Route::middleware(['auth:sanctum'])->group(function () {
+
+    // The signed-in user's own business: anyone who works for it reads it; only its owner edits
+    // the profile and logo. Billing (plan / valid_until) is read here, changed only by a super admin.
+    Route::prefix('business')->group(function () {
+        Route::get('', [BusinessController::class, 'show']);
+        Route::put('', [BusinessController::class, 'update']);
+        Route::post('logo', [BusinessController::class, 'uploadLogo']);
+        Route::delete('logo', [BusinessController::class, 'removeLogo']);
+    });
 
     // Auth routes
     Route::prefix('auth')->group(function () {
@@ -285,6 +332,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::middleware('inv_perm:inv_manage_products')->group(function () {
         Route::put('inventory/products/{id}',    [InventoryProductController::class, 'update']);
+        // More sizes / colours for an existing product (each a stock item of its own).
+        Route::post('inventory/products/{id}/variants', [InventoryProductController::class, 'addVariants']);
         Route::delete('inventory/products/{id}', [InventoryProductController::class, 'destroy']);
         Route::post('inventory/categories',        [InventoryCategoryController::class, 'store']);
         Route::put('inventory/categories/{id}',    [InventoryCategoryController::class, 'update']);
@@ -481,12 +530,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     // ── Approval notifications (any authenticated user, own inbox only) ──────
-    Route::get('inventory/notifications',               [InventoryNotificationController::class, 'index']);
-    Route::post('inventory/notifications/{id}/read',    [InventoryNotificationController::class, 'markRead']);
-    Route::post('inventory/notifications/read-all',     [InventoryNotificationController::class, 'markAllRead']);
+    Route::middleware('service:inventory')->group(function () {
+        Route::get('inventory/notifications',               [InventoryNotificationController::class, 'index']);
+        Route::post('inventory/notifications/{id}/read',    [InventoryNotificationController::class, 'markRead']);
+        Route::post('inventory/notifications/read-all',     [InventoryNotificationController::class, 'markAllRead']);
+    });
 
     // Admin routes (Vehicle Owner/Admin only)
-    Route::middleware(['role:admin'])->group(function () {
+    Route::middleware(['role:admin', 'service:transport'])->group(function () {
         Route::prefix('admin')->group(function () {
             // Dashboard
             Route::get('dashboard', [AdminController::class, 'dashboard']);
@@ -519,7 +570,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     // Driver routes (Read-only view for drivers)
-    Route::middleware(['role:driver'])->group(function () {
+    Route::middleware(['role:driver', 'service:transport'])->group(function () {
         Route::prefix('driver')->group(function () {
             // Driver dashboard (read-only)
             Route::get('dashboard', [DriverViewController::class, 'dashboard']);
@@ -547,7 +598,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     // Rental Service Module
-    Route::prefix('rental')->group(function () {
+    Route::prefix('rental')->middleware('service:rental')->group(function () {
         // Landlord & Admin routes
         Route::middleware(['role:admin,landlord'])->group(function () {
             // Properties

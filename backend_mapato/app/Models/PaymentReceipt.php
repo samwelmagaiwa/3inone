@@ -2,15 +2,32 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasBusinessOwner;
+use App\Models\Concerns\ScopedThroughDriver;
+use App\Support\Tenancy\BusinessOwner;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PaymentReceipt extends Model
 {
-    use HasFactory;
+    use HasFactory, ScopedThroughDriver, HasBusinessOwner;
 
     protected $table = 'payment_receipts';
+
+    /**
+     * Receipts are numbered per business (each starts from 0001), so the number is unique inside the
+     * business of the driver the receipt is for, not across the platform.
+     */
+    protected function resolveBusinessOwnerId(): ?string
+    {
+        $driver = $this->driver_id ? Driver::withoutAccountScope()->find($this->driver_id) : null;
+
+        return $driver
+            ? ($driver->owner_id ?: BusinessOwner::ofUser((string) $driver->user_id))
+            : TenantContext::writeOwner();
+    }
 
     protected $fillable = [
         'receipt_number',

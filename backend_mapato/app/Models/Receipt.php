@@ -4,11 +4,41 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\HasBusinessOwner;
+use App\Models\Concerns\ScopedToAccount;
+use App\Support\Tenancy\BusinessOwner;
+use App\Support\Tenancy\TenantContext;
 use App\Traits\HasUuid;
+use Illuminate\Database\Eloquent\Builder;
 
 class Receipt extends Model
 {
-    use HasFactory, HasUuid;
+    use HasFactory, HasUuid, ScopedToAccount, HasBusinessOwner;
+
+    /**
+     * Receipts are numbered per business (each starts from 0001), so the number is unique inside the
+     * business of the driver the receipt's transaction is for, not across the platform.
+     */
+    protected function resolveBusinessOwnerId(): ?string
+    {
+        $driverId = $this->transaction_id
+            ? Transaction::withoutGlobalScopes()->whereKey($this->transaction_id)->value('driver_id')
+            : null;
+        $driver = $driverId ? Driver::withoutAccountScope()->find($driverId) : null;
+
+        return $driver
+            ? ($driver->owner_id ?: BusinessOwner::ofUser((string) $driver->user_id))
+            : TenantContext::writeOwner();
+    }
+
+    /** A receipt belongs to the account of the transaction it was issued for. */
+    public function constrainToAccount(Builder $query, User $user): void
+    {
+        $query->whereIn(
+            $this->qualifyColumn('transaction_id'),
+            Transaction::query()->select('transactions.id')->toBase()
+        );
+    }
 
     /**
      * The attributes that are mass assignable.

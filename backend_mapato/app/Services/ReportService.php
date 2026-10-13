@@ -6,6 +6,7 @@ use App\Models\Driver;
 use App\Models\Transaction;
 use App\Models\Device;
 use App\Models\Receipt;
+use App\Support\SqlDate;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -29,11 +30,16 @@ class ReportService
         $totalRevenue = $query->sum('amount');
         $transactionCount = $query->count();
 
+        // Every breakdown below starts from its OWN copy of the filtered query. They used to share one
+        // object, so the first one's select / group by / order by leaked into the next: MySQL refused
+        // "group by period" with `period` no longer selected (a 500 on every revenue report), and the
+        // later breakdowns were grouped by the earlier ones' columns as well.
+
         // Group data by specified period
-        $groupedData = $this->groupTransactionsByPeriod($query, $groupBy);
+        $groupedData = $this->groupTransactionsByPeriod(clone $query, $groupBy);
 
         // Get category breakdown
-        $categoryBreakdown = $query->select('category', DB::raw('SUM(amount) as total'))
+        $categoryBreakdown = (clone $query)->select('category', DB::raw('SUM(amount) as total'))
             ->groupBy('category')
             ->get()
             ->map(function ($item) {
@@ -45,7 +51,7 @@ class ReportService
             });
 
         // Get payment method breakdown
-        $paymentMethodBreakdown = $query->select('payment_method', DB::raw('SUM(amount) as total'))
+        $paymentMethodBreakdown = (clone $query)->select('payment_method', DB::raw('SUM(amount) as total'))
             ->groupBy('payment_method')
             ->get()
             ->map(function ($item) {
@@ -59,7 +65,7 @@ class ReportService
         // Get device breakdown if no specific device is selected
         $deviceBreakdown = [];
         if (!$deviceId) {
-            $deviceBreakdown = $query->with('device')
+            $deviceBreakdown = (clone $query)->with('device')
                 ->select('device_id', DB::raw('SUM(amount) as total'))
                 ->groupBy('device_id')
                 ->get()
@@ -134,8 +140,8 @@ class ReportService
             ->when($deviceId, fn($q) => $q->where('device_id', $deviceId))
             ->when($category, fn($q) => $q->where('category', $category))
             ->select(
-                DB::raw('YEAR(transaction_date) as year'),
-                DB::raw('MONTH(transaction_date) as month'),
+                DB::raw(SqlDate::year('transaction_date') . ' as year'),
+                DB::raw(SqlDate::month('transaction_date') . ' as month'),
                 DB::raw('SUM(amount) as total')
             )
             ->groupBy('year', 'month')
@@ -650,17 +656,26 @@ class ReportService
             'generated_at' => now()->format('d/m/Y H:i'),
         ])->render();
 
-        $filename = 'report_' . $reportType . '_' . date('Y_m_d_H_i_s') . '.html';
+        $filename = self::reportFilename($reportType);
         $path = 'reports/' . $filename;
 
-        // Ensure reports directory exists
-        if (!Storage::disk('public')->exists('reports')) {
-            Storage::disk('public')->makeDirectory('reports');
-        }
+        // Private: reports hold a business's money figures and are only ever handed to the person
+        // who asked for them (a download), never served from public storage.
+        Storage::disk(\App\Support\PrivateFile::DISK)->put($path, $html);
 
-        Storage::disk('public')->put($path, $html);
+        return Storage::disk(\App\Support\PrivateFile::DISK)->path($path);
+    }
 
-        return storage_path('app/public/' . $path);
+    /**
+     * Name for a generated report file. Reports are written to the publicly served storage,
+     * where anyone who can guess the URL can open them -- and "report_driver_<date and time to
+     * the second>" is guessable (86,400 tries a day). The random part makes it unguessable.
+     */
+    public static function reportFilename(string $reportType): string
+    {
+        $type = preg_replace('/[^a-z0-9_]/i', '', $reportType) ?: 'report';
+
+        return 'report_' . $type . '_' . date('Y_m_d_H_i_s') . '_' . \Illuminate\Support\Str::random(24) . '.html';
     }
 
     /**
@@ -689,7 +704,7 @@ class ReportService
 
             case 'week':
                 return $query->select(
-                    DB::raw('YEARWEEK(transaction_date) as period'),
+                    DB::raw(SqlDate::yearWeek('transaction_date') . ' as period'),
                     DB::raw('SUM(amount) as total'),
                     DB::raw('COUNT(*) as count')
                 )
@@ -711,8 +726,8 @@ class ReportService
 
             case 'month':
                 return $query->select(
-                    DB::raw('YEAR(transaction_date) as year'),
-                    DB::raw('MONTH(transaction_date) as month'),
+                    DB::raw(SqlDate::year('transaction_date') . ' as year'),
+                    DB::raw(SqlDate::month('transaction_date') . ' as month'),
                     DB::raw('SUM(amount) as total'),
                     DB::raw('COUNT(*) as count')
                 )

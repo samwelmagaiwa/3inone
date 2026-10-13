@@ -4,11 +4,15 @@ namespace App\Http\Controllers\API\Rental;
 
 use App\Http\Controllers\Controller;
 use App\Support\Pagination;
+use App\Support\TemporaryPassword;
 use App\Models\Rental\MaintenanceRequest;
 use App\Models\Rental\WorkOrder;
 use App\Models\Rental\Vendor;
 use App\Models\Rental\PreventiveMaintenance;
 use App\Models\Rental\Property;
+use App\Models\Rental\House;
+use App\Models\Rental\RentalAgreement;
+use App\Models\User;
 use App\Http\Resources\MaintenanceRequestResource;
 use App\Http\Resources\WorkOrderResource;
 use App\Http\Resources\VendorResource;
@@ -21,6 +25,64 @@ use OpenApi\Attributes as OA;
 class MaintenanceController extends Controller
 {
     /**
+     * Maintenance requests the caller may see:
+     *  - super_admin: all;
+     *  - vendor: only those with a work order assigned to their vendor profile;
+     *  - tenant: only their own;
+     *  - caretaker: those on properties they are assigned to;
+     *  - everyone else (landlord, admin, their staff): those on properties the
+     *    account owns. An admin is not exempt -- they see their own account only.
+     */
+    private function visibleRequests(Request $request)
+    {
+        $user = $request->user();
+        $query = MaintenanceRequest::query();
+
+        if ($user->isSuperAdmin()) {
+            return $query;
+        }
+
+        return match ($user->role) {
+            'vendor' => $query->whereHas('workOrder.vendor', fn ($v) => $v->where('user_id', $user->id)),
+            'tenant' => $query->where('tenant_id', $user->id),
+            'caretaker' => $query->whereHas('property', fn ($p) => $p->where('caretaker_id', $user->id)),
+            default => $query->whereHas('property', fn ($p) => $p->whereIn('owner_id', $user->accountMemberIds())),
+        };
+    }
+
+    /**
+     * Can this user open or raise work on the given property? (Owner/staff: the
+     * account owns it; caretaker: assigned to it; tenant: has a lease there.)
+     */
+    private function canWorkOn(User $user, string $propertyId): bool
+    {
+        if ($user->isSuperAdmin()) {
+            return Property::whereKey($propertyId)->exists();
+        }
+
+        return match ($user->role) {
+            'tenant' => RentalAgreement::where('tenant_id', $user->id)
+                ->whereIn('status', ['active', 'notice', 'defaulter'])
+                ->whereHas('house', fn ($h) => $h->where('property_id', $propertyId))
+                ->exists(),
+            'caretaker' => Property::whereKey($propertyId)->where('caretaker_id', $user->id)->exists(),
+            'vendor' => false,
+            default => Property::whereKey($propertyId)->whereIn('owner_id', $user->accountMemberIds())->exists(),
+        };
+    }
+
+    /**
+     * The saved-vendor roster belongs to the account, not the individual: it is
+     * kept on the account head so staff and the head share one list.
+     */
+    private function rosterOwner(User $user): User
+    {
+        $headId = $user->accountHeadId();
+
+        return $headId === (string) $user->id ? $user : (User::find($headId) ?? $user);
+    }
+
+    /**
      * List all maintenance requests.
      */
     #[OA\Get(
@@ -32,32 +94,8 @@ class MaintenanceController extends Controller
     )]
     public function index(Request $request)
     {
-        $user = $request->user();
-        $query = MaintenanceRequest::with(['property', 'house', 'tenant', 'workOrder.vendor']);
-
-        // Landlord/Admin see their properties' requests; super_admin sees
-        // every property's requests (was previously falling through to the
-        // tenant branch below since 'super_admin' wasn't in this list).
-        if ($user->isSuperAdmin()) {
-            // no property filter -- unrestricted
-        } elseif (in_array($user->role, ['admin', 'landlord', 'caretaker'])) {
-            $query->whereHas('property', function ($q) use ($user) {
-                // If it's a caretaker, there might be a different linkage, but owner_id works for landlord
-                if ($user->role !== 'admin') {
-                    $q->where('owner_id', $user->id);
-                }
-            });
-        } elseif ($user->role === 'vendor') {
-            // Vendors see only requests properly assigned to their vendor profile
-            $query->whereHas('workOrder', function ($q) use ($user) {
-                $q->whereHas('vendor', function ($vQ) use ($user) {
-                    $vQ->where('user_id', $user->id);
-                });
-            });
-        } else {
-            // Tenants see only their requests
-            $query->where('tenant_id', $user->id);
-        }
+        $query = $this->visibleRequests($request)
+            ->with(['property', 'house', 'tenant', 'workOrder.vendor']);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -107,12 +145,22 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'photo' => 'nullable|image|max:5120', // 5MB max
         ]);
 
+        // `exists:` accepts any property in the system; the caller must actually
+        // be able to work on this one (own it, be assigned to it, or lease there).
+        if (!$this->canWorkOn($request->user(), (string) $request->property_id)) {
+            return ResponseHelper::error('Property not found', 404);
+        }
+        if ($request->house_id
+            && !House::whereKey($request->house_id)->where('property_id', $request->property_id)->exists()) {
+            return ResponseHelper::error('That unit does not belong to the selected property', 422);
+        }
+
         $data = $request->all();
         $data['tenant_id'] = $request->user()->id;
         $data['status'] = 'open';
 
         if ($request->hasFile('photo')) {
-            $path = $request->file('photo')->store('maintenance', 'public');
+            $path = \App\Support\PrivateFile::store($request->file('photo'), 'maintenance');
             $data['photo_url'] = $path;
         }
 
@@ -138,9 +186,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         ],
         responses: [new OA\Response(response: 200, description: 'Success')],
     )]
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
-        $maintenanceRequest = MaintenanceRequest::with(['property', 'house', 'tenant', 'workOrder.vendor'])
+        $maintenanceRequest = $this->visibleRequests($request)
+            ->with(['property', 'house', 'tenant', 'workOrder.vendor'])
             ->findOrFail($id);
 
         return ResponseHelper::success(new MaintenanceRequestResource($maintenanceRequest));
@@ -174,7 +223,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     )]
     public function assign(Request $request, string $id)
     {
-        $maintenanceRequest = MaintenanceRequest::findOrFail($id);
+        $maintenanceRequest = $this->visibleRequests($request)->findOrFail($id);
 
         $request->validate([
             'vendor_id' => 'required|exists:rental_vendors,id',
@@ -230,7 +279,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     )]
     public function updateStatus(Request $request, string $id)
     {
-        $maintenanceRequest = MaintenanceRequest::findOrFail($id);
+        $maintenanceRequest = $this->visibleRequests($request)->findOrFail($id);
 
         if ($request->user()->role === 'vendor') {
             if (!$maintenanceRequest->workOrder || !$maintenanceRequest->workOrder->vendor || $maintenanceRequest->workOrder->vendor->user_id !== $request->user()->id) {
@@ -299,13 +348,15 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             return ResponseHelper::success(VendorResource::collection($vendors));
         }
 
-        if ($user->isSuperAdmin() || $user->role === 'admin') {
+        if ($user->isSuperAdmin()) {
             $vendors = Vendor::where('is_active', true)->get();
             return ResponseHelper::success(VendorResource::collection($vendors));
         }
 
-        // For ordinary Landlords/Caretakers, return their saved roster
-        $vendors = $user->savedVendors()->where('is_active', true)->get();
+        // Landlords, admins, caretakers and staff get their account's saved roster
+        // (kept on the account head). An admin no longer sees every vendor in the
+        // system -- the shared marketplace has its own endpoint.
+        $vendors = $this->rosterOwner($user)->savedVendors()->where('is_active', true)->get();
         return ResponseHelper::success(VendorResource::collection($vendors));
     }
 
@@ -353,7 +404,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     public function saveToRoster(Request $request, $id)
     {
         $vendor = Vendor::findOrFail($id);
-        $request->user()->savedVendors()->syncWithoutDetaching([$vendor->id]);
+        $this->rosterOwner($request->user())->savedVendors()->syncWithoutDetaching([$vendor->id]);
         return ResponseHelper::success(null, 'Fundi ameongezwa kwenye orodha yako');
     }
 
@@ -380,7 +431,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     public function removeFromRoster(Request $request, $id)
     {
         $vendor = Vendor::findOrFail($id);
-        $request->user()->savedVendors()->detach($vendor->id);
+        $this->rosterOwner($request->user())->savedVendors()->detach($vendor->id);
         return ResponseHelper::success(null, 'Fundi ameondolewa kwenye orodha yako');
     }
 
@@ -425,44 +476,68 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         $phone = $request->phone;
 
-        // Find existing user or create a new one
-        $user = \App\Models\User::where('phone_number', $phone)
-            ->orWhere(function ($query) use ($request) {
+        // Vendors are a shared marketplace. When one already exists for this phone
+        // number, reuse it as it is: adding a vendor must never overwrite another
+        // account's vendor record or change who created it -- it only joins this
+        // account's roster.
+        $existing = Vendor::where('phone', $phone)->first();
+        if ($existing) {
+            $this->rosterOwner($request->user())->savedVendors()->syncWithoutDetaching([$existing->id]);
+
+            return ResponseHelper::success(new VendorResource($existing), 'Fundi ameongezwa');
+        }
+
+        // Find existing user or create a new one. The email is the sign-in name, so it finds the
+        // same person whoever asks. A phone number only finds another FUNDI: a business's driver,
+        // tenant or staff may share the number, and must never be turned into a vendor's login.
+        $user = \App\Models\User::query()
+            ->where(function ($query) use ($request, $phone) {
+                $query->where(function ($byPhone) use ($phone) {
+                    $byPhone->where('role', 'vendor')->where('phone_number', $phone);
+                });
                 if ($request->email) {
-                    $query->where('email', $request->email);
+                    $query->orWhere('email', $request->email);
                 }
             })->first();
 
+        // Set only when this call creates the sign-in for the fundi: a one-time password,
+        // returned once so it can be handed over, replaced by theirs at first sign-in.
+        $temporaryPassword = null;
+
         if (!$user) {
             $dummyEmail = $request->email ?? strtolower(str_replace(' ', '', $request->name)) . rand(100, 999) . '@vendor.mapato.com';
-            $user = \App\Models\User::create([
+            $temporaryPassword = TemporaryPassword::generate();
+            $user = new \App\Models\User([
                 'name' => $request->name,
                 'email' => $dummyEmail,
                 'phone_number' => $phone,
-                'password' => bcrypt('12345678'), // Default password
+                'password' => bcrypt($temporaryPassword),
                 'role' => 'vendor',
                 'is_active' => true,
             ]);
+            $user->must_change_password = true;
+            $user->save();
         }
 
         $data = $request->all();
         $data['user_id'] = $user->id;
         $data['is_active'] = true;
 
-        // Prevent duplicates: update existing vendor if they have the same phone
-        $vendor = Vendor::updateOrCreate(
-            ['phone' => $phone],
-            $data
-        );
+        // No vendor exists for this phone yet (checked above), so this is a new record.
+        $vendor = Vendor::create($data);
 
-        // Assign authorship and automatically attach to the creator's saved roster
+        // Assign authorship and automatically attach to the account's saved roster
         $vendor->created_by = $request->user()->id;
         $vendor->is_global = true;
         $vendor->save();
 
-        $request->user()->savedVendors()->syncWithoutDetaching([$vendor->id]);
+        $this->rosterOwner($request->user())->savedVendors()->syncWithoutDetaching([$vendor->id]);
 
-        return ResponseHelper::success(new VendorResource($vendor), 'Fundi ameongezwa', 201);
+        return ResponseHelper::success(
+            array_merge((new VendorResource($vendor))->resolve(), ['temporary_password' => $temporaryPassword]),
+            'Fundi ameongezwa',
+            201
+        );
     }
 
     /**
@@ -478,10 +553,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     public function getPreventive(Request $request)
     {
         $user = $request->user();
-        $ownerId = $user->id;
-        $schedules = PreventiveMaintenance::when(!$user->isSuperAdmin(), function ($q) use ($ownerId) {
-            $q->whereHas('property', function ($query) use ($ownerId) {
-                $query->where('owner_id', $ownerId);
+        $schedules = PreventiveMaintenance::when(!$user->seesAllAccounts(), function ($q) use ($user) {
+            $q->whereHas('property', function ($query) use ($user) {
+                $query->whereIn('owner_id', $user->accountMemberIds());
             });
         })->with(['property', 'house'])->get();
 
@@ -524,6 +598,15 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'frequency' => 'required|in:monthly,quarterly,semi_annual,annual',
             'next_run' => 'required|date',
         ]);
+
+        // Schedules may only be set on properties (and units) this account owns.
+        if (!$this->canWorkOn($request->user(), (string) $request->property_id)) {
+            return ResponseHelper::error('Property not found', 404);
+        }
+        if ($request->house_id
+            && !House::whereKey($request->house_id)->where('property_id', $request->property_id)->exists()) {
+            return ResponseHelper::error('That unit does not belong to the selected property', 422);
+        }
 
         $pm = PreventiveMaintenance::create($request->all());
         return ResponseHelper::success($pm, 'Ratiba imepangwa', 201);

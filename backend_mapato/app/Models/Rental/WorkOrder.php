@@ -10,6 +10,14 @@ class WorkOrder extends Model
 {
     use HasFactory, HasUuids;
 
+    use \App\Models\Concerns\ScopedToAccount;
+
+    /** Fail-closed account scope: work orders on visible requests (see App\Support\Tenancy\RentalAccess). */
+    public function constrainToAccount(\Illuminate\Database\Eloquent\Builder $query, \App\Models\User $user): void
+    {
+        $query->whereIn($this->qualifyColumn('maintenance_request_id'), \App\Support\Tenancy\RentalAccess::requestIds($user));
+    }
+
     protected $table = 'rental_work_orders';
 
     protected $fillable = [

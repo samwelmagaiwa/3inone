@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\Inventory;
 
+use App\Services\Inventory\ProductUnits;
 use App\Services\Inventory\AuditTrail;
 use App\Services\Inventory\InventoryNotifier;
 use App\Services\Inventory\StockLedger;
@@ -245,10 +246,30 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'lines.*.quantity' => 'required|integer|min:1',
             'lines.*.unit_price' => 'required|numeric|min:0',
             'lines.*.restock' => 'nullable|boolean',
+            // Returned in the unit it was sold in: `quantity` is then a count of that unit (whole numbers).
+            'lines.*.unit_id' => 'nullable|integer',
         ]);
 
+        // A line may be returned in a selling unit (a kg, a crate); stock and the "never more than sold" check
+        // always count BASE units, so a return of 2 kg is 2,000 g.
+        $lineUnits = [];
+        foreach ($data['lines'] as $i => $line) {
+            if (empty($line['unit_id'])) {
+                continue;
+            }
+            $unit = DB::table('inventory_product_units')
+                ->where('id', (int) $line['unit_id'])
+                ->where('product_id', (int) $line['product_id'])
+                ->first();
+            if (! $unit) {
+                return response()->json(['message' => 'That unit is not available for this product'], 422);
+            }
+            $lineUnits[$i] = $unit;
+        }
+
         // Never return more of a product than the sale actually contained.
-        foreach ($data['lines'] as $line) {
+        foreach ($data['lines'] as $i => $line) {
+            $baseQty = (int) $line['quantity'] * (isset($lineUnits[$i]) ? ProductUnits::factorOf($lineUnits[$i]) : 1);
             $sold = (int) DB::table('inventory_sale_items')
                 ->where('sale_id', $data['sale_id'])
                 ->where('product_id', $line['product_id'])
@@ -260,7 +281,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 ->where('rl.product_id', $line['product_id'])
                 ->sum('rl.quantity');
 
-            if ($already + (int) $line['quantity'] > $sold) {
+            if ($already + $baseQty > $sold) {
                 return response()->json([
                     'message' => 'Return exceeds what was sold for one of the products',
                 ], 422);
@@ -270,10 +291,19 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         $requestedBy = optional($request->user())->id;
         $reference = 'RET-' . now()->format('Ymd-His');
 
-        $id = DB::transaction(function () use ($data, $requestedBy, $reference) {
+        // When prices do not include VAT, a refund has to give back the VAT that was added on top.
+        $vatOnTop = DB::table('inventory_settings')->where('key', 'prices_include_vat')->value('value') === '0';
+
+        $id = DB::transaction(function () use ($data, $requestedBy, $reference, $lineUnits, $vatOnTop) {
             $amount = 0.0;
             foreach ($data['lines'] as $line) {
-                $amount += (float) $line['unit_price'] * (int) $line['quantity'];
+                $lineAmount = (float) $line['unit_price'] * (int) $line['quantity'];
+                if ($vatOnTop) {
+                    $rate = (float) DB::table('inventory_sale_items')
+                        ->where('sale_id', $data['sale_id'])->where('product_id', $line['product_id'])->value('tax_percent');
+                    $lineAmount += round($lineAmount * $rate / 100, 2);
+                }
+                $amount += $lineAmount;
             }
 
             $returnId = DB::table('inventory_sale_returns')->insertGetId([
@@ -288,12 +318,17 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'updated_at' => now(),
             ]);
 
-            foreach ($data['lines'] as $line) {
+            foreach ($data['lines'] as $i => $line) {
+                $unit = $lineUnits[$i] ?? null;
                 DB::table('inventory_sale_return_lines')->insert([
                     'sale_return_id' => $returnId,
                     'product_id' => $line['product_id'],
-                    'quantity' => $line['quantity'],
+                    // `quantity` is BASE units (what goes back into stock); the unit it was returned in is kept beside it.
+                    'quantity' => (int) $line['quantity'] * ($unit ? ProductUnits::factorOf($unit) : 1),
                     'unit_price' => $line['unit_price'],
+                    'unit_id' => $unit?->id,
+                    'unit_name' => $unit?->name,
+                    'unit_qty' => $unit ? (int) $line['quantity'] : null,
                     'restock' => $line['restock'] ?? true,
                     'created_at' => now(),
                     'updated_at' => now(),

@@ -133,16 +133,22 @@ class AccessControlTest extends TestCase
 
     // -------------------------------------------------------- token lifetime
 
-    public function test_tokens_expire_after_their_lifetime(): void
+    public function test_tokens_do_not_expire_by_age_only_after_a_very_long_time_unused(): void
     {
         $staff = $this->user('sales_officer', services: ['inventory']);
         $token = $staff->createToken('t')->plainTextToken;
 
+        // 29 and then 31 days after sign-in: still signed in (there is no fixed lifetime any more).
         $this->travel(29)->days();
         $this->app['auth']->forgetGuards();
         $this->withHeader('Authorization', "Bearer {$token}")->getJson('/api/auth/user')->assertOk();
 
-        $this->travel(2)->days();   // 31 days after issue
+        $this->travel(2)->days();
+        $this->app['auth']->forgetGuards();
+        $this->withHeader('Authorization', "Bearer {$token}")->getJson('/api/auth/user')->assertOk();
+
+        // A device nobody touches for over a year is the only thing that times out.
+        $this->travel(400)->days();
         $this->app['auth']->forgetGuards();
         $this->withHeader('Authorization', "Bearer {$token}")->getJson('/api/auth/user')->assertUnauthorized();
     }
@@ -161,8 +167,13 @@ class AccessControlTest extends TestCase
         $this->app['auth']->forgetGuards();
         $this->withHeader('Authorization', "Bearer {$old}")->getJson('/api/auth/user')->assertOk();
 
-        // ...but not after it, while the new one carries on.
+        // ...it is a generous window (days, so a phone that was offline does not wake up signed out)...
         $this->travel(11)->minutes();
+        $this->app['auth']->forgetGuards();
+        $this->withHeader('Authorization', "Bearer {$old}")->getJson('/api/auth/user')->assertOk();
+
+        // ...but finite, so retired tokens do not pile up; the new one carries on regardless.
+        $this->travel(8)->days();
         $this->app['auth']->forgetGuards();
         $this->withHeader('Authorization', "Bearer {$old}")->getJson('/api/auth/user')->assertUnauthorized();
         $this->app['auth']->forgetGuards();
@@ -178,20 +189,20 @@ class AccessControlTest extends TestCase
         $this->as($this->user('sales_officer', services: ['inventory']), 'GET', '/api/payment-receipts')->assertForbidden();
         $this->as($this->user('viewer', ['manage_vehicles_transport']), 'GET', '/api/payment-receipts')->assertForbidden();
 
-        $this->assertNotSame(403, $this->as($this->user('viewer', ['manage_payments_transport']), 'GET', '/api/payment-receipts')->status());
-        $this->assertNotSame(403, $this->as($this->user('admin'), 'GET', '/api/payment-receipts')->status());
+        $this->assertNotSame(403, $this->as($this->user('viewer', ['manage_payments_transport'], ['transport']), 'GET', '/api/payment-receipts')->status());
+        $this->assertNotSame(403, $this->as($this->user('admin', services: ['transport']), 'GET', '/api/payment-receipts')->status());
     }
 
     // ------------------------------------------- rental / transport grants
 
     public function test_a_service_grant_opens_only_its_own_routes(): void
     {
-        $vehicles = $this->user('viewer', ['manage_vehicles_transport']);
+        $vehicles = $this->user('viewer', ['manage_vehicles_transport'], ['transport']);
         $this->assertNotSame(403, $this->as($vehicles, 'GET', '/api/admin/vehicles')->status());
         $this->as($vehicles, 'GET', '/api/admin/drivers')->assertForbidden();
         $this->as($vehicles, 'GET', '/api/admin/users/mine')->assertForbidden();
 
-        $properties = $this->user('viewer', ['manage_properties_rental']);
+        $properties = $this->user('viewer', ['manage_properties_rental'], ['rental']);
         $this->assertNotSame(403, $this->as($properties, 'GET', '/api/rental/properties')->status());
         $this->as($properties, 'GET', '/api/rental/houses')->assertForbidden();
 
@@ -202,6 +213,24 @@ class AccessControlTest extends TestCase
     public function test_roles_keep_their_existing_access(): void
     {
         $this->assertNotSame(403, $this->as($this->user('landlord'), 'GET', '/api/rental/properties')->status());
+        $this->assertNotSame(403, $this->as($this->user('admin', services: ['transport']), 'GET', '/api/admin/vehicles')->status());
+    }
+
+    public function test_a_service_is_served_only_to_users_who_were_given_it(): void
+    {
+        // Role and permissions are not enough: an admin with no transport service is refused,
+        // with a code the app can act on, however they got the grant.
+        $noService = $this->user('admin');
+        $this->as($noService, 'GET', '/api/admin/vehicles')->assertForbidden()->assertJsonPath('code', 'service_not_assigned');
+
+        // A business given rental only cannot reach transport or inventory.
+        $rentalOnly = $this->user('admin', services: ['rental']);
+        $this->assertNotSame(403, $this->as($rentalOnly, 'GET', '/api/rental/properties')->status());
+        $this->as($rentalOnly, 'GET', '/api/admin/vehicles')->assertForbidden()->assertJsonPath('code', 'service_not_assigned');
+        $this->as($rentalOnly, 'GET', '/api/inventory/products')->assertForbidden()->assertJsonPath('code', 'service_not_assigned');
+
+        // The emergency switch turns the check off (and only the check).
+        config(['tenancy.enforce_services' => false]);
         $this->assertNotSame(403, $this->as($this->user('admin'), 'GET', '/api/admin/vehicles')->status());
     }
 

@@ -32,6 +32,16 @@ class CheckInventoryPermission
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
+        // Having a permission is not enough: the business must have been given the
+        // inventory service at all (see User::canUseService).
+        if (!$user->canUseService('inventory')) {
+            return response()->json([
+                'message' => 'Your account has not been given access to this service. Ask your administrator.',
+                'code'    => 'service_not_assigned',
+                'service' => ['inventory'],
+            ], 403);
+        }
+
         // At least one of the required permissions must be satisfied
         foreach ($permissions as $perm) {
             if ($user->hasInventoryPermission(trim($perm))) {

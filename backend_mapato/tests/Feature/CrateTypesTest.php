@@ -24,12 +24,12 @@ class CrateTypesTest extends TestCase
         return $this->withHeader('Authorization', "Bearer {$token}")->json($method, $uri, $body);
     }
 
+    /** A business owner given inventory (so it has its own default crate types), acting as that business. */
     private function admin(): User
     {
-        $u = User::factory()->create(['role' => 'admin', 'is_active' => true]);
-        $u->services()->create(['service_type' => 'inventory']);
-
-        return $u;
+        return $this->actAsBusiness(
+            $this->givenServices(User::factory()->create(['role' => 'admin', 'is_active' => true]), 'inventory')
+        );
     }
 
     private function customer(): int
@@ -48,7 +48,9 @@ class CrateTypesTest extends TestCase
 
     public function test_only_people_who_manage_settings_can_change_crate_types(): void
     {
-        $officer = User::factory()->create(['role' => 'sales_officer', 'is_active' => true]);
+        // Staff belong to the business that created them.
+        $owner = $this->admin();
+        $officer = User::factory()->create(['role' => 'sales_officer', 'is_active' => true, 'created_by' => $owner->id]);
         $officer->services()->create(['service_type' => 'inventory']);
         $id = $this->crateId();
 

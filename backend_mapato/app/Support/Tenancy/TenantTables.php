@@ -1,0 +1,117 @@
+<?php
+
+namespace App\Support\Tenancy;
+
+/**
+ * The raw-SQL tables that belong to one business each.
+ *
+ * Inventory is written with the query builder (DB::table('inventory_...')), not
+ * Eloquent models, so it cannot use model scopes. Instead every table listed
+ * here carries an `owner_id` (the id of the business's account head) and the
+ * query grammar adds `owner_id = <the signed-in business>` to every statement
+ * that touches one of them -- selects, updates, deletes, joins, subqueries and
+ * the `exists:` / `unique:` validation rules alike. A controller that forgets to
+ * filter is therefore still safe, exactly like the Eloquent AccountScope does for
+ * Transport and Rental.
+ *
+ * ADD EVERY NEW inventory_* TABLE HERE. A test fails if one is missing.
+ */
+final class TenantTables
+{
+    /** @var array<int, string> */
+    public const INVENTORY = [
+        'inventory_alerts',
+        'inventory_audit_log',
+        'inventory_barcode_labels',
+        'inventory_batches',
+        'inventory_brands',
+        'inventory_cash_expenses',
+        'inventory_cash_sessions',
+        'inventory_categories',
+        'inventory_crate_movements',
+        'inventory_crate_types',
+        'inventory_customers',
+        'inventory_dispatch_lines',
+        'inventory_dispatches',
+        'inventory_expenses',
+        'inventory_goods_receipt_lines',
+        'inventory_goods_receipts',
+        'inventory_notifications',
+        'inventory_parked_sales',
+        'inventory_payment_allocations',
+        'inventory_price_changes',
+        'inventory_product_prices',
+        'inventory_product_units',
+        'inventory_products',
+        'inventory_purchase_order_lines',
+        'inventory_purchase_orders',
+        'inventory_reminders',
+        'inventory_sale_items',
+        'inventory_sale_payments',
+        'inventory_sale_return_lines',
+        'inventory_sale_returns',
+        'inventory_sales',
+        'inventory_settings',
+        'inventory_stock_count_lines',
+        'inventory_stock_counts',
+        'inventory_stock_movements',
+        'inventory_supplier_invoices',
+        'inventory_supplier_payments',
+        'inventory_suppliers',
+        'inventory_write_offs',
+    ];
+
+    /**
+     * inventory_* tables that deliberately have no owner because nothing reads or
+     * writes them: an unused sequence table, and the settings table as it was before
+     * it became per-business (kept as a rollback backup; drop it by hand later).
+     */
+    public const UNSCOPED_INVENTORY = [
+        'inventory_sku_sequences',
+        'inventory_settings_legacy',
+    ];
+
+    /** The column that holds the owning business (the account head's user id). */
+    public const OWNER_COLUMN = 'owner_id';
+
+    /** @var array<string, true>|null */
+    private static ?array $lookup = null;
+
+    /** @return array<int, string> */
+    public static function all(): array
+    {
+        return self::INVENTORY;
+    }
+
+    public static function has(string $table): bool
+    {
+        self::$lookup ??= array_fill_keys(self::INVENTORY, true);
+
+        return isset(self::$lookup[$table]);
+    }
+
+    /**
+     * The registered table and the name its columns are qualified with, from a
+     * query's `from` / join table ("inventory_sales", "inventory_sales as s"), or
+     * null for anything else (other tables, raw expressions, sub-queries).
+     *
+     * @return array{0: string, 1: string}|null [table, alias]
+     */
+    public static function resolve(mixed $from): ?array
+    {
+        if (!is_string($from)) {
+            return null;
+        }
+
+        if (preg_match('/^([A-Za-z0-9_]+)(?:\s+as\s+([A-Za-z0-9_]+))?$/i', trim($from), $m) !== 1) {
+            return null;
+        }
+
+        $table = $m[1];
+        if (!self::has($table)) {
+            return null;
+        }
+
+        return [$table, $m[2] ?? $table];
+    }
+}

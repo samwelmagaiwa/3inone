@@ -176,6 +176,145 @@ class User extends Authenticatable
         return $this->hasMany(User::class, 'created_by');
     }
 
+    // ── Account scope ────────────────────────────────────────────────────────
+    // "Who may see whose data" is derived from who created whom. An account has
+    // one head (admin / landlord) and everything that head -- or staff the head
+    // created -- creates belongs to that account. Data written by anyone in the
+    // account is visible to everyone in it (subject to their permissions) and to
+    // nobody outside it. super_admin is the only unrestricted user.
+
+    /** Roles that head their own account: their creator never owns their data. */
+    public const ACCOUNT_HEAD_ROLES = ['admin', 'administrator', 'landlord'];
+
+    /** Counterparties who only ever see their own records, never a shared pool. */
+    public const PORTAL_ROLES = ['driver', 'tenant', 'vendor'];
+
+    private ?string $accountHeadIdCache = null;
+
+    /** @var array<int, string>|null */
+    private ?array $accountMemberIdsCache = null;
+
+    /** super_admin is the one role that sees every account. */
+    public function seesAllAccounts(): bool
+    {
+        return $this->isSuperAdmin();
+    }
+
+    /** A driver / tenant / vendor: scoped to their own records, not the account's. */
+    public function isPortalUser(): bool
+    {
+        return in_array(strtolower((string) $this->role), self::PORTAL_ROLES, true);
+    }
+
+    /**
+     * Id of the user heading this user's account: the nearest admin / landlord
+     * at or above them in the created_by chain. A user with no such head
+     * (created by super_admin, or an orphan) is their own account, so the
+     * safe fallback is "sees only what they made".
+     */
+    public function accountHeadId(): string
+    {
+        if ($this->accountHeadIdCache !== null) {
+            return $this->accountHeadIdCache;
+        }
+
+        $current = $this;
+        for ($hops = 0; $current && $hops < 8; $hops++) {
+            if (in_array(strtolower((string) $current->role), self::ACCOUNT_HEAD_ROLES, true)) {
+                return $this->accountHeadIdCache = (string) $current->id;
+            }
+            if (!$current->created_by) {
+                break;
+            }
+            $current = static::query()->find($current->created_by);
+        }
+
+        return $this->accountHeadIdCache = (string) $this->id;
+    }
+
+    /**
+     * Can this user work right now? They must be active themselves AND belong to a
+     * business whose owner is active: deactivating (suspending) an owner shuts the whole
+     * business, staff included, without touching a single account or record.
+     */
+    public function accountIsActive(): bool
+    {
+        if (!$this->is_active) {
+            return false;
+        }
+
+        $headId = $this->accountHeadId();
+        if ($headId === (string) $this->id) {
+            return true;
+        }
+
+        $head = static::query()->find($headId);
+
+        return $head === null || (bool) $head->is_active;
+    }
+
+    /**
+     * Ids of the account's head and every staff member below them (not
+     * drivers/tenants/vendors, and not other account heads). A record belongs
+     * to this account when its owner / creator is one of these ids.
+     *
+     * @return array<int, string>
+     */
+    public function accountMemberIds(): array
+    {
+        if ($this->accountMemberIdsCache !== null) {
+            return $this->accountMemberIdsCache;
+        }
+
+        $head = $this->accountHeadId();
+        $ids = [$head];
+        $frontier = [$head];
+        $excluded = array_merge(self::PORTAL_ROLES, self::ACCOUNT_HEAD_ROLES, ['super_admin']);
+
+        for ($depth = 0; $depth < 8 && $frontier; $depth++) {
+            $next = static::query()
+                ->whereIn('created_by', $frontier)
+                ->whereNotIn('role', $excluded)
+                ->pluck('id')
+                ->map(fn ($id) => (string) $id)
+                ->all();
+            $next = array_values(array_diff($next, $ids));
+            $ids = array_merge($ids, $next);
+            $frontier = $next;
+        }
+
+        // The user themself is always part of their own account, whatever their role.
+        if (!in_array((string) $this->id, $ids, true)) {
+            $ids[] = (string) $this->id;
+        }
+
+        return $this->accountMemberIdsCache = $ids;
+    }
+
+    /** Drop the memoised account lookups (after changing who created whom). */
+    public function forgetAccountCache(): void
+    {
+        $this->accountHeadIdCache = null;
+        $this->accountMemberIdsCache = null;
+        $this->effectiveServicesCache = null;
+    }
+
+    /**
+     * Restrict a User query to the accounts the caller may see: everyone they
+     * or their staff created, plus themself. super_admin sees all.
+     */
+    public function scopeInAccountOf($query, self $viewer)
+    {
+        if ($viewer->seesAllAccounts()) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($viewer) {
+            $q->whereIn('users.created_by', $viewer->accountMemberIds())
+                ->orWhere('users.id', $viewer->id);
+        });
+    }
+
     /**
      * Get the device assigned to this user
      */
@@ -242,6 +381,62 @@ class User extends Authenticatable
         }
 
         return self::SERVICE_ROLE_DEFAULTS[strtolower($this->role ?? '')] ?? [];
+    }
+
+    /** The self-registration this account was created from, if it registered itself. */
+    public function registration()
+    {
+        return $this->hasOne(BusinessRegistration::class);
+    }
+
+    private ?array $effectiveServicesCache = null;
+
+    /**
+     * May this user use a service? Only when a super admin has given it to them
+     * AND to the account head above them, so taking a service from a business
+     * takes it from that business's staff and drivers as well. super_admin and
+     * full_access users may use all three.
+     *
+     * Enforced by the `service:` route middleware; the mobile app's own service
+     * picker is built from effectiveServiceTypes() so the two never disagree.
+     */
+    public function canUseService(string $service): bool
+    {
+        if ($this->seesAllAccounts() || $this->full_access) {
+            return true;
+        }
+        if (!config('tenancy.enforce_services', true)) {
+            return true;
+        }
+        if (!in_array($service, $this->allowedServiceTypes(), true)) {
+            return false;
+        }
+
+        $headId = $this->accountHeadId();
+        if ($headId === (string) $this->id) {
+            return true;
+        }
+
+        $head = static::query()->find($headId);
+
+        return $head !== null && $head->canUseService($service);
+    }
+
+    /** The services this user really has, as the app's service picker should list them. */
+    public function effectiveServiceTypes(): array
+    {
+        if ($this->effectiveServicesCache !== null) {
+            return $this->effectiveServicesCache;
+        }
+
+        if (!config('tenancy.enforce_services', true)) {
+            return $this->effectiveServicesCache = $this->allowedServiceTypes();
+        }
+
+        return $this->effectiveServicesCache = array_values(array_filter(
+            config('tenancy.services', ['inventory', 'rental', 'transport']),
+            fn (string $service) => $this->canUseService($service)
+        ));
     }
 
 

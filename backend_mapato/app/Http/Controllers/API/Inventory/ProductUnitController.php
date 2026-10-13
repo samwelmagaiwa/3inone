@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\Inventory;
 
+use App\Services\Inventory\ProductUnits;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,10 @@ use OpenApi\Attributes as OA;
  */
 class ProductUnitController extends Controller
 {
+    public function __construct(private readonly ProductUnits $units)
+    {
+    }
+
     /** All units of one product, each with its retail / wholesale / special prices. */
     #[OA\Get(
         path: '/inventory/products/{productId}/units',
@@ -134,7 +139,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             foreach (['retail' => 'retail_price', 'wholesale' => 'wholesale_price'] as $tier => $field) {
                 if (isset($data[$field])) {
-                    $this->writePrice($unitId, $tier, null, (float) $data[$field], 'Unit created', $userId);
+                    $this->units->writePrice($unitId, $tier, null, (float) $data[$field], 'Unit created', $userId);
                 }
             }
 
@@ -302,7 +307,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         }
 
         DB::transaction(function () use ($unitId, $data, $request) {
-            $this->writePrice(
+            $this->units->writePrice(
                 $unitId,
                 $data['tier'],
                 $data['customer_id'] ?? null,
@@ -346,60 +351,5 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             ->get();
 
         return response()->json(['data' => $rows]);
-    }
-
-    /**
-     * Upsert the current price and append to the immutable change log.
-     * Must be called inside a transaction.
-     */
-    private function writePrice(
-        int $unitId,
-        string $tier,
-        ?int $customerId,
-        float $price,
-        ?string $reason,
-        int|string|null $userId,
-        ?string $effectiveFrom = null,
-    ): void {
-        $current = DB::table('inventory_product_prices')
-            ->where('product_unit_id', $unitId)
-            ->where('tier', $tier)
-            ->where(fn ($w) => $customerId === null
-                ? $w->whereNull('customer_id')
-                : $w->where('customer_id', $customerId))
-            ->first();
-
-        if ($current && (float) $current->price === $price) {
-            return; // nothing changed, keep the log clean
-        }
-
-        $payload = [
-            'price' => $price,
-            'effective_from' => $effectiveFrom ?? now()->toDateString(),
-            'created_by' => $userId,
-            'updated_at' => now(),
-        ];
-
-        if ($current) {
-            DB::table('inventory_product_prices')->where('id', $current->id)->update($payload);
-        } else {
-            DB::table('inventory_product_prices')->insert(array_merge($payload, [
-                'product_unit_id' => $unitId,
-                'tier' => $tier,
-                'customer_id' => $customerId,
-                'created_at' => now(),
-            ]));
-        }
-
-        DB::table('inventory_price_changes')->insert([
-            'product_unit_id' => $unitId,
-            'tier' => $tier,
-            'customer_id' => $customerId,
-            'old_price' => $current->price ?? null,
-            'new_price' => $price,
-            'reason' => $reason,
-            'changed_by' => $userId,
-            'created_at' => now(),
-        ]);
     }
 }

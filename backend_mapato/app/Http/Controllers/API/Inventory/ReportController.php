@@ -154,12 +154,13 @@ class ReportController extends Controller
             ->limit(1000)
             ->get([
                 's.number', 's.created_at as date', 'c.name as customer',
-                'p.name as product', 'i.quantity', 'i.unit_price', 'i.total',
+                'p.name as product', DB::raw('COALESCE(i.unit_qty, i.quantity) as quantity'),
+                DB::raw('i.unit_name as unit'), 'i.unit_price', 'i.total',
             ]);
 
         return [
             ['number' => 'Sale', 'date' => 'Date', 'customer' => 'Customer',
-                'product' => 'Product', 'quantity' => 'Qty',
+                'product' => 'Product', 'quantity' => 'Qty', 'unit' => 'Unit',
                 'unit_price' => 'Price', 'total' => 'Total'],
             $rows,
             ['total' => $rows->sum('total')],
