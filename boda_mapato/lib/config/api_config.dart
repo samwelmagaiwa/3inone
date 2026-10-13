@@ -6,8 +6,9 @@ import "package:http/http.dart" as http;
 
 mixin ApiConfig {
   // Environment enum
-  // Set to production to use the deployed VPS backend
-  static const String _environment = Environment.production;
+  // threeInOne = the new multi-business backend (3inone.nexoryatech.com).
+  // production = the older depot backend. Change this one word to switch back.
+  static const String _environment = Environment.threeInOne;
 
   // Toggle verbose HTTP logging in debug builds only
   static const bool enableHttpLogs = true;
@@ -26,6 +27,8 @@ mixin ApiConfig {
         return "http://10.0.2.2:8000/api";
       case Environment.production:
         return "https://depot.magrethschools.sc.tz/api";
+      case Environment.threeInOne:
+        return "https://3inone.nexoryatech.com/api";
       default:
         return "http://127.0.0.1:8000/api";
     }
@@ -42,6 +45,8 @@ mixin ApiConfig {
         return "http://10.0.2.2:8000";
       case Environment.production:
         return "https://depot.magrethschools.sc.tz";
+      case Environment.threeInOne:
+        return "https://3inone.nexoryatech.com";
       default:
         return "http://127.0.0.1:8000";
     }
@@ -87,6 +92,8 @@ mixin Environment {
   static const String network = "network";
   // 10.0.2.2:8000 - for Android emulator
   static const String emulator = "emulator";
-  // production server
+  // production server (older depot backend)
   static const String production = "production";
+  // new multi-business backend, Docker image magaiwa/3inone-backend
+  static const String threeInOne = "threeInOne";
 }
