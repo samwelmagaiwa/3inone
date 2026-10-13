@@ -736,13 +736,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 // Health check route
 Route::get('health', function () {
+    // No PHP or framework version here: this is public, and it is nobody's business what the server runs.
     return response()->json([
         'status' => 'success',
-        'message' => 'Boda Mapato API is running',
+        'message' => '3 in One API is running',
         'timestamp' => now()->toISOString(),
-        'version' => '1.0.0',
+        'version' => config('app.api_version'),
         'server_time' => date('Y-m-d H:i:s'),
-        'php_version' => PHP_VERSION,
     ]);
 });
 

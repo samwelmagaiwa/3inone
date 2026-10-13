@@ -3,10 +3,23 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Web\AdminDashboardController;
 
-// Welcome page
+// Status page: what a person sees when they open the server's address in a browser. It shows only what is
+// safe to show (that the API is running, its version, the time) and needs nothing from the database, so it
+// still answers when the database is down: no session is started for it. /api/health is the check for programs.
 Route::get('/', function () {
-    return view('welcome');
-});
+    return response()
+        ->view('status', [
+            'version' => config('app.api_version'),
+            'time' => now()->utc()->format('Y-m-d H:i:s'),
+            'year' => now()->utc()->year,
+        ])
+        ->header('Cache-Control', 'no-store')
+        ->header('X-Robots-Tag', 'noindex, nofollow');
+})->withoutMiddleware([
+    \Illuminate\Session\Middleware\StartSession::class,
+    \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+    \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+]);
 
 // Admin Dashboard Routes
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
