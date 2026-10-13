@@ -1,28 +1,48 @@
+# 3inone production stack: the backend image from Docker Hub, against the 3inone database on the server.
+#
+# It lives in /www/3inone on the server, next to a .env that is never in git (secrets). Nothing is published
+# to the internet: the backend listens on 127.0.0.1:8087 and the panel's nginx reverse-proxies
+# 3inone.nexoryatech.com to it.
+#
+#   cd /www/3inone
+#   docker compose pull && docker compose up -d
+#   docker exec 3inone_backend php artisan migrate --force      # only when there are new migrations
+#
+# Why network_mode: bridge. The server's firewall drops everything by default and lets MySQL (port 3306) in
+# per Docker network, one subnet at a time. The default bridge network (172.17.0.0/16) is already allowed; a
+# network of its own (what Compose would create for this folder) has a new subnet and would be blocked until
+# someone adds a rule. The database user must also be allowed from that network (in the panel: Databases >
+# 3inone > permission > 172.17.%).
+#
+# Full steps, first install and updates: docs/DEPLOY.md
+
 services:
   app:
-    image: magaiwa/depot:latest
-    container_name: depot_backend
+    image: magaiwa/3inone-backend:latest
+    container_name: 3inone_backend
     restart: unless-stopped
+    network_mode: bridge
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
+      APP_NAME: ${APP_NAME:-3inone}
       APP_ENV: production
       APP_DEBUG: "false"
       APP_KEY: ${APP_KEY}
       APP_URL: ${APP_URL}
       SESSION_SECURE_COOKIE: "true"
       DB_CONNECTION: mysql
-      DB_HOST: host.docker.internal
-      DB_PORT: 3306
-      DB_DATABASE: ${DB_DATABASE:-depot}
-      DB_USERNAME: ${DB_USERNAME:-depot}
+      DB_HOST: ${DB_HOST:-host.docker.internal}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_DATABASE: ${DB_DATABASE:-3inone}
+      DB_USERNAME: ${DB_USERNAME:-3inone}
       DB_PASSWORD: ${DB_PASSWORD}
       QUEUE_CONNECTION: database
       CACHE_STORE: database
-      # Text messages (password reset codes, registration phone check, receipts). The
-      # values live in the .env next to this file on the server, never in git. Without
-      # SMS_ENABLED=true and the key/secret, messages are only logged and the app refuses
-      # anything that needs a code to reach someone's phone.
+      # Text messages (password reset codes, registration phone check, receipts). The values live in
+      # the .env next to this file on the server, never in git. Without SMS_ENABLED=true and the
+      # key/secret, messages are only logged and the app refuses anything that needs a code to reach
+      # someone's phone.
       SMS_DRIVER: ${SMS_DRIVER:-log}
       SMS_ENABLED: ${SMS_ENABLED:-false}
       SMS_API_URL: ${SMS_API_URL:-https://messaging.kilakona.co.tz/api/v1/vendor/message/send}
@@ -36,9 +56,10 @@ services:
       BILLING_TRIAL_DAYS: ${BILLING_TRIAL_DAYS:-30}
       BILLING_GRACE_DAYS: ${BILLING_GRACE_DAYS:-7}
     volumes:
-      - depot_storage:/var/www/html/storage
+      - 3inone_storage:/var/www/html/storage
     ports:
-      - "127.0.0.1:8081:80"
+      - "127.0.0.1:8087:80"
 
 volumes:
-  depot_storage:
+  3inone_storage:
+    name: 3inone_storage

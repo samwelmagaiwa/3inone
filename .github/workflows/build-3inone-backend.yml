@@ -5,9 +5,8 @@ name: Build 3inone backend image
 # This workflow only BUILDS. It never touches a server: no SSH, no migrations. Putting an image on a
 # server is a separate decision, made by whoever runs that server.
 #
-# It runs only in the samwelmagaiwa/3inone repository. (deploy-depot.yml, which builds magaiwa/depot and
-# DEPLOYS to the live VPS, is the opposite: it is switched off in that repository and stays as it was
-# in samwelmagaiwa/mobile_app.)
+# It runs only in the samwelmagaiwa/3inone repository. Putting the image on the server is done by hand
+# (see backend_mapato/docs/DEPLOY.md).
 #
 # Needs two repository secrets: DOCKERHUB_USERNAME and DOCKERHUB_TOKEN.
 
@@ -62,7 +61,8 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push
-        # Plain bash retry instead of a third-party action (see deploy-depot.yml for why).
+        # Plain bash retry instead of a third-party retry action: that action broke when the runners moved
+        # to a newer Node, and never even got to the build.
         run: |
           for attempt in 1 2 3; do
             if docker buildx build \
