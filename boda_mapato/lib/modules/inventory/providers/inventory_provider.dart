@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import '../../../services/api_service.dart';
 import '../models/inv_batch.dart';
 import '../models/inv_brand.dart';
+import '../models/inv_capabilities.dart';
 import '../models/inv_category.dart';
 import '../models/inv_customer.dart';
 import '../models/inv_product.dart';
@@ -51,6 +52,9 @@ class InventoryProvider extends ChangeNotifier {
     if (domains.contains(InvDomain.expense)) {
       futures.add(fetchKpis());
     }
+    if (domains.contains(InvDomain.settings)) {
+      futures.add(fetchCapabilities());
+    }
     // Always refresh KPIs after a sale (covers debt total, cash, profit).
     if (domains.contains(InvDomain.sale)) {
       // already added above — no-op duplicate guard
@@ -80,6 +84,14 @@ class InventoryProvider extends ChangeNotifier {
   final List<InvStockMovement> _stockMovements = <InvStockMovement>[];
   int _expiredCount = 0;
   int _expiringSoonCount = 0;
+
+  // What the business's inventory is set up to do (see InvCapabilities). Until the settings arrive it is the
+  // depot's behaviour -- exactly what the app did before kinds of business existed.
+  InvCapabilities _capabilities = const InvCapabilities();
+  // The price level the cashier picked for this cart (retail / wholesale); null = the business's own.
+  String? _tierOverride;
+  // Why the last create / update was refused (the server's own words), for the screen to show.
+  String? _lastError;
 
   // POS cart state
   final List<InvSaleItem> _cart = <InvSaleItem>[];
@@ -208,9 +220,20 @@ class InventoryProvider extends ChangeNotifier {
 
   double get cartSubtotal => _cart.fold(0, (sum, it) => sum + it.total);
   double get cartDiscount => 0; // MVP
-  double get cartTax => 0; // MVP
-  double get cartTotal => cartSubtotal - cartDiscount + cartTax;
+
+  /// The VAT the cart carries: each line's, from its product's rate (or the business's default).
+  double get cartTax => _cart.fold(0, (double sum, InvSaleItem it) => sum + it.taxAmount);
+
+  /// When prices already include VAT the total is just the lines; otherwise VAT is added on top.
+  double get cartTotal =>
+      cartSubtotal - cartDiscount + (_capabilities.pricesIncludeVat ? 0 : cartTax);
   double get cartProfit => _cart.fold(0, (sum, it) => sum + it.profit);
+
+  InvCapabilities get capabilities => _capabilities;
+  String? get lastError => _lastError;
+
+  /// The price level in use: what the cashier picked, else the business's own (retail for a depot).
+  String get cartTier => _tierOverride ?? _capabilities.startingTier;
 
   List<InvProduct> get lowStockTop5 {
     final list = _products.where((p) => p.quantity < p.minStock).toList()
@@ -521,7 +544,7 @@ class InventoryProvider extends ChangeNotifier {
     for (final e in endpoints) {
       try {
         final res = await _api.getOrNull(
-            '$e?page=$page${q != null ? '&q=$q' : ''}${status != null ? '&status=$status' : ''}${(lowStock ?? false) ? '&low_stock=1' : ''}');
+            '$e?page=$page&with_units=1${q != null ? '&q=$q' : ''}${status != null ? '&status=$status' : ''}${(lowStock ?? false) ? '&low_stock=1' : ''}');
         if (res == null) continue;
         final List<dynamic> list = (res['data'] is List)
             ? List<dynamic>.from(res['data'] as List)
@@ -534,6 +557,15 @@ class InventoryProvider extends ChangeNotifier {
           ..clear()
           ..addAll(
               list.map((j) => _fromProductJson(j as Map<String, dynamic>)));
+        // The selling units (crate / bottle, kg / g ...) and their prices arrive with the list.
+        for (final dynamic j in list) {
+          if (j is Map<String, dynamic> && j['units'] is List) {
+            final int id = int.tryParse((j['id'] ?? 0).toString()) ?? 0;
+            _unitsByProduct[id] = (j['units'] as List)
+                .map((u) => InvProductUnit.fromJson(<String, dynamic>{...(u as Map<String, dynamic>), 'product_id': id}))
+                .toList();
+          }
+        }
         notifyListeners();
         return;
       } on Exception {
@@ -558,12 +590,24 @@ class InventoryProvider extends ChangeNotifier {
     String status = 'active',
     String? barcode,
     String priceTier = 'retail',
+    double? taxPercent,
+    String measure = 'count',
+    double? otherPrice,
+    List<Map<String, dynamic>> units = const <Map<String, dynamic>>[],
+    List<Map<String, dynamic>> variants = const <Map<String, dynamic>>[],
   }) async {
+    _lastError = null;
     try {
       await _api.post('/inventory/products', {
         'name': name,
         'description': description,
         'sku': sku,
+        if (taxPercent != null) 'tax_percent': taxPercent,
+        if (measure != 'count') 'measure': measure,
+        // The same unit's price at the other level (retail <-> wholesale).
+        if (otherPrice != null) 'other_price': otherPrice,
+        if (units.isNotEmpty) 'units': units,
+        if (variants.isNotEmpty) 'variants': variants,
         'category': category,
         if (categoryId != null) 'category_id': categoryId,
         if (brandId != null) 'brand_id': brandId,
@@ -581,8 +625,56 @@ class InventoryProvider extends ChangeNotifier {
       _refreshLowStockReminders();
       InvEventBus.instance.emit({InvDomain.product});
       return true;
+    } on ApiException catch (e) {
+      _lastError = e.message;
+      return false;
     } on Exception {
       return false;
+    }
+  }
+
+  /// Add more sizes / colours to an existing product (each its own stock item). Returns true on success.
+  Future<bool> addVariants(int productId, List<Map<String, dynamic>> variants) async {
+    _lastError = null;
+    try {
+      await _api.post('/inventory/products/$productId/variants', <String, dynamic>{'variants': variants});
+      await fetchProducts();
+      InvEventBus.instance.emit({InvDomain.product});
+      return true;
+    } on ApiException catch (e) {
+      _lastError = e.message;
+      return false;
+    } on Exception {
+      return false;
+    }
+  }
+
+  /// The sizes / colours of one product (including itself), straight from the server.
+  Future<List<InvProduct>> fetchFamily(int familyId) async {
+    try {
+      final Map<String, dynamic>? res = await _api.getOrNull('/inventory/products?family_id=$familyId');
+      final List<dynamic> list = (res?['data'] is List) ? res!['data'] as List<dynamic> : <dynamic>[];
+      return list.map((j) => _fromProductJson(j as Map<String, dynamic>)).toList();
+    } on Exception {
+      return const <InvProduct>[];
+    }
+  }
+
+  /// Read what the business's inventory is set up to do (kind of business, crates, price level, VAT).
+  Future<void> fetchCapabilities() async {
+    try {
+      final Map<String, dynamic>? res = await _api.getOrNull('/inventory/settings');
+      final dynamic data = res?['data'];
+      if (data is! Map) return;
+      final InvCapabilities next = InvCapabilities.fromSettings(
+        data.map((k, v) => MapEntry(k.toString(), (v ?? '').toString())),
+      );
+      if (next != _capabilities) {
+        _capabilities = next;
+        notifyListeners();
+      }
+    } on Exception {
+      // keep what we had
     }
   }
 
@@ -602,12 +694,20 @@ class InventoryProvider extends ChangeNotifier {
     String status = 'active',
     String? barcode,
     String priceTier = 'retail',
+    double? taxPercent,
+    bool clearTax = false,
+    String? variantLabel,
   }) async {
+    _lastError = null;
     try {
       await _api.put('/inventory/products/$id', {
         'name': name,
         'description': description,
         'category': category,
+        // The VAT rate: a number sets it, "clear" puts it back to the business's default, nothing leaves it.
+        if (taxPercent != null) 'tax_percent': taxPercent,
+        if (clearTax) 'tax_percent': null,
+        if (variantLabel != null) 'variant_label': variantLabel,
         if (categoryId != null) 'category_id': categoryId,
         if (brandId != null) 'brand_id': brandId,
         'cost_price': costPrice,
@@ -624,6 +724,9 @@ class InventoryProvider extends ChangeNotifier {
       _refreshLowStockReminders();
       InvEventBus.instance.emit({InvDomain.product});
       return true;
+    } on ApiException catch (e) {
+      _lastError = e.message;
+      return false;
     } on Exception {
       return false;
     }
@@ -855,41 +958,148 @@ class InventoryProvider extends ChangeNotifier {
     }
   }
 
-  void addProductToCart(InvProduct product) {
-    final idx = _cart.indexWhere((it) => it.productId == product.id);
+  /// The selling units of a product that can be sold now (the base unit is always among them).
+  List<InvProductUnit> activeUnitsOf(int productId) =>
+      unitsOf(productId).where((InvProductUnit u) => u.isActive).toList(growable: false);
+
+  /// Does this product have more than one way to be sold (a crate AND a bottle, a kg AND a gram)?
+  bool hasChoiceOfUnits(int productId) => activeUnitsOf(productId).length > 1;
+
+  /// The unit a product is rung up in when the cashier has not chosen: its own base unit -- except goods
+  /// by weight or volume, which start on the biggest unit (a kilogram, a litre).
+  InvProductUnit? defaultUnitFor(InvProduct product) {
+    if (!product.isWeighed) return null;
+    final List<InvProductUnit> units = activeUnitsOf(product.id)..sort((a, b) => b.factor.compareTo(a.factor));
+    return units.isEmpty || units.first.isBase ? null : units.first;
+  }
+
+  /// The price of ONE [unit] of [product] for a price level: a customer's special price, else the level's
+  /// price, else the other level's, else -- for a unit with no price yet -- the base price times what the unit
+  /// holds. A depot (which prices by product) just uses the product's own price for its own unit.
+  double unitPriceFor(InvProduct product, InvProductUnit? unit, {String? tier, int? customerId}) {
+    final bool base = unit == null || unit.isBase;
+    final String level = tier ?? cartTier;
+
+    if (!_capabilities.usesPriceLevels && base) return product.sellingPrice;
+
+    double? fromRows(InvProductUnit u) {
+      final InvPriceTier t = level == 'wholesale' ? InvPriceTier.wholesale : InvPriceTier.retail;
+      final InvPriceTier other = t == InvPriceTier.wholesale ? InvPriceTier.retail : InvPriceTier.wholesale;
+      return (customerId != null ? u.priceFor(InvPriceTier.special, customerId: customerId) : null) ??
+          u.priceFor(t) ??
+          u.priceFor(other);
+    }
+
+    if (unit != null) {
+      final double? own = fromRows(unit);
+      if (own != null) return own;
+    }
+    return product.sellingPrice * (unit == null || unit.isBase ? 1 : unit.factor);
+  }
+
+  /// The VAT rate a product is sold at: its own, else the business's default.
+  double taxRateFor(InvProduct product) => product.taxPercent ?? _capabilities.defaultTaxPercent;
+
+  /// The VAT on one line (prices include VAT: the share inside the price; otherwise: added on top).
+  double _lineTax(InvSaleItem it) {
+    final double rate = it.taxPercent ?? 0;
+    if (rate <= 0) return 0;
+    final double base = it.total;
+    final double tax = _capabilities.pricesIncludeVat ? base * rate / (100 + rate) : base * rate / 100;
+    return (tax * 100).roundToDouble() / 100;
+  }
+
+  void _retax(InvSaleItem it) => it.taxAmount = _lineTax(it);
+
+  InvProduct? _productOf(int id) => _products.where((InvProduct p) => p.id == id).firstOrNull;
+
+  /// Add one of a product to the cart, in [unit] (null = the product's own base unit). The same product in
+  /// another unit is its own line: 1 crate and 3 bottles are two lines.
+  void addProductToCart(InvProduct product, {InvProductUnit? unit}) {
+    final InvProductUnit? chosen = unit ?? defaultUnitFor(product);
+    final InvProductUnit? u = (chosen != null && !chosen.isBase) ? chosen : null;
+    final String key = '${product.id}:${u?.id ?? 0}';
+
+    final idx = _cart.indexWhere((it) => it.key == key);
     if (idx >= 0) {
       _cart[idx].qty += 1;
+      _retax(_cart[idx]);
     } else {
-      _cart.add(InvSaleItem(
+      final InvSaleItem line = InvSaleItem(
         productId: product.id,
         name: product.name,
         qty: 1,
-        unitPrice: product.sellingPrice,
+        unitPrice: unitPriceFor(product, u, customerId: _selectedCustomerId),
         unitCostSnapshot: product.costPrice,
-      ));
+        unitId: u?.id,
+        unitName: u?.name,
+        unitFactor: u?.factor ?? 1,
+        taxPercent: taxRateFor(product),
+      );
+      _retax(line);
+      _cart.add(line);
     }
     notifyListeners();
   }
 
-  void setCartQty(int productId, int qty) {
-    final it = _cart.firstWhere((e) => e.productId == productId);
-    it.qty = qty < 1 ? 1 : qty;
+  /// Sell this line in another unit (a kg instead of a g, a bottle instead of a crate). Merges into the
+  /// line that already has that unit, and re-prices it for the unit.
+  void changeCartUnit(InvSaleItem item, InvProductUnit? unit) {
+    final InvProduct? product = _productOf(item.productId);
+    if (product == null) return;
+    final InvProductUnit? u = (unit != null && !unit.isBase) ? unit : null;
+    final String key = '${item.productId}:${u?.id ?? 0}';
+    if (key == item.key) return;
+
+    final int clash = _cart.indexWhere((it) => it.key == key);
+    if (clash >= 0) {
+      _cart[clash].qty += item.qty;
+      _retax(_cart[clash]);
+      _cart.remove(item);
+    } else {
+      item.unitId = u?.id;
+      item.unitName = u?.name;
+      item.unitFactor = u?.factor ?? 1;
+      item.unitPrice = unitPriceFor(product, u, customerId: _selectedCustomerId);
+      _retax(item);
+    }
     notifyListeners();
   }
 
-  void setCartUnitPrice(int productId, double price) {
-    final it = _cart.firstWhere((e) => e.productId == productId);
-    it.unitPrice = price < 0 ? 0 : price;
+  void setCartQty(InvSaleItem item, int qty) {
+    item.qty = qty < 1 ? 1 : qty;
+    _retax(item);
     notifyListeners();
   }
 
-  void removeFromCart(int productId) {
-    _cart.removeWhere((e) => e.productId == productId);
+  void setCartUnitPrice(InvSaleItem item, double price) {
+    item.unitPrice = price < 0 ? 0 : price;
+    _retax(item);
+    notifyListeners();
+  }
+
+  void removeFromCart(InvSaleItem item) {
+    _cart.remove(item);
+    notifyListeners();
+  }
+
+  /// Switch the whole cart between retail and wholesale prices. Every line is priced again from the catalogue,
+  /// so a price typed by hand on a line is replaced.
+  void setCartTier(String tier) {
+    _tierOverride = tier == 'wholesale' ? 'wholesale' : 'retail';
+    for (final InvSaleItem it in _cart) {
+      final InvProduct? p = _productOf(it.productId);
+      if (p == null) continue;
+      final InvProductUnit? u = it.unitId == null ? null : unitsOf(it.productId).where((x) => x.id == it.unitId).firstOrNull;
+      it.unitPrice = unitPriceFor(p, u, customerId: _selectedCustomerId);
+      _retax(it);
+    }
     notifyListeners();
   }
 
   void clearCart() {
     _cart.clear();
+    _tierOverride = null;
     notifyListeners();
   }
 
@@ -998,8 +1208,10 @@ class InventoryProvider extends ChangeNotifier {
           .map((e) => {
                 'product_id': e.productId,
                 'quantity': e.qty,
+                if (e.unitId != null) 'unit_id': e.unitId,
                 'unit_price': e.unitPrice,
                 'unit_cost_snapshot': e.unitCostSnapshot,
+                if (e.taxPercent != null) 'tax_percent': e.taxPercent,
               })
           .toList(),
       if (payments.isNotEmpty) 'payments': payments,
@@ -1837,6 +2049,10 @@ InvProduct _fromProductJson(Map<String, dynamic> j) => InvProduct(
       categoryName: j['category_name'] as String?,
       brandName: j['brand_name'] as String?,
       priceTier: (j['price_tier'] ?? 'retail') as String,
+      taxPercent: j['tax_percent'] == null ? null : double.tryParse(j['tax_percent'].toString()),
+      familyId: j['family_id'] == null ? null : int.tryParse(j['family_id'].toString()),
+      variantLabel: j['variant_label'] as String?,
+      measure: (j['measure'] ?? 'count') as String,
     );
 
 InvCustomer _fromCustomerJson(Map<String, dynamic> j) => InvCustomer(
@@ -1858,6 +2074,11 @@ InvSale _fromSaleJson(Map<String, dynamic> j) {
                     final v = it['unit_cost_snapshot'] ?? it['unit_cost'] ?? 0;
                     return v is num ? v.toDouble() : double.tryParse('$v') ?? 0.0;
                   })(),
+                  unitId: it['unit_id'] == null ? null : int.tryParse(it['unit_id'].toString()),
+                  unitName: it['unit_name'] as String?,
+                  unitFactor: int.tryParse((it['unit_factor'] ?? 1).toString()) ?? 1,
+                  taxPercent: it['tax_percent'] == null ? null : double.tryParse(it['tax_percent'].toString()),
+                  taxAmount: double.tryParse((it['tax_amount'] ?? 0).toString()) ?? 0.0,
                 )
               : null)
           .whereType<InvSaleItem>()

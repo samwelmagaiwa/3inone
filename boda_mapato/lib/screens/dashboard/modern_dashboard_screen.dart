@@ -23,6 +23,7 @@ import "../payments/payments_screen.dart";
 import "../admin/debts_management_screen.dart";
 import "../admin/drivers_management_screen.dart";
 import "../../main.dart";
+import "../../widgets/month_selector.dart";
 
 class ModernDashboardScreen extends StatefulWidget {
   const ModernDashboardScreen({super.key});
@@ -1310,46 +1311,21 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
         ),
       );
 
-  Widget _buildMonthSelector() => SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: months.asMap().entries.map((MapEntry<int, String> entry) {
-            final int index = entry.key;
-            final String month = entry.value;
-            final bool isSelected = index + 1 == _selectedMonth;
-
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedMonth = index + 1;
-                });
-                unawaited(_loadRevenueChartData(
-                    year: DateTime.now().year, month: _selectedMonth));
-                _chartAnimationController.reset();
-                _chartAnimationController.forward();
-              },
-              child: Container(
-                margin: const EdgeInsets.only(right: 16),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? Colors.white.withOpacity(0.3)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  month,
-                  style: TextStyle(
-                    color: isSelected ? textPrimary : textSecondary,
-                    fontSize: 14,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
+  // Opens on the current month (scrolled into view); earlier months are a swipe away.
+  Widget _buildMonthSelector() => MonthSelector(
+        months: months,
+        selectedMonth: _selectedMonth,
+        selectedColor: textPrimary,
+        unselectedColor: textSecondary,
+        onSelected: (int month) {
+          setState(() {
+            _selectedMonth = month;
+          });
+          unawaited(_loadRevenueChartData(
+              year: DateTime.now().year, month: _selectedMonth));
+          _chartAnimationController.reset();
+          _chartAnimationController.forward();
+        },
       );
 
   // Not used anymore; kept for reference. Footer now handles the quick menu.

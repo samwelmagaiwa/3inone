@@ -25,6 +25,10 @@ enum InvDomain {
 
   /// A credit-customer balance changed (payment received or sale on debt).
   credit,
+
+  /// The inventory settings (or the business's kind) changed: the till, the product page and the
+  /// menus read them, so they refetch.
+  settings,
 }
 
 /// Singleton broadcast bus. Call [emit] after any mutation; providers listen

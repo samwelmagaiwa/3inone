@@ -10,6 +10,7 @@ import '../../providers/rental_provider.dart';
 import '../../services/localization_service.dart';
 import '../../services/api_service.dart';
 import '../../utils/rental_flow_validator.dart';
+import '../../widgets/temporary_password_dialog.dart';
 import 'record_payment_screen.dart';
 
 class OnboardTenantScreen extends StatefulWidget {
@@ -1130,8 +1131,22 @@ class _OnboardTenantScreenState extends State<OnboardTenantScreen> {
     if (mounted) {
       setState(() => _isSaving = false);
       if (success != null) {
+        // A brand-new tenant gets a one-time password from the server. It is shown once,
+        // here, for the landlord to hand over; the tenant replaces it at first sign-in.
+        final String? temporaryPassword = context.read<RentalProvider>().lastTemporaryPassword;
+        if (temporaryPassword != null) {
+          await showTemporaryPasswords(context, <TemporaryCredential>[
+            TemporaryCredential(
+              name: "${_firstNameController.text} ${_lastNameController.text}".trim(),
+              contact: "${_emailController.text} · ${_phoneController.text}",
+              password: temporaryPassword,
+            ),
+          ]);
+          if (!mounted) return;
+        }
+
         ThemeConstants.showSuccessSnackBar(context, loc.translate("tenant_onboarded_success"));
-        
+
         showDialog(
           context: context,
           barrierDismissible: false,

@@ -19,6 +19,10 @@ class InvProduct {
     this.brandName,
     this.priceTier = 'retail',
     this.unitFactor = 1,
+    this.taxPercent,
+    this.familyId,
+    this.variantLabel,
+    this.measure = 'count',
   });
 
   final int id;
@@ -41,6 +45,21 @@ class InvProduct {
   String? categoryName;
   String? brandName;
   String priceTier; // 'retail' or 'wholesale'
+
+  /// This product's VAT rate. Null = the business's default; 0 = exempt.
+  double? taxPercent;
+
+  /// Sizes / colours of one product share the id of the first one.
+  int? familyId;
+
+  /// "M / Red": what tells a size or colour apart (null for a plain product).
+  String? variantLabel;
+
+  /// What the base unit counts: 'count' (pieces), 'weight' (grams) or 'volume' (millilitres).
+  String measure;
+
+  bool get isVariant => variantLabel != null && variantLabel!.isNotEmpty;
+  bool get isWeighed => measure == 'weight' || measure == 'volume';
 
   bool get isWholesale => priceTier == 'wholesale';
 

@@ -141,13 +141,18 @@ class _ReceiptViewerScreenState extends State<ReceiptViewerScreen>
   String _composeMessage() {
     final r = widget.receipt;
     final l10n = LocalizationService.instance;
+    // Real line breaks (this used to send the two characters backslash-n).
     final String days = r.paidDates.isNotEmpty
-        ? '\\n${l10n.translate('days')}: ${r.paidDates.join(', ')}'
+        ? '\n${l10n.translate('days')}: ${r.paidDates.join(', ')}'
         : '';
     final String remarks = (r.remarks != null && r.remarks!.isNotEmpty)
-        ? '\\n${l10n.translate('remarks')}: ${r.remarks!}'
+        ? '\n${l10n.translate('remarks')}: ${r.remarks!}'
         : '';
-    return '${l10n.translate('receipt')} ${r.receiptNumber}\\n${l10n.translate('amount')}: TSH ${r.amount.toStringAsFixed(0)}$days$remarks';
+    // Who the receipt is from: the business that issued it (the server puts it on the receipt).
+    final dynamic rd = _detail?['receipt_data'];
+    final String company = (rd is Map ? rd['company_name'] : null)?.toString().trim() ?? '';
+    final String from = company.isNotEmpty ? '$company\n' : '';
+    return '$from${l10n.translate('receipt')} ${r.receiptNumber}\n${l10n.translate('amount')}: TSH ${r.amount.toStringAsFixed(0)}$days$remarks';
   }
 
   @override

@@ -263,10 +263,8 @@ class _BackupScreenState extends State<BackupScreen> {
     setState(() => _isBackingUp = true);
 
     try {
-      final response = await _apiService.post('/admin/backup', {
-        'type': 'full',
-        'include_files': true,
-      });
+      // The route is /auth/admin/backup. The app used to call /admin/backup, which does not exist.
+      final response = await _apiService.post('/auth/admin/backup', <String, dynamic>{});
 
       if (response['success'] == true) {
         // Save backup date
@@ -298,58 +296,86 @@ class _BackupScreenState extends State<BackupScreen> {
     }
   }
 
-  void _showRestoreDialog() {
-    showDialog(
+  /// Restore: choose one of the backups stored on the server, then type RESTORE to confirm.
+  /// (The app used to send a restore with no backup named, which the server could not act on.)
+  Future<void> _showRestoreDialog() async {
+    final bool sw = _localizationService.isSwahili;
+    setState(() => _isRestoring = true);
+
+    List<Map<String, dynamic>> backups = <Map<String, dynamic>>[];
+    try {
+      final res = await _apiService.get('/auth/admin/backup');
+      final data = res['data'];
+      if (data is Map && data['backups'] is List) {
+        backups = (data['backups'] as List)
+            .whereType<Map>()
+            .map((m) => Map<String, dynamic>.from(m))
+            .toList();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isRestoring = false);
+      ThemeConstants.showErrorSnackBar(context, sw ? 'Imeshindikana kupata orodha: ${e}' : 'Could not load the backups: ${e}');
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _isRestoring = false);
+
+    if (backups.isEmpty) {
+      ThemeConstants.showErrorSnackBar(
+        context,
+        sw ? 'Hakuna nakala za akiba kwenye seva bado.' : 'There are no backups on the server yet.',
+      );
+      return;
+    }
+
+    final String? filename = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => SimpleDialog(
         backgroundColor: ThemeConstants.primaryBlue,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.warning, color: Colors.orange),
-            const SizedBox(width: 8),
-            Text(
-              _localizationService.translate('confirm'),
-              style: const TextStyle(color: ThemeConstants.textPrimary),
-            ),
-          ],
+        title: Text(
+          sw ? 'Chagua nakala ya kurejesha' : 'Choose a backup to restore',
+          style: const TextStyle(color: ThemeConstants.textPrimary),
         ),
-        content: Text(
-          _localizationService.isSwahili
-              ? 'Je, una uhakika unataka kurejesha data? Hii itafuta data ya sasa na kuiweka na ile ya zamani.'
-              : 'Are you sure you want to restore data? This will replace current data with backup data.',
-          style: const TextStyle(color: ThemeConstants.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              _localizationService.translate('cancel'),
-              style: const TextStyle(color: ThemeConstants.textSecondary),
+        children: [
+          for (final b in backups)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, b['filename'].toString()),
+              child: Text(
+                '${b['created_at'] ?? ''}  ·  ${_size(b['size_bytes'])}'
+                '${b['kind'] == 'pre_restore' ? (sw ? '  (kabla ya urejeshaji)' : '  (before a restore)') : ''}',
+                style: const TextStyle(color: ThemeConstants.textPrimary),
+              ),
             ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _performRestore();
-            },
-            child: Text(
-              _localizationService.translate('restore_data'),
-              style: const TextStyle(color: Colors.orange),
-            ),
-          ),
         ],
       ),
     );
+    if (filename == null || !mounted) return;
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => const TypeToConfirmDialog(word: 'RESTORE'),
+    );
+    if (confirmed != true || !mounted) return;
+
+    await _performRestore(filename);
   }
 
-  Future<void> _performRestore() async {
+  String _size(Object? bytes) {
+    final int b = bytes is num ? bytes.toInt() : 0;
+    if (b >= 1024 * 1024) return '${(b / (1024 * 1024)).toStringAsFixed(1)} MB';
+    if (b >= 1024) return '${(b / 1024).toStringAsFixed(0)} KB';
+    return '$b B';
+  }
+
+  Future<void> _performRestore(String filename) async {
     setState(() => _isRestoring = true);
 
     try {
-      final response = await _apiService.post('/admin/restore', {
-        'type': 'full',
-        'confirm': true,
+      final response = await _apiService.post('/auth/admin/restore', <String, dynamic>{
+        'filename': filename,
+        'confirm': 'RESTORE',
       });
 
       if (response['success'] == true) {
@@ -373,5 +399,77 @@ class _BackupScreenState extends State<BackupScreen> {
       if (!mounted) return;
       setState(() => _isRestoring = false);
     }
+  }
+}
+
+/// "Type RESTORE to continue": a restore overwrites data, so a tap is not enough.
+/// Owns its text controller, so nothing is disposed while the dialog is still animating out.
+class TypeToConfirmDialog extends StatefulWidget {
+  const TypeToConfirmDialog({super.key, required this.word});
+
+  final String word;
+
+  @override
+  State<TypeToConfirmDialog> createState() => TypeToConfirmDialogState();
+}
+
+class TypeToConfirmDialogState extends State<TypeToConfirmDialog> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final LocalizationService loc = LocalizationService.instance;
+    final bool sw = loc.isSwahili;
+    final bool ready = _controller.text.trim() == widget.word;
+
+    return AlertDialog(
+      backgroundColor: ThemeConstants.primaryBlue,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: [
+          const Icon(Icons.warning, color: Colors.orange),
+          const SizedBox(width: 8),
+          Text(loc.translate('confirm'), style: const TextStyle(color: ThemeConstants.textPrimary)),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            sw
+                ? 'Hii inaandika data ya nakala juu ya data ya sasa (hakuna kinachofutwa). Kabla ya hapo, nakala ya data ya sasa itahifadhiwa. Andika ${widget.word} kuendelea.'
+                : 'This writes the backup\'s data over the current data (nothing is deleted). A copy of the current data is saved first. Type ${widget.word} to continue.',
+            style: const TextStyle(color: ThemeConstants.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            key: const ValueKey<String>('restore_confirm_field'),
+            controller: _controller,
+            autofocus: true,
+            textCapitalization: TextCapitalization.characters,
+            style: const TextStyle(color: ThemeConstants.textPrimary, letterSpacing: 2),
+            onChanged: (_) => setState(() {}),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text(loc.translate('cancel'), style: const TextStyle(color: ThemeConstants.textSecondary)),
+        ),
+        TextButton(
+          key: const ValueKey<String>('restore_confirm_button'),
+          onPressed: ready ? () => Navigator.pop(context, true) : null,
+          child: Text(loc.translate('restore_data'), style: TextStyle(color: ready ? Colors.orange : Colors.white24)),
+        ),
+      ],
+    );
   }
 }

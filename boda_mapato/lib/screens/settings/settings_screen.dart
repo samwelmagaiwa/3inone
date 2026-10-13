@@ -12,6 +12,10 @@ import "notifications_screen.dart";
 import "security_screen.dart";
 import "backup_screen.dart";
 import "help_screen.dart";
+import "../admin/businesses_screen.dart";
+import "../admin/registrations_screen.dart";
+import "../../widgets/subscription_banner.dart";
+import "business_profile_screen.dart";
 import "user_management_screen.dart";
 import "permissions_management_screen.dart";
 
@@ -42,6 +46,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isSuperAdmin = user?.isSuperAdmin ?? false;
     final isAdmin = user?.isAdmin ?? false;
     final loc = _localizationService;
+    // Staff and owners belong to a business and see its details; drivers, tenants and fundis are the
+    // business's customers and have no use for them here.
+    final belongsToBusiness = user?.business != null &&
+        !const <String>['driver', 'tenant', 'vendor'].contains(user!.role);
 
     return Scaffold(
       backgroundColor: ThemeConstants.primaryBlue,
@@ -186,6 +194,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
 
+              // ── The business this person works for ──────────────────────
+              if (belongsToBusiness) ...[
+                const SizedBox(height: 20),
+                SubscriptionBanner(billing: user.business!.billing, sw: loc.isSwahili),
+                if (user.business!.billing.needsAttention()) const SizedBox(height: 12),
+                _sectionLabel(loc.isSwahili ? 'Biashara' : 'Business'),
+                const SizedBox(height: 8),
+                ThemeConstants.buildGlassCard(
+                  child: _buildSettingsTile(
+                    Icons.storefront_outlined,
+                    user.business!.name,
+                    user.isBusinessOwner
+                        ? (loc.isSwahili
+                            ? 'Jina, TIN, nembo na anwani vinavyoonekana kwenye risiti'
+                            : 'Name, TIN, logo and address shown on receipts')
+                        : (loc.isSwahili ? 'Angalia taarifa za biashara' : 'View the business details'),
+                    () => _navigateToScreen(BusinessProfileScreen(
+                      canEdit: user.isBusinessOwner,
+                      showInventoryType: user.serviceTypes.contains('inventory'),
+                      onChanged: authProvider.refreshUser,
+                    )),
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 20),
 
               // ── Personal Settings (all roles) ──────────────────────────
@@ -237,6 +270,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ? 'Dhibiti watumiaji wote kwenye huduma zote'
                             : 'Manage all users across every service',
                         () => _navigateToScreen(const UserManagementScreen()),
+                      ),
+                      const Divider(color: Colors.white24, height: 1),
+                      _buildSettingsTile(
+                        Icons.how_to_reg_outlined,
+                        loc.isSwahili ? 'Usajili wa Biashara' : 'Business Registrations',
+                        loc.isSwahili
+                            ? 'Kagua biashara zilizojisajili na uzipe huduma'
+                            : 'Review registered businesses and assign their services',
+                        () => _navigateToScreen(const RegistrationsScreen()),
+                      ),
+                      const Divider(color: Colors.white24, height: 1),
+                      _buildSettingsTile(
+                        Icons.storefront_outlined,
+                        loc.isSwahili ? 'Biashara na Mipango' : 'Businesses & Plans',
+                        loc.isSwahili
+                            ? 'Mipango, tarehe za malipo na taarifa za kila biashara'
+                            : 'Plan, paid-until date and details of every business',
+                        () => _navigateToScreen(const BusinessesScreen()),
                       ),
                       const Divider(color: Colors.white24, height: 1),
                       _buildSettingsTile(

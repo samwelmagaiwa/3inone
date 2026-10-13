@@ -452,9 +452,20 @@ class ApiService {
         AuthEvents.instance.emit(AuthEvent.unauthorized);
         throw ApiException("Hauruhusiwi - tafadhali ingia tena");
       case 403:
+        // A service this business was never given deserves its own message, not
+        // a generic "not allowed" that looks like a bug.
+        if (data["code"] == "service_not_assigned") {
+          throw ApiException(data["message"] ??
+              "Akaunti yako haijapewa huduma hii. Wasiliana na msimamizi wako.");
+        }
         throw ApiException("Hauruhusiwi kufikia rasilimali hii");
       case 404:
         throw ApiException("Rasilimali haipatikani");
+      case 409:
+        // e.g. "already approved" / "inventory is held by another business":
+        // the server's explanation is what the user needs.
+        throw ApiException(
+            data["message"] ?? "Ombi linapingana na hali ya sasa");
       case 422:
         final Map<String, dynamic>? errors =
             data["errors"] as Map<String, dynamic>?;
@@ -529,6 +540,106 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getCurrentUser() async => _get("/auth/user");
+
+  // Business registrations -- super admin only. A business owner registers
+  // themselves (AuthService.registerBusiness); the super admin reviews the
+  // details here and assigns the services, which switches the owner's login on.
+  Future<Map<String, dynamic>> getBusinessRegistrations({
+    final String status = "pending",
+    final String? query,
+  }) async =>
+      _get(
+        "/admin/registrations",
+        queryParams: <String, dynamic>{
+          "status": status,
+          "per_page": 100,
+          if (query != null && query.trim().isNotEmpty) "q": query.trim(),
+        },
+      );
+
+  /// [allowUnverified]: approve even though the applicant never confirmed their phone number
+  /// (the server refuses that unless it is asked for on purpose).
+  ///
+  /// [plan] and [validUntil] set the business's plan from day one; left out, the server starts a trial.
+  Future<Map<String, dynamic>> approveBusinessRegistration(
+    final String id,
+    final List<String> serviceTypes, {
+    final bool allowUnverified = false,
+    final String? plan,
+    final DateTime? validUntil,
+    final String? inventoryType,
+  }) async =>
+      _post("/admin/registrations/$id/approve", <String, dynamic>{
+        "service_types": serviceTypes,
+        if (inventoryType != null) "inventory_type": inventoryType,
+        if (allowUnverified) "allow_unverified": true,
+        if (plan != null) "plan": plan,
+        if (validUntil != null) "valid_until": _dateOnly(validUntil),
+      });
+
+  static String _dateOnly(final DateTime d) =>
+      "${d.year.toString().padLeft(4, "0")}-${d.month.toString().padLeft(2, "0")}-${d.day.toString().padLeft(2, "0")}";
+
+  // The business itself: name, address, TIN, logo (what receipts and texts say) and its plan.
+  // Anyone who works for the business reads it; only its owner edits the profile. Billing is
+  // read-only here and changed only by a super admin (updateBusiness).
+  Future<Map<String, dynamic>> getMyBusiness() async => _get("/business");
+
+  Future<Map<String, dynamic>> updateMyBusiness(final Map<String, dynamic> fields) async =>
+      _put("/business", fields);
+
+  Future<Map<String, dynamic>> removeBusinessLogo() async => _delete("/business/logo");
+
+  Future<Map<String, dynamic>> uploadBusinessLogo({
+    required final Uint8List bytes,
+    required final String filename,
+  }) async {
+    final Map<String, String> headers = await _authHeaders;
+    if (!headers.containsKey("Authorization")) {
+      throw ApiException("Hauruhusiwi - tafadhali ingia tena");
+    }
+    final http.MultipartRequest request = http.MultipartRequest("POST", Uri.parse("$baseUrl/business/logo"));
+    final Map<String, String> h = Map<String, String>.of(headers)..remove("Content-Type");
+    request.headers.addAll(h);
+    request.files.add(http.MultipartFile.fromBytes("logo", bytes, filename: filename));
+    final http.StreamedResponse streamed = await request.send().timeout(timeoutDuration);
+    return _handleResponse(await http.Response.fromStream(streamed));
+  }
+
+  // Super admin: every business with its owner, services and plan.
+  Future<Map<String, dynamic>> getBusinesses({
+    final String status = "all",
+    final String? plan,
+    final String? query,
+  }) async =>
+      _get(
+        "/admin/businesses",
+        queryParams: <String, dynamic>{
+          "status": status,
+          "per_page": 100,
+          if (plan != null && plan.isNotEmpty) "plan": plan,
+          if (query != null && query.trim().isNotEmpty) "q": query.trim(),
+        },
+      );
+
+  /// [validUntil] null with [clearValidUntil] true means "no expiry".
+  Future<Map<String, dynamic>> updateBusiness(
+    final String id, {
+    final String? plan,
+    final DateTime? validUntil,
+    final bool clearValidUntil = false,
+  }) async =>
+      _put("/admin/businesses/$id", <String, dynamic>{
+        if (plan != null) "plan": plan,
+        if (validUntil != null) "valid_until": _dateOnly(validUntil),
+        if (clearValidUntil) "valid_until": null,
+      });
+
+  Future<Map<String, dynamic>> rejectBusinessRegistration(
+    final String id,
+    final String reason,
+  ) async =>
+      _post("/admin/registrations/$id/reject", <String, dynamic>{"reason": reason});
 
   Future<Map<String, dynamic>> refreshToken() async {
     final Map<String, dynamic> response =
@@ -1227,7 +1338,9 @@ class ApiService {
   Future<Map<String, dynamic>> createDriver(
     final Map<String, dynamic> driverData,
   ) async =>
-      _post("/admin/drivers", driverData, requireAuth: false);
+      // Signed in like every other admin call. This used to be sent with no token, which
+      // the server (rightly) refuses: POST /admin/drivers is an admin-only route.
+      _post("/admin/drivers", driverData);
 
   Future<Map<String, dynamic>> updateDriver(
     final String driverId,

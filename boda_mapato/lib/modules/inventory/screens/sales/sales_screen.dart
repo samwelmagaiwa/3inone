@@ -11,12 +11,14 @@ import '../../../../providers/auth_provider.dart';
 import '../../../../services/localization_service.dart';
 import '../../models/crates_owed.dart';
 import '../../models/inv_product.dart';
+import '../../models/inv_product_unit.dart';
 import '../../models/inv_sale.dart';
 import '../../providers/depot_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../services/inventory_export_service.dart';
 import '../scanning/barcode_scanner_screen.dart';
 import '../widgets/crates_owed_note.dart';
+import '../widgets/inv_units_ui.dart';
 import '../widgets/inventory_widgets.dart';
 import 'crate_checkout_rules.dart';
 import 'sale_confirmation_dialog.dart';
@@ -593,8 +595,15 @@ class _SalesScreenState extends State<SalesScreen>
             ),
           ),
           SizedBox(height: 10.h),
-          _crateExchangeCard(context, inv),
+          // Crates and empties: only for businesses that deal in returnable packaging (a depot).
+          if (context.watch<DepotProvider>().capabilities.useCrates) _crateExchangeCard(context, inv),
           SizedBox(height: 16.h),
+
+          // Retail or wholesale prices: for businesses that sell at both (a depot prices by product).
+          if (inv.capabilities.usesPriceLevels) ...[
+            _priceLevelRow(inv, loc),
+            SizedBox(height: 10.h),
+          ],
 
           // Grand Total Breakdown & Checkout Button
           Container(
@@ -617,6 +626,25 @@ class _SalesScreenState extends State<SalesScreen>
                     ),
                   ],
                 ),
+                if (inv.cartTax > 0) ...[
+                  SizedBox(height: 4.h),
+                  Row(
+                    key: const ValueKey<String>('cart_vat_row'),
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        inv.capabilities.pricesIncludeVat
+                            ? (loc.isSwahili ? 'VAT (ndani ya bei)' : 'VAT (included)')
+                            : 'VAT',
+                        style: ThemeConstants.captionStyle,
+                      ),
+                      Text(
+                        'TZS ${inv.cartTax.toStringAsFixed(0)}',
+                        style: ThemeConstants.captionStyle,
+                      ),
+                    ],
+                  ),
+                ],
                 SizedBox(height: 4.h),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -698,6 +726,8 @@ class _SalesScreenState extends State<SalesScreen>
                                 subtotal: inv.cartSubtotal,
                                 discount: inv.cartDiscount,
                                 total: inv.cartTotal,
+                                tax: inv.cartTax,
+                                taxIncluded: inv.capabilities.pricesIncludeVat,
                                 paymentMode: inv.paymentMode,
                                 customerName: pickedName ?? _posName.text,
                                 paidNow: inv.paidAmount,
@@ -776,6 +806,30 @@ class _SalesScreenState extends State<SalesScreen>
           SizedBox(height: 16.h),
         ],
       ),
+    );
+  }
+
+  /// Retail | Wholesale: re-prices the whole cart from the catalogue.
+  Widget _priceLevelRow(InventoryProvider inv, LocalizationService loc) {
+    return Row(
+      children: [
+        Text(loc.isSwahili ? 'Bei:' : 'Price level:', style: ThemeConstants.captionStyle),
+        SizedBox(width: 8.w),
+        for (final (String tier, String label) in <(String, String)>[
+          ('retail', loc.isSwahili ? 'Rejareja' : 'Retail'),
+          ('wholesale', loc.isSwahili ? 'Jumla' : 'Wholesale'),
+        ])
+          Padding(
+            padding: EdgeInsets.only(right: 6.w),
+            child: ChoiceChip(
+              key: ValueKey<String>('tier_$tier'),
+              label: Text(label, style: TextStyle(fontSize: 12.sp)),
+              selected: inv.cartTier == tier,
+              visualDensity: VisualDensity.compact,
+              onSelected: (_) => inv.setCartTier(tier),
+            ),
+          ),
+      ],
     );
   }
 
@@ -1686,6 +1740,12 @@ class _ProductPickTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final inv = context.read<InventoryProvider>();
+    // The price it will be rung up at (for a depot: the product's own price, as always) and the stock
+    // as a person says it ("4 crate 4 bottle", "12 kg 500 g" -- a depot keeps its plain number).
+    final InvProductUnit? unit = inv.defaultUnitFor(product);
+    final double price = inv.unitPriceFor(product, unit);
+    final String per = unit == null || unit.isBase ? '' : ' / ${unit.name}';
+    final String stock = stockLabel(product, inv.unitsOf(product.id), inv.capabilities);
     return ListTile(
       leading: Container(
         padding: EdgeInsets.all(8.w),
@@ -1698,7 +1758,7 @@ class _ProductPickTile extends StatelessWidget {
       ),
       title: Text(product.name, style: ThemeConstants.bodyStyle),
       subtitle: Text(
-        'SKU: ${product.sku} • TZS ${product.sellingPrice.toStringAsFixed(0)} • ${product.quantity} in stock',
+        'SKU: ${product.sku} • TZS ${price.toStringAsFixed(0)}$per • $stock in stock',
         style: ThemeConstants.captionStyle,
       ),
       trailing: ElevatedButton(
@@ -1727,6 +1787,11 @@ class _CartRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final inv = context.read<InventoryProvider>();
+    final loc = LocalizationService.instance;
+    final InvProduct? product = inv.products.where((InvProduct p) => p.id == item.productId).firstOrNull;
+    final List<InvProductUnit> units = inv.activeUnitsOf(item.productId);
+    // What one of this line is called: its unit, else the product's own ("bottle", "pcs"), else "unit".
+    final String per = item.unitName ?? product?.unit ?? 'unit';
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4.h),
@@ -1754,12 +1819,22 @@ class _CartRow extends StatelessWidget {
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                onPressed: () => inv.removeFromCart(item.productId),
+                onPressed: () => inv.removeFromCart(item),
                 icon: const Icon(Icons.delete_outline,
                     color: ThemeConstants.errorRed, size: 20),
               ),
             ],
           ),
+          // More than one way to sell it (a crate or a bottle, a kg or a g): pick what the customer asks for.
+          if (units.length > 1) ...[
+            SizedBox(height: 4.h),
+            UnitChips(
+              units: units,
+              selectedUnitId: item.unitId,
+              baseLabel: product?.unit ?? 'unit',
+              onSelected: (InvProductUnit u) => inv.changeCartUnit(item, u),
+            ),
+          ],
           SizedBox(height: 6.h),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1774,8 +1849,7 @@ class _CartRow extends StatelessWidget {
                 child: Row(
                   children: [
                     IconButton(
-                      onPressed: () =>
-                          inv.setCartQty(item.productId, item.qty - 1),
+                      onPressed: () => inv.setCartQty(item, item.qty - 1),
                       icon: const Icon(Icons.remove, color: Colors.white),
                       padding: EdgeInsets.zero,
                       constraints: BoxConstraints.tightFor(
@@ -1784,20 +1858,33 @@ class _CartRow extends StatelessWidget {
                       ),
                       iconSize: 16.sp,
                     ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 6.w),
-                      child: Text(
-                        '${item.qty}',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14.sp,
+                    // Tap the number to type it: 2,500 g is not 2,500 taps. Whole numbers only.
+                    InkWell(
+                      key: ValueKey<String>('cart_qty_${item.key}'),
+                      onTap: () async {
+                        final int? typed = await askWholeNumber(
+                          context,
+                          title: loc.isSwahili ? 'Idadi ya $per' : 'How many $per',
+                          initial: item.qty,
+                          okLabel: loc.translate('save'),
+                          cancelLabel: loc.translate('cancel'),
+                        );
+                        if (typed != null && typed > 0) inv.setCartQty(item, typed);
+                      },
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 4.h),
+                        child: Text(
+                          '${item.qty}',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14.sp,
+                          ),
                         ),
                       ),
                     ),
                     IconButton(
-                      onPressed: () =>
-                          inv.setCartQty(item.productId, item.qty + 1),
+                      onPressed: () => inv.setCartQty(item, item.qty + 1),
                       icon: const Icon(Icons.add, color: Colors.white),
                       padding: EdgeInsets.zero,
                       constraints: BoxConstraints.tightFor(
@@ -1819,7 +1906,7 @@ class _CartRow extends StatelessWidget {
                   border: Border.all(color: ThemeConstants.invBorder),
                 ),
                 child: Text(
-                  '@ TZS ${item.unitPrice.toStringAsFixed(0)} / unit',
+                  '@ TZS ${item.unitPrice.toStringAsFixed(item.unitPrice == item.unitPrice.roundToDouble() ? 0 : 2)} / $per',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 11.sp,
@@ -1829,6 +1916,15 @@ class _CartRow extends StatelessWidget {
               ),
             ],
           ),
+          if (item.taxAmount > 0)
+            Padding(
+              padding: EdgeInsets.only(top: 2.h),
+              child: Text(
+                'VAT ${(item.taxPercent ?? 0).toStringAsFixed((item.taxPercent ?? 0) % 1 == 0 ? 0 : 1)}%  •  TZS ${item.taxAmount.toStringAsFixed(0)}',
+                key: ValueKey<String>('cart_vat_${item.key}'),
+                style: ThemeConstants.captionStyle.copyWith(fontSize: 10.sp),
+              ),
+            ),
         ],
       ),
     );

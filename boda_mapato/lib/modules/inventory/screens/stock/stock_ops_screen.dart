@@ -7,7 +7,9 @@ import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../models/inv_batch.dart';
 import '../../models/inv_product.dart';
+import '../../models/inv_product_unit.dart';
 import '../../providers/inventory_provider.dart';
+import '../widgets/inv_units_ui.dart';
 import '../widgets/inventory_widgets.dart';
 
 /// "Stock In / Out / Transfer" — quick, everyday stock adjustments.
@@ -178,6 +180,9 @@ class _StockInFormState extends State<_StockInForm> {
   final TextEditingController _ref = TextEditingController();
   final TextEditingController _batchNumber = TextEditingController();
   int? _productId;
+  // What the quantity is counted in when it is not the product's smallest unit (kg for a product kept in grams,
+  // a carton for one kept in pieces). null = the smallest unit itself.
+  int? _unitId;
   DateTime? _expiry;
   bool _saving = false;
 
@@ -185,6 +190,15 @@ class _StockInFormState extends State<_StockInForm> {
   void initState() {
     super.initState();
     _qty.addListener(_onQtyChanged);
+  }
+
+  /// How many of the smallest unit the chosen way of counting holds (1 for the smallest unit itself).
+  int _factorOf(List<InvProductUnit> units) {
+    if (_unitId == null) return 1;
+    for (final InvProductUnit u in units) {
+      if (u.id == _unitId && !u.isBase && u.factor > 1) return u.factor;
+    }
+    return 1;
   }
 
   void _onQtyChanged() {
@@ -212,9 +226,12 @@ class _StockInFormState extends State<_StockInForm> {
     }
 
     setState(() => _saving = true);
-    final bool ok = await context.read<InventoryProvider>().stockIn(
+    final InventoryProvider inv = context.read<InventoryProvider>();
+    // Stock is always a whole number of the smallest unit: 5 kg of a product kept in grams is 5,000.
+    final int received = int.parse(_qty.text.trim()) * _factorOf(inv.unitsOf(_productId!));
+    final bool ok = await inv.stockIn(
           _productId!,
-          int.parse(_qty.text.trim()),
+          received,
           reference: _ref.text.trim().isEmpty ? null : _ref.text.trim(),
           batchNumber: _batchNumber.text.trim().isEmpty
               ? null
@@ -231,6 +248,7 @@ class _StockInFormState extends State<_StockInForm> {
       setState(() {
         _expiry = null;
         _productId = null;
+        _unitId = null;
       });
       ThemeConstants.showSuccessSnackBar(
           context, loc.translate('stock_updated'));
@@ -243,8 +261,8 @@ class _StockInFormState extends State<_StockInForm> {
   @override
   Widget build(BuildContext context) {
     final LocalizationService loc = context.watch<LocalizationService>();
-    final List<InvProduct> products =
-        context.watch<InventoryProvider>().products;
+    final InventoryProvider inv = context.watch<InventoryProvider>();
+    final List<InvProduct> products = inv.products;
 
     InvProduct? selectedProduct;
     if (_productId != null) {
@@ -252,9 +270,23 @@ class _StockInFormState extends State<_StockInForm> {
       if (matches.isNotEmpty) selectedProduct = matches.first;
     }
 
+    // Goods by weight or volume, and every business that is not a depot, can receive stock in a bigger unit
+    // (kg, carton). A depot keeps counting in the one unit it always did.
+    final List<InvProductUnit> units = selectedProduct == null ? const <InvProductUnit>[] : inv.unitsOf(selectedProduct.id);
+    final bool canPickUnit = selectedProduct != null &&
+        (selectedProduct.isWeighed || !inv.capabilities.isDepot) &&
+        units.any((InvProductUnit u) => u.isActive && !u.isBase && u.factor > 1);
+    final int factor = canPickUnit ? _factorOf(units) : 1;
+
     final int currentStock = selectedProduct?.quantity ?? 0;
-    final int addedQty = int.tryParse(_qty.text.trim()) ?? 0;
+    final int addedQty = (int.tryParse(_qty.text.trim()) ?? 0) * factor;
     final int newTotalStock = currentStock + addedQty;
+    String show(int n) {
+      final InvProduct? sp = selectedProduct;
+      if (sp == null) return '$n';
+      if (!(sp.isWeighed || !inv.capabilities.isDepot)) return '$n ${sp.unit}';
+      return stockLabelOf(n, baseUnit: sp.unit, weighed: sp.isWeighed, units: units, caps: inv.capabilities);
+    }
 
     return _FormShell(
       noteKey: 'stock_in_note',
@@ -268,7 +300,10 @@ class _StockInFormState extends State<_StockInForm> {
                 context: context,
                 products: products,
                 value: _productId,
-                onChanged: (int? v) => setState(() => _productId = v),
+                onChanged: (int? v) => setState(() {
+                  _productId = v;
+                  _unitId = null;
+                }),
               ),
               if (selectedProduct != null) ...<Widget>[
                 SizedBox(height: 10.h),
@@ -290,10 +325,13 @@ class _StockInFormState extends State<_StockInForm> {
                             '📦 Mzigo uliopo sasa:',
                             style: ThemeConstants.captionStyle,
                           ),
-                          Text(
-                            '$currentStock ${selectedProduct.unit}',
-                            style: ThemeConstants.bodyStyle
-                                .copyWith(fontWeight: FontWeight.bold),
+                          Flexible(
+                            child: Text(
+                              show(currentStock),
+                              textAlign: TextAlign.end,
+                              style: ThemeConstants.bodyStyle
+                                  .copyWith(fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ],
                       ),
@@ -308,11 +346,14 @@ class _StockInFormState extends State<_StockInForm> {
                                 color: ThemeConstants.successGreen,
                               ),
                             ),
-                            Text(
-                              '+$addedQty ${selectedProduct.unit}',
-                              style: ThemeConstants.bodyStyle.copyWith(
-                                color: ThemeConstants.successGreen,
-                                fontWeight: FontWeight.bold,
+                            Flexible(
+                              child: Text(
+                                '+${show(addedQty)}',
+                                textAlign: TextAlign.end,
+                                style: ThemeConstants.bodyStyle.copyWith(
+                                  color: ThemeConstants.successGreen,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],
@@ -334,18 +375,33 @@ class _StockInFormState extends State<_StockInForm> {
                               ),
                             ),
                             SizedBox(width: 8.w),
-                            Text(
-                              '$newTotalStock ${selectedProduct.unit}',
-                              style: ThemeConstants.bodyStyle.copyWith(
-                                color: ThemeConstants.primaryOrange,
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.bold,
+                            Flexible(
+                              child: Text(
+                                show(newTotalStock),
+                                textAlign: TextAlign.end,
+                                style: ThemeConstants.bodyStyle.copyWith(
+                                  color: ThemeConstants.primaryOrange,
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ],
                     ],
+                  ),
+                ),
+              ],
+              if (canPickUnit) ...<Widget>[
+                SizedBox(height: 10.h),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: UnitChips(
+                    units: units.where((InvProductUnit u) => u.isActive).toList(),
+                    selectedUnitId: _unitId,
+                    baseLabel: selectedProduct?.unit ?? '',
+                    onSelected: (InvProductUnit u) => setState(() => _unitId = u.isBase ? null : u.id),
                   ),
                 ),
               ],

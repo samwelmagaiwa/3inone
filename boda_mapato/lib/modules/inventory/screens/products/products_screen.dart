@@ -9,6 +9,7 @@ import '../../../../providers/auth_provider.dart';
 import '../../../../services/localization_service.dart';
 import '../../models/inv_product.dart';
 import '../../providers/inventory_provider.dart';
+import '../widgets/inv_units_ui.dart';
 import '../widgets/inventory_widgets.dart';
 import 'add_edit_product_screen.dart';
 import '../../providers/depot_provider.dart';
@@ -160,7 +161,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                           maxLines: 1),
                                       SizedBox(height: 4.h),
                                       AutoSizeText(
-                                          '${loc.translate('sku')}: ${p.sku} • ${loc.translate('quantity')}: ${p.quantity}',
+                                          '${loc.translate('sku')}: ${p.sku} • ${loc.translate('quantity')}: ${stockLabel(p, inv.unitsOf(p.id), inv.capabilities)}',
                                           style: ThemeConstants.captionStyle,
                                           maxLines: 1,
                                           minFontSize: 10),

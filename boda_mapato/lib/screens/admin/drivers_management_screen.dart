@@ -18,6 +18,7 @@ import "driver_agreement_screen.dart";
 import "driver_history_screen.dart";
 import "driver_prediction_screen.dart";
 import "../../widgets/location_selector.dart";
+import "../../widgets/temporary_password_dialog.dart";
 
 class DriversManagementScreen extends StatefulWidget {
   const DriversManagementScreen({super.key});
@@ -1638,6 +1639,9 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
       // Show progress
       int success = 0;
       int failed = 0;
+      // Every driver the import creates gets a one-time password from the server. They are
+      // collected and shown together at the end -- the only chance to hand them over.
+      final List<TemporaryCredential> credentials = <TemporaryCredential>[];
 
       for (final Map<String, String> r in rows) {
         try {
@@ -1650,8 +1654,18 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
             'vehicle_type': r['vehicle_type']?.toLowerCase(),
             'status': r['status']?.toLowerCase() ?? 'active',
           };
-          await _apiService.createDriver(payload);
+          final Map<String, dynamic> created =
+              await _apiService.createDriver(payload);
           success++;
+
+          final String? temporaryPassword = temporaryPasswordOf(created);
+          if (temporaryPassword != null) {
+            credentials.add(TemporaryCredential(
+              name: payload['name'] as String,
+              contact: payload['phone_number'] as String,
+              password: temporaryPassword,
+            ));
+          }
         } on Exception {
           failed++;
         }
@@ -1664,6 +1678,11 @@ class _DriversManagementScreenState extends State<DriversManagementScreen>
         ThemeConstants.showSuccessSnackBar(context, message);
       } else {
         ThemeConstants.showWarningSnackBar(context, message);
+      }
+
+      if (credentials.isNotEmpty) {
+        await showTemporaryPasswords(context, credentials);
+        if (!mounted) return;
       }
 
       // Refresh list
@@ -2140,14 +2159,33 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
       final response = await _apiService.createDriver(driverData);
 
       if (mounted) {
+        // This form closes itself next, so take everything it still needs from it now:
+        // its context and controllers are gone by the time a dialog has been answered.
+        final NavigatorState navigator = Navigator.of(context);
+        final String driverName = _nameController.text.trim();
+        final String driverPhone = _phoneController.text.trim();
+
         Navigator.pop(context);
         widget.onDriverAdded();
 
         ThemeConstants.showSuccessSnackBar(
-            context, "Dereva ${_nameController.text} ameongezwa kikamilifu!");
+            context, "Dereva $driverName ameongezwa kikamilifu!");
 
         // Debug: Print the response
         debugPrint('Driver creation response: $response');
+
+        // The server makes up a one-time password for the driver. It is shown once, here,
+        // for the admin to hand over; the driver replaces it the first time they sign in.
+        final String? temporaryPassword = temporaryPasswordOf(response);
+        if (temporaryPassword != null) {
+          await showTemporaryPasswordsOn(navigator, <TemporaryCredential>[
+            TemporaryCredential(
+              name: driverName,
+              contact: driverPhone,
+              password: temporaryPassword,
+            ),
+          ]);
+        }
 
         // Navigate to Driver Agreement screen
         if (response['status'] == 'success') {
@@ -2155,7 +2193,6 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
           final String driverId = data is Map<String, dynamic>
               ? (data['id']?.toString() ?? '')
               : '';
-          final String driverName = _nameController.text.trim();
 
           debugPrint('Driver ID extracted: $driverId');
           debugPrint('Driver Name: $driverName');
@@ -2163,7 +2200,7 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
           if (driverId.isNotEmpty) {
             debugPrint('Navigating to Driver Agreement Screen');
             try {
-              await Navigator.of(context).push(
+              await navigator.push(
                 MaterialPageRoute(
                   builder: (context) => DriverAgreementScreen(
                     driverId: driverId,

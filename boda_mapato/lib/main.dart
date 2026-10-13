@@ -10,18 +10,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'constants/colors.dart';
 import 'constants/styles.dart';
 import 'constants/theme_constants.dart';
-import 'modules/inventory/providers/inventory_provider.dart';
-import 'modules/inventory/providers/depot_provider.dart';
-import 'modules/inventory/providers/notifications_provider.dart';
 import 'modules/inventory/screens/inventory_home.dart';
 import 'models/login_response.dart';
 import 'providers/auth_provider.dart';
-import 'providers/dashboard_provider.dart';
-import 'providers/debts_provider.dart';
-import 'providers/device_provider.dart';
-import 'providers/maintenance_provider.dart';
-import 'providers/rental_provider.dart';
-import 'providers/transaction_provider.dart';
+import 'widgets/business_state_scope.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/communications_screen.dart';
 import 'screens/admin/debts_management_screen.dart';
@@ -68,6 +60,7 @@ import 'screens/rental/vendor_dashboard_screen.dart';
 import 'screens/rental/lease_agreement_wizard_screen.dart';
 import 'screens/reports/report_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/auth/register_business_screen.dart';
 import 'screens/landing/app_landing_screen.dart';
 import 'screens/service_selection_screen.dart';
 import 'widgets/service_guard.dart';
@@ -173,35 +166,9 @@ class BodaMapatoApp extends StatelessWidget {
             ChangeNotifierProvider<AuthProvider>(
               create: (final BuildContext _) => AuthProvider(),
             ),
-            ChangeNotifierProvider<TransactionProvider>(
-              create: (final BuildContext _) => TransactionProvider(),
-            ),
-            ChangeNotifierProvider<DeviceProvider>(
-              create: (final BuildContext _) => DeviceProvider(),
-            ),
-            ChangeNotifierProvider<DebtsProvider>(
-              create: (final BuildContext _) => DebtsProvider(),
-            ),
-            ChangeNotifierProvider<DashboardProvider>(
-              create: (final BuildContext _) => DashboardProvider()..loadAll(),
-            ),
-            ChangeNotifierProvider<InventoryProvider>(
-              create: (final BuildContext _) =>
-                  InventoryProvider()..bootstrap(),
-            ),
-            ChangeNotifierProvider<DepotProvider>(
-              create: (final BuildContext _) => DepotProvider(),
-            ),
-            ChangeNotifierProvider<NotificationsProvider>(
-              create: (final BuildContext _) => NotificationsProvider(),
-            ),
-            ChangeNotifierProvider<RentalProvider>(
-              create: (final BuildContext _) => RentalProvider(),
-            ),
-            ChangeNotifierProvider<MaintenanceProvider>(
-              create: (final BuildContext _) =>
-                  MaintenanceProvider()..fetchRequests(),
-            ),
+            // Business data (products, sales, drivers, properties...) is NOT created here: it lives
+            // in BusinessStateScope below, rebuilt for whoever is signed in, so one person never
+            // sees the previous person's cached lists.
           ],
           child: Consumer<LocalizationService>(
             builder: (context, localizationService, child) => MaterialApp(
@@ -219,6 +186,8 @@ class BodaMapatoApp extends StatelessWidget {
                 GlobalWidgetsLocalizations.delegate,
                 GlobalCupertinoLocalizations.delegate,
               ],
+              builder: (final BuildContext context, final Widget? navigator) =>
+                  BusinessStateScope(child: navigator ?? const SizedBox.shrink()),
               home: const AuthWrapper(),
               debugShowCheckedModeBanner: false,
               routes: <String, WidgetBuilder>{
@@ -386,6 +355,16 @@ class BodaMapatoApp extends StatelessWidget {
                     const HelpdeskScreen(),
                 "/rental/lease-templates": (final BuildContext context) =>
                     const LeaseAgreementsScreen(), // Placeholder for templates
+                "/register-business": (final BuildContext context) {
+                  final dynamic args = ModalRoute.of(context)?.settings.arguments;
+                  if (args is Map) {
+                    return RegisterBusinessScreen(
+                      initialEmail: args['email']?.toString(),
+                      initialPhone: args['phone']?.toString(),
+                    );
+                  }
+                  return const RegisterBusinessScreen();
+                },
               },
             ),
           ),
@@ -559,6 +538,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
     );
   }
 
+  void _goToRegister(BuildContext ctx) {
+    Navigator.of(ctx).push(
+      MaterialPageRoute<void>(builder: (_) => const RegisterBusinessScreen()),
+    );
+  }
+
   @override
   Widget build(final BuildContext context) =>
       Consumer2<AuthProvider, LocalizationService>(
@@ -601,13 +586,22 @@ class _AuthWrapperState extends State<AuthWrapper> {
               Positioned(
                 top: MediaQuery.of(context).padding.top + 20,
                 right: 16,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _LangToggleButton(onChanged: _onLanguageChosen),
-                    const SizedBox(width: 8),
-                    _IngiaPill(onTap: () => _goToLogin(context)),
-                  ],
+                // This Stack has no Scaffold, so nothing above these buttons is a Material and their text
+                // would use MaterialApp's "Material is missing" style: a yellow double underline in a
+                // monospace font. A transparent Material gives it the app's normal text style (no
+                // background, no ink: the pills draw themselves).
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _LangToggleButton(onChanged: _onLanguageChosen),
+                      const SizedBox(width: 8),
+                      _JisajiliPill(onTap: () => _goToRegister(context)),
+                      const SizedBox(width: 8),
+                      _IngiaPill(onTap: () => _goToLogin(context)),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -689,6 +683,44 @@ class _IngiaPill extends StatelessWidget {
               loc.translate('login'),
               style: const TextStyle(
                 color: Colors.black87,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Outlined counterpart of [_IngiaPill]: a business owner registers here, then
+/// waits for a super admin to approve and assign their services.
+class _JisajiliPill extends StatelessWidget {
+  const _JisajiliPill({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = LocalizationService.instance;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.35),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF00E5FF), width: 1.4),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.storefront_outlined, color: Color(0xFF00E5FF), size: 16),
+            const SizedBox(width: 6),
+            Text(
+              loc.isSwahili ? 'Jisajili' : 'Register',
+              style: const TextStyle(
+                color: Color(0xFF00E5FF),
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
               ),

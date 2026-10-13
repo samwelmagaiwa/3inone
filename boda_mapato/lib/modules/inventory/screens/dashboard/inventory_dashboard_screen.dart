@@ -21,7 +21,10 @@ import '../hubs/products_hub_screen.dart';
 import '../hubs/sales_hub_screen.dart';
 import '../hubs/stock_hub_screen.dart';
 import '../hubs/supply_chain_hub_screen.dart';
+import '../../../../widgets/month_selector.dart';
+import '../reports/profit_by_product_screen.dart';
 import '../widgets/inventory_widgets.dart';
+import '../widgets/profit_by_product_table.dart';
 
 /// Inventory dashboard styled to match the Transport (Modern) dashboard:
 /// hero balance card, glass stat cards, month strip + line chart.
@@ -1304,43 +1307,16 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
           ),
         );
 
-  Widget _buildMonthSelector() => SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: months.asMap().entries.map((MapEntry<int, String> entry) {
-            final int index = entry.key;
-            final String month = entry.value;
-            final bool isSelected = index + 1 == _selectedMonth;
-
-            return GestureDetector(
-              onTap: () {
-                setState(() => _selectedMonth = index + 1);
-                _loadChartForMonth(index + 1);
-              },
-              child: Container(
-                margin: const EdgeInsets.only(right: 16),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? Colors.white.withOpacity(0.3)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  month,
-                  style: TextStyle(
-                    color: isSelected ? textPrimary : textSecondary,
-                    fontSize: 14,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
+  // Opens on the current month (scrolled into view); earlier months are a swipe away.
+  Widget _buildMonthSelector() => MonthSelector(
+        months: months,
+        selectedMonth: _selectedMonth,
+        selectedColor: textPrimary,
+        unselectedColor: textSecondary,
+        onSelected: (int month) {
+          setState(() => _selectedMonth = month);
+          _loadChartForMonth(month);
+        },
       );
 
   // Divider between joined sections
@@ -1589,188 +1565,52 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
             ),
             const SizedBox(height: 14),
             // Per-product breakdown table — sorted by qty desc (top sellers first)
+            // Flexible, so a narrow phone or a large system font shortens the text instead of
+            // overflowing the row.
             Row(
               children: <Widget>[
-                Text(
-                  loc.translate('profit_margins_title'),
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontSize: ResponsiveHelper.bodyM,
-                    fontWeight: FontWeight.w600,
+                Flexible(
+                  child: Text(
+                    loc.translate('profit_margins_title'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: ResponsiveHelper.bodyM,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  loc.translate('top_products_sorted'),
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontSize: ResponsiveHelper.bodyS,
+                Flexible(
+                  child: Text(
+                    loc.translate('top_products_sorted'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: ResponsiveHelper.bodyS,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 6),
-            // Header row
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: <Widget>[
-                  SizedBox(
-                    width: 24,
-                    child: Text(loc.translate('rank'),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontSize: ResponsiveHelper.bodyS,
-                          fontWeight: FontWeight.w600,
-                        )),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    flex: 4,
-                    child: Text(loc.translate('product'),
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontSize: ResponsiveHelper.bodyS,
-                          fontWeight: FontWeight.w600,
-                        )),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(loc.translate('qty'),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontSize: ResponsiveHelper.bodyS,
-                          fontWeight: FontWeight.w600,
-                        )),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Text(loc.translate('cost'),
-                        textAlign: TextAlign.end,
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontSize: ResponsiveHelper.bodyS,
-                          fontWeight: FontWeight.w600,
-                        )),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Text(loc.translate('profit'),
-                        textAlign: TextAlign.end,
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontSize: ResponsiveHelper.bodyS,
-                          fontWeight: FontWeight.w600,
-                        )),
-                  ),
-                ],
+            // The same table the full "Faida kwa Bidhaa" screen shows. The dashboard lists the
+            // first rows only and points to that screen for the rest.
+            ProfitByProductTable(
+              products: rankedForProfit(inv.products),
+              limit: kProfitDashboardRows,
+            ),
+            // Live only when there are more products than fit above; otherwise muted.
+            ProfitSeeAllButton(
+              total: inv.products.length,
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const ProfitByProductScreen(),
+                ),
               ),
             ),
-            // Product rows sorted by quantity descending
-            ...(() {
-              final sorted = [...inv.products]
-                ..sort((a, b) => b.quantity.compareTo(a.quantity));
-              return sorted.asMap().entries.map((e) {
-                final rank = e.key + 1;
-                final p = e.value;
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
-                    ),
-                  ),
-                  child: Row(
-                    children: <Widget>[
-                      SizedBox(
-                        width: 24,
-                        child: Text(
-                          '$rank',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: rank == 1
-                                ? Colors.amber.shade300
-                                : rank == 2
-                                    ? Colors.grey.shade300
-                                    : rank == 3
-                                        ? Colors.brown.shade300
-                                        : textSecondary,
-                            fontSize: ResponsiveHelper.bodyS,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        flex: 4,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              p.name,
-                              style: TextStyle(
-                                color: textPrimary,
-                                fontSize: ResponsiveHelper.bodyS,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              p.unit.toUpperCase(),
-                              style: TextStyle(
-                                color: textSecondary,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          '${p.quantity}',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: ResponsiveHelper.bodyS,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          formatAmount(p.totalCostPrice),
-                          textAlign: TextAlign.end,
-                          style: TextStyle(
-                            color: Colors.amber.shade300,
-                            fontSize: ResponsiveHelper.bodyS,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          formatAmount(p.totalExpectedProfit),
-                          textAlign: TextAlign.end,
-                          style: TextStyle(
-                            color: Colors.greenAccent.shade400,
-                            fontSize: ResponsiveHelper.bodyS,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              });
-            })(),
           ],
         ),
       );

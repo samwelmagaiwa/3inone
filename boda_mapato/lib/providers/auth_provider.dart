@@ -26,6 +26,7 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   String? _errorMessage;
+  String? _lastErrorCode;
   
   // Support Contact Detail Cache
   String? _supportPhone;
@@ -60,6 +61,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   String? get errorMessage => _errorMessage;
+  String? get lastErrorCode => _lastErrorCode;
 
   // Contact Getters (Database-only)
   String get supportPhone => _supportPhone ?? "";
@@ -85,10 +87,10 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Swaps the stored API token for a fresh one. The server expires tokens 30
-  /// days after issue, so renewing on every app start (and daily while open)
-  /// means only someone who stays away that long is ever signed out. A failure
-  /// is harmless: the current token keeps working until it actually expires.
+  /// Swaps the stored API token for a fresh one (on every app start, and daily while open).
+  /// The server no longer expires a token by age: a device stays signed in for as long as it
+  /// is used, however many other devices the same account is signed in on. Renewing only keeps
+  /// the token fresh. A failure is harmless: the current token keeps working.
   Future<void> _renewToken() async {
     try {
       await AuthService.refreshToken();
@@ -208,42 +210,15 @@ class AuthProvider extends ChangeNotifier {
 
       notifyListeners();
       return true;
+    } on AuthHttpException catch (e) {
+      _lastErrorCode = e.code;
+      _setError(e.message);
+      _errorMessage = e.message;
+      return false;
     } on Exception catch (e) {
+      _lastErrorCode = null;
       _setError(e.toString());
       _errorMessage = e.toString();
-      return false;
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  // Register
-  Future<bool> register({
-    required final String name,
-    required final String email,
-    required final String password,
-    required final String passwordConfirmation,
-    final String? phone,
-  }) async {
-    _setLoading(true);
-    _clearError();
-
-    try {
-      final Map<String, dynamic> response = await AuthService.register(
-        name: name,
-        email: email,
-        password: password,
-        passwordConfirmation: passwordConfirmation,
-        phone: phone,
-      );
-
-      _user = response["user"];
-      _isAuthenticated = true;
-
-      notifyListeners();
-      return true;
-    } on Exception catch (e) {
-      _setError(e.toString());
       return false;
     } finally {
       _setLoading(false);
@@ -329,8 +304,8 @@ class AuthProvider extends ChangeNotifier {
     // Inform the user globally
     AppMessenger.show(
       localization.isSwahili
-          ? 'Kikao chako kimeisha, au umeingia kwenye kifaa kingine mara nyingi. Tafadhali ingia tena.'
-          : 'Your session has ended, or this account was signed in on too many other devices. Please sign in again.',
+          ? 'Kikao chako kimeisha. Tafadhali ingia tena.'
+          : 'Your session has ended. Please sign in again.',
     );
   }
 
@@ -541,6 +516,7 @@ class AuthProvider extends ChangeNotifier {
   void _clearError() {
     _error = null;
     _errorMessage = null;
+    _lastErrorCode = null;
     notifyListeners();
   }
 

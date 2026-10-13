@@ -4,11 +4,13 @@ import "dart:async";
 import 'package:auto_size_text/auto_size_text.dart';
 import "package:flutter/material.dart";
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import "package:provider/provider.dart";
 
 import "../../constants/colors.dart";
 import "../../constants/strings.dart";
 import "../../constants/styles.dart";
 import "../../constants/theme_constants.dart";
+import "../../providers/auth_provider.dart";
 import "../../services/api_service.dart";
 import "../../widgets/custom_button.dart";
 import "../../widgets/custom_card.dart";
@@ -418,6 +420,8 @@ class _ReceiptPreviewDialog extends StatelessWidget {
     final double amount = (receiptData["amount"] ?? 0).toDouble();
     final String serviceType = receiptData["service_type"] ?? "N/A";
     final String notes = receiptData["notes"] ?? "";
+    // Whose receipt it is: the signed-in person's own business, not the platform's name.
+    final business = context.read<AuthProvider>().user?.business;
 
     return Dialog(
       child: Container(
@@ -458,18 +462,29 @@ class _ReceiptPreviewDialog extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   // Business Header
-                  const Center(
+                  Center(
                     child: Text(
-                      "3 IN ONE",
+                      business?.name.toUpperCase() ?? "3 IN ONE",
+                      key: const ValueKey<String>("receipt_business_name"),
+                      textAlign: TextAlign.center,
                       style: AppStyles.heading2,
                     ),
                   ),
-                  const Center(
-                    child: Text(
-                      "Mfumo wa Usimamizi wa Mapato",
-                      style: AppStyles.bodySmall,
-                    ),
-                  ),
+                  if (business == null)
+                    const Center(
+                      child: Text(
+                        "Mfumo wa Usimamizi wa Mapato",
+                        style: AppStyles.bodySmall,
+                      ),
+                    )
+                  else ...<Widget>[
+                    if (business.address.isNotEmpty)
+                      Center(child: Text(business.address, textAlign: TextAlign.center, style: AppStyles.bodySmall)),
+                    if (business.phone.isNotEmpty)
+                      Center(child: Text("Simu: ${business.phone}", style: AppStyles.bodySmall)),
+                    if (business.tin.isNotEmpty)
+                      Center(child: Text("TIN: ${business.tin}", style: AppStyles.bodySmall)),
+                  ],
 
                   const SizedBox(height: AppStyles.spacingM),
                   const Divider(),

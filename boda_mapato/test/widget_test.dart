@@ -1,61 +1,67 @@
-// This is a basic Flutter widget test for the Boda Mapato app.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import "package:flutter/material.dart";
-import "package:flutter_test/flutter_test.dart";
+// Smoke tests: the whole app starts, signed out, and shows the way in.
 
 import "package:boda_mapato/main.dart";
+import "package:boda_mapato/services/localization_service.dart";
+import "package:flutter/material.dart";
+import "package:flutter_test/flutter_test.dart";
+import "package:shared_preferences/shared_preferences.dart";
+
+/// Starts the app the way a fresh install does: nothing stored, nobody signed in, on a
+/// phone-sized screen (the layout is designed for one).
+Future<void> _boot(final WidgetTester tester) async {
+  SharedPreferences.setMockInitialValues(<String, Object>{});
+  tester.view.physicalSize = const Size(390, 844);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
+  await tester.pumpWidget(const BodaMapatoApp());
+
+  // pump(), not pumpAndSettle(): the landing screen's background animates for ever,
+  // so the tree never settles.
+  for (int i = 0; i < 4; i++) {
+    await tester.pump(const Duration(seconds: 1));
+  }
+}
 
 void main() {
-  testWidgets("Boda Mapato app smoke test", (final WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const BodaMapatoApp());
-
-    // Verify that the app loads and shows the login screen initially
-    // Since the app uses AuthWrapper, it should show loading or login screen
-    expect(find.byType(MaterialApp), findsOneWidget);
-
-    // Wait for any async operations to complete
-    await tester.pumpAndSettle();
-
-    // The app should either show loading indicator or login screen
-    // depending on authentication state
-    expect(
-      find.byType(CircularProgressIndicator).or(find.text("Ingia")),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets("Login screen displays correctly",
+  testWidgets("a fresh install opens on the landing screen, with a way to sign in or register",
       (final WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const BodaMapatoApp());
+    await _boot(tester);
 
-    // Wait for the app to settle
-    await tester.pumpAndSettle();
-
-    // Check if we can find login-related elements
-    // The app should show either loading or login elements
-    hasLoginElements = tester.any(find.text("Boda Mapato")) ||
-        tester.any(find.text("Ingia")) ||
-        tester.any(find.byType(CircularProgressIndicator));
-
-    expect(hasLoginElements, isTrue);
+    expect(find.byType(MaterialApp), findsOneWidget);
+    // Swahili is the default language.
+    expect(find.text("Ingia"), findsOneWidget);
+    expect(find.text("Jisajili"), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
-  testWidgets("App title is correct", (final WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const BodaMapatoApp());
+  testWidgets("the buttons over the landing slides are plain text, not Flutter's yellow 'no Material' underline",
+      (final WidgetTester tester) async {
+    await _boot(tester);
 
-    // Wait for the app to settle
-    await tester.pumpAndSettle();
+    // What the text really draws with: the nearest DefaultTextStyle plus the widget's own style. With no
+    // Material above them (the overlay sits on a bare Stack) MaterialApp's fallback style applies, which
+    // is a yellow double underline in a monospace font.
+    for (final String label in <String>["Ingia", "Jisajili", "SW"]) {
+      final Finder f = find.text(label);
+      expect(f, findsOneWidget, reason: label);
+      final Text text = tester.widget<Text>(f);
+      final TextStyle effective = DefaultTextStyle.of(tester.element(f)).style.merge(text.style);
+      expect(
+        effective.decoration == null || effective.decoration == TextDecoration.none,
+        isTrue,
+        reason: "\"$label\" is underlined: ${effective.decoration} (${effective.decorationColor})",
+      );
+    }
+  });
 
-    // Find the MaterialApp widget and verify its title
-    materialApp = tester.widget(find.byType(MaterialApp));
-    expect(materialApp.title, equals("Boda Mapato"));
+  testWidgets("the app carries its own name as the title",
+      (final WidgetTester tester) async {
+    await _boot(tester);
+
+    final MaterialApp app = tester.widget(find.byType(MaterialApp));
+    expect(app.title, equals(LocalizationService.instance.translate("app_name")));
+    expect(app.title, isNotEmpty);
   });
 }

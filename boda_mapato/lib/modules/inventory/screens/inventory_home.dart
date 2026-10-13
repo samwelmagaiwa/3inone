@@ -19,6 +19,8 @@ import 'hubs/supply_chain_hub_screen.dart';
 import 'hubs/finance_reports_hub_screen.dart';
 import 'barcode_scanner_screen.dart';
 import 'notifications/approval_notifications_screen.dart';
+import 'reports/profit_by_product_screen.dart';
+import '../providers/inventory_provider.dart';
 import '../providers/notifications_provider.dart';
 
 /// One entry in the inventory navigation (bottom-bar pages, quick menu grid,
@@ -152,9 +154,11 @@ class _InventoryHomeState extends State<InventoryHome> {
   void initState() {
     super.initState();
     _index = widget.initialIndex;
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => context.read<NotificationsProvider>().refreshUnreadCount(),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<NotificationsProvider>().refreshUnreadCount();
+      // What this business's inventory is set up to do (crates or not, which price the till uses ...).
+      context.read<InventoryProvider>().fetchCapabilities();
+    });
   }
 
   /// Returns effective permissions for this user.
@@ -194,6 +198,26 @@ class _InventoryHomeState extends State<InventoryHome> {
           },
         ),
     ];
+
+    // "Faida kwa Bidhaa": the whole product profit table (the dashboard shows only the
+    // first rows of it). Same permission as the table on the dashboard. It opens its own
+    // screen on top rather than switching a tab, so it is not in the bottom bar or drawer.
+    if (perms.has('inv_view_reports')) {
+      items.add(_GridNavItem(
+        label: loc.translate('profit_margins_title'),
+        icon: Icons.trending_up_rounded,
+        color: ThemeConstants.successGreen.withOpacity(0.85),
+        onTap: () {
+          final NavigatorState navigator = Navigator.of(context);
+          navigator.pop(); // close the menu
+          navigator.push(
+            MaterialPageRoute<void>(
+              builder: (_) => const ProfitByProductScreen(),
+            ),
+          );
+        },
+      ));
+    }
 
     // Add Switch Service to quick menu
     items.add(_GridNavItem(

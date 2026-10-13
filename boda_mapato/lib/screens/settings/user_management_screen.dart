@@ -50,7 +50,30 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   bool get _isRental => _activeService == 'rental';
   bool get _isInventory => _activeService == 'inventory';
 
-  List<DropdownMenuItem<String>> get _roleDropdownItems {
+  /// Owner roles (admin / landlord) are separate businesses: they register
+  /// themselves or a super admin creates them. A business owner creates STAFF,
+  /// so the server refuses these roles for anyone but a super admin.
+  bool get _isSuperAdminUser =>
+      Provider.of<AuthProvider>(context, listen: false).user?.isSuperAdmin == true;
+
+  static const List<String> _allServices = <String>['inventory', 'transport', 'rental'];
+
+  /// The services the signed-in user may give to someone else. A super admin can give any;
+  /// a business owner only the ones a super admin gave them (the server refuses the rest
+  /// with a 403, so offering them would only lead to an error).
+  List<String> get _assignableServices {
+    final user = Provider.of<AuthProvider>(context, listen: false).user;
+    if (user?.isSuperAdmin == true) return _allServices;
+    final List<String> own = user?.serviceTypes ?? const <String>[];
+    return _allServices.where(own.contains).toList();
+  }
+
+  List<DropdownMenuItem<String>> get _roleDropdownItems => _allRoleDropdownItems
+      .where((DropdownMenuItem<String> item) =>
+          _isSuperAdminUser || (item.value != 'admin' && item.value != 'landlord'))
+      .toList();
+
+  List<DropdownMenuItem<String>> get _allRoleDropdownItems {
     if (_isRental) {
       return const [
         DropdownMenuItem(value: 'admin', child: Text('Admin')),
@@ -78,7 +101,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     ];
   }
 
-  String get _defaultRole => _isRental ? 'tenant' : 'admin';
+  String get _defaultRole =>
+      _isRental ? 'tenant' : (_isSuperAdminUser ? 'admin' : 'manager');
 
   String _serviceLabel(String service) {
     switch (service) {
@@ -171,7 +195,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     // Which services this new account is bound to. Defaults to the one
     // the admin is currently managing, but a user can be bound to more
     // than one (e.g. transport + inventory).
-    final Set<String> selectedServices = <String>{_activeService};
+    final List<String> assignable = _assignableServices;
+    final Set<String> selectedServices = <String>{
+      if (assignable.contains(_activeService))
+        _activeService
+      else if (assignable.isNotEmpty)
+        assignable.first,
+    };
 
     await showDialog(
       context: context,
@@ -306,7 +336,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             ),
                             Wrap(
                               spacing: 4,
-                              children: <String>['inventory', 'transport', 'rental']
+                              children: assignable
                                   .map((String s) => FilterChip(
                                         label: Text(_serviceLabel(s)),
                                         selected: selectedServices.contains(s),
@@ -628,7 +658,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 style: const TextStyle(color: ThemeConstants.textSecondary, fontSize: 13),
               ),
               const SizedBox(height: 14),
-              ...<String>['inventory', 'transport', 'rental'].map((s) {
+              ..._assignableServices.map((s) {
                 final bool on = selected.contains(s);
                 return CheckboxListTile(
                   value: on,

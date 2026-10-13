@@ -1,4 +1,5 @@
 import '../config/navigation_config.dart';
+import 'business.dart';
 
 class LoginResponse {
   LoginResponse({
@@ -71,6 +72,7 @@ class UserData {
     this.fullAccess = false,
     this.mustChangePassword = false,
     this.serviceTypes = const <String>[],
+    this.business,
   });
 
   factory UserData.fromJson(final Map<String, dynamic> json) => UserData(
@@ -100,6 +102,9 @@ class UserData {
         fullAccess: (json["full_access"] as bool?) ?? false,
         mustChangePassword: (json["must_change_password"] as bool?) ?? false,
         serviceTypes: _pickServiceTypes(json),
+        business: json["business"] is Map
+            ? Business.fromJson(Map<String, dynamic>.from(json["business"] as Map))
+            : null,
       );
   final String id;
   final String name;
@@ -121,6 +126,13 @@ class UserData {
   /// Services (rental/transport/inventory) this account is bound to.
   /// Empty means an admin hasn't assigned one yet.
   final List<String> serviceTypes;
+
+  /// The business this person works for (name, address, TIN, logo) and its plan.
+  /// Null for a super admin, who belongs to no business.
+  final Business? business;
+
+  /// Owners head a business: they edit its profile; everyone else only reads it.
+  bool get isBusinessOwner => role == "admin" || role == "administrator" || role == "landlord";
 
   bool hasPermission(String permission) {
     if (isSuperAdmin || fullAccess) return true;

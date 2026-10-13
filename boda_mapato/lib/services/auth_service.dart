@@ -5,15 +5,17 @@ import "package:flutter/foundation.dart"; // for kDebugMode, debugPrint
 import "package:http/http.dart" as http;
 import "package:shared_preferences/shared_preferences.dart";
 import "../config/api_config.dart";
+import "../models/business_registration.dart";
 
 /// A non-2xx answer from the server. Keeps the status code so callers can tell
 /// "your session is no longer valid" (401) from a server hiccup (5xx), and
 /// prints exactly like the plain `Exception` it replaces.
 class AuthHttpException implements Exception {
-  AuthHttpException(this.statusCode, this.message);
+  AuthHttpException(this.statusCode, this.message, {this.code});
 
   final int statusCode;
   final String message;
+  final String? code;
 
   @override
   String toString() => "Exception: $message";
@@ -63,9 +65,17 @@ mixin AuthService {
         debugPrint(
             'Body (first 1000): ${b.length > 1000 ? '${b.substring(0, 1000)}...' : b}');
       }
+      final Object? errorsObj = data["errors"];
+      String? code;
+      if (errorsObj is Map) {
+        final Object? codeObj = errorsObj["code"];
+        code = codeObj?.toString();
+      }
+      code ??= data["code"]?.toString();
       throw AuthHttpException(
         response.statusCode,
         (data["message"] ?? "Server error: ${response.statusCode}").toString(),
+        code: code,
       );
     }
   }
@@ -128,10 +138,11 @@ mixin AuthService {
     }
   }
 
-  /// Step 1 of password recovery: verify identity by email + the phone
-  /// number registered on the account (same two factors login itself
-  /// checks). Returns the short-lived reset token on success.
-  static Future<String> forgotPassword({
+  /// Step 1 of password recovery: asks the server to TEXT a one-time code to the phone
+  /// registered on the account (it needs the email AND that phone number). Nothing that
+  /// proves identity comes back in the answer, and the answer is the same whether or not
+  /// the details matched, so only the real owner of the phone ever gets the code.
+  static Future<void> forgotPassword({
     required final String email,
     required final String phoneNumber,
   }) async {
@@ -146,20 +157,13 @@ mixin AuthService {
         )
         .timeout(timeoutDuration);
 
-    final Map<String, dynamic> data = _handleResponse(response);
-    final Map<String, dynamic>? dataMap =
-        data["data"] is Map ? Map<String, dynamic>.from(data["data"]) : null;
-    final String? token = dataMap?["reset_token"] as String?;
-    if (token == null || token.isEmpty) {
-      throw Exception("Reset token missing from server response");
-    }
-    return token;
+    _handleResponse(response);
   }
 
-  /// Step 2: spend the token from [forgotPassword] to set a new password.
+  /// Step 2: the code that was texted, plus the new password.
   static Future<void> resetPassword({
     required final String email,
-    required final String resetToken,
+    required final String code,
     required final String password,
   }) async {
     final http.Response response = await http
@@ -168,7 +172,7 @@ mixin AuthService {
           headers: _headers,
           body: jsonEncode(<String, String>{
             "email": email,
-            "reset_token": resetToken,
+            "code": code,
             "password": password,
             "password_confirmation": password,
           }),
@@ -178,43 +182,76 @@ mixin AuthService {
     _handleResponse(response);
   }
 
-  // Register method
-  static Future<Map<String, dynamic>> register({
-    required final String name,
+  /// Confirms the phone number of a registration with the code that was texted to it.
+  static Future<void> verifyRegistrationPhone({
     required final String email,
-    required final String password,
-    required final String passwordConfirmation,
-    final String? phone,
+    required final String code,
   }) async {
+    final http.Response response = await http
+        .post(
+          Uri.parse("$baseUrl/auth/register/verify-phone"),
+          headers: _headers,
+          body: jsonEncode(<String, String>{"email": email, "code": code}),
+        )
+        .timeout(timeoutDuration);
+
+    _handleResponse(response);
+  }
+
+  /// Texts a new phone-confirmation code for a registration.
+  static Future<void> resendRegistrationCode({required final String email}) async {
+    final http.Response response = await http
+        .post(
+          Uri.parse("$baseUrl/auth/register/resend-code"),
+          headers: _headers,
+          body: jsonEncode(<String, String>{"email": email}),
+        )
+        .timeout(timeoutDuration);
+
+    _handleResponse(response);
+  }
+
+  /// Registers a business owner. Unlike an ordinary sign-up this does NOT sign
+  /// anyone in: the account stays inactive until a super admin reviews the
+  /// registration and assigns the services, so there is no token in the answer.
+  ///
+  /// A validation failure (422) is reported with every problem the server found,
+  /// one per line, instead of Laravel's "(and 2 more errors)" summary.
+  static Future<Map<String, dynamic>> registerBusiness(
+    final BusinessRegistrationRequest request,
+  ) async {
+    final http.Response response = await http
+        .post(
+          Uri.parse("$baseUrl/auth/register"),
+          headers: _headers,
+          body: jsonEncode(request.toJson()),
+        )
+        .timeout(timeoutDuration);
+
+    Map<String, dynamic> data;
     try {
-      final http.Response response = await http
-          .post(
-            Uri.parse("$baseUrl/auth/register"),
-            headers: _headers,
-            body: jsonEncode(<String, String>{
-              "name": name,
-              "email": email,
-              "password": password,
-              "password_confirmation": passwordConfirmation,
-              if (phone != null) "phone": phone,
-            }),
-          )
-          .timeout(timeoutDuration);
-
-      final Map<String, dynamic> data = _handleResponse(response);
-
-      // Save token and user data
-      if (data["token"] != null) {
-        await saveToken(data["token"]);
-      }
-      if (data["user"] != null) {
-        await saveUserData(data["user"]);
-      }
-
-      return data;
-    } on Exception catch (e) {
-      throw Exception("Registration failed: $e");
+      data = jsonDecode(response.body) as Map<String, dynamic>;
+    } on FormatException {
+      throw AuthHttpException(
+          response.statusCode, "Jibu la seva halieleweki (${response.statusCode})");
     }
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    }
+
+    final dynamic errors = data["errors"];
+    if (response.statusCode == 422 && errors is Map && errors.isNotEmpty) {
+      final List<String> lines = errors.values
+          .expand((final v) => v is List ? v : <dynamic>[v])
+          .map((final e) => e.toString())
+          .toList();
+      throw AuthHttpException(422, lines.join("\n"));
+    }
+    throw AuthHttpException(
+      response.statusCode,
+      (data["message"] ?? "Server error: ${response.statusCode}").toString(),
+    );
   }
 
   // Logout method

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
 import '../services/sms_service.dart';
+import '../widgets/temporary_password_dialog.dart' show temporaryPasswordOf;
 
 class MaintenanceProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -131,6 +132,11 @@ class MaintenanceProvider with ChangeNotifier {
     }
   }
 
+  /// The one-time password the server made up for the fundi the LAST addVendor created,
+  /// to hand over; null when that fundi already had a sign-in.
+  String? _lastTemporaryPassword;
+  String? get lastTemporaryPassword => _lastTemporaryPassword;
+
   Future<String?> addVendor({
     required String name,
     required String phone,
@@ -140,6 +146,7 @@ class MaintenanceProvider with ChangeNotifier {
     String? businessName,
     String? experience,
   }) async {
+    _lastTemporaryPassword = null;
     try {
       final response = await _apiService.post("/rental/maintenance/vendors", {
         'name': name,
@@ -151,6 +158,7 @@ class MaintenanceProvider with ChangeNotifier {
         'experience': experience,
       });
       if (response['status'] == 'success' || response['status'] == 201) {
+        _lastTemporaryPassword = temporaryPasswordOf(response);
         await fetchVendors();
         return null;
       }

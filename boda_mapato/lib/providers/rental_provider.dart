@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/sms_service.dart';
+import '../widgets/temporary_password_dialog.dart' show temporaryPasswordOf;
 
 class RentalProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
@@ -288,11 +289,18 @@ class RentalProvider extends ChangeNotifier {
     }
   }
 
+  /// The one-time password the server made up for the tenant the LAST onboarding created,
+  /// to hand over; null when that tenant already had an account (they keep their own).
+  String? _lastTemporaryPassword;
+  String? get lastTemporaryPassword => _lastTemporaryPassword;
+
   Future<String?> onboardTenant(Map<String, dynamic> data) async {
     _isLoading = true;
+    _lastTemporaryPassword = null;
     notifyListeners();
     try {
       final response = await _api.onboardTenant(data);
+      _lastTemporaryPassword = temporaryPasswordOf(response);
       await fetchProperties();
       await fetchTenants();
       await fetchBills();

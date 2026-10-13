@@ -15,6 +15,7 @@ import '../../../../screens/settings/user_management_screen.dart';
 import '../../models/inv_depot_models.dart';
 import '../../providers/depot_provider.dart';
 import '../widgets/inventory_widgets.dart';
+import 'business_kind_card.dart';
 import 'crate_deposit_card.dart';
 import 'receipt_header_screen.dart';
 
@@ -199,6 +200,21 @@ class _SettingsTabState extends State<_SettingsTab> {
         ),
         padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 24.h),
         children: <Widget>[
+          // What kind of business this is: the first thing an owner looks for here, because it decides how the
+          // product page and the till behave.
+          Padding(
+            padding: EdgeInsets.only(bottom: 12.h),
+            child: Consumer2<DepotProvider, AuthProvider>(
+              builder: (BuildContext _, DepotProvider depot, AuthProvider auth, Widget? __) => BusinessKindCard(
+                // A server that has never heard of kinds does not send one with the settings.
+                serverKnowsKinds: depot.settings.containsKey('inventory_type'),
+                current: depot.capabilities.inventoryType,
+                canChange: auth.user?.isBusinessOwner ?? false,
+                onChange: depot.changeBusinessKind,
+                sw: loc.isSwahili,
+              ),
+            ),
+          ),
           ..._groups.entries.map(
             (MapEntry<String, List<_Field>> group) => Padding(
               padding: EdgeInsets.only(bottom: 12.h),
@@ -239,7 +255,8 @@ class _SettingsTabState extends State<_SettingsTab> {
             ),
           ),
           // -- Security deposit charged per crate (one row per crate type) --
-          if (canManageSettings)
+          // Only for a business that uses returnable packaging.
+          if (canManageSettings && context.watch<DepotProvider>().capabilities.useCrates)
             Padding(
               padding: EdgeInsets.only(bottom: 12.h),
               child: Consumer<DepotProvider>(

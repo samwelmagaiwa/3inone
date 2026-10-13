@@ -99,7 +99,8 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
     for (final item in sale.items) {
       final name = item.name.length > 28 ? item.name.substring(0, 28) : item.name;
       sb.writeln(name);
-      sb.writeln(lr('  ${item.qty} x TZS ${_fmt(item.unitPrice)}',
+      final String unit = (item.unitName ?? '').isEmpty ? '' : ' ${item.unitName}';
+      sb.writeln(lr('  ${item.qty}$unit x TZS ${_fmt(item.unitPrice)}',
           'TZS ${_fmt(item.total)}'));
     }
     sb.writeln(line());
@@ -357,7 +358,7 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text(item.name, style: ts(9, b: true), maxLines: 2),
-                      pw.Text('@ TZS ${_fmt(item.unitPrice)}',
+                      pw.Text('@ TZS ${_fmt(item.unitPrice)}${(item.unitName ?? '').isEmpty ? '' : ' / ${item.unitName}'}',
                           style: ts(7.5, color: muted)),
                     ],
                   )),
@@ -1362,7 +1363,7 @@ class _ItemRowV2 extends StatelessWidget {
                   Text(item.name,
                       style: body.copyWith(fontWeight: FontWeight.w700, fontSize: 12),
                       maxLines: 2, overflow: TextOverflow.ellipsis),
-                  Text('@ TZS ${fmt(item.unitPrice)}',
+                  Text('@ TZS ${fmt(item.unitPrice)}${(item.unitName ?? '').isEmpty ? '' : ' / ${item.unitName}'}',
                       style: label.copyWith(fontSize: 10, color: const Color(0xFF444444))),
                 ],
               ),

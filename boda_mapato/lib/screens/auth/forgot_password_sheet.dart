@@ -4,14 +4,30 @@ import "package:flutter_screenutil/flutter_screenutil.dart";
 import "../../services/auth_service.dart";
 import "../../services/localization_service.dart";
 
-/// Two-step "forgot password" flow: verify identity by email + the phone
-/// number registered on the account (the same two factors login itself
-/// checks), then set a new password using the short-lived token the
-/// backend issues once that verification passes.
+/// Two-step "forgot password" flow. Step 1: give the email AND the phone number
+/// registered on the account (the same two factors login itself checks) and the
+/// server TEXTS a one-time code to that phone. Step 2: enter that code and choose
+/// a new password. The code only ever reaches whoever really holds the phone, so
+/// knowing someone's email and number is not enough to take over their account.
+/// Asks the server to text a code to the phone. [AuthService.forgotPassword] in the app.
+typedef RequestResetCode = Future<void> Function(String email, String phoneNumber);
+
+/// Sets the new password with the texted code. [AuthService.resetPassword] in the app.
+typedef ResetPassword = Future<void> Function(String email, String code, String password);
+
 class ForgotPasswordSheet extends StatefulWidget {
-  const ForgotPasswordSheet({super.key, this.initialEmail});
+  const ForgotPasswordSheet({
+    super.key,
+    this.initialEmail,
+    this.onRequestCode,
+    this.onReset,
+  });
 
   final String? initialEmail;
+
+  /// Overridable so the sheet can be tested without a network.
+  final RequestResetCode? onRequestCode;
+  final ResetPassword? onReset;
 
   @override
   State<ForgotPasswordSheet> createState() => _ForgotPasswordSheetState();
@@ -23,6 +39,7 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
   late final TextEditingController _email =
       TextEditingController(text: widget.initialEmail ?? '');
   final TextEditingController _phone = TextEditingController();
+  final TextEditingController _code = TextEditingController();
   final TextEditingController _password = TextEditingController();
   final TextEditingController _confirmPassword = TextEditingController();
 
@@ -33,13 +50,14 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
   int _step = _stepVerify;
   bool _busy = false;
   String? _error;
-  String? _resetToken;
+  String? _notice;
   bool _obscure = true;
 
   @override
   void dispose() {
     _email.dispose();
     _phone.dispose();
+    _code.dispose();
     _password.dispose();
     _confirmPassword.dispose();
     super.dispose();
@@ -50,16 +68,46 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
     setState(() {
       _busy = true;
       _error = null;
+      _notice = null;
     });
     try {
-      final String token = await AuthService.forgotPassword(
-        email: _email.text.trim(),
-        phoneNumber: _phone.text.trim(),
-      );
+      await _requestCode();
       if (!mounted) return;
       setState(() {
-        _resetToken = token;
         _step = _stepNewPassword;
+        _busy = false;
+      });
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceAll('Exception: ', '');
+        _busy = false;
+      });
+    }
+  }
+
+  Future<void> _requestCode() =>
+      (widget.onRequestCode ??
+          ((final String e, final String p) =>
+              AuthService.forgotPassword(email: e, phoneNumber: p)))(
+        _email.text.trim(),
+        _phone.text.trim(),
+      );
+
+  /// Asks for another code. The server sends one at most once a minute and answers the same
+  /// way either way, so this says "sent" without promising a new text arrived.
+  Future<void> _resendCode() async {
+    final LocalizationService loc = LocalizationService.instance;
+    setState(() {
+      _busy = true;
+      _error = null;
+      _notice = null;
+    });
+    try {
+      await _requestCode();
+      if (!mounted) return;
+      setState(() {
+        _notice = loc.translate('code_sent');
         _busy = false;
       });
     } on Exception catch (e) {
@@ -83,10 +131,12 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
       _error = null;
     });
     try {
-      await AuthService.resetPassword(
-        email: _email.text.trim(),
-        resetToken: _resetToken!,
-        password: _password.text,
+      await (widget.onReset ??
+          ((final String e, final String c, final String pw) =>
+              AuthService.resetPassword(email: e, code: c, password: pw)))(
+        _email.text.trim(),
+        _code.text.trim(),
+        _password.text,
       );
       if (!mounted) return;
       setState(() {
@@ -164,6 +214,14 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
                 ),
                 SizedBox(height: 16.h),
               ],
+              if (_notice != null) ...<Widget>[
+                Text(
+                  _notice!,
+                  key: const ValueKey<String>('reset_notice'),
+                  style: TextStyle(color: Colors.greenAccent, fontSize: 13.sp),
+                ),
+                SizedBox(height: 12.h),
+              ],
               if (_step == _stepVerify) _buildVerifyStep(loc),
               if (_step == _stepNewPassword) _buildNewPasswordStep(loc),
               if (_step == _stepDone) _buildDoneStep(loc),
@@ -201,7 +259,7 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
           ),
           SizedBox(height: 24.h),
           _primaryButton(
-            label: loc.translate('verify'),
+            label: loc.translate('send_code'),
             onPressed: _busy ? null : _verifyIdentity,
           ),
         ],
@@ -215,6 +273,28 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
+          _field(
+            controller: _code,
+            label: loc.translate('verification_code'),
+            icon: Icons.sms_outlined,
+            keyboardType: TextInputType.number,
+            validator: (String? v) =>
+                (v == null || !RegExp(r'^\d{6}$').hasMatch(v.trim()))
+                    ? loc.translate('enter_valid_code')
+                    : null,
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              key: const ValueKey<String>('reset_resend'),
+              onPressed: _busy ? null : _resendCode,
+              child: Text(
+                loc.translate('resend_code'),
+                style: TextStyle(color: const Color(0xFF00E5FF), fontSize: 13.sp),
+              ),
+            ),
+          ),
+          SizedBox(height: 4.h),
           _field(
             controller: _password,
             label: loc.translate('new_password'),

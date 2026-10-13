@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/localization_service.dart';
-import '../../services/auth_events.dart';
-import '../../services/auth_service.dart';
-import '../../screens/auth/login_screen.dart';
 
 import 'dart:async';
 
@@ -417,21 +414,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
           );
         }
 
-        // Force logout locally and broadcast unauthorized to return to login
-        try {
-          await AuthService.logout();
-        } catch (_) {
-          try {
-            await AuthService.clearAuthData();
-          } catch (_) {}
-        }
-        if (mounted) {
-          AuthEvents.instance.emit(AuthEvent.unauthorized);
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-            (route) => false,
-          );
-        }
+        // This device stays signed in: the server keeps the device the password was changed on
+        // and signs out only the person's OTHER devices (those may have been using the old
+        // password). Logging out here as well would sign the user out for no reason.
         return;
       } else {
         throw Exception(response['message'] ?? 'Failed to change password');

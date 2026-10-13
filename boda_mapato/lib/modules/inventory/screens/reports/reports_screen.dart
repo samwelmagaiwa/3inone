@@ -58,7 +58,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final LocalizationService loc = context.watch<LocalizationService>();
-    final List<InvReportMeta> rows = context.watch<DepotProvider>().reports;
+    final DepotProvider depot = context.watch<DepotProvider>();
+    final bool crates = depot.capabilities.useCrates;
+    final List<InvReportMeta> rows = crates
+        ? depot.reports
+        : depot.reports.where((InvReportMeta r) => r.key != 'crates_position').toList(growable: false);
 
     return Scaffold(
       backgroundColor: Colors.transparent,

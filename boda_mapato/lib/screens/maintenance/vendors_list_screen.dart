@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 import '../../constants/theme_constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/maintenance_provider.dart';
+import '../../widgets/temporary_password_dialog.dart';
 
 class VendorsListScreen extends StatefulWidget {
   const VendorsListScreen({super.key});
@@ -114,7 +115,10 @@ class _VendorsListScreenState extends State<VendorsListScreen> {
                     ThemeConstants.showErrorSnackBar(context, "Tafadhali jaza jina na namba ya simu");
                     return;
                   }
-                  final errorMsg = await context.read<MaintenanceProvider>().addVendor(
+                  final MaintenanceProvider provider = context.read<MaintenanceProvider>();
+                  final String vendorName = _nameController.text;
+                  final String vendorPhone = _phoneController.text;
+                  final errorMsg = await provider.addVendor(
                     name: _nameController.text,
                     phone: _phoneController.text,
                     specialty: _specialtyController.text,
@@ -123,6 +127,9 @@ class _VendorsListScreenState extends State<VendorsListScreen> {
                     experience: _experienceController.text,
                   );
                   if (errorMsg == null && mounted) {
+                    // A brand-new fundi gets a one-time password from the server, shown once
+                    // for the landlord to hand over (null if the fundi already had a sign-in).
+                    final String? temporaryPassword = provider.lastTemporaryPassword;
                     Navigator.pop(context);
                     _nameController.clear();
                     _phoneController.clear();
@@ -131,6 +138,16 @@ class _VendorsListScreenState extends State<VendorsListScreen> {
                     _addressController.clear();
                     _experienceController.clear();
                     ThemeConstants.showSuccessSnackBar(context, "Fundi ameongezwa kikamilifu");
+                    if (temporaryPassword != null) {
+                      // The list screen's own context: the sheet's is gone once it has closed.
+                      await showTemporaryPasswords(this.context, <TemporaryCredential>[
+                        TemporaryCredential(
+                          name: vendorName,
+                          contact: vendorPhone,
+                          password: temporaryPassword,
+                        ),
+                      ]);
+                    }
                   } else if (errorMsg != null && mounted) {
                     ThemeConstants.showErrorSnackBar(context, errorMsg);
                   }

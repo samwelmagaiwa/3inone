@@ -1,16 +1,19 @@
 import "dart:convert";
 import "dart:ui";
+import "package:flutter/foundation.dart" show kDebugMode;
 import "package:flutter/material.dart";
 import "package:flutter_screenutil/flutter_screenutil.dart";
 import "package:provider/provider.dart";
 import "package:shared_preferences/shared_preferences.dart";
 
+import "../../constants/colors.dart";
 import "../../constants/theme_constants.dart";
 import "../../providers/auth_provider.dart";
 import "../../services/localization_service.dart";
 import "../../widgets/backgrounds/starfield_background.dart";
 import "../../widgets/flag_app_name_text.dart";
 import "forgot_password_sheet.dart";
+import "register_business_screen.dart";
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -42,15 +45,6 @@ class _DemoAccount {
 }
 
 const List<_DemoAccount> _kDemoAccounts = [
-  _DemoAccount(
-    label: 'Super Admin',
-    role: 'All Services',
-    email: 'super@gmail.com',
-    phone: '0617919104',
-    password: '12345678',
-    color: Color(0xFFFFD700),
-    icon: Icons.admin_panel_settings_rounded,
-  ),
   _DemoAccount(
     label: 'Samwel Magaiwa',
     role: 'Admin · E-Mauzo',
@@ -209,7 +203,19 @@ class _LoginScreenState extends State<LoginScreen> {
           // the field again so the user can correct it instead of being
           // stuck unable to see why login keeps failing.
           setState(() => _forcePhoneField = true);
-          _showSnackBar(authProvider.errorMessage ?? LocalizationService.instance.translate('login_failed'), Colors.red);
+          if (authProvider.lastErrorCode == 'registration_rejected') {
+            _showRegistrationRejectedDialog(
+              message: authProvider.errorMessage ?? LocalizationService.instance.translate('login_failed'),
+              email: email,
+              phone: phone,
+            );
+          } else if (authProvider.lastErrorCode == 'registration_pending') {
+            _showRegistrationPendingDialog(
+              message: authProvider.errorMessage ?? LocalizationService.instance.translate('login_failed'),
+            );
+          } else {
+            _showSnackBar(authProvider.errorMessage ?? LocalizationService.instance.translate('login_failed'), Colors.red);
+          }
         }
       }
     } on Exception catch (e) {
@@ -230,6 +236,103 @@ class _LoginScreenState extends State<LoginScreen> {
         ThemeConstants.showErrorSnackBar(context, message);
       }
     }
+  }
+
+  void _showRegistrationRejectedDialog({
+    required final String message,
+    required final String email,
+    required final String phone,
+  }) {
+    final bool isSwahili = LocalizationService.instance.isSwahili;
+    showDialog<void>(
+      context: context,
+      builder: (final BuildContext ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF161F30),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+          side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.4)),
+        ),
+        icon: Icon(Icons.cancel_outlined, color: Colors.redAccent, size: 40.sp),
+        title: Text(
+          isSwahili ? 'Usajili Haukukubaliwa' : 'Registration Not Approved',
+          style: TextStyle(color: Colors.white, fontSize: 17.sp, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        content: Text(
+          message,
+          style: TextStyle(color: Colors.white70, fontSize: 13.sp),
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              isSwahili ? 'Funga' : 'Close',
+              style: const TextStyle(color: Colors.white54),
+            ),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+            ),
+            icon: const Icon(Icons.edit_note, size: 18),
+            label: Text(isSwahili ? 'Rekebisha Maombi' : 'Re-apply'),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (final BuildContext _) => RegisterBusinessScreen(
+                    initialEmail: email,
+                    initialPhone: phone,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRegistrationPendingDialog({required final String message}) {
+    final bool isSwahili = LocalizationService.instance.isSwahili;
+    showDialog<void>(
+      context: context,
+      builder: (final BuildContext ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF161F30),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+          side: BorderSide(color: Colors.amber.withValues(alpha: 0.4)),
+        ),
+        icon: Icon(Icons.hourglass_top_rounded, color: Colors.amber, size: 40.sp),
+        title: Text(
+          isSwahili ? 'Usajili Unasubiri Idhini' : 'Registration Pending Approval',
+          style: TextStyle(color: Colors.white, fontSize: 17.sp, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        content: Text(
+          message,
+          style: TextStyle(color: Colors.white70, fontSize: 13.sp),
+          textAlign: TextAlign.center,
+        ),
+        actions: <Widget>[
+          Center(
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+              ),
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(isSwahili ? 'Nimeelewa' : 'Understood'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _handleForgotPassword() async {
@@ -342,13 +445,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                   SizedBox(height: 24.h),
 
                                   // ── Demo credentials picker ──────────────
-                                  _DemoPicker(
-                                    expanded: _demoExpanded,
-                                    onToggle: () => setState(() => _demoExpanded = !_demoExpanded),
-                                    onSelect: _applyDemo,
-                                  ),
+                                  // DEBUG BUILDS ONLY. It holds real sign-in details, and anything
+                                  // in a release build can be read out of the app file by anyone
+                                  // who downloads it. kDebugMode is a compile-time constant, so a
+                                  // release build does not even contain this picker or its list.
+                                  if (kDebugMode) ...<Widget>[
+                                    _DemoPicker(
+                                      expanded: _demoExpanded,
+                                      onToggle: () => setState(() => _demoExpanded = !_demoExpanded),
+                                      onSelect: _applyDemo,
+                                    ),
 
-                                  SizedBox(height: 24.h),
+                                    SizedBox(height: 24.h),
+                                  ],
 
                                   // Glass Card Form
                                   ClipRRect(

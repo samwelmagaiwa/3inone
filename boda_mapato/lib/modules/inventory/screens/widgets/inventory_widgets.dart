@@ -518,6 +518,17 @@ class _InvTabScaffoldState extends State<InvTabScaffold>
     _rebuildTabs();
   }
 
+  @override
+  void didUpdateWidget(InvTabScaffold oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A hub may add or drop a tab while it is open (the crates tab, once the business's kind is known).
+    if (oldWidget.tabs.length != widget.tabs.length) {
+      _rebuildTabs();
+    } else {
+      _applyPermissions();
+    }
+  }
+
   void _applyPermissions() {
     final perms = _readPerms();
     final List<String> tabs = [];

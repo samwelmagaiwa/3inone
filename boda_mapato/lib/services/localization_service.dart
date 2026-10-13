@@ -500,8 +500,14 @@ class AppLocalizations {
       'password_min_length': 'Password must be at least 8 characters',
       'passwords_do_not_match': 'Passwords do not match',
       'forgot_password_step1_hint':
-          'Enter the email and phone number you use to log in.',
-      'forgot_password_step2_hint': 'Choose a new password for your account.',
+          'Enter the email and phone number you use to log in. We will text you a code.',
+      'forgot_password_step2_hint':
+          'Enter the code we texted to your phone and choose a new password.',
+      'send_code': 'Send code',
+      'verification_code': 'Verification code',
+      'enter_valid_code': 'Enter the 6-digit code',
+      'resend_code': 'Send a new code',
+      'code_sent': 'Code sent',
       'forgot_password_done_hint':
           'You can now sign in with your new password.',
       'use_different_phone': 'Use a different phone number?',
@@ -1010,6 +1016,7 @@ class AppLocalizations {
       'stock_out': 'Stock Out',
       'stock_transfer': 'Transfer',
       'sales': 'Sales',
+      'sale': 'Sales',
       'total_sales_today': 'Total Sales Today',
       'profit_today': 'Profit (Today)',
       'profit_week': 'Profit (Week)',
@@ -1033,6 +1040,7 @@ class AppLocalizations {
       'report_cash_reconciliation': 'Cash Reconciliation',
       'profit_margins_title': 'Product Profit Margins',
       'rank': 'No.',
+      'see_all_products': 'See all products',
       'top_products_sorted': 'Sorted by sales',
       'this_week': 'This Week',
       'this_month': 'This Month',
@@ -1820,7 +1828,7 @@ class AppLocalizations {
       'set': 'imewekwa',
       'inactive': 'Haitumiki',
       'total_sales': 'Mauzo yote',
-      'stock': 'Bidhaa',
+      'stock': 'Hisa',
       'price_change_logged_note':
           'Kila mabadiliko ya bei hurekodiwa na jina lako na muda.',
       // General
@@ -1888,8 +1896,14 @@ class AppLocalizations {
       'password_min_length': 'Nywila inatakiwa kuwa na herufi 8 au zaidi',
       'passwords_do_not_match': 'Nywila hazifanani',
       'forgot_password_step1_hint':
-          'Weka barua pepe na namba ya simu unayotumia kuingia.',
-      'forgot_password_step2_hint': 'Chagua nywila mpya kwa akaunti yako.',
+          'Weka barua pepe na namba ya simu unayotumia kuingia. Tutakutumia nambari kwa ujumbe mfupi.',
+      'forgot_password_step2_hint':
+          'Weka nambari tuliyokutumia kwa ujumbe mfupi, kisha chagua nywila mpya.',
+      'send_code': 'Tuma nambari',
+      'verification_code': 'Nambari ya uthibitisho',
+      'enter_valid_code': 'Weka nambari ya tarakimu 6',
+      'resend_code': 'Tuma nambari mpya',
+      'code_sent': 'Nambari imetumwa',
       'forgot_password_done_hint': 'Sasa unaweza kuingia kwa nywila yako mpya.',
       'use_different_phone': 'Tumia namba tofauti ya simu?',
       'default_password_note':
@@ -2414,6 +2428,7 @@ class AppLocalizations {
       'stock_out': 'Toa Stoo',
       'stock_transfer': 'Hamisha',
       'sales': 'Mauzo',
+      'sale': 'Mauzo',
       'total_sales_today': 'Mauzo ya Leo',
       'profit_today': 'Faida (Leo)',
       'profit_week': 'Faida (Wiki)',
@@ -2436,7 +2451,8 @@ class AppLocalizations {
       'report_cash_reconciliation': 'Upatanisho wa Fedha',
       'credit': 'Mikopo',
       'profit_margins_title': 'Faida kwa Bidhaa',
-      'rank': 'Namba',
+      'rank': 'Na.',
+      'see_all_products': 'Ona bidhaa zote',
       'top_products_sorted': 'Zimepangwa kwa mauzo',
       'this_week': 'Wiki hii',
       'this_month': 'Mwezi huu',

@@ -18,12 +18,18 @@ class SaleConfirmation {
     this.paidNow = 0,
     this.crateTypeName,
     this.crateQty,
+    this.tax = 0,
+    this.taxIncluded = true,
   });
 
   final List<InvSaleItem> items;
   final double subtotal;
   final double discount;
   final double total;
+
+  /// The VAT on this sale, and whether the prices already contain it (otherwise it is added to the total).
+  final double tax;
+  final bool taxIncluded;
 
   /// `cash`, `debt` or `partial`.
   final String paymentMode;
@@ -146,7 +152,8 @@ class _SaleConfirmationDialog extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: <Widget>[
                                     Expanded(
-                                      child: Text('${it.qty} × ${it.name}',
+                                      child: Text(
+                                          '${it.qty}${(it.unitName ?? '').isEmpty ? '' : ' ${it.unitName}'} × ${it.name}',
                                           style: ThemeConstants.bodyStyle),
                                     ),
                                     SizedBox(width: 8.w),
@@ -165,6 +172,17 @@ class _SaleConfirmationDialog extends StatelessWidget {
                             SizedBox(height: 4.h),
                             _row(sw ? 'Punguzo' : 'Discount',
                                 '- ${_tzs(sale.discount)}'),
+                          ],
+                          if (sale.tax > 0) ...<Widget>[
+                            SizedBox(height: 4.h),
+                            KeyedSubtree(
+                              key: const ValueKey<String>('sale_confirm_vat'),
+                              child: _row(
+                                  sale.taxIncluded
+                                      ? (sw ? 'VAT (imo kwenye bei)' : 'VAT (included in prices)')
+                                      : (sw ? 'VAT (inaongezwa)' : 'VAT (added)'),
+                                  _tzs(sale.tax)),
+                            ),
                           ],
                           SizedBox(height: 8.h),
                           Row(

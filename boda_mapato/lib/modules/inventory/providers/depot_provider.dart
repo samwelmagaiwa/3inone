@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../services/api_service.dart';
+import '../models/inv_capabilities.dart';
 import '../models/inv_depot_models.dart';
 import '../services/inv_event_bus.dart';
 
@@ -38,6 +39,9 @@ class DepotProvider extends ChangeNotifier {
     }
     if (domains.contains(InvDomain.credit)) {
       futures.addAll([fetchCreditCustomers(), fetchDebtorsAgeing()]);
+    }
+    if (domains.contains(InvDomain.settings)) {
+      futures.add(fetchSettings());
     }
     if (futures.isNotEmpty) {
       Future.wait(futures).ignore();
@@ -105,6 +109,10 @@ class DepotProvider extends ChangeNotifier {
 
   double settingAsDouble(String key, double fallback) =>
       double.tryParse(_settings[key] ?? '') ?? fallback;
+
+  /// What this business's inventory is set up to do (crates or not, which price the till uses, VAT ...).
+  /// Anything the server did not send reads as the depot's behaviour, which is what it always was.
+  InvCapabilities get capabilities => InvCapabilities.fromSettings(_settings);
 
   /// Fetch everything the depot dashboard and menus need, in parallel.
   Future<void> bootstrap() async {
@@ -1017,10 +1025,28 @@ class DepotProvider extends ChangeNotifier {
     }
   }
 
+  /// Change the kind of stock business (retail, wholesale, mixed, depot). Only the business owner may; the
+  /// server says so otherwise. Returns null on success, or the reason it was refused.
+  Future<String?> changeBusinessKind(String kind) async {
+    try {
+      await _api.put('/business', <String, dynamic>{'inventory_type': kind});
+      // The till, the product page and the menus read the kind from the settings: read them again, and tell
+      // the other providers to do the same.
+      await fetchSettings();
+      InvEventBus.instance.emit({InvDomain.settings});
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } on Exception {
+      return 'Could not reach the server. Check your connection and try again.';
+    }
+  }
+
   Future<bool> saveSettings(Map<String, String> values) async {
     try {
       await _api.put('/inventory/settings', values);
       await fetchSettings();
+      InvEventBus.instance.emit({InvDomain.settings});
       return true;
     } on Exception {
       return false;
