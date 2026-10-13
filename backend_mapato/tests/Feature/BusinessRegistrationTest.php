@@ -189,6 +189,162 @@ class BusinessRegistrationTest extends TestCase
         $this->assertCount($before, $this->sms->sent);
     }
 
+    // ------------------------------- the people who decide are told, the applicant too
+
+    /** The texts a super admin phone received about applications (not codes). */
+    private function adminTexts(string $phone): array
+    {
+        return array_values(array_filter($this->sms->to($phone), fn (array $m) => ! $m['sensitive']));
+    }
+
+    public function test_every_active_super_admin_with_a_phone_is_texted_when_a_business_applies(): void
+    {
+        User::factory()->create(['role' => 'super_admin', 'is_active' => true, 'phone_number' => '0711000111']);
+        // The same person's number written another way is still one text.
+        User::factory()->create(['role' => 'super_admin', 'is_active' => true, 'phone_number' => '+255711000111']);
+        User::factory()->create(['role' => 'super_admin', 'is_active' => true, 'phone_number' => '0722000222']);
+        User::factory()->create(['role' => 'super_admin', 'is_active' => false, 'phone_number' => '0733000333']);   // switched off
+        User::factory()->create(['role' => 'super_admin', 'is_active' => true, 'phone_number' => null]);            // nowhere to text
+        User::factory()->create(['role' => 'admin', 'is_active' => true, 'phone_number' => '0744000444']);          // not a super admin
+
+        $this->postJson('/api/auth/register', $this->payload(['business_name' => 'Asha Rentals']))->assertCreated();
+
+        foreach (['0711000111', '0722000222'] as $phone) {
+            $texts = $this->adminTexts($phone);
+            $this->assertCount(1, $texts, "$phone is texted exactly once");
+            $this->assertStringContainsString('Asha Rentals', $texts[0]['message']);
+            $this->assertStringContainsString('0743519100', $texts[0]['message'], 'the applicant can be reached from the text');
+            $this->assertStringContainsString('New registration', $texts[0]['message'], 'in English too');
+            $this->assertStringContainsString('Ombi jipya la usajili', $texts[0]['message']);
+        }
+        $this->assertCount(0, $this->sms->to('0733000333'), 'a switched-off super admin is not texted');
+        $this->assertCount(0, $this->sms->to('0744000444'), 'an ordinary admin is not texted');
+
+        // The applicant is told it arrived, and is not sent the admin text.
+        $mine = $this->adminTexts('0743519100');
+        $this->assertCount(1, $mine);
+        $this->assertStringContainsString('Tumepokea', $mine[0]['message']);
+        $this->assertStringContainsString('We received', $mine[0]['message']);
+    }
+
+    public function test_extra_numbers_from_the_settings_are_texted_too_without_doubling_up(): void
+    {
+        User::factory()->create(['role' => 'super_admin', 'is_active' => true, 'phone_number' => '0711000111']);
+        config(['sms.admin_notify_phones' => ' 0722000222 , 0711000111 ,, abc ']);
+
+        $this->postJson('/api/auth/register', $this->payload())->assertCreated();
+
+        $this->assertCount(1, $this->adminTexts('0711000111'));
+        $this->assertCount(1, $this->adminTexts('0722000222'));
+    }
+
+    public function test_a_resubmitted_application_tells_the_super_admins_it_is_a_new_try(): void
+    {
+        User::factory()->create(['role' => 'super_admin', 'is_active' => true, 'phone_number' => '0711000111']);
+        $registration = $this->register();
+        $this->as($this->superAdmin(), 'POST', "/api/admin/registrations/{$registration->id}/reject", ['reason' => 'Unclear'])->assertOk();
+        $this->sms->sent = [];
+
+        $this->postJson('/api/auth/register', $this->payload(['business_name' => 'Asha Rentals Two']))->assertCreated();
+
+        $texts = $this->adminTexts('0711000111');
+        $this->assertCount(1, $texts);
+        $this->assertStringContainsString('limewasilishwa tena', $texts[0]['message'], 'a re-submission is worded as one');
+        $this->assertStringContainsString('re-submitted', $texts[0]['message']);
+        $this->assertStringContainsString('Asha Rentals Two', $texts[0]['message']);
+    }
+
+    public function test_texting_stops_at_the_hourly_cap_but_the_application_is_still_received(): void
+    {
+        User::factory()->create(['role' => 'super_admin', 'is_active' => true, 'phone_number' => '0711000111']);
+        config(['sms.admin_texts_per_hour' => 2]);
+
+        foreach ([1, 2, 3] as $i) {
+            $this->postJson('/api/auth/register', $this->payload(['email' => "owner{$i}@example.test", 'business_name' => "Shop {$i}"]))->assertCreated();
+        }
+
+        $this->assertCount(2, $this->adminTexts('0711000111'), 'the third one is not texted');
+        $this->assertSame(3, BusinessRegistration::count(), 'but all three are in the list for review');
+
+        // The next hour starts afresh.
+        $this->travel(61)->minutes();
+        $this->postJson('/api/auth/register', $this->payload(['email' => 'owner4@example.test', 'business_name' => 'Shop 4']))->assertCreated();
+        $this->assertCount(3, $this->adminTexts('0711000111'));
+    }
+
+    public function test_registering_works_when_there_is_nobody_to_text_or_the_provider_is_down(): void
+    {
+        // No super admin has a phone number at all.
+        $this->superAdmin();
+        $this->postJson('/api/auth/register', $this->payload(['email' => 'one@example.test']))->assertCreated();
+
+        // The provider throws for every message.
+        User::factory()->create(['role' => 'super_admin', 'is_active' => true, 'phone_number' => '0711000111']);
+        $this->sms->failWith(new \RuntimeException('provider down'));
+        $this->postJson('/api/auth/register', $this->payload(['email' => 'two@example.test']))
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'pending')
+            ->assertJsonPath('data.code_sent', false);
+
+        $this->assertSame(2, BusinessRegistration::count());
+    }
+
+    public function test_when_text_messages_are_off_the_applicant_is_told_no_code_exists(): void
+    {
+        $this->sms->delivering = false;
+        $this->app['env'] = 'production';
+
+        $response = $this->postJson('/api/auth/register', $this->payload())->assertCreated();
+
+        $this->assertTrue($response->json('data.phone_verification_required'), 'the phone is still not confirmed');
+        $this->assertFalse($response->json('data.code_sent'));
+        $this->assertSame('unavailable', $response->json('data.code_status'), 'so the app can stop asking for a code');
+        $this->assertSame(0, DB::table('sms_codes')->count(), 'no code was created that nobody could receive');
+    }
+
+    public function test_the_code_status_says_sent_then_throttled(): void
+    {
+        $this->assertSame('sent', $this->postJson('/api/auth/register', $this->payload())->assertCreated()->json('data.code_status'));
+
+        // Turned down, and applying again a moment later without confirming the phone: the code
+        // from a moment ago still stands, so no second one is sent yet.
+        $registration = BusinessRegistration::firstOrFail();
+        $this->as($this->superAdmin(), 'POST', "/api/admin/registrations/{$registration->id}/reject", ['reason' => 'Unclear'])->assertOk();
+        $codes = fn () => array_filter($this->sms->to('0743519100'), fn (array $m) => $m['sensitive']);
+        $this->assertCount(1, $codes());
+
+        $again = $this->postJson('/api/auth/register', $this->payload())->assertCreated();
+        $this->assertSame('throttled', $again->json('data.code_status'));
+        $this->assertFalse($again->json('data.code_sent'));
+        $this->assertCount(1, $codes());
+
+        // That earlier code still confirms the phone.
+        $this->postJson('/api/auth/register/verify-phone', ['email' => 'asha@example.test', 'code' => $this->sms->lastCodeFor('0743519100')])->assertOk();
+    }
+
+    public function test_approval_and_rejection_texts_tell_the_owner_how_to_go_on_in_both_languages(): void
+    {
+        $registration = $this->register();
+        $this->sms->sent = [];
+        $this->approve($registration, ['rental'])->assertOk();
+
+        $texts = $this->adminTexts('0743519100');
+        $this->assertCount(1, $texts);
+        $this->assertStringContainsString('umekubaliwa', $texts[0]['message']);
+        $this->assertStringContainsString('asha@example.test', $texts[0]['message'], 'it names the email to sign in with');
+        $this->assertStringContainsString('is approved', $texts[0]['message']);
+
+        $other = $this->register(['email' => 'bob@example.test', 'phone_number' => '0755123456', 'business_name' => 'Bob Shop']);
+        $this->sms->sent = [];
+        $this->as($this->superAdmin(), 'POST', "/api/admin/registrations/{$other->id}/reject", ['reason' => 'Unclear details'])->assertOk();
+
+        $rejected = $this->adminTexts('0755123456');
+        $this->assertCount(1, $rejected);
+        $this->assertStringContainsString('haujakubaliwa', $rejected[0]['message']);
+        $this->assertStringContainsString('Unclear details', $rejected[0]['message']);
+        $this->assertStringContainsString('not approved', $rejected[0]['message']);
+    }
+
     // --------------------------------- nobody can take over a registration
 
     public function test_knowing_the_email_and_phone_is_not_enough_to_take_over_a_rejected_registration(): void

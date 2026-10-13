@@ -14,11 +14,13 @@ use App\Services\SmsService;
 use App\Support\Pagination;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use OpenApi\Attributes as OA;
@@ -34,7 +36,16 @@ class RegistrationController extends Controller
 {
     private const SERVICES = ['inventory', 'rental', 'transport'];
 
-    private const PHONE_CODE_TEXT = 'Nambari yako ya kuthibitisha simu ni :code. Inatumika kwa dakika 10. Usimpe mtu yeyote.';
+    // Texts are written in both languages: nobody knows which one the person reads best, and the
+    // app they used may not be in the language they speak at home.
+    private const PHONE_CODE_TEXT = 'Nambari ya kuthibitisha simu / Phone verification code: :code. Dakika 10 / 10 min. Usimpe mtu / Do not share.';
+
+    /**
+     * Texts to super admins about new applications, per hour. Anyone can submit the form, so a
+     * flood of fake applications must not run up the SMS bill or bury the real one; past the cap the
+     * applications are still listed in the app, they just stop being texted.
+     */
+    private const ADMIN_TEXTS_PER_HOUR = 20;
 
     public function __construct(
         private readonly AuditTrail $audit,
@@ -220,11 +231,15 @@ class RegistrationController extends Controller
             ? 'Ombi la Usajili wa Biashara Limewasilishwa Tena / Business Registration Re-submitted'
             : 'Ombi la Usajili wa Biashara Limepokelewa / Business Registration Received';
 
-        $msg = $isReapplication
+        $msg = ($isReapplication
             ? 'Tumepokea tena ombi lako la usajili wa biashara "' . $registration->business_name . '". Utaarifiwa likikubaliwa.'
-            : 'Tumepokea ombi lako la usajili wa biashara "' . $registration->business_name . '". Utaarifiwa likikubaliwa.';
+            : 'Tumepokea ombi lako la usajili wa biashara "' . $registration->business_name . '". Utaarifiwa likikubaliwa.')
+            . ' / We received your business registration "' . $registration->business_name . '". You will be told when it is approved.';
 
         $this->notifyUser($data['phone_number'], $data['email'], $subject, $msg);
+
+        // The people who decide are told there is something to decide.
+        $this->notifySuperAdmins($registration, $isReapplication);
 
         // Prove the phone is theirs: a one-time code is texted, and the super admin sees
         // whether it was confirmed before deciding.
@@ -245,6 +260,9 @@ class RegistrationController extends Controller
             'phone_verified' => $phoneVerified,
             'phone_verification_required' => !$phoneVerified,
             'code_sent' => $codeStatus === SmsCodes::SENT,
+            // sent | throttled (one went out a moment ago) | unavailable (text messages are off, so
+            // no code exists and the app must not ask for one) | null (the phone was already confirmed)
+            'code_status' => $codeStatus,
         ], $returnMsg, 201);
     }
 
@@ -506,7 +524,9 @@ class RegistrationController extends Controller
             $user->phone_number,
             $user->email,
             'Usajili wa Biashara Umekubaliwa / Business Registration Approved',
-            'Hongera! Usajili wa "' . $registration->business_name . '" umekubaliwa. Sasa unaweza kuingia kwenye app.'
+            'Hongera! Usajili wa "' . $registration->business_name . '" umekubaliwa. Ingia kwenye app kwa barua pepe ' . $user->email
+            . ' na nenosiri ulilojisajilia. / Congratulations! "' . $registration->business_name . '" is approved. Sign in to the app with '
+            . $user->email . ' and the password you registered with.'
         );
 
         return ResponseHelper::success($this->payload($registration->fresh(['user.services', 'reviewer:id,name'])), 'Registration approved');
@@ -556,9 +576,93 @@ class RegistrationController extends Controller
             $registration->user->email,
             'Taarifa Kuhusu Usajili wa Biashara / Business Registration Status',
             'Samahani, usajili wa "' . $registration->business_name . '" haujakubaliwa. Sababu: ' . $data['reason']
+            . ' / Sorry, the registration of "' . $registration->business_name . '" was not approved. Reason: ' . $data['reason']
         );
 
         return ResponseHelper::success($this->payload($registration->fresh(['user.services', 'reviewer:id,name'])), 'Registration rejected');
+    }
+
+    /**
+     * Text every active super admin (and any number in SUPER_ADMIN_NOTIFY_PHONES) that an
+     * application is waiting. Never breaks the registration: a failing provider, a missing phone
+     * number or a hit cap only means this one text is not sent.
+     */
+    private function notifySuperAdmins(BusinessRegistration $registration, bool $isReapplication): void
+    {
+        try {
+            $phones = $this->superAdminPhones();
+            if ($phones === []) {
+                Log::info('A registration is waiting but no super admin has a phone number to text.', ['registration' => $registration->id]);
+
+                return;
+            }
+
+            if ($this->adminTextCapReached()) {
+                Log::warning('Super admins were not texted about a registration: the hourly cap was reached.', ['registration' => $registration->id]);
+
+                return;
+            }
+
+            $user = $registration->user;
+            $who = Str::limit(trim($registration->business_name), 40, '...') . ' - ' . Str::limit(trim((string) $user?->name), 30, '...')
+                . ', ' . $user?->phone_number;
+            $services = implode(', ', (array) $registration->requested_services);
+            $message = ($isReapplication ? 'Ombi la usajili limewasilishwa tena: ' : 'Ombi jipya la usajili: ') . $who
+                . ($services !== '' ? " ({$services})" : '') . '. Fungua app (Usajili) kulikagua.'
+                . ' / ' . ($isReapplication ? 'Registration re-submitted: ' : 'New registration: ') . $who . '. Open the app (Registrations) to review it.';
+
+            foreach ($phones as $phone) {
+                SmsService::send($phone, $message);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Could not text the super admins about a registration: ' . $e->getMessage());
+        }
+    }
+
+    /** Counts this text against the hour's cap. A cache that cannot count never stops a text. */
+    private function adminTextCapReached(): bool
+    {
+        try {
+            $key = 'registration_admin_texts:' . now()->format('YmdH');
+            Cache::add($key, 0, 3600);
+
+            return Cache::increment($key) > (int) config('sms.admin_texts_per_hour', self::ADMIN_TEXTS_PER_HOUR);
+        } catch (\Throwable $e) {
+            Log::warning('The registration text counter is not working: ' . $e->getMessage());
+
+            return false;
+        }
+    }
+
+    /**
+     * Phone numbers to text about applications: every active super admin who has one, plus the
+     * comma-separated SUPER_ADMIN_NOTIFY_PHONES (an office phone, an owner who is not a login).
+     * One number is texted once however many ways it is written.
+     *
+     * @return array<int, string>
+     */
+    private function superAdminPhones(): array
+    {
+        $numbers = User::query()
+            ->where('role', 'super_admin')
+            ->where('is_active', true)
+            ->whereNotNull('phone_number')
+            ->pluck('phone_number')
+            ->all();
+
+        $numbers = array_merge($numbers, explode(',', (string) config('sms.admin_notify_phones', '')));
+
+        $unique = [];
+        foreach ($numbers as $number) {
+            $number = trim((string) $number);
+            $digits = preg_replace('/\D/', '', $number) ?? '';
+            if (strlen($digits) < 9) {
+                continue;
+            }
+            $unique[substr($digits, -9)] ??= $number;
+        }
+
+        return array_values($unique);
     }
 
     /** Multi-channel notification dispatcher (SMS + Email). */

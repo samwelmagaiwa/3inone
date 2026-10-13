@@ -419,7 +419,7 @@ class AuthController extends Controller
             $result = $codes->issue(
                 $user,
                 SmsCodes::PASSWORD_RESET,
-                'Nambari yako ya kubadili nywila ni :code. Inatumika kwa dakika 10. Usimpe mtu yeyote.'
+                'Nambari ya kubadili nywila / Password reset code: :code. Dakika 10 / 10 min. Usimpe mtu / Do not share.'
             );
             Log::info('Password reset code requested', ['user_id' => $user->id, 'result' => $result, 'ip_address' => $request->ip()]);
         } else {

@@ -17,6 +17,10 @@ return [
     // Prefix for numbers written the local way (0743...). Tanzania is 255.
     'country_code' => env('SMS_COUNTRY_CODE', '255'),
 
+    // Extra numbers (comma separated) texted when a business applies to register, on top of every
+    // active super admin who has a phone number saved: an office phone, or an owner who is not a login.
+    'admin_notify_phones' => env('SUPER_ADMIN_NOTIFY_PHONES', ''),
+
     'kilakona' => [
         'api_url' => env('SMS_API_URL', 'https://messaging.kilakona.co.tz/api/v1/vendor/message/send'),
         'api_key' => env('SMS_API_KEY', ''),

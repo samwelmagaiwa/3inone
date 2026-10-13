@@ -149,6 +149,16 @@ Both commands only fill in rows with no owner / move what they say, and are safe
 | `SMS_ENABLED` | `true` to actually send |
 | `SMS_API_URL`, `SMS_API_KEY`, `SMS_SECRET_KEY`, `SMS_SENDER_ID` | the provider account |
 | `SMS_COUNTRY_CODE` | prefix for numbers written the local way (`255`) |
+| `SUPER_ADMIN_NOTIFY_PHONES` | extra numbers (comma separated) texted about new registrations |
+
+**Registration texts** (all bilingual, Swahili then English): when a business applies, the applicant is told it
+arrived and is texted the 6-digit phone code; every active `super_admin` who has a `phone_number` (plus
+`SUPER_ADMIN_NOTIFY_PHONES`) is texted "new registration: business, owner, phone, services" once per number, capped
+at 20 texts an hour (`sms.admin_texts_per_hour`) so fake applications cannot run up the bill; approval and
+rejection text the applicant (approval names the email to sign in with). The register response carries
+`code_status` (`sent` / `throttled` / `unavailable` / null): `unavailable` means text messages are off, no code
+exists, and the app does not ask for one. A super admin therefore needs a phone number saved on their account to
+be texted.
 
 `docker-compose.prod.yml` passes these through, so put the real values in the `.env` next to the compose
 file **on the server** (and copy the updated compose file there). Without them the app still runs, but

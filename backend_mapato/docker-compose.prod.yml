@@ -50,6 +50,7 @@ services:
       SMS_SECRET_KEY: ${SMS_SECRET_KEY:-}
       SMS_SENDER_ID: ${SMS_SENDER_ID:-}
       SMS_COUNTRY_CODE: ${SMS_COUNTRY_CODE:-255}
+      SUPER_ADMIN_NOTIFY_PHONES: ${SUPER_ADMIN_NOTIFY_PHONES:-}
       # Plans / paid-until dates. Recorded for every business, but nothing is locked unless
       # BILLING_ENFORCE=true is set in the .env next to this file (see config/billing.php).
       BILLING_ENFORCE: ${BILLING_ENFORCE:-false}
