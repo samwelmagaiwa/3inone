@@ -1,5 +1,11 @@
 name: Build and push depot backend image
 
+# NOTE: every job below is switched off in the samwelmagaiwa/3inone repository (see the `if:` lines). This file
+# builds magaiwa/depot and DEPLOYS to the live VPS with `migrate --force`; a copy of the project in another
+# repository must never be able to do that. The `if:` is false only for a repository named 3inone, so it changes
+# nothing for the repository this pipeline was written for. 3inone has its own build-only workflow:
+# build-3inone-backend.yml.
+
 on:
   push:
     branches: [master]
@@ -13,6 +19,7 @@ jobs:
   # Same PHP minor as the production image (php:8.2-fpm-alpine); tests run on an
   # in-memory SQLite database (.env.testing / phpunit.xml), never a real one.
   test:
+    if: ${{ !endsWith(github.repository, '/3inone') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -35,6 +42,7 @@ jobs:
 
   build-and-push:
     needs: test
+    if: ${{ !endsWith(github.repository, '/3inone') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -73,6 +81,7 @@ jobs:
 
   deploy:
     needs: build-and-push
+    if: ${{ !endsWith(github.repository, '/3inone') }}
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to VPS
