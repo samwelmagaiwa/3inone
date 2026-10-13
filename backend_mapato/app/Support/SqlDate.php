@@ -28,10 +28,22 @@ final class SqlDate
         return self::sqlite() ? "CAST(strftime('%d', {$column}) AS INTEGER)" : "DAY({$column})";
     }
 
-    /** Year and week as one number, e.g. 202641 (weeks start on Sunday, like MySQL's default). */
+    /**
+     * Year and week as one number, e.g. 202640 (weeks start on Sunday, like MySQL's default).
+     *
+     * SQLite's own week-of-year format (the one called percent-U) only exists from SQLite 3.46: an older one
+     * (the CI runner's) answers NULL for it. So the week is worked out from the day of the year and the weekday, which
+     * every SQLite has: week = (day of year - 1 + 7 - weekday) / 7, the definition of %U. Do not use %U, %V,
+     * %G, %g or %u here (a test checks).
+     */
     public static function yearWeek(string $column): string
     {
-        return self::sqlite() ? "CAST(strftime('%Y%U', {$column}) AS INTEGER)" : "YEARWEEK({$column})";
+        if (!self::sqlite()) {
+            return "YEARWEEK({$column})";
+        }
+
+        return "(CAST(strftime('%Y', {$column}) AS INTEGER) * 100"
+            . " + (CAST(strftime('%j', {$column}) AS INTEGER) + 6 - CAST(strftime('%w', {$column}) AS INTEGER)) / 7)";
     }
 
     private static function sqlite(): bool
