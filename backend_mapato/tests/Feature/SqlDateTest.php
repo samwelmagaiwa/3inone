@@ -15,6 +15,13 @@ use Tests\TestCase;
  */
 class SqlDateTest extends TestCase
 {
+    private function skipUnlessSqlite(string $why): void
+    {
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            $this->markTestSkipped($why);
+        }
+    }
+
     /** @return array<string, array{string, int}> */
     public static function weeks(): array
     {
@@ -37,6 +44,7 @@ class SqlDateTest extends TestCase
     #[DataProvider('weeks')]
     public function test_year_week_is_right_for_known_days(string $day, int $expected): void
     {
+        $this->skipUnlessSqlite('these are the numbers of the SQLite formula; MySQL/MariaDB use YEARWEEK(), which numbers early January differently');
         $row = DB::selectOne('select ' . SqlDate::yearWeek('d') . " as yw from (select '{$day}' as d) t");
 
         $this->assertSame($expected, (int) $row->yw, "year-week of {$day}");
@@ -44,6 +52,7 @@ class SqlDateTest extends TestCase
 
     public function test_year_week_agrees_with_sqlites_own_week_where_sqlite_has_one(): void
     {
+        $this->skipUnlessSqlite('strftime() exists only in SQLite');
         $native = DB::selectOne("select strftime('%U', '2026-10-05') as w")->w;
         if ($native === null) {
             $this->markTestSkipped('This SQLite is older than 3.46 and has no %U: the known-days test covers it.');

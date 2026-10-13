@@ -164,7 +164,8 @@ class BackupRestoreTest extends TestCase
 
         $this->restore($filename)->assertOk()->assertJsonPath('success', true);
 
-        $this->assertSame('Asha Plaza', Property::withoutGlobalScopes()->where('owner_id', $this->owner->id)->orderBy('created_at')->first()->name, 'the changed name came back');
+        $this->assertTrue(Property::withoutGlobalScopes()->where('owner_id', $this->owner->id)->where('name', 'Asha Plaza')->exists(), 'the changed name came back');
+        $this->assertFalse(Property::withoutGlobalScopes()->where('name', 'Renamed By Mistake')->exists(), 'and the wrong one is gone');
         $this->assertSame(1, DB::table('devices')->count(), 'the deleted vehicle came back');
         $this->assertSame('Backup Soda', TenantContext::withoutScope(fn () => DB::table('inventory_products')->value('name')), 'inventory restores too');
         $this->assertTrue(Property::withoutGlobalScopes()->where('name', 'Built After The Backup')->exists(), 'a restore never deletes what was added since');

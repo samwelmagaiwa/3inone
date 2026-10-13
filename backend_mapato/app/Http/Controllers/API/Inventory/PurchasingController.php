@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\Inventory;
 
 use App\Services\Inventory\AuditTrail;
 use App\Services\Inventory\StockLedger;
+use App\Support\GroupColumns;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
@@ -52,11 +53,7 @@ class PurchasingController extends Controller
                 's.*',
                 DB::raw('COALESCE(SUM(i.amount - i.paid_amount), 0) as balance'),
             )
-            ->groupBy(
-                's.id', 's.name', 's.phone', 's.email', 's.address',
-                's.contact_person', 's.payment_terms_days', 's.status',
-                's.created_by', 's.created_at', 's.updated_at',
-            );
+            ->groupBy(GroupColumns::of('inventory_suppliers', 's'));
 
         if ($q = $request->query('q')) {
             $query->where(function ($w) use ($q) {

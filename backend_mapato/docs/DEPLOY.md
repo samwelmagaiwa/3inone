@@ -33,8 +33,9 @@ Ports 8080–8086 are taken by other sites on that server; 8087 is this one's.
 6. **Migrations** (only when the database has not got the current schema; see the next section):
    `docker exec 3inone_backend php artisan migrate --force`
 7. **Check**: `https://3inone.nexoryatech.com/api/health` answers `200`.
-8. **The app**: set the production address in `boda_mapato/lib/config/api_config.dart` to
-   `https://3inone.nexoryatech.com/api` (and the web address without `/api`), then rebuild the app.
+8. **The app**: `boda_mapato/lib/config/api_config.dart` selects `Environment.threeInOne`
+   (`https://3inone.nexoryatech.com/api`, and the web address without `/api`); rebuild the app and sign in again.
+   The older depot server stays available as `Environment.production`.
 
 ## Migrations: back up first, and know what they do
 
@@ -60,12 +61,30 @@ container, before running it on data that matters.
 After migrating, run the ownership check and look at its result: `docker exec 3inone_backend php artisan inventory:ownership-report`.
 Everyone must sign in again once, so the app learns about their business.
 
-## Updating later
+## Updating later: `backend_mapato/deploy.sh`
+
+Run it from `backend_mapato/` on your machine (it needs `ssh` and `curl`; `deploy` also needs Docker). It only ever
+touches the 3inone stack above, and it pushes to the `threeinone` git remote, never to `origin`.
+
+| Command | What it does |
+|---|---|
+| `./deploy.sh release ["message"]` | commits the backend folder, pushes to GitHub, waits until the workflow has tested the code and pushed the image (it looks for the image tagged with your commit on Docker Hub, up to 25 minutes), then rolls it out |
+| `./deploy.sh update` | rolls out the image that is on Docker Hub now |
+| `./deploy.sh deploy` | builds the image on your machine, pushes it as `:latest` and as `:local-<time>-<sha>`, rolls it out. **Skips the tests**: for emergencies |
+| `./deploy.sh migrate` / `backup` | back up the database and migrate / only back up |
+| `./deploy.sh status` | read-only: container, image, pending migrations, health |
+
+"Rolling out" is: refresh `docker-compose.yml` on the server if the repo's `docker-compose.prod.yml` differs (the old
+copy is kept as `.bak`), `docker compose pull && up -d`, wait for `/api/health`, **if migrations are pending: dump the
+database to `/www/3inone/backups/` (stops if the dump is not complete), then `migrate --force`**, `config:cache`,
+`route:cache`. `SKIP_MIGRATE=1` leaves pending migrations alone. Backups are not pruned: delete old ones by hand.
+
+The same by hand:
 
 ```bash
 cd /www/3inone
 docker compose pull && docker compose up -d
-docker exec 3inone_backend php artisan migrate --force     # only if the release has new migrations
+docker exec 3inone_backend php artisan migrate --force     # only if the release has new migrations (back up first)
 docker exec 3inone_backend php artisan config:cache && docker exec 3inone_backend php artisan route:cache
 curl -s -o /dev/null -w '%{http_code}\n' https://3inone.nexoryatech.com/api/health
 ```
@@ -73,6 +92,28 @@ curl -s -o /dev/null -w '%{http_code}\n' https://3inone.nexoryatech.com/api/heal
 Every push to `master` that touches `backend_mapato/` is tested and, if the tests pass, built as a new `:latest`
 and `:<sha>`. To go back to a known build, set `image: magaiwa/3inone-backend:<sha>` in the compose file and run
 `docker compose up -d`.
+
+## Check against MariaDB before a release
+
+The tests and CI run on SQLite, which forgives things the server's MariaDB refuses; MySQL 8 forgives some of them
+too. Two mistakes got through that way (a hand-written `GROUP BY` list that missed the new `owner_id` column, so
+categories, brands, customers and suppliers answered 500; and an ISO-8601 time with a zone suffix written into a
+`DATETIME`, so a sale with a payment could not be saved). Before a release that touches queries or dates, run the
+whole suite against a throwaway MariaDB of the same version on its own private network:
+
+```powershell
+docker network create mt_verify_net
+docker run -d --name mt_verify_mariadb --network mt_verify_net -e MARIADB_ROOT_PASSWORD=verify_only -e MARIADB_DATABASE=mt_verify mariadb:10.11 --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+# wait until `docker exec mt_verify_mariadb mariadb -uroot -pverify_only -e "select 1"` answers
+docker run --rm --network mt_verify_net --entrypoint php -v "<project>ackend_mapato:/var/www/html" -w /var/www/html `
+  -e APP_ENV=testing -e DB_CONNECTION=mysql -e DB_HOST=mt_verify_mariadb -e DB_PORT=3306 -e DB_DATABASE=mt_verify `
+  -e DB_USERNAME=root -e DB_PASSWORD=verify_only -e CACHE_STORE=array -e SESSION_DRIVER=array -e QUEUE_CONNECTION=sync `
+  backend_mapato-app artisan test
+docker rm -f mt_verify_mariadb; docker network rm mt_verify_net
+```
+
+`TestEnvironmentSafetyTest` is expected to fail there (it asserts SQLite) and a few SQLite-only tests skip. Anything
+else that fails is a real MariaDB problem. Never point `DB_HOST` at the real database.
 
 ## Why `network_mode: bridge`
 

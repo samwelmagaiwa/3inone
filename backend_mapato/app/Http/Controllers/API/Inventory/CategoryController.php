@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\Inventory;
 
 use App\Services\Inventory\AuditTrail;
+use App\Support\GroupColumns;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
@@ -50,7 +51,7 @@ class CategoryController extends Controller
         $query = DB::table('inventory_categories as c')
             ->leftJoin('inventory_products as p', 'p.category_id', '=', 'c.id')
             ->select('c.*', DB::raw('COUNT(p.id) as products_count'))
-            ->groupBy('c.id', 'c.name', 'c.description', 'c.status', 'c.created_by', 'c.created_at', 'c.updated_at');
+            ->groupBy(GroupColumns::of('inventory_categories', 'c'));
 
         if ($q = $request->query('q')) {
             $query->where('c.name', 'like', "%{$q}%");
@@ -87,7 +88,7 @@ class CategoryController extends Controller
         $row = DB::table('inventory_categories as c')
             ->leftJoin('inventory_products as p', 'p.category_id', '=', 'c.id')
             ->select('c.*', DB::raw('COUNT(p.id) as products_count'))
-            ->groupBy('c.id', 'c.name', 'c.description', 'c.status', 'c.created_by', 'c.created_at', 'c.updated_at')
+            ->groupBy(GroupColumns::of('inventory_categories', 'c'))
             ->where('c.id', $id)
             ->first();
 

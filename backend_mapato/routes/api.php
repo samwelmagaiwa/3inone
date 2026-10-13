@@ -219,16 +219,19 @@ Route::middleware(['auth:sanctum', 'role:admin', 'service:transport'])->prefix('
     });
 
     // Receipts Management (admin view)
+    //
+    // `{receiptId}` is a number. Without that, "stats" and "search" (declared further down) were taken for a receipt id
+    // by the `{receiptId}` route above them, and answered 500 because the controller wants an int.
     Route::prefix('receipts')->group(function () {
         Route::get('pending', [PaymentReceiptController::class, 'getPendingReceipts']);
         Route::post('generate', [PaymentReceiptController::class, 'generateReceipt']);
-        Route::get('{receiptId}/preview', [PaymentReceiptController::class, 'getReceiptPreview']);
+        Route::get('{receiptId}/preview', [PaymentReceiptController::class, 'getReceiptPreview'])->whereNumber('receiptId');
         Route::post('send', [PaymentReceiptController::class, 'sendReceipt']);
         Route::get('', [PaymentReceiptController::class, 'getReceipts']);
-        Route::get('{receiptId}', [PaymentReceiptController::class, 'getReceiptPreview']);
-        Route::put('{receiptId}/status', [PaymentReceiptController::class, 'updateReceiptStatus']);
-        Route::put('{receiptId}/cancel', [PaymentReceiptController::class, 'cancelReceipt']);
-        Route::delete('{receiptId}', [PaymentReceiptController::class, 'deleteReceipt']);
+        Route::get('{receiptId}', [PaymentReceiptController::class, 'getReceiptPreview'])->whereNumber('receiptId');
+        Route::put('{receiptId}/status', [PaymentReceiptController::class, 'updateReceiptStatus'])->whereNumber('receiptId');
+        Route::put('{receiptId}/cancel', [PaymentReceiptController::class, 'cancelReceipt'])->whereNumber('receiptId');
+        Route::delete('{receiptId}', [PaymentReceiptController::class, 'deleteReceipt'])->whereNumber('receiptId');
         Route::get('stats', [PaymentReceiptController::class, 'getReceiptStats']);
         Route::post('export', [PaymentReceiptController::class, 'exportReceipts']);
         Route::post('bulk-generate', [PaymentReceiptController::class, 'generateBulkReceipts']);

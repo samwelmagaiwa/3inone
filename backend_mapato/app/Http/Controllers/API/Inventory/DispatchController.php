@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\Inventory;
 
 use App\Services\Inventory\AuditTrail;
 use App\Services\Inventory\StockLedger;
+use App\Support\GroupColumns;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
@@ -52,12 +53,7 @@ class DispatchController extends Controller
                 DB::raw('COUNT(l.id) as lines_count'),
                 DB::raw('COALESCE(SUM(l.loaded_quantity), 0) as total_loaded'),
             )
-            ->groupBy(
-                'd.id', 'd.reference', 'd.vehicle', 'd.agent_id', 'd.route',
-                'd.dispatch_date', 'd.status', 'd.cash_expected', 'd.cash_returned',
-                'd.note', 'd.created_by', 'd.reconciled_at', 'd.created_at',
-                'd.updated_at', 'u.name',
-            );
+            ->groupBy(array_merge(GroupColumns::of('inventory_dispatches', 'd'), ['u.name']));
 
         if ($status = $request->query('status')) {
             $query->where('d.status', $status);

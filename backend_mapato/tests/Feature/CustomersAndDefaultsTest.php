@@ -127,6 +127,29 @@ class CustomersAndDefaultsTest extends TestCase
             ->where('party_type', 'customer')->where('customer_id', $id)->sum('quantity'));
     }
 
+    public function test_what_the_business_owes_a_customer_is_worded_for_the_kind_of_business(): void
+    {
+        $ledger = app(CrateLedgerService::class);
+
+        // a depot: "The depot owes ..."
+        $depotCustomer = $this->customer('Depot customer', '0783510001');
+        $ledger->post($this->crateTypeId(), 'issued', 2, $depotCustomer, 'S-OWE-1', null, $this->admin->id);
+        $ledger->post($this->crateTypeId(), 'returned', 5, $depotCustomer, null, null, $this->admin->id);
+        $this->api('DELETE', "/api/inventory/customers/{$depotCustomer}")
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'The depot owes this customer 3 crate(s). Settle that first.');
+
+        // the same business, once it says it is a shop: "You owe ..."
+        \App\Models\Business::forUser($this->admin)->update(['inventory_type' => 'retail']);
+        $shopCustomer = $this->customer('Shop customer', '0783510002');
+        $ledger->post($this->crateTypeId(), 'issued', 1, $shopCustomer, 'S-OWE-2', null, $this->admin->id);
+        $ledger->post($this->crateTypeId(), 'returned', 4, $shopCustomer, null, null, $this->admin->id);
+        $message = $this->api('DELETE', "/api/inventory/customers/{$shopCustomer}")->assertStatus(422)->json('message');
+
+        $this->assertSame('You owe this customer 3 crate(s). Settle that first.', $message);
+        $this->assertStringNotContainsString('depot', strtolower($message));
+    }
+
     public function test_once_the_crates_are_returned_the_customer_can_be_deleted(): void
     {
         $id = $this->customer();

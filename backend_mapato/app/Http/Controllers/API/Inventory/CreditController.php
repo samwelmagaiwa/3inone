@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\Inventory;
 
 use App\Services\Inventory\AuditTrail;
+use App\Support\GroupColumns;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
@@ -39,11 +40,7 @@ class CreditController extends Controller
                 'c.*',
                 DB::raw('COALESCE(SUM(s.total - s.paid_total), 0) as balance'),
             )
-            ->groupBy(
-                'c.id', 'c.name', 'c.phone', 'c.address', 'c.credit_limit',
-                'c.payment_terms_days', 'c.is_blocked', 'c.block_reason',
-                'c.created_at', 'c.updated_at',
-            );
+            ->groupBy(GroupColumns::of('inventory_customers', 'c'));
 
         if ($q = $request->query('q')) {
             $query->where(function ($w) use ($q) {

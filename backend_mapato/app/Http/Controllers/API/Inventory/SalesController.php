@@ -7,6 +7,7 @@ use App\Services\Inventory\CrateLedgerService;
 use App\Services\Inventory\ProductUnits;
 use App\Services\Inventory\StockLedger;
 use App\Support\SqlDate;
+use App\Support\ClientTime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -501,7 +502,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'amount'     => $amount,
                 'method'     => $request->method,
                 'reference'  => $request->reference,
-                'paid_at'    => $request->paid_at ?? now(),
+                'paid_at'    => ClientTime::parse($request->paid_at),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -1030,7 +1031,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                         'amount' => (float) $p['amount'],
                         'method' => $p['method'] ?? 'cash',
                         'reference' => $p['reference'] ?? null,
-                        'paid_at' => $p['paid_at'] ?? now(),
+                        'paid_at' => ClientTime::parse($p['paid_at'] ?? null),
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);

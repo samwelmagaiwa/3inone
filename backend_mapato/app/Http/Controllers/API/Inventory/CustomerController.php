@@ -198,10 +198,13 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             ->where('customer_id', $id)
             ->sum('quantity');
         if ($crateBalance !== 0) {
+            // "The depot owes ..." is how a depot says it; any other business says "You owe ...".
+            $isDepot = (\App\Models\Business::forUser($request->user())?->inventory_type ?: 'depot') === 'depot';
+
             return response()->json([
                 'message' => $crateBalance > 0
                     ? "This customer is holding {$crateBalance} crate(s). Record their return first."
-                    : 'The depot owes this customer ' . abs($crateBalance) . ' crate(s). Settle that first.',
+                    : ($isDepot ? 'The depot owes this customer ' : 'You owe this customer ') . abs($crateBalance) . ' crate(s). Settle that first.',
             ], 422);
         }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\Inventory;
 
 use App\Services\Inventory\StockLedger;
+use App\Support\GroupColumns;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
@@ -49,10 +50,7 @@ class StockCountController extends Controller
                 DB::raw('COUNT(l.id) as lines_count'),
                 DB::raw('COALESCE(SUM(ABS(l.variance)), 0) as total_variance'),
             )
-            ->groupBy(
-                'sc.id', 'sc.reference', 'sc.status', 'sc.note', 'sc.counted_by',
-                'sc.posted_by', 'sc.posted_at', 'sc.created_at', 'sc.updated_at', 'u.name',
-            );
+            ->groupBy(array_merge(GroupColumns::of('inventory_stock_counts', 'sc'), ['u.name']));
 
         if ($status = $request->query('status')) {
             $query->where('sc.status', $status);

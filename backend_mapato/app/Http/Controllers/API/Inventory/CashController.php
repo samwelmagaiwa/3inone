@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\Inventory;
 
 use App\Services\Inventory\AuditTrail;
+use App\Support\ClientTime;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
@@ -87,7 +88,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'method' => $data['method'] === 'cheque' ? 'bank_transfer' : $data['method'],
                     'method_extended' => $data['method'],
                     'reference' => $data['reference'] ?? null,
-                    'paid_at' => $data['paid_at'] ?? now(),
+                    'paid_at' => ClientTime::parse($data['paid_at'] ?? null),
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
