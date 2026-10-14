@@ -27,7 +27,7 @@ class SubscriptionTest extends TestCase
         config(['billing.grace_days' => 7, 'billing.enforce' => false, 'billing.contact_phone' => '']);
     }
 
-    private function owner(string $name, ?string $validUntil, string $plan = 'basic', ?string $phone = null): User
+    private function owner(string $name, ?string $validUntil, string $plan = 'premium', ?string $phone = null): User
     {
         $phone ??= '07220000' . str_pad((string) ++$this->phoneSeq, 2, '0', STR_PAD_LEFT);
         $owner = $this->givenServices(User::factory()->create([
@@ -96,7 +96,7 @@ class SubscriptionTest extends TestCase
         $fresh = $this->business($owner)->fresh();
 
         $this->assertSame('2026-12-31', $fresh->valid_until->toDateString());
-        $this->assertSame('basic', $fresh->plan, 'a trial that pays is on a paid plan');
+        $this->assertSame('premium', $fresh->plan, 'a trial that pays is on the smallest paid plan that covers its services (all three here)');
 
         $this->business($owner)->recordPayment(['amount' => 1000, 'months' => 1, 'plan' => 'premium']);
         $this->assertSame('premium', $this->business($owner)->fresh()->plan, 'the super admin may choose the plan');
@@ -106,7 +106,7 @@ class SubscriptionTest extends TestCase
 
     public function test_a_super_admin_records_a_payment_and_the_owner_is_texted(): void
     {
-        $owner = $this->owner('Alpha', '2026-10-10 23:59:59', 'basic', '0722123456');
+        $owner = $this->owner('Alpha', '2026-10-10 23:59:59', 'premium', '0722123456');
         $super = $this->superAdmin();
 
         $this->pay($super, $owner, ['amount' => 45000, 'method' => 'mobile_money', 'reference' => 'TRX123', 'months' => 2, 'note' => 'M-Pesa'])
@@ -165,7 +165,7 @@ class SubscriptionTest extends TestCase
         $this->as($owner, 'GET', '/api/business/subscription')->assertOk()
             ->assertJsonPath('data.business_name', 'Alpha Ltd')
             ->assertJsonPath('data.is_owner', true)
-            ->assertJsonPath('data.plan', 'basic')
+            ->assertJsonPath('data.plan', 'premium')
             ->assertJsonPath('data.status', 'active')
             ->assertJsonPath('data.days_left', 31)
             ->assertJsonPath('data.last_payment.amount', 30000)

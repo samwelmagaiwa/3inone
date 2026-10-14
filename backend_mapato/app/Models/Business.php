@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\ScopedToAccount;
+use App\Support\PlanCatalog;
 use App\Support\Tenancy\BusinessOwner;
 use App\Support\Tenancy\TenantContext;
 use App\Traits\HasUuid;
@@ -72,6 +73,18 @@ class Business extends Model
     public function owner()
     {
         return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    /** The services this business has been given (transport, rental, inventory). */
+    public function serviceTypes(): array
+    {
+        return $this->owner?->serviceTypes() ?? [];
+    }
+
+    /** Does a plan cover every service this business has? (trial and free have no limit.) */
+    public function planCoversServices(string $plan): bool
+    {
+        return PlanCatalog::covers($plan, count($this->serviceTypes()));
     }
 
     // ------------------------------------------------------------------ finding it
@@ -461,8 +474,9 @@ class Business extends Model
             ? Carbon::parse($data['valid_until'])->endOfDay()
             : ($running ? $this->valid_until : $now)->copy()->addMonthsNoOverflow(max((int) ($data['months'] ?? 1), 1))->endOfDay();
 
-        // A trial or a free account that starts paying moves to a paid plan; the super admin may choose which.
-        $plan = $data['plan'] ?? (in_array($this->plan, ['trial', 'free', ''], true) ? 'basic' : $this->plan);
+        // A trial or a free account that starts paying moves to a paid plan: the smallest one that covers the services
+        // it has (basic for one, standard for two, premium for all three), unless the super admin chose which.
+        $plan = $data['plan'] ?? (in_array($this->plan, ['trial', 'free', ''], true) ? PlanCatalog::planFor(count($this->serviceTypes())) : $this->plan);
 
         $payment = $this->payments()->create([
             'amount' => $data['amount'],

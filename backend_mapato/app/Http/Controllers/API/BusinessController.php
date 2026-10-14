@@ -8,6 +8,7 @@ use App\Models\Business;
 use App\Models\User;
 use App\Services\Inventory\AuditTrail;
 use App\Support\InventoryDefaults;
+use App\Support\PlanCatalog;
 use App\Support\Pagination;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -237,6 +238,18 @@ class BusinessController extends Controller
             'plan' => ['sometimes', 'string', Rule::in(config('billing.plans', []))],
             'valid_until' => 'sometimes|nullable|date',
         ]), $this->messages());
+
+        // Moving a business onto a plan that covers fewer services than it has is refused (trial and free have no limit).
+        if (array_key_exists('plan', $data) && $data['plan'] !== $business->plan) {
+            $services = count($business->serviceTypes());
+            if (!PlanCatalog::covers($data['plan'], $services)) {
+                return ResponseHelper::error(
+                    PlanCatalog::tooSmallMessage($data['plan'], $services),
+                    422,
+                    ['code' => 'plan_too_small', 'plan' => $data['plan'], 'services' => $services, 'recommended' => PlanCatalog::planFor($services)]
+                );
+            }
+        }
 
         $before = ['plan' => $business->plan, 'valid_until' => $business->valid_until?->toDateString()];
 

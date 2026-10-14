@@ -23,6 +23,8 @@ class BusinessRegistration extends Model
         'user_id',
         'business_name',
         'requested_services',
+        'requested_plan',
+        'requested_months',
         'inventory_type',
         'region',
         'district',

@@ -29,6 +29,21 @@ return [
      */
     'plans' => ['trial', 'free', 'basic', 'standard', 'premium'],
 
+    /**
+     * How many services each SOLD plan covers: basic is one, standard is two, premium is all three. `trial` and `free`
+     * are not sold and have no limit. A business cannot be put on a plan that covers fewer services than it has.
+     */
+    'plan_services' => ['basic' => 1, 'standard' => 2, 'premium' => 3],
+
+    /** The services a business can have (premium covers all of them). */
+    'services' => ['transport', 'rental', 'inventory'],
+
+    /** The lengths of time a plan can be paid for, in months: each has its own price in the app's Plans & Prices. */
+    'price_periods' => [1, 3, 6, 12],
+
+    /** The money prices are in. */
+    'currency' => env('BILLING_CURRENCY', 'TZS'),
+
     /** What a business that was never given a plan starts with: no plan, no expiry, no lockout. */
     'default_plan' => 'free',
 

@@ -7,6 +7,7 @@ use App\Http\Controllers\API\RegistrationController;
 use App\Http\Controllers\API\BusinessController;
 use App\Http\Controllers\API\BusinessSubscriptionController;
 use App\Http\Controllers\API\SmsSenderController;
+use App\Http\Controllers\API\PlanPriceController;
 use App\Http\Controllers\API\LocationController;
 use App\Http\Controllers\API\Transport\AdminController;
 use App\Http\Controllers\API\Transport\AdminReportController;
@@ -94,6 +95,9 @@ Route::prefix('auth')->group(function () {
 // Public house listings (no authentication required)
 Route::get('public/houses', [HouseController::class, 'publicListing']);
 
+// The plans, how many services each covers and what they cost: the registration form shows it before sign-in.
+Route::get('plans', [PlanPriceController::class, 'publicIndex'])->middleware('throttle:60,1');
+
 // Payment Receipt routes - PROTECTED
 // Transport receipts across all drivers: admin-level only (or the payments grant).
 Route::middleware(['auth:sanctum', 'role:admin', 'service:transport'])->prefix('payment-receipts')->group(function () {
@@ -140,6 +144,13 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/businesse
     // A payment moves the paid-until date on and opens a held-back business again at once.
     Route::get('{id}/payments', [BusinessSubscriptionController::class, 'adminIndex']);
     Route::post('{id}/payments', [BusinessSubscriptionController::class, 'adminStore']);
+});
+
+// PLAN PRICES -- super admin only: what each plan costs for 1, 3, 6 and 12 months. The registration form shows
+// them as soon as they are saved.
+Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/plan-prices')->group(function () {
+    Route::get('', [PlanPriceController::class, 'adminIndex']);
+    Route::put('', [PlanPriceController::class, 'adminUpdate']);
 });
 
 // SMS SENDER NAMES -- super admin only: which registered sender name each business's texts go out under.

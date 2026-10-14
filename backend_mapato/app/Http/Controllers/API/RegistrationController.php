@@ -12,6 +12,7 @@ use App\Services\ServiceAssignment;
 use App\Services\Sms\SmsCodes;
 use App\Services\SmsService;
 use App\Support\Pagination;
+use App\Support\PlanCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -98,6 +99,10 @@ class RegistrationController extends Controller
             'password' => ['required', 'confirmed', Password::min(8)],
             'requested_services' => 'required|array|min:1',
             'requested_services.*' => 'string|in:' . implode(',', self::SERVICES),
+            // The package they chose (basic = one service, standard = two, premium = all three) and for how many
+            // months. Left out, the smallest plan that covers the services chosen is meant, for one month.
+            'requested_plan' => ['nullable', 'string', Rule::in(PlanCatalog::sellable())],
+            'requested_months' => ['nullable', 'integer', Rule::in(PlanCatalog::periods())],
             // What kind of inventory business: needed only when they ask for the inventory service.
             'inventory_type' => [
                 'nullable', 'string', Rule::in(Business::inventoryTypes()),
@@ -117,6 +122,18 @@ class RegistrationController extends Controller
 
         // Only meaningful when inventory is asked for.
         $inventoryType = in_array('inventory', $data['requested_services'], true) ? ($data['inventory_type'] ?? null) : null;
+
+        // The package must cover the services chosen: basic is ONE service, standard two, premium all three.
+        $serviceCount = count(array_unique($data['requested_services']));
+        $plan = $data['requested_plan'] ?? PlanCatalog::planFor($serviceCount);
+        $months = (int) ($data['requested_months'] ?? 1);
+        if (!PlanCatalog::covers($plan, $serviceCount)) {
+            return ResponseHelper::error(
+                PlanCatalog::tooSmallMessage($plan, $serviceCount),
+                422,
+                ['code' => 'plan_too_small', 'plan' => $plan, 'services' => $serviceCount, 'recommended' => PlanCatalog::planFor($serviceCount)]
+            );
+        }
 
         $email = strtolower(trim($data['email']));
 
@@ -166,7 +183,7 @@ class RegistrationController extends Controller
             }
         }
 
-        $registration = DB::transaction(function () use ($data, $existingUser, $isReapplication, $existingRegistration, $inventoryType) {
+        $registration = DB::transaction(function () use ($data, $existingUser, $isReapplication, $existingRegistration, $inventoryType, $plan, $months) {
             if ($isReapplication && $existingUser && $existingRegistration) {
                 $existingUser->name = trim($data['name']);
                 $existingUser->email = trim($data['email']);
@@ -184,6 +201,8 @@ class RegistrationController extends Controller
                 $existingRegistration->update([
                     'business_name' => trim($data['business_name']),
                     'requested_services' => array_values(array_unique($data['requested_services'])),
+                    'requested_plan' => $plan,
+                    'requested_months' => $months,
                     'inventory_type' => $inventoryType,
                     'region' => $data['region'] ?? null,
                     'district' => $data['district'] ?? null,
@@ -213,6 +232,8 @@ class RegistrationController extends Controller
                 'user_id' => $user->id,
                 'business_name' => trim($data['business_name']),
                 'requested_services' => array_values(array_unique($data['requested_services'])),
+                'requested_plan' => $plan,
+                'requested_months' => $months,
                 'inventory_type' => $inventoryType,
                 'region' => $data['region'] ?? null,
                 'district' => $data['district'] ?? null,
@@ -465,6 +486,16 @@ class RegistrationController extends Controller
             );
         }
 
+        // A plan the super admin starts the business on must cover the services it is given (a trial has no limit).
+        $given = count(array_unique($data['service_types']));
+        if (!empty($data['plan']) && !PlanCatalog::covers($data['plan'], $given)) {
+            return ResponseHelper::error(
+                PlanCatalog::tooSmallMessage($data['plan'], $given),
+                422,
+                ['code' => 'plan_too_small', 'plan' => $data['plan'], 'services' => $given, 'recommended' => PlanCatalog::planFor($given)]
+            );
+        }
+
         $user = $registration->user;
 
         // Anyone can type any email into the form, so a registration whose phone number was
@@ -678,6 +709,11 @@ class RegistrationController extends Controller
             'status' => $r->status,
             'business_name' => $r->business_name,
             'requested_services' => $r->requested_services ?? [],
+            // What they chose to buy and what the super admin has set for it (null: no price set yet).
+            'requested_plan' => $r->requested_plan,
+            'requested_months' => $r->requested_months,
+            'requested_price' => $r->requested_plan ? PlanCatalog::priceFor($r->requested_plan, (int) ($r->requested_months ?: 1)) : null,
+            'plan_services_included' => $r->requested_plan ? PlanCatalog::servicesIncluded($r->requested_plan) : null,
             'inventory_type' => $r->inventory_type,
             'region' => $r->region,
             'district' => $r->district,

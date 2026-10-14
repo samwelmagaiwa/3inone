@@ -34,6 +34,7 @@ class TenancyGuardTest extends TestCase
         'Ward' => 'public reference data (locations)',
         'Village' => 'public reference data (locations)',
         'Place' => 'public reference data (locations)',
+        'PlanPrice' => "the platform's price list: public reference data, written only by super_admin routes",
     ];
 
     /** @return array<string, class-string<Model>> short name => class */

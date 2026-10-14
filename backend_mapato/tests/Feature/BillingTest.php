@@ -156,7 +156,7 @@ class BillingTest extends TestCase
         $get('/api/admin/vehicles')->assertStatus(402);
 
         $this->app['auth']->forgetGuards();
-        $this->as($this->superAdmin(), 'PUT', "/api/admin/businesses/{$business->id}", ['plan' => 'standard', 'valid_until' => '2027-01-31'])->assertOk();
+        $this->as($this->superAdmin(), 'PUT', "/api/admin/businesses/{$business->id}", ['plan' => 'premium', 'valid_until' => '2027-01-31'])->assertOk();
 
         $this->app['auth']->forgetGuards();
         $get('/api/admin/vehicles')->assertOk();

@@ -8,6 +8,7 @@ use App\Models\Business;
 use App\Models\User;
 use App\Services\Inventory\AuditTrail;
 use App\Services\SmsService;
+use App\Support\PlanCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -97,6 +98,18 @@ class BusinessSubscriptionController extends Controller
             'valid_until.after' => 'Tarehe ya mwisho lazima iwe baada ya leo. / The end date must be after today.',
             'amount.gt' => 'Kiasi lazima kiwe zaidi ya sifuri. / The amount must be more than zero.',
         ]);
+
+        // A plan covers a number of services: basic one, standard two, premium all three. A payment may not put a
+        // business on a plan smaller than the services it has (trial and free are not limited).
+        $services = count($business->serviceTypes());
+        $plan = $data['plan'] ?? (in_array($business->plan, ['trial', 'free', ''], true) ? PlanCatalog::planFor($services) : $business->plan);
+        if (!PlanCatalog::covers($plan, $services)) {
+            return ResponseHelper::error(
+                PlanCatalog::tooSmallMessage($plan, $services),
+                422,
+                ['code' => 'plan_too_small', 'plan' => $plan, 'services' => $services, 'recommended' => PlanCatalog::planFor($services)]
+            );
+        }
 
         $before = ['plan' => $business->plan, 'valid_until' => $business->valid_until?->toDateString()];
         $payment = $business->recordPayment($data, $request->user());
