@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/localization_service.dart';
+import '../../utils/server_message.dart';
 
 class BackupScreen extends StatefulWidget {
   const BackupScreen({super.key});
@@ -287,8 +288,8 @@ class _BackupScreenState extends State<BackupScreen> {
       ThemeConstants.showErrorSnackBar(
         context,
         _localizationService.isSwahili
-            ? 'Imeshindikana kuhifadhi: ${e}'
-            : 'Backup failed: ${e}',
+            ? 'Imeshindikana kuhifadhi: ${readableErrorMessage(e)}'
+            : 'Backup failed: ${readableErrorMessage(e)}',
       );
     } finally {
       if (!mounted) return;
@@ -315,7 +316,7 @@ class _BackupScreenState extends State<BackupScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isRestoring = false);
-      ThemeConstants.showErrorSnackBar(context, sw ? 'Imeshindikana kupata orodha: ${e}' : 'Could not load the backups: ${e}');
+      ThemeConstants.showErrorSnackBar(context, sw ? 'Imeshindikana kupata orodha: ${readableErrorMessage(e)}' : 'Could not load the backups: ${readableErrorMessage(e)}');
       return;
     }
 
@@ -392,8 +393,8 @@ class _BackupScreenState extends State<BackupScreen> {
       ThemeConstants.showErrorSnackBar(
         context,
         _localizationService.isSwahili
-            ? 'Imeshindikana kurejesha: ${e}'
-            : 'Restore failed: ${e}',
+            ? 'Imeshindikana kurejesha: ${readableErrorMessage(e)}'
+            : 'Restore failed: ${readableErrorMessage(e)}',
       );
     } finally {
       if (!mounted) return;

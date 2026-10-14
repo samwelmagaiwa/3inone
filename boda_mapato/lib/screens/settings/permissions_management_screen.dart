@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../services/localization_service.dart';
 import 'user_permissions_management_screen.dart';
+import '../../utils/server_message.dart';
 
 // ignore_for_file: use_string_buffers, use_if_null_to_convert_nulls_to_bools, avoid_catches_without_on_clauses, control_flow_in_finally
 class PermissionsScreen extends StatefulWidget {
@@ -76,7 +77,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      ThemeConstants.showErrorSnackBar(context, e.toString());
+      ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
     }
   }
 
@@ -320,7 +321,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                               }
                             } catch (e) {
                               if (mounted) {
-                                String errorMsg = e.toString();
+                                String errorMsg = readableErrorMessage(e);
                                 // Extract specific validation error from API response
                                 if (errorMsg.contains('email has already been taken')) {
                                   errorMsg = _loc.isSwahili
@@ -525,7 +526,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
             context, _loc.isSwahili ? 'Jukumu limesasishwa' : 'Role updated successfully');
       }
     } catch (e) {
-      if (mounted) ThemeConstants.showErrorSnackBar(context, e.toString());
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
     }
   }
 
@@ -570,7 +571,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
             context, _loc.translate('password_reset_successfully'));
       }
     } catch (e) {
-      if (mounted) ThemeConstants.showErrorSnackBar(context, e.toString());
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
     }
   }
 
@@ -584,7 +585,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
             context, _loc.isSwahili ? 'Imesasishwa' : 'Updated');
       }
     } catch (e) {
-      if (mounted) ThemeConstants.showErrorSnackBar(context, e.toString());
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
     }
   }
 
@@ -628,7 +629,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
             context, _loc.isSwahili ? 'Imefutwa' : 'Deleted');
       }
     } catch (e) {
-      if (mounted) ThemeConstants.showErrorSnackBar(context, e.toString());
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
     }
   }
 

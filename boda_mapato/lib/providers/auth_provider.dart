@@ -10,6 +10,9 @@ import '../services/app_messenger.dart';
 import '../services/auth_events.dart';
 import '../services/auth_service.dart';
 import '../services/localization_service.dart';
+import '../utils/server_message.dart';
+import '../models/subscription.dart';
+import '../models/business.dart';
 
 class AuthProvider extends ChangeNotifier {
   AuthProvider() {
@@ -17,8 +20,59 @@ class AuthProvider extends ChangeNotifier {
     _authSub = AuthEvents.instance.stream.listen((event) async {
       if (event == AuthEvent.unauthorized) {
         await _handleUnauthorized();
+      } else if (event == AuthEvent.subscriptionExpired) {
+        await _subscriptionEnded();
       }
     });
+  }
+
+  // The plan of the signed-in business ended and the server holds it back until it pays. Everything else
+  // in the app is covered by a "pay to continue" page while this is true; it clears itself the moment the
+  // server says the business is open again (a payment was recorded), by the periodic refresh or a tap.
+  SubscriptionInfo? _subscription;
+  bool _subscriptionBlocked = false;
+
+  bool get subscriptionBlocked => _isAuthenticated && _subscriptionBlocked;
+  SubscriptionInfo? get subscription => _subscription;
+
+  /// How many times a held-back business was opened again (after a payment). The app reloads its data when
+  /// this changes, because everything it tried to load while the business was held back came back empty.
+  int get subscriptionReopened => _subscriptionReopened;
+  int _subscriptionReopened = 0;
+
+  void _setSubscriptionBlocked(final bool blocked) {
+    if (_subscriptionBlocked && !blocked) _subscriptionReopened++;
+    _subscriptionBlocked = blocked;
+  }
+
+  /// Take the held-back flag from the business's own billing (sign-in and start-up); a person with no business,
+  /// like the super admin, is never held back.
+  void _syncSubscription(final UserData? user) {
+    final BusinessBilling? billing = user?.business?.billing;
+    if (billing == null) return;
+    _setSubscriptionBlocked(billing.blocked);
+    if (billing.blocked) unawaited(recheckSubscription());
+  }
+
+  Future<void> _subscriptionEnded() async {
+    if (!_isAuthenticated) return;
+    _setSubscriptionBlocked(true);
+    notifyListeners();
+    await recheckSubscription();
+  }
+
+  /// Ask the server where the subscription stands now. A failed request changes nothing.
+  Future<void> recheckSubscription({final Future<Map<String, dynamic>> Function()? fetch}) async {
+    try {
+      final Map<String, dynamic> res = await (fetch ?? ApiService().getSubscription)();
+      final Object? data = res["data"];
+      if (data is! Map) return;
+      _subscription = SubscriptionInfo.fromJson(Map<String, dynamic>.from(data));
+      _setSubscriptionBlocked(_subscription!.blocked);
+      notifyListeners();
+    } on Exception catch (_) {
+      // no connection: keep what is shown
+    }
   }
 
   UserData? _user;
@@ -120,6 +174,7 @@ class AuthProvider extends ChangeNotifier {
         final Map<String, dynamic>? fresh = await AuthService.getCurrentUser();
         if (fresh != null) {
           _user = UserData.fromJson(fresh);
+          _syncSubscription(_user);
         }
 
         if (_user != null) {
@@ -166,7 +221,7 @@ class AuthProvider extends ChangeNotifier {
             url.contains('192.168.');
         final String msg = isLocalBackend
             ? LocalizationService.instance.translateWith('the_server_is_not_reachable_health', <Object?>[url])
-            : 'Seva haipatikani: $url/health. Hakikisha kifaa chako kina intaneti inayofanya kazi, kisha jaribu tena.';
+            : LocalizationService.instance.translateWith('server_not_reachable_check_internet', <Object?>[url]);
         _setError(msg);
         _errorMessage = msg;
         return false;
@@ -198,6 +253,7 @@ class AuthProvider extends ChangeNotifier {
       _user = UserData.fromJson(freshUser);
 
       _isAuthenticated = true;
+      _syncSubscription(_user);
       _startRefreshTimer();
 
       // Force service selection after every successful login by clearing any previous choice
@@ -212,13 +268,15 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } on AuthHttpException catch (e) {
       _lastErrorCode = e.code;
-      _setError(e.message);
-      _errorMessage = e.message;
+      final String message = readableServerMessage(e.message);
+      _setError(message);
+      _errorMessage = message;
       return false;
     } on Exception catch (e) {
       _lastErrorCode = null;
-      _setError(e.toString());
-      _errorMessage = e.toString();
+      final String message = readableErrorMessage(e);
+      _setError(message);
+      _errorMessage = message;
       return false;
     } finally {
       _setLoading(false);
@@ -227,6 +285,8 @@ class AuthProvider extends ChangeNotifier {
 
   // Logout
   Future<void> logout() async {
+    _subscriptionBlocked = false;
+    _subscription = null;
     _setLoading(true);
 
     try {
@@ -335,6 +395,15 @@ class AuthProvider extends ChangeNotifier {
       final roleChanged = oldRole != (newUser.role ?? '');
 
       _user = newUser;
+
+      // The business's own billing says whether it is held back: the cover page appears when it is, and goes
+      // away by itself once a payment is recorded (a business with no billing, like a super admin, is never held).
+      final BusinessBilling? billing = newUser.business?.billing;
+      if (billing != null && billing.blocked != _subscriptionBlocked) {
+        _setSubscriptionBlocked(billing.blocked);
+        if (billing.blocked) unawaited(recheckSubscription());
+        notifyListeners();
+      }
 
       if (permissionsChanged || roleChanged) {
         // Something security-relevant changed — rebuild all permission-gated UI.

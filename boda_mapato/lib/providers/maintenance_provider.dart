@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../services/sms_service.dart';
 import '../widgets/temporary_password_dialog.dart' show temporaryPasswordOf;
 import '../services/localization_service.dart';
+import '../utils/server_message.dart';
 
 class MaintenanceProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -167,9 +168,9 @@ class MaintenanceProvider with ChangeNotifier {
     } catch (e) {
       debugPrint("Error adding vendor: $e");
       if (e.toString().contains("ApiException")) {
-         return e.toString().replaceAll("Exception: ApiException: ", "");
+         return readableErrorMessage(e);
       }
-      return e.toString();
+      return readableErrorMessage(e);
     }
   }
 

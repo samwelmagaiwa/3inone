@@ -5,6 +5,7 @@ import "package:flutter/foundation.dart";
 import "package:http/http.dart" as http;
 
 import "../config/api_config.dart";
+import 'server_message.dart';
 
 class ApiHelpers {
   // Default timeout duration
@@ -33,7 +34,7 @@ class ApiHelpers {
     } on Exception catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException(
-        message: "Failed to parse response: $e",
+        message: "Failed to parse response: ${readableErrorMessage(e)}",
         statusCode: response.statusCode,
       );
     }
@@ -48,7 +49,7 @@ class ApiHelpers {
     } else if (error is FormatException) {
       return const NetworkException("Invalid response format");
     } else {
-      return NetworkException("Network error: $error");
+      return NetworkException("Network error: ${readableErrorMessage(error)}");
     }
   }
 
@@ -298,7 +299,7 @@ class ApiException implements Exception {
   final Map<String, dynamic>? errors;
 
   @override
-  String toString() => "ApiException: $message (Status: $statusCode)";
+  String toString() => message;
 }
 
 class NetworkException implements Exception {

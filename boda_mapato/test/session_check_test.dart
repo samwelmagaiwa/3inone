@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:boda_mapato/services/auth_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:boda_mapato/utils/server_message.dart';
 
 void main() {
   group('AuthService.isSessionInvalid', () {
@@ -26,8 +27,10 @@ void main() {
     });
   });
 
-  test('AuthHttpException prints like the plain Exception it replaces', () {
-    expect(AuthHttpException(401, 'Unauthenticated.').toString(),
-        'Exception: Unauthenticated.');
+  test('AuthHttpException prints just its message, with no "Exception:" wrapper', () {
+    // It used to print "Exception: <message>", which ended up on screens. Anything that still wants the text
+    // without a wrapper gets the same answer from readableErrorMessage.
+    expect(AuthHttpException(401, 'Unauthenticated.').toString(), 'Unauthenticated.');
+    expect(readableErrorMessage(AuthHttpException(401, 'Unauthenticated.')), 'Unauthenticated.');
   });
 }

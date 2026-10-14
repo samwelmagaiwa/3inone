@@ -83,6 +83,8 @@ void main() {
     'lib/widgets/reminder_tile.dart',
     'lib/widgets/receipt_tile.dart',
     'lib/widgets/transaction_tile.dart',
+    'lib/widgets/subscription_ended_gate.dart',
+    'lib/widgets/subscription_banner.dart',
     'lib/models',
     'lib/utils/date_utils.dart',
     'lib/constants/strings.dart',

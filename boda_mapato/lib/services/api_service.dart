@@ -10,6 +10,7 @@ import '../models/dashboard_report.dart';
 import '../models/revenue_report.dart';
 import 'auth_events.dart';
 import 'localization_service.dart';
+import '../utils/server_message.dart';
 
 class ApiService {
   // API Configuration - Updated for Laravel backend
@@ -295,7 +296,7 @@ class ApiService {
     } on HttpException catch (e) {
       throw ApiException(LocalizationService.instance.translateWith('server_error_2', <Object?>[e.message]));
     } on FormatException catch (e) {
-      throw ApiException("Jibu la seva halieleweki: ${e.message}");
+      throw ApiException(LocalizationService.instance.translateWith('server_answer_unreadable', <Object?>[e.message]));
     } on ApiException {
       rethrow;
     } on Exception catch (e) {
@@ -316,7 +317,16 @@ class ApiService {
 
     final Future<http.Response> request = http.get(uri, headers: headers).timeout(timeoutDuration);
     _inFlight[key] = request;
-    request.then<void>((_) => _inFlight.remove(key), onError: (final Object _) => _inFlight.remove(key));
+    // Block bodies, not arrows: `remove` hands back the request itself, and returning a FAILED request from the
+    // error handler made this derived future fail too, with nobody listening (an uncaught error on every timeout).
+    request.then<void>(
+      (_) {
+        _inFlight.remove(key);
+      },
+      onError: (final Object _) {
+        _inFlight.remove(key);
+      },
+    );
     return request;
   }
 
@@ -351,7 +361,7 @@ class ApiService {
     } on HttpException catch (e) {
       throw ApiException(LocalizationService.instance.translateWith('server_error_2', <Object?>[e.message]));
     } on FormatException catch (e) {
-      throw ApiException("Jibu la seva halieleweki: ${e.message}");
+      throw ApiException(LocalizationService.instance.translateWith('server_answer_unreadable', <Object?>[e.message]));
     } on ApiException {
       rethrow;
     } on Exception catch (e) {
@@ -382,7 +392,7 @@ class ApiService {
     } on HttpException catch (e) {
       throw ApiException(LocalizationService.instance.translateWith('server_error_2', <Object?>[e.message]));
     } on FormatException catch (e) {
-      throw ApiException("Jibu la seva halieleweki: ${e.message}");
+      throw ApiException(LocalizationService.instance.translateWith('server_answer_unreadable', <Object?>[e.message]));
     } on ApiException {
       rethrow;
     } on Exception catch (e) {
@@ -409,7 +419,7 @@ class ApiService {
     } on HttpException catch (e) {
       throw ApiException(LocalizationService.instance.translateWith('server_error_2', <Object?>[e.message]));
     } on FormatException catch (e) {
-      throw ApiException("Jibu la seva halieleweki: ${e.message}");
+      throw ApiException(LocalizationService.instance.translateWith('server_answer_unreadable', <Object?>[e.message]));
     } on ApiException {
       rethrow;
     } on Exception catch (e) {
@@ -464,6 +474,15 @@ class ApiService {
         // 401s on polling or non-critical endpoints).
         AuthEvents.instance.emit(AuthEvent.unauthorized);
         throw ApiException(LocalizationService.instance.translate('not_allowed_please_log_in_again'));
+      case 402:
+        // The business's plan ended and the server holds it back until it pays. Tell the app, so it shows
+        // "pay to continue" once instead of a string of errors, and opens again by itself after payment.
+        final Object? errors402 = data["errors"];
+        final String? code402 = errors402 is Map ? errors402["code"]?.toString() : data["code"]?.toString();
+        if (code402 == "subscription_expired") {
+          AuthEvents.instance.emit(AuthEvent.subscriptionExpired);
+        }
+        throw ApiException(data["message"] ?? LocalizationService.instance.translate('subscription_ended_pay'));
       case 403:
         // A service this business was never given deserves its own message, not
         // a generic "not allowed" that looks like a bug.
@@ -646,6 +665,34 @@ class ApiService {
         if (plan != null) "plan": plan,
         if (validUntil != null) "valid_until": _dateOnly(validUntil),
         if (clearValidUntil) "valid_until": null,
+      });
+
+  /// The signed-in business's subscription: plan, start, end, status, and (owner only) what it paid.
+  Future<Map<String, dynamic>> getSubscription() async => _get("/business/subscription");
+
+  /// Super admin: the subscription of one business with every payment recorded for it.
+  Future<Map<String, dynamic>> getBusinessPayments(final String id) async => _get("/admin/businesses/$id/payments");
+
+  /// Super admin: record a payment. It moves the paid-until date on (by [months], or to [validUntil]) and opens
+  /// a held-back business again at once; the owner is told by text message.
+  Future<Map<String, dynamic>> recordBusinessPayment(
+    final String id, {
+    required final double amount,
+    final String? method,
+    final String? reference,
+    final String? plan,
+    final int? months,
+    final DateTime? validUntil,
+    final String? note,
+  }) async =>
+      _post("/admin/businesses/$id/payments", <String, dynamic>{
+        "amount": amount,
+        if (method != null && method.isNotEmpty) "method": method,
+        if (reference != null && reference.trim().isNotEmpty) "reference": reference.trim(),
+        if (plan != null && plan.isNotEmpty) "plan": plan,
+        if (months != null) "months": months,
+        if (validUntil != null) "valid_until": _dateOnly(validUntil),
+        if (note != null && note.trim().isNotEmpty) "note": note.trim(),
       });
 
   Future<Map<String, dynamic>> rejectBusinessRegistration(
@@ -2254,11 +2301,13 @@ class ApiService {
 
 // Custom exception class for API errors
 class ApiException implements Exception {
-  ApiException(this.message);
+  /// The message is kept as plain words in the chosen language: a server text written in both languages is
+  /// cut to the one that is read, and no "Exception:" wrapper is left on it.
+  ApiException(final String message) : message = readableServerMessage(message);
   final String message;
 
   @override
-  String toString() => "ApiException: $message";
+  String toString() => message;
 }
 
 // Response wrapper class

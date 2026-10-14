@@ -18,6 +18,8 @@ import "../../widgets/subscription_banner.dart";
 import "business_profile_screen.dart";
 import "user_management_screen.dart";
 import "permissions_management_screen.dart";
+import '../../widgets/pending_registrations_count.dart';
+import 'subscription_screen.dart';
 
 // ignore_for_file: directives_ordering
 class SettingsScreen extends StatefulWidget {
@@ -29,6 +31,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final LocalizationService _localizationService = LocalizationService.instance;
+  final GlobalKey<PendingRegistrationsCountState> _pendingRegistrations = GlobalKey<PendingRegistrationsCountState>();
 
   @override
   void initState() {
@@ -197,24 +200,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // ── The business this person works for ──────────────────────
               if (belongsToBusiness) ...[
                 const SizedBox(height: 20),
-                SubscriptionBanner(billing: user.business!.billing, sw: loc.isSwahili),
+                SubscriptionBanner(
+                  billing: user.business!.billing,
+                  sw: loc.isSwahili,
+                  onTap: () => _navigateToScreen(const SubscriptionScreen()),
+                ),
                 if (user.business!.billing.needsAttention()) const SizedBox(height: 12),
                 _sectionLabel(loc.isSwahili ? 'Biashara' : 'Business'),
                 const SizedBox(height: 8),
                 ThemeConstants.buildGlassCard(
-                  child: _buildSettingsTile(
-                    Icons.storefront_outlined,
-                    user.business!.name,
-                    user.isBusinessOwner
-                        ? (loc.isSwahili
-                            ? 'Jina, TIN, nembo na anwani vinavyoonekana kwenye risiti'
-                            : 'Name, TIN, logo and address shown on receipts')
-                        : (loc.isSwahili ? 'Angalia taarifa za biashara' : 'View the business details'),
-                    () => _navigateToScreen(BusinessProfileScreen(
-                      canEdit: user.isBusinessOwner,
-                      showInventoryType: user.serviceTypes.contains('inventory'),
-                      onChanged: authProvider.refreshUser,
-                    )),
+                  child: Column(
+                    children: [
+                      _buildSettingsTile(
+                        Icons.storefront_outlined,
+                        user.business!.name,
+                        user.isBusinessOwner
+                            ? (loc.isSwahili
+                                ? 'Jina, TIN, nembo na anwani vinavyoonekana kwenye risiti'
+                                : 'Name, TIN, logo and address shown on receipts')
+                            : (loc.isSwahili ? 'Angalia taarifa za biashara' : 'View the business details'),
+                        () => _navigateToScreen(BusinessProfileScreen(
+                          canEdit: user.isBusinessOwner,
+                          showInventoryType: user.serviceTypes.contains('inventory'),
+                          onChanged: authProvider.refreshUser,
+                        )),
+                      ),
+                      const Divider(color: Colors.white24, height: 1),
+                      _buildSettingsTile(
+                        Icons.event_available_outlined,
+                        loc.isSwahili ? 'Usajili Wangu' : 'My Subscription',
+                        loc.isSwahili
+                            ? 'Mpango, tarehe ulizoanza na kuisha, na malipo yako'
+                            : 'Your plan, when it started and ends, and your payments',
+                        () => _navigateToScreen(const SubscriptionScreen()),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -272,13 +292,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         () => _navigateToScreen(const UserManagementScreen()),
                       ),
                       const Divider(color: Colors.white24, height: 1),
-                      _buildSettingsTile(
-                        Icons.how_to_reg_outlined,
-                        loc.isSwahili ? 'Usajili wa Biashara' : 'Business Registrations',
-                        loc.isSwahili
-                            ? 'Kagua biashara zilizojisajili na uzipe huduma'
-                            : 'Review registered businesses and assign their services',
-                        () => _navigateToScreen(const RegistrationsScreen()),
+                      PendingRegistrationsCount(
+                        key: _pendingRegistrations,
+                        builder: (BuildContext context, int? pending) => _buildSettingsTile(
+                          Icons.how_to_reg_outlined,
+                          loc.isSwahili ? 'Usajili wa Biashara' : 'Business Registrations',
+                          loc.isSwahili
+                              ? 'Kagua biashara zilizojisajili na uzipe huduma'
+                              : 'Review registered businesses and assign their services',
+                          () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(builder: (BuildContext _) => const RegistrationsScreen()),
+                            );
+                            // approving or rejecting changed the number
+                            await _pendingRegistrations.currentState?.refresh();
+                          },
+                          badge: (pending ?? 0) > 0 ? CountBadge(count: pending) : null,
+                        ),
                       ),
                       const Divider(color: Colors.white24, height: 1),
                       _buildSettingsTile(
@@ -425,8 +456,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     IconData icon,
     String title,
     String subtitle,
-    VoidCallback onTap,
-  ) {
+    VoidCallback onTap, {
+    Widget? badge,
+  }) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       leading: Icon(
@@ -449,11 +481,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           fontSize: 13,
         ),
       ),
-      trailing: const Icon(
-        Icons.chevron_right,
-        color: ThemeConstants.textSecondary,
-        size: 20,
-      ),
+      trailing: badge == null
+          ? const Icon(
+              Icons.chevron_right,
+              color: ThemeConstants.textSecondary,
+              size: 20,
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                badge,
+                const SizedBox(width: 6),
+                const Icon(
+                  Icons.chevron_right,
+                  color: ThemeConstants.textSecondary,
+                  size: 20,
+                ),
+              ],
+            ),
       onTap: onTap,
     );
   }

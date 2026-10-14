@@ -18,6 +18,7 @@ import '../models/inv_reminder.dart';
 import '../models/inv_sale.dart';
 import '../services/inv_event_bus.dart';
 import '../../../services/localization_service.dart';
+import '../../../utils/server_message.dart';
 
 class InventoryProvider extends ChangeNotifier {
   /// [api] lets tests supply canned answers; the app uses the real client.
@@ -744,7 +745,7 @@ class InventoryProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       return e.message;
     } on Exception catch (e) {
-      return e.toString();
+      return readableErrorMessage(e);
     }
   }
 
@@ -762,7 +763,7 @@ class InventoryProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       return e.message;
     } on Exception catch (e) {
-      return e.toString();
+      return readableErrorMessage(e);
     }
   }
 

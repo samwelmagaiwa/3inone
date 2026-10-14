@@ -7,13 +7,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/theme_constants.dart';
 import '../providers/auth_provider.dart';
 import '../services/localization_service.dart';
+import '../widgets/pending_registrations_count.dart';
+import 'admin/registrations_screen.dart';
 
 class ServiceSelectionScreen extends StatelessWidget {
   const ServiceSelectionScreen({
     super.key,
     this.allowedServices,
     this.deniedService,
+    this.registrationsSource,
   });
+
+  /// Where the "registration requests" card gets its numbers (the server in the app, a fake in tests).
+  final RegistrationsDataSource? registrationsSource;
 
   /// Services this user may access. Null is treated as empty — no tiles shown.
   /// Always pass a non-null list derived from the user's role or bindings.
@@ -30,6 +36,15 @@ class ServiceSelectionScreen extends StatelessWidget {
 
   bool get _hasAnyVisible =>
       _allows('inventory') || _allows('rental') || _allows('transport');
+
+  /// Only a super admin reviews registrations. (No signed-in user, or no provider at all, means no.)
+  bool _isSuperAdmin(BuildContext context) {
+    try {
+      return Provider.of<AuthProvider>(context, listen: false).user?.isSuperAdmin ?? false;
+    } on ProviderNotFoundException {
+      return false;
+    }
+  }
 
   Future<void> _selectService(BuildContext context, String service) async {
     final prefs = await SharedPreferences.getInstance();
@@ -97,6 +112,8 @@ class ServiceSelectionScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+              if (_isSuperAdmin(context))
+                _RegistrationRequestsCard(source: registrationsSource),
               AutoSizeText(
                 loc.translate('select_service_subtitle'),
                 maxLines: 2,
@@ -134,6 +151,89 @@ class ServiceSelectionScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// For the super admin: how many businesses are waiting to be let in, one tap from the list. Visible the moment
+/// they sign in, so a new request is never buried under Settings.
+class _RegistrationRequestsCard extends StatefulWidget {
+  const _RegistrationRequestsCard({this.source});
+
+  final RegistrationsDataSource? source;
+
+  @override
+  State<_RegistrationRequestsCard> createState() => _RegistrationRequestsCardState();
+}
+
+class _RegistrationRequestsCardState extends State<_RegistrationRequestsCard> {
+  final GlobalKey<PendingRegistrationsCountState> _count = GlobalKey<PendingRegistrationsCountState>();
+
+  Future<void> _open() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (BuildContext _) => RegistrationsScreen(dataSource: widget.source)),
+    );
+    // approving or rejecting changed the number
+    await _count.currentState?.refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final LocalizationService loc = LocalizationService.instance;
+    return PendingRegistrationsCount(
+      key: _count,
+      source: widget.source,
+      builder: (BuildContext context, int? pending) {
+        final bool waiting = (pending ?? 0) > 0;
+        return Container(
+          margin: EdgeInsets.only(bottom: 14.h),
+          child: Material(
+            color: (waiting ? Colors.amber : Colors.white).withValues(alpha: waiting ? 0.16 : 0.06),
+            borderRadius: BorderRadius.circular(14.r),
+            child: InkWell(
+              key: const ValueKey<String>('registration_requests_card'),
+              borderRadius: BorderRadius.circular(14.r),
+              onTap: _open,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14.r),
+                  border: Border.all(color: (waiting ? Colors.amber : Colors.white24).withValues(alpha: waiting ? 0.7 : 1)),
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Icon(Icons.how_to_reg_rounded, color: waiting ? Colors.amber : Colors.white70, size: 28.sp),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            loc.translate('registration_requests_title'),
+                            style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          SizedBox(height: 2.h),
+                          Text(
+                            key: const ValueKey<String>('registration_requests_subtitle'),
+                            waiting
+                                ? loc.translateWith('registration_requests_waiting', <Object?>[pending])
+                                : loc.translate('registration_requests_none'),
+                            style: TextStyle(color: waiting ? Colors.amber : Colors.white54, fontSize: 12.sp),
+                          ),
+                        ],
+                      ),
+                    ),
+                    CountBadge(count: pending),
+                    SizedBox(width: 6.w),
+                    const Icon(Icons.chevron_right, color: Colors.white54),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

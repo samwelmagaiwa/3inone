@@ -14,6 +14,7 @@ import 'modules/inventory/screens/inventory_home.dart';
 import 'models/login_response.dart';
 import 'providers/auth_provider.dart';
 import 'widgets/business_state_scope.dart';
+import 'widgets/subscription_ended_gate.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/communications_screen.dart';
 import 'screens/admin/debts_management_screen.dart';
@@ -187,7 +188,9 @@ class BodaMapatoApp extends StatelessWidget {
                 GlobalCupertinoLocalizations.delegate,
               ],
               builder: (final BuildContext context, final Widget? navigator) =>
-                  BusinessStateScope(child: navigator ?? const SizedBox.shrink()),
+                  BusinessStateScope(
+                    child: SubscriptionEndedGate(child: navigator ?? const SizedBox.shrink()),
+                  ),
               home: const AuthWrapper(),
               debugShowCheckedModeBanner: false,
               routes: <String, WidgetBuilder>{

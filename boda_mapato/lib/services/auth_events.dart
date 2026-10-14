@@ -2,6 +2,9 @@ import 'dart:async';
 
 enum AuthEvent {
   unauthorized,
+
+  /// The server answered 402 `subscription_expired`: the business's plan ended and it is held back until it pays.
+  subscriptionExpired,
 }
 
 class AuthEvents {

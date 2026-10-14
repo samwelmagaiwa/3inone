@@ -6,6 +6,7 @@ import '../../constants/theme_constants.dart';
 import '../../providers/rental_provider.dart';
 import '../../services/localization_service.dart';
 import 'add_house_bottom_sheet.dart';
+import '../../utils/server_message.dart';
 
 class HouseManagementScreen extends StatefulWidget {
   const HouseManagementScreen(
@@ -45,7 +46,7 @@ class _HouseManagementScreenState extends State<HouseManagementScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          _error = readableErrorMessage(e);
           _isLoading = false;
         });
       }

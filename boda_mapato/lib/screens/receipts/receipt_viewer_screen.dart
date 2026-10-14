@@ -8,6 +8,7 @@ import '../../models/receipt.dart';
 import '../../services/api_service.dart';
 import '../../services/localization_service.dart';
 import '../../utils/responsive_helper.dart';
+import '../../utils/server_message.dart';
 
 // ignore_for_file: avoid_catches_without_on_clauses
 class ReceiptViewerScreen extends StatefulWidget {
@@ -96,7 +97,7 @@ class _ReceiptViewerScreenState extends State<ReceiptViewerScreen>
       }
     } on Exception catch (e) {
       setState(() {
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _errorMessage = readableErrorMessage(e);
         _isLoading = false;
       });
     }
@@ -132,7 +133,7 @@ class _ReceiptViewerScreenState extends State<ReceiptViewerScreen>
     } on Exception catch (e) {
       if (!mounted) return;
       ThemeConstants.showErrorSnackBar(context,
-          '${LocalizationService.instance.translate('error')}: ${e.toString().replaceFirst('Exception: ', '')}');
+          '${LocalizationService.instance.translate('error')}: ${readableErrorMessage(e)}');
     } finally {
       if (mounted) setState(() => _isSending = false);
     }

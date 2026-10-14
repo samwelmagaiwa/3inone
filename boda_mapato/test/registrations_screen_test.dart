@@ -411,4 +411,121 @@ void main() {
     await t.pumpAndSettle();
     expect(_approve, findsNothing);
   });
+
+  group('Approve as requested, in one tap', () {
+    final Finder oneTap = find.byKey(const ValueKey<String>('approve_as_requested_1'));
+    final Finder confirm = find.byKey(const ValueKey<String>('approve_as_requested_confirm'));
+
+    testWidgets('gives exactly the services that were asked for, on the trial plan, after one question', (t) async {
+      _tall(t);
+      final _FakeSource source = _FakeSource(<String, RegistrationsPage>{
+        'pending': _pending(<BusinessRegistration>[_reg('1', requested: const <String>['transport', 'rental'])]),
+      });
+      await t.pumpWidget(_host(source));
+      await t.pumpAndSettle();
+
+      await t.tap(oneTap);
+      await t.pumpAndSettle();
+      expect(find.byKey(const ValueKey<String>('approve_as_requested_dialog')), findsOneWidget, reason: 'nothing is sent before the question');
+      expect(source.approvals, isEmpty);
+
+      await t.tap(confirm);
+      await t.pumpAndSettle();
+
+      // services go in the app's fixed order (inventory, rental, transport), whatever order they were asked in
+      expect(source.approvals.length, 1);
+      expect(source.approvals.single.$1, '1');
+      expect(source.approvals.single.$2, <String>['rental', 'transport']);
+      expect(source.approvedPlans, <(String?, DateTime?)>[('trial', null)]);
+      expect(source.approvedUnverified, <bool>[false]);
+      expect(find.byKey(const ValueKey<String>('registrations_empty')), findsOneWidget, reason: 'the list was reloaded and the request left it');
+      await t.pump(const Duration(seconds: 4)); // the success banner removes itself
+    });
+
+    testWidgets('saying no sends nothing', (t) async {
+      _tall(t);
+      final _FakeSource source = _FakeSource(<String, RegistrationsPage>{'pending': _pending(<BusinessRegistration>[_reg('1')])});
+      await t.pumpWidget(_host(source));
+      await t.pumpAndSettle();
+
+      await t.tap(oneTap);
+      await t.pumpAndSettle();
+      await t.tap(find.text('Ghairi'));
+      await t.pumpAndSettle();
+
+      expect(source.approvals, isEmpty);
+      expect(find.text('Asha Rentals'), findsOneWidget);
+    });
+
+    testWidgets('a phone that was never confirmed still has to be approved on purpose', (t) async {
+      _tall(t);
+      final _FakeSource source = _FakeSource(<String, RegistrationsPage>{
+        'pending': _pending(<BusinessRegistration>[_reg('1', phoneVerified: false)]),
+      });
+      await t.pumpWidget(_host(source));
+      await t.pumpAndSettle();
+
+      await t.tap(oneTap);
+      await t.pumpAndSettle();
+      await t.tap(confirm);
+      await t.pumpAndSettle();
+      expect(find.byKey(const ValueKey<String>('unverified_dialog')), findsOneWidget);
+      expect(source.approvals, isEmpty, reason: 'not yet');
+
+      await t.tap(find.byKey(const ValueKey<String>('approve_unverified_confirm')));
+      await t.pumpAndSettle();
+
+      expect(source.approvals.single.$1, '1');
+      expect(source.approvedUnverified, <bool>[true]);
+      await t.pump(const Duration(seconds: 4)); // the success banner removes itself
+    });
+
+    testWidgets('a refused approval says why and leaves the request where it was', (t) async {
+      _tall(t);
+      final _FakeSource source = _FakeSource(<String, RegistrationsPage>{'pending': _pending(<BusinessRegistration>[_reg('1')])})
+        ..approveError = Exception('Exception: Already approved. / Imeshakubaliwa.');
+      await t.pumpWidget(_host(source));
+      await t.pumpAndSettle();
+
+      await t.tap(oneTap);
+      await t.pumpAndSettle();
+      await t.tap(confirm);
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 200));
+
+      expect(find.textContaining('Exception'), findsNothing, reason: 'the error reads as plain words');
+      expect(find.text('Asha Rentals'), findsOneWidget);
+      await t.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('only a waiting request with services asked for has the button', (t) async {
+      _tall(t);
+      final _FakeSource source = _FakeSource(<String, RegistrationsPage>{
+        'pending': _pending(<BusinessRegistration>[_reg('1'), _reg('2', business: 'Nothing Asked', requested: const <String>[])]),
+        'approved': _pending(<BusinessRegistration>[_reg('9', business: 'Done Ltd', status: 'approved', assigned: const <String>['rental'])]),
+      });
+      await t.pumpWidget(_host(source));
+      await t.pumpAndSettle();
+
+      expect(oneTap, findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('approve_as_requested_2')), findsNothing, reason: 'nothing to give "as requested"');
+
+      await t.tap(find.byKey(const ValueKey<String>('status_approved')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const ValueKey<String>('approve_as_requested_9')), findsNothing);
+    });
+
+    testWidgets('Review still opens the request so the services or plan can be changed first', (t) async {
+      _tall(t);
+      final _FakeSource source = _FakeSource(<String, RegistrationsPage>{'pending': _pending(<BusinessRegistration>[_reg('1')])});
+      await t.pumpWidget(_host(source));
+      await t.pumpAndSettle();
+
+      await t.tap(find.byKey(const ValueKey<String>('review_1')));
+      await t.pumpAndSettle();
+
+      expect(_approve, findsOneWidget);
+      expect(source.approvals, isEmpty);
+    });
+  });
 }

@@ -6,6 +6,7 @@ import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../utils/responsive_helper.dart';
 import '../../services/localization_service.dart';
+import '../../utils/server_message.dart';
 
 enum PredictionMode { auto, average, regression }
 
@@ -190,7 +191,7 @@ class _DriverPredictionScreenState extends State<DriverPredictionScreen> {
     } on Exception catch (e) {
       setState(() {
         _loading = false;
-        _error = e.toString();
+        _error = readableErrorMessage(e);
       });
     }
   }

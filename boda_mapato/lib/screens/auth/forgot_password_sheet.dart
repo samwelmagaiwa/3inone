@@ -3,6 +3,7 @@ import "package:flutter_screenutil/flutter_screenutil.dart";
 
 import "../../services/auth_service.dart";
 import "../../services/localization_service.dart";
+import "../../utils/server_message.dart";
 
 /// Two-step "forgot password" flow. Step 1: give the email AND the phone number
 /// registered on the account (the same two factors login itself checks) and the
@@ -80,7 +81,7 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
     } on Exception catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceAll('Exception: ', '');
+        _error = readableErrorMessage(e);
         _busy = false;
       });
     }
@@ -113,7 +114,7 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
     } on Exception catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceAll('Exception: ', '');
+        _error = readableErrorMessage(e);
         _busy = false;
       });
     }
@@ -146,7 +147,7 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
     } on Exception catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceAll('Exception: ', '');
+        _error = readableErrorMessage(e);
         _busy = false;
       });
     }

@@ -1,9 +1,11 @@
 import 'package:boda_mapato/models/business.dart';
+import 'package:boda_mapato/models/subscription.dart';
 import 'package:boda_mapato/screens/admin/businesses_screen.dart';
 import 'package:boda_mapato/services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 Business _biz(
@@ -31,6 +33,33 @@ class _FakeSource implements BusinessesDataSource {
   final List<String> loads = <String>[];
   final List<({String id, String? plan, DateTime? until, bool clear})> updates = <({String id, String? plan, DateTime? until, bool clear})>[];
   Object? updateError;
+  List<SubscriptionPayment> paymentList = <SubscriptionPayment>[];
+  Object? paymentError;
+  final List<({String id, double amount, String? method, String? reference, String? plan, int months, String? note})> recorded =
+      <({String id, double amount, String? method, String? reference, String? plan, int months, String? note})>[];
+
+  @override
+  Future<List<SubscriptionPayment>> payments(String id) async => List<SubscriptionPayment>.of(paymentList);
+
+  @override
+  Future<SubscriptionInfo> recordPayment(
+    String id, {
+    required double amount,
+    String? method,
+    String? reference,
+    String? plan,
+    int months = 1,
+    String? note,
+  }) async {
+    if (paymentError != null) throw paymentError!;
+    recorded.add((id: id, amount: amount, method: method, reference: reference, plan: plan, months: months, note: note));
+    final DateTime until = _today.add(Duration(days: 30 * months));
+    paymentList = <SubscriptionPayment>[
+      SubscriptionPayment(amount: amount, currency: 'TZS', plan: plan ?? '', method: method, reference: reference, paidAt: _today, periodStart: _today, periodEnd: until),
+      ...paymentList,
+    ];
+    return SubscriptionInfo(status: 'active', plan: plan ?? 'basic', validUntil: until, daysLeft: 30 * months);
+  }
 
   @override
   Future<BusinessesPage> load(String status, {String? query}) async {
@@ -195,5 +224,110 @@ void main() {
 
     expect(find.text('The selected plan is invalid.'), findsOneWidget);
     expect(_key('billing_save'), findsOneWidget, reason: 'nothing was lost');
+  });
+
+  testWidgets('the sheet lists the payments already recorded for the business', (t) async {
+    _tall(t);
+    final _FakeSource source = _FakeSource(<String, BusinessesPage>{
+      'all': BusinessesPage(items: <Business>[_biz('1')], total: 1),
+    });
+    source.paymentList = <SubscriptionPayment>[
+      SubscriptionPayment(amount: 45000, currency: 'TZS', plan: 'basic', method: 'cash', paidAt: DateTime(2026, 9, 1), periodStart: DateTime(2026, 9, 2), periodEnd: DateTime(2026, 10, 2)),
+    ];
+    await t.pumpWidget(_host(source));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Asha Rentals'));
+    await t.pumpAndSettle();
+
+    expect(find.text('TZS 45,000'), findsOneWidget);
+    expect(find.text('Taslimu'), findsOneWidget);
+    expect(find.text('Kipindi: 02 Sep 2026 - 02 Oct 2026'), findsOneWidget);
+    expect(_key('payments_empty'), findsNothing);
+  });
+
+  testWidgets('with no payments the sheet says so', (t) async {
+    await open(t, _biz('1'));
+    expect(_key('payments_empty'), findsOneWidget);
+    expect(_key('record_payment'), findsOneWidget);
+  });
+
+  testWidgets('recording a payment sends what was entered, shows the new end date and the payment, and reloads the list', (t) async {
+    final _FakeSource source = await open(t, _biz('1', plan: 'trial', until: _today.add(const Duration(days: 2)), days: 2));
+
+    await t.tap(_key('record_payment'));
+    await t.pumpAndSettle();
+    // a trial or free plan is not something a payment buys
+    expect(_key('payment_plan_trial'), findsNothing);
+    expect(_key('payment_plan_free'), findsNothing);
+
+    await t.enterText(_key('payment_amount'), '45,000');
+    await t.enterText(_key('payment_reference'), 'MP2610A1');
+    await t.tap(_key('payment_months_3'));
+    await t.pump();
+    await t.tap(_key('payment_plan_premium'));
+    await t.pump();
+    await t.tap(_key('payment_submit'));
+    await t.pumpAndSettle();
+
+    expect(source.recorded, hasLength(1));
+    expect(source.recorded.single.id, '1');
+    expect(source.recorded.single.amount, 45000);
+    expect(source.recorded.single.method, 'mobile_money');
+    expect(source.recorded.single.reference, 'MP2610A1');
+    expect(source.recorded.single.months, 3);
+    expect(source.recorded.single.plan, 'premium');
+
+    expect(_key('payment_submit'), findsNothing, reason: 'the form closed');
+    expect(find.text('TZS 45,000'), findsOneWidget, reason: 'the history shows it');
+    expect(_key('payments_empty'), findsNothing);
+    expect(find.text(DateFormat('dd MMM yyyy').format(_today.add(const Duration(days: 90)))), findsWidgets, reason: 'the paid-until date moved on');
+    expect(_key('billing_save'), findsOneWidget, reason: 'the sheet stays open to show it');
+
+    // leaving the sheet by tapping outside it still reloads the list behind it
+    await t.tapAt(const Offset(400, 40));
+    await t.pumpAndSettle();
+    expect(_key('billing_save'), findsNothing);
+    expect(source.loads.length, 2);
+  });
+
+  testWidgets('an amount is required before anything is sent', (t) async {
+    final _FakeSource source = await open(t, _biz('1'));
+
+    await t.tap(_key('record_payment'));
+    await t.pumpAndSettle();
+    await t.tap(_key('payment_submit'));
+    await t.pumpAndSettle();
+
+    expect(find.text('Weka kiasi kilicholipwa.'), findsOneWidget);
+    expect(source.recorded, isEmpty);
+    expect(_key('payment_submit'), findsOneWidget);
+  });
+
+  testWidgets('a refusal from the server is shown in the form and nothing is lost', (t) async {
+    final _FakeSource source = await open(t, _biz('1'));
+    source.paymentError = Exception('The amount must be greater than 0.');
+
+    await t.tap(_key('record_payment'));
+    await t.pumpAndSettle();
+    await t.enterText(_key('payment_amount'), '100');
+    await t.tap(_key('payment_submit'));
+    await t.pumpAndSettle();
+
+    expect(find.text('The amount must be greater than 0.'), findsOneWidget);
+    expect(_key('payment_submit'), findsOneWidget);
+    expect(find.text('100'), findsOneWidget, reason: 'what was typed is still there');
+    expect(source.loads.length, 1, reason: 'nothing changed, so nothing reloads');
+  });
+
+  testWidgets('cancelling the form records nothing', (t) async {
+    final _FakeSource source = await open(t, _biz('1'));
+
+    await t.tap(_key('record_payment'));
+    await t.pumpAndSettle();
+    await t.tap(_key('payment_cancel'));
+    await t.pumpAndSettle();
+
+    expect(_key('payment_submit'), findsNothing);
+    expect(source.recorded, isEmpty);
   });
 }

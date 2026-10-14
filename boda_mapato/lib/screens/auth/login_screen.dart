@@ -14,6 +14,7 @@ import "../../widgets/backgrounds/starfield_background.dart";
 import "../../widgets/flag_app_name_text.dart";
 import "forgot_password_sheet.dart";
 import "register_business_screen.dart";
+import '../../utils/server_message.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -223,7 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() {
           _isLoading = false;
         });
-        _showSnackBar("${LocalizationService.instance.translate('login_error')}${e.toString().replaceAll("Exception: ", "")}", Colors.red);
+        _showSnackBar(readableErrorMessage(e), Colors.red);
       }
     }
   }
@@ -313,10 +314,24 @@ class _LoginScreenState extends State<LoginScreen> {
           style: TextStyle(color: Colors.white, fontSize: 17.sp, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
-        content: Text(
-          message,
-          style: TextStyle(color: Colors.white70, fontSize: 13.sp),
-          textAlign: TextAlign.center,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(
+              message,
+              key: const ValueKey<String>('registration_pending_message'),
+              style: TextStyle(color: Colors.white70, fontSize: 13.sp),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 12.h),
+            Text(
+              isSwahili
+                  ? 'Likikubaliwa utatumiwa ujumbe mfupi kwenye simu yako, kisha uingie.'
+                  : 'When it is approved you will get a text message on your phone, then you can sign in.',
+              style: TextStyle(color: Colors.white54, fontSize: 12.sp),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
         actions: <Widget>[
           Center(

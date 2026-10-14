@@ -5,10 +5,13 @@ import "../models/business.dart";
 /// A one-line warning about the business's plan: expired, or about to run out.
 /// Shows nothing at all while everything is fine (or the business never expires).
 class SubscriptionBanner extends StatelessWidget {
-  const SubscriptionBanner({required this.billing, required this.sw, super.key, this.soonDays = 7});
+  const SubscriptionBanner({required this.billing, required this.sw, super.key, this.soonDays = 7, this.onTap});
 
   final BusinessBilling billing;
   final bool sw;
+
+  /// Opens the subscription details (dates and payments). Without it the banner is only a warning.
+  final VoidCallback? onTap;
 
   /// Warn this many days before the end.
   final int soonDays;
@@ -37,22 +40,30 @@ class SubscriptionBanner extends StatelessWidget {
     }
 
     final Color color = expired ? Colors.redAccent : Colors.amberAccent;
-    return Container(
-      key: const ValueKey<String>("subscription_banner"),
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: const ValueKey<String>("subscription_banner"),
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Icon(expired ? Icons.error_outline : Icons.schedule, color: color, size: 20),
-          const SizedBox(width: 10),
-          Expanded(child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 13))),
-        ],
+        child: Ink(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Icon(expired ? Icons.error_outline : Icons.schedule, color: color, size: 20),
+              const SizedBox(width: 10),
+              Expanded(child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 13))),
+              if (onTap != null) const Icon(Icons.chevron_right, color: Colors.white54, size: 20),
+            ],
+          ),
+        ),
       ),
     );
   }

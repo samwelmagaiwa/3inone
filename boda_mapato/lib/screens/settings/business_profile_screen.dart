@@ -11,6 +11,8 @@ import "../../modules/inventory/services/inv_event_bus.dart";
 import "../../services/api_service.dart";
 import "../../services/localization_service.dart";
 import "../../widgets/subscription_banner.dart";
+import '../../utils/server_message.dart';
+import 'subscription_screen.dart';
 
 /// A picture the user chose: its bytes and the file name it came with.
 typedef PickedLogo = ({Uint8List bytes, String name});
@@ -154,7 +156,7 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
     _typeTouched = false;
   }
 
-  String _message(final Object e) => e.toString().replaceFirst(RegExp(r"^(Api)?Exception: "), "");
+  String _message(final Object e) => readableErrorMessage(e);
 
   Future<void> _load() async {
     setState(() {
@@ -288,7 +290,11 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
       children: <Widget>[
         _logoBlock(b, edit),
         const SizedBox(height: 16),
-        SubscriptionBanner(billing: b.billing, sw: _sw),
+        SubscriptionBanner(
+          billing: b.billing,
+          sw: _sw,
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SubscriptionScreen())),
+        ),
         if (b.billing.needsAttention()) const SizedBox(height: 12),
         _planCard(b.billing),
         const SizedBox(height: 16),

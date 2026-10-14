@@ -9,6 +9,7 @@ import '../../services/app_events.dart';
 import '../../services/localization_service.dart';
 import '../../utils/responsive_helper.dart';
 import 'debt_records_list_screen.dart';
+import '../../utils/server_message.dart';
 
 enum MonthFilter { mweziHuu, mweziUliopita, mwakaHuu, zote }
 
@@ -126,7 +127,7 @@ class _DebtsManagementScreenState extends State<DebtsManagementScreen>
       }
     } on Exception catch (e) {
       if (!mounted) return;
-      setState(() => _error = e.toString());
+      setState(() => _error = readableErrorMessage(e));
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -660,7 +661,7 @@ class _DebtRecordFormScreenState extends State<DebtRecordFormScreen> {
       _filteredDrivers = List<Driver>.from(_allDrivers);
       // Do not auto-select to force explicit choice
     } on Exception catch (e) {
-      setState(() => _driverLoadError = e.toString());
+      setState(() => _driverLoadError = readableErrorMessage(e));
     } finally {
       setState(() => _loadingDrivers = false);
     }

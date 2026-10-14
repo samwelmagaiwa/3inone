@@ -8,6 +8,7 @@ import '../../services/api_service.dart';
 import '../../services/app_events.dart';
 import '../../services/localization_service.dart';
 import '../../utils/responsive_helper.dart';
+import '../../utils/server_message.dart';
 
 class ReceiptDetailScreen extends StatefulWidget {
   const ReceiptDetailScreen({required this.pendingReceipt, super.key});
@@ -164,7 +165,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen>
       }
     } on Exception catch (e) {
       _showSnack(
-          '${LocalizationService.instance.translate('error')}: ${e.toString().replaceFirst('Exception: ', '')}',
+          '${LocalizationService.instance.translate('error')}: ${readableErrorMessage(e)}',
           isError: true);
     } finally {
       if (mounted) setState(() => _isGenerating = false);
@@ -223,7 +224,7 @@ class _ReceiptDetailScreenState extends State<ReceiptDetailScreen>
             LocalizationService.instance.translate('failed_to_send_receipt'));
       }
     } on Exception catch (e) {
-      _showSnack('${LocalizationService.instance.translate('error')}: $e',
+      _showSnack('${LocalizationService.instance.translate('error')}: ${readableErrorMessage(e)}',
           isError: true);
     } finally {
       if (mounted) setState(() => _isSending = false);

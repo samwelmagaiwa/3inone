@@ -13,6 +13,7 @@ import '../../services/app_events.dart';
 import '../../utils/responsive_helper.dart';
 import 'receipt_detail_screen.dart';
 import 'receipt_viewer_screen.dart';
+import '../../utils/server_message.dart';
 
 // ignore_for_file: directives_ordering
 class ReceiptsScreen extends StatefulWidget {
@@ -155,7 +156,7 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
       }
     } on Exception catch (e) {
       setState(() {
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _errorMessage = readableErrorMessage(e);
         _isLoading = false;
       });
     }

@@ -1443,7 +1443,7 @@ class _PaymentsManagementScreenState extends State<PaymentsManagementScreen> {
           return <String, String>{'id': id, 'label': label};
         }).toList();
       } on Exception catch (e) {
-        driversError = e.toString();
+        driversError = readableErrorMessage(e);
       } finally {
         loadingDrivers = false;
       }
@@ -1481,7 +1481,7 @@ class _PaymentsManagementScreenState extends State<PaymentsManagementScreen> {
           setStateDialog(() => paymentType = type!);
         }
       } on Exception catch (e) {
-        setStateDialog(() => agreementError = e.toString());
+        setStateDialog(() => agreementError = readableErrorMessage(e));
       } finally {
         setStateDialog(() => fetchingAgreement = false);
       }

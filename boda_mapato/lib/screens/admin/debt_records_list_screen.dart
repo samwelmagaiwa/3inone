@@ -8,6 +8,7 @@ import '../../providers/debts_provider.dart';
 import '../../services/api_service.dart';
 import '../../services/app_events.dart';
 import '../../services/localization_service.dart';
+import '../../utils/server_message.dart';
 
 class DebtRecordsListScreen extends StatefulWidget {
   const DebtRecordsListScreen(
@@ -83,7 +84,7 @@ class _DebtRecordsListScreenState extends State<DebtRecordsListScreen> {
       }
       _records = items.map((e) => (e as Map).cast<String, dynamic>()).toList();
     } on Exception catch (e) {
-      _error = e.toString();
+      _error = readableErrorMessage(e);
     } finally {
       if (mounted) {
         setState(() {

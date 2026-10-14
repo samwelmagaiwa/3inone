@@ -7,6 +7,7 @@ import '../models/inv_capabilities.dart';
 import '../models/inv_depot_models.dart';
 import '../services/inv_event_bus.dart';
 import '../../../services/localization_service.dart';
+import '../../../utils/server_message.dart';
 
 /// State for Areas 4–13: purchasing, credit, cash, crates, POS extras,
 /// dispatch, barcodes, reports, alerts, audit and settings.
@@ -632,7 +633,7 @@ class DepotProvider extends ChangeNotifier {
       ]);
       return null;
     } on Exception catch (e) {
-      return e.toString();
+      return readableErrorMessage(e);
     }
   }
 
@@ -679,7 +680,7 @@ class DepotProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       return e.message;
     } on Exception catch (e) {
-      return e.toString();
+      return readableErrorMessage(e);
     }
   }
 

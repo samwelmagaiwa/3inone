@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../services/api_service.dart';
+import '../utils/server_message.dart';
 
 class DashboardProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
@@ -62,7 +63,7 @@ class DashboardProvider extends ChangeNotifier {
       monthlyRevenue =
           _toDouble(d7['revenue'] ?? d7['monthly_revenue'] ?? d7['total']);
     } on Exception catch (e) {
-      _setError(e.toString());
+      _setError(readableErrorMessage(e));
     } finally {
       _setLoading(false);
     }

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../constants/theme_constants.dart';
 import '../../services/api_service.dart';
 import '../../services/localization_service.dart';
+import '../../utils/server_message.dart';
 
 class DriverRemindersScreen extends StatefulWidget {
   const DriverRemindersScreen({super.key});
@@ -69,7 +70,7 @@ class _DriverRemindersScreenState extends State<DriverRemindersScreen> {
       });
     } on Exception catch (e) {
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = readableErrorMessage(e);
         _isLoading = false;
       });
     }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/server_message.dart';
 
 // ignore_for_file: prefer_constructors_over_static_methods
 class LocalizationService extends ChangeNotifier {
@@ -59,7 +60,9 @@ class LocalizationService extends ChangeNotifier {
   String translateWith(String key, List<Object?> args) {
     String text = translate(key);
     for (int i = 0; i < args.length; i++) {
-      text = text.replaceAll('{$i}', '${args[i]}');
+      // An error handed over as a blank is shown as plain words: no "Exception: ..." wrapper.
+      final Object? arg = args[i];
+      text = text.replaceAll('{$i}', arg != null && (arg is Exception || arg is Error) ? readableErrorMessage(arg) : '$arg');
     }
     return text;
   }
@@ -2675,6 +2678,26 @@ class AppLocalizations {
       'retail_mode': '🛒 Retail Mode',
       'wholesale_hides_variants_and_the_actual': 'Wholesale: hides variants and the actual price. Uses crate/carton prices.',
       'retail_default_shows_single_unit_measures': 'Retail (default): shows single-unit measures and variant/actual prices.',
+      // Text that used to be written into the screens (translated by the language setting now).
+      'server_not_reachable_check_internet': 'The server is not reachable: {0}/health. Make sure your device has a working internet connection, then try again.',
+      // Text that used to be written into the screens (translated by the language setting now).
+      'failed_to_process_receipts': 'Failed to process receipts: {0}',
+      'server_answer_unreadable': 'The server sent an answer the app could not read: {0}',
+      'failed_get_user_data': 'Could not get your account details: {0}',
+      'token_refresh_failed': 'Could not renew your sign-in: {0}',
+      'profile_update_failed': 'Could not update your profile: {0}',
+      'change_password_failed_with': 'Could not change the password: {0}',
+      // Text that used to be written into the screens (translated by the language setting now).
+      'registration_requests_title': 'Registration requests',
+      'registration_requests_waiting': '{0} waiting for approval',
+      'registration_requests_none': 'No requests waiting',
+      // Text that used to be written into the screens (translated by the language setting now).
+      'subscription_ended_pay': 'Your subscription has ended. Please pay to continue.',
+      // Text that used to be written into the screens (translated by the language setting now).
+      'subscription_cover_named_phone': 'Dear customer, the services for "{0}" are on hold because the subscription has not been paid. To continue using the services, please pay through {1}. Thank you for being with us.',
+      'subscription_cover_named_nophone': 'Dear customer, the services for "{0}" are on hold because the subscription has not been paid. To continue using the services, please contact your administrator to pay. Thank you for being with us.',
+      'subscription_cover_plain_phone': 'Dear customer, your services are on hold because the subscription has not been paid. To continue using the services, please pay through {0}. Thank you for being with us.',
+      'subscription_cover_plain_nophone': 'Dear customer, your services are on hold because the subscription has not been paid. To continue using the services, please contact your administrator to pay. Thank you for being with us.',
     },
     'sw': {
       'camera_permission_denied': 'Ruhusa ya kamera imezimwa kwa programu hii. Iwashe kwenye mipangilio ya simu.',
@@ -5253,6 +5276,26 @@ class AppLocalizations {
       'retail_mode': '🛒 Retail Mode (Rejareja)',
       'wholesale_hides_variants_and_the_actual': 'Jumla: Haionyeshi Variants wala Actual Price. Inatumia bei za Crate/Carton.',
       'retail_default_shows_single_unit_measures': 'Rejareja (Default): Inaonyesha vipimo vya moja moja na bei za Variants/Actual Price.',
+      // Text that used to be written into the screens (translated by the language setting now).
+      'server_not_reachable_check_internet': 'Seva haipatikani: {0}/health. Hakikisha kifaa chako kina intaneti inayofanya kazi, kisha jaribu tena.',
+      // Text that used to be written into the screens (translated by the language setting now).
+      'failed_to_process_receipts': 'Imeshindikana kuchakata risiti: {0}',
+      'server_answer_unreadable': 'Jibu la seva halieleweki: {0}',
+      'failed_get_user_data': 'Imeshindikana kupata taarifa za akaunti yako: {0}',
+      'token_refresh_failed': 'Imeshindikana kuhuisha kuingia kwako: {0}',
+      'profile_update_failed': 'Imeshindikana kusasisha wasifu wako: {0}',
+      'change_password_failed_with': 'Imeshindikana kubadilisha nywila: {0}',
+      // Text that used to be written into the screens (translated by the language setting now).
+      'registration_requests_title': 'Maombi ya Usajili',
+      'registration_requests_waiting': '{0} yanasubiri idhini',
+      'registration_requests_none': 'Hakuna maombi yanayosubiri',
+      // Text that used to be written into the screens (translated by the language setting now).
+      'subscription_ended_pay': 'Usajili wako umeisha. Tafadhali lipia ili uendelee.',
+      // Text that used to be written into the screens (translated by the language setting now).
+      'subscription_cover_named_phone': 'Ndugu mteja, huduma za "{0}" zimesimama kwa sasa kwa sababu usajili haujalipiwa. Ili uendelee kutumia huduma, tafadhali lipia kupitia namba {1}. Asante kwa kuwa nasi.',
+      'subscription_cover_named_nophone': 'Ndugu mteja, huduma za "{0}" zimesimama kwa sasa kwa sababu usajili haujalipiwa. Ili uendelee kutumia huduma, tafadhali wasiliana na msimamizi wako ili ulipie. Asante kwa kuwa nasi.',
+      'subscription_cover_plain_phone': 'Ndugu mteja, huduma zako zimesimama kwa sasa kwa sababu usajili haujalipiwa. Ili uendelee kutumia huduma, tafadhali lipia kupitia namba {0}. Asante kwa kuwa nasi.',
+      'subscription_cover_plain_nophone': 'Ndugu mteja, huduma zako zimesimama kwa sasa kwa sababu usajili haujalipiwa. Ili uendelee kutumia huduma, tafadhali wasiliana na msimamizi wako ili ulipie. Asante kwa kuwa nasi.',
     },
   };
 

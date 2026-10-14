@@ -4,6 +4,7 @@ import '../../services/api_service.dart';
 import '../../services/localization_service.dart';
 
 import 'dart:async';
+import '../../utils/server_message.dart';
 
 // ignore_for_file: avoid_catches_without_on_clauses, unawaited_futures, unnecessary_brace_in_string_interps, control_flow_in_finally, directives_ordering
 class SecurityScreen extends StatefulWidget {
@@ -426,8 +427,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
       ThemeConstants.showErrorSnackBar(
         context,
         _localizationService.isSwahili
-            ? 'Imeshindikana kubadilisha neno la siri: ${e}'
-            : 'Failed to change password: ${e}',
+            ? 'Imeshindikana kubadilisha neno la siri: ${readableErrorMessage(e)}'
+            : 'Failed to change password: ${readableErrorMessage(e)}',
       );
     } finally {
       if (!mounted) return;
@@ -538,7 +539,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                                         setStateDialog(
                                             () => loadingMore = false);
                                         if (mounted) {
-                                          ThemeConstants.showErrorSnackBar(context, e.toString());
+                                          ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
                                         }
                                       }
                                     },
@@ -574,7 +575,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
       );
     } on Exception catch (e) {
       if (!mounted) return;
-      ThemeConstants.showErrorSnackBar(context, e.toString());
+      ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
     }
   }
 
@@ -591,7 +592,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     } on Exception catch (e) {
       if (mounted) {
         setState(() => _loadingSettings = false);
-        ThemeConstants.showErrorSnackBar(context, e.toString());
+        ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
       }
     }
   }
@@ -617,7 +618,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         setState(() => _twoFactorEnabled = prev);
         ThemeConstants.showErrorSnackBar(
           context,
-          '${_localizationService.translate('failed_to_update')}: $e',
+          '${_localizationService.translate('failed_to_update')}: ${readableErrorMessage(e)}',
         );
       }
     }

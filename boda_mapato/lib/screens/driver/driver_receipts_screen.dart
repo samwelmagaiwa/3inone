@@ -5,6 +5,7 @@ import '../../constants/theme_constants.dart';
 import '../../models/receipt.dart';
 import '../../services/api_service.dart';
 import '../../services/localization_service.dart';
+import '../../utils/server_message.dart';
 
 class DriverReceiptsScreen extends StatefulWidget {
   const DriverReceiptsScreen({super.key});
@@ -46,7 +47,7 @@ class _DriverReceiptsScreenState extends State<DriverReceiptsScreen> {
       });
     } on Exception catch (e) {
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = readableErrorMessage(e);
         _isLoading = false;
       });
     }

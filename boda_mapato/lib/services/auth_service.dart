@@ -6,19 +6,21 @@ import "http_client.dart" as http;
 import "package:shared_preferences/shared_preferences.dart";
 import "../config/api_config.dart";
 import "../models/business_registration.dart";
+import '../utils/server_message.dart';
+import 'localization_service.dart';
 
 /// A non-2xx answer from the server. Keeps the status code so callers can tell
 /// "your session is no longer valid" (401) from a server hiccup (5xx), and
 /// prints exactly like the plain `Exception` it replaces.
 class AuthHttpException implements Exception {
-  AuthHttpException(this.statusCode, this.message, {this.code});
+  AuthHttpException(this.statusCode, final String message, {this.code}) : message = readableServerMessage(message);
 
   final int statusCode;
   final String message;
   final String? code;
 
   @override
-  String toString() => "Exception: $message";
+  String toString() => message;
 }
 
 mixin AuthService {
@@ -130,11 +132,15 @@ mixin AuthService {
       }
 
       return data;
+    } on AuthHttpException {
+      // The server's own answer, with its code (registration_pending, business_suspended ...): the sign-in
+      // screen shows the right dialog for it. Wrapping it in a plain Exception used to lose the code.
+      rethrow;
     } on Exception catch (e) {
       if (kDebugMode && ApiConfig.enableHttpLogs) {
         debugPrint('HTTP EXCEPTION $baseUrl/auth/login -> $e');
       }
-      throw Exception("Login failed: $e");
+      throw Exception(readableErrorMessage(e));
     }
   }
 
@@ -312,7 +318,7 @@ mixin AuthService {
     } on AuthHttpException {
       rethrow; // keep the status code for the caller
     } on Exception catch (e) {
-      throw Exception("Failed to get user data: $e");
+      throw Exception(LocalizationService.instance.translateWith('failed_get_user_data', <Object?>[e]));
     }
   }
 
@@ -352,7 +358,7 @@ mixin AuthService {
       await saveToken(token);
       return token;
     } on Exception catch (e) {
-      throw Exception("Token refresh failed: $e");
+      throw Exception(LocalizationService.instance.translateWith('token_refresh_failed', <Object?>[e]));
     }
   }
 
@@ -386,7 +392,7 @@ mixin AuthService {
 
       return data;
     } on Exception catch (e) {
-      throw Exception("Profile update failed: $e");
+      throw Exception(LocalizationService.instance.translateWith('profile_update_failed', <Object?>[e]));
     }
   }
 
@@ -412,7 +418,7 @@ mixin AuthService {
 
       _handleResponse(response);
     } on Exception catch (e) {
-      throw Exception("Change password failed: $e");
+      throw Exception(LocalizationService.instance.translateWith('change_password_failed_with', <Object?>[e]));
     }
   }
 

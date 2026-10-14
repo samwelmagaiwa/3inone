@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../utils/responsive_helper.dart';
 import '../widgets/loading/faux_3d_loading_widget.dart';
 import '../services/localization_service.dart';
+import '../utils/server_message.dart';
 
 class ThemeConstants {
   // Modern theme colors - matching admin dashboard
@@ -305,7 +306,9 @@ class ThemeConstants {
                 ],
                 Expanded(
                   child: Text(
-                    message,
+                    // Whatever reaches a banner is cleaned here, once: no "Exception: ..." wrapper, and a
+                    // message the server wrote in both languages shows only the one that is chosen.
+                    readableServerMessage(message),
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,

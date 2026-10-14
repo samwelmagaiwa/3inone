@@ -1829,7 +1829,7 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
           _showSuccessSnackBar(
               localizationService.translate('pending_receipts_processed'));
         } on Exception catch (e) {
-          _showErrorSnackBar('Failed to process receipts: $e');
+          _showErrorSnackBar(LocalizationService.instance.translateWith('failed_to_process_receipts', <Object?>[e]));
         }
       },
     );

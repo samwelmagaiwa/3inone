@@ -7,6 +7,7 @@ import "../../models/business_registration.dart";
 import "../../modules/inventory/models/inv_capabilities.dart";
 import "../../services/api_service.dart";
 import "../../services/localization_service.dart";
+import "../../utils/server_message.dart";
 
 /// One page of registrations plus how many exist in each state.
 class RegistrationsPage {
@@ -128,7 +129,7 @@ class _RegistrationsScreenState extends State<RegistrationsScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.toString().replaceFirst(RegExp(r"^(Api)?Exception: "), "");
+        _error = readableErrorMessage(e);
       });
     }
   }
@@ -153,6 +154,61 @@ class _RegistrationsScreenState extends State<RegistrationsScreen> {
     );
     if ((changed ?? false) && mounted) {
       await _load();
+    }
+  }
+
+  /// Gives the applicant exactly the services they asked for, on the default trial plan, after one question.
+  /// (Opening the request instead lets the super admin change the services or the plan first.)
+  Future<void> _approveAsRequested(final BusinessRegistration r) async {
+    final List<String> services = kBusinessServices.where(r.requestedServices.contains).toList();
+    if (services.isEmpty) return;
+    final String names = services.map(_serviceLabel).join(", ");
+
+    final bool? yes = await showDialog<bool>(
+      context: context,
+      builder: (final BuildContext ctx) => AlertDialog(
+        key: const ValueKey<String>("approve_as_requested_dialog"),
+        title: Text(_sw ? "Idhinisha ${r.businessName}?" : "Approve ${r.businessName}?"),
+        content: Text(
+          _sw
+              ? "Akaunti ya ${r.ownerName} itawashwa na atapewa: $names. Itaanza na kipindi cha majaribio. Atatumiwa ujumbe aingie."
+              : "${r.ownerName}'s account will be switched on with: $names. It starts on a free trial, and they are told to sign in.",
+        ),
+        actions: <Widget>[
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(_sw ? "Ghairi" : "Cancel")),
+          FilledButton(
+            key: const ValueKey<String>("approve_as_requested_confirm"),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(_sw ? "Idhinisha" : "Approve"),
+          ),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
+
+    bool allowUnverified = false;
+    if (!r.ownerPhoneVerified) {
+      if (!await _askApproveUnverified(context, r, _sw) || !mounted) return;
+      allowUnverified = true;
+    }
+
+    try {
+      await _source.approve(
+        r.id,
+        services,
+        allowUnverified: allowUnverified,
+        plan: "trial",
+        inventoryType: services.contains("inventory") ? r.inventoryType : null,
+      );
+      if (!mounted) return;
+      ThemeConstants.showSuccessSnackBar(
+        context,
+        _sw ? "${r.businessName} imeidhinishwa." : "${r.businessName} is approved.",
+      );
+      await _load();
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
     }
   }
 
@@ -312,6 +368,27 @@ class _RegistrationsScreenState extends State<RegistrationsScreen> {
                 style: const TextStyle(color: Colors.white38, fontSize: 12),
               ),
             ],
+            if (r.isPending && r.requestedServices.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 10),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: FilledButton.icon(
+                      key: ValueKey<String>("approve_as_requested_${r.id}"),
+                      onPressed: () => _approveAsRequested(r),
+                      icon: const Icon(Icons.check_circle_outline, size: 18),
+                      label: Text(_sw ? "Idhinisha kama alivyoomba" : "Approve as requested"),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    key: ValueKey<String>("review_${r.id}"),
+                    onPressed: () => _open(r),
+                    child: Text(_sw ? "Kagua" : "Review"),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -334,6 +411,32 @@ class _RegistrationsScreenState extends State<RegistrationsScreen> {
       child: Text(v.$1, style: TextStyle(color: v.$2, fontSize: 11, fontWeight: FontWeight.w700)),
     );
   }
+}
+
+/// Anyone can type any email into the form. If the applicant never confirmed the phone number with the texted
+/// code, the super admin must decide that on purpose. True means "approve anyway".
+Future<bool> _askApproveUnverified(final BuildContext context, final BusinessRegistration r, final bool sw) async {
+  final bool? anyway = await showDialog<bool>(
+    context: context,
+    builder: (final BuildContext ctx) => AlertDialog(
+      key: const ValueKey<String>("unverified_dialog"),
+      title: Text(sw ? "Simu haijathibitishwa" : "Phone not confirmed"),
+      content: Text(
+        sw
+            ? "${r.ownerName} hajathibitisha namba ${r.ownerPhone} kwa nambari iliyotumwa. Idhinisha tu kama umemthibitisha mwenyewe (mfano kwa kumpigia simu)."
+            : "${r.ownerName} has not confirmed ${r.ownerPhone} with the texted code. Approve only if you have checked them yourself (for example by phoning them).",
+      ),
+      actions: <Widget>[
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(sw ? "Ghairi" : "Cancel")),
+        FilledButton(
+          key: const ValueKey<String>("approve_unverified_confirm"),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: Text(sw ? "Idhinisha hata hivyo" : "Approve anyway"),
+        ),
+      ],
+    ),
+  );
+  return anyway == true;
 }
 
 /// Full details of one registration, with the approve / reject actions.
@@ -387,27 +490,7 @@ class _RegistrationSheetState extends State<_RegistrationSheet> {
     // number with the texted code, the super admin must decide that on purpose.
     bool allowUnverified = false;
     if (!_r.ownerPhoneVerified) {
-      final bool? anyway = await showDialog<bool>(
-        context: context,
-        builder: (final BuildContext ctx) => AlertDialog(
-          key: const ValueKey<String>("unverified_dialog"),
-          title: Text(_sw ? "Simu haijathibitishwa" : "Phone not confirmed"),
-          content: Text(
-            _sw
-                ? "${_r.ownerName} hajathibitisha namba ${_r.ownerPhone} kwa nambari iliyotumwa. Idhinisha tu kama umemthibitisha mwenyewe (mfano kwa kumpigia simu)."
-                : "${_r.ownerName} has not confirmed ${_r.ownerPhone} with the texted code. Approve only if you have checked them yourself (for example by phoning them).",
-          ),
-          actions: <Widget>[
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(_sw ? "Ghairi" : "Cancel")),
-            FilledButton(
-              key: const ValueKey<String>("approve_unverified_confirm"),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(_sw ? "Idhinisha hata hivyo" : "Approve anyway"),
-            ),
-          ],
-        ),
-      );
-      if (anyway != true) return;
+      if (!await _askApproveUnverified(context, _r, _sw)) return;
       allowUnverified = true;
     }
 
@@ -477,7 +560,7 @@ class _RegistrationSheetState extends State<_RegistrationSheet> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = e.toString().replaceFirst(RegExp(r"^(Api)?Exception: "), "");
+        _error = readableErrorMessage(e);
       });
     }
   }

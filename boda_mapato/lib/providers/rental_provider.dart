@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/sms_service.dart';
 import '../widgets/temporary_password_dialog.dart' show temporaryPasswordOf;
+import '../utils/server_message.dart';
 
 class RentalProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
@@ -558,7 +559,7 @@ class RentalProvider extends ChangeNotifier {
       if (e is ApiException) {
         return e.message;
       }
-      return e.toString().replaceAll('ApiException: ', '');
+      return readableErrorMessage(e);
     } finally {
       _isLoading = false;
       notifyListeners();

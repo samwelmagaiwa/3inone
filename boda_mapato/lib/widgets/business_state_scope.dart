@@ -68,9 +68,12 @@ class BusinessStateScope extends StatelessWidget {
     final String? who = context.select<AuthProvider, String?>(
       (final AuthProvider auth) => auth.isAuthenticated ? auth.user?.id : null,
     );
+    // A business that was held back for an unpaid plan and is open again starts from fresh providers: whatever
+    // they asked for while it was held back came back refused.
+    final int reopened = context.select<AuthProvider, int>((final AuthProvider auth) => auth.subscriptionReopened);
 
     return KeyedSubtree(
-      key: ValueKey<String>(who ?? 'signed-out'),
+      key: ValueKey<String>('${who ?? 'signed-out'}#$reopened'),
       child: MultiProvider(providers: providers(), child: child),
     );
   }
