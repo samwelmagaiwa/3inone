@@ -12,8 +12,9 @@
 #   ./deploy.sh status               read-only: what runs on the server, its health, pending migrations
 #
 # "Rolling out" = pull the image on the server, `docker compose up -d`, wait until /api/health answers, back up the
-# database and run the migrations IF there are pending ones (set SKIP_MIGRATE=1 to leave them), refresh the
-# config cache. Nothing is ever deleted: a failed migration leaves the backup next to the compose file.
+# database and run the migrations IF there are pending ones (set SKIP_MIGRATE=1 to leave them), load the regions /
+# districts / wards if the server has none yet, refresh the config cache. Nothing is ever deleted: a failed
+# migration leaves the backup next to the compose file.
 #
 # This script only ever touches the 3inone stack (/www/3inone, container 3inone_backend, database 3inone). The older
 # depot site on the same server (/www/depot) is not in here on purpose.
@@ -263,6 +264,23 @@ run_migrations() {
   ok "migrations applied"
 }
 
+# Regions, districts, wards, streets and places are NOT part of the migrations. A server that never had them loaded shows
+# empty Region / District / Ward lists in the app, with no error to explain it (the live server was like that until
+# 2026-10-14). This loads them from the CSV files inside the image, but only while there are no regions: it adds rows,
+# never changes or deletes one, and does it in a single transaction, so on every later deploy it does nothing.
+# It never fails the deploy (the API is healthy without it) but it says loudly when it could not.
+load_locations() {
+  step "Laravel: regions, districts and wards"
+  local out
+  if out="$(ssh_run "docker exec '$CONTAINER' php artisan locations:import --if-empty 2>&1")"; then
+    printf '%s\n' "$out" | sed 's/^/    /'
+    ok "locations are in place"
+  else
+    printf '%s\n' "$out" | sed 's/^/    /' >&2
+    warn "the locations were NOT loaded (nothing was changed). Run it yourself: ssh ${REMOTE_USER}@${REMOTE_HOST} docker exec $CONTAINER php artisan locations:import"
+  fi
+}
+
 # The config cache is the one that matters: the container gets its settings from the environment, and with a cached
 # config nothing reads .env again (this project only calls env() inside config/ and one seeder, so that is safe).
 # The route cache is a speed-up and the routes here include closures (health, status page), which Laravel can
@@ -297,6 +315,7 @@ show_status() {
   step "Server status (read-only)"
   ssh_run "docker ps --filter name='$CONTAINER' --format '{{.Names}}  {{.Status}}  {{.Image}}'; echo \"image id: \$(docker inspect -f '{{.Image}}' '$CONTAINER' | cut -c8-19)\"; echo \"backups:  \$(ls '$REMOTE_DIR/backups' 2>/dev/null | grep -c '\.sql\$' || true) dump file(s)\"" | sed 's/^/    /'
   local n; n="$(pending_migrations)" && info "pending migrations: $n"
+  info "$(ssh_run "docker exec '$CONTAINER' php artisan locations:import --dry-run 2>&1" | tail -1 || echo 'regions: could not be read')"
   wait_healthy
 }
 
@@ -312,20 +331,20 @@ case "$CMD" in
     check_remote
     git_push "$MSG"
     wait_for_image
-    rollout; run_migrations; refresh_caches; public_check
+    rollout; run_migrations; load_locations; refresh_caches; public_check
     finish "Release"
     ;;
   update)
     banner "UPDATE (current image)"
     check_remote
-    rollout; run_migrations; refresh_caches; public_check
+    rollout; run_migrations; load_locations; refresh_caches; public_check
     finish "Update"
     ;;
   deploy)
     banner "DEPLOY (built here)"
     check_remote
     build_and_push_image
-    rollout; run_migrations; refresh_caches; public_check
+    rollout; run_migrations; load_locations; refresh_caches; public_check
     finish "Deploy"
     ;;
   migrate)

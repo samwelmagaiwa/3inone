@@ -32,10 +32,39 @@ Ports 8080–8086 are taken by other sites on that server; 8087 is this one's.
 5. **SSL** (panel: the site's *SSL* tab → Let's Encrypt, then *Force HTTPS*).
 6. **Migrations** (only when the database has not got the current schema; see the next section):
    `docker exec 3inone_backend php artisan migrate --force`
-7. **Check**: `https://3inone.nexoryatech.com/api/health` answers `200`.
-8. **The app**: `boda_mapato/lib/config/api_config.dart` selects `Environment.threeInOne`
+7. **Regions, districts, wards** (the lists in *Add Property* and the registration form): they are NOT created by the
+   migrations. Run `docker exec 3inone_backend php artisan locations:import` once (details below). Skipping this
+   leaves every Region / District / Ward picker empty, with no error.
+8. **Check**: `https://3inone.nexoryatech.com/api/health` answers `200`, and
+   `https://3inone.nexoryatech.com/api/locations/regions` lists 31 regions.
+9. **The app**: `boda_mapato/lib/config/api_config.dart` selects `Environment.threeInOne`
    (`https://3inone.nexoryatech.com/api`, and the web address without `/api`); rebuild the app and sign in again.
    The older depot server stays available as `Environment.production`.
+
+## Regions, districts and wards: `locations:import`
+
+The pickers read the tables `states` (regions), `lgas` (districts), `wards`, `villages` (streets) and `places`,
+which are filled from the 31 CSV files in `backend_mapato/location-files/` (they are inside the Docker image).
+The live server had these tables **empty** until 2026-10-14, which is why the Region list in *Add Property* could not
+be opened.
+
+```bash
+docker exec 3inone_backend php artisan locations:import --dry-run    # read the files, say what is in them, change nothing
+docker exec 3inone_backend php artisan locations:import --if-empty   # load only while there are no regions (deploy.sh does this)
+docker exec 3inone_backend php artisan locations:import              # add whatever is missing
+```
+
+It only ever **adds** rows (never updates or deletes one), does it in one transaction (a failure leaves the tables
+untouched), and a second run adds nothing. Loading takes about half a minute. Names are tidied on the way in: the
+source has line breaks inside names (`"DODOMA⏎CBD"`), doubled spaces, a district broken mid-word (`WANGING'O⏎MBE`
+= Wanging'ombe) and `DAR-ES-SALAAM` (loaded as *Dar es Salaam*, the spelling the rest of the app uses); the rules are in
+`App\Support\LocationImporter` and are pinned by `tests/Feature/LocationImportTest.php`. `deploy.sh` runs the
+`--if-empty` form after the migrations and `./deploy.sh status` prints how many regions the server has.
+
+**Known gap in the data:** the five Zanzibar and Pemba files (`mjini_magharibi`, `pemba_kaskazini`, `pemba_kusini`,
+`unguja_kaskazini`, `unguja_kusini`) hold only the 11 districts, with ONE placeholder ward and street each. The other
+26 regions are complete. Ward is optional in the app, so Zanzibar addresses still work, but the real shehia lists need
+adding to those files (same 8 columns) and `locations:import` run again; it will add them next to what is there.
 
 ## Migrations: back up first, and know what they do
 
@@ -72,12 +101,12 @@ touches the 3inone stack above, and it pushes to the `threeinone` git remote, ne
 | `./deploy.sh update` | rolls out the image that is on Docker Hub now |
 | `./deploy.sh deploy` | builds the image on your machine, pushes it as `:latest` and as `:local-<time>-<sha>`, rolls it out. **Skips the tests**: for emergencies |
 | `./deploy.sh migrate` / `backup` | back up the database and migrate / only back up |
-| `./deploy.sh status` | read-only: container, image, pending migrations, health |
+| `./deploy.sh status` | read-only: container, image, pending migrations, number of regions loaded, health |
 
 "Rolling out" is: refresh `docker-compose.yml` on the server if the repo's `docker-compose.prod.yml` differs (the old
 copy is kept as `.bak`), `docker compose pull && up -d`, wait for `/api/health`, **if migrations are pending: dump the
-database to `/www/3inone/backups/` (stops if the dump is not complete), then `migrate --force`**, `config:cache`,
-`route:cache`. `SKIP_MIGRATE=1` leaves pending migrations alone. Backups are not pruned: delete old ones by hand.
+database to `/www/3inone/backups/` (stops if the dump is not complete), then `migrate --force`**, load the regions /
+districts / wards if the server has none (`locations:import --if-empty`), `config:cache`, `route:cache`. `SKIP_MIGRATE=1` leaves pending migrations alone. Backups are not pruned: delete old ones by hand.
 
 The same by hand:
 
