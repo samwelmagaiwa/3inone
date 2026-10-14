@@ -530,8 +530,10 @@ class _RegistrationSheetState extends State<_RegistrationSheet> {
           key: const ValueKey<String>("reject_reason"),
           controller: _reason,
           maxLines: 3,
-          decoration: InputDecoration(
-            hintText: _sw ? "Sababu (itaonekana kwa mwombaji)" : "Reason (the applicant will see it)",
+          style: const TextStyle(color: Colors.white),
+          decoration: ThemeConstants.darkField(
+            _sw ? "Sababu" : "Reason",
+            hint: _sw ? "Itaonekana kwa mwombaji" : "The applicant will see it",
           ),
         ),
         actions: <Widget>[
@@ -582,7 +584,7 @@ class _RegistrationSheetState extends State<_RegistrationSheet> {
       expand: false,
       builder: (final BuildContext _, final ScrollController controller) => DecoratedBox(
         decoration: const BoxDecoration(
-          color: Color(0xFF001D3D),
+          color: ThemeConstants.primaryBlue,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: ListView(

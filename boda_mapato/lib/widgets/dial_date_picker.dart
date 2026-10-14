@@ -1,6 +1,7 @@
 import "dart:math" as math;
 
 import "package:flutter/material.dart";
+import "../constants/theme_constants.dart";
 
 const List<String> _monthsEn = <String>[
   "January",
@@ -180,7 +181,7 @@ class _DialDatePickerDialogState extends State<DialDatePickerDialog> {
     final DateTime next = DateTime(_month.year, _month.month + 1);
 
     return Dialog(
-      backgroundColor: const Color(0xFF001D3D),
+      backgroundColor: ThemeConstants.primaryBlue,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: ConstrainedBox(

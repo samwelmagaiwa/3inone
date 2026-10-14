@@ -510,7 +510,7 @@ class _BillingSheetState extends State<_BillingSheet> {
       expand: false,
       builder: (final BuildContext _, final ScrollController controller) => DecoratedBox(
         decoration: const BoxDecoration(
-          color: Color(0xFF001D3D),
+          color: ThemeConstants.primaryBlue,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: ListView(
@@ -848,7 +848,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   @override
   Widget build(final BuildContext context) {
     return AlertDialog(
-      backgroundColor: const Color(0xFF001D3D),
+      backgroundColor: ThemeConstants.primaryBlue,
       title: Text(
         _sw ? "Rekodi malipo - ${widget.business.name}" : "Record payment - ${widget.business.name}",
         style: const TextStyle(color: Colors.white, fontSize: 17),
@@ -941,7 +941,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
               key: const ValueKey<String>("payment_method"),
               initialValue: _method,
               isExpanded: true,
-              dropdownColor: const Color(0xFF00305F),
+              dropdownColor: ThemeConstants.bgBottom,
               style: const TextStyle(color: Colors.white),
               decoration: _decoration(_sw ? "Njia ya malipo" : "How it was paid"),
               items: <DropdownMenuItem<String>>[
@@ -1023,7 +1023,7 @@ class _ConfirmPaymentDialog extends StatelessWidget {
   Widget build(final BuildContext context) {
     return AlertDialog(
       key: const ValueKey<String>("confirm_payment"),
-      backgroundColor: const Color(0xFF001D3D),
+      backgroundColor: ThemeConstants.primaryBlue,
       title: Text(sw ? "Thibitisha malipo" : "Confirm the payment", style: const TextStyle(color: Colors.white, fontSize: 18)),
       content: SingleChildScrollView(
         child: Column(

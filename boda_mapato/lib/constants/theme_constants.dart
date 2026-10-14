@@ -84,6 +84,43 @@ class ThemeConstants {
         iconTheme: const IconThemeData(color: textPrimary),
       );
 
+  /// A text field drawn on one of the app's own dark surfaces (a dialog, a sheet, a card).
+  ///
+  /// The app theme gives every text field a WHITE fill (it was made for the light forms). A field on a dark surface that
+  /// does not say otherwise is therefore drawn as a white box, and the white text typed into it cannot be read. This
+  /// is the decoration to use there: a faint light fill over the surface, white text, no white box.
+  static InputDecoration darkField(
+    final String label, {
+    final String? hint,
+    final String? helper,
+    final String? error,
+    final Widget? suffix,
+    final Widget? prefix,
+  }) {
+    final OutlineInputBorder none = OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none);
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      helperText: helper,
+      helperMaxLines: 3,
+      errorText: error,
+      suffixIcon: suffix,
+      prefixIcon: prefix,
+      labelStyle: const TextStyle(color: Colors.white60),
+      hintStyle: const TextStyle(color: Colors.white30),
+      helperStyle: const TextStyle(color: Colors.white54),
+      counterStyle: const TextStyle(color: Colors.white54),
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.08),
+      border: none,
+      enabledBorder: none,
+      disabledBorder: none,
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: primaryCyan)),
+      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent)),
+      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.redAccent)),
+    );
+  }
+
   // Glass card widget - Fixed for proper touch events
   static Widget buildGlassCard({
     required Widget child,

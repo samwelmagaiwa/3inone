@@ -803,7 +803,7 @@ class _RentalPropertiesScreenState extends State<RentalPropertiesScreen> {
             child: DropdownButton<String>(
               value: (items.contains(value)) ? value : null,
               isExpanded: true,
-              dropdownColor: const Color(0xFF001D3D),
+              dropdownColor: ThemeConstants.primaryBlue,
               style: TextStyle(color: Colors.white, fontSize: 14.sp),
               icon: Icon(Icons.keyboard_arrow_down, color: cyberCyan.withValues(alpha: 0.4)),
               items: items

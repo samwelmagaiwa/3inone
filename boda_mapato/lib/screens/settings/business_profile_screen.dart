@@ -702,7 +702,7 @@ class _SenderRequestDialogState extends State<_SenderRequestDialog> {
   @override
   Widget build(final BuildContext context) {
     return AlertDialog(
-      backgroundColor: const Color(0xFF001D3D),
+      backgroundColor: ThemeConstants.primaryBlue,
       title: Text(_sw ? "Omba jina la ujumbe" : "Ask for a sender name", style: const TextStyle(color: Colors.white, fontSize: 17)),
       content: SingleChildScrollView(
         child: Column(
@@ -723,21 +723,15 @@ class _SenderRequestDialogState extends State<_SenderRequestDialog> {
               textCapitalization: TextCapitalization.characters,
               inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.allow(RegExp(r"[A-Za-z0-9]"))],
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, letterSpacing: 1.2),
-              decoration: InputDecoration(
-                labelText: _sw ? "Jina (mfano MAMAASHA)" : "Name (e.g. MAMAASHA)",
-                labelStyle: const TextStyle(color: Colors.white60),
-                errorText: _problem,
-              ),
+              decoration: ThemeConstants.darkField(_sw ? "Jina (mfano MAMAASHA)" : "Name (e.g. MAMAASHA)", error: _problem),
             ),
+            const SizedBox(height: 4),
             TextField(
               key: const ValueKey<String>("request_display_name_field"),
               controller: _display,
               maxLength: 40,
               style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: _sw ? "Jina ndani ya ujumbe (si lazima)" : "Name inside the text (optional)",
-                labelStyle: const TextStyle(color: Colors.white60),
-              ),
+              decoration: ThemeConstants.darkField(_sw ? "Jina ndani ya ujumbe (si lazima)" : "Name inside the text (optional)"),
             ),
           ],
         ),

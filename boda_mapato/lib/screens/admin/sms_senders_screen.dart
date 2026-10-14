@@ -532,7 +532,7 @@ class _SenderSheetState extends State<_SenderSheet> {
     final bool? yes = await showDialog<bool>(
       context: context,
       builder: (final BuildContext c) => AlertDialog(
-        backgroundColor: const Color(0xFF001D3D),
+        backgroundColor: ThemeConstants.primaryBlue,
         title: Text(_sw ? "Ondoa API key?" : "Remove the API key?", style: const TextStyle(color: Colors.white, fontSize: 17)),
         content: Text(
           _sw
@@ -639,7 +639,7 @@ class _SenderSheetState extends State<_SenderSheet> {
       constraints: BoxConstraints(maxHeight: maxHeight),
       // A Material, not a DecoratedBox: the switch below is a ListTile and paints its ink on the nearest Material.
       child: Material(
-        color: const Color(0xFF001D3D),
+        color: ThemeConstants.primaryBlue,
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         clipBehavior: Clip.antiAlias,
         child: SingleChildScrollView(

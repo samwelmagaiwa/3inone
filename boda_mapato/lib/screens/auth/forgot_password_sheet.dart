@@ -4,6 +4,7 @@ import "package:flutter_screenutil/flutter_screenutil.dart";
 import "../../services/auth_service.dart";
 import "../../services/localization_service.dart";
 import "../../utils/server_message.dart";
+import "../../constants/theme_constants.dart";
 
 /// Two-step "forgot password" flow. Step 1: give the email AND the phone number
 /// registered on the account (the same two factors login itself checks) and the
@@ -162,7 +163,7 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
       ),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF001D3D),
+          color: ThemeConstants.primaryBlue,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
         ),
         padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
