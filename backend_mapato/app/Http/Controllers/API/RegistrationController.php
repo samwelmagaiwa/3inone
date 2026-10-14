@@ -643,26 +643,7 @@ class RegistrationController extends Controller
      */
     private function superAdminPhones(): array
     {
-        $numbers = User::query()
-            ->where('role', 'super_admin')
-            ->where('is_active', true)
-            ->whereNotNull('phone_number')
-            ->pluck('phone_number')
-            ->all();
-
-        $numbers = array_merge($numbers, explode(',', (string) config('sms.admin_notify_phones', '')));
-
-        $unique = [];
-        foreach ($numbers as $number) {
-            $number = trim((string) $number);
-            $digits = preg_replace('/\D/', '', $number) ?? '';
-            if (strlen($digits) < 9) {
-                continue;
-            }
-            $unique[substr($digits, -9)] ??= $number;
-        }
-
-        return array_values($unique);
+        return \App\Support\SuperAdminPhones::all();
     }
 
     /** Multi-channel notification dispatcher (SMS + Email). */

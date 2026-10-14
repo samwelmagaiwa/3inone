@@ -20,6 +20,12 @@ Schedule::command('rental:generate-bills')
 Schedule::command('rental:mark-overdue')
     ->dailyAt('06:00');
 
+// Every morning: text the owners (and the super admin) about plans that are ending or have ended.
+// Each reminder goes out once per end date, so running it again changes nothing.
+Schedule::command('billing:remind')
+    ->dailyAt('08:00')
+    ->withoutOverlapping();
+
 // Expired API tokens are already rejected; this just removes the dead rows.
 Schedule::command('sanctum:prune-expired --hours=24')
     ->daily();

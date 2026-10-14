@@ -35,4 +35,10 @@ return [
     /** Plan a freshly approved self-registration starts on (with trial_days of access). */
     'registration_plan' => 'trial',
 
+    /**
+     * Where a customer is told to reach you to pay (shown in "my subscription" and in the reminder texts).
+     * Leave empty to say nothing; set BILLING_CONTACT_PHONE in the server's .env.
+     */
+    'contact_phone' => env('BILLING_CONTACT_PHONE', ''),
+
 ];

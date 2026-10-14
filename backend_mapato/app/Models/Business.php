@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A business: the tenant that owns everything the tenancy contract isolates.
@@ -285,6 +286,110 @@ class Business extends Model
             'enforced' => (bool) config('billing.enforce', false),
             'blocked' => $this->blocksAccess(),
         ];
+    }
+
+    // ------------------------------------------------------------------ payments and the subscription
+
+    /** Every payment recorded for this business, newest first. */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(BusinessPayment::class, 'business_id')->orderByDesc('paid_at')->orderByDesc('id');
+    }
+
+    /** The newest payment, or null when none was ever recorded (a trial, or an account from before plans). */
+    public function lastPayment(): ?BusinessPayment
+    {
+        return $this->payments()->first();
+    }
+
+    /** When the current period began: the newest payment's period, else the day the business was created. */
+    public function startedAt(): ?Carbon
+    {
+        $last = $this->lastPayment();
+
+        return $last?->period_start ?? $this->created_at;
+    }
+
+    /**
+     * never   -- no end date (an account from before plans)
+     * active  -- paid up, more than `soon` days left
+     * expiring -- paid up, but `soon` days or fewer remain
+     * grace   -- ended, still working for a few days, and should be told to pay
+     * expired -- ended and past the grace days
+     */
+    public function subscriptionStatus(int $soonDays = 7): string
+    {
+        if ($this->valid_until === null) {
+            return 'never';
+        }
+        if (!$this->isExpired()) {
+            return $this->daysLeft() <= $soonDays ? 'expiring' : 'active';
+        }
+
+        return $this->inGrace() ? 'grace' : 'expired';
+    }
+
+    /**
+     * Record a payment and move `valid_until` on, in one step.
+     *
+     * Paying while still covered adds time AFTER the current end (nothing already paid for is lost);
+     * paying after it ran out starts from today. The period is `months` long (1 when not said), or ends on
+     * the exact `valid_until` date if one is given. The business works through the end of that last day.
+     * The moment this returns, a business that was held back is open again: access is worked out from
+     * `valid_until` on every request.
+     *
+     * @param  array{amount: float|int|string, currency?: ?string, method?: ?string, reference?: ?string, plan?: ?string, months?: ?int, valid_until?: ?string, paid_at?: ?string, note?: ?string}  $data
+     */
+    public function recordPayment(array $data, ?User $by = null): BusinessPayment
+    {
+        $now = now();
+        $running = $this->valid_until !== null && $this->valid_until->isFuture();
+
+        $periodStart = $running ? $this->valid_until->copy()->addDay()->startOfDay() : $now->copy()->startOfDay();
+        $periodEnd = !empty($data['valid_until'])
+            ? Carbon::parse($data['valid_until'])->endOfDay()
+            : ($running ? $this->valid_until : $now)->copy()->addMonthsNoOverflow(max((int) ($data['months'] ?? 1), 1))->endOfDay();
+
+        // A trial or a free account that starts paying moves to a paid plan; the super admin may choose which.
+        $plan = $data['plan'] ?? (in_array($this->plan, ['trial', 'free', ''], true) ? 'basic' : $this->plan);
+
+        $payment = $this->payments()->create([
+            'amount' => $data['amount'],
+            'currency' => $data['currency'] ?? 'TZS',
+            'method' => $data['method'] ?? null,
+            'reference' => $data['reference'] ?? null,
+            'plan' => $plan,
+            'period_start' => $periodStart,
+            'period_end' => $periodEnd,
+            'paid_at' => !empty($data['paid_at']) ? Carbon::parse($data['paid_at']) : $now,
+            'recorded_by' => $by?->id,
+            'note' => $data['note'] ?? null,
+        ]);
+
+        $this->plan = $plan;
+        $this->valid_until = $periodEnd;
+        $this->save();
+
+        return $payment;
+    }
+
+    /**
+     * What "my subscription" shows. The payment history (with amounts) is for the owner only; staff see the
+     * plan and the dates.
+     */
+    public function subscriptionPayload(bool $withPayments): array
+    {
+        $last = $this->lastPayment();
+
+        return array_merge($this->billingSummary(), [
+            'status' => $this->subscriptionStatus(),
+            'started_at' => $this->startedAt()?->toIso8601String(),
+            'grace_ends_at' => $this->graceEndsAt()?->toIso8601String(),
+            'grace_days' => max((int) config('billing.grace_days', 7), 0),
+            'last_payment' => $last?->toApiArray(),
+            'payments' => $withPayments ? $this->payments()->limit(100)->get()->map->toApiArray()->values()->all() : [],
+            'contact_phone' => (string) config('billing.contact_phone', ''),
+        ]);
     }
 
     /** Profile + billing in one array. */

@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\RegistrationController;
 use App\Http\Controllers\API\BusinessController;
+use App\Http\Controllers\API\BusinessSubscriptionController;
 use App\Http\Controllers\API\LocationController;
 use App\Http\Controllers\API\Transport\AdminController;
 use App\Http\Controllers\API\Transport\AdminReportController;
@@ -135,6 +136,9 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/businesse
     Route::get('', [BusinessController::class, 'adminIndex']);
     Route::get('{id}', [BusinessController::class, 'adminShow']);
     Route::put('{id}', [BusinessController::class, 'adminUpdate']);
+    // A payment moves the paid-until date on and opens a held-back business again at once.
+    Route::get('{id}/payments', [BusinessSubscriptionController::class, 'adminIndex']);
+    Route::post('{id}/payments', [BusinessSubscriptionController::class, 'adminStore']);
 });
 
 // PROTECTED ADMIN ROUTES -- the Transport service
@@ -275,6 +279,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // the profile and logo. Billing (plan / valid_until) is read here, changed only by a super admin.
     Route::prefix('business')->group(function () {
         Route::get('', [BusinessController::class, 'show']);
+        // What it paid, when it started and when it ends. Stays reachable when the business is held back.
+        Route::get('subscription', [BusinessSubscriptionController::class, 'show']);
         Route::put('', [BusinessController::class, 'update']);
         Route::post('logo', [BusinessController::class, 'uploadLogo']);
         Route::delete('logo', [BusinessController::class, 'removeLogo']);
