@@ -56,6 +56,9 @@ services:
       BILLING_ENFORCE: ${BILLING_ENFORCE:-false}
       BILLING_TRIAL_DAYS: ${BILLING_TRIAL_DAYS:-30}
       BILLING_GRACE_DAYS: ${BILLING_GRACE_DAYS:-7}
+      # The number shown to a business that is held back for an unpaid plan ("pay through ..."), in the app and
+      # in the reminder texts. Empty = the screen tells people to contact their administrator.
+      BILLING_CONTACT_PHONE: ${BILLING_CONTACT_PHONE:-}
     volumes:
       - 3inone_storage:/var/www/html/storage
     ports:
