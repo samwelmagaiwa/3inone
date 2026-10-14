@@ -670,6 +670,17 @@ class ApiService {
   /// The signed-in business's subscription: plan, start, end, status, and (owner only) what it paid.
   Future<Map<String, dynamic>> getSubscription() async => _get("/business/subscription");
 
+  /// The plans, how many services each covers and what they cost. Public: the registration form reads it before sign-in.
+  Future<Map<String, dynamic>> getPlans() async => _get("/plans", requireAuth: false);
+
+  /// Super admin: the same list, for the page where the prices are set.
+  Future<Map<String, dynamic>> getPlanPrices() async => _get("/admin/plan-prices");
+
+  /// Super admin: set or clear prices. `{plan: {months: amount}}`; an amount of null clears that price. What is not
+  /// mentioned stays as it is.
+  Future<Map<String, dynamic>> savePlanPrices(final Map<String, Map<String, double?>> prices) async =>
+      _put("/admin/plan-prices", <String, dynamic>{"prices": prices});
+
   /// Super admin: every business with the SMS sender name it texts under, filtered and counted.
   Future<Map<String, dynamic>> getSmsSenders({
     final String status = "all",

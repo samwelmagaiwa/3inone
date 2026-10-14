@@ -15,6 +15,8 @@ class BusinessRegistrationRequest {
     required this.password,
     required this.passwordConfirmation,
     required this.requestedServices,
+    this.requestedPlan,
+    this.requestedMonths,
     this.inventoryType,
     this.region,
     this.district,
@@ -29,6 +31,10 @@ class BusinessRegistrationRequest {
   final String password;
   final String passwordConfirmation;
   final List<String> requestedServices;
+
+  /// The package they chose (basic = one service, standard = two, premium = all three) and for how many months.
+  final String? requestedPlan;
+  final int? requestedMonths;
 
   /// What kind of stock business this is (retail, wholesale, mixed, depot): asked when `inventory` is among
   /// the requested services, because it decides how the product page and the till behave.
@@ -48,6 +54,8 @@ class BusinessRegistrationRequest {
       'password': password,
       'password_confirmation': passwordConfirmation,
       'requested_services': requestedServices,
+      if (requestedPlan != null) 'requested_plan': requestedPlan,
+      if (requestedMonths != null) 'requested_months': requestedMonths,
       if (requestedServices.contains('inventory') && clean(inventoryType) != null) 'inventory_type': clean(inventoryType),
       if (clean(region) != null) 'region': clean(region),
       if (clean(district) != null) 'district': clean(district),
@@ -69,6 +77,9 @@ class BusinessRegistration {
     required this.ownerEmail,
     required this.ownerPhone,
     this.ownerPhoneVerified = false,
+    this.requestedPlan,
+    this.requestedMonths,
+    this.requestedPrice,
     this.inventoryType,
     this.region,
     this.district,
@@ -95,6 +106,9 @@ class BusinessRegistration {
       ownerEmail: (user['email'] ?? '').toString(),
       ownerPhone: (user['phone_number'] ?? '').toString(),
       ownerPhoneVerified: user['phone_verified'] == true,
+      requestedPlan: json['requested_plan'] as String?,
+      requestedMonths: (json['requested_months'] as num?)?.toInt(),
+      requestedPrice: (json['requested_price'] as num?)?.toDouble(),
       inventoryType: json['inventory_type'] as String?,
       region: json['region'] as String?,
       district: json['district'] as String?,
@@ -123,6 +137,11 @@ class BusinessRegistration {
 
   /// Did the applicant confirm this number with the code that was texted to it?
   final bool ownerPhoneVerified;
+
+  /// The package the applicant chose, for how many months, and what the super admin has priced it at (null: no price set).
+  final String? requestedPlan;
+  final int? requestedMonths;
+  final double? requestedPrice;
 
   /// The kind of stock business the applicant said they run (null when they did not ask for inventory).
   final String? inventoryType;

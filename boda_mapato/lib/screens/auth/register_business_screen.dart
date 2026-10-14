@@ -3,9 +3,12 @@ import "package:flutter_screenutil/flutter_screenutil.dart";
 
 import "../../constants/theme_constants.dart";
 import "../../models/business_registration.dart";
+import "../../models/plan_prices.dart";
 import "../../modules/inventory/models/inv_capabilities.dart";
+import "../../services/api_service.dart";
 import "../../services/auth_service.dart";
 import "../../services/localization_service.dart";
+import "../../utils/plan_text.dart";
 import "../../widgets/backgrounds/starfield_background.dart";
 
 /// Sends a registration. [AuthService.registerBusiness] in the app; a stub in tests.
@@ -18,6 +21,14 @@ typedef VerifyPhone = Future<void> Function(String email, String code);
 /// Texts a new code. [AuthService.resendRegistrationCode] in the app.
 typedef ResendCode = Future<void> Function(String email);
 
+/// The plans with what they cover and cost, as the super admin set them. Read from the server in the app; a stub in tests.
+typedef LoadPlans = Future<PlanCatalog> Function();
+
+Future<PlanCatalog> _loadPlansFromServer() async {
+  final Map<String, dynamic> res = await ApiService().getPlans();
+  return PlanCatalog.fromJson(Map<String, dynamic>.from(res["data"] as Map));
+}
+
 /// A business owner registers themselves. Nothing is switched on yet: a super
 /// admin reviews these details and assigns the services (inventory / rental /
 /// transport), and only then can the owner sign in.
@@ -27,6 +38,7 @@ class RegisterBusinessScreen extends StatefulWidget {
     this.onSubmit,
     this.onVerifyPhone,
     this.onResendCode,
+    this.onLoadPlans,
     this.initialEmail,
     this.initialPhone,
   });
@@ -35,6 +47,10 @@ class RegisterBusinessScreen extends StatefulWidget {
   final RegisterBusiness? onSubmit;
   final VerifyPhone? onVerifyPhone;
   final ResendCode? onResendCode;
+
+  /// Where the prices come from. Without an answer the form still works: it says what each plan covers and that the
+  /// price will be told.
+  final LoadPlans? onLoadPlans;
   final String? initialEmail;
   final String? initialPhone;
 
@@ -62,6 +78,12 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
 
   final Set<String> _services = <String>{};
   bool _servicesMissing = false;
+  // The package: a plan (basic = one service, standard = two, premium = all three) paid for [_months] months. It
+  // follows the number of services chosen until the applicant picks one themselves.
+  PlanCatalog _catalog = PlanCatalog.fallback;
+  String? _plan;
+  bool _planTouched = false;
+  int _months = 1;
   // Asked once inventory is among the services: retail, wholesale, mixed or depot.
   String? _inventoryType;
   bool _typeMissing = false;
@@ -89,6 +111,27 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
     if (widget.initialPhone != null) {
       _phone.text = widget.initialPhone!;
     }
+    _loadPlans();
+  }
+
+  /// Ask for the prices. A failure changes nothing: the plans and what they cover are known without the server.
+  Future<void> _loadPlans() async {
+    try {
+      final PlanCatalog catalog = await (widget.onLoadPlans ?? _loadPlansFromServer)();
+      if (!mounted) return;
+      setState(() {
+        _catalog = catalog;
+        _syncPlan();
+      });
+    } on Exception catch (_) {
+      // the prices are simply not shown
+    }
+  }
+
+  /// Until the applicant picks a plan, the one that fits the services chosen.
+  void _syncPlan() {
+    if (_planTouched) return;
+    _plan = _services.isEmpty ? null : _catalog.planFor(_services.length);
   }
 
   @override
@@ -124,6 +167,13 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
     });
     if (!formOk || _services.isEmpty || needsType) return;
 
+    // The package must cover the services chosen: basic is ONE service, standard two, premium all three.
+    final String plan = _plan ?? _catalog.planFor(_services.length);
+    if (!_catalog.covers(plan, _services.length)) {
+      setState(() => _error = _tooSmallText(plan));
+      return;
+    }
+
     setState(() => _busy = true);
     try {
       final Map<String, dynamic> result = await (widget.onSubmit ?? AuthService.registerBusiness)(
@@ -135,6 +185,8 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
           password: _password.text,
           passwordConfirmation: _confirm.text,
           requestedServices: kBusinessServices.where(_services.contains).toList(),
+          requestedPlan: plan,
+          requestedMonths: _months,
           inventoryType: _services.contains("inventory") ? _inventoryType : null,
           region: _region.text,
           district: _district.text,
@@ -328,6 +380,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
           ),
           _servicePicker(),
           if (_services.contains("inventory")) _inventoryTypePicker(),
+          _packagePicker(),
           _section(_sw ? "Mahali na maelezo (hiari)" : "Location and details (optional)"),
           _field(controller: _region, label: _sw ? "Mkoa" : "Region", icon: Icons.map_outlined),
           _field(controller: _district, label: _sw ? "Wilaya" : "District", icon: Icons.location_city_outlined),
@@ -381,6 +434,8 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
                 onSelected: (final bool on) => setState(() {
                   on ? _services.add(s) : _services.remove(s);
                   _servicesMissing = false;
+                  _error = null;
+                  _syncPlan();
                 }),
               );
             }).toList(),
@@ -400,6 +455,249 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
                 : "The super admin decides the final services you are given.",
             style: TextStyle(color: Colors.white38, fontSize: 11.sp),
           ),
+        ],
+      ),
+    );
+  }
+
+  String _tooSmallText(final String plan) => planTooSmallText(
+        plan,
+        _catalog.servicesIncluded(plan) ?? 0,
+        _services.length,
+        _catalog.planFor(_services.length),
+        sw: _sw,
+      );
+
+  /// "Your package": what each plan covers and costs, the one that fits the services chosen, and a plain word when a
+  /// plan is too small. Prices are the super admin's: they show here as soon as they are saved.
+  Widget _packagePicker() {
+    final int count = _services.length;
+    final String? plan = _plan;
+    final String recommended = count == 0 ? "" : _catalog.planFor(count);
+    final bool tooSmall = plan != null && count > 0 && !_catalog.covers(plan, count);
+    final int included = plan == null ? 0 : (_catalog.servicesIncluded(plan) ?? 0);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 14.h),
+      child: Column(
+        key: const ValueKey<String>("package_section"),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            _sw ? "Kifurushi chako na bei" : "Your package and price",
+            style: TextStyle(color: Colors.white70, fontSize: 13.sp, fontWeight: FontWeight.w600),
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            _sw
+                ? "${planNameText("basic", sw: true)} ni huduma MOJA, ${planNameText("standard", sw: true)} ni huduma 2, Premium ni huduma ZOTE 3."
+                : "Basic is ONE service, Standard is TWO, Premium is ALL THREE.",
+            key: const ValueKey<String>("package_rule"),
+            style: TextStyle(color: Colors.white54, fontSize: 12.sp),
+          ),
+          SizedBox(height: 10.h),
+          Wrap(
+            spacing: 8.w,
+            runSpacing: 6.h,
+            children: <Widget>[
+              for (final int m in _catalog.periods)
+                ChoiceChip(
+                  key: ValueKey<String>("period_$m"),
+                  label: Text(periodText(m, sw: _sw)),
+                  selected: _months == m,
+                  onSelected: (final bool _) => setState(() => _months = m),
+                ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          for (final PlanOffer o in _catalog.offers) _planOption(o, count, recommended),
+          if (count == 0)
+            Padding(
+              padding: EdgeInsets.only(top: 2.h),
+              child: Text(
+                _sw ? "Chagua huduma hapo juu ili ujue mpango unaokufaa." : "Choose your services above to see the plan that fits.",
+                key: const ValueKey<String>("package_choose_services"),
+                style: TextStyle(color: Colors.white38, fontSize: 12.sp),
+              ),
+            ),
+          if (tooSmall) _planWarning(plan, included, count, recommended),
+          if (plan == "basic" && !tooSmall)
+            _packageNote(
+              key: "basic_notice",
+              color: Colors.amberAccent,
+              icon: Icons.info_outline,
+              text: _sw
+                  ? "Kumbuka: mpango wa ${planNameText("basic", sw: true)} (Basic) ni huduma MOJA tu. Ukihitaji huduma 2 chagua ${planNameText("standard", sw: true)} (Standard), au Premium kwa huduma zote 3."
+                  : "Please note: the Basic plan is ONE service only. For two services choose Standard, or Premium for all three.",
+            ),
+          if (plan != null && count > 0 && !tooSmall && plan != recommended && included > count)
+            _packageNote(
+              key: "plan_note",
+              color: Colors.lightBlueAccent,
+              icon: Icons.lightbulb_outline,
+              text: _sw
+                  ? "${planNameText(plan, sw: true)} inajumuisha huduma $included, wewe umechagua $count. ${planNameText(recommended, sw: true)} inatosha kwa huduma ulizochagua."
+                  : "${planNameText(plan, sw: false)} covers $included services and you chose $count. ${planNameText(recommended, sw: false)} is enough for the services you chose.",
+            ),
+          if (plan != null && count > 0 && !tooSmall) _packageSummary(plan, included),
+        ],
+      ),
+    );
+  }
+
+  /// One plan to choose: what it covers and what it costs for the period chosen.
+  Widget _planOption(final PlanOffer o, final int count, final String recommended) {
+    final bool selected = _plan == o.plan;
+    final bool fits = count == 0 || count <= o.servicesIncluded;
+    final double? price = _catalog.priceFor(o.plan, _months);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: Opacity(
+        opacity: fits ? 1 : 0.55,
+        child: InkWell(
+          key: ValueKey<String>("plan_${o.plan}"),
+          borderRadius: BorderRadius.circular(14.r),
+          onTap: () => setState(() {
+            _plan = o.plan;
+            _planTouched = true;
+            _error = null;
+          }),
+          child: Container(
+            padding: EdgeInsets.all(12.w),
+            decoration: BoxDecoration(
+              color: selected ? ThemeConstants.primaryCyan.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(14.r),
+              border: Border.all(color: selected ? ThemeConstants.primaryCyan : Colors.white24, width: selected ? 1.6 : 1),
+            ),
+            child: Row(
+              children: <Widget>[
+                Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off, color: selected ? ThemeConstants.primaryCyan : Colors.white38, size: 22.sp),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Wrap(
+                        spacing: 8.w,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: <Widget>[
+                          Text(planNameText(o.plan, sw: _sw), style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w800)),
+                          if (o.plan == recommended)
+                            Container(
+                              key: ValueKey<String>("recommended_${o.plan}"),
+                              padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
+                              decoration: BoxDecoration(color: Colors.greenAccent.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(8.r)),
+                              child: Text(_sw ? "Inakufaa" : "Fits you", style: TextStyle(color: Colors.greenAccent, fontSize: 11.sp, fontWeight: FontWeight.w700)),
+                            ),
+                        ],
+                      ),
+                      Text(planCoverText(o.servicesIncluded, sw: _sw), key: ValueKey<String>("covers_${o.plan}"), style: TextStyle(color: ThemeConstants.primaryCyan, fontSize: 12.5.sp, fontWeight: FontWeight.w600)),
+                      SizedBox(height: 2.h),
+                      Text(
+                        price == null
+                            ? (_sw ? "Bei itatangazwa" : "Price to be announced")
+                            : "${moneyText(_catalog.currency, price)} · ${periodText(_months, sw: _sw)}",
+                        key: ValueKey<String>("price_${o.plan}"),
+                        style: TextStyle(color: price == null ? Colors.white38 : Colors.white, fontSize: 13.sp, fontWeight: price == null ? FontWeight.w400 : FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _planWarning(final String plan, final int included, final int count, final String recommended) {
+    return Container(
+      key: const ValueKey<String>("plan_warning"),
+      margin: EdgeInsets.only(top: 4.h),
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: Colors.redAccent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(_tooSmallText(plan), style: TextStyle(color: Colors.red[100], fontSize: 13.sp, height: 1.35)),
+          SizedBox(height: 6.h),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton(
+              key: const ValueKey<String>("use_recommended_plan"),
+              onPressed: () => setState(() {
+                _plan = recommended;
+                _planTouched = false;
+                _error = null;
+              }),
+              child: Text(_sw ? "Tumia ${planNameText(recommended, sw: true)}" : "Use ${planNameText(recommended, sw: false)}"),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _packageNote({required final String key, required final Color color, required final IconData icon, required final String text}) {
+    return Container(
+      key: ValueKey<String>(key),
+      margin: EdgeInsets.only(top: 4.h),
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(icon, color: color, size: 18.sp),
+          SizedBox(width: 8.w),
+          Expanded(child: Text(text, style: TextStyle(color: color, fontSize: 12.5.sp, height: 1.35))),
+        ],
+      ),
+    );
+  }
+
+  /// What the applicant will pay, and that the first days are free.
+  Widget _packageSummary(final String plan, final int included) {
+    final double? price = _catalog.priceFor(plan, _months);
+    final String name = planNameText(plan, sw: _sw);
+    final String period = periodText(_months, sw: _sw).toLowerCase();
+    final String line = price == null
+        ? (_sw ? "Bei ya $name kwa $period itatangazwa na msimamizi." : "The price of $name for $period will be told by the administrator.")
+        : (_sw
+            ? "Utalipa ${moneyText(_catalog.currency, price)} kwa $period: $name (${planCoverText(included, sw: true).toLowerCase()})."
+            : "You will pay ${moneyText(_catalog.currency, price)} for $period: $name (${planCoverText(included, sw: false).toLowerCase()}).");
+
+    return Container(
+      margin: EdgeInsets.only(top: 6.h),
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(line, key: const ValueKey<String>("package_summary"), style: TextStyle(color: Colors.white, fontSize: 13.5.sp, fontWeight: FontWeight.w700)),
+          if (_catalog.trialDays > 0) ...<Widget>[
+            SizedBox(height: 4.h),
+            Text(
+              _sw
+                  ? "Ukikubaliwa unapata siku ${_catalog.trialDays} za majaribio bila malipo; malipo yanaanza baada ya hapo."
+                  : "Once you are approved you get ${_catalog.trialDays} days of free trial; payment starts after that.",
+              key: const ValueKey<String>("trial_note"),
+              style: TextStyle(color: Colors.white60, fontSize: 12.sp),
+            ),
+          ],
         ],
       ),
     );
@@ -503,6 +801,19 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white70, fontSize: 14.sp, height: 1.4),
             ),
+            if (_plan != null) ...<Widget>[
+              SizedBox(height: 12.h),
+              Text(
+                _sw
+                    ? "Kifurushi ulichochagua: ${planNameText(_plan!, sw: true)} (${planCoverText(_catalog.servicesIncluded(_plan!) ?? 0, sw: true).toLowerCase()}) · ${periodText(_months, sw: true).toLowerCase()}"
+                        "${_catalog.priceFor(_plan!, _months) == null ? "" : " · ${moneyText(_catalog.currency, _catalog.priceFor(_plan!, _months)!)}"}"
+                    : "Your package: ${planNameText(_plan!, sw: false)} (${planCoverText(_catalog.servicesIncluded(_plan!) ?? 0, sw: false).toLowerCase()}) · ${periodText(_months, sw: false).toLowerCase()}"
+                        "${_catalog.priceFor(_plan!, _months) == null ? "" : " · ${moneyText(_catalog.currency, _catalog.priceFor(_plan!, _months)!)}"}",
+                key: const ValueKey<String>("registration_done_package"),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: ThemeConstants.primaryCyan, fontSize: 13.sp, fontWeight: FontWeight.w700),
+              ),
+            ],
             SizedBox(height: 20.h),
             if (_phoneConfirmed)
               Row(

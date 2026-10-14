@@ -22,6 +22,7 @@ import '../../widgets/pending_registrations_count.dart';
 import 'subscription_screen.dart';
 import "../admin/sms_senders_screen.dart";
 import '../../widgets/pending_sms_senders_count.dart';
+import "../admin/plan_prices_screen.dart";
 
 // ignore_for_file: directives_ordering
 class SettingsScreen extends StatefulWidget {
@@ -322,6 +323,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ? 'Mipango, tarehe za malipo na taarifa za kila biashara'
                             : 'Plan, paid-until date and details of every business',
                         () => _navigateToScreen(const BusinessesScreen()),
+                      ),
+                      const Divider(color: Colors.white24, height: 1),
+                      _buildSettingsTile(
+                        Icons.sell_outlined,
+                        loc.isSwahili ? 'Mipango na Bei' : 'Plans & Prices',
+                        loc.isSwahili
+                            ? 'Basic = huduma 1, Standard = huduma 2, Premium = zote 3: weka bei, zinaonekana kwenye usajili'
+                            : 'Basic = 1 service, Standard = 2, Premium = all 3: set the prices, the registration form shows them',
+                        () => _navigateToScreen(const PlanPricesScreen()),
                       ),
                       const Divider(color: Colors.white24, height: 1),
                       PendingSmsSendersCount(

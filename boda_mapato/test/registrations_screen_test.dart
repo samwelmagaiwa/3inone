@@ -15,6 +15,9 @@ BusinessRegistration _reg(
   String? reason,
   bool phoneVerified = true,
   String? inventoryType,
+  String? plan,
+  int? months,
+  double? price,
 }) =>
     BusinessRegistration.fromJson(<String, dynamic>{
       'id': id,
@@ -22,6 +25,9 @@ BusinessRegistration _reg(
       'business_name': business,
       'requested_services': requested,
       'assigned_services': assigned,
+      'requested_plan': plan,
+      'requested_months': months,
+      'requested_price': price,
       'inventory_type': inventoryType,
       'region': 'Dar es Salaam',
       'district': 'Kinondoni',
@@ -526,6 +532,91 @@ void main() {
 
       expect(_approve, findsOneWidget);
       expect(source.approvals, isEmpty);
+    });
+  });
+
+  group('the package the applicant chose', () {
+    Future<_FakeSource> open(WidgetTester t, BusinessRegistration r) async {
+      _tall(t);
+      final _FakeSource source = _FakeSource(<String, RegistrationsPage>{'pending': _pending(<BusinessRegistration>[r])});
+      await t.pumpWidget(_host(source));
+      await t.pumpAndSettle();
+      await t.tap(find.text(r.businessName));
+      await t.pumpAndSettle();
+      return source;
+    }
+
+    String shown(WidgetTester t, String key) => (t.widget(find.byKey(ValueKey<String>(key))) as Text).data!;
+
+    testWidgets('is shown with what it covers, the months and the price the super admin set', (t) async {
+      await open(t, _reg('1', plan: 'standard', months: 3, price: 140000));
+
+      expect(shown(t, 'requested_package'), 'Kawaida · Huduma 2 · Miezi 3 · TZS 140,000');
+    });
+
+    testWidgets('says so when no price has been set for it yet', (t) async {
+      await open(t, _reg('1', plan: 'basic', months: 1));
+
+      expect(shown(t, 'requested_package'), 'Msingi · Huduma MOJA · Mwezi 1 · bei haijawekwa');
+    });
+
+    testWidgets('a registration from before packages existed shows no package', (t) async {
+      await open(t, _reg('1'));
+
+      expect(find.byKey(const ValueKey<String>('requested_package')), findsNothing);
+    });
+
+    testWidgets('a sold plan that holds fewer services than are being given is refused before it is sent', (t) async {
+      final _FakeSource source = await open(t, _reg('1', requested: const <String>['rental', 'transport']));
+
+      await t.ensureVisible(find.byKey(const ValueKey<String>('plan_basic')));
+      await t.tap(find.byKey(const ValueKey<String>('plan_basic')));
+      await t.pump();
+      expect(find.byKey(const ValueKey<String>('plan_too_small_note')), findsOneWidget);
+      expect(shown(t, 'plan_too_small_note'), startsWith('Mpango wa Msingi ni huduma MOJA tu, na umechagua 2'));
+
+      await t.ensureVisible(_approve);
+      await t.tap(_approve);
+      await t.pumpAndSettle();
+      expect(source.approvals, isEmpty, reason: 'nothing is sent');
+      expect(shown(t, 'registration_action_error'), contains('huduma MOJA tu'));
+
+      // Standard holds two: it goes through
+      await t.tap(find.byKey(const ValueKey<String>('plan_standard')));
+      await t.pump();
+      expect(find.byKey(const ValueKey<String>('plan_too_small_note')), findsNothing);
+      await t.tap(_approve);
+      await t.pumpAndSettle();
+      expect(source.approvals, hasLength(1));
+      expect(source.approvedPlans.single.$1, 'standard');
+    });
+
+    testWidgets('taking a service away makes a smaller plan fit', (t) async {
+      final _FakeSource source = await open(t, _reg('1', requested: const <String>['rental', 'transport']));
+      await t.ensureVisible(find.byKey(const ValueKey<String>('plan_basic')));
+      await t.tap(find.byKey(const ValueKey<String>('plan_basic')));
+      await t.pump();
+      expect(find.byKey(const ValueKey<String>('plan_too_small_note')), findsOneWidget);
+
+      await t.tap(find.byKey(const ValueKey<String>('grant_transport')));
+      await t.pump();
+      expect(find.byKey(const ValueKey<String>('plan_too_small_note')), findsNothing);
+
+      await t.ensureVisible(_approve);
+      await t.tap(_approve);
+      await t.pumpAndSettle();
+      expect(source.approvals.single.$2, <String>['rental']);
+      expect(source.approvedPlans.single.$1, 'basic');
+    });
+
+    testWidgets('a trial has no limit, whatever the services', (t) async {
+      final _FakeSource source = await open(t, _reg('1', requested: const <String>['rental', 'transport', 'inventory'], inventoryType: 'depot'));
+
+      expect(find.byKey(const ValueKey<String>('plan_too_small_note')), findsNothing);
+      await t.ensureVisible(_approve);
+      await t.tap(_approve);
+      await t.pumpAndSettle();
+      expect(source.approvedPlans.single.$1, 'trial');
     });
   });
 }

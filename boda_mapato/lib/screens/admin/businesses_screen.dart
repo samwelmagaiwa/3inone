@@ -3,9 +3,11 @@ import "package:intl/intl.dart";
 
 import "../../constants/theme_constants.dart";
 import "../../models/business.dart";
+import "../../models/plan_prices.dart";
 import "../../models/subscription.dart";
 import "../../services/api_service.dart";
 import "../../services/localization_service.dart";
+import "../../utils/plan_text.dart";
 import "../../utils/server_message.dart";
 import "../../widgets/dial_date_picker.dart";
 import "../../widgets/scrolling_chip_row.dart";
@@ -37,6 +39,9 @@ abstract class BusinessesDataSource {
 
   /// Every payment recorded for the business, newest first.
   Future<List<SubscriptionPayment>> payments(String id);
+
+  /// The plans, what each covers and what it costs (set under Plans & Prices): a payment form fills the amount from it.
+  Future<PlanCatalog> planCatalog();
 
   /// Record a payment: it moves the paid-until date on by [months] and opens a business that was held back.
   /// The owner is told by text message. Returns the subscription as it stands afterwards.
@@ -79,6 +84,12 @@ class ApiBusinessesDataSource implements BusinessesDataSource {
   @override
   Future<void> updateBilling(final String id, {final String? plan, final DateTime? validUntil, final bool clearValidUntil = false}) async {
     await _api.updateBusiness(id, plan: plan, validUntil: validUntil, clearValidUntil: clearValidUntil);
+  }
+
+  @override
+  Future<PlanCatalog> planCatalog() async {
+    final Map<String, dynamic> res = await _api.getPlans();
+    return PlanCatalog.fromJson(Map<String, dynamic>.from(res["data"] as Map));
   }
 
   @override
@@ -345,10 +356,26 @@ class _BusinessesScreenState extends State<BusinessesScreen> {
             ),
             const SizedBox(height: 6),
             Text(_validity(bill), style: TextStyle(color: tone, fontSize: 12)),
+            if (_planTooSmall(b)) ...<Widget>[
+              const SizedBox(height: 4),
+              Text(
+                _sw
+                    ? "Mpango ${businessPlanLabel(bill.plan, sw: true)} unahusu huduma ${kPlanServices[bill.plan]}, biashara ina ${b.services.length}."
+                    : "The ${businessPlanLabel(bill.plan, sw: false)} plan covers ${kPlanServices[bill.plan]} service${kPlanServices[bill.plan] == 1 ? "" : "s"}; this business has ${b.services.length}.",
+                key: ValueKey<String>("plan_mismatch_${b.id}"),
+                style: const TextStyle(color: Colors.amberAccent, fontSize: 12),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  /// A sold plan that holds fewer services than the business has (a trial and free have no limit).
+  bool _planTooSmall(final Business b) {
+    final int? limit = kPlanServices[b.billing.plan];
+    return limit != null && b.services.length > limit;
   }
 
   String _validity(final BusinessBilling bill) {
@@ -630,19 +657,58 @@ class _PaymentDialogState extends State<_PaymentDialog> {
 
   /// A chosen end date instead of a number of months.
   DateTime? _until;
+
+  /// The price list. Until the server has answered, what each plan covers is known and the prices are not.
+  PlanCatalog _catalog = PlanCatalog.fallback;
   late String _plan = _initialPlan();
+
+  /// Has the person typed the amount themselves? Then the price list no longer overwrites it.
+  bool _amountEdited = false;
   bool _busy = false;
   String? _error;
 
   bool get _sw => widget.sw;
 
+  /// How many services this business has: the plan has to cover them.
+  int get _servicesCount => widget.business.services.length;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCatalog();
+  }
+
+  /// Ask for the price list; without an answer the form simply has no prices to fill in.
+  Future<void> _loadCatalog() async {
+    try {
+      final PlanCatalog catalog = await widget.source.planCatalog();
+      if (!mounted) return;
+      setState(() {
+        _catalog = catalog;
+        _applyPrice();
+      });
+    } on Exception catch (_) {
+      // no price list: the amount is typed
+    }
+  }
+
+  /// Fill the amount from the price list for the plan and months chosen, unless the person typed their own.
+  void _applyPrice() {
+    if (_amountEdited || _until != null) return;
+    final double? price = _catalog.priceFor(_plan, _months);
+    _amount.text = price == null ? "" : (price == price.roundToDouble() ? "${price.round()}" : "$price");
+  }
+
   /// A trial or a free plan is not something a payment buys.
   List<String> get _paidPlans => widget.plans.where((final String p) => p != "trial" && p != "free").toList();
 
+  /// The plan the business is on when it covers its services, else the smallest one that does.
   String _initialPlan() {
     final String current = widget.business.billing.plan;
-    if (_paidPlans.contains(current)) return current;
-    return _paidPlans.isNotEmpty ? _paidPlans.first : current;
+    if (_paidPlans.contains(current) && _catalog.covers(current, _servicesCount)) return current;
+    final String fit = _catalog.planFor(_servicesCount);
+    if (_paidPlans.contains(fit)) return fit;
+    return _paidPlans.isNotEmpty ? _paidPlans.last : current;
   }
 
   @override
@@ -725,6 +791,60 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
       );
 
+  /// Under the amount: what the price list says for the plan and months chosen (and a way back to it after typing
+  /// another), or that there is none.
+  Widget _priceHint() {
+    final String plan = businessPlanLabel(_plan, sw: _sw);
+    if (_until != null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 4, left: 4),
+        child: Text(
+          _sw ? "Tarehe nyingine: weka kiasi kilicholipwa." : "Custom date: enter the amount that was paid.",
+          key: const ValueKey<String>("payment_price_hint"),
+          style: const TextStyle(color: Colors.white54, fontSize: 12),
+        ),
+      );
+    }
+    final double? price = _catalog.priceFor(_plan, _months);
+    final String period = periodText(_months, sw: _sw).toLowerCase();
+    if (price == null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 4, left: 4),
+        child: Text(
+          _sw ? "Bei ya $plan kwa $period bado haijawekwa kwenye Mipango na Bei." : "No price is set for $plan for $period in Plans & Prices.",
+          key: const ValueKey<String>("payment_price_hint"),
+          style: const TextStyle(color: Colors.white38, fontSize: 12),
+        ),
+      );
+    }
+    final bool differs = (double.tryParse(_amount.text.replaceAll(",", "").trim()) ?? price) != price;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, left: 4),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              _sw ? "Bei ya orodha: ${moneyText(_catalog.currency, price)} ($plan, $period)" : "Price list: ${moneyText(_catalog.currency, price)} ($plan, $period)",
+              key: const ValueKey<String>("payment_price_hint"),
+              style: TextStyle(color: differs ? Colors.amberAccent : Colors.greenAccent, fontSize: 12),
+            ),
+          ),
+          if (differs)
+            TextButton(
+              key: const ValueKey<String>("payment_use_list_price"),
+              onPressed: _busy
+                  ? null
+                  : () => setState(() {
+                        _amountEdited = false;
+                        _applyPrice();
+                      }),
+              child: Text(_sw ? "Tumia" : "Use it"),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(final BuildContext context) {
     return AlertDialog(
@@ -738,14 +858,84 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
+            if (_paidPlans.isNotEmpty) ...<Widget>[
+              Text(_sw ? "Mpango" : "Plan", style: const TextStyle(color: Colors.white70)),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: <Widget>[
+                  for (final String p in _paidPlans)
+                    ChoiceChip(
+                      key: ValueKey<String>("payment_plan_$p"),
+                      label: Text(
+                        _catalog.servicesIncluded(p) == null
+                            ? businessPlanLabel(p, sw: _sw)
+                            : "${businessPlanLabel(p, sw: _sw)} · ${_catalog.servicesIncluded(p)}",
+                      ),
+                      selected: _plan == p,
+                      // a plan that holds fewer services than the business has cannot be chosen
+                      onSelected: (_busy || !_catalog.covers(p, _servicesCount))
+                          ? null
+                          : (final bool _) => setState(() {
+                                _plan = p;
+                                _applyPrice();
+                              }),
+                    ),
+                ],
+              ),
+              if (_servicesCount > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    _sw
+                        ? "Biashara hii ina huduma $_servicesCount: mpango unaotosha ni ${businessPlanLabel(_catalog.planFor(_servicesCount), sw: true)} au zaidi."
+                        : "This business has $_servicesCount service${_servicesCount == 1 ? "" : "s"}: the plan has to be ${businessPlanLabel(_catalog.planFor(_servicesCount), sw: false)} or bigger.",
+                    key: const ValueKey<String>("payment_plan_note"),
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                ),
+              const SizedBox(height: 14),
+            ],
+            Text(_sw ? "Inalipia muda gani" : "Time it pays for", style: const TextStyle(color: Colors.white70)),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: <Widget>[
+                for (final int m in <int>[1, 3, 6, 12])
+                  ChoiceChip(
+                    key: ValueKey<String>("payment_months_$m"),
+                    label: Text(m == 12 ? (_sw ? "Mwaka 1" : "1 year") : (_sw ? "Miezi $m" : "$m month(s)")),
+                    selected: _until == null && _months == m,
+                    onSelected: _busy
+                        ? null
+                        : (final bool _) => setState(() {
+                              _months = m;
+                              _until = null;
+                              _applyPrice();
+                            }),
+                  ),
+                ChoiceChip(
+                  key: const ValueKey<String>("payment_custom_date"),
+                  avatar: const Icon(Icons.event_outlined, size: 18),
+                  label: Text(_until == null ? (_sw ? "Tarehe nyingine" : "Custom date") : _covers()),
+                  selected: _until != null,
+                  onSelected: _busy ? null : (final bool _) => _chooseEndDate(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
             TextField(
               key: const ValueKey<String>("payment_amount"),
               controller: _amount,
               enabled: !_busy,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: const TextStyle(color: Colors.white),
+              onChanged: (final String v) => setState(() => _amountEdited = v.trim().isNotEmpty),
               decoration: _decoration(_sw ? "Kiasi kilicholipwa (TZS)" : "Amount paid (TZS)"),
             ),
+            _priceHint(),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               key: const ValueKey<String>("payment_method"),
@@ -767,52 +957,6 @@ class _PaymentDialogState extends State<_PaymentDialog> {
               style: const TextStyle(color: Colors.white),
               decoration: _decoration(_sw ? "Namba ya muamala (si lazima)" : "Transaction reference (optional)"),
             ),
-            const SizedBox(height: 14),
-            Text(_sw ? "Inalipia muda gani" : "Time it pays for", style: const TextStyle(color: Colors.white70)),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: <Widget>[
-                for (final int m in <int>[1, 3, 6, 12])
-                  ChoiceChip(
-                    key: ValueKey<String>("payment_months_$m"),
-                    label: Text(m == 12 ? (_sw ? "Mwaka 1" : "1 year") : (_sw ? "Miezi $m" : "$m month(s)")),
-                    selected: _until == null && _months == m,
-                    onSelected: _busy
-                        ? null
-                        : (final bool _) => setState(() {
-                              _months = m;
-                              _until = null;
-                            }),
-                  ),
-                ChoiceChip(
-                  key: const ValueKey<String>("payment_custom_date"),
-                  avatar: const Icon(Icons.event_outlined, size: 18),
-                  label: Text(_until == null ? (_sw ? "Tarehe nyingine" : "Custom date") : _covers()),
-                  selected: _until != null,
-                  onSelected: _busy ? null : (final bool _) => _chooseEndDate(),
-                ),
-              ],
-            ),
-            if (_paidPlans.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 14),
-              Text(_sw ? "Mpango" : "Plan", style: const TextStyle(color: Colors.white70)),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: <Widget>[
-                  for (final String p in _paidPlans)
-                    ChoiceChip(
-                      key: ValueKey<String>("payment_plan_$p"),
-                      label: Text(businessPlanLabel(p, sw: _sw)),
-                      selected: _plan == p,
-                      onSelected: _busy ? null : (final bool _) => setState(() => _plan = p),
-                    ),
-                ],
-              ),
-            ],
             const SizedBox(height: 12),
             TextField(
               key: const ValueKey<String>("payment_note"),

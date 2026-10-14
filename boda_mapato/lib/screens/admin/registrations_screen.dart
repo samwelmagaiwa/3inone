@@ -4,10 +4,13 @@ import "package:intl/intl.dart";
 import "../../constants/theme_constants.dart";
 import "../../models/business.dart";
 import "../../models/business_registration.dart";
+import "../../models/plan_prices.dart";
 import "../../modules/inventory/models/inv_capabilities.dart";
 import "../../services/api_service.dart";
 import "../../services/localization_service.dart";
+import "../../utils/plan_text.dart";
 import "../../utils/server_message.dart";
+import "../../widgets/dial_date_picker.dart";
 import "../../widgets/scrolling_chip_row.dart";
 
 /// One page of registrations plus how many exist in each state.
@@ -473,9 +476,16 @@ class _RegistrationSheetState extends State<_RegistrationSheet> {
     super.dispose();
   }
 
+  /// The smallest sold plan that holds the services being given.
+  String _betterPlan() => PlanCatalog.fallback.planFor(_grant.length);
+
   Future<void> _approve() async {
     if (_grant.isEmpty) {
       setState(() => _error = _sw ? "Chagua angalau huduma moja ya kumpa." : "Choose at least one service to give.");
+      return;
+    }
+    if (_planTooSmall) {
+      setState(() => _error = planTooSmallText(_plan, kPlanServices[_plan]!, _grant.length, _betterPlan(), sw: _sw));
       return;
     }
     final List<String> services = kBusinessServices.where(_grant.contains).toList();
@@ -500,11 +510,12 @@ class _RegistrationSheetState extends State<_RegistrationSheet> {
 
   Future<void> _pickValidUntil() async {
     final DateTime now = DateTime.now();
-    final DateTime? picked = await showDatePicker(
-      context: context,
+    final DateTime? picked = await showDialDatePicker(
+      context,
       initialDate: _validUntil ?? now.add(const Duration(days: 30)),
       firstDate: now,
       lastDate: now.add(const Duration(days: 3650)),
+      sw: _sw,
     );
     if (picked != null) setState(() => _validUntil = picked);
   }
@@ -607,6 +618,8 @@ class _RegistrationSheetState extends State<_RegistrationSheet> {
               _sw ? "Huduma alizoomba" : "Services requested",
               _r.requestedServices.map(widget.serviceLabel).join(", "),
             ),
+            if ((_r.requestedPlan ?? "").isNotEmpty)
+              _row(Icons.sell_outlined, _sw ? "Kifurushi alichochagua" : "Package chosen", _packageText(), valueKey: "requested_package"),
             if ((_r.inventoryType ?? "").isNotEmpty)
               _row(Icons.category_outlined, _sw ? "Aina ya biashara" : "Kind of business", inventoryTypeLabel(_r.inventoryType!, sw: _sw)),
             if (_r.status == BusinessRegistration.approved) ...<Widget>[
@@ -685,6 +698,15 @@ class _RegistrationSheetState extends State<_RegistrationSheet> {
                         ))
                     .toList(),
               ),
+              if (_planTooSmall)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    planTooSmallText(_plan, kPlanServices[_plan]!, _grant.length, _betterPlan(), sw: _sw),
+                    key: const ValueKey<String>("plan_too_small_note"),
+                    style: const TextStyle(color: Colors.redAccent, fontSize: 12.5),
+                  ),
+                ),
               const SizedBox(height: 8),
               Row(
                 children: <Widget>[
@@ -751,7 +773,7 @@ class _RegistrationSheetState extends State<_RegistrationSheet> {
     );
   }
 
-  Widget _row(final IconData icon, final String label, final String value) => Padding(
+  Widget _row(final IconData icon, final String label, final String value, {final String? valueKey}) => Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -759,8 +781,27 @@ class _RegistrationSheetState extends State<_RegistrationSheet> {
             Icon(icon, size: 18, color: ThemeConstants.primaryCyan),
             const SizedBox(width: 10),
             SizedBox(width: 110, child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 13))),
-            Expanded(child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 14))),
+            Expanded(child: Text(value, key: valueKey == null ? null : ValueKey<String>(valueKey), style: const TextStyle(color: Colors.white, fontSize: 14))),
           ],
         ),
       );
+
+  /// "Standard · TWO services · 3 months · TZS 140,000": what they chose to buy and what it is priced at.
+  String _packageText() {
+    final String plan = _r.requestedPlan!;
+    final int months = _r.requestedMonths ?? 1;
+    final int included = kPlanServices[plan] ?? 0;
+    return <String>[
+      planNameText(plan, sw: _sw),
+      if (included > 0) planCoverText(included, sw: _sw),
+      periodText(months, sw: _sw),
+      _r.requestedPrice == null ? (_sw ? "bei haijawekwa" : "no price set") : moneyText("TZS", _r.requestedPrice!),
+    ].join(" · ");
+  }
+
+  /// The plan chosen above holds fewer services than are being given (a trial and free have no limit).
+  bool get _planTooSmall {
+    final int? limit = kPlanServices[_plan];
+    return limit != null && _grant.length > limit;
+  }
 }

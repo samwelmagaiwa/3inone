@@ -1,4 +1,5 @@
 import 'package:boda_mapato/models/business.dart';
+import 'package:boda_mapato/models/plan_prices.dart';
 import 'package:boda_mapato/models/subscription.dart';
 import 'package:boda_mapato/widgets/dial_date_picker.dart';
 import 'package:boda_mapato/screens/admin/businesses_screen.dart';
@@ -18,13 +19,14 @@ Business _biz(
   int? days,
   bool expired = false,
   bool ownerActive = true,
+  List<String> services = const <String>['rental', 'inventory'],
 }) =>
     Business(
       id: id,
       name: name,
       tin: '123-456-789',
       owner: BusinessOwner(id: 'u-$id', name: 'Asha Owner', email: 'asha@example.test', phoneNumber: '0743519100', isActive: ownerActive),
-      services: const <String>['rental', 'inventory'],
+      services: services,
       billing: BusinessBilling(plan: plan, validUntil: until, daysLeft: days, isExpired: expired),
     );
 
@@ -39,6 +41,15 @@ class _FakeSource implements BusinessesDataSource {
   Object? paymentError;
   final List<({String id, double amount, String? method, String? reference, String? plan, int months, DateTime? validUntil, String? note})> recorded =
       <({String id, double amount, String? method, String? reference, String? plan, int months, DateTime? validUntil, String? note})>[];
+
+  PlanCatalog catalog = PlanCatalog.fallback;
+  Object? catalogError;
+
+  @override
+  Future<PlanCatalog> planCatalog() async {
+    if (catalogError != null) throw catalogError!;
+    return catalog;
+  }
 
   @override
   Future<List<SubscriptionPayment>> payments(String id) async => List<SubscriptionPayment>.of(paymentList);
@@ -552,6 +563,225 @@ void main() {
       await t.tap(_key('billing_save'));
       await t.pumpAndSettle();
       expect(source.updates.single.until, DateTime(month.year, month.month, 10));
+    });
+  });
+
+  group('the price list in the payment form', () {
+    PlanCatalog priced() => const PlanCatalog(
+          configured: true,
+          offers: <PlanOffer>[
+            PlanOffer(plan: 'basic', servicesIncluded: 1, prices: <int, double?>{1: 30000, 3: 85000, 6: 160000, 12: 300000}),
+            PlanOffer(plan: 'standard', servicesIncluded: 2, prices: <int, double?>{1: 50000, 3: 140000, 6: 270000, 12: 520000}),
+            PlanOffer(plan: 'premium', servicesIncluded: 3, prices: <int, double?>{1: 70000, 3: 200000, 6: 390000, 12: 750000}),
+          ],
+        );
+
+    Future<_FakeSource> form(WidgetTester t, Business b, {PlanCatalog? catalog, Object? catalogError}) async {
+      _tall(t);
+      final _FakeSource source = _FakeSource(<String, BusinessesPage>{
+        'all': BusinessesPage(items: <Business>[b], total: 1),
+      })
+        ..catalog = catalog ?? priced()
+        ..catalogError = catalogError;
+      await t.pumpWidget(_host(source));
+      await t.pumpAndSettle();
+      await t.tap(find.text(b.name));
+      await t.pumpAndSettle();
+      await t.tap(_key('record_payment'));
+      await t.pumpAndSettle();
+      return source;
+    }
+
+    String amount(WidgetTester t) => t.widget<TextField>(_key('payment_amount')).controller!.text;
+    String hint(WidgetTester t) => (t.widget(_key('payment_price_hint')) as Text).data!;
+    bool chosen(WidgetTester t, String plan) => t.widget<ChoiceChip>(_key('payment_plan_$plan')).selected;
+    bool offered(WidgetTester t, String plan) => t.widget<ChoiceChip>(_key('payment_plan_$plan')).onSelected != null;
+
+    testWidgets('start on the smallest plan that holds the services, with its price filled in', (t) async {
+      await form(t, _biz('1', plan: 'basic'));
+
+      expect(chosen(t, 'standard'), isTrue, reason: 'the business has 2 services and is on Basic, which holds one');
+      expect(chosen(t, 'basic'), isFalse);
+      expect(amount(t), '50000');
+      expect(hint(t), 'Bei ya orodha: TZS 50,000 (Kawaida, mwezi 1)');
+      expect((t.widget(_key('payment_plan_note')) as Text).data, 'Biashara hii ina huduma 2: mpango unaotosha ni Kawaida au zaidi.');
+    });
+
+    testWidgets('a plan that holds fewer services than the business has cannot be chosen', (t) async {
+      await form(t, _biz('1', plan: 'basic'));
+
+      expect(offered(t, 'basic'), isFalse);
+      expect(offered(t, 'standard'), isTrue);
+      expect(offered(t, 'premium'), isTrue);
+
+      await t.tap(_key('payment_plan_basic'), warnIfMissed: false);
+      await t.pump();
+      expect(chosen(t, 'basic'), isFalse);
+      expect(chosen(t, 'standard'), isTrue);
+    });
+
+    testWidgets('a business with one service can be on Basic', (t) async {
+      await form(t, _biz('1', plan: 'basic', services: const <String>['rental']));
+
+      expect(chosen(t, 'basic'), isTrue);
+      expect(offered(t, 'basic'), isTrue);
+      expect(amount(t), '30000');
+      expect((t.widget(_key('payment_plan_note')) as Text).data, 'Biashara hii ina huduma 1: mpango unaotosha ni Msingi au zaidi.');
+    });
+
+    testWidgets('a business on a bigger plan that already holds its services stays on it', (t) async {
+      await form(t, _biz('1', plan: 'premium'));
+
+      expect(chosen(t, 'premium'), isTrue);
+      expect(amount(t), '70000');
+    });
+
+    testWidgets('the amount follows the plan and the months until the person types their own', (t) async {
+      await form(t, _biz('1', plan: 'basic'));
+
+      await t.tap(_key('payment_months_3'));
+      await t.pump();
+      expect(amount(t), '140000');
+      expect(hint(t), 'Bei ya orodha: TZS 140,000 (Kawaida, miezi 3)');
+
+      await t.tap(_key('payment_plan_premium'));
+      await t.pump();
+      expect(amount(t), '200000');
+
+      await t.tap(_key('payment_months_12'));
+      await t.pump();
+      expect(amount(t), '750000');
+    });
+
+    testWidgets('an amount typed by hand is kept, flagged against the list, and the list price is one tap away', (t) async {
+      await form(t, _biz('1', plan: 'basic'));
+
+      await t.enterText(_key('payment_amount'), '45000');
+      await t.pump();
+      expect(hint(t), 'Bei ya orodha: TZS 50,000 (Kawaida, mwezi 1)');
+      expect(t.widget<Text>(_key('payment_price_hint')).style!.color, Colors.amberAccent, reason: 'it differs from the list');
+
+      await t.tap(_key('payment_months_3'));
+      await t.pump();
+      expect(amount(t), '45000', reason: 'what was typed is not overwritten');
+
+      await t.tap(_key('payment_use_list_price'));
+      await t.pump();
+      expect(amount(t), '140000');
+      expect(_key('payment_use_list_price'), findsNothing);
+      expect(t.widget<Text>(_key('payment_price_hint')).style!.color, Colors.greenAccent);
+    });
+
+    testWidgets('emptying the amount lets the list price come back', (t) async {
+      await form(t, _biz('1', plan: 'basic'));
+
+      await t.enterText(_key('payment_amount'), '1');
+      await t.enterText(_key('payment_amount'), '');
+      await t.tap(_key('payment_months_6'));
+      await t.pump();
+
+      expect(amount(t), '270000');
+    });
+
+    testWidgets('a custom end date has no list price: the amount is typed', (t) async {
+      await form(t, _biz('1', plan: 'basic'));
+      expect(amount(t), '50000');
+
+      await t.tap(_key('payment_custom_date'));
+      await t.pumpAndSettle();
+      await t.tap(_key('dial_ok'));
+      await t.pumpAndSettle();
+
+      expect(hint(t), 'Tarehe nyingine: weka kiasi kilicholipwa.');
+      expect(amount(t), '50000', reason: 'what is there stays for the person to correct');
+    });
+
+    testWidgets('with no price set for the plan and months it says so and leaves the amount to be typed', (t) async {
+      await form(t, _biz('1', plan: 'basic'), catalog: PlanCatalog.fallback);
+
+      expect(amount(t), '');
+      expect(hint(t), 'Bei ya Kawaida kwa mwezi 1 bado haijawekwa kwenye Mipango na Bei.');
+      expect(offered(t, 'basic'), isFalse, reason: 'what each plan holds does not need the prices');
+    });
+
+    testWidgets('a price list that cannot be fetched changes nothing but the prefilled amount', (t) async {
+      final _FakeSource source = await form(t, _biz('1', plan: 'basic'), catalogError: Exception('offline'));
+
+      expect(amount(t), '');
+      await t.enterText(_key('payment_amount'), '60000');
+      await t.tap(_key('payment_submit'));
+      await t.pumpAndSettle();
+      await t.tap(_key('confirm_yes'));
+      await t.pumpAndSettle();
+      expect(source.recorded.single.amount, 60000);
+      expect(source.recorded.single.plan, 'standard');
+    });
+
+    testWidgets('the payment recorded is the list price on the plan that fits, after the confirmation shows both', (t) async {
+      final _FakeSource source = await form(t, _biz('1', plan: 'basic'));
+
+      await t.tap(_key('payment_submit'));
+      await t.pumpAndSettle();
+      expect((t.widget(_key('confirm_amount')) as Text).data, 'TZS 50,000');
+      expect((t.widget(_key('confirm_plan')) as Text).data, 'Kawaida');
+      await t.tap(_key('confirm_yes'));
+      await t.pumpAndSettle();
+
+      expect(source.recorded.single.amount, 50000);
+      expect(source.recorded.single.plan, 'standard');
+      expect(source.recorded.single.months, 1);
+    });
+
+    testWidgets('reads in English when the app does', (t) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      await LocalizationService.instance.changeLanguage('en');
+      addTearDown(() => LocalizationService.instance.changeLanguage('sw'));
+      await form(t, _biz('1', plan: 'basic'));
+
+      expect(hint(t), 'Price list: TZS 50,000 (Standard, 1 month)');
+      expect((t.widget(_key('payment_plan_note')) as Text).data, 'This business has 2 services: the plan has to be Standard or bigger.');
+      await t.enterText(_key('payment_amount'), '45000');
+      await t.pump();
+      expect(find.text('Use it'), findsOneWidget);
+    });
+  });
+
+  group('the business list flags a plan that is too small', () {
+    Future<void> list(WidgetTester t, List<Business> items) async {
+      _tall(t);
+      final _FakeSource source = _FakeSource(<String, BusinessesPage>{'all': BusinessesPage(items: items, total: items.length)});
+      await t.pumpWidget(_host(source));
+      await t.pumpAndSettle();
+    }
+
+    testWidgets('Basic with two services is flagged, in Swahili', (t) async {
+      await list(t, <Business>[_biz('1', plan: 'basic')]);
+
+      expect((t.widget(_key('plan_mismatch_1')) as Text).data, 'Mpango Msingi unahusu huduma 1, biashara ina 2.');
+    });
+
+    testWidgets('Standard with three, but not a plan that fits, a trial or free', (t) async {
+      await list(t, <Business>[
+        _biz('1', plan: 'standard', services: const <String>['rental', 'inventory', 'transport']),
+        _biz('2', name: 'Fits', plan: 'basic', services: const <String>['rental']),
+        _biz('3', name: 'Trial', plan: 'trial', services: const <String>['rental', 'inventory', 'transport']),
+        _biz('4', name: 'Free', plan: 'free', services: const <String>['rental', 'inventory', 'transport']),
+        _biz('5', name: 'Big', plan: 'premium', services: const <String>['rental', 'inventory', 'transport']),
+      ]);
+
+      expect(_key('plan_mismatch_1'), findsOneWidget);
+      for (final String ok in <String>['2', '3', '4', '5']) {
+        expect(_key('plan_mismatch_$ok'), findsNothing, reason: 'business $ok');
+      }
+    });
+
+    testWidgets('and in English', (t) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      await LocalizationService.instance.changeLanguage('en');
+      addTearDown(() => LocalizationService.instance.changeLanguage('sw'));
+      await list(t, <Business>[_biz('1', plan: 'basic')]);
+
+      expect((t.widget(_key('plan_mismatch_1')) as Text).data, 'The Basic plan covers 1 service; this business has 2.');
     });
   });
 }
