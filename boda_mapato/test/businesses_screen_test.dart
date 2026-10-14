@@ -1,5 +1,6 @@
 import 'package:boda_mapato/models/business.dart';
 import 'package:boda_mapato/models/subscription.dart';
+import 'package:boda_mapato/widgets/dial_date_picker.dart';
 import 'package:boda_mapato/screens/admin/businesses_screen.dart';
 import 'package:boda_mapato/services/localization_service.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Business _biz(
   String id, {
@@ -35,8 +37,8 @@ class _FakeSource implements BusinessesDataSource {
   Object? updateError;
   List<SubscriptionPayment> paymentList = <SubscriptionPayment>[];
   Object? paymentError;
-  final List<({String id, double amount, String? method, String? reference, String? plan, int months, String? note})> recorded =
-      <({String id, double amount, String? method, String? reference, String? plan, int months, String? note})>[];
+  final List<({String id, double amount, String? method, String? reference, String? plan, int months, DateTime? validUntil, String? note})> recorded =
+      <({String id, double amount, String? method, String? reference, String? plan, int months, DateTime? validUntil, String? note})>[];
 
   @override
   Future<List<SubscriptionPayment>> payments(String id) async => List<SubscriptionPayment>.of(paymentList);
@@ -49,11 +51,12 @@ class _FakeSource implements BusinessesDataSource {
     String? reference,
     String? plan,
     int months = 1,
+    DateTime? validUntil,
     String? note,
   }) async {
     if (paymentError != null) throw paymentError!;
-    recorded.add((id: id, amount: amount, method: method, reference: reference, plan: plan, months: months, note: note));
-    final DateTime until = _today.add(Duration(days: 30 * months));
+    recorded.add((id: id, amount: amount, method: method, reference: reference, plan: plan, months: months, validUntil: validUntil, note: note));
+    final DateTime until = validUntil ?? _today.add(Duration(days: 30 * months));
     paymentList = <SubscriptionPayment>[
       SubscriptionPayment(amount: amount, currency: 'TZS', plan: plan ?? '', method: method, reference: reference, paidAt: _today, periodStart: _today, periodEnd: until),
       ...paymentList,
@@ -268,6 +271,8 @@ void main() {
     await t.pump();
     await t.tap(_key('payment_submit'));
     await t.pumpAndSettle();
+    await t.tap(_key('confirm_yes'));
+    await t.pumpAndSettle();
 
     expect(source.recorded, hasLength(1));
     expect(source.recorded.single.id, '1');
@@ -312,6 +317,8 @@ void main() {
     await t.enterText(_key('payment_amount'), '100');
     await t.tap(_key('payment_submit'));
     await t.pumpAndSettle();
+    await t.tap(_key('confirm_yes'));
+    await t.pumpAndSettle();
 
     expect(find.text('The amount must be greater than 0.'), findsOneWidget);
     expect(_key('payment_submit'), findsOneWidget);
@@ -329,5 +336,222 @@ void main() {
 
     expect(_key('payment_submit'), findsNothing);
     expect(source.recorded, isEmpty);
+  });
+
+  group('confirming a payment', () {
+    Future<_FakeSource> fillForm(WidgetTester t, {String amount = '45000'}) async {
+      final _FakeSource source = await open(t, _biz('1', plan: 'trial', until: _today.add(const Duration(days: 2)), days: 2));
+      await t.tap(_key('record_payment'));
+      await t.pumpAndSettle();
+      await t.enterText(_key('payment_amount'), amount);
+      await t.tap(_key('payment_months_3'));
+      await t.pump();
+      await t.tap(_key('payment_plan_premium'));
+      await t.pump();
+      return source;
+    }
+
+    String shown(WidgetTester t, String key) => (t.widget(_key(key)) as Text).data!;
+
+    testWidgets('pressing Record first asks, with everything about to be recorded in front of the person', (t) async {
+      final _FakeSource source = await fillForm(t, amount: '45,000');
+
+      await t.tap(_key('payment_submit'));
+      await t.pumpAndSettle();
+
+      expect(_key('confirm_payment'), findsOneWidget);
+      expect(find.text('Thibitisha malipo'), findsOneWidget);
+      expect(shown(t, 'confirm_business'), 'Asha Rentals');
+      expect(shown(t, 'confirm_amount'), 'TZS 45,000');
+      expect(shown(t, 'confirm_method'), 'Pesa za simu');
+      expect(shown(t, 'confirm_covers'), 'Miezi 3');
+      expect(shown(t, 'confirm_plan'), 'Premium');
+      expect(find.textContaining('Rekodi malipo haya?'), findsOneWidget);
+      expect(find.text('Hapana'), findsOneWidget);
+      expect(find.text('Ndiyo'), findsOneWidget);
+      expect(source.recorded, isEmpty, reason: 'nothing is recorded before the answer');
+    });
+
+    testWidgets('NO records nothing and leaves the form as it was', (t) async {
+      final _FakeSource source = await fillForm(t);
+
+      await t.tap(_key('payment_submit'));
+      await t.pumpAndSettle();
+      await t.tap(_key('confirm_no'));
+      await t.pumpAndSettle();
+
+      expect(source.recorded, isEmpty);
+      expect(_key('confirm_payment'), findsNothing);
+      expect(_key('payment_submit'), findsOneWidget, reason: 'still on the form');
+      expect(find.text('45000'), findsOneWidget, reason: 'with what was typed');
+      expect(t.widget<ChoiceChip>(_key('payment_months_3')).selected, isTrue);
+      expect(t.widget<ChoiceChip>(_key('payment_plan_premium')).selected, isTrue);
+
+      // and it can be sent after all
+      await t.tap(_key('payment_submit'));
+      await t.pumpAndSettle();
+      await t.tap(_key('confirm_yes'));
+      await t.pumpAndSettle();
+      expect(source.recorded, hasLength(1));
+    });
+
+    testWidgets('YES records it once', (t) async {
+      final _FakeSource source = await fillForm(t);
+
+      await t.tap(_key('payment_submit'));
+      await t.pumpAndSettle();
+      await t.tap(_key('confirm_yes'));
+      await t.pumpAndSettle();
+
+      expect(source.recorded, hasLength(1));
+      expect(source.recorded.single.amount, 45000);
+      expect(source.recorded.single.validUntil, isNull);
+      expect(_key('payment_submit'), findsNothing, reason: 'the form closed');
+    });
+
+    testWidgets('an empty amount is refused before anyone is asked', (t) async {
+      final _FakeSource source = await open(t, _biz('1'));
+      await t.tap(_key('record_payment'));
+      await t.pumpAndSettle();
+
+      await t.tap(_key('payment_submit'));
+      await t.pumpAndSettle();
+
+      expect(_key('confirm_payment'), findsNothing);
+      expect(source.recorded, isEmpty);
+    });
+
+    testWidgets('the question is in English when the app is', (t) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      await LocalizationService.instance.changeLanguage('en');
+      addTearDown(() => LocalizationService.instance.changeLanguage('sw'));
+      await fillForm(t);
+
+      await t.tap(_key('payment_submit'));
+      await t.pumpAndSettle();
+
+      expect(find.text('Confirm the payment'), findsOneWidget);
+      expect(shown(t, 'confirm_covers'), '3 month(s)');
+      expect(find.text('No'), findsOneWidget);
+      expect(find.text('Yes'), findsOneWidget);
+      expect(find.text('Hapana'), findsNothing);
+    });
+  });
+
+  group('a custom end date', () {
+    testWidgets('is chosen on the round dial, shows on the chip, is confirmed and recorded as the end date', (t) async {
+      final _FakeSource source = await open(t, _biz('1', plan: 'basic'));
+      await t.tap(_key('record_payment'));
+      await t.pumpAndSettle();
+      await t.enterText(_key('payment_amount'), '90000');
+
+      await t.tap(_key('payment_custom_date'));
+      await t.pumpAndSettle();
+      expect(_key('dial_face'), findsOneWidget);
+      expect(find.text('Chagua tarehe'), findsOneWidget);
+
+      // the dial opens a month from now; go two months on from there and choose the 20th
+      await t.tap(_key('dial_next_month'));
+      await t.pump();
+      await t.tap(_key('dial_next_month'));
+      await t.pump();
+      await t.tap(_key('dial_day_20'));
+      await t.pump();
+      final DateTime opensAt = _today.add(const Duration(days: 30));
+      final DateTime month = DateTime(opensAt.year, opensAt.month + 2);
+      final DateTime chosen = DateTime(month.year, month.month, 20);
+      await t.tap(_key('dial_ok'));
+      await t.pumpAndSettle();
+
+      expect(t.widget<ChoiceChip>(_key('payment_custom_date')).selected, isTrue);
+      expect(t.widget<ChoiceChip>(_key('payment_months_1')).selected, isFalse, reason: 'a date replaces the months');
+      expect(find.text('Hadi ${dialDateLabel(chosen, sw: true)}'), findsOneWidget);
+
+      await t.tap(_key('payment_submit'));
+      await t.pumpAndSettle();
+      expect((t.widget(_key('confirm_covers')) as Text).data, 'Hadi ${dialDateLabel(chosen, sw: true)}');
+      await t.tap(_key('confirm_yes'));
+      await t.pumpAndSettle();
+
+      expect(source.recorded.single.validUntil, chosen);
+      expect(find.text(DateFormat('dd MMM yyyy').format(chosen)), findsWidgets, reason: 'the paid-until date is that day');
+    });
+
+    testWidgets('choosing a number of months again takes the date away', (t) async {
+      final _FakeSource source = await open(t, _biz('1', plan: 'basic'));
+      await t.tap(_key('record_payment'));
+      await t.pumpAndSettle();
+      await t.enterText(_key('payment_amount'), '1000');
+
+      await t.tap(_key('payment_custom_date'));
+      await t.pumpAndSettle();
+      await t.tap(_key('dial_ok'));
+      await t.pumpAndSettle();
+      expect(t.widget<ChoiceChip>(_key('payment_custom_date')).selected, isTrue);
+
+      await t.tap(_key('payment_months_6'));
+      await t.pump();
+      expect(t.widget<ChoiceChip>(_key('payment_custom_date')).selected, isFalse);
+      expect(find.descendant(of: _key('payment_custom_date'), matching: find.text('Tarehe nyingine')), findsOneWidget);
+
+      await t.tap(_key('payment_submit'));
+      await t.pumpAndSettle();
+      await t.tap(_key('confirm_yes'));
+      await t.pumpAndSettle();
+      expect(source.recorded.single.validUntil, isNull);
+      expect(source.recorded.single.months, 6);
+    });
+
+    testWidgets('cancelling the dial leaves things as they were, and the dial only offers days after today', (t) async {
+      final _FakeSource source = await open(t, _biz('1', plan: 'basic'));
+      await t.tap(_key('record_payment'));
+      await t.pumpAndSettle();
+
+      await t.tap(_key('payment_custom_date'));
+      await t.pumpAndSettle();
+
+      // back to the first month on offer: nothing earlier can be reached
+      while (t.widget<IconButton>(_key('dial_prev_month')).onPressed != null) {
+        await t.tap(_key('dial_prev_month'));
+        await t.pump();
+      }
+      final DateTime tomorrow = _today.add(const Duration(days: 1));
+      expect((t.widget(_key('dial_selected')) as Text).data, endsWith(dialDateLabel(tomorrow, sw: true)), reason: 'the first day on offer is tomorrow');
+
+      // today and earlier cannot be chosen: a payment buys time from tomorrow
+      if (tomorrow.month == _today.month) {
+        await t.tap(_key('dial_day_${_today.day}'));
+        await t.pump();
+        expect((t.widget(_key('dial_selected')) as Text).data, endsWith(dialDateLabel(tomorrow, sw: true)));
+      }
+
+      await t.tap(_key('dial_cancel'));
+      await t.pumpAndSettle();
+
+      expect(t.widget<ChoiceChip>(_key('payment_custom_date')).selected, isFalse);
+      expect(t.widget<ChoiceChip>(_key('payment_months_1')).selected, isTrue);
+      expect(source.recorded, isEmpty);
+    });
+
+    testWidgets('the sheet\'s own date button opens the dial too', (t) async {
+      final _FakeSource source = await open(t, _biz('1', until: _today.add(const Duration(days: 5)), days: 5));
+
+      await t.tap(_key('billing_pick_date'));
+      await t.pumpAndSettle();
+      expect(_key('dial_face'), findsOneWidget);
+      await t.tap(_key('dial_next_month'));
+      await t.pump();
+      await t.tap(_key('dial_day_10'));
+      await t.pump();
+      final DateTime opensAt = _today.add(const Duration(days: 5));
+      final DateTime month = DateTime(opensAt.year, opensAt.month + 1);
+      await t.tap(_key('dial_ok'));
+      await t.pumpAndSettle();
+
+      expect(find.text(DateFormat('dd MMM yyyy').format(DateTime(month.year, month.month, 10))), findsOneWidget);
+      await t.tap(_key('billing_save'));
+      await t.pumpAndSettle();
+      expect(source.updates.single.until, DateTime(month.year, month.month, 10));
+    });
   });
 }

@@ -7,6 +7,8 @@ import "../../models/subscription.dart";
 import "../../services/api_service.dart";
 import "../../services/localization_service.dart";
 import "../../utils/server_message.dart";
+import "../../widgets/dial_date_picker.dart";
+import "../../widgets/scrolling_chip_row.dart";
 import "../settings/subscription_screen.dart";
 
 /// One page of businesses plus how many are expired / about to expire, and the plans on offer.
@@ -45,6 +47,7 @@ abstract class BusinessesDataSource {
     String? reference,
     String? plan,
     int months = 1,
+    DateTime? validUntil,
     String? note,
   });
 }
@@ -96,6 +99,7 @@ class ApiBusinessesDataSource implements BusinessesDataSource {
     final String? reference,
     final String? plan,
     final int months = 1,
+    final DateTime? validUntil,
     final String? note,
   }) async {
     final Map<String, dynamic> res = await _api.recordBusinessPayment(
@@ -104,7 +108,9 @@ class ApiBusinessesDataSource implements BusinessesDataSource {
       method: method,
       reference: reference,
       plan: plan,
-      months: months,
+      // An exact end date says it all; otherwise the months it pays for.
+      months: validUntil == null ? months : null,
+      validUntil: validUntil,
       note: note,
     );
     final Object? data = res["data"];
@@ -218,17 +224,13 @@ class _BusinessesScreenState extends State<BusinessesScreen> {
                 ),
               ),
             ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: <Widget>[
-                  _chip("all", _sw ? "Zote" : "All", _page.total),
-                  _chip("expiring", _sw ? "Zinaisha karibu" : "Ending soon", _page.expiring),
-                  _chip("expired", _sw ? "Zilizoisha" : "Expired", _page.expired),
-                  _chip("no_expiry", _sw ? "Bila kikomo" : "No end date", null),
-                ],
-              ),
+            ScrollingChipRow(
+              children: <Widget>[
+                _chip("all", _sw ? "Zote" : "All", _page.total),
+                _chip("expiring", _sw ? "Zinaisha karibu" : "Ending soon", _page.expiring),
+                _chip("expired", _sw ? "Zilizoisha" : "Expired", _page.expired),
+                _chip("no_expiry", _sw ? "Bila kikomo" : "No end date", null),
+              ],
             ),
             Expanded(child: _body()),
           ],
@@ -237,18 +239,15 @@ class _BusinessesScreenState extends State<BusinessesScreen> {
     );
   }
 
-  Widget _chip(final String status, final String label, final int? count) => Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: ChoiceChip(
-          key: ValueKey<String>("filter_$status"),
-          label: Text(count == null ? label : "$label ($count)"),
-          selected: _status == status,
-          onSelected: (final bool _) {
-            if (_status == status) return;
-            setState(() => _status = status);
-            _load();
-          },
-        ),
+  Widget _chip(final String status, final String label, final int? count) => ScrollChoiceChip(
+        key: ValueKey<String>("filter_$status"),
+        label: count == null ? label : "$label ($count)",
+        selected: _status == status,
+        onSelected: (final bool _) {
+          if (_status == status) return;
+          setState(() => _status = status);
+          _load();
+        },
       );
 
   Widget _body() {
@@ -439,11 +438,12 @@ class _BillingSheetState extends State<_BillingSheet> {
 
   Future<void> _pickDate() async {
     final DateTime now = DateTime.now();
-    final DateTime? picked = await showDatePicker(
-      context: context,
+    final DateTime? picked = await showDialDatePicker(
+      context,
       initialDate: _validUntil != null && _validUntil!.isAfter(now) ? _validUntil! : now.add(const Duration(days: 30)),
       firstDate: now.subtract(const Duration(days: 365)),
       lastDate: now.add(const Duration(days: 3650)),
+      sw: _sw,
     );
     if (picked != null) setState(() => _validUntil = picked);
   }
@@ -542,7 +542,7 @@ class _BillingSheetState extends State<_BillingSheet> {
                 OutlinedButton(
                   key: const ValueKey<String>("billing_pick_date"),
                   onPressed: _busy ? null : _pickDate,
-                  child: Text(_sw ? "Chagua tarehe" : "Pick a date"),
+                  child: Text(_sw ? "Tarehe nyingine" : "Custom date"),
                 ),
                 OutlinedButton(
                   key: const ValueKey<String>("billing_no_expiry"),
@@ -627,6 +627,9 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   final TextEditingController _note = TextEditingController();
   String _method = "mobile_money";
   int _months = 1;
+
+  /// A chosen end date instead of a number of months.
+  DateTime? _until;
   late String _plan = _initialPlan();
   bool _busy = false;
   String? _error;
@@ -650,12 +653,44 @@ class _PaymentDialogState extends State<_PaymentDialog> {
     super.dispose();
   }
 
+  Future<void> _chooseEndDate() async {
+    final DateTime today = DateUtils.dateOnly(DateTime.now());
+    final DateTime? picked = await showDialDatePicker(
+      context,
+      initialDate: _until ?? today.add(const Duration(days: 30)),
+      firstDate: today.add(const Duration(days: 1)),
+      lastDate: today.add(const Duration(days: 3650)),
+      sw: _sw,
+    );
+    if (picked != null && mounted) setState(() => _until = picked);
+  }
+
+  String _covers() {
+    if (_until != null) return _sw ? "Hadi ${dialDateLabel(_until!, sw: true)}" : "Until ${dialDateLabel(_until!, sw: false)}";
+    return _months == 12 ? (_sw ? "Mwaka 1" : "1 year") : (_sw ? "Miezi $_months" : "$_months month(s)");
+  }
+
   Future<void> _submit() async {
     final double? amount = double.tryParse(_amount.text.replaceAll(",", "").trim());
     if (amount == null || amount <= 0) {
       setState(() => _error = _sw ? "Weka kiasi kilicholipwa." : "Enter the amount that was paid.");
       return;
     }
+
+    // Money is being recorded and the owner is texted: ask once more, with everything in front of the person.
+    final bool? sure = await showDialog<bool>(
+      context: context,
+      builder: (final BuildContext _) => _ConfirmPaymentDialog(
+        business: widget.business.name,
+        amount: "TZS ${NumberFormat("#,##0").format(amount)}",
+        method: paymentMethodLabel(_method, sw: _sw),
+        covers: _covers(),
+        plan: businessPlanLabel(_plan, sw: _sw),
+        sw: _sw,
+      ),
+    );
+    if (sure != true || !mounted) return;
+
     setState(() {
       _busy = true;
       _error = null;
@@ -668,6 +703,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         reference: _reference.text,
         plan: _plan,
         months: _months,
+        validUntil: _until,
         note: _note.text,
       );
       if (!mounted) return;
@@ -742,9 +778,21 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                   ChoiceChip(
                     key: ValueKey<String>("payment_months_$m"),
                     label: Text(m == 12 ? (_sw ? "Mwaka 1" : "1 year") : (_sw ? "Miezi $m" : "$m month(s)")),
-                    selected: _months == m,
-                    onSelected: _busy ? null : (final bool _) => setState(() => _months = m),
+                    selected: _until == null && _months == m,
+                    onSelected: _busy
+                        ? null
+                        : (final bool _) => setState(() {
+                              _months = m;
+                              _until = null;
+                            }),
                   ),
+                ChoiceChip(
+                  key: const ValueKey<String>("payment_custom_date"),
+                  avatar: const Icon(Icons.event_outlined, size: 18),
+                  label: Text(_until == null ? (_sw ? "Tarehe nyingine" : "Custom date") : _covers()),
+                  selected: _until != null,
+                  onSelected: _busy ? null : (final bool _) => _chooseEndDate(),
+                ),
               ],
             ),
             if (_paidPlans.isNotEmpty) ...<Widget>[
@@ -793,6 +841,67 @@ class _PaymentDialogState extends State<_PaymentDialog> {
               ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
               : Text(_sw ? "Rekodi" : "Record"),
         ),
+      ],
+    );
+  }
+}
+
+/// "Record this payment?" with what is about to be recorded, and a plain NO / YES.
+class _ConfirmPaymentDialog extends StatelessWidget {
+  const _ConfirmPaymentDialog({
+    required this.business,
+    required this.amount,
+    required this.method,
+    required this.covers,
+    required this.plan,
+    required this.sw,
+  });
+
+  final String business;
+  final String amount;
+  final String method;
+  final String covers;
+  final String plan;
+  final bool sw;
+
+  Widget _line(final String label, final String value, final String key) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(flex: 4, child: Text(label, style: const TextStyle(color: Colors.white60, fontSize: 13))),
+            Expanded(flex: 6, child: Text(value, key: ValueKey<String>(key), textAlign: TextAlign.end, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+          ],
+        ),
+      );
+
+  @override
+  Widget build(final BuildContext context) {
+    return AlertDialog(
+      key: const ValueKey<String>("confirm_payment"),
+      backgroundColor: const Color(0xFF001D3D),
+      title: Text(sw ? "Thibitisha malipo" : "Confirm the payment", style: const TextStyle(color: Colors.white, fontSize: 18)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _line(sw ? "Biashara" : "Business", business, "confirm_business"),
+            _line(sw ? "Kiasi" : "Amount", amount, "confirm_amount"),
+            _line(sw ? "Njia" : "How", method, "confirm_method"),
+            _line(sw ? "Inalipia" : "Pays for", covers, "confirm_covers"),
+            _line(sw ? "Mpango" : "Plan", plan, "confirm_plan"),
+            const Divider(color: Colors.white24, height: 24),
+            Text(
+              sw ? "Rekodi malipo haya? Mmiliki atatumiwa ujumbe wa uthibitisho." : "Record this payment? The owner is sent a text to confirm it.",
+              style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(key: const ValueKey<String>("confirm_no"), onPressed: () => Navigator.of(context).pop(false), child: Text(sw ? "Hapana" : "No")),
+        FilledButton(key: const ValueKey<String>("confirm_yes"), onPressed: () => Navigator.of(context).pop(true), child: Text(sw ? "Ndiyo" : "Yes")),
       ],
     );
   }

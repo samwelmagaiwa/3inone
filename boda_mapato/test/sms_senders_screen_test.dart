@@ -196,6 +196,39 @@ void main() {
       expect(find.text('Bravo Shop'), findsNothing);
     });
 
+    testWidgets('on a phone the chips show that more are hidden, and choosing one slides the row on', (t) async {
+      t.view.physicalSize = const Size(360, 800);
+      t.view.devicePixelRatio = 1.0;
+      addTearDown(t.view.reset);
+      final _FakeSource source = _FakeSource(_sample());
+      await t.pumpWidget(_host(source));
+      await t.pumpAndSettle();
+
+      expect(_key('chips_more_after'), findsOneWidget, reason: 'there are chips off the right edge');
+      expect(_key('chips_more_before'), findsNothing);
+      final double firstAt = t.getRect(_key('filter_all')).left;
+
+      // choosing a chip that is on screen slides the row so the next ones come into view
+      await t.tap(_key('filter_pending'));
+      await t.pumpAndSettle();
+      expect(source.loads.last.status, 'pending');
+      expect(t.getRect(_key('filter_all')).left, lessThan(firstAt), reason: 'the row moved');
+      expect(_key('chips_more_before'), findsOneWidget);
+
+      // keep going to the end of the row: the last chip is whole and nothing is hidden after it
+      for (int i = 0; i < 30 && _key('chips_more_after').evaluate().isNotEmpty; i++) {
+        await t.tap(_key('chips_more_after'));
+        await t.pumpAndSettle();
+      }
+      expect(_key('chips_more_after'), findsNothing);
+      expect(t.getRect(_key('filter_none')).right, lessThanOrEqualTo(360));
+
+      await t.tap(_key('filter_none'));
+      await t.pumpAndSettle();
+      expect(source.loads.last.status, 'none');
+      expect(find.text('Alpha Homes'), findsOneWidget);
+    });
+
     testWidgets('searching asks the server and an empty answer says so', (t) async {
       _tall(t);
       final _FakeSource source = _FakeSource(_sample());

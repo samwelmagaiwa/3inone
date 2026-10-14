@@ -8,6 +8,7 @@ import "../../models/sms_sender.dart";
 import "../../services/api_service.dart";
 import "../../services/localization_service.dart";
 import "../../utils/server_message.dart";
+import "../../widgets/scrolling_chip_row.dart";
 
 /// Where the screen gets and saves the sender names. The app uses [ApiSmsSendersDataSource]; tests supply a fake.
 abstract class SmsSendersDataSource {
@@ -229,19 +230,15 @@ class _SmsSendersScreenState extends State<SmsSendersScreen> {
                 ),
               ),
             ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: <Widget>[
-                  _chip("all", _sw ? "Zote" : "All", _meta.count("total")),
-                  _chip("pending", _sw ? "Zinasubiri" : "Waiting", _meta.count("pending")),
-                  _chip("attention", _sw ? "Zinahitaji kuangaliwa" : "Needs attention", _meta.count("attention")),
-                  _chip("approved", _sw ? "Zimeidhinishwa" : "Approved", _meta.count("approved")),
-                  _chip("rejected", _sw ? "Zimekataliwa" : "Rejected", _meta.count("rejected")),
-                  _chip("none", _sw ? "Hazijawekwa" : "Not set", _meta.count("none")),
-                ],
-              ),
+            ScrollingChipRow(
+              children: <Widget>[
+                _chip("all", _sw ? "Zote" : "All", _meta.count("total")),
+                _chip("pending", _sw ? "Zinasubiri" : "Waiting", _meta.count("pending")),
+                _chip("attention", _sw ? "Zinahitaji kuangaliwa" : "Needs attention", _meta.count("attention")),
+                _chip("approved", _sw ? "Zimeidhinishwa" : "Approved", _meta.count("approved")),
+                _chip("rejected", _sw ? "Zimekataliwa" : "Rejected", _meta.count("rejected")),
+                _chip("none", _sw ? "Hazijawekwa" : "Not set", _meta.count("none")),
+              ],
             ),
             _notice(),
             Expanded(child: _body()),
@@ -251,18 +248,15 @@ class _SmsSendersScreenState extends State<SmsSendersScreen> {
     );
   }
 
-  Widget _chip(final String status, final String label, final int count) => Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: ChoiceChip(
-          key: ValueKey<String>("filter_$status"),
-          label: Text("$label ($count)"),
-          selected: _status == status,
-          onSelected: (final bool _) {
-            if (_status == status) return;
-            setState(() => _status = status);
-            _load();
-          },
-        ),
+  Widget _chip(final String status, final String label, final int count) => ScrollChoiceChip(
+        key: ValueKey<String>("filter_$status"),
+        label: "$label ($count)",
+        selected: _status == status,
+        onSelected: (final bool _) {
+          if (_status == status) return;
+          setState(() => _status = status);
+          _load();
+        },
       );
 
   /// What the businesses fall back to, and a warning when no real SMS provider is on.

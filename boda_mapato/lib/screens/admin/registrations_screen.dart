@@ -8,6 +8,7 @@ import "../../modules/inventory/models/inv_capabilities.dart";
 import "../../services/api_service.dart";
 import "../../services/localization_service.dart";
 import "../../utils/server_message.dart";
+import "../../widgets/scrolling_chip_row.dart";
 
 /// One page of registrations plus how many exist in each state.
 class RegistrationsPage {
@@ -240,16 +241,12 @@ class _RegistrationsScreenState extends State<RegistrationsScreen> {
                 ),
               ),
             ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: <Widget>[
-                  _chip(BusinessRegistration.pending, _sw ? "Zinazosubiri" : "Pending"),
-                  _chip(BusinessRegistration.approved, _sw ? "Zilizokubaliwa" : "Approved"),
-                  _chip(BusinessRegistration.rejected, _sw ? "Zilizokataliwa" : "Rejected"),
-                ],
-              ),
+            ScrollingChipRow(
+              children: <Widget>[
+                _chip(BusinessRegistration.pending, _sw ? "Zinazosubiri" : "Pending"),
+                _chip(BusinessRegistration.approved, _sw ? "Zilizokubaliwa" : "Approved"),
+                _chip(BusinessRegistration.rejected, _sw ? "Zilizokataliwa" : "Rejected"),
+              ],
             ),
             Expanded(child: _body()),
           ],
@@ -260,18 +257,15 @@ class _RegistrationsScreenState extends State<RegistrationsScreen> {
 
   Widget _chip(final String status, final String label) {
     final int? count = _page.counts[status];
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        key: ValueKey<String>("status_$status"),
-        label: Text(count == null ? label : "$label ($count)"),
-        selected: _status == status,
-        onSelected: (final bool _) {
-          if (_status == status) return;
-          setState(() => _status = status);
-          _load();
-        },
-      ),
+    return ScrollChoiceChip(
+      key: ValueKey<String>("status_$status"),
+      label: count == null ? label : "$label ($count)",
+      selected: _status == status,
+      onSelected: (final bool _) {
+        if (_status == status) return;
+        setState(() => _status = status);
+        _load();
+      },
     );
   }
 
