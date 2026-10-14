@@ -670,6 +670,52 @@ class ApiService {
   /// The signed-in business's subscription: plan, start, end, status, and (owner only) what it paid.
   Future<Map<String, dynamic>> getSubscription() async => _get("/business/subscription");
 
+  /// Super admin: every business with the SMS sender name it texts under, filtered and counted.
+  Future<Map<String, dynamic>> getSmsSenders({
+    final String status = "all",
+    final String? query,
+    final int page = 1,
+    final int perPage = 50,
+  }) async =>
+      _get(
+        "/admin/sms-senders",
+        queryParams: <String, dynamic>{
+          "status": status,
+          "page": page,
+          "per_page": perPage,
+          if (query != null && query.trim().isNotEmpty) "q": query.trim(),
+        },
+      );
+
+  /// Super admin: set a business's sender name, key and status. Only what [body] holds is changed.
+  Future<Map<String, dynamic>> saveSmsSender(final String businessId, final Map<String, dynamic> body) async =>
+      _put("/admin/sms-senders/$businessId", body);
+
+  /// Super admin: one real text under the name (and the key typed or saved), to see if the provider accepts it.
+  Future<Map<String, dynamic>> testSmsSender(
+    final String businessId, {
+    final String? phone,
+    final String? senderId,
+    final String? apiKey,
+    final String? apiSecret,
+  }) async =>
+      _post("/admin/sms-senders/$businessId/test", <String, dynamic>{
+        if (phone != null && phone.trim().isNotEmpty) "phone": phone.trim(),
+        if (senderId != null && senderId.trim().isNotEmpty) "sender_id": senderId.trim(),
+        if (apiKey != null && apiKey.trim().isNotEmpty) "api_key": apiKey.trim(),
+        if (apiSecret != null && apiSecret.trim().isNotEmpty) "api_secret": apiSecret.trim(),
+      });
+
+  /// Owner: ask for the name customers' phones should show. It waits for the super admin.
+  Future<Map<String, dynamic>> requestSmsSender({required final String senderId, final String? displayName}) async =>
+      _post("/business/sms-sender", <String, dynamic>{
+        "sender_id": senderId.trim(),
+        if (displayName != null && displayName.trim().isNotEmpty) "display_name": displayName.trim(),
+      });
+
+  /// Owner: take a request that is still waiting back.
+  Future<Map<String, dynamic>> withdrawSmsSender() async => _delete("/business/sms-sender");
+
   /// Super admin: the subscription of one business with every payment recorded for it.
   Future<Map<String, dynamic>> getBusinessPayments(final String id) async => _get("/admin/businesses/$id/payments");
 

@@ -2,6 +2,8 @@ import "dart:typed_data";
 
 import "package:file_picker/file_picker.dart";
 import "package:flutter/material.dart";
+import "../../models/sms_sender.dart";
+import "package:flutter/services.dart";
 import "package:intl/intl.dart";
 
 import "../../constants/theme_constants.dart";
@@ -31,6 +33,12 @@ abstract class BusinessProfileDataSource {
   });
   Future<Business> uploadLogo(Uint8List bytes, String filename);
   Future<Business> removeLogo();
+
+  /// Owner: ask for the name customers' phones should show; it then waits for the super admin.
+  Future<Business> requestSmsSender({required String senderId, String? displayName});
+
+  /// Owner: take a request that is still waiting back.
+  Future<Business> withdrawSmsSender();
 }
 
 class ApiBusinessProfileDataSource implements BusinessProfileDataSource {
@@ -72,6 +80,13 @@ class ApiBusinessProfileDataSource implements BusinessProfileDataSource {
 
   @override
   Future<Business> removeLogo() async => _business(await _api.removeBusinessLogo());
+
+  @override
+  Future<Business> requestSmsSender({required final String senderId, final String? displayName}) async =>
+      _business(await _api.requestSmsSender(senderId: senderId, displayName: displayName));
+
+  @override
+  Future<Business> withdrawSmsSender() async => _business(await _api.withdrawSmsSender());
 }
 
 Future<PickedLogo?> _pickLogoFromDevice() async {
@@ -298,6 +313,8 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
         if (b.billing.needsAttention()) const SizedBox(height: 12),
         _planCard(b.billing),
         const SizedBox(height: 16),
+        _smsSenderCard(b, edit),
+        const SizedBox(height: 16),
         ThemeConstants.buildGlassCard(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -456,6 +473,130 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
     );
   }
 
+  /// The name this business's text messages show on a customer's phone: where it stands, and (owner) asking for one.
+  Widget _smsSenderCard(final Business b, final bool edit) {
+    final SmsSenderInfo s = b.smsSender;
+    final String name = (s.senderId ?? "").toUpperCase();
+
+    final (IconData icon, Color color, String title, String text) = switch (s.status) {
+      "approved" => (
+          Icons.check_circle_outline,
+          Colors.greenAccent,
+          name,
+          _sw
+              ? "Ujumbe wa wateja wako unaonekana kutoka $name."
+              : "Your customers' texts show $name as the sender.",
+        ),
+      "pending" => (
+          Icons.schedule,
+          Colors.amberAccent,
+          name,
+          _sw
+              ? "Ombi lako linasubiri kusajiliwa na msimamizi. Hadi litakapoidhinishwa, wateja wanaona jina la kawaida la 3 in One."
+              : "Your request is waiting to be registered by the administrator. Until it is approved, customers see the usual 3 in One name.",
+        ),
+      "rejected" => (
+          Icons.cancel_outlined,
+          Colors.redAccent,
+          name,
+          _sw
+              ? "Jina hili halikukubaliwa${(s.note ?? "").isEmpty ? "" : ": ${s.note}"}. Unaweza kuomba jina jingine."
+              : "This name was not approved${(s.note ?? "").isEmpty ? "" : ": ${s.note}"}. You can ask for another one.",
+        ),
+      _ => (
+          Icons.sms_outlined,
+          Colors.white54,
+          _sw ? "Bado huna jina lako" : "No name of your own yet",
+          _sw
+              ? "Ujumbe kwa wateja wako unatoka kwa jina la kawaida la 3 in One. Unaweza kuomba jina la biashara yako."
+              : "Texts to your customers go out under the usual 3 in One name. You can ask for your business's own name.",
+        ),
+    };
+
+    return ThemeConstants.buildGlassCard(
+      child: Padding(
+        key: const ValueKey<String>("sms_sender_card"),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                const Icon(Icons.sms_outlined, color: ThemeConstants.primaryOrange),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _sw ? "Jina la ujumbe kwa wateja (Sender ID)" : "Sender name for your customers' texts",
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Icon(icon, color: color, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(title, key: const ValueKey<String>("sms_sender_title"), style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: s.status == "none" ? 0 : 1.1)),
+                      const SizedBox(height: 4),
+                      Text(text, key: const ValueKey<String>("sms_sender_text"), style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.35)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (edit && s.status != "approved") ...<Widget>[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: <Widget>[
+                  FilledButton(
+                    key: const ValueKey<String>("request_sender"),
+                    onPressed: _busy ? null : () => _askForSenderName(s),
+                    child: Text(s.status == "pending" ? (_sw ? "Badilisha ombi" : "Change request") : (_sw ? "Omba jina" : "Ask for a name")),
+                  ),
+                  if (s.status == "pending")
+                    TextButton(
+                      key: const ValueKey<String>("withdraw_sender"),
+                      onPressed: _busy ? null : () => _run(_source.withdrawSmsSender, _sw ? "Ombi limeondolewa" : "Request withdrawn"),
+                      child: Text(_sw ? "Ondoa ombi" : "Withdraw request"),
+                    ),
+                ],
+              ),
+            ],
+            if (s.status == "approved")
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  _sw ? "Kulibadilisha, wasiliana na msimamizi." : "To change it, contact your administrator.",
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _askForSenderName(final SmsSenderInfo current) async {
+    final ({String senderId, String displayName})? asked = await showDialog<({String senderId, String displayName})>(
+      context: context,
+      builder: (final BuildContext _) => _SenderRequestDialog(current: current, sw: _sw),
+    );
+    if (asked == null || !mounted) return;
+
+    await _run(
+      () => _source.requestSmsSender(senderId: asked.senderId, displayName: asked.displayName),
+      _sw ? "Ombi limetumwa" : "Request sent",
+    );
+  }
+
   Widget _planCard(final BusinessBilling billing) {
     final String until = billing.validUntil == null
         ? (_sw ? "Haina tarehe ya kuisha" : "No end date")
@@ -519,6 +660,92 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         ),
       ),
+    );
+  }
+}
+
+/// Asks the owner for the sender name they want. Owns its text fields, so they live exactly as long as the dialog.
+class _SenderRequestDialog extends StatefulWidget {
+  const _SenderRequestDialog({required this.current, required this.sw});
+
+  final SmsSenderInfo current;
+  final bool sw;
+
+  @override
+  State<_SenderRequestDialog> createState() => _SenderRequestDialogState();
+}
+
+class _SenderRequestDialogState extends State<_SenderRequestDialog> {
+  static final RegExp _valid = RegExp(r"^[A-Za-z][A-Za-z0-9]{2,10}$");
+
+  late final TextEditingController _id = TextEditingController(text: widget.current.senderId ?? "");
+  late final TextEditingController _display = TextEditingController(text: widget.current.displayName ?? "");
+  String? _problem;
+
+  bool get _sw => widget.sw;
+
+  @override
+  void dispose() {
+    _id.dispose();
+    _display.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!_valid.hasMatch(_id.text.trim())) {
+      setState(() => _problem = _sw ? "Herufi 3 hadi 11, herufi na tarakimu tu, ikianza na herufi." : "3 to 11 letters or digits, starting with a letter.");
+      return;
+    }
+    Navigator.of(context).pop((senderId: _id.text.trim(), displayName: _display.text.trim()));
+  }
+
+  @override
+  Widget build(final BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF001D3D),
+      title: Text(_sw ? "Omba jina la ujumbe" : "Ask for a sender name", style: const TextStyle(color: Colors.white, fontSize: 17)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              _sw
+                  ? "Andika jina fupi la biashara yako (herufi 3 hadi 11, herufi na tarakimu tu). Msimamizi atalisajili kisha kukuarifu."
+                  : "Type a short name for your business (3 to 11 letters or digits). The administrator registers it and lets you know.",
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const ValueKey<String>("request_sender_id_field"),
+              controller: _id,
+              maxLength: 11,
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.allow(RegExp(r"[A-Za-z0-9]"))],
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, letterSpacing: 1.2),
+              decoration: InputDecoration(
+                labelText: _sw ? "Jina (mfano MAMAASHA)" : "Name (e.g. MAMAASHA)",
+                labelStyle: const TextStyle(color: Colors.white60),
+                errorText: _problem,
+              ),
+            ),
+            TextField(
+              key: const ValueKey<String>("request_display_name_field"),
+              controller: _display,
+              maxLength: 40,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: _sw ? "Jina ndani ya ujumbe (si lazima)" : "Name inside the text (optional)",
+                labelStyle: const TextStyle(color: Colors.white60),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(_sw ? "Ghairi" : "Cancel")),
+        FilledButton(key: const ValueKey<String>("submit_request"), onPressed: _submit, child: Text(_sw ? "Tuma ombi" : "Send request")),
+      ],
     );
   }
 }

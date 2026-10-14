@@ -20,6 +20,8 @@ import "user_management_screen.dart";
 import "permissions_management_screen.dart";
 import '../../widgets/pending_registrations_count.dart';
 import 'subscription_screen.dart';
+import "../admin/sms_senders_screen.dart";
+import '../../widgets/pending_sms_senders_count.dart';
 
 // ignore_for_file: directives_ordering
 class SettingsScreen extends StatefulWidget {
@@ -32,6 +34,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final LocalizationService _localizationService = LocalizationService.instance;
   final GlobalKey<PendingRegistrationsCountState> _pendingRegistrations = GlobalKey<PendingRegistrationsCountState>();
+  final GlobalKey<PendingSmsSendersCountState> _pendingSmsSenders = GlobalKey<PendingSmsSendersCountState>();
 
   @override
   void initState() {
@@ -319,6 +322,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ? 'Mipango, tarehe za malipo na taarifa za kila biashara'
                             : 'Plan, paid-until date and details of every business',
                         () => _navigateToScreen(const BusinessesScreen()),
+                      ),
+                      const Divider(color: Colors.white24, height: 1),
+                      PendingSmsSendersCount(
+                        key: _pendingSmsSenders,
+                        builder: (BuildContext context, int? pending) => _buildSettingsTile(
+                          Icons.sms_outlined,
+                          loc.isSwahili ? 'Majina ya SMS (Sender ID)' : 'SMS Sender Names',
+                          loc.isSwahili
+                              ? 'Weka jina na API key ya kila biashara; ujumbe wake utatoka kwa jina hilo'
+                              : "Set each business's sender name and API key; its texts then go out under it",
+                          () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(builder: (BuildContext _) => const SmsSendersScreen()),
+                            );
+                            await _pendingSmsSenders.currentState?.refresh();
+                          },
+                          badge: (pending ?? 0) > 0 ? CountBadge(count: pending) : null,
+                        ),
                       ),
                       const Divider(color: Colors.white24, height: 1),
                       _buildSettingsTile(

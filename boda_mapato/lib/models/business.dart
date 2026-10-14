@@ -1,6 +1,8 @@
 /// A business: who it is (what receipts and text messages say about it) and what plan it is on.
 library;
 
+import 'sms_sender.dart';
+
 /// The plans a super admin can choose from, in the order they are shown. The server owns the list
 /// (config/billing.php) and sends it with the businesses list; this is the fallback.
 const List<String> kBusinessPlans = <String>['trial', 'free', 'basic', 'standard', 'premium'];
@@ -93,6 +95,7 @@ class Business {
     this.owner,
     this.services = const <String>[],
     this.staffCount = 0,
+    this.smsSender = const SmsSenderInfo(),
   });
 
   factory Business.fromJson(final Map<String, dynamic> json) => Business(
@@ -111,6 +114,7 @@ class Business {
         owner: json['owner'] is Map ? BusinessOwner.fromJson(Map<String, dynamic>.from(json['owner'] as Map)) : null,
         services: json['services'] is List ? (json['services'] as List).map((e) => e.toString()).toList() : const <String>[],
         staffCount: (json['staff_count'] as num?)?.toInt() ?? 0,
+        smsSender: json['sms_sender'] is Map ? SmsSenderInfo.fromJson(Map<String, dynamic>.from(json['sms_sender'] as Map)) : const SmsSenderInfo(),
       );
 
   final String id;
@@ -130,4 +134,7 @@ class Business {
   final BusinessOwner? owner;
   final List<String> services;
   final int staffCount;
+
+  /// The name this business's text messages go out under (see SmsSenderInfo).
+  final SmsSenderInfo smsSender;
 }

@@ -1,12 +1,14 @@
 import 'dart:typed_data';
 
 import 'package:boda_mapato/models/business.dart';
+import 'package:boda_mapato/models/sms_sender.dart';
 import 'package:boda_mapato/screens/settings/business_profile_screen.dart';
 import 'package:boda_mapato/services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Business _biz({
   String name = 'Mama Duka',
@@ -17,8 +19,20 @@ Business _biz({
   String? logo,
   String? inventoryType,
   BusinessBilling billing = const BusinessBilling(plan: 'basic'),
+  SmsSenderInfo sender = const SmsSenderInfo(),
 }) =>
-    Business(id: 'b-1', ownerId: 'u-1', name: name, address: address, tin: tin, phone: phone, email: email, logoUrl: logo, inventoryType: inventoryType, billing: billing);
+    Business(
+        id: 'b-1',
+        ownerId: 'u-1',
+        name: name,
+        address: address,
+        tin: tin,
+        phone: phone,
+        email: email,
+        logoUrl: logo,
+        inventoryType: inventoryType,
+        billing: billing,
+        smsSender: sender);
 
 class _FakeSource implements BusinessProfileDataSource {
   _FakeSource(this.business);
@@ -26,6 +40,9 @@ class _FakeSource implements BusinessProfileDataSource {
   Business business;
   Object? loadError;
   Object? saveError;
+  Object? requestError;
+  final List<({String senderId, String? displayName})> senderRequests = <({String senderId, String? displayName})>[];
+  int withdrawals = 0;
   final List<Map<String, String>> saves = <Map<String, String>>[];
   final List<String?> savedTypes = <String?>[];
   final List<String> logoUploads = <String>[];
@@ -74,6 +91,21 @@ class _FakeSource implements BusinessProfileDataSource {
   @override
   Future<Business> removeLogo() async {
     logoRemovals++;
+    business = _biz(name: business.name);
+    return business;
+  }
+
+  @override
+  Future<Business> requestSmsSender({required String senderId, String? displayName}) async {
+    if (requestError != null) throw requestError!;
+    senderRequests.add((senderId: senderId, displayName: displayName));
+    business = _biz(name: business.name, sender: SmsSenderInfo(senderId: senderId, displayName: (displayName ?? '').isEmpty ? null : displayName, status: 'pending'));
+    return business;
+  }
+
+  @override
+  Future<Business> withdrawSmsSender() async {
+    withdrawals++;
     business = _biz(name: business.name);
     return business;
   }
@@ -334,5 +366,120 @@ void main() {
     await t.pumpAndSettle();
 
     expect(_text(t, 'business_name_field'), 'Mama Duka');
+  });
+
+  group('the SMS sender name', () {
+    Future<_FakeSource> open(WidgetTester t, SmsSenderInfo sender, {bool canEdit = true}) async {
+      _tall(t);
+      final _FakeSource source = _FakeSource(_biz(sender: sender));
+      await t.pumpWidget(_host(source, canEdit: canEdit));
+      await t.pumpAndSettle();
+      return source;
+    }
+
+    String title(WidgetTester t) => (t.widget(_key('sms_sender_title')) as Text).data!;
+    String text(WidgetTester t) => (t.widget(_key('sms_sender_text')) as Text).data!;
+
+    testWidgets('a business with none says so and the owner asks for one', (t) async {
+      final _FakeSource source = await open(t, const SmsSenderInfo());
+
+      expect(title(t), 'Bado huna jina lako');
+      expect(_key('withdraw_sender'), findsNothing);
+
+      await t.ensureVisible(_key('request_sender'));
+      await t.tap(_key('request_sender'));
+      await t.pumpAndSettle();
+      await t.enterText(_key('request_sender_id_field'), 'MAMAASHA');
+      await t.enterText(_key('request_display_name_field'), 'Mama Asha');
+      await t.tap(_key('submit_request'));
+      await t.pumpAndSettle();
+
+      expect(source.senderRequests.single.senderId, 'MAMAASHA');
+      expect(source.senderRequests.single.displayName, 'Mama Asha');
+      expect(title(t), 'MAMAASHA');
+      expect(text(t), contains('linasubiri'));
+      expect(_key('withdraw_sender'), findsOneWidget);
+      await _bannerGone(t);
+    });
+
+    testWidgets('a name that cannot work is refused on the spot and nothing is sent', (t) async {
+      final _FakeSource source = await open(t, const SmsSenderInfo());
+
+      await t.ensureVisible(_key('request_sender'));
+      await t.tap(_key('request_sender'));
+      await t.pumpAndSettle();
+      await t.enterText(_key('request_sender_id_field'), '1AB');
+      await t.tap(_key('submit_request'));
+      await t.pumpAndSettle();
+
+      expect(find.textContaining('Herufi 3 hadi 11'), findsOneWidget);
+      expect(source.senderRequests, isEmpty);
+      expect(_key('submit_request'), findsOneWidget, reason: 'the dialog stays open');
+    });
+
+    testWidgets('a refusal from the server is shown', (t) async {
+      final _FakeSource source = await open(t, const SmsSenderInfo());
+      source.requestError = Exception('Jina hili tayari linatumiwa na biashara nyingine.');
+
+      await t.ensureVisible(_key('request_sender'));
+      await t.tap(_key('request_sender'));
+      await t.pumpAndSettle();
+      await t.enterText(_key('request_sender_id_field'), 'TAKENNAME');
+      await t.tap(_key('submit_request'));
+      await t.pumpAndSettle();
+
+      expect(find.text('Jina hili tayari linatumiwa na biashara nyingine.'), findsOneWidget);
+      expect(title(t), 'Bado huna jina lako');
+    });
+
+    testWidgets('a waiting request can be changed or withdrawn', (t) async {
+      final _FakeSource source = await open(t, const SmsSenderInfo(senderId: 'MAMAASHA', status: 'pending'));
+      expect(title(t), 'MAMAASHA');
+      expect(find.text('Badilisha ombi'), findsOneWidget);
+
+      await t.ensureVisible(_key('withdraw_sender'));
+      await t.tap(_key('withdraw_sender'));
+      await t.pumpAndSettle();
+
+      expect(source.withdrawals, 1);
+      expect(title(t), 'Bado huna jina lako');
+      await _bannerGone(t);
+    });
+
+    testWidgets('an approved name is shown and is the administrator\'s to change', (t) async {
+      await open(t, const SmsSenderInfo(senderId: 'MAMAASHA', status: 'approved'));
+
+      expect(title(t), 'MAMAASHA');
+      expect(text(t), 'Ujumbe wa wateja wako unaonekana kutoka MAMAASHA.');
+      expect(_key('request_sender'), findsNothing);
+      expect(find.text('Kulibadilisha, wasiliana na msimamizi.'), findsOneWidget);
+    });
+
+    testWidgets('a rejected name shows why and the owner can ask again', (t) async {
+      await open(t, const SmsSenderInfo(senderId: 'MPESAX', status: 'rejected', note: 'Looks like a mobile money brand'));
+
+      expect(text(t), contains('halikukubaliwa: Looks like a mobile money brand'));
+      expect(_key('request_sender'), findsOneWidget);
+      expect(find.text('Omba jina'), findsOneWidget);
+    });
+
+    testWidgets('staff see where it stands but cannot ask', (t) async {
+      await open(t, const SmsSenderInfo(senderId: 'MAMAASHA', status: 'pending'), canEdit: false);
+
+      expect(title(t), 'MAMAASHA');
+      expect(_key('request_sender'), findsNothing);
+      expect(_key('withdraw_sender'), findsNothing);
+    });
+
+    testWidgets('the card follows the app language', (t) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      await LocalizationService.instance.changeLanguage('en');
+      addTearDown(() => LocalizationService.instance.changeLanguage('sw'));
+      await open(t, const SmsSenderInfo(senderId: 'MAMAASHA', status: 'approved'));
+
+      expect(text(t), "Your customers' texts show MAMAASHA as the sender.");
+      expect(find.text('To change it, contact your administrator.'), findsOneWidget);
+      expect(find.textContaining('wateja'), findsNothing);
+    });
   });
 }
