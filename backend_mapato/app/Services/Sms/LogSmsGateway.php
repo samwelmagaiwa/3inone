@@ -17,11 +17,17 @@ class LogSmsGateway implements SmsGateway
         return false;
     }
 
-    public function send(string $to, string $message, bool $sensitive = false): bool
+    public function send(string $to, string $message, bool $sensitive = false, ?string $senderId = null, ?array $credentials = null): bool
     {
         $shown = $sensitive && app()->isProduction() ? '[withheld: sensitive]' : $message;
-        Log::info('SMS not delivered (no provider): to ' . PhoneNumber::mask($to) . ": {$shown}");
+        $from = $senderId !== null && $senderId !== '' ? " as {$senderId}" : '';
+        Log::info('SMS not delivered (no provider): to ' . PhoneNumber::mask($to) . "{$from}: {$shown}");
 
         return true;
+    }
+
+    public function lastSendWasRefused(): bool
+    {
+        return false;
     }
 }

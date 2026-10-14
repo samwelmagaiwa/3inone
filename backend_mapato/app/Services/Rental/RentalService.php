@@ -225,6 +225,15 @@ class RentalService
         return \App\Models\Business::identityForProperty($property);
     }
 
+    /**
+     * Who a TEXT is from: the landlord's business itself, so it goes out under its own registered sender name; the
+     * identity (the platform's name for a property whose business cannot be told) when there is none.
+     */
+    private function businessForSms(?Property $property): \App\Models\Business|array
+    {
+        return \App\Models\Business::forProperty($property) ?? \App\Models\Business::identityForProperty($property);
+    }
+
     private function sendReceiptSms(RentalPayment $payment): void
     {
         try {
@@ -237,7 +246,7 @@ class RentalService
                 $payment->amount_paid,
                 $payment->receipt->receipt_number,
                 $payment->bill->balance,
-                $this->businessOfProperty($payment->bill->agreement->house->property),
+                $this->businessForSms($payment->bill->agreement->house->property),
             );
         } catch (\Throwable $e) {
             Log::warning('Payment receipt SMS could not be sent.', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
@@ -321,7 +330,7 @@ class RentalService
                 $bill->agreement->tenant->phone_number,
                 $bill->agreement->house->house_number,
                 $bill->balance,
-                $this->businessOfProperty($bill->agreement->house->property),
+                $this->businessForSms($bill->agreement->house->property),
             );
         }
 

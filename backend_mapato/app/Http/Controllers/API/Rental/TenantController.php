@@ -278,7 +278,12 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             // Send welcome SMS (the house was resolved and checked above; the app
             // sends `rental_house_id`, not `house_id`).
-            SmsService::sendTenantWelcome($result['user'], $house, \App\Models\Business::identityForProperty($house->property));
+            // From the landlord's business, under its own registered sender name when it has one.
+            SmsService::sendTenantWelcome(
+                $result['user'],
+                $house,
+                \App\Models\Business::forProperty($house->property) ?? \App\Models\Business::identityForProperty($house->property),
+            );
 
             return ResponseHelper::success($result, 'Tenant onboarded successfully', 201);
         } catch (\InvalidArgumentException $e) {

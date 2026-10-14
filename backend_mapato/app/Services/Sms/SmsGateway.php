@@ -18,6 +18,16 @@ interface SmsGateway
      *
      * @param  bool  $sensitive  the message carries a secret (a one-time code): it must
      *                           not be written to the logs in production
+     * @param  ?string  $senderId  the sender name the phone should show; null = the platform's own
+     * @param  ?array{api_key: string, api_secret: ?string}  $credentials  a business's own account with the
+     *                           provider; null = the platform's. A missing secret falls back to the platform's.
      */
-    public function send(string $to, string $message, bool $sensitive = false): bool;
+    public function send(string $to, string $message, bool $sensitive = false, ?string $senderId = null, ?array $credentials = null): bool;
+
+    /**
+     * Was the LAST send answered by the provider but not accepted (a refused sender name, a rejected number)?
+     * False when it was accepted, or when there was no answer at all (a timeout: the message may have gone, so
+     * it must not be sent again).
+     */
+    public function lastSendWasRefused(): bool;
 }

@@ -10,8 +10,11 @@ use App\Services\Sms\SmsGateway;
  */
 class FakeSmsGateway implements SmsGateway
 {
-    /** @var array<int, array{to: string, message: string, sensitive: bool}> */
+    /** @var array<int, array{to: string, message: string, sensitive: bool, sender: ?string, credentials: ?array}> */
     public array $sent = [];
+
+    /** Every send attempt, accepted or not: [to, sender, accepted]. */
+    public array $attempts = [];
 
     public bool $delivering = true;
 
@@ -19,29 +22,76 @@ class FakeSmsGateway implements SmsGateway
 
     private bool $refuse = false;
 
+    private bool $lastRefused = false;
+
+    private bool $silent = false;
+
+    /** @var array<int, string> sender names the "provider" does not know (compared without regard to case) */
+    private array $unknownSenders = [];
+
+    /** @var array<int, string> API keys the "provider" rejects */
+    private array $badKeys = [];
+
     public function delivers(): bool
     {
         return $this->delivering;
     }
 
-    public function send(string $to, string $message, bool $sensitive = false): bool
+    public function send(string $to, string $message, bool $sensitive = false, ?string $senderId = null, ?array $credentials = null): bool
     {
+        $this->lastRefused = false;
+
         if ($this->failure !== null) {
+            $this->attempts[] = ['to' => $to, 'sender' => $senderId, 'credentials' => $credentials, 'accepted' => false];
             throw $this->failure;
         }
-        if ($this->refuse) {
+        if ($this->silent) {
+            // A timeout, like the real gateway reports it: false, and NOT a refusal (the message may still arrive).
+            $this->attempts[] = ['to' => $to, 'sender' => $senderId, 'credentials' => $credentials, 'accepted' => false];
+
+            return false;
+        }
+        $badKey = $credentials !== null && in_array((string) ($credentials['api_key'] ?? ''), $this->badKeys, true);
+        if ($this->refuse || $badKey || ($senderId !== null && in_array(strtolower($senderId), $this->unknownSenders, true))) {
+            $this->lastRefused = true;
+            $this->attempts[] = ['to' => $to, 'sender' => $senderId, 'credentials' => $credentials, 'accepted' => false];
+
             return false;
         }
 
-        $this->sent[] = ['to' => $to, 'message' => $message, 'sensitive' => $sensitive];
+        $this->sent[] = ['to' => $to, 'message' => $message, 'sensitive' => $sensitive, 'sender' => $senderId, 'credentials' => $credentials];
+        $this->attempts[] = ['to' => $to, 'sender' => $senderId, 'credentials' => $credentials, 'accepted' => true];
 
         return true;
+    }
+
+    public function lastSendWasRefused(): bool
+    {
+        return $this->lastRefused;
+    }
+
+    /** Make the provider reject these API keys (a wrong key, or an account with no credit left). */
+    public function rejectKeys(string ...$keys): void
+    {
+        $this->badKeys = $keys;
+    }
+
+    /** Make the provider refuse these sender names (it was never told about them), like an unregistered name. */
+    public function refuseSenders(string ...$names): void
+    {
+        $this->unknownSenders = array_map('strtolower', $names);
     }
 
     /** Make every later send throw, like a provider that is down. */
     public function failWith(\Throwable $e): void
     {
         $this->failure = $e;
+    }
+
+    /** Make every later send get no answer at all (a timeout): "not sent", but not a refusal. */
+    public function noAnswer(): void
+    {
+        $this->silent = true;
     }
 
     /** Make every later send answer "not sent". */

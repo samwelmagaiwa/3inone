@@ -6,6 +6,7 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\RegistrationController;
 use App\Http\Controllers\API\BusinessController;
 use App\Http\Controllers\API\BusinessSubscriptionController;
+use App\Http\Controllers\API\SmsSenderController;
 use App\Http\Controllers\API\LocationController;
 use App\Http\Controllers\API\Transport\AdminController;
 use App\Http\Controllers\API\Transport\AdminReportController;
@@ -139,6 +140,15 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/businesse
     // A payment moves the paid-until date on and opens a held-back business again at once.
     Route::get('{id}/payments', [BusinessSubscriptionController::class, 'adminIndex']);
     Route::post('{id}/payments', [BusinessSubscriptionController::class, 'adminStore']);
+});
+
+// SMS SENDER NAMES -- super admin only: which registered sender name each business's texts go out under.
+// A name works only once the super admin has registered it with the SMS provider and marked it approved.
+Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/sms-senders')->group(function () {
+    Route::get('', [SmsSenderController::class, 'index']);
+    Route::put('{id}', [SmsSenderController::class, 'update']);
+    // One real text under the name: costs a message, so it is limited.
+    Route::post('{id}/test', [SmsSenderController::class, 'test'])->middleware('throttle:10,1');
 });
 
 // PROTECTED ADMIN ROUTES -- the Transport service
@@ -282,6 +292,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // What it paid, when it started and when it ends. Stays reachable when the business is held back.
         Route::get('subscription', [BusinessSubscriptionController::class, 'show']);
         Route::put('', [BusinessController::class, 'update']);
+        // The owner asks for the name customers' phones should show; it then waits for the super admin.
+        Route::post('sms-sender', [SmsSenderController::class, 'request']);
+        Route::delete('sms-sender', [SmsSenderController::class, 'withdraw']);
         Route::post('logo', [BusinessController::class, 'uploadLogo']);
         Route::delete('logo', [BusinessController::class, 'removeLogo']);
     });

@@ -31,12 +31,27 @@ class Business extends Model
     /** Fields the owner may edit about their own business. */
     public const PROFILE_FIELDS = ['name', 'address', 'tin', 'phone', 'email', 'inventory_type'];
 
+    /** Where a business's SMS sender name stands. Only `approved` is ever used to send. */
+    public const SMS_SENDER_STATUSES = ['none', 'pending', 'approved', 'rejected'];
+
     protected $fillable = [
         'owner_id', 'name', 'address', 'tin', 'phone', 'email', 'logo_path', 'plan', 'valid_until', 'inventory_type',
+        'sms_sender_id', 'sms_sender_status', 'sms_display_name', 'sms_sender_note',
+        'sms_sender_requested_at', 'sms_sender_approved_at',
+        'sms_sent_count', 'sms_own_count', 'sms_fallback_count', 'sms_last_sent_at', 'sms_last_error',
     ];
+
+    /** A business's own SMS account key and secret never leave the server, whatever serialises the model. */
+    protected $hidden = ['sms_api_key', 'sms_api_secret'];
 
     protected $casts = [
         'valid_until' => 'datetime',
+        'sms_api_key' => 'encrypted',
+        'sms_api_secret' => 'encrypted',
+        'sms_fallback_platform' => 'boolean',
+        'sms_sender_requested_at' => 'datetime',
+        'sms_sender_approved_at' => 'datetime',
+        'sms_last_sent_at' => 'datetime',
     ];
 
     public function constrainToAccount(Builder $query, User $user): void
@@ -220,6 +235,17 @@ class Business extends Model
         return static::identityForOwnerId($owner ?: TenantContext::writeOwner());
     }
 
+    /**
+     * The business of a rental property's owner (the landlord), whoever is signed in or running the job.
+     * The same business identityForProperty() describes; texts need the business itself to pick its sender name.
+     */
+    public static function forProperty(?\App\Models\Rental\Property $property): ?self
+    {
+        $owner = $property?->owner_id ? BusinessOwner::ofUser((string) $property->owner_id) : null;
+
+        return static::forOwnerId($owner ?: TenantContext::writeOwner());
+    }
+
     public static function platformIdentity(): array
     {
         return [
@@ -230,6 +256,91 @@ class Business extends Model
             'email' => '',
             'logo_url' => null,
         ];
+    }
+
+    // ------------------------------------------------------------------ SMS sender name
+
+    /** The registered sender name texts to this business's customers go out under, or null for the platform's own. */
+    public function usableSmsSender(): ?string
+    {
+        $id = trim((string) $this->sms_sender_id);
+
+        return $this->sms_sender_status === 'approved' && $id !== '' ? $id : null;
+    }
+
+    /**
+     * The business's OWN account with the SMS provider (its API key and, if it has one, secret), or null when it
+     * sends through the platform's account. A key that can no longer be decrypted (the app key was changed) counts
+     * as none, so texts keep going out under the platform's account instead of failing.
+     *
+     * @return array{api_key: string, api_secret: ?string}|null
+     */
+    public function smsCredentials(): ?array
+    {
+        try {
+            $key = trim((string) $this->sms_api_key);
+            if ($key === '') {
+                return null;
+            }
+            $secret = trim((string) $this->sms_api_secret);
+
+            return ['api_key' => $key, 'api_secret' => $secret !== '' ? $secret : null];
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /** May a text go out through the platform's account when the business's own name or account is refused? */
+    public function smsMayFallBack(): bool
+    {
+        return (bool) ($this->sms_fallback_platform ?? true);
+    }
+
+    /** The business name as written inside a text: the short display name when one was set. */
+    public function smsName(): string
+    {
+        $name = trim((string) $this->sms_display_name);
+
+        return $name !== '' ? $name : (string) $this->name;
+    }
+
+    /** An approved name that the provider stopped accepting (texts have gone out under the platform name instead). */
+    public function smsNeedsAttention(): bool
+    {
+        return $this->sms_sender_status === 'approved' && trim((string) $this->sms_last_error) !== '';
+    }
+
+    /** What the business's own people see about its sender name. */
+    public function smsSenderSummary(): array
+    {
+        return [
+            'sender_id' => $this->sms_sender_id,
+            'display_name' => $this->sms_display_name,
+            'status' => $this->sms_sender_status ?: 'none',
+            'note' => $this->sms_sender_note,
+        ];
+    }
+
+    /** What the super admin sees: the summary plus what was sent and whether the provider still accepts the name. */
+    public function smsSenderDetails(): array
+    {
+        $own = $this->smsCredentials();
+
+        return array_merge($this->smsSenderSummary(), [
+            // Never the key itself: only that there is one, and its last four characters so it can be recognised.
+            'has_api_key' => $own !== null,
+            'has_api_secret' => ($own['api_secret'] ?? null) !== null,
+            'api_key_hint' => $own !== null ? '****' . substr($own['api_key'], -4) : null,
+            'fallback_platform' => $this->smsMayFallBack(),
+            'requested_at' => $this->sms_sender_requested_at?->toIso8601String(),
+            'approved_at' => $this->sms_sender_approved_at?->toIso8601String(),
+            'sent_count' => (int) $this->sms_sent_count,
+            'own_count' => (int) $this->sms_own_count,
+            'fallback_count' => (int) $this->sms_fallback_count,
+            'last_sent_at' => $this->sms_last_sent_at?->toIso8601String(),
+            'last_error' => $this->sms_last_error,
+            'needs_attention' => $this->smsNeedsAttention(),
+        ]);
     }
 
     // ------------------------------------------------------------------ billing
@@ -398,6 +509,7 @@ class Business extends Model
         return array_merge(['id' => $this->id, 'owner_id' => $this->owner_id], $this->identity(), [
             'inventory_type' => $this->inventory_type,
             'billing' => $this->billingSummary(),
+            'sms_sender' => $this->smsSenderSummary(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ]);
     }
