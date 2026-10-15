@@ -757,8 +757,9 @@ class _SalesScreenState extends State<SalesScreen>
                             if (!context.mounted) return;
                             setState(() => _checkingOut = false);
                             if (!ok) {
+                              // A server sentence is shown as it is; a short key is translated.
                               ThemeConstants.showErrorSnackBar(
-                                  context, loc.translate(msgKey));
+                                  context, msgKey.contains(' ') ? msgKey : loc.translate(msgKey));
                             } else {
                               _posPhone.clear();
                               _posName.clear();

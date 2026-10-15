@@ -1244,6 +1244,10 @@ class InventoryProvider extends ChangeNotifier {
       InvEventBus.instance.emit({InvDomain.sale, InvDomain.product});
 
       return (true, 'success');
+    } on ApiException catch (e) {
+      // The server refused the sale (e.g. not enough stock): show its own words, so the seller knows what
+      // to fix. The cart is kept as it is.
+      return (false, e.message.trim().isEmpty ? 'checkout_failed' : e.message);
     } on Exception catch (_) {
       // Never fall back to mock on checkout â€” a fake-success loses real sales.
       return (false, 'checkout_failed');
