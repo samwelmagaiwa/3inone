@@ -13,6 +13,29 @@ class StorePropertyRequest extends FormRequest
         return true;
     }
 
+    /**
+     * Accept the older field names some screens send, and fall back to a
+     * monthly billing cycle so a missing value never blocks creating a property.
+     */
+    protected function prepareForValidation(): void
+    {
+        $merge = [];
+
+        if (!$this->filled('billing_cycle')) {
+            $merge['billing_cycle'] = $this->input('default_billing_cycle') ?: 'monthly';
+        }
+        if (!$this->filled('number_of_blocks') && $this->filled('total_blocks')) {
+            $merge['number_of_blocks'] = $this->input('total_blocks');
+        }
+        if (!$this->filled('currency') && $this->filled('default_currency')) {
+            $merge['currency'] = $this->input('default_currency');
+        }
+
+        if ($merge) {
+            $this->merge($merge);
+        }
+    }
+
     public function rules(): array
     {
         return [
@@ -34,6 +57,7 @@ class StorePropertyRequest extends FormRequest
             'district' => ['required', 'string', 'max:100'],
             'ward' => ['nullable', 'string', 'max:100'],
             'street' => ['nullable', 'string', 'max:255'],
+            'place' => ['nullable', 'string', 'max:255'],
             'address' => ['required', 'string', 'max:500'],
             'description' => ['nullable', 'string', 'max:1000'],
             'billing_cycle' => ['required', Rule::in(['monthly', 'quarterly', 'yearly'])],

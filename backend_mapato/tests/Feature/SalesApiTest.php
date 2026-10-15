@@ -111,6 +111,59 @@ class SalesApiTest extends TestCase
         $this->assertNotEmpty($showData['data']['payments']);
     }
 
+    private function checkout(array $items, ?User $user = null): \Illuminate\Http\JsonResponse
+    {
+        $total = array_sum(array_map(fn ($i) => $i['quantity'] * 1000, $items));
+        $request = \Illuminate\Http\Request::create('/api/inventory/sales', 'POST', [
+            'payment_status' => 'paid',
+            'subtotal' => $total,
+            'total' => $total,
+            'paid_total' => $total,
+            'items' => array_map(fn ($i) => $i + ['unit_price' => 1000], $items),
+        ]);
+        $request->setUserResolver(fn () => $user ?? User::factory()->create(['role' => 'admin']));
+
+        return app(\App\Http\Controllers\API\Inventory\SalesController::class)->store($request);
+    }
+
+    public function test_cannot_sell_more_than_is_in_stock(): void
+    {
+        $response = $this->checkout([['product_id' => $this->productId, 'quantity' => 300]]);
+
+        $this->assertEquals(422, $response->getStatusCode());
+        $body = json_decode($response->getContent(), true);
+        $this->assertEquals('insufficient_stock', $body['code']);
+        $this->assertStringContainsString('Kili Water 1.5L', $body['message']);
+        $this->assertEquals(100, $body['errors']['items'][0]['available']);
+        $this->assertEquals(300, $body['errors']['items'][0]['requested']);
+
+        // Nothing was written: no sale, and the stock is untouched.
+        $this->assertEquals(0, DB::table('inventory_sales')->count());
+        $this->assertEquals(0, DB::table('inventory_sale_items')->count());
+        $this->assertEquals(100, (int) DB::table('inventory_products')->where('id', $this->productId)->value('quantity'));
+    }
+
+    public function test_stock_is_checked_across_all_lines_of_the_same_product(): void
+    {
+        // 60 + 60 is more than the 100 in stock, even though each line alone would fit.
+        $response = $this->checkout([
+            ['product_id' => $this->productId, 'quantity' => 60],
+            ['product_id' => $this->productId, 'quantity' => 60],
+        ]);
+
+        $this->assertEquals(422, $response->getStatusCode());
+        $this->assertEquals(0, DB::table('inventory_sales')->count());
+        $this->assertEquals(100, (int) DB::table('inventory_products')->where('id', $this->productId)->value('quantity'));
+    }
+
+    public function test_can_sell_exactly_what_is_in_stock(): void
+    {
+        $response = $this->checkout([['product_id' => $this->productId, 'quantity' => 100]]);
+
+        $this->assertEquals(201, $response->getStatusCode());
+        $this->assertEquals(0, (int) DB::table('inventory_products')->where('id', $this->productId)->value('quantity'));
+    }
+
     public function test_debt_sale_requires_customer_and_creates_reminder(): void
     {
         $payload = [

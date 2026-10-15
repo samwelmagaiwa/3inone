@@ -213,7 +213,8 @@ class SalesUnitsAndVatTest extends TestCase
 
     public function test_a_line_with_no_price_is_priced_the_way_the_till_would(): void
     {
-        $p = $this->cola();
+        // Plenty of stock: this test is about prices, and the sales below add up to more than 100 bottles.
+        $p = $this->cola(['quantity' => 500]);
         $price = fn (array $item, array $extra = []) => (float) $this->rows(fn () => DB::table('inventory_sale_items')
             ->where('sale_id', $this->sell([$item], $extra)->assertCreated()->json('data.id'))->value('unit_price'));
 

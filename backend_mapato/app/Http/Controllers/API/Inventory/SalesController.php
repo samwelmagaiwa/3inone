@@ -899,6 +899,17 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         }
 
         return DB::transaction(function () use ($request, $units) {
+            // Never sell more than is in stock. Checked first, for the whole cart and under a row lock, so
+            // the same product on two lines (or two tills at once) cannot slip past, and nothing is written
+            // when it is short.
+            if ($short = $this->stockShortfall($request->items, $units)) {
+                return response()->json([
+                    'message' => $short['message'],
+                    'code' => 'insufficient_stock',
+                    'errors' => ['items' => $short['lines']],
+                ], 422);
+            }
+
             // The business's own till settings: its VAT default, whether prices include VAT, which price level.
             $tillSettings = DB::table('inventory_settings')
                 ->whereIn('key', ['tax_percent', 'prices_include_vat', 'sale_tier'])
@@ -951,8 +962,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                         'sale',
                         optional($request->user())->id ?? 1
                     );
-                } catch (\Throwable $e) {
-                    // Fallback to direct stock reduction if batch ledger issue is not active
+                } catch (\Illuminate\Database\QueryException $e) {
+                    // Fallback to direct stock reduction if the batch ledger tables are not there. Only a
+                    // database problem lands here: "Insufficient stock" (a RuntimeException) must stop the
+                    // sale, never be swallowed into a sale that empties the shelf.
                     $allocations = [];
                     $newQty = max(0, (int) $product->quantity - $qty);
                     DB::table('inventory_products')
@@ -1126,6 +1139,54 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 ],
             ], 201);
         });
+    }
+
+    /**
+     * The first thing stopping this cart from leaving the shelf, or null when every product has enough.
+     * Lines are added up per product in BASE units (a crate counts as what it holds) and compared with the
+     * product's stock under a row lock. Must run inside the checkout transaction.
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     * @param  array<int, object>                $units  chosen selling unit per cart line index
+     * @return array{message: string, lines: array<int, array<string, mixed>>}|null
+     */
+    private function stockShortfall(array $items, array $units): ?array
+    {
+        $needed = [];
+        foreach ($items as $index => $item) {
+            $factor = isset($units[$index]) ? ProductUnits::factorOf($units[$index]) : 1;
+            $productId = (int) $item['product_id'];
+            $needed[$productId] = ($needed[$productId] ?? 0) + (int) $item['quantity'] * $factor;
+        }
+
+        $lines = [];
+        foreach ($needed as $productId => $requested) {
+            $product = DB::table('inventory_products')->lockForUpdate()->find($productId);
+            $available = max(0, (int) ($product->quantity ?? 0));
+            if ($product && $requested > $available) {
+                $lines[] = [
+                    'product_id' => $productId,
+                    'product_name' => $product->name,
+                    'available' => $available,
+                    'requested' => $requested,
+                ];
+            }
+        }
+
+        if (!$lines) {
+            return null;
+        }
+
+        $first = $lines[0];
+        $more = count($lines) - 1;
+        $sw = "Stock haitoshi kwa {$first['product_name']}: zilizopo {$first['available']}, unazouza {$first['requested']}.";
+        $en = "Not enough stock for {$first['product_name']}: {$first['available']} available, {$first['requested']} requested.";
+        if ($more > 0) {
+            $sw .= " Na bidhaa nyingine {$more}.";
+            $en .= " Plus {$more} more product(s).";
+        }
+
+        return ['message' => "{$sw} / {$en}", 'lines' => $lines];
     }
 
     /**

@@ -36,6 +36,8 @@ class _CreatePropertyScreenState extends State<CreatePropertyScreen> {
   String? _street;
   String? _place;
 
+  // Rent billing cycle (the server requires one)
+  String _billingCycle = 'monthly';
 
   // Section 4 — Media
   File? _coverImage;
@@ -86,6 +88,7 @@ class _CreatePropertyScreenState extends State<CreatePropertyScreen> {
       'street': _street,
       'place': _place,
       'address': _addressController.text.trim(),
+      'billing_cycle': _billingCycle,
     };
 
     final propertyId = await context.read<RentalProvider>().addProperty(data, image: _coverImage);
@@ -183,6 +186,14 @@ class _CreatePropertyScreenState extends State<CreatePropertyScreen> {
                       items: _propertyTypes,
                       formatter: _formatType,
                       onChanged: (v) => setState(() => _propertyType = v!),
+                    ),
+                    SizedBox(height: 16.h),
+                    _buildDropdownField(
+                      label: _loc.translate('billing_cycle'),
+                      value: _billingCycle,
+                      items: const ['monthly', 'quarterly', 'yearly'],
+                      formatter: _formatType,
+                      onChanged: (v) => setState(() => _billingCycle = v ?? 'monthly'),
                     ),
                     SizedBox(height: 16.h),
                     _buildTextInput(
