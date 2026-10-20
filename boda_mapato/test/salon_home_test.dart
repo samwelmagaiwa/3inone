@@ -185,6 +185,18 @@ void main() {
       expect(t.takeException(), isNull);
     });
 
+    testWidgets('the sales section has no purchase orders in a salon, and has them in a shop', (t) async {
+      for (final bool salon in <bool>[true, false]) {
+        await _openHome(t, salon: salon);
+        await t.tap(find.descendant(of: find.byType(InventoryFooter), matching: find.byIcon(Icons.point_of_sale_rounded)));
+        for (int i = 0; i < 4; i++) {
+          await t.pump(const Duration(milliseconds: 250));
+        }
+        expect(find.text('Past Orders'), salon ? findsNothing : findsWidgets, reason: salon ? 'salon' : 'shop');
+        expect(find.text('Returns & parked'), findsWidgets);
+      }
+    });
+
     testWidgets('an ordinary inventory home is not a salon: no stylists, no come-back section, no staff asked for', (t) async {
       final (_Counting server, InventoryProvider inv) = await _openHome(t, salon: false);
       await _openMenu(t);
