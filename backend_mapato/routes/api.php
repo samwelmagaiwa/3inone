@@ -44,6 +44,7 @@ use App\Http\Controllers\API\Inventory\AlertController as InventoryAlertControll
 use App\Http\Controllers\API\Inventory\CustomerController as InventoryCustomerController;
 use App\Http\Controllers\API\Inventory\AppointmentController;
 use App\Http\Controllers\API\Inventory\SalonController;
+use App\Http\Controllers\API\Inventory\SalonMoneyController;
 use App\Http\Controllers\API\Inventory\SalesController as InventorySalesController;
 use App\Http\Controllers\API\Inventory\StockMovementController as InventoryStockMovementController;
 use App\Http\Controllers\API\Inventory\ReminderController as InventoryReminderController;
@@ -413,9 +414,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::middleware('inv_perm:inv_view_reports,inv_create_sales')->group(function () {
         Route::get('inventory/salon/stylists',             [SalonController::class, 'stylists']);
         Route::get('inventory/salon/stylists/{staffId}/transactions', [SalonController::class, 'stylistTransactions']);
+        // Profit and loss, the dashboard figures and payroll: the owner and managers only (checked in the controller too).
+        Route::get('inventory/salon/profit-loss',          [SalonMoneyController::class, 'profitLoss']);
+        Route::get('inventory/salon/overview',             [SalonMoneyController::class, 'overview']);
+        Route::get('inventory/salon/staff-profiles',       [SalonMoneyController::class, 'profiles']);
+        Route::get('inventory/salon/payroll',              [SalonMoneyController::class, 'payroll']);
+        Route::get('inventory/salon/payouts',              [SalonMoneyController::class, 'payouts']);
     });
     Route::middleware('inv_perm:inv_manage_settings')->group(function () {
         Route::put('inventory/salon/settings',             [SalonController::class, 'updateSettings']);
+        Route::match(['put', 'patch'], 'inventory/salon/staff-profiles/{staffId}', [SalonMoneyController::class, 'saveProfile']);
+        Route::post('inventory/salon/payouts',             [SalonMoneyController::class, 'storePayout']);
+        Route::delete('inventory/salon/payouts/{id}',      [SalonMoneyController::class, 'destroyPayout']);
     });
 
     // ── Product units & pricing ───────────────────────────────────────────────
@@ -576,6 +586,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::middleware('inv_perm:inv_manage_expenses')->group(function () {
         Route::post('inventory/expenses',       [InventoryExpenseController::class, 'store']);
         Route::put('inventory/expenses/{id}',   [InventoryExpenseController::class, 'update']);
+        Route::post('inventory/expenses/{id}/approval', [InventoryExpenseController::class, 'approval']);
+        Route::post('inventory/expenses/{id}/receipt',  [InventoryExpenseController::class, 'receipt']);
         Route::delete('inventory/expenses/{id}',[InventoryExpenseController::class, 'destroy']);
     });
 

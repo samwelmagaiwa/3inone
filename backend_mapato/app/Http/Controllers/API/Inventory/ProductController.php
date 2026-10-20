@@ -278,6 +278,8 @@ class ProductController extends Controller
             'rebook_after_weeks' => 'nullable|integer|min:1|max:52',
             // Salon: the share (percent) of a service's price the stylist who did it earns.
             'commission_percent' => 'nullable|numeric|min:0|max:100',
+            // ... or a fixed amount each time it is done (the fixed amount wins when both are given).
+            'commission_fixed' => 'nullable|numeric|min:0',
             // Salon: who may do this service (account ids; none = anyone) and its price options (short / medium / long hair).
             'staff_ids' => 'nullable|array|max:50',
             'staff_ids.*' => 'string|max:64',
@@ -363,6 +365,9 @@ class ProductController extends Controller
             'rebook_after_weeks' => $p['rebook_after_weeks'] ?? null,
             ...(\Illuminate\Support\Facades\Schema::hasColumn('inventory_products', 'commission_percent')
                 ? ['commission_percent' => !empty($p['is_service']) ? ($p['commission_percent'] ?? null) : null]
+                : []),
+            ...(\Illuminate\Support\Facades\Schema::hasColumn('inventory_products', 'commission_fixed')
+                ? ['commission_fixed' => !empty($p['is_service']) ? ($p['commission_fixed'] ?? null) : null]
                 : []),
             ...(\Illuminate\Support\Facades\Schema::hasColumn('inventory_products', 'staff_ids')
                 ? [
@@ -672,6 +677,8 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'rebook_after_weeks' => 'nullable|integer|min:1|max:52',
             // Salon: the share (percent) of a service's price the stylist who did it earns.
             'commission_percent' => 'nullable|numeric|min:0|max:100',
+            // ... or a fixed amount each time it is done (the fixed amount wins when both are given).
+            'commission_fixed' => 'nullable|numeric|min:0',
             // Salon: who may do this service (account ids; none = anyone) and its price options (short / medium / long hair).
             'staff_ids' => 'nullable|array|max:50',
             'staff_ids.*' => 'string|max:64',
@@ -702,6 +709,13 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             if (str_ends_with((string) $existing->name, $suffix)) {
                 $label = trim((string) ($data['variant_label'] ?? ''));
                 $data['name'] = substr((string) $existing->name, 0, -strlen($suffix)) . ($label !== '' ? ' — ' . $label : '');
+            }
+        }
+
+        // A column the server has not been migrated to yet is left out rather than failing the whole save.
+        foreach (['commission_percent', 'commission_fixed', 'staff_ids', 'price_options'] as $column) {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_products', $column)) {
+                unset($data[$column]);
             }
         }
 

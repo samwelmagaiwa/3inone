@@ -1045,8 +1045,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'staff_name' => isset($item['staff_id']) ? ($staffNames[$item['staff_id']] ?? null) : null,
                     // What the stylist earns on this line, fixed now: a later change of the rate does not rewrite it.
                     ...(\Illuminate\Support\Facades\Schema::hasColumn('inventory_sale_items', 'commission_amount')
-                        ? ['commission_amount' => $isService && (float) ($product->commission_percent ?? 0) > 0 && !empty($item['staff_id'])
-                            ? round($lineTotal * (float) $product->commission_percent / 100, 2) : null]
+                        ? ['commission_amount' => $this->commissionFor($product, $item['staff_id'] ?? null, $isService, (float) $lineTotal, (int) $unitQty)]
                         : []),
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -1289,5 +1288,29 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         $amount = (float) $value;
 
         return $amount == floor($amount) ? (int) $amount : $amount;
+    }
+
+    /**
+     * What the stylist earns on a service line: a fixed amount each time when the service names one, else its percent
+     * of the line, else the person's own rate. Fixed when the sale is made, so a later change of rate never rewrites
+     * what was earned. Goods and lines with nobody named earn nobody anything.
+     */
+    private function commissionFor(object $product, ?string $staffId, bool $isService, float $lineTotal, int $unitQty): ?float
+    {
+        if (!$isService || $staffId === null || $staffId === '') {
+            return null;
+        }
+
+        $fixed = (float) ($product->commission_fixed ?? 0);
+        if ($fixed > 0) {
+            return round($fixed * max(1, $unitQty), 2);
+        }
+
+        $percent = (float) ($product->commission_percent ?? 0);
+        if ($percent <= 0 && \Illuminate\Support\Facades\Schema::hasTable('inventory_staff_profiles')) {
+            $percent = (float) DB::table('inventory_staff_profiles')->where('staff_id', $staffId)->value('commission_percent');
+        }
+
+        return $percent > 0 ? round($lineTotal * $percent / 100, 2) : null;
     }
 }

@@ -11,8 +11,32 @@ class ExpenseController extends Controller
 {
     private const CATEGORIES = [
         'rent', 'salaries', 'transport', 'utilities',
-        'supplies', 'maintenance', 'marketing', 'other',
+        'supplies', 'maintenance', 'marketing', 'licences', 'other',
     ];
+
+    /** Is the signed-in person the owner or a manager (who may approve, and whose own spending needs no approval)? */
+    private function isManager(Request $request): bool
+    {
+        $user = $request->user();
+        $role = strtolower($user->role ?? '');
+
+        return in_array($role, ['admin', 'super_admin', 'manager', 'accountant'], true) || (bool) $user->full_access;
+    }
+
+    /** An expense as the app reads it: the receipt photo is a short-lived signed link, never the stored path. */
+    private function present(object $row): object
+    {
+        $row->receipt_url = \App\Support\PrivateFile::url($row->receipt_path ?? null);
+        unset($row->receipt_path);
+
+        return $row;
+    }
+
+    /** Only approved spending counts in the totals (everything the shop records is approved). */
+    private function counted($query, string $column = 'status')
+    {
+        return \Illuminate\Support\Facades\Schema::hasColumn('inventory_expenses', 'status') ? $query->where($column, 'approved') : $query;
+    }
 
     /** GET /inventory/expenses */
     #[OA\Get(
@@ -37,7 +61,9 @@ class ExpenseController extends Controller
             ->orderByDesc('e.expense_date')
             ->orderByDesc('e.id')
             ->select('e.*', 'u.name as created_by_name')
-            ->get();
+            ->get()
+            ->map(fn ($r) => $this->present($r))
+            ->values();
 
         return response()->json(['data' => $rows]);
     }
@@ -68,7 +94,13 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'description'  => 'required|string|max:255',
             'amount'       => 'required|numeric|min:0.01',
             'expense_date' => 'required|date_format:Y-m-d',
+            'supplier'     => 'nullable|string|max:120',
+            'payment_method' => ['nullable', \Illuminate\Validation\Rule::in(\App\Support\PaymentChannels::all())],
         ]);
+
+        $hasExtras = \Illuminate\Support\Facades\Schema::hasColumn('inventory_expenses', 'status');
+        // In a salon, what the owner or a manager spends is approved at once; what anyone else records waits for them.
+        $status = \App\Support\Tenancy\TenantContext::service() === 'salon' && !$this->isManager($request) ? 'pending' : 'approved';
 
         $id = DB::table('inventory_expenses')->insertGetId([
             'category'     => $data['category'],
@@ -78,11 +110,17 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'created_by'   => optional($request->user())->id,
             'created_at'   => now(),
             'updated_at'   => now(),
-        ]);
+        ] + ($hasExtras ? [
+            'supplier'       => !empty($data['supplier']) ? trim($data['supplier']) : null,
+            'payment_method' => $data['payment_method'] ?? null,
+            'status'         => $status,
+            'approved_by'    => $status === 'approved' ? optional($request->user())->id : null,
+            'approved_at'    => $status === 'approved' ? now() : null,
+        ] : []));
 
         return response()->json([
             'message' => 'Expense recorded',
-            'data'    => DB::table('inventory_expenses')->find($id),
+            'data'    => $this->present(DB::table('inventory_expenses')->find($id)),
         ], 201);
     }
 
@@ -127,13 +165,24 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'description'  => 'sometimes|string|max:255',
             'amount'       => 'sometimes|numeric|min:0.01',
             'expense_date' => 'sometimes|date_format:Y-m-d',
+            'supplier'     => 'sometimes|nullable|string|max:120',
+            'payment_method' => ['sometimes', 'nullable', \Illuminate\Validation\Rule::in(\App\Support\PaymentChannels::all())],
         ]);
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_expenses', 'status')) {
+            unset($data['supplier'], $data['payment_method']);
+        }
+
+        // What was approved and then changed by someone who is not a manager (an amount, a date) needs approving again.
+        $extra = [];
+        if (\App\Support\Tenancy\TenantContext::service() === 'salon' && !$this->isManager($request) && array_intersect_key($data, array_flip(['amount', 'category', 'expense_date']))) {
+            $extra = ['status' => 'pending', 'approved_by' => null, 'approved_at' => null];
+        }
 
         DB::table('inventory_expenses')->where('id', $id)->update(
-            array_merge($data, ['updated_at' => now()])
+            array_merge($data, $extra, ['updated_at' => now()])
         );
 
-        return response()->json(['data' => DB::table('inventory_expenses')->find($id)]);
+        return response()->json(['data' => $this->present(DB::table('inventory_expenses')->find($id))]);
     }
 
     /** DELETE /inventory/expenses/{id} */
@@ -186,8 +235,8 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         [$from, $to] = $this->dateRange($request);
 
         // Expenses by category
-        $byCategory = DB::table('inventory_expenses')
-            ->whereBetween('expense_date', [$from, $to])
+        $byCategory = $this->counted(DB::table('inventory_expenses')
+            ->whereBetween('expense_date', [$from, $to]))
             ->groupBy('category')
             ->orderByRaw('SUM(amount) DESC')
             ->select('category', DB::raw('SUM(amount) as total'), DB::raw('COUNT(*) as count'))
@@ -226,6 +275,70 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'by_category'    => $byCategory,
             ],
         ]);
+    }
+
+    /** POST /inventory/expenses/{id}/approval: the owner or a manager approves or turns down spending that waits. */
+    #[OA\Post(
+        path: '/inventory/expenses/{id}/approval',
+        summary: 'Approve or reject an expense that is waiting',
+        security: [['bearerAuth' => []]],
+        tags: ['Inventory / Expense'],
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))],
+        responses: [new OA\Response(response: 200, description: 'Success')],
+    )]
+    public function approval(Request $request, int $id)
+    {
+        if (!$this->isManager($request)) {
+            return response()->json(['message' => 'Ni mmiliki au meneja tu anayeweza kuidhinisha. / Only the owner or a manager can approve.'], 403);
+        }
+        $data = $request->validate(['decision' => 'required|in:approve,reject']);
+        $expense = DB::table('inventory_expenses')->find($id);
+        if (!$expense) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+        if (($expense->status ?? 'approved') !== 'pending') {
+            return response()->json(['message' => 'Hii haisubiri idhini. / This one is not waiting for approval.'], 422);
+        }
+
+        $approved = $data['decision'] === 'approve';
+        DB::table('inventory_expenses')->where('id', $id)->update([
+            'status' => $approved ? 'approved' : 'rejected',
+            'approved_by' => optional($request->user())->id,
+            'approved_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['message' => $approved ? 'Approved' : 'Rejected', 'data' => $this->present(DB::table('inventory_expenses')->find($id))]);
+    }
+
+    /** POST /inventory/expenses/{id}/receipt: a photo of the receipt (kept privately). */
+    #[OA\Post(
+        path: '/inventory/expenses/{id}/receipt',
+        summary: 'Attach a photo of the receipt',
+        security: [['bearerAuth' => []]],
+        tags: ['Inventory / Expense'],
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))],
+        responses: [new OA\Response(response: 200, description: 'Success')],
+    )]
+    public function receipt(Request $request, int $id)
+    {
+        $expense = DB::table('inventory_expenses')->find($id);
+        if (!$expense) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+        $user = $request->user();
+        if (!$this->isManager($request) && (string) $expense->created_by !== (string) $user->id) {
+            return response()->json(['message' => 'You can only attach a receipt to your own expense.'], 403);
+        }
+        $request->validate(['photo' => 'required|file|image|mimes:jpg,jpeg,png|max:5120']);
+
+        if (!empty($expense->receipt_path)) {
+            \Illuminate\Support\Facades\Storage::disk(\App\Support\PrivateFile::DISK)->delete($expense->receipt_path);
+        }
+        $path = \App\Support\PrivateFile::store($request->file('photo'), 'salon_receipts');
+        DB::table('inventory_expenses')->where('id', $id)->update(['receipt_path' => $path, 'updated_at' => now()]);
+
+        return response()->json(['message' => 'Receipt saved', 'data' => $this->present(DB::table('inventory_expenses')->find($id))]);
     }
 
     /** GET /inventory/expenses/categories */

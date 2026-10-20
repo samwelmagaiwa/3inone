@@ -54,6 +54,8 @@ final class TenantTables
         'inventory_sale_returns',
         'inventory_sales',
         'inventory_settings',
+        'inventory_staff_payouts',
+        'inventory_staff_profiles',
         'inventory_stock_count_lines',
         'inventory_stock_counts',
         'inventory_stock_movements',
