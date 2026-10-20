@@ -881,8 +881,10 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
           child: _insightTile(
             Icons.inventory_2_outlined,
             Colors.cyanAccent.shade400,
-            loc.translate('products'),
-            '$totalProducts  •  ${loc.translate('active')} $inStock',
+            inv.salonMode ? (loc.isSwahili ? 'Huduma na Bidhaa' : 'Services & Goods') : loc.translate('products'),
+            inv.salonMode
+                ? '${inv.products.where((p) => p.isService).length} ${loc.isSwahili ? 'huduma' : 'services'}  •  ${inv.products.where((p) => !p.isService).length} ${loc.isSwahili ? 'bidhaa' : 'goods'}'
+                : '$totalProducts  •  ${loc.translate('active')} $inStock',
           ),
         ),
         const SizedBox(width: 4),
@@ -1692,7 +1694,7 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                loc.translate('products_overview'),
+                inv.salonMode ? (loc.isSwahili ? 'Muhtasari wa Huduma' : 'Services Overview') : loc.translate('products_overview'),
                 style: TextStyle(
                   color: textPrimary,
                   fontSize: ResponsiveHelper.bodyL,
@@ -1705,7 +1707,7 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
                   Expanded(
                     flex: 6,
                     child: Text(
-                      loc.translate('product'),
+                      inv.salonMode ? (loc.isSwahili ? 'Huduma' : 'Service') : loc.translate('product'),
                       style: TextStyle(
                         color: textSecondary,
                         fontSize: ResponsiveHelper.bodyS,
@@ -1715,7 +1717,7 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
                   Expanded(
                     flex: 3,
                     child: Text(
-                      loc.translate('stock'),
+                      inv.salonMode ? (loc.isSwahili ? 'Muda' : 'Time') : loc.translate('stock'),
                       style: TextStyle(
                         color: textSecondary,
                         fontSize: ResponsiveHelper.bodyS,
@@ -1735,7 +1737,7 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
                 ],
               ),
               ResponsiveHelper.verticalSpace(1),
-              if (inv.products.isEmpty)
+              if ((inv.salonMode ? inv.products.where((p) => p.isService) : inv.products).isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(
@@ -1744,7 +1746,8 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
                   ),
                 )
               else
-                ...inv.products.take(5).map(
+                // A salon's overview lists its services (with how long each takes), in the same table.
+                ...(inv.salonMode ? inv.products.where((p) => p.isService) : inv.products).take(5).map(
                       (p) => Container(
                         margin: const EdgeInsets.only(bottom: 6),
                         padding: const EdgeInsets.symmetric(
@@ -1768,8 +1771,8 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
                                       color: Colors.white24,
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(
-                                      Icons.inventory_2_outlined,
+                                    child: Icon(
+                                      p.isService ? Icons.content_cut_rounded : Icons.inventory_2_outlined,
                                       size: 16,
                                       color: Colors.white,
                                     ),
@@ -1791,7 +1794,7 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
                             Expanded(
                               flex: 3,
                               child: Text(
-                                '${p.quantity}',
+                                p.isService ? (p.durationMinutes == null ? '—' : '${p.durationMinutes} min') : '${p.quantity}',
                                 style: const TextStyle(color: textPrimary),
                               ),
                             ),

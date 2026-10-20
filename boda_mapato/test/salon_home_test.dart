@@ -142,6 +142,8 @@ void main() {
 
       expect(find.text('Salon Dashboard'), findsOneWidget);
       expect(find.text('Inventory Valuation'), findsNothing);
+      expect(find.text('Services Overview'), findsOneWidget, reason: 'the same table, with the services in it');
+      expect(find.text('Time'), findsOneWidget);
     });
 
     testWidgets('an ordinary inventory home still shows the value of the stock', (t) async {
@@ -154,7 +156,7 @@ void main() {
       await _openHome(t, salon: true, sw: true);
       await _openMenu(t);
 
-      expect(find.text('Huduma na Bidhaa'), findsOneWidget);
+      expect(find.text('Huduma na Bidhaa'), findsWidgets);
       expect(find.text('Wahudumu'), findsOneWidget);
       expect(find.text('Vikumbusho vya kurudi'), findsOneWidget);
       expect(find.text('Wateja na Madeni'), findsOneWidget);
