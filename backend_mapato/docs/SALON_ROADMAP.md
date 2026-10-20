@@ -110,3 +110,10 @@ appointments, VAT / other income / deposits held on profit and loss. Flutter 106
 
 Left: a branch name shown on the home header, loyalty history list + manual points adjustment screen, equipment
 history list, customer mobile app (the web booking page is the customer-facing part), release (`./deploy.sh release`).
+
+## Status 2026-10-21 (later)
+
+Done since the note above: branch name on the overview, a client's points history with manual adjustment, equipment
+service history, the sale text with the feedback link at the bottom, answers kept on the phone when there is no signal.
+Left: release (`./deploy.sh release`), the customer mobile app (the web booking page is the customer side), and replying
+to the SMS with a number (needs an incoming-SMS number from the provider).
