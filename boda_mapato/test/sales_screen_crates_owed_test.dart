@@ -124,6 +124,18 @@ void main() {
     expect(find.text(note), findsNothing);
   });
 
+  testWidgets('in a salon the same customer shows no crate note: a salon has no crates', (t) async {
+    final InventoryProvider inv = await _pump(t);
+
+    inv.setSalonMode(true);
+    inv.setPaymentMode('debt');
+    inv.setCustomer(2);
+    await t.pumpAndSettle();
+
+    expect(find.text(note), findsNothing);
+    expect(find.text('Ongeza huduma au bidhaa'), findsOneWidget);
+  });
+
   testWidgets('a cash sale has no customer picked, so no note', (t) async {
     final InventoryProvider inv = await _pump(t);
 

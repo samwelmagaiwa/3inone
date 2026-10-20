@@ -23,6 +23,7 @@ import '../widgets/inventory_widgets.dart';
 import 'crate_checkout_rules.dart';
 import 'sale_confirmation_dialog.dart';
 import 'sale_receipt_screen.dart';
+import '../salon/salon_mode.dart';
 import '../salon/staff_picker.dart';
 
 class SalesScreen extends StatefulWidget {
@@ -302,8 +303,8 @@ class _SalesScreenState extends State<SalesScreen>
                         icon: Icon(Icons.add_shopping_cart, size: 20.sp),
                         label: Text(
                           inv.cart.isEmpty
-                              ? loc.translate('add_products')
-                              : '${loc.translate('add_products')} (${inv.cart.length})',
+                              ? (isSalonMode(context) ? (loc.isSwahili ? 'Ongeza huduma au bidhaa' : 'Add services or goods') : loc.translate('add_products'))
+                              : '${isSalonMode(context) ? (loc.isSwahili ? 'Ongeza huduma au bidhaa' : 'Add services or goods') : loc.translate('add_products')} (${inv.cart.length})',
                           style: TextStyle(
                             fontSize: 13.sp,
                             fontWeight: FontWeight.bold,
@@ -358,7 +359,7 @@ class _SalesScreenState extends State<SalesScreen>
                       size: 44.sp, color: Colors.white38),
                   SizedBox(height: 8.h),
                   Text(
-                    loc.translate('create_sale_hint'),
+                    isSalonMode(context) ? (loc.isSwahili ? 'Ongeza huduma au bidhaa, chagua aliyehudumia, kisha njia ya malipo.' : 'Add services or goods, choose who served, then the payment mode.') : loc.translate('create_sale_hint'),
                     style: ThemeConstants.bodyStyle
                         .copyWith(color: Colors.white70),
                     textAlign: TextAlign.center,
@@ -526,7 +527,7 @@ class _SalesScreenState extends State<SalesScreen>
 
                 // If the picked customer is still holding our crates, say so before
                 // another sale is made to them.
-                if (inv.paymentMode != 'cash' && inv.selectedCustomerId != null)
+                if (!isSalonMode(context) && inv.paymentMode != 'cash' && inv.selectedCustomerId != null)
                   CratesOwedNote(
                     owed: CratesOwed.forCustomer(
                       context.watch<DepotProvider>().crateBalances,
@@ -598,7 +599,8 @@ class _SalesScreenState extends State<SalesScreen>
           ),
           SizedBox(height: 10.h),
           // Crates and empties: only for businesses that deal in returnable packaging (a depot).
-          if (context.watch<DepotProvider>().capabilities.useCrates) _crateExchangeCard(context, inv),
+          // (Never in a salon, whatever the settings say: it has no returnable packaging.)
+          if (!isSalonMode(context) && context.watch<DepotProvider>().capabilities.useCrates) _crateExchangeCard(context, inv),
           SizedBox(height: 16.h),
 
           // Retail or wholesale prices: for businesses that sell at both (a depot prices by product).
