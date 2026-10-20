@@ -28,6 +28,7 @@ final class TenantTables
         'inventory_batches',
         'inventory_birthday_wishes',
         'inventory_branch_stock',
+        'inventory_branch_transfers',
         'inventory_branches',
         'inventory_brands',
         'inventory_campaigns',

@@ -57,7 +57,42 @@ final class SalonBranchStock
         if ($row === null) {
             return;
         }
-        DB::table('inventory_branch_stock')->where('id', $row->id)->update(['quantity' => max(0, (int) $row->quantity - $qty), 'updated_at' => now()]);
+        $after = max(0, (int) $row->quantity - $qty);
+        DB::table('inventory_branch_stock')->where('id', $row->id)->update(['quantity' => $after, 'updated_at' => now()]);
+        self::warnIfLow($productId, $branchId, (int) $row->quantity, $after, $row->min_quantity ?? null);
+    }
+
+    /** A shelf has just dropped to (or below) its level: tell the owner and managers once, not on every sale after. */
+    private static function warnIfLow(int $productId, int $branchId, int $before, int $after, mixed $min): void
+    {
+        if ($min === null || (int) $min < 0 || $before <= (int) $min || $after > (int) $min) {
+            return;
+        }
+        try {
+            $product = (string) DB::table('inventory_products')->where('id', $productId)->value('name');
+            $branch = (string) DB::table('inventory_branches')->where('id', $branchId)->value('name');
+            app(\App\Services\Inventory\InventoryNotifier::class)->notifyByPermission(
+                ['inv_view_reports'],
+                'salon_branch_low_stock',
+                'Bidhaa zinaisha kwenye tawi / Running low in a branch',
+                "{$branch}: {$product} " . ($after === 0 ? 'zimeisha / out' : "zimebaki / left {$after}"),
+                ['product_id' => $productId, 'branch_id' => $branchId, 'quantity' => $after],
+            );
+        } catch (\Throwable) {
+            // An alert never stops a sale.
+        }
+    }
+
+    /** Say what a branch's shelf of a product should not fall below (null = no alert). */
+    public static function setLevel(int $productId, int $branchId, ?int $min): void
+    {
+        $row = DB::table('inventory_branch_stock')->where('product_id', $productId)->where('branch_id', $branchId)->first();
+        if ($row === null) {
+            DB::table('inventory_branch_stock')->insert(['product_id' => $productId, 'branch_id' => $branchId, 'quantity' => 0, 'min_quantity' => $min, 'created_at' => now(), 'updated_at' => now()]);
+
+            return;
+        }
+        DB::table('inventory_branch_stock')->where('id', $row->id)->update(['min_quantity' => $min, 'updated_at' => now()]);
     }
 
     /** A cancelled sale: the goods are back on the shelf of the branch they were sold from. */

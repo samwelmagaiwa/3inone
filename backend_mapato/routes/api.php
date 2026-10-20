@@ -442,6 +442,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // The owner's books and the walk-in queue, ready-made categories and the goods a service uses up.
         Route::get('inventory/salon/branch-stock',         [SalonBranchStockController::class, 'index']);
         Route::post('inventory/salon/branch-stock/transfer', [SalonBranchStockController::class, 'transfer']);
+        Route::put('inventory/salon/branch-stock/level',   [SalonBranchStockController::class, 'level']);
+        Route::get('inventory/salon/branch-stock/transfers', [SalonBranchStockController::class, 'transfers']);
         Route::get('inventory/salon/cashbook',             [SalonBooksController::class, 'cashbook']);
         Route::post('inventory/salon/cashbook/moves',      [SalonBooksController::class, 'storeMove']);
         Route::delete('inventory/salon/cashbook/moves/{id}', [SalonBooksController::class, 'destroyMove']);
