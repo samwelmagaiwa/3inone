@@ -22,10 +22,20 @@ class _FakeSalon extends SalonApi {
   Future<ClientHistory> clientHistory(int customerId) async => history;
 
   @override
-  Future<void> saveClient(int customerId, {String? notes, bool? smsOptOut}) async {
+  Future<void> saveClient(int customerId, {String? notes, bool? smsOptOut, String? birthday, Map<String, String>? preferences}) async {
     saves.add((id: customerId, notes: notes, optOut: smsOptOut));
+    if (birthday != null || preferences != null) profileSaves.add(<String, dynamic>{'birthday': birthday, 'preferences': preferences});
     if (saveFails != null) throw saveFails!;
   }
+
+  final List<Map<String, dynamic>> profileSaves = <Map<String, dynamic>>[];
+  List<Map<String, dynamic>> packages = <Map<String, dynamic>>[];
+
+  @override
+  Future<List<Map<String, dynamic>>> clientPackages(int customerId) async => packages;
+
+  @override
+  Future<List<Map<String, dynamic>>> clientPhotos(int customerId) async => <Map<String, dynamic>>[];
 }
 
 ClientHistory _neema({String? notes, bool optOut = false, NextVisit? next, bool visited = true}) => ClientHistory(
@@ -197,6 +207,50 @@ void main() {
 
     expect(t.widget<Switch>(_key('client_sms_opt_out')).value, isTrue, reason: 'still opted out: nothing was saved');
     expect(find.text('Your session ended.'), findsOneWidget);
+    await t.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('the salon extras: new or returning, points, birthday and preferences are saved together', (t) async {
+    final ClientHistory h = ClientHistory(
+      id: 7,
+      name: 'Neema Juma',
+      phone: '0711000001',
+      notes: null,
+      smsOptOut: false,
+      visitCount: 3,
+      totalSpent: 1000,
+      lastVisitOn: null,
+      favouriteService: null,
+      nextVisit: null,
+      visits: const <ClientVisit>[],
+      birthday: '1995-03-21',
+      preferences: const <String, String>{'hairstyle': 'Bob', 'allergies': 'Ammonia'},
+      isReturning: true,
+      loyaltyPoints: 42,
+    );
+    final _FakeSalon api = _FakeSalon(h)..packages = <Map<String, dynamic>>[<String, dynamic>{'id': 1, 'name': '5 braids', 'service_name': 'Braids', 'sessions_left': 3, 'sessions_total': 5, 'usable': true}];
+    await _open(t, api);
+    await t.pump();
+    expect(find.text('Returning client'), findsOneWidget);
+    expect(find.text('Points: 42'), findsOneWidget);
+    expect(find.text('3/5'), findsOneWidget);
+    expect(find.widgetWithText(TextField, '1995-03-21'), findsOneWidget);
+
+    await t.scrollUntilVisible(find.byKey(const Key('client_birthday')), 200, scrollable: find.byType(Scrollable).first);
+    await t.enterText(find.byKey(const Key('client_birthday')), 'March');
+    await t.tap(find.byKey(const Key('client_profile_save')));
+    await _settle(t);
+    expect(api.profileSaves, isEmpty, reason: 'a bad date is not sent');
+    expect(find.textContaining('year-month-day'), findsOneWidget);
+    await t.pump(const Duration(seconds: 4));
+
+    await t.enterText(find.byKey(const Key('client_birthday')), '1996-01-02');
+    await t.enterText(find.byKey(const Key('client_pref_colour')), 'Honey blonde');
+    await t.tap(find.byKey(const Key('client_profile_save')));
+    await _settle(t);
+    expect(api.profileSaves.single['birthday'], '1996-01-02');
+    expect((api.profileSaves.single['preferences'] as Map<String, String>)['colour'], 'Honey blonde');
+    expect((api.profileSaves.single['preferences'] as Map<String, String>)['hairstyle'], 'Bob');
     await t.pump(const Duration(seconds: 4));
   });
 

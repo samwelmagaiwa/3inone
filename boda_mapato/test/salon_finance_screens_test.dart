@@ -545,6 +545,50 @@ void main() {
       expect(find.text('1 clients • 3 sales • 1 cancelled (TSH 80,000)'), findsOneWidget);
     });
 
+    testWidgets('VAT, deposits kept as other income and deposits held show when there are some, and not otherwise', (t) async {
+      final ProfitLoss base = data();
+      final ProfitLoss withVat = ProfitLoss(
+        from: base.from,
+        to: base.to,
+        serviceRevenue: base.serviceRevenue,
+        goodsRevenue: base.goodsRevenue,
+        revenue: base.revenue,
+        discounts: base.discounts,
+        costOfGoods: base.costOfGoods,
+        grossProfit: base.grossProfit,
+        expenses: base.expenses,
+        expensesByCategory: base.expensesByCategory,
+        commissions: base.commissions,
+        salaries: base.salaries,
+        operatingCosts: base.operatingCosts,
+        netProfit: base.netProfit,
+        collections: base.collections,
+        collected: base.collected,
+        outstanding: base.outstanding,
+        cancelledCount: 0,
+        cancelledTotal: 0,
+        sales: base.sales,
+        clients: base.clients,
+        vatTotal: 19220,
+        vatByRate: const <VatRate>[VatRate(rate: 18, taxable: 106780, vat: 19220)],
+        otherIncome: 5000,
+        depositsHeld: 12000,
+      );
+      final _FakeSalon api = _FakeSalon()..pl = withVat;
+      await _host(t, ProfitLossScreen(api: api, today: _today));
+      expect(find.descendant(of: _key('pl_vat_total'), matching: find.text('TSH 19,220')), findsOneWidget);
+      expect(find.descendant(of: _key('pl_vat_18'), matching: find.text('TSH 19,220')), findsOneWidget);
+      expect(find.descendant(of: _key('pl_other_income'), matching: find.text('TSH 5,000')), findsOneWidget);
+      expect(find.descendant(of: _key('pl_deposits_held'), matching: find.text('TSH 12,000')), findsOneWidget);
+    });
+
+    testWidgets('no VAT card when there is no VAT', (t) async {
+      final _FakeSalon api = _FakeSalon()..pl = data();
+      await _host(t, ProfitLossScreen(api: api, today: _today));
+      expect(_key('pl_vat_total'), findsNothing);
+      expect(_key('pl_other_income'), findsNothing);
+    });
+
     testWidgets('a loss is called a loss', (t) async {
       final _FakeSalon api = _FakeSalon()..pl = data(net: -4000, discounts: 0, outstanding: 0, cancelled: 0);
       await _host(t, ProfitLossScreen(api: api, today: _today));

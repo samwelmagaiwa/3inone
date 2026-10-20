@@ -174,7 +174,19 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
         const Divider(color: Colors.white24),
         _line(sw ? 'Jumla iliyopokelewa' : 'Total received', d.collected, bold: true, key: 'pl_collected'),
         _line(sw ? 'Madeni ya wateja' : 'Owed by clients', d.outstanding, color: d.outstanding > 0 ? ThemeConstants.warningAmber : null, key: 'pl_outstanding'),
+        if (d.otherIncome > 0) _line(sw ? 'Mapato mengine (amana zilizopotea)' : 'Other income (deposits kept)', d.otherIncome, key: 'pl_other_income'),
+        if (d.depositsHeld > 0) _line(sw ? 'Amana zilizoshikiliwa (si mapato bado)' : 'Deposits held (not income yet)', d.depositsHeld, muted: true, key: 'pl_deposits_held'),
       ]),
+      if (d.vatTotal > 0) ...<Widget>[
+        SizedBox(height: 10.h),
+        _card(<Widget>[
+          Text(sw ? 'Kodi (VAT)' : 'VAT', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
+          SizedBox(height: 6.h),
+          for (final VatRate r in d.vatByRate) _line('${r.rate.toStringAsFixed(r.rate == r.rate.roundToDouble() ? 0 : 1)}%  (${sw ? 'mauzo yanayotozwa kodi' : 'taxable'} ${tsh(r.taxable)})', r.vat, key: 'pl_vat_${r.rate.round()}'),
+          const Divider(color: Colors.white24),
+          _line(sw ? 'Jumla ya VAT' : 'Total VAT', d.vatTotal, bold: true, key: 'pl_vat_total'),
+        ]),
+      ],
       SizedBox(height: 10.h),
       Text(
         sw

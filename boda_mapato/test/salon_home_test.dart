@@ -82,7 +82,7 @@ Future<(_Counting, InventoryProvider)> _openHome(WidgetTester t, {required bool 
   SharedPreferences.setMockInitialValues(<String, Object>{});
   await LocalizationService.instance.changeLanguage(sw ? 'sw' : 'en');
   addTearDown(() => LocalizationService.instance.changeLanguage('en'));
-  t.view.physicalSize = const Size(411, 900);
+  t.view.physicalSize = const Size(411, 1800);
   t.view.devicePixelRatio = 1.0;
   addTearDown(t.view.reset);
   final _Counting server = _Counting();

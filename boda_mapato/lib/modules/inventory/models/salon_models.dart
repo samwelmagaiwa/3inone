@@ -240,6 +240,11 @@ class ClientHistory {
     required this.favouriteService,
     required this.nextVisit,
     required this.visits,
+    this.birthday,
+    this.preferences = const <String, String>{},
+    this.isReturning,
+    this.loyaltyPoints,
+    this.referredByName,
   });
 
   factory ClientHistory.fromJson(final Map<String, dynamic> j) {
@@ -257,6 +262,13 @@ class ClientHistory {
       favouriteService: stats['favourite_service'] == null ? null : _text(stats['favourite_service']),
       nextVisit: stats['next_visit'] is Map ? NextVisit.fromJson(Map<String, dynamic>.from(stats['next_visit'] as Map)) : null,
       visits: _rows(j['visits']).map(ClientVisit.fromJson).toList(),
+      birthday: client['birthday'] == null ? null : _text(client['birthday']),
+      preferences: client['preferences'] is Map
+          ? <String, String>{for (final MapEntry<dynamic, dynamic> e in (client['preferences'] as Map).entries) '${e.key}': _text(e.value)}
+          : const <String, String>{},
+      isReturning: stats['is_returning'] == null ? null : _flag(stats['is_returning']),
+      loyaltyPoints: stats['loyalty_points'] == null ? null : _int(stats['loyalty_points']),
+      referredByName: client['referred_by_name'] == null ? null : _text(client['referred_by_name']),
     );
   }
 
@@ -265,6 +277,33 @@ class ClientHistory {
   final String phone;
   final String? notes;
   final bool smsOptOut;
+
+  /// Birthday as year-month-day, what they like (hairstyle, colour, nails, allergies), whether they have come twice,
+  /// their loyalty points (null when the salon does not use points) and who brought them.
+  final String? birthday;
+  final Map<String, String> preferences;
+  final bool? isReturning;
+  final int? loyaltyPoints;
+  final String? referredByName;
+
+  ClientHistory copyWith({final bool? smsOptOut, final String? birthday, final Map<String, String>? preferences}) => ClientHistory(
+        id: id,
+        name: name,
+        phone: phone,
+        notes: notes,
+        smsOptOut: smsOptOut ?? this.smsOptOut,
+        visitCount: visitCount,
+        totalSpent: totalSpent,
+        lastVisitOn: lastVisitOn,
+        favouriteService: favouriteService,
+        nextVisit: nextVisit,
+        visits: visits,
+        birthday: birthday ?? this.birthday,
+        preferences: preferences ?? this.preferences,
+        isReturning: isReturning,
+        loyaltyPoints: loyaltyPoints,
+        referredByName: referredByName,
+      );
 
   /// Visits that had a service (buying shampoo is not a visit).
   final int visitCount;
@@ -533,6 +572,10 @@ class ProfitLoss {
     required this.cancelledTotal,
     required this.sales,
     required this.clients,
+    this.vatTotal = 0,
+    this.vatByRate = const <VatRate>[],
+    this.otherIncome = 0,
+    this.depositsHeld = 0,
   });
 
   factory ProfitLoss.fromJson(final Map<String, dynamic> j) {
@@ -559,8 +602,19 @@ class ProfitLoss {
       cancelledTotal: _num(cancelled['total']),
       sales: _int(j['sales']),
       clients: _int(j['clients']),
+      vatTotal: j['vat'] is Map ? _num((j['vat'] as Map)['total']) : 0,
+      vatByRate: j['vat'] is Map ? _rows((j['vat'] as Map)['by_rate']).map(VatRate.fromJson).toList() : const <VatRate>[],
+      otherIncome: _num(j['other_income']),
+      depositsHeld: _num(j['deposits_held']),
     );
   }
+
+  /// VAT collected in the period (in total and by rate), income that is not a sale (deposits kept after a no-show) and
+  /// deposits still held for coming visits (not income yet).
+  final double vatTotal;
+  final List<VatRate> vatByRate;
+  final double otherIncome;
+  final double depositsHeld;
 
   final DateTime from;
   final DateTime to;
@@ -587,6 +641,16 @@ class ProfitLoss {
   final double cancelledTotal;
   final int sales;
   final int clients;
+}
+
+class VatRate {
+  const VatRate({required this.rate, required this.taxable, required this.vat});
+
+  factory VatRate.fromJson(final Map<String, dynamic> j) => VatRate(rate: _num(j['rate']), taxable: _num(j['taxable']), vat: _num(j['vat']));
+
+  final double rate;
+  final double taxable;
+  final double vat;
 }
 
 // ------------------------------------------------------------------ payroll

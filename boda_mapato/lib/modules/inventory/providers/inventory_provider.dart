@@ -231,6 +231,79 @@ class InventoryProvider extends ChangeNotifier {
   static const List<String> paymentChannels = <String>['cash', 'mpesa', 'mixx', 'airtel_money', 'halopesa', 'bank_transfer'];
 
   double get cartDiscount => !_salonMode ? 0 : (_salonDiscount > cartSubtotal ? cartSubtotal : _salonDiscount);
+
+  // Salon perks at the till: a voucher code, loyalty points spent, packages used on lines. Their discount is part of
+  // the sale's discount (the server checks the two agree).
+  String _voucherCode = '';
+  double _voucherOff = 0;
+  int _pointsUsed = 0;
+  int _pointValue = 0;
+
+  String get voucherCode => _voucherCode;
+  double get voucherOff => !_salonMode ? 0 : (_voucherOff > cartSubtotal ? cartSubtotal : _voucherOff);
+  int get pointsUsed => _pointsUsed;
+  double get pointsOff {
+    if (!_salonMode || _pointsUsed <= 0) return 0;
+    final double room = cartSubtotal - voucherOff;
+    final double worth = _pointsUsed * _pointValue.toDouble();
+
+    return worth > room ? (room < 0 ? 0 : room) : worth;
+  }
+
+  /// Everything taken off the sale: the typed discount, the voucher and the points (never more than the lines).
+  double get totalDiscount {
+    final double d = cartDiscount + voucherOff + pointsOff;
+
+    return d > cartSubtotal ? cartSubtotal : d;
+  }
+
+  void setVoucher(String code, double off) {
+    _voucherCode = code.trim().toUpperCase();
+    _voucherOff = off < 0 ? 0 : off;
+    notifyListeners();
+  }
+
+  void clearVoucher() {
+    _voucherCode = '';
+    _voucherOff = 0;
+    notifyListeners();
+  }
+
+  void setRedeemPoints(int points, int valuePerPoint) {
+    _pointsUsed = points < 0 ? 0 : points;
+    _pointValue = valuePerPoint < 0 ? 0 : valuePerPoint;
+    notifyListeners();
+  }
+
+  /// Take this line from one of the client's packages (it becomes free), or put it back to its price.
+  void setLinePackage(InvSaleItem item, int? packageId) {
+    if (packageId != null && item.packageId == null) {
+      item.priceBeforePackage = item.unitPrice;
+      item.unitPrice = 0;
+    } else if (packageId == null && item.packageId != null) {
+      item.unitPrice = item.priceBeforePackage ?? item.unitPrice;
+      item.priceBeforePackage = null;
+    }
+    item.packageId = packageId;
+    _retax(item);
+    notifyListeners();
+  }
+
+  void _clearPerks({bool keepVoucher = false}) {
+    if (!keepVoucher) {
+      _voucherCode = '';
+      _voucherOff = 0;
+    }
+    _pointsUsed = 0;
+    for (final InvSaleItem it in _cart) {
+      if (it.packageId != null) {
+        it.unitPrice = it.priceBeforePackage ?? it.unitPrice;
+        it.priceBeforePackage = null;
+        it.packageId = null;
+        _retax(it);
+      }
+    }
+  }
   String get discountReason => _discountReason;
   String get cashChannel => _cashChannel;
 
@@ -254,7 +327,7 @@ class InventoryProvider extends ChangeNotifier {
 
   /// When prices already include VAT the total is just the lines; otherwise VAT is added on top.
   double get cartTotal =>
-      cartSubtotal - cartDiscount + (_capabilities.pricesIncludeVat ? 0 : cartTax);
+      cartSubtotal - totalDiscount + (_capabilities.pricesIncludeVat ? 0 : cartTax);
   double get cartProfit => _cart.fold(0, (sum, it) => sum + it.profit);
 
   InvCapabilities get capabilities => _capabilities;
@@ -1214,6 +1287,7 @@ class InventoryProvider extends ChangeNotifier {
     _tierOverride = null;
     _salonDiscount = 0;
     _discountReason = '';
+    _clearPerks();
     notifyListeners();
   }
 
@@ -1223,6 +1297,8 @@ class InventoryProvider extends ChangeNotifier {
   }
 
   void setCustomer(int? customerId) {
+    // Points and packages belong to one client.
+    if (customerId != _selectedCustomerId) _clearPerks(keepVoucher: true);
     _selectedCustomerId = customerId;
     _selectedCustomerPhone = customerId == null
         ? ''
@@ -1311,8 +1387,13 @@ class InventoryProvider extends ChangeNotifier {
           : (_manualPhone.trim().isNotEmpty ? _manualPhone.trim() : null),
       'payment_status': status,
       'subtotal': subtotal,
-      'discount': cartDiscount,
-      if (cartDiscount > 0 && _discountReason.trim().isNotEmpty) 'discount_reason': _discountReason.trim(),
+      'discount': totalDiscount,
+      if (totalDiscount > 0)
+        'discount_reason': _discountReason.trim().isNotEmpty
+            ? _discountReason.trim()
+            : <String>[if (_voucherCode.isNotEmpty) 'Voucher $_voucherCode', if (pointsOff > 0) 'Loyalty points'].join(' + '),
+      if (_voucherCode.isNotEmpty) 'voucher_code': _voucherCode,
+      if (_pointsUsed > 0) 'redeem_points': _pointsUsed,
       'tax': cartTax,
       'total': total,
       'paid_total': paidTotal,
@@ -1328,6 +1409,7 @@ class InventoryProvider extends ChangeNotifier {
                 'unit_cost_snapshot': e.unitCostSnapshot,
                 if (e.taxPercent != null) 'tax_percent': e.taxPercent,
                 if (e.staffId != null) 'staff_id': e.staffId,
+                if (e.packageId != null) 'package_id': e.packageId,
               })
           .toList(),
       if (payments.isNotEmpty) 'payments': payments,
@@ -1356,6 +1438,9 @@ class InventoryProvider extends ChangeNotifier {
       _cashChannel = 'cash';
       _salonDiscount = 0;
       _discountReason = '';
+      _voucherCode = '';
+      _voucherOff = 0;
+      _pointsUsed = 0;
       notifyListeners();
 
       // Emit events — the bus listener re-fetches sales, products,

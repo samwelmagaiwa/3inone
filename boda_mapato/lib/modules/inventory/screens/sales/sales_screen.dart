@@ -25,6 +25,7 @@ import 'crate_checkout_rules.dart';
 import 'sale_confirmation_dialog.dart';
 import 'sale_receipt_screen.dart';
 import '../salon/price_option_picker.dart';
+import '../salon/salon_perks_card.dart';
 import '../salon/salon_mode.dart';
 import '../salon/staff_picker.dart';
 
@@ -674,6 +675,8 @@ class _SalesScreenState extends State<SalesScreen>
           SizedBox(height: 10.h),
           if (isSalonMode(context)) ...[
             _salonMoneyCard(inv, loc.isSwahili),
+            SizedBox(height: 10.h),
+            const SalonPerksCard(),
             SizedBox(height: 10.h),
           ],
           // Crates and empties: only for businesses that deal in returnable packaging (a depot).

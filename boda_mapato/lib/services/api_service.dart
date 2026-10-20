@@ -1028,8 +1028,9 @@ class ApiService {
     final String endpoint,
     final String field,
     final Uint8List bytes,
-    final String filename,
-  ) async {
+    final String filename, {
+    final Map<String, String>? fields,
+  }) async {
     final Map<String, String> headers = await _authHeaders;
     if (!headers.containsKey("Authorization")) {
       throw ApiException(LocalizationService.instance.translate('not_allowed_please_log_in_again'));
@@ -1041,6 +1042,7 @@ class ApiService {
     h.remove('Content-Type');
     request.headers.addAll(h);
     request.files.add(http.MultipartFile.fromBytes(field, bytes, filename: filename));
+    if (fields != null) request.fields.addAll(fields);
     final http.StreamedResponse streamed = await request.send().timeout(timeoutDuration);
     return _handleResponse(await http.Response.fromStream(streamed));
   }

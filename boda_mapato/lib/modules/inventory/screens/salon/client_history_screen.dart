@@ -8,12 +8,13 @@ import '../../../../utils/server_message.dart';
 import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
+import 'client_extras.dart';
 import 'salon_text.dart';
 
 /// A client's page: how often they come, what they spend and like, when they are due back, what to remember about
 /// them (hair type, allergies) and whether they may be texted.
 class ClientHistoryScreen extends StatefulWidget {
-  const ClientHistoryScreen({super.key, required this.customerId, required this.name, this.api});
+  const ClientHistoryScreen({super.key, required this.customerId, required this.name, this.api, this.picker});
 
   final int customerId;
 
@@ -22,6 +23,9 @@ class ClientHistoryScreen extends StatefulWidget {
 
   /// The server calls (a fake in tests).
   final SalonApi? api;
+
+  /// Chooses a photo (the gallery; a test passes its own).
+  final PhotoPicker? picker;
 
   @override
   State<ClientHistoryScreen> createState() => _ClientHistoryScreenState();
@@ -92,19 +96,7 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
     try {
       await _api.saveClient(widget.customerId, smsOptOut: optOut);
       if (!mounted) return;
-      setState(() => _history = ClientHistory(
-            id: h.id,
-            name: h.name,
-            phone: h.phone,
-            notes: h.notes,
-            smsOptOut: optOut,
-            visitCount: h.visitCount,
-            totalSpent: h.totalSpent,
-            lastVisitOn: h.lastVisitOn,
-            favouriteService: h.favouriteService,
-            nextVisit: h.nextVisit,
-            visits: h.visits,
-          ));
+      setState(() => _history = h.copyWith(smsOptOut: optOut));
     } on Exception catch (e) {
       if (!mounted) return;
       ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
@@ -251,6 +243,8 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
         onPressed: _saveNotes,
         label: sw ? 'Hifadhi maelezo' : 'Save notes',
       ),
+      SizedBox(height: 14.h),
+      ClientExtras(key: ValueKey<int>(h.id), history: h, api: _api, picker: widget.picker),
       SizedBox(height: 14.h),
       Text(sw ? 'Ziara za nyuma' : 'Past visits', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
       SizedBox(height: 8.h),

@@ -14,12 +14,18 @@ class InvSaleItem {
     this.staffName,
     this.isService = false,
     this.optionLabel,
+    this.packageId,
+    this.priceBeforePackage,
   });
   final int productId;
 
   /// Salon: the price option this line was added with ("Long"); two options of one service are two lines.
   final String? optionLabel;
   final String name;
+
+  /// Salon: the client's package this visit is taken from (the line is then free), and the price it had before.
+  int? packageId;
+  double? priceBeforePackage;
 
   /// How many of the selling unit (a crate, a kg) -- always a whole number.
   int qty;

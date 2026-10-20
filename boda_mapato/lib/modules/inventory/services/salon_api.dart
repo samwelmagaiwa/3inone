@@ -281,11 +281,27 @@ class SalonApi {
       ClientHistory.fromJson(_data(await _api.get('/inventory/salon/clients/$customerId/history')));
 
   /// Notes about a client and whether they may be texted. Only what is given is changed.
-  Future<void> saveClient(final int customerId, {final String? notes, final bool? smsOptOut}) async {
+  Future<void> saveClient(final int customerId, {final String? notes, final bool? smsOptOut, final String? birthday, final Map<String, String>? preferences}) async {
     await _api.put('/inventory/salon/clients/$customerId', <String, dynamic>{
       if (notes != null) 'notes': notes,
       if (smsOptOut != null) 'sms_opt_out': smsOptOut,
+      if (birthday != null) 'birthday': birthday.isEmpty ? null : birthday,
+      if (preferences != null) 'preferences': preferences,
     });
+  }
+
+  Future<List<Map<String, dynamic>>> clientPackages(final int customerId) => _list('/inventory/salon/clients/$customerId/packages');
+
+  Future<List<Map<String, dynamic>>> clientPhotos(final int customerId) => _list('/inventory/salon/clients/$customerId/photos');
+
+  /// Keep a photo of a style; the client has agreed (the server insists on it).
+  Future<void> uploadClientPhoto(final int customerId, final Uint8List bytes, final String filename, {final String? caption}) async {
+    await _api.uploadFile('/inventory/salon/clients/$customerId/photos', 'photo', bytes, filename,
+        fields: <String, String>{'consent': '1', if (caption != null && caption.isNotEmpty) 'caption': caption});
+  }
+
+  Future<void> deleteClientPhoto(final int photoId) async {
+    await _api.delete('/inventory/salon/photos/$photoId');
   }
 
   // ---------------------------------------------------------------- branches
@@ -401,4 +417,15 @@ class SalonApi {
           if (r is Map) Map<String, dynamic>.from(r),
     ];
   }
+
+  /// What a voucher would take off a sale of [subtotal]; throws the server's words when it cannot be used.
+  Future<double> voucherDiscount(final String code, final double subtotal) async {
+    final Map<String, dynamic> d = _data(await _api.get('/inventory/salon/vouchers/check?code=${Uri.encodeQueryComponent(code)}&subtotal=${subtotal.toStringAsFixed(2)}'));
+    final dynamic v = d['discount'];
+
+    return v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
+  }
+
+  /// {on, balance, worth, per, value, ledger} for one client's points.
+  Future<Map<String, dynamic>> clientLoyalty(final int customerId) async => _data(await _api.get('/inventory/salon/clients/$customerId/loyalty'));
 }
