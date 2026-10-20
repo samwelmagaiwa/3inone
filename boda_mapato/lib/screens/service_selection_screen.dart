@@ -35,7 +35,7 @@ class ServiceSelectionScreen extends StatelessWidget {
       allowedServices != null && allowedServices!.contains(service);
 
   bool get _hasAnyVisible =>
-      _allows('inventory') || _allows('rental') || _allows('transport');
+      _allows('inventory') || _allows('rental') || _allows('transport') || _allows('salon');
 
   /// Only a super admin reviews registrations. (No signed-in user, or no provider at all, means no.)
   bool _isSuperAdmin(BuildContext context) {
@@ -65,6 +65,11 @@ class ServiceSelectionScreen extends StatelessWidget {
       case 'transport':
         if (context.mounted) {
           await Navigator.pushReplacementNamed(context, '/modern-dashboard');
+        }
+        return;
+      case 'salon':
+        if (context.mounted) {
+          await Navigator.pushReplacementNamed(context, '/salon');
         }
         return;
       default:
@@ -142,6 +147,12 @@ class ServiceSelectionScreen extends StatelessWidget {
                               label: loc.translate('transport_service'),
                               onTap: () =>
                                   _selectService(context, 'transport'),
+                            ),
+                          if (_allows('salon'))
+                            _ServiceTile(
+                              icon: Icons.content_cut_rounded,
+                              label: loc.translate('salon_service'),
+                              onTap: () => _selectService(context, 'salon'),
                             ),
                         ],
                       )

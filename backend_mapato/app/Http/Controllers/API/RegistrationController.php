@@ -35,7 +35,7 @@ use OpenApi\Attributes as OA;
  */
 class RegistrationController extends Controller
 {
-    private const SERVICES = ['inventory', 'rental', 'transport'];
+    private const SERVICES = ['inventory', 'rental', 'transport', 'salon'];
 
     // Texts are written in both languages: nobody knows which one the person reads best, and the
     // app they used may not be in the language they speak at home.

@@ -29,6 +29,11 @@ return new class extends Migration
             if ($table === 'inventory_settings') {
                 continue; // rebuilt by the next migration
             }
+            // A table added to the list AFTER this migration was written (inventory_rebook_reminders) does not
+            // exist yet when a fresh database gets here; it is created later with its own owner_id.
+            if (!Schema::hasTable($table)) {
+                continue;
+            }
 
             Schema::table($table, function (Blueprint $t) {
                 $t->uuid(TenantTables::OWNER_COLUMN)->nullable()->index();
@@ -53,7 +58,7 @@ return new class extends Migration
         }
 
         foreach (TenantTables::INVENTORY as $table) {
-            if ($table === 'inventory_settings') {
+            if ($table === 'inventory_settings' || !Schema::hasTable($table) || !Schema::hasColumn($table, TenantTables::OWNER_COLUMN)) {
                 continue;
             }
 

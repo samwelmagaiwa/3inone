@@ -23,6 +23,7 @@ import '../widgets/inventory_widgets.dart';
 import 'crate_checkout_rules.dart';
 import 'sale_confirmation_dialog.dart';
 import 'sale_receipt_screen.dart';
+import '../salon/staff_picker.dart';
 
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
@@ -1760,12 +1761,15 @@ class _ProductPickTile extends StatelessWidget {
           color: ThemeConstants.invFill,
           borderRadius: BorderRadius.circular(8.r),
         ),
-        child: Icon(Icons.inventory_2_outlined,
+        child: Icon(product.isService ? Icons.content_cut_rounded : Icons.inventory_2_outlined,
             color: ThemeConstants.invAccent, size: 20.sp),
       ),
       title: Text(product.name, style: ThemeConstants.bodyStyle),
       subtitle: Text(
-        'SKU: ${product.sku} • TZS ${price.toStringAsFixed(0)}$per • $stock in stock',
+        // A service has no stock to show: its price and how long it takes.
+        product.isService
+            ? '${LocalizationService.instance.isSwahili ? 'Huduma' : 'Service'} • TZS ${price.toStringAsFixed(0)}$per${product.durationMinutes == null ? '' : ' • ${product.durationMinutes} min'}'
+            : 'SKU: ${product.sku} • TZS ${price.toStringAsFixed(0)}$per • $stock in stock',
         style: ThemeConstants.captionStyle,
       ),
       trailing: ElevatedButton(
@@ -1840,6 +1844,26 @@ class _CartRow extends StatelessWidget {
               selectedUnitId: item.unitId,
               baseLabel: product?.unit ?? 'unit',
               onSelected: (InvProductUnit u) => inv.changeCartUnit(item, u),
+            ),
+          ],
+          // Salon: who serves this service. The person picked for the line before is offered again, and shown here.
+          if (item.isService && inv.salonMode) ...[
+            SizedBox(height: 4.h),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ActionChip(
+                key: ValueKey<String>('cart_staff_${item.key}'),
+                avatar: Icon(Icons.person_outline, size: 16.sp, color: Colors.white70),
+                label: Text(
+                  (item.staffName ?? '').isEmpty
+                      ? (loc.isSwahili ? 'Mhudumu: chagua' : 'Stylist: choose')
+                      : (loc.isSwahili ? 'Mhudumu: ${item.staffName}' : 'Stylist: ${item.staffName}'),
+                  style: TextStyle(color: Colors.white, fontSize: 12.sp),
+                ),
+                backgroundColor: ThemeConstants.invFill,
+                side: const BorderSide(color: ThemeConstants.invBorder),
+                onPressed: () => pickStylist(context, item),
+              ),
             ),
           ],
           SizedBox(height: 6.h),

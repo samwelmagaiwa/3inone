@@ -98,7 +98,11 @@ class ProductController extends Controller
             $query->where('p.status', $status);
         }
         if ($lowStock) {
-            $query->whereColumn('p.quantity', '<', 'p.min_stock');
+            $query->whereColumn('p.quantity', '<', 'p.min_stock')->where('p.is_service', false);
+        }
+        // Salon: ?is_service=1 lists only services, ?is_service=0 only goods (shampoo, oils ...).
+        if ($request->query('is_service') !== null && $request->query('is_service') !== '') {
+            $query->where('p.is_service', $request->boolean('is_service'));
         }
         if ($categoryId = $request->query('category_id')) {
             $query->where('p.category_id', (int) $categoryId);
@@ -258,6 +262,11 @@ class ProductController extends Controller
             'tax_percent' => 'nullable|numeric|min:0|max:100',
             'measure' => 'nullable|in:count,weight,volume',
             'variant_label' => 'nullable|string|max:100',
+            // Salon: a SERVICE has no stock; how long it takes, and after how many weeks the client should be
+            // reminded to come back for it (empty = the business's own default).
+            'is_service' => 'sometimes|boolean',
+            'duration_minutes' => 'nullable|integer|min:1|max:1440',
+            'rebook_after_weeks' => 'nullable|integer|min:1|max:52',
             // The product's own unit's price at the OTHER level: `selling_price` is stored at the product's
             // price_tier (retail or wholesale); this is the same unit's price at the one that is left.
             'other_price' => 'nullable|numeric|min:0',
@@ -326,11 +335,15 @@ class ProductController extends Controller
             'selling_price' => $p['selling_price'],
             'unit' => $unitName,
             'unit_factor' => $unitFactor,
-            'quantity' => $p['quantity'] ?? 0,
-            'min_stock' => $p['min_stock'],
+            // A service has no stock to count or to run low on.
+            'quantity' => !empty($p['is_service']) ? 0 : ($p['quantity'] ?? 0),
+            'min_stock' => !empty($p['is_service']) ? 0 : $p['min_stock'],
             'status' => $p['status'],
             'barcode' => $p['barcode'] ?? null,
             'price_tier' => $tier,
+            'is_service' => !empty($p['is_service']),
+            'duration_minutes' => $p['duration_minutes'] ?? null,
+            'rebook_after_weeks' => $p['rebook_after_weeks'] ?? null,
             'tax_percent' => $p['tax_percent'] ?? null,
             'variant_label' => $p['variant_label'] ?? null,
             'measure' => $measure,
@@ -480,6 +493,9 @@ class ProductController extends Controller
             'price_tier' => $source->price_tier,
             'tax_percent' => $source->tax_percent,
             'measure' => $source->measure ?? 'count',
+            'is_service' => (bool) ($source->is_service ?? false),
+            'duration_minutes' => $source->duration_minutes ?? null,
+            'rebook_after_weeks' => $source->rebook_after_weeks ?? null,
             'units' => $this->unitsOf($id),
         ];
 
@@ -625,7 +641,25 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'tax_percent' => 'nullable|numeric|min:0|max:100',
             'measure' => 'nullable|in:count,weight,volume',
             'variant_label' => 'nullable|string|max:100',
+            'is_service' => 'sometimes|boolean',
+            'duration_minutes' => 'nullable|integer|min:1|max:1440',
+            'rebook_after_weeks' => 'nullable|integer|min:1|max:52',
         ]);
+
+        // Goods and services are told apart on every old sale line, so an item that has been sold cannot change
+        // from one to the other: make a new item instead.
+        if (array_key_exists('is_service', $data) && (bool) $data['is_service'] !== (bool) ($existing->is_service ?? false)) {
+            if (DB::table('inventory_sale_items')->where('product_id', $id)->exists()) {
+                return response()->json([
+                    'message' => 'Bidhaa iliyokwisha uzwa haiwezi kubadilishwa kuwa huduma (wala huduma kuwa bidhaa). Tengeneza mpya. / '
+                        . 'An item that has been sold cannot change between a product and a service. Create a new one.',
+                ], 422);
+            }
+        }
+        if (!empty($data['is_service'])) {
+            $data['quantity'] = 0;
+            $data['min_stock'] = 0;
+        }
 
         // Renaming a size/colour renames the product too ("T-Shirt — M" -> "T-Shirt — L"), unless the
         // name was changed on purpose in the same request.

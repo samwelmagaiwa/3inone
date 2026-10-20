@@ -49,7 +49,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   bool get _isRental => _activeService == 'rental';
-  bool get _isInventory => _activeService == 'inventory';
+  // Salon runs on the same sales engine, so its staff are given the same kinds of roles and permissions.
+  bool get _isInventory => _activeService == 'inventory' || _activeService == 'salon';
 
   /// Owner roles (admin / landlord) are separate businesses: they register
   /// themselves or a super admin creates them. A business owner creates STAFF,
@@ -57,7 +58,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   bool get _isSuperAdminUser =>
       Provider.of<AuthProvider>(context, listen: false).user?.isSuperAdmin == true;
 
-  static const List<String> _allServices = <String>['inventory', 'transport', 'rental'];
+  static const List<String> _allServices = <String>['inventory', 'transport', 'rental', 'salon'];
 
   /// The services the signed-in user may give to someone else. A super admin can give any;
   /// a business owner only the ones a super admin gave them (the server refuses the rest
@@ -113,6 +114,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         return _loc.translate('transport_service');
       case 'rental':
         return _loc.translate('rental_service');
+      case 'salon':
+        return _loc.translate('salon_service');
       default:
         return service;
     }
@@ -673,7 +676,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             ? Icons.inventory_2_rounded
                             : s == 'transport'
                                 ? Icons.local_shipping_rounded
-                                : Icons.apartment_rounded,
+                                : s == 'salon'
+                                    ? Icons.content_cut_rounded
+                                    : Icons.apartment_rounded,
                         color: on ? ThemeConstants.primaryOrange : Colors.white54,
                         size: 20,
                       ),
@@ -1105,7 +1110,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         (data['general_admins'] as List?) ?? const [];
 
     final List<Widget> sections = <Widget>[];
-    for (final String service in <String>['transport', 'rental', 'inventory']) {
+    for (final String service in <String>['transport', 'rental', 'inventory', 'salon']) {
       final List<dynamic> groups = (byService[service] as List?) ?? const [];
       if (groups.isEmpty) continue;
       sections.add(

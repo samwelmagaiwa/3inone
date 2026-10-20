@@ -159,12 +159,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       separatorBuilder: (_, __) => SizedBox(height: 8.h),
                       itemBuilder: (context, index) {
                         final p = slice[index];
-                        final isLow = p.quantity < p.minStock;
+                        // A service has no shelf: it is never "low".
+                        final isLow = !p.isService && p.quantity < p.minStock;
                         return InkWell(
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute<void>(
-                              builder: (_) => ProductUnitsScreen(product: p),
+                              // its selling units are for goods; a service is edited instead
+                              builder: (_) => p.isService && canManage ? AddEditProductScreen(product: p) : ProductUnitsScreen(product: p),
                             ),
                           ),
                           borderRadius: BorderRadius.circular(20.r),
@@ -173,7 +175,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                             padding: EdgeInsets.all(12.w),
                             child: Row(
                               children: [
-                                Icon(Icons.inventory_2_outlined,
+                                Icon(p.isService ? Icons.content_cut_rounded : Icons.inventory_2_outlined,
                                     color: Colors.white70, size: 22.sp),
                                 SizedBox(width: 12.w),
                                 Expanded(
@@ -186,7 +188,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                           maxLines: 1),
                                       SizedBox(height: 4.h),
                                       AutoSizeText(
-                                          '${loc.translate('sku')}: ${p.sku} • ${loc.translate('quantity')}: ${stockLabel(p, inv.unitsOf(p.id), inv.capabilities)}',
+                                          p.isService
+                                              ? '${loc.isSwahili ? 'Huduma' : 'Service'} • TSH ${p.sellingPrice.toStringAsFixed(0)}${p.durationMinutes == null ? '' : ' • ${p.durationMinutes} min'}'
+                                              : '${loc.translate('sku')}: ${p.sku} • ${loc.translate('quantity')}: ${stockLabel(p, inv.unitsOf(p.id), inv.capabilities)}',
                                           style: ThemeConstants.captionStyle,
                                           maxLines: 1,
                                           minFontSize: 10),

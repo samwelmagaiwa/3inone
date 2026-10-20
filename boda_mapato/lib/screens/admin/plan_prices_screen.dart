@@ -198,8 +198,8 @@ class _PlanPricesScreenState extends State<PlanPricesScreen> {
       children: <Widget>[
         Text(
           _sw
-              ? "Kila mpango ni idadi ya huduma: ${planNameText("basic", sw: true)} ni huduma MOJA, ${planNameText("standard", sw: true)} ni huduma 2, Premium ni huduma ZOTE 3. Bei unazoweka hapa zinaonekana mara moja kwenye fomu ya usajili ya mteja."
-              : "Each plan is a number of services: Basic is ONE service, Standard is TWO, Premium is ALL THREE. The prices you set here show on the client's registration form straight away.",
+              ? "Kila mpango ni idadi ya huduma: ${planNameText("basic", sw: true)} ni huduma MOJA, ${planNameText("standard", sw: true)} ni huduma 2, Premium ni hadi huduma 3 (mteja anachagua). Bei unazoweka hapa zinaonekana mara moja kwenye fomu ya usajili ya mteja."
+              : "Each plan is a number of services: Basic is ONE service, Standard is TWO, Premium is UP TO THREE (the client chooses which). The prices you set here show on the client's registration form straight away.",
           key: const ValueKey<String>("plans_intro"),
           style: const TextStyle(color: Colors.white70, fontSize: 13.5, height: 1.4),
         ),

@@ -33,12 +33,13 @@ class CheckInventoryPermission
         }
 
         // Having a permission is not enough: the business must have been given the
-        // inventory service at all (see User::canUseService).
-        if (!$user->canUseService('inventory')) {
+        // inventory service at all (see User::canUseService). The Salon service runs on the same sales
+        // engine (customers, sales, payments, cash, expenses), so it opens these routes too.
+        if (!$user->canUseService('inventory') && !$user->canUseService('salon')) {
             return response()->json([
                 'message' => 'Your account has not been given access to this service. Ask your administrator.',
                 'code'    => 'service_not_assigned',
-                'service' => ['inventory'],
+                'service' => ['inventory', 'salon'],
             ], 403);
         }
 

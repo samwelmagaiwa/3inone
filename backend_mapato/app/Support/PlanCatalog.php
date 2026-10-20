@@ -9,7 +9,7 @@ use App\Models\PlanPrice;
  *
  *   basic    one service
  *   standard two services
- *   premium  all three services
+ *   premium  three services, of the owner's choice (there are four services: Transport, Rental, Inventory, Salon)
  *
  * `trial` and `free` are not sold and have no limit: they are what a business is on before it pays, or what it was
  * given by hand. The prices are the super admin's to set (the plan_prices table); the number of services a plan
@@ -118,7 +118,7 @@ class PlanCatalog
             'currency' => self::currency(),
             'periods' => self::periods(),
             'trial_days' => max((int) config('billing.trial_days', 30), 0),
-            'total_services' => count((array) config('billing.services', ['transport', 'rental', 'inventory'])),
+            'total_services' => count((array) config('billing.services', ['transport', 'rental', 'inventory', 'salon'])),
             'plans' => $plans,
             // False until the super admin has priced at least one plan: the form then says prices are coming.
             'configured' => collect($prices)->flatten()->filter(fn ($p) => $p !== null)->isNotEmpty(),
@@ -129,6 +129,14 @@ class PlanCatalog
     public static function tooSmallMessage(string $plan, int $serviceCount): string
     {
         $included = (int) (self::servicesIncluded($plan) ?? 0);
+        $most = (int) (max(self::limits() ?: [0]));
+
+        // More services than the biggest plan covers: there is no bigger plan to point to.
+        if ($serviceCount > $most) {
+            return "Mpango mkubwa (Premium) unahusu huduma {$most} tu, na umechagua {$serviceCount}. Chagua huduma {$most} au pungufu. / "
+                . "The biggest plan (Premium) covers {$most} services at most, and you chose {$serviceCount}. Choose {$most} or fewer.";
+        }
+
         $better = self::planFor($serviceCount);
         $name = ucfirst($plan);
         $betterName = ucfirst($better);

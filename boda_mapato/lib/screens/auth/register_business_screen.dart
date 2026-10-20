@@ -78,7 +78,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
 
   final Set<String> _services = <String>{};
   bool _servicesMissing = false;
-  // The package: a plan (basic = one service, standard = two, premium = all three) paid for [_months] months. It
+  // The package: a plan (basic = one service, standard = two, premium = up to three of the four) paid for [_months] months. It
   // follows the number of services chosen until the applicant picks one themselves.
   PlanCatalog _catalog = PlanCatalog.fallback;
   String? _plan;
@@ -148,12 +148,14 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
   String _serviceLabel(final String service) => switch (service) {
         "inventory" => _loc.translate("inventory_service"),
         "rental" => _loc.translate("rental_service"),
+        "salon" => _loc.translate("salon_service"),
         _ => _loc.translate("transport_service"),
       };
 
   IconData _serviceIcon(final String service) => switch (service) {
         "inventory" => Icons.inventory_2_rounded,
         "rental" => Icons.apartment_rounded,
+        "salon" => Icons.content_cut_rounded,
         _ => Icons.local_shipping_rounded,
       };
 
@@ -167,7 +169,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
     });
     if (!formOk || _services.isEmpty || needsType) return;
 
-    // The package must cover the services chosen: basic is ONE service, standard two, premium all three.
+    // The package must cover the services chosen: basic is ONE service, standard two, premium up to three.
     final String plan = _plan ?? _catalog.planFor(_services.length);
     if (!_catalog.covers(plan, _services.length)) {
       setState(() => _error = _tooSmallText(plan));
@@ -490,8 +492,8 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
           SizedBox(height: 4.h),
           Text(
             _sw
-                ? "${planNameText("basic", sw: true)} ni huduma MOJA, ${planNameText("standard", sw: true)} ni huduma 2, Premium ni huduma ZOTE 3."
-                : "Basic is ONE service, Standard is TWO, Premium is ALL THREE.",
+                ? "${planNameText("basic", sw: true)} ni huduma MOJA, ${planNameText("standard", sw: true)} ni huduma 2, Premium ni hadi huduma 3."
+                : "Basic is ONE service, Standard is TWO, Premium is UP TO THREE.",
             key: const ValueKey<String>("package_rule"),
             style: TextStyle(color: Colors.white54, fontSize: 12.sp),
           ),
@@ -527,8 +529,8 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
               color: Colors.amberAccent,
               icon: Icons.info_outline,
               text: _sw
-                  ? "Kumbuka: mpango wa ${planNameText("basic", sw: true)} (Basic) ni huduma MOJA tu. Ukihitaji huduma 2 chagua ${planNameText("standard", sw: true)} (Standard), au Premium kwa huduma zote 3."
-                  : "Please note: the Basic plan is ONE service only. For two services choose Standard, or Premium for all three.",
+                  ? "Kumbuka: mpango wa ${planNameText("basic", sw: true)} (Basic) ni huduma MOJA tu. Ukihitaji huduma 2 chagua ${planNameText("standard", sw: true)} (Standard), au Premium kwa hadi huduma 3."
+                  : "Please note: the Basic plan is ONE service only. For two services choose Standard, or Premium for up to three.",
             ),
           if (plan != null && count > 0 && !tooSmall && plan != recommended && included > count)
             _packageNote(

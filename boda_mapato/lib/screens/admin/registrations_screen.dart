@@ -141,6 +141,7 @@ class _RegistrationsScreenState extends State<RegistrationsScreen> {
   String _serviceLabel(final String s) => switch (s) {
         "inventory" => _loc.translate("inventory_service"),
         "rental" => _loc.translate("rental_service"),
+        "salon" => _loc.translate("salon_service"),
         _ => _loc.translate("transport_service"),
       };
 

@@ -20,6 +20,8 @@ import 'hubs/finance_reports_hub_screen.dart';
 import 'barcode_scanner_screen.dart';
 import 'notifications/approval_notifications_screen.dart';
 import 'reports/profit_by_product_screen.dart';
+import 'salon/rebook_screen.dart';
+import 'salon/stylists_screen.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/notifications_provider.dart';
 
@@ -55,7 +57,7 @@ class _InvMenuEntry {
   bool isVisible(UserPermissions perms) => visible?.call(perms) ?? true;
 }
 
-List<_InvMenuEntry> _invEntries(LocalizationService loc) => <_InvMenuEntry>[
+List<_InvMenuEntry> _invEntries(LocalizationService loc, {bool salon = false}) => salon ? _salonEntries(loc) : <_InvMenuEntry>[
       // 1 — always-visible landing page
       _InvMenuEntry(
         key: 'dashboard',
@@ -139,6 +141,78 @@ List<_InvMenuEntry> _invEntries(LocalizationService loc) => <_InvMenuEntry>[
       ),
     ];
 
+/// The sections of a SALON, in the same shell: its own words, no stock-taking or purchasing, and two sections that
+/// are only for a salon (how each stylist did, and the "come back" reminders). Every other section is the one
+/// inventory has, so the colours, the footer and the way around are the ones people already know.
+List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
+  final bool sw = loc.isSwahili;
+  return <_InvMenuEntry>[
+    _InvMenuEntry(
+      key: 'dashboard',
+      titleKey: 'inventory_dashboard',
+      icon: Icons.dashboard,
+      color: ThemeConstants.footerBarColor,
+      pageBuilder: () => const InventoryDashboardScreen(),
+    ),
+    _InvMenuEntry(
+      key: 'products_hub',
+      staticTitle: sw ? 'Huduma na Bidhaa' : 'Services & Goods',
+      icon: Icons.content_cut_rounded,
+      color: ThemeConstants.primaryOrange,
+      pageBuilder: () => const ProductsHubScreen(),
+      visible: (UserPermissions p) => p.has('inv_view_products'),
+    ),
+    _InvMenuEntry(
+      key: 'sales_hub',
+      titleKey: 'sales',
+      icon: Icons.point_of_sale_outlined,
+      color: ThemeConstants.primaryGradientEnd,
+      pageBuilder: () => const SalesHubScreen(),
+      visible: (UserPermissions p) => p.has('inv_create_sales'),
+    ),
+    _InvMenuEntry(
+      key: 'stylists',
+      staticTitle: sw ? 'Wahudumu' : 'Stylists',
+      icon: Icons.groups_2_outlined,
+      color: ThemeConstants.successGreen,
+      pageBuilder: () => const StylistsScreen(),
+      visible: (UserPermissions p) => p.has('inv_view_reports') || p.has('inv_create_sales'),
+    ),
+    _InvMenuEntry(
+      key: 'rebook',
+      staticTitle: sw ? 'Vikumbusho vya kurudi' : 'Come back',
+      icon: Icons.event_repeat_outlined,
+      color: const Color(0xFF667eea),
+      pageBuilder: () => const RebookScreen(),
+      visible: (UserPermissions p) => p.has('inv_create_sales'),
+    ),
+    _InvMenuEntry(
+      key: 'finance_hub',
+      titleKey: 'reports',
+      icon: Icons.bar_chart_outlined,
+      color: const Color(0xFF00E5FF),
+      pageBuilder: () => const FinanceReportsHubScreen(),
+      visible: (UserPermissions p) => p.has('inv_view_cash') || p.has('inv_view_reports') || p.has('inv_view_reminders'),
+    ),
+    _InvMenuEntry(
+      key: 'credit',
+      staticTitle: sw ? 'Wateja na Madeni' : 'Clients & Credit',
+      icon: Icons.credit_card_outlined,
+      color: const Color(0xFF20B8CE),
+      pageBuilder: () => const CreditScreen(),
+      visible: (UserPermissions p) => p.has('inv_view_credit'),
+    ),
+    _InvMenuEntry(
+      key: 'settings',
+      titleKey: 'settings',
+      icon: Icons.settings_outlined,
+      color: const Color(0xFF64748B),
+      pageBuilder: () => const DepotSettingsScreen(),
+      visible: (UserPermissions p) => p.has('inv_manage_settings'),
+    ),
+  ];
+}
+
 /// The five buttons of the inventory footer, left to right.
 abstract final class InvFooterSlot {
   static const int dashboard = 0;
@@ -170,8 +244,11 @@ int? _pageForSlot(int slot, List<_InvMenuEntry> visible) {
 }
 
 class InventoryHome extends StatefulWidget {
-  const InventoryHome({super.key, this.initialIndex = 0});
+  const InventoryHome({super.key, this.initialIndex = 0, this.salon = false});
   final int initialIndex;
+
+  /// Open as a SALON: the same screens and the same engine, with the salon's sections (see [_salonEntries]).
+  final bool salon;
 
   /// For a screen opened on top of the inventory home (the product form): what its footer buttons do. They bring
   /// the home back to the front, on the section the button stands for, exactly as the home's own footer would.
@@ -217,7 +294,7 @@ class _InventoryHomeState extends State<InventoryHome> {
   /// What a tap on a footer button does.
   void _onFooterSlot(int slot) {
     final LocalizationService loc = LocalizationService.instance;
-    final List<_InvMenuEntry> visible = _invEntries(loc).where((_InvMenuEntry e) => e.isVisible(_perms(context))).toList();
+    final List<_InvMenuEntry> visible = _invEntries(loc, salon: widget.salon).where((_InvMenuEntry e) => e.isVisible(_perms(context))).toList();
     if (slot == InvFooterSlot.menu) {
       _openQuickMenu(context); // All sections grid
       return;
@@ -234,7 +311,11 @@ class _InventoryHomeState extends State<InventoryHome> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<NotificationsProvider>().refreshUnreadCount();
       // What this business's inventory is set up to do (crates or not, which price the till uses ...).
-      context.read<InventoryProvider>().fetchCapabilities();
+      final InventoryProvider inv = context.read<InventoryProvider>();
+      inv.fetchCapabilities();
+      // The screens opened on top of this home (the product form) need to know whether it is a salon's.
+      inv.setSalonMode(widget.salon);
+      if (widget.salon) inv.fetchSalonStaff();
     });
   }
 
@@ -260,7 +341,7 @@ class _InventoryHomeState extends State<InventoryHome> {
     final loc = LocalizationService.instance;
     final perms = _perms(context);
     final List<_InvMenuEntry> visible =
-        _invEntries(loc).where((e) => e.isVisible(perms)).toList();
+        _invEntries(loc, salon: widget.salon).where((e) => e.isVisible(perms)).toList();
 
     // Build the same navigation items as the drawer, but as a 3-column grid.
     final List<_GridNavItem> items = <_GridNavItem>[
@@ -399,7 +480,7 @@ class _InventoryHomeState extends State<InventoryHome> {
 
     final perms = _perms(context);
     final List<_InvMenuEntry> visible =
-        _invEntries(loc).where((e) => e.isVisible(perms)).toList();
+        _invEntries(loc, salon: widget.salon).where((e) => e.isVisible(perms)).toList();
 
     final pages = visible.map((e) => e.pageBuilder()).toList(growable: false);
     final titles = visible.map((e) => e.title(loc)).toList(growable: false);
@@ -486,6 +567,7 @@ class _InventoryHomeState extends State<InventoryHome> {
       ),
       drawer: _InventoryDrawer(
         index: _index,
+        salon: widget.salon,
         onSelected: (i) {
           setState(() => _index = i);
           Navigator.pop(context);
@@ -630,8 +712,9 @@ class _GridNavItem {
 }
 
 class _InventoryDrawer extends StatelessWidget {
-  const _InventoryDrawer({required this.index, required this.onSelected});
+  const _InventoryDrawer({required this.index, required this.onSelected, this.salon = false});
   final int index;
+  final bool salon;
   final ValueChanged<int> onSelected;
 
   @override
@@ -639,7 +722,7 @@ class _InventoryDrawer extends StatelessWidget {
     final loc = context.watch<LocalizationService>();
     final perms = context.select<AuthProvider, UserPermissions>((AuthProvider a) => a.permissions);
     final List<_InvMenuEntry> visible =
-        _invEntries(loc).where((e) => e.isVisible(perms)).toList();
+        _invEntries(loc, salon: salon).where((e) => e.isVisible(perms)).toList();
 
     return Drawer(
       backgroundColor: ThemeConstants.primaryBlue,

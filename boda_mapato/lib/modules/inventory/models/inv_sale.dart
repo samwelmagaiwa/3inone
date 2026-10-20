@@ -10,6 +10,9 @@ class InvSaleItem {
     this.unitFactor = 1,
     this.taxPercent,
     this.taxAmount = 0,
+    this.staffId,
+    this.staffName,
+    this.isService = false,
   });
   final int productId;
   final String name;
@@ -31,6 +34,12 @@ class InvSaleItem {
   /// The VAT rate of this line and the VAT it carries (set by the cart, or read from a saved sale).
   double? taxPercent;
   double taxAmount;
+
+  /// Salon: who served the client for this line (their account id, and their name as it was), and whether the
+  /// line is a service (it never touches stock).
+  String? staffId;
+  String? staffName;
+  final bool isService;
 
   /// A cart holds one line per product AND unit: 1 crate and 3 bottles of the same drink are two lines.
   String get key => '$productId:${unitId ?? 0}';

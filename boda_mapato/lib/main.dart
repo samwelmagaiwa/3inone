@@ -244,6 +244,9 @@ class BodaMapatoApp extends StatelessWidget {
                 },
                 "/inventory": (final BuildContext context) =>
                     const ServiceGuard(service: 'inventory', child: InventoryHome()),
+                // Salon: the same sales engine and screens as inventory, with the salon's own menu.
+                "/salon": (final BuildContext context) =>
+                    const ServiceGuard(service: 'salon', child: InventoryHome(salon: true)),
                 "/coming-soon": (final BuildContext context) =>
                     const ComingSoonScreen(),
                 "/rental/dashboard": (final BuildContext context) =>
@@ -761,6 +764,8 @@ class _ServiceHomeForState extends State<_ServiceHomeFor> {
     switch (widget.service) {
       case 'inventory':
         return const InventoryHome();
+      case 'salon':
+        return const InventoryHome(salon: true);
       case 'transport':
         return const ModernDashboardScreen();
       case 'rental':
@@ -789,7 +794,7 @@ class _ServiceHomeForState extends State<_ServiceHomeFor> {
 List<String> _servicesForRole(String role) => servicesForRole(role);
 
 /// The services a user may pick from: their explicit bindings if any exist,
-/// else whatever their role implies (e.g. super_admin -> all three).
+/// else whatever their role implies (e.g. super_admin -> all four).
 /// Single source of truth so "Select Service" always reflects who's
 /// actually logged in, instead of a route that forgets to look.
 List<String> _allowedServicesFor(UserData user) {

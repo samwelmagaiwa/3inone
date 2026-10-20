@@ -58,7 +58,7 @@ void main() {
       expect(c.offer('standard')!.hasPrice, isFalse);
     });
 
-    test('a plan is a number of services: basic one, standard two, premium all three', () {
+    test('a plan is a number of services: basic one, standard two, premium up to three', () {
       final PlanCatalog c = PlanCatalog.fromJson(_json());
 
       expect(c.servicesIncluded('basic'), 1);
@@ -114,8 +114,8 @@ void main() {
       expect(planCoverText(1, sw: false), 'ONE service');
       expect(planCoverText(2, sw: true), 'Huduma 2');
       expect(planCoverText(2, sw: false), 'TWO services');
-      expect(planCoverText(3, sw: true), 'Huduma ZOTE 3');
-      expect(planCoverText(3, sw: false), 'ALL 3 services');
+      expect(planCoverText(3, sw: true), 'Hadi huduma 3');
+      expect(planCoverText(3, sw: false), 'UP TO 3 services');
     });
 
     test('how long, and how much', () {

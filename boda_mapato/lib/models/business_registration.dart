@@ -3,7 +3,7 @@
 library;
 
 /// The services a business can be given. Same keys the backend uses.
-const List<String> kBusinessServices = <String>['inventory', 'rental', 'transport'];
+const List<String> kBusinessServices = <String>['inventory', 'rental', 'transport', 'salon'];
 
 /// What the owner fills in on the registration form.
 class BusinessRegistrationRequest {
@@ -32,7 +32,7 @@ class BusinessRegistrationRequest {
   final String passwordConfirmation;
   final List<String> requestedServices;
 
-  /// The package they chose (basic = one service, standard = two, premium = all three) and for how many months.
+  /// The package they chose (basic = one service, standard = two, premium = up to three, of the owner's choice) and for how many months.
   final String? requestedPlan;
   final int? requestedMonths;
 

@@ -329,8 +329,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Icons.sell_outlined,
                         loc.isSwahili ? 'Mipango na Bei' : 'Plans & Prices',
                         loc.isSwahili
-                            ? 'Basic = huduma 1, Standard = huduma 2, Premium = zote 3: weka bei, zinaonekana kwenye usajili'
-                            : 'Basic = 1 service, Standard = 2, Premium = all 3: set the prices, the registration form shows them',
+                            ? 'Basic = huduma 1, Standard = huduma 2, Premium = hadi 3: weka bei, zinaonekana kwenye usajili'
+                            : 'Basic = 1 service, Standard = 2, Premium = up to 3: set the prices, the registration form shows them',
                         () => _navigateToScreen(const PlanPricesScreen()),
                       ),
                       const Divider(color: Colors.white24, height: 1),

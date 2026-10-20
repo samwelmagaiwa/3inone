@@ -590,6 +590,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             // Re-stock every line item
             $items = DB::table('inventory_sale_items')->where('sale_id', $id)->get();
             foreach ($items as $item) {
+                if (!empty($item->is_service)) {
+                    continue; // a service was never taken out of stock, so there is nothing to put back
+                }
                 try {
                     $this->ledger->receive(
                         (int) $item->product_id,
@@ -862,6 +865,8 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'items.*.unit_id' => 'nullable|integer',
             'items.*.tax_percent' => 'nullable|numeric|min:0|max:100',
             'items.*.tier' => 'nullable|in:retail,wholesale',
+            // Salon: who served the client for this line (someone in this business, never a stranger's id).
+            'items.*.staff_id' => ['nullable', new \App\Rules\UserInAccount($request->user())],
             'payments' => 'sometimes|array',
             'payments.*.amount' => 'required|numeric|min:0.01',
             'payments.*.method' => 'required|in:cash,mobile_money,bank_transfer',
@@ -940,6 +945,12 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             $number = 'S-' . now()->format('Ymd') . '-' . str_pad((string) $saleId, 4, '0', STR_PAD_LEFT);
             DB::table('inventory_sales')->where('id', $saleId)->update(['number' => $number]);
 
+            // Who served each line, by name as it is today: kept on the line, so a renamed or removed
+            // account never rewrites an old receipt.
+            $staffNames = \App\Models\User::query()
+                ->whereIn('id', collect($request->items)->pluck('staff_id')->filter()->unique()->values())
+                ->pluck('name', 'id');
+
             $insertedItems = [];
             foreach ($request->items as $index => $item) {
                 $product = DB::table('inventory_products')->find($item['product_id']);
@@ -952,25 +963,31 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 $factor = $unit ? ProductUnits::factorOf($unit) : 1;
                 $unitQty = (int) $item['quantity'];
                 $qty = $unitQty * $factor;
-                $fallbackUnitCost = (float) ($item['unit_cost_snapshot'] ?? $product->cost_price ?? 0);
+                // A service costs no stock and carries no cost of goods: nothing leaves a shelf.
+                $isService = !empty($product->is_service);
+                $fallbackUnitCost = $isService ? 0.0 : (float) ($item['unit_cost_snapshot'] ?? $product->cost_price ?? 0);
 
-                try {
-                    $allocations = $this->ledger->issue(
-                        (int) $item['product_id'],
-                        $qty,
-                        $number,
-                        'sale',
-                        optional($request->user())->id ?? 1
-                    );
-                } catch (\Illuminate\Database\QueryException $e) {
-                    // Fallback to direct stock reduction if the batch ledger tables are not there. Only a
-                    // database problem lands here: "Insufficient stock" (a RuntimeException) must stop the
-                    // sale, never be swallowed into a sale that empties the shelf.
+                if ($isService) {
                     $allocations = [];
-                    $newQty = max(0, (int) $product->quantity - $qty);
-                    DB::table('inventory_products')
-                        ->where('id', $item['product_id'])
-                        ->update(['quantity' => $newQty, 'updated_at' => now()]);
+                } else {
+                    try {
+                        $allocations = $this->ledger->issue(
+                            (int) $item['product_id'],
+                            $qty,
+                            $number,
+                            'sale',
+                            optional($request->user())->id ?? 1
+                        );
+                    } catch (\Illuminate\Database\QueryException $e) {
+                        // Fallback to direct stock reduction if the batch ledger tables are not there. Only a
+                        // database problem lands here: "Insufficient stock" (a RuntimeException) must stop the
+                        // sale, never be swallowed into a sale that empties the shelf.
+                        $allocations = [];
+                        $newQty = max(0, (int) $product->quantity - $qty);
+                        DB::table('inventory_products')
+                            ->where('id', $item['product_id'])
+                            ->update(['quantity' => $newQty, 'updated_at' => now()]);
+                    }
                 }
 
                 $issuedQty = array_sum(array_column($allocations, 'quantity'));
@@ -1010,6 +1027,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'unit_qty' => $unitQty,
                     'tax_percent' => $rate > 0 ? $rate : null,
                     'tax_amount' => $taxAmount,
+                    'is_service' => $isService,
+                    'staff_id' => $item['staff_id'] ?? null,
+                    'staff_name' => isset($item['staff_id']) ? ($staffNames[$item['staff_id']] ?? null) : null,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -1029,6 +1049,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'tax_percent' => $rate > 0 ? $rate : null,
                     'tax_amount' => $taxAmount,
                     'total' => $lineTotal,
+                    'is_service' => $isService,
+                    'staff_id' => $item['staff_id'] ?? null,
+                    'staff_name' => isset($item['staff_id']) ? ($staffNames[$item['staff_id']] ?? null) : null,
                 ];
             }
 
@@ -1163,7 +1186,8 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         foreach ($needed as $productId => $requested) {
             $product = DB::table('inventory_products')->lockForUpdate()->find($productId);
             $available = max(0, (int) ($product->quantity ?? 0));
-            if ($product && $requested > $available) {
+            // A service (a hair braiding, a manicure) has no shelf: it can never run out.
+            if ($product && empty($product->is_service) && $requested > $available) {
                 $lines[] = [
                     'product_id' => $productId,
                     'product_name' => $product->name,
@@ -1233,6 +1257,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'tax_percent' => isset($it->tax_percent) ? (float) $it->tax_percent : null,
             'tax_amount' => self::money($it->tax_amount ?? 0),
             'total' => self::money($it->total),
+            'is_service' => (bool) ($it->is_service ?? false),
+            'staff_id' => $it->staff_id ?? null,
+            'staff_name' => $it->staff_name ?? null,
         ];
     }
 

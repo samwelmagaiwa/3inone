@@ -2,12 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\Business;
 use App\Models\User;
 use App\Models\UserService;
 use App\Support\InventoryDefaults;
 
 /**
- * Giving a user services (inventory / rental / transport). One place, so
+ * Giving a user services (inventory / rental / transport / salon). One place, so
  * approving a registration and editing an existing account follow the same rules.
  */
 class ServiceAssignment
@@ -38,14 +39,27 @@ class ServiceAssignment
 
     /**
      * Whatever a business needs in place once it holds a service. For inventory
-     * that is its own settings and default crate types, so its first sale works
+     * (and salon) that is its own settings and default crate types, so its first sale works
      * and nothing is borrowed from another business. Harmless to repeat.
      */
     public function prepareServices(User $user): void
     {
         $isOwner = in_array(strtolower((string) $user->role), User::ACCOUNT_HEAD_ROLES, true);
 
-        if ($isOwner && $user->services()->where('service_type', 'inventory')->exists()) {
+        $held = $user->services()->pluck('service_type')->all();
+
+        // Salon runs on the inventory engine, so it needs the same starting settings. A salon has no crates and
+        // no wholesale: unless it also holds inventory (and chose a kind when registering), it starts as a
+        // retail business, which is what those settings are made from.
+        if ($isOwner && array_intersect(['inventory', 'salon'], $held) !== []) {
+            if (in_array('salon', $held, true) && !in_array('inventory', $held, true)) {
+                $business = Business::forUser($user);
+                if ($business !== null && !$business->inventory_type) {
+                    $business->inventory_type = 'retail';
+                    $business->save();
+                }
+            }
+
             InventoryDefaults::seedFor($user);
         }
     }

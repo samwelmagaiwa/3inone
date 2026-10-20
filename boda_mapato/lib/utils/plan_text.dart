@@ -5,11 +5,11 @@ import "../models/business.dart";
 /// The words about plans, in one language at a time: what a plan covers, how long it is paid for, what it costs, and
 /// the message when a plan is too small for the services chosen.
 
-/// "ONE service" / "Huduma MOJA", "TWO services" / "Huduma 2", "ALL 3 services" / "Huduma ZOTE 3".
+/// "ONE service" / "Huduma MOJA", "TWO services" / "Huduma 2", "UP TO 3 services" / "Hadi huduma 3" (the owner chooses which).
 String planCoverText(final int included, {required final bool sw}) => switch (included) {
       1 => sw ? "Huduma MOJA" : "ONE service",
       2 => sw ? "Huduma 2" : "TWO services",
-      _ => sw ? "Huduma ZOTE $included" : "ALL $included services",
+      _ => sw ? "Hadi huduma $included" : "UP TO $included services",
     };
 
 /// "1 month" / "Mwezi 1", "3 months" / "Miezi 3", "1 year" / "Mwaka 1".

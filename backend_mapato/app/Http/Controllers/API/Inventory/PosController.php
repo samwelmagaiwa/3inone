@@ -406,6 +406,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                         if (! $line->restock) {
                             continue;
                         }
+                        // A returned service (a refunded braiding) was never taken from a shelf.
+                        if (DB::table('inventory_products')->where('id', $line->product_id)->value('is_service')) {
+                            continue;
+                        }
                         // Returned goods re-enter as their own batch so they
                         // stay distinguishable from fresh stock.
                         $this->ledger->receive(

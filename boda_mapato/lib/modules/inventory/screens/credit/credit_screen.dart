@@ -11,6 +11,8 @@ import '../../models/inv_depot_models.dart';
 import '../../providers/depot_provider.dart';
 import '../widgets/crates_owed_note.dart';
 import '../widgets/inventory_widgets.dart';
+import '../../providers/inventory_provider.dart';
+import '../salon/client_history_screen.dart';
 
 /// Area 6 — credit limits, blocking, statements and debtor ageing.
 class CreditScreen extends StatefulWidget {
@@ -118,6 +120,15 @@ class _CreditCustomersTabState extends State<_CreditCustomersTab> {
   }
 }
 
+/// Is this the salon's home? (False where there is no inventory provider at all, as in the debts screens.)
+bool _isSalon(BuildContext context) {
+  try {
+    return context.read<InventoryProvider>().salonMode;
+  } on ProviderNotFoundException {
+    return false;
+  }
+}
+
 class _CreditCustomerCard extends StatelessWidget {
   const _CreditCustomerCard({required this.customer});
 
@@ -202,6 +213,26 @@ class _CreditCustomerCard extends StatelessWidget {
                   minHeight: 6.h,
                   backgroundColor: Colors.white12,
                   valueColor: AlwaysStoppedAnimation<Color>(color),
+                ),
+              ),
+            ],
+            // Salon: the client's page (visits, favourite service, notes, when they are due back).
+            if (_isSalon(context)) ...<Widget>[
+              SizedBox(height: 8.h),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  key: ValueKey<String>('client_history_${customer.id}'),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.white24),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                  ),
+                  onPressed: () => Navigator.push<void>(
+                    context,
+                    MaterialPageRoute<void>(builder: (_) => ClientHistoryScreen(customerId: customer.id, name: customer.name)),
+                  ),
+                  icon: Icon(Icons.history, size: 16.sp, color: Colors.white70),
+                  label: Text(loc.isSwahili ? 'Historia ya mteja' : 'Client history', style: ThemeConstants.captionStyle),
                 ),
               ),
             ],

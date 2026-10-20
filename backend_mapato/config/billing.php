@@ -35,8 +35,8 @@ return [
      */
     'plan_services' => ['basic' => 1, 'standard' => 2, 'premium' => 3],
 
-    /** The services a business can have (premium covers all of them). */
-    'services' => ['transport', 'rental', 'inventory'],
+    /** The services a business can have. A plan covers a NUMBER of them (premium: up to three, of the owner's choice). */
+    'services' => ['transport', 'rental', 'inventory', 'salon'],
 
     /** The lengths of time a plan can be paid for, in months: each has its own price in the app's Plans & Prices. */
     'price_periods' => [1, 3, 6, 12],

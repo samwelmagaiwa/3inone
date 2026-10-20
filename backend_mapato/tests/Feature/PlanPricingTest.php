@@ -124,7 +124,8 @@ class PlanPricingTest extends TestCase
         $this->assertSame('TZS', $response->json('data.currency'));
         $this->assertSame([1, 3, 6, 12], $response->json('data.periods'));
         $this->assertSame(30, $response->json('data.trial_days'));
-        $this->assertSame(3, $response->json('data.total_services'));
+        // Transport, Rental, Inventory and Salon; premium covers three of them (the owner's choice).
+        $this->assertSame(4, $response->json('data.total_services'));
         $this->assertSame(['basic', 'standard', 'premium'], array_column($response->json('data.plans'), 'plan'));
         $this->assertSame([1, 2, 3], array_column($response->json('data.plans'), 'services_included'));
         foreach ($response->json('data.plans') as $plan) {

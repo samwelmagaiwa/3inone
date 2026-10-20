@@ -348,7 +348,7 @@ class User extends Authenticatable
      * without ever getting a binding row) falls back to.
      */
     private const SERVICE_ROLE_DEFAULTS = [
-        'super_admin'   => ['inventory', 'rental', 'transport'],
+        'super_admin'   => ['inventory', 'rental', 'transport', 'salon'],
         // admin/administrator get NO implicit services -- a super_admin
         // must explicitly bind them, same as the Flutter mapping.
         'admin'         => [],
@@ -434,7 +434,7 @@ class User extends Authenticatable
         }
 
         return $this->effectiveServicesCache = array_values(array_filter(
-            config('tenancy.services', ['inventory', 'rental', 'transport']),
+            config('tenancy.services', ['inventory', 'rental', 'transport', 'salon']),
             fn (string $service) => $this->canUseService($service)
         ));
     }

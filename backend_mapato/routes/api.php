@@ -42,6 +42,7 @@ use App\Http\Controllers\API\Inventory\BarcodeController as InventoryBarcodeCont
 use App\Http\Controllers\API\Inventory\ReportController as InventoryReportController;
 use App\Http\Controllers\API\Inventory\AlertController as InventoryAlertController;
 use App\Http\Controllers\API\Inventory\CustomerController as InventoryCustomerController;
+use App\Http\Controllers\API\Inventory\SalonController;
 use App\Http\Controllers\API\Inventory\SalesController as InventorySalesController;
 use App\Http\Controllers\API\Inventory\StockMovementController as InventoryStockMovementController;
 use App\Http\Controllers\API\Inventory\ReminderController as InventoryReminderController;
@@ -388,6 +389,26 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
     Route::middleware('inv_perm:inv_manage_products,inv_create_sales')->group(function () {
         Route::post('inventory/customers',         [InventoryCustomerController::class, 'store']);
+    });
+
+    // ── Salon: stylists, client history, "come back" reminders (see SalonController). It runs on the sales
+    // engine, so these use the same permissions: whoever may sell may look a client up and note them down.
+    Route::middleware('inv_perm:inv_manage_products,inv_create_sales,inv_view_credit')->group(function () {
+        Route::get('inventory/salon/staff',                [SalonController::class, 'staff']);
+        Route::get('inventory/salon/settings',             [SalonController::class, 'settings']);
+        Route::get('inventory/salon/clients/{id}/history', [SalonController::class, 'clientHistory']);
+        Route::get('inventory/salon/rebook/due',           [SalonController::class, 'rebookDue']);
+    });
+    Route::middleware('inv_perm:inv_manage_products,inv_create_sales')->group(function () {
+        // PUT as well as PATCH: the app's HTTP client has PUT, and this changes only the two fields it is given.
+        Route::match(['put', 'patch'], 'inventory/salon/clients/{id}', [SalonController::class, 'updateClient']);
+    });
+    // Results per stylist: the owner and managers see everyone, a stylist only their own line.
+    Route::middleware('inv_perm:inv_view_reports,inv_create_sales')->group(function () {
+        Route::get('inventory/salon/stylists',             [SalonController::class, 'stylists']);
+    });
+    Route::middleware('inv_perm:inv_manage_settings')->group(function () {
+        Route::put('inventory/salon/settings',             [SalonController::class, 'updateSettings']);
     });
 
     // ── Product units & pricing ───────────────────────────────────────────────

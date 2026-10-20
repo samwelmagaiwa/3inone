@@ -87,8 +87,8 @@ void main() {
 
     expect(_text(t, 'plan_covers_basic'), 'Huduma MOJA');
     expect(_text(t, 'plan_covers_standard'), 'Huduma 2');
-    expect(_text(t, 'plan_covers_premium'), 'Huduma ZOTE 3');
-    expect(_text(t, 'plans_intro'), allOf(contains('huduma MOJA'), contains('huduma 2'), contains('huduma ZOTE 3'), contains('mara moja')));
+    expect(_text(t, 'plan_covers_premium'), 'Hadi huduma 3');
+    expect(_text(t, 'plans_intro'), allOf(contains('huduma MOJA'), contains('huduma 2'), contains('hadi huduma 3'), contains('mara moja')));
 
     expect(_field(t, 'basic', 1), '30000');
     expect(_field(t, 'basic', 12), '300000');
@@ -203,7 +203,7 @@ void main() {
 
     expect(_text(t, 'preview_basic'), 'Msingi · Huduma MOJA · TZS 30,000');
     expect(_text(t, 'preview_standard'), 'Kawaida · Huduma 2 · TZS 50,000');
-    expect(_text(t, 'preview_premium'), 'Premium · Huduma ZOTE 3 · TZS 70,000');
+    expect(_text(t, 'preview_premium'), 'Premium · Hadi huduma 3 · TZS 70,000');
 
     await t.enterText(_key('price_standard_1'), '55000');
     await t.pump();
@@ -247,7 +247,7 @@ void main() {
     expect(find.text('Plans & Prices'), findsOneWidget);
     expect(_text(t, 'plan_covers_basic'), 'ONE service');
     expect(_text(t, 'plan_covers_standard'), 'TWO services');
-    expect(_text(t, 'plan_covers_premium'), 'ALL 3 services');
+    expect(_text(t, 'plan_covers_premium'), 'UP TO 3 services');
     expect(_text(t, 'preview_basic'), 'Basic · ONE service · TZS 30,000');
     expect(_text(t, 'hint_basic_3'), contains('a month'));
     expect(find.textContaining('costs less than Standard'), findsOneWidget);

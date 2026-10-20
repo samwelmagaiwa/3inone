@@ -2,7 +2,7 @@
 ///
 ///   basic    one service
 ///   standard two services
-///   premium  all three services
+///   premium  three services, of the owner's choice (there are four: Transport, Rental, Inventory, Salon)
 ///
 /// The prices are set by the super admin (Settings -> Plans & Prices) and read by the registration form before anybody
 /// has an account. `trial` and `free` are not sold: they have no price and no limit.
@@ -55,7 +55,7 @@ class PlanCatalog {
     this.periods = kPricePeriods,
     this.currency = 'TZS',
     this.trialDays = 30,
-    this.totalServices = 3,
+    this.totalServices = 4,
     this.configured = false,
     this.updatedAt,
   });
@@ -70,7 +70,7 @@ class PlanCatalog {
       periods: json['periods'] is List ? (json['periods'] as List).map((final Object? e) => (e as num).toInt()).toList() : kPricePeriods,
       currency: (json['currency'] ?? 'TZS').toString(),
       trialDays: (json['trial_days'] as num?)?.toInt() ?? 30,
-      totalServices: (json['total_services'] as num?)?.toInt() ?? 3,
+      totalServices: (json['total_services'] as num?)?.toInt() ?? 4,
       configured: json['configured'] == true,
       updatedAt: json['updated_at'] is String ? DateTime.tryParse(json['updated_at'] as String)?.toLocal() : null,
     );

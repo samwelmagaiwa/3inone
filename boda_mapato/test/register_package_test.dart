@@ -114,7 +114,7 @@ void main() {
       expect(_key('recommended_premium'), findsNothing);
       expect(_text(t, 'covers_basic'), 'Huduma MOJA');
       expect(_text(t, 'covers_standard'), 'Huduma 2');
-      expect(_text(t, 'covers_premium'), 'Huduma ZOTE 3');
+      expect(_text(t, 'covers_premium'), 'Hadi huduma 3');
       expect(_text(t, 'price_basic'), 'TZS 30,000 · Mwezi 1');
       expect(_text(t, 'price_standard'), 'TZS 50,000 · Mwezi 1');
       expect(_text(t, 'price_premium'), 'TZS 70,000 · Mwezi 1');
@@ -137,7 +137,7 @@ void main() {
       await _pick(t, <String>['inventory']);
       // inventory asks what kind of stock business: the package section stays
       expect(_key('recommended_premium'), findsOneWidget);
-      expect(_text(t, 'package_summary'), 'Utalipa TZS 70,000 kwa mwezi 1: Premium (huduma zote 3).');
+      expect(_text(t, 'package_summary'), 'Utalipa TZS 70,000 kwa mwezi 1: Premium (hadi huduma 3).');
 
       await _pick(t, <String>['inventory', 'transport']);
       expect(_key('recommended_basic'), findsOneWidget, reason: 'one service again');
@@ -342,8 +342,8 @@ void main() {
       await LocalizationService.instance.changeLanguage('en');
       await _capture(t, services: <String>['rental']);
 
-      expect(find.text('Please note: the Basic plan is ONE service only. For two services choose Standard, or Premium for all three.'), findsOneWidget);
-      expect(_text(t, 'package_rule'), 'Basic is ONE service, Standard is TWO, Premium is ALL THREE.');
+      expect(find.text('Please note: the Basic plan is ONE service only. For two services choose Standard, or Premium for up to three.'), findsOneWidget);
+      expect(_text(t, 'package_rule'), 'Basic is ONE service, Standard is TWO, Premium is UP TO THREE.');
       expect(_text(t, 'package_summary'), 'You will pay TZS 30,000 for 1 month: Basic (one service).');
       expect(_text(t, 'trial_note'), 'Once you are approved you get 30 days of free trial; payment starts after that.');
     });

@@ -23,6 +23,9 @@ class InvProduct {
     this.familyId,
     this.variantLabel,
     this.measure = 'count',
+    this.isService = false,
+    this.durationMinutes,
+    this.rebookAfterWeeks,
   });
 
   final int id;
@@ -57,6 +60,15 @@ class InvProduct {
 
   /// What the base unit counts: 'count' (pieces), 'weight' (grams) or 'volume' (millilitres).
   String measure;
+
+  /// Salon: a SERVICE (a braiding, a manicure) has no shelf: no stock to count, to run out of or to be low on.
+  bool isService;
+
+  /// How long a service takes, in minutes (null = not said).
+  int? durationMinutes;
+
+  /// After how many weeks the client is reminded to come back for this service (null = the salon's own number).
+  int? rebookAfterWeeks;
 
   bool get isVariant => variantLabel != null && variantLabel!.isNotEmpty;
   bool get isWeighed => measure == 'weight' || measure == 'volume';

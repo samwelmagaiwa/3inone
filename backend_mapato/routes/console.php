@@ -26,6 +26,12 @@ Schedule::command('billing:remind')
     ->dailyAt('08:00')
     ->withoutOverlapping();
 
+// Every morning (09:30 in Tanzania): text salon clients whose time for the next visit has come. A visit is
+// texted once; a salon that has not switched reminders on is skipped.
+Schedule::command('salon:remind-rebooking')
+    ->dailyAt('06:30')
+    ->withoutOverlapping();
+
 // Expired API tokens are already rejected; this just removes the dead rows.
 Schedule::command('sanctum:prune-expired --hours=24')
     ->daily();

@@ -27,6 +27,8 @@ class ServiceSwitcherDialog extends StatelessWidget {
         Navigator.pushReplacementNamed(context, '/inventory');
       case 'rental':
         Navigator.pushReplacementNamed(context, '/rental/dashboard');
+      case 'salon':
+        Navigator.pushReplacementNamed(context, '/salon');
       case 'transport':
         Navigator.pushReplacementNamed(context, '/modern-dashboard');
       default:

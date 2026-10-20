@@ -18,7 +18,7 @@ class ServiceGuard extends StatelessWidget {
     required this.child,
   });
 
-  /// The service key this screen belongs to ('inventory', 'transport', 'rental').
+  /// The service key this screen belongs to ('inventory', 'transport', 'rental', 'salon').
   final String service;
 
   /// The actual service home screen to show when access is granted.

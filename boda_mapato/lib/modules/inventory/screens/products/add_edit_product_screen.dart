@@ -44,6 +44,11 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final TextEditingController _barcode = TextEditingController();
   final TextEditingController _description = TextEditingController();
 
+  // Salon: a SERVICE has no stock; how long it takes, and after how many weeks to remind the client to come back.
+  bool _isService = false;
+  final TextEditingController _duration = TextEditingController();
+  final TextEditingController _rebook = TextEditingController();
+
   String _unit = 'crate';
   // How many of `_unit` the cost/selling price below cover, e.g. "5" for "per 5 KG".
   final TextEditingController _unitFactor = TextEditingController(text: '1');
@@ -130,6 +135,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       _vat.text = p.taxPercent == null ? '' : _plainNumber(p.taxPercent!);
       _hasVariants = p.isVariant;
       _variantLabel.text = p.variantLabel ?? '';
+      _isService = p.isService;
+      _duration.text = p.durationMinutes?.toString() ?? '';
+      _rebook.text = p.rebookAfterWeeks?.toString() ?? '';
     }
     _name.addListener(_onNameChanged);
     _sku.addListener(_onSkuChanged);
@@ -244,6 +252,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _otherPrice.dispose();
     _vat.dispose();
     _variantLabel.dispose();
+    _duration.dispose();
+    _rebook.dispose();
     for (final UnitDraft d in _unitDrafts) {
       d.dispose();
     }
@@ -264,6 +274,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final InvCapabilities caps = context.watch<InventoryProvider>().capabilities;
     final bool sw = loc.isSwahili;
     final bool creating = widget.product == null;
+    final bool salon = context.watch<InventoryProvider>().salonMode;
     if (creating && !_unitTouched && !caps.isDepot && _unit == 'crate') {
       _unit = 'pcs'; // the settings arrived after the page opened
     }
@@ -423,6 +434,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                           _boxField(_description,
                               hint:
                                   'e.g. Cold carbonated soft drink in 350ml glass bottles.'),
+                          // A salon sells services too; nobody else is asked about them.
+                          if (salon || _isService) ..._serviceFields(sw),
                         ],
                       ),
                       // A depot in retail mode sells it in packs too: the real selling units (they used to be
@@ -638,6 +651,32 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   /// The glowing line between two sections (the one Depot settings and the dashboard draw).
   Widget _sectionDivider(String above) => SectionGlowDivider(key: ValueKey<String>('product_section_divider_$above'));
 
+  /// Salon: is this a service (no stock), how long it takes, and when to remind the client to come back.
+  List<Widget> _serviceFields(bool sw) => <Widget>[
+        SizedBox(height: 10.h),
+        _switchRow(sw ? 'Hii ni huduma (haina stock)' : 'This is a service (no stock)', _isService,
+            (bool v) => setState(() => _isService = v)),
+        if (_isService) ...[
+          SizedBox(height: 8.h),
+          _twoCol(
+            left: _input(sw ? 'Muda (dakika)' : 'Duration (minutes)', _duration,
+                keyboard: TextInputType.number, hint: 'e.g. 120', inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+            right: _input(sw ? 'Mkumbushe baada ya (wiki)' : 'Remind after (weeks)', _rebook,
+                keyboard: TextInputType.number, hint: 'e.g. 6', inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+          ),
+          Padding(
+            padding: EdgeInsets.only(top: 6.h, left: 2.w),
+            child: Text(
+              sw
+                  ? 'Wiki: mteja atatumiwa ujumbe wa kurudi baada ya muda huu. Acha wazi kutumia idadi ya saluni nzima.'
+                  : "Weeks: the client is texted to come back after this long. Leave empty to use the salon's own number.",
+              key: const ValueKey<String>('service_rebook_hint'),
+              style: ThemeConstants.captionStyle.copyWith(fontSize: 11.sp, color: Colors.white70),
+            ),
+          ),
+        ],
+      ];
+
   /// The unit, price and stock fields. A depot's are exactly what they always were; the others quote prices
   /// per the unit they think in (a piece, a kg, a litre) and count stock in whole base units.
   List<Widget> _unitPriceStock(LocalizationService loc, InvCapabilities caps) {
@@ -645,6 +684,14 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final bool creating = widget.product == null;
     final bool weighed = !caps.isDepot && _measure != ProductMeasure.count;
     final bool hideStock = creating && _hasVariants; // each size / colour carries its own
+
+    // A service has no unit, cost or stock to count: its price is all there is to say.
+    if (_isService) {
+      return <Widget>[
+        _input(sw ? 'Bei ya huduma (TZS)' : 'Service price (TZS)', _price,
+            keyboard: TextInputType.number, inputFormatters: [ThousandsFormatter()], hint: 'e.g. 15,000'),
+      ];
+    }
 
     // ---- the unit row
     final Widget unitRow;
@@ -793,7 +840,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         ),
         SizedBox(height: 10.h),
       ],
-      // ---- other ways to sell it (the depot's own sits next to the name, in retail mode)
+      // ---- other ways to sell it (the depot's own sits next to the name, in retail mode); a service has none
+      if (!_isService) ...[
       if (!caps.isDepot) ...[
         if (creating)
           UnitsEditor(
@@ -821,9 +869,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         SizedBox(height: 8.h),
         _manageUnitsButton(loc),
       ],
+      ],
 
       // ---- sizes / colours: separate stock for everyone but a depot, counted goods only
-      if (!caps.isDepot && _measure == ProductMeasure.count) ...[
+      if (!caps.isDepot && !_isService && _measure == ProductMeasure.count) ...[
         SizedBox(height: 12.h),
         if (p != null && p.isVariant) ...[
           _input(sw ? 'Saizi / rangi ya bidhaa hii' : 'Size / colour of this product', _variantLabel, hint: 'e.g. M / Red'),
@@ -1211,7 +1260,21 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final InventoryProvider inv = context.read<InventoryProvider>();
     final InvCapabilities caps = inv.capabilities;
     final bool creating = widget.product == null;
-    final bool withVariants = _hasVariants && !caps.isDepot && _measure == ProductMeasure.count;
+    final bool withVariants = _hasVariants && !_isService && !caps.isDepot && _measure == ProductMeasure.count;
+
+    // A service: how long it takes and when to bring the client back must be sensible numbers (or empty).
+    final int? duration = int.tryParse(_duration.text.trim());
+    final int? rebookWeeks = int.tryParse(_rebook.text.trim());
+    if (_isService) {
+      if (duration != null && (duration < 1 || duration > 1440)) {
+        setState(() => _saveError = sw ? 'Muda uwe kati ya dakika 1 na 1440.' : 'The duration must be between 1 and 1440 minutes.');
+        return;
+      }
+      if (rebookWeeks != null && (rebookWeeks < 1 || rebookWeeks > 52)) {
+        setState(() => _saveError = sw ? 'Wiki za kumkumbusha mteja ziwe kati ya 1 na 52.' : 'The weeks to remind the client must be between 1 and 52.');
+        return;
+      }
+    }
 
     // Selling units: a row with only half filled in is a mistake worth saying, not silently dropping.
     final List<UnitInput> units = <UnitInput>[];
@@ -1258,14 +1321,14 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       depotWholesaleMode: _isWholesale,
       unit: _unit,
       unitFactor: _int(_unitFactor.text),
-      cost: parseAmount(_cost.text),
+      cost: _isService ? 0 : parseAmount(_cost.text),
       price: parseAmount(_price.text),
-      otherPrice: optionalAmount(_otherPrice.text),
-      quantity: _int(_qty.text),
-      minStock: _int(_minStock.text),
+      otherPrice: _isService ? null : optionalAmount(_otherPrice.text),
+      quantity: _isService ? 0 : _int(_qty.text),
+      minStock: _isService ? 0 : _int(_minStock.text),
       stockUnitFactor: _stockUnitFactor,
       // A depot's selling units only count in retail mode (that is where it showed them).
-      extraUnits: (caps.isDepot && _isWholesale) ? const <UnitInput>[] : units,
+      extraUnits: (caps.isDepot && _isWholesale) || _isService ? const <UnitInput>[] : units,
       variants: variants,
     );
 
@@ -1302,6 +1365,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         taxPercent: vat,
         clearTax: vat == null && existing.taxPercent != null,
         variantLabel: existing.isVariant && _variantLabel.text.trim() != (existing.variantLabel ?? '') ? _variantLabel.text.trim() : null,
+        isService: _isService,
+        durationMinutes: duration,
+        rebookAfterWeeks: rebookWeeks,
       );
       if (ok) {
         await _saveOtherPrices(inv, existing, caps, req);
@@ -1331,6 +1397,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         otherPrice: req.otherPrice,
         units: req.unitsJson,
         variants: withVariants ? req.variantsJson : const <Map<String, dynamic>>[],
+        isService: _isService,
+        durationMinutes: _isService ? duration : null,
+        rebookAfterWeeks: _isService ? rebookWeeks : null,
       );
     }
 

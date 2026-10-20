@@ -124,6 +124,7 @@ class AlertController extends Controller
     {
         return DB::table('inventory_products')
             ->whereColumn('quantity', '<', 'min_stock')
+            ->where('is_service', false)
             ->where('status', 'active')
             ->get(['id', 'name', 'quantity', 'min_stock'])
             ->map(fn ($p) => [

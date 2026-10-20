@@ -854,7 +854,7 @@ class AuthController extends Controller
         // client's "no access to any service" screen -- same bug already
         // fixed for super_admin here, just missed for everyone else.
         $implied = $user->full_access
-            ? ['inventory', 'rental', 'transport']
+            ? ['inventory', 'rental', 'transport', 'salon']
             : $user->allowedServiceTypes();
         $existingTypes = $user->services->pluck('service_type')->all();
         $missing = array_diff($implied, $existingTypes);
@@ -941,7 +941,7 @@ class AuthController extends Controller
         }
 
         $allowed = $user->full_access
-            ? ['inventory', 'rental', 'transport']
+            ? ['inventory', 'rental', 'transport', 'salon']
             : $user->effectiveServiceTypes();
 
         return response()->json([

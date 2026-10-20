@@ -45,6 +45,7 @@ final class TenantTables
         'inventory_products',
         'inventory_purchase_order_lines',
         'inventory_purchase_orders',
+        'inventory_rebook_reminders',
         'inventory_reminders',
         'inventory_sale_items',
         'inventory_sale_payments',

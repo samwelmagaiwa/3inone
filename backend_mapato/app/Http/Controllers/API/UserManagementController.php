@@ -163,7 +163,7 @@ class UserManagementController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'phone_number', 'role', 'is_active', 'full_access', 'created_by', 'created_at']);
 
-        $services = ['transport', 'rental', 'inventory'];
+        $services = ['transport', 'rental', 'inventory', 'salon'];
         $grouped = [];
 
         foreach ($services as $service) {
@@ -257,10 +257,10 @@ class UserManagementController extends Controller
             'role' => 'nullable|string|in:super_admin,admin,driver,landlord,caretaker,tenant,viewer,manager,operator,sales_officer',
             'is_active' => 'nullable|boolean',
             // Legacy single value - still accepted for old clients.
-            'service_type' => 'nullable|string|in:rental,transport,inventory',
+            'service_type' => 'nullable|string|in:rental,transport,inventory,salon',
             // Preferred: a user can be bound to more than one service.
             'service_types' => 'nullable|array',
-            'service_types.*' => 'string|in:rental,transport,inventory',
+            'service_types.*' => 'string|in:rental,transport,inventory,salon',
             'full_access' => 'nullable|boolean',
             'permissions' => 'nullable|array',
             'permissions.*' => 'string|in:' . implode(',', User::grantablePermissions()),
@@ -388,9 +388,11 @@ class UserManagementController extends Controller
     private function permissionScopeError(User $auth, array $permissions)
     {
         $ownServices = $auth->services()->pluck('service_type')->all();
+        // Salon runs on the inventory engine (sales, customers, cash), so the same permission keys cover it.
+        $covered = in_array('salon', $ownServices, true) ? array_merge($ownServices, ['inventory']) : $ownServices;
         $outOfScope = array_filter(
             $permissions,
-            fn ($perm) => !in_array(User::serviceForPermission((string) $perm), $ownServices, true)
+            fn ($perm) => !in_array(User::serviceForPermission((string) $perm), $covered, true)
         );
         if (empty($outOfScope)) {
             return null;
@@ -489,9 +491,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'phone_number' => ['sometimes', 'required', 'string', 'max:50', new UniquePhoneInBusiness(BusinessOwner::ofUser($user->id), (string) $user->id)],
             'role' => 'sometimes|string|in:super_admin,admin,driver,landlord,caretaker,tenant,viewer,manager,operator,sales_officer',
             'is_active' => 'sometimes|boolean',
-            'service_type' => 'nullable|string|in:rental,transport,inventory',
+            'service_type' => 'nullable|string|in:rental,transport,inventory,salon',
             'service_types' => 'nullable|array',
-            'service_types.*' => 'string|in:rental,transport,inventory',
+            'service_types.*' => 'string|in:rental,transport,inventory,salon',
             'full_access' => 'sometimes|boolean',
             'permissions' => 'nullable|array',
             'permissions.*' => 'string|in:' . implode(',', User::grantablePermissions()),
@@ -667,7 +669,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         $validator = Validator::make($request->all(), [
             'service_types'   => 'required|array',
-            'service_types.*' => 'string|in:rental,transport,inventory',
+            'service_types.*' => 'string|in:rental,transport,inventory,salon',
         ]);
         if ($validator->fails()) {
             return response()->json([

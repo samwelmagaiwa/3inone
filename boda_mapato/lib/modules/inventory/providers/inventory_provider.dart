@@ -597,6 +597,9 @@ class InventoryProvider extends ChangeNotifier {
     double? otherPrice,
     List<Map<String, dynamic>> units = const <Map<String, dynamic>>[],
     List<Map<String, dynamic>> variants = const <Map<String, dynamic>>[],
+    bool isService = false,
+    int? durationMinutes,
+    int? rebookAfterWeeks,
   }) async {
     _lastError = null;
     try {
@@ -610,6 +613,9 @@ class InventoryProvider extends ChangeNotifier {
         if (otherPrice != null) 'other_price': otherPrice,
         if (units.isNotEmpty) 'units': units,
         if (variants.isNotEmpty) 'variants': variants,
+        if (isService) 'is_service': true,
+        if (durationMinutes != null) 'duration_minutes': durationMinutes,
+        if (rebookAfterWeeks != null) 'rebook_after_weeks': rebookAfterWeeks,
         'category': category,
         if (categoryId != null) 'category_id': categoryId,
         if (brandId != null) 'brand_id': brandId,
@@ -699,6 +705,9 @@ class InventoryProvider extends ChangeNotifier {
     double? taxPercent,
     bool clearTax = false,
     String? variantLabel,
+    bool? isService,
+    int? durationMinutes,
+    int? rebookAfterWeeks,
   }) async {
     _lastError = null;
     try {
@@ -710,6 +719,10 @@ class InventoryProvider extends ChangeNotifier {
         if (taxPercent != null) 'tax_percent': taxPercent,
         if (clearTax) 'tax_percent': null,
         if (variantLabel != null) 'variant_label': variantLabel,
+        // A service says how long it takes and when to bring the client back; nothing there clears it.
+        if (isService != null) 'is_service': isService,
+        if (isService == true) 'duration_minutes': durationMinutes,
+        if (isService == true) 'rebook_after_weeks': rebookAfterWeeks,
         if (categoryId != null) 'category_id': categoryId,
         if (brandId != null) 'brand_id': brandId,
         'cost_price': costPrice,
@@ -1032,11 +1045,16 @@ class InventoryProvider extends ChangeNotifier {
         name: product.name,
         qty: 1,
         unitPrice: unitPriceFor(product, u, customerId: _selectedCustomerId),
-        unitCostSnapshot: product.costPrice,
+        unitCostSnapshot: product.isService ? 0 : product.costPrice,
         unitId: u?.id,
         unitName: u?.name,
         unitFactor: u?.factor ?? 1,
         taxPercent: taxRateFor(product),
+        isService: product.isService,
+        // The stylist chosen for the line before this one is offered again (and is shown on the line, so it can
+        // be changed): a client is usually served by one person.
+        staffId: product.isService ? _defaultStaffId : null,
+        staffName: product.isService ? _defaultStaffName : null,
       );
       _retax(line);
       _cart.add(line);
@@ -1065,6 +1083,49 @@ class InventoryProvider extends ChangeNotifier {
       item.unitPrice = unitPriceFor(product, u, customerId: _selectedCustomerId);
       _retax(item);
     }
+    notifyListeners();
+  }
+
+  // ---- Salon ----
+  /// True while the salon's own home is open (a salon runs on this same engine). Screens that are opened on top of
+  /// the home (the product form) read it to offer what a salon needs: services, and who served the client.
+  bool _salonMode = false;
+  bool get salonMode => _salonMode;
+  void setSalonMode(bool value) {
+    if (_salonMode == value) return;
+    _salonMode = value;
+    notifyListeners();
+  }
+
+  // ---- Salon: who serves the client ----
+  List<Map<String, String>> _salonStaff = <Map<String, String>>[];
+  String? _defaultStaffId;
+  String? _defaultStaffName;
+
+  /// The people of this salon who can serve a client: {id, name, role}.
+  List<Map<String, String>> get salonStaff => List.unmodifiable(_salonStaff);
+
+  Future<void> fetchSalonStaff() async {
+    try {
+      final Map<String, dynamic>? res = await _api.getOrNull('/inventory/salon/staff');
+      final dynamic data = res?['data'];
+      if (data is! List) return;
+      _salonStaff = <Map<String, String>>[
+        for (final dynamic row in data)
+          if (row is Map) <String, String>{'id': '${row['id']}', 'name': '${row['name'] ?? ''}', 'role': '${row['role'] ?? ''}'},
+      ];
+      notifyListeners();
+    } on Exception {
+      // keep what we had
+    }
+  }
+
+  /// Say who serves this line (null = nobody named). That person is offered for the next service added.
+  void setCartStaff(InvSaleItem item, String? staffId, String? staffName) {
+    item.staffId = staffId;
+    item.staffName = staffName;
+    _defaultStaffId = staffId;
+    _defaultStaffName = staffName;
     notifyListeners();
   }
 
@@ -1101,6 +1162,8 @@ class InventoryProvider extends ChangeNotifier {
 
   void clearCart() {
     _cart.clear();
+    _defaultStaffId = null;
+    _defaultStaffName = null;
     _tierOverride = null;
     notifyListeners();
   }
@@ -1214,6 +1277,7 @@ class InventoryProvider extends ChangeNotifier {
                 'unit_price': e.unitPrice,
                 'unit_cost_snapshot': e.unitCostSnapshot,
                 if (e.taxPercent != null) 'tax_percent': e.taxPercent,
+                if (e.staffId != null) 'staff_id': e.staffId,
               })
           .toList(),
       if (payments.isNotEmpty) 'payments': payments,
@@ -1230,6 +1294,8 @@ class InventoryProvider extends ChangeNotifier {
 
       // Clear cart immediately so the UI feels instant.
       _cart.clear();
+      _defaultStaffId = null;
+      _defaultStaffName = null;
       _paymentMode = 'cash';
       _selectedCustomerId = null;
       _selectedCustomerPhone = '';
@@ -2059,6 +2125,9 @@ InvProduct _fromProductJson(Map<String, dynamic> j) => InvProduct(
       familyId: j['family_id'] == null ? null : int.tryParse(j['family_id'].toString()),
       variantLabel: j['variant_label'] as String?,
       measure: (j['measure'] ?? 'count') as String,
+      isService: j['is_service'] == true || j['is_service'] == 1 || j['is_service'] == '1',
+      durationMinutes: j['duration_minutes'] == null ? null : int.tryParse(j['duration_minutes'].toString()),
+      rebookAfterWeeks: j['rebook_after_weeks'] == null ? null : int.tryParse(j['rebook_after_weeks'].toString()),
     );
 
 InvCustomer _fromCustomerJson(Map<String, dynamic> j) => InvCustomer(
@@ -2085,6 +2154,9 @@ InvSale _fromSaleJson(Map<String, dynamic> j) {
                   unitFactor: int.tryParse((it['unit_factor'] ?? 1).toString()) ?? 1,
                   taxPercent: it['tax_percent'] == null ? null : double.tryParse(it['tax_percent'].toString()),
                   taxAmount: double.tryParse((it['tax_amount'] ?? 0).toString()) ?? 0.0,
+                  staffId: it['staff_id']?.toString(),
+                  staffName: it['staff_name']?.toString(),
+                  isService: it['is_service'] == true || it['is_service'] == 1,
                 )
               : null)
           .whereType<InvSaleItem>()

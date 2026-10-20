@@ -501,10 +501,12 @@ class ApiService {
       case 422:
         final Map<String, dynamic>? errors =
             data["errors"] as Map<String, dynamic>?;
-        if (errors != null) {
+        if (errors != null && errors.isNotEmpty) {
           final firstError = errors.values.first;
-          if (firstError is List && firstError.isNotEmpty) {
-            throw ApiException(firstError.first.toString());
+          // Only a SENTENCE is a message. `errors` can also carry data (the products a sale ran short of, as maps):
+          // printing that would put "{product_id: 7, ...}" on the screen, so the server's own `message` is used then.
+          if (firstError is List && firstError.isNotEmpty && firstError.first is String) {
+            throw ApiException(firstError.first as String);
           }
         }
         throw ApiException(data["message"] ?? LocalizationService.instance.translate('invalid_data'));

@@ -1050,6 +1050,7 @@ class AppLocalizations {
       'inventory_service': 'Inventory',
       'rental_service': 'Rental',
       'transport_service': 'Transport',
+      'salon_service': 'Salon',
       'coming_soon': 'Coming soon…',
       'switch_service': 'Switch Service',
 
@@ -3674,6 +3675,7 @@ class AppLocalizations {
       'inventory_service': 'Hesabu (Inventory)',
       'rental_service': 'Upangishaji (Rental)',
       'transport_service': 'Usafirishaji (Transport)',
+      'salon_service': 'Saluni (Salon)',
       'coming_soon': 'Inakuja hivi karibuni…',
       'switch_service': 'Badili Huduma',
       // Moduli ya Hesabu
