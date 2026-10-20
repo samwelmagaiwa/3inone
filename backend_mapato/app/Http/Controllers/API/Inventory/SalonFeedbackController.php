@@ -214,17 +214,38 @@ document.querySelectorAll('#stars button').forEach(function (b) {
     document.querySelectorAll('#stars button').forEach(function (x) { x.className = parseInt(x.dataset.v, 10) <= rating ? 'on' : ''; });
   });
 });
+var thanks = function () { document.body.innerHTML = '<main><h1>Asante! / Thank you!</h1><p>Tumepokea maoni yako. / We have your answer.</p></main>'; };
+var key = 'fb_' + token;
+var post = function (payload) {
+  return fetch('/api/public/salon/feedback/' + encodeURIComponent(token), {
+    method: 'POST', headers: {'Content-Type': 'application/json', 'Accept': 'application/json'}, body: JSON.stringify(payload)
+  }).then(function (r) { return r.json().then(function (j) { return {ok: r.ok, j: j}; }); });
+};
+// No signal when the client pressed Send: the answer waits on the phone and goes by itself when the connection is back
+// (the page must stay open or be opened again in the same browser).
+var flush = function () {
+  var saved = null;
+  try { saved = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) {}
+  if (!saved) return;
+  post(saved).then(function (x) {
+    if (x.ok || (x.j && x.j.errors)) { try { localStorage.removeItem(key); } catch (e) {} if (x.ok) thanks(); }
+  }).catch(function () {});
+};
+window.addEventListener('online', flush);
+flush();
 document.getElementById('send').addEventListener('click', function () {
   var note = document.getElementById('note');
   var btn = this; btn.disabled = true;
-  fetch('/api/public/salon/feedback/' + encodeURIComponent(token), {
-    method: 'POST', headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-    body: JSON.stringify({rating: rating || null, message: document.getElementById('msg').value, complaint: document.getElementById('complaint').checked})
-  }).then(function (r) { return r.json().then(function (j) { return {ok: r.ok, j: j}; }); }).then(function (x) {
-    if (x.ok) { document.body.innerHTML = '<main><h1>Asante! / Thank you!</h1><p>Tumepokea maoni yako. / We have your answer.</p></main>'; return; }
+  var payload = {rating: rating || null, message: document.getElementById('msg').value, complaint: document.getElementById('complaint').checked};
+  post(payload).then(function (x) {
+    if (x.ok) { try { localStorage.removeItem(key); } catch (e) {} thanks(); return; }
     var m = x.j && x.j.errors ? Object.values(x.j.errors)[0][0] : (x.j && x.j.message) || 'Imeshindikana / Failed';
     note.textContent = m; btn.disabled = false;
-  }).catch(function () { note.textContent = 'Hakuna mtandao / No connection'; btn.disabled = false; });
+  }).catch(function () {
+    try { localStorage.setItem(key, JSON.stringify(payload)); } catch (e) {}
+    note.textContent = 'Hakuna mtandao. Jibu lako limehifadhiwa kwenye simu na litatumwa mtandao ukirudi (acha ukurasa huu wazi). / No connection. Your answer is saved on your phone and will be sent when you are back online (keep this page open).';
+    btn.disabled = false;
+  });
 });
 </script>
 HTML;

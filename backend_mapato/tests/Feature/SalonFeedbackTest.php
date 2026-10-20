@@ -145,8 +145,9 @@ class SalonFeedbackTest extends TestCase
         $token = $this->token($owner);
         $this->assertSame('0711000001', $this->sms->sent[0]['to']);
         $this->assertSame(
-            "Asante Neema kwa kutembelea Glow Salon! Tupe maoni yako: https://3inone.example/f/{$token} / "
-            . "Thank you Neema for visiting Glow Salon! Tell us how it went: https://3inone.example/f/{$token}",
+            "Asante Neema! Umelipa TSh 45,000 kwa Wash, Braids - Glow Salon. / Thank you Neema! You paid TSh 45,000 for Wash, Braids at Glow Salon.
+"
+            . "Maoni / Feedback: https://3inone.example/f/{$token}",
             $this->sms->sent[0]['message']
         );
         $req = $this->rows($owner, fn () => DB::table('inventory_feedback_requests')->first());
@@ -319,6 +320,8 @@ class SalonFeedbackTest extends TestCase
         $this->assertStringNotContainsString('<Co>', $html);
         $this->assertStringContainsString('Habari Neema', $html);
         $this->assertStringContainsString('class="svc"', $html, 'the page names the service the client had');
+        $this->assertStringContainsString('localStorage.setItem', $html, 'an answer sent without signal waits on the phone');
+        $this->assertStringContainsString("addEventListener('online'", $html);
         $this->assertStringContainsString($token, $html);
         $this->assertStringContainsString('noindex', (string) $page->headers->get('X-Robots-Tag'));
         $this->assertStringContainsString('no-store', (string) $page->headers->get('Cache-Control'));

@@ -48,14 +48,22 @@ final class SalonFeedback
         return rtrim((string) config('app.url'), '/') . '/f/' . $token;
     }
 
-    public static function message(string $clientName, string $business, string $url): string
+    /**
+     * The one text a client gets when a visit is paid: what they paid for, then (at the bottom) the link to say how it went.
+     *
+     * @param  array<int, string>  $services
+     */
+    public static function message(string $clientName, string $business, string $url, float $paid = 0, array $services = []): string
     {
         $first = ClientSegments::firstName($clientName);
         $business = trim((string) preg_replace('/\s+/u', ' ', $business)) ?: 'saluni yetu';
-        $swHello = $first !== '' ? "Asante {$first}" : 'Asante';
-        $enHello = $first !== '' ? "Thank you {$first}" : 'Thank you';
+        $what = trim(mb_substr(implode(', ', $services), 0, 60));
+        $amount = 'TSh ' . number_format($paid, 0, '.', ',');
+        $sw = ($first !== '' ? "Asante {$first}!" : 'Asante!') . ($paid > 0 ? " Umelipa {$amount}" . ($what !== '' ? " kwa {$what}" : '') . " - {$business}." : " Karibu tena {$business}.");
+        $en = ($first !== '' ? "Thank you {$first}!" : 'Thank you!') . ($paid > 0 ? " You paid {$amount}" . ($what !== '' ? " for {$what}" : '') . " at {$business}." : " See you again at {$business}.");
 
-        return "{$swHello} kwa kutembelea {$business}! Tupe maoni yako: {$url} / {$enHello} for visiting {$business}! Tell us how it went: {$url}";
+        return "{$sw} / {$en}
+Maoni / Feedback: {$url}";
     }
 
     /**
@@ -98,7 +106,7 @@ final class SalonFeedback
         ]);
 
         try {
-            $sent = SmsService::sendFor($business, $phone, self::message((string) $client->name, (string) ($business?->name ?? ''), self::url($token)));
+            $sent = SmsService::sendFor($business, $phone, self::message((string) $client->name, (string) ($business?->name ?? ''), self::url($token), (float) $sale->total, DB::table('inventory_sale_items as si')->leftJoin('inventory_products as p', 'p.id', '=', 'si.product_id')->where('si.sale_id', $saleId)->where('si.is_service', true)->pluck('p.name')->filter()->unique()->values()->all()));
         } catch (\Throwable) {
             $sent = false;
         }
