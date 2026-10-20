@@ -4,6 +4,7 @@ import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/responsive_helper.dart';
 import '../../models/inv_product.dart';
+import '../salon/salon_mode.dart';
 import 'inventory_widgets.dart' show formatAmount;
 
 /// How many products the dashboard lists before pointing to the full screen.
@@ -45,13 +46,13 @@ class ProfitByProductTable extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        _header(loc),
+        _header(loc, isSalonMode(context)),
         for (int i = 0; i < shown.length; i++) _row(i + 1, shown[i]),
       ],
     );
   }
 
-  Widget _header(final LocalizationService loc) {
+  Widget _header(final LocalizationService loc, final bool salon) {
     TextStyle style() => TextStyle(
           color: _textSecondary,
           fontSize: ResponsiveHelper.bodyS,
@@ -75,7 +76,7 @@ class ProfitByProductTable extends StatelessWidget {
                 style: style()),
           ),
           const SizedBox(width: 6),
-          Expanded(flex: 4, child: Text(loc.translate('product'), style: style())),
+          Expanded(flex: 4, child: Text(salon ? (loc.isSwahili ? 'Huduma / Bidhaa' : 'Service / Goods') : loc.translate('product'), style: style())),
           Expanded(
               flex: 2,
               child: Text(loc.translate('qty'),
@@ -219,7 +220,7 @@ class ProfitSeeAllButton extends StatelessWidget {
           onPressed: isActive ? onPressed : null,
           icon: const Icon(Icons.arrow_forward_rounded, size: 18),
           label: Text(
-            '${loc.translate('see_all_products')} ($total)',
+            '${isSalonMode(context) ? (loc.isSwahili ? 'Ona huduma na bidhaa zote' : 'See all services and goods') : loc.translate('see_all_products')} ($total)',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

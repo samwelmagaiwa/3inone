@@ -5,6 +5,7 @@ import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../models/inv_product.dart';
 import '../../providers/inventory_provider.dart';
+import '../salon/salon_mode.dart';
 import '../widgets/profit_by_product_table.dart';
 
 /// "Faida kwa Bidhaa": the whole product profit table. The dashboard shows the first few
@@ -45,7 +46,9 @@ class _ProfitByProductScreenState extends State<ProfitByProductScreen> {
     final List<InvProduct> products = rankedForProfit(inv.products);
 
     return ThemeConstants.buildScaffold(
-      title: _loc.translate('profit_margins_title'),
+      title: isSalonMode(context)
+          ? (_loc.isSwahili ? 'Faida ya Huduma na Bidhaa' : 'Services & Goods Profit')
+          : _loc.translate('profit_margins_title'),
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: ListView(
