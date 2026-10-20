@@ -483,4 +483,19 @@ class SalonApi {
 
   /// Add the standard salon categories that are not there yet; answers {added: [...], already}.
   Future<Map<String, dynamic>> addCategoryPresets() async => _data(await _api.post('/inventory/salon/category-presets', <String, dynamic>{}));
+
+  // ---------------------------------------------------------------- goods by branch
+
+  /// {branches: [...], products: [{id, name, total, unallocated, over_allocated, branches: [...]}]}.
+  Future<Map<String, dynamic>> branchStock() async => _data(await _api.get('/inventory/salon/branch-stock'));
+
+  /// Move goods; a null place is the main store.
+  Future<void> transferBranchStock({required final int productId, final int? fromBranchId, final int? toBranchId, required final int quantity}) async {
+    await _api.post('/inventory/salon/branch-stock/transfer', <String, dynamic>{
+      'product_id': productId,
+      'from_branch_id': fromBranchId,
+      'to_branch_id': toBranchId,
+      'quantity': quantity,
+    });
+  }
 }

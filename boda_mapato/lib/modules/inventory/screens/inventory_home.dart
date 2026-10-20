@@ -21,6 +21,7 @@ import 'barcode_scanner_screen.dart';
 import 'notifications/approval_notifications_screen.dart';
 import 'reports/profit_by_product_screen.dart';
 import 'hubs/salon_finance_hub_screen.dart';
+import 'salon/branch_stock_screen.dart';
 import 'salon/branches_screen.dart';
 import 'salon/equipment_screen.dart';
 import 'salon/feedback_screen.dart';
@@ -283,6 +284,14 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.handyman_outlined,
       color: const Color(0xFF14B8A6),
       pageBuilder: () => const EquipmentScreen(),
+      visible: (UserPermissions p) => p.has('inv_manage_settings') || p.has('inv_manage_stock'),
+    ),
+    _InvMenuEntry(
+      key: 'branch_stock',
+      staticTitle: sw ? 'Bidhaa kwa tawi' : 'Goods by branch',
+      icon: Icons.warehouse_outlined,
+      color: const Color(0xFFF97316),
+      pageBuilder: () => const BranchStockScreen(),
       visible: (UserPermissions p) => p.has('inv_manage_settings') || p.has('inv_manage_stock'),
     ),
     _InvMenuEntry(

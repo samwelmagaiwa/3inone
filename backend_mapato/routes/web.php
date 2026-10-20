@@ -31,6 +31,17 @@ Route::get('/f/{token}', [\App\Http\Controllers\API\Inventory\SalonFeedbackContr
         \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
     ]);
 
+// The salon's app for a client's phone: its manifest, icon and service worker (the page is installable and opens offline).
+Route::get('/book/{slug}/manifest.webmanifest', [\App\Http\Controllers\API\Inventory\SalonPublicBookingController::class, 'manifest'])
+    ->middleware('throttle:60,1,salon-booking-assets')
+    ->withoutMiddleware([\Illuminate\Session\Middleware\StartSession::class, \Illuminate\View\Middleware\ShareErrorsFromSession::class, \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
+Route::get('/book/{slug}/icon.svg', [\App\Http\Controllers\API\Inventory\SalonPublicBookingController::class, 'icon'])
+    ->middleware('throttle:60,1,salon-booking-assets')
+    ->withoutMiddleware([\Illuminate\Session\Middleware\StartSession::class, \Illuminate\View\Middleware\ShareErrorsFromSession::class, \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
+Route::get('/book/{slug}/sw.js', [\App\Http\Controllers\API\Inventory\SalonPublicBookingController::class, 'worker'])
+    ->middleware('throttle:60,1,salon-booking-assets')
+    ->withoutMiddleware([\Illuminate\Session\Middleware\StartSession::class, \Illuminate\View\Middleware\ShareErrorsFromSession::class, \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
+
 // The page a client books from: the salon's own address. No sign-in, no session; throttled.
 Route::get('/book/{slug}', [\App\Http\Controllers\API\Inventory\SalonPublicBookingController::class, 'page'])
     ->middleware('throttle:60,1,salon-booking-page')

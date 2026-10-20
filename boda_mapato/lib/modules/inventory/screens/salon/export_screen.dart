@@ -41,7 +41,7 @@ class _ExportScreenState extends State<ExportScreen> {
   String _period = 'month';
   bool _busy = false;
 
-  static const List<String> types = <String>['sales', 'expenses', 'payroll', 'stylists', 'profit-loss', 'tax'];
+  static const List<String> types = <String>['sales', 'expenses', 'payroll', 'stylists', 'profit-loss', 'tax', 'cashbook'];
 
   static String typeLabel(final String t, final bool sw) {
     switch (t) {
@@ -55,6 +55,8 @@ class _ExportScreenState extends State<ExportScreen> {
         return sw ? 'Watumishi' : 'Stylists';
       case 'profit-loss':
         return sw ? 'Faida na hasara' : 'Profit & loss';
+      case 'cashbook':
+        return sw ? 'Kitabu cha pesa' : 'Cashbook';
       default:
         return sw ? 'Kodi (VAT)' : 'Tax (VAT)';
     }

@@ -27,6 +27,7 @@ final class TenantTables
         'inventory_barcode_labels',
         'inventory_batches',
         'inventory_birthday_wishes',
+        'inventory_branch_stock',
         'inventory_branches',
         'inventory_brands',
         'inventory_campaigns',

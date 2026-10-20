@@ -393,4 +393,43 @@ class SalonOnlineBookingTest extends TestCase
         $this->assertSame(0, $this->rows($other, fn () => DB::table('inventory_appointments')->count()));
         $this->assertSame(['Zawadi'], array_column($this->guest('GET', '/api/public/salon/book/other')->json('data.stylists'), 'name'));
     }
+
+    public function test_the_booking_page_is_an_installable_app_with_the_salons_own_name_and_icon(): void
+    {
+        $this->salon('Glow & <Co>', 'glow');
+
+        $page = $this->guest('GET', '/book/glow')->assertOk()->getContent();
+        $this->assertStringContainsString('rel="manifest" href="/book/glow/manifest.webmanifest"', $page);
+        $this->assertStringContainsString('rel="icon" href="/book/glow/icon.svg"', $page);
+        $this->assertStringContainsString("navigator.serviceWorker.register('/book/' + encodeURIComponent(slug) + '/sw.js'", $page);
+        $this->assertStringContainsString("localStorage.setItem(KEY", $page, 'bookings made from the phone are remembered');
+
+        $m = $this->guest('GET', '/book/glow/manifest.webmanifest')->assertOk();
+        $this->assertStringContainsString('manifest+json', (string) $m->headers->get('Content-Type'));
+        $this->assertSame('Glow & <Co>', $m->json('name'));
+        $this->assertSame('/book/glow', $m->json('start_url'));
+        $this->assertSame('/book/glow', $m->json('scope'));
+        $this->assertSame('standalone', $m->json('display'));
+
+        $icon = $this->guest('GET', '/book/glow/icon.svg')->assertOk();
+        $this->assertStringContainsString('image/svg+xml', (string) $icon->headers->get('Content-Type'));
+        $this->assertStringContainsString('>G</text>', $icon->getContent());
+
+        $sw = $this->guest('GET', '/book/glow/sw.js')->assertOk();
+        $this->assertStringContainsString('javascript', (string) $sw->headers->get('Content-Type'));
+        $this->assertSame('/book/glow', $sw->headers->get('Service-Worker-Allowed'));
+        $js = $sw->getContent();
+        $this->assertStringContainsString("'/api/public/salon/book/' + \"glow\"", $js);
+        $this->assertStringNotContainsString('slots', $js, 'free times and bookings are never kept: they must be live');
+    }
+
+    public function test_the_app_files_of_a_salon_that_is_off_or_unknown_are_not_found(): void
+    {
+        $owner = $this->salon('Glow Salon', 'glow');
+        $this->api($owner, 'PUT', '/api/inventory/salon/settings', ['online_booking' => false])->assertOk();
+        foreach (['manifest.webmanifest', 'icon.svg', 'sw.js'] as $file) {
+            $this->guest('GET', "/book/glow/{$file}")->assertStatus(404);
+            $this->guest('GET', "/book/nobody/{$file}")->assertStatus(404);
+        }
+    }
 }

@@ -102,4 +102,87 @@ class SalonBranchesTest extends TestCase
         $this->api($two, 'GET', '/api/inventory/salon/branches')->assertOk()->assertJsonCount(0, 'data');
         $this->api($two, 'POST', '/api/inventory/salon/branches', ['name' => 'Main'])->assertCreated();
     }
+
+    private function goods(User $as, int $stock): int
+    {
+        return $this->api($as, 'POST', '/api/inventory/products', ['name' => 'Shampoo', 'quantity' => $stock, 'min_stock' => 0, 'status' => 'active', 'cost_price' => 3000, 'selling_price' => 8000])->assertCreated()->json('data.id');
+    }
+
+    private function branchShelf(User $as, int $product, int $branch): int
+    {
+        $rows = $this->api($as, 'GET', '/api/inventory/salon/branch-stock')->assertOk()->json('data.products');
+        $row = collect($rows)->firstWhere('id', $product);
+
+        return (int) collect($row['branches'])->firstWhere('branch_id', $branch)['quantity'];
+    }
+
+    private function stockOf(int $product): int
+    {
+        return (int) \Illuminate\Support\Facades\DB::table('inventory_products')->where('id', $product)->value('quantity');
+    }
+
+    public function test_goods_are_moved_between_the_main_store_and_branches_and_never_more_than_is_there(): void
+    {
+        $owner = $this->salon();
+        $a = $this->api($owner, 'POST', '/api/inventory/salon/branches', ['name' => 'Kariakoo'])->assertCreated()->json('data.id');
+        $b = $this->api($owner, 'POST', '/api/inventory/salon/branches', ['name' => 'Mikocheni'])->assertCreated()->json('data.id');
+        $p = $this->goods($owner, 10);
+
+        $first = $this->api($owner, 'GET', '/api/inventory/salon/branch-stock')->json('data.products.0');
+        $this->assertSame([10, 10], [$first['total'], $first['unallocated']], 'all in the main store at first');
+
+        $this->api($owner, 'POST', '/api/inventory/salon/branch-stock/transfer', ['product_id' => $p, 'to_branch_id' => $a, 'quantity' => 6])->assertOk();
+        $this->api($owner, 'POST', '/api/inventory/salon/branch-stock/transfer', ['product_id' => $p, 'from_branch_id' => $a, 'to_branch_id' => $b, 'quantity' => 2])->assertOk();
+        $row = $this->api($owner, 'GET', '/api/inventory/salon/branch-stock')->json('data.products.0');
+        $this->assertSame([10, 4], [$row['total'], $row['unallocated']]);
+        $this->assertSame([4, 2], [$this->branchShelf($owner, $p, $a), $this->branchShelf($owner, $p, $b)]);
+
+        $this->api($owner, 'POST', '/api/inventory/salon/branch-stock/transfer', ['product_id' => $p, 'from_branch_id' => $b, 'to_branch_id' => $a, 'quantity' => 3])->assertStatus(422);
+        $this->api($owner, 'POST', '/api/inventory/salon/branch-stock/transfer', ['product_id' => $p, 'to_branch_id' => $a, 'quantity' => 5])->assertStatus(422);
+        $this->api($owner, 'POST', '/api/inventory/salon/branch-stock/transfer', ['product_id' => $p, 'from_branch_id' => $a, 'to_branch_id' => $a, 'quantity' => 1])->assertStatus(422);
+        $this->api($owner, 'POST', '/api/inventory/salon/branch-stock/transfer', ['product_id' => $p, 'from_branch_id' => $b, 'quantity' => 2])->assertOk();
+        $this->assertSame(6, $this->api($owner, 'GET', '/api/inventory/salon/branch-stock')->json('data.products.0.unallocated'), 'back in the main store');
+    }
+
+    public function test_a_sale_in_a_branch_takes_from_its_shelf_and_a_cancel_puts_it_back(): void
+    {
+        $owner = $this->salon();
+        $a = $this->api($owner, 'POST', '/api/inventory/salon/branches', ['name' => 'Kariakoo'])->assertCreated()->json('data.id');
+        $b = $this->api($owner, 'POST', '/api/inventory/salon/branches', ['name' => 'Mikocheni'])->assertCreated()->json('data.id');
+        $p = $this->goods($owner, 10);
+        $this->api($owner, 'POST', '/api/inventory/salon/branch-stock/transfer', ['product_id' => $p, 'to_branch_id' => $a, 'quantity' => 6])->assertOk();
+
+        $sale = $this->api($owner, 'POST', '/api/inventory/sales', [
+            'payment_status' => 'paid', 'subtotal' => 16000, 'discount' => 0, 'tax' => 0, 'total' => 16000, 'paid_total' => 16000,
+            'items' => [['product_id' => $p, 'quantity' => 2, 'unit_price' => 8000]], 'payments' => [['amount' => 16000, 'method' => 'cash']],
+        ], ['X-Branch' => (string) $a])->assertCreated()->json('data.id');
+        $this->assertSame(4, $this->branchShelf($owner, $p, $a));
+        $this->assertSame(8, $this->stockOf($p));
+
+        // A branch with nothing allocated still sells (from the main store): never stopped for this.
+        $this->api($owner, 'POST', '/api/inventory/sales', [
+            'payment_status' => 'paid', 'subtotal' => 8000, 'discount' => 0, 'tax' => 0, 'total' => 8000, 'paid_total' => 8000,
+            'items' => [['product_id' => $p, 'quantity' => 1, 'unit_price' => 8000]], 'payments' => [['amount' => 8000, 'method' => 'cash']],
+        ], ['X-Branch' => (string) $b])->assertCreated();
+        $this->assertSame(0, $this->branchShelf($owner, $p, $b));
+        $this->assertSame(7, $this->stockOf($p));
+
+        $this->api($owner, 'POST', "/api/inventory/sales/{$sale}/cancel", ['reason' => 'Mistake'])->assertOk();
+        $this->assertSame(6, $this->branchShelf($owner, $p, $a));
+        $this->assertSame(9, $this->stockOf($p));
+    }
+
+    public function test_only_keepers_move_stock_but_everyone_may_look_and_a_salon_never_sees_anothers_stock(): void
+    {
+        $owner = $this->salon('One');
+        $other = $this->salon('Two');
+        $stylist = $this->givenServices(User::factory()->create(['name' => 'S', 'role' => 'hair_stylist', 'is_active' => true, 'created_by' => $owner->id]), 'salon');
+        $br = $this->api($owner, 'POST', '/api/inventory/salon/branches', ['name' => 'Main'])->assertCreated()->json('data.id');
+        $p = $this->goods($owner, 5);
+        $this->api($stylist, 'GET', '/api/inventory/salon/branch-stock')->assertOk();
+        $this->api($stylist, 'POST', '/api/inventory/salon/branch-stock/transfer', ['product_id' => $p, 'to_branch_id' => $br, 'quantity' => 1])->assertForbidden();
+
+        $this->assertSame([], $this->api($other, 'GET', '/api/inventory/salon/branch-stock')->json('data.products'));
+        $this->api($other, 'POST', '/api/inventory/salon/branch-stock/transfer', ['product_id' => $p, 'to_branch_id' => $br, 'quantity' => 1])->assertStatus(422);
+    }
 }

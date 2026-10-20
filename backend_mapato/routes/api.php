@@ -45,6 +45,7 @@ use App\Http\Controllers\API\Inventory\CustomerController as InventoryCustomerCo
 use App\Http\Controllers\API\Inventory\AppointmentController;
 use App\Http\Controllers\API\Inventory\SalonBooksController;
 use App\Http\Controllers\API\Inventory\SalonBranchController;
+use App\Http\Controllers\API\Inventory\SalonBranchStockController;
 use App\Http\Controllers\API\Inventory\SalonQueueController;
 use App\Http\Controllers\API\Inventory\SalonSetupController;
 use App\Http\Controllers\API\Inventory\SalonClientController;
@@ -439,6 +440,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('inventory/salon/campaigns',            [SalonClientController::class, 'campaigns']);
         // Equipment and its upkeep (the owner, managers and the stock manager: checked in the controller).
         // The owner's books and the walk-in queue, ready-made categories and the goods a service uses up.
+        Route::get('inventory/salon/branch-stock',         [SalonBranchStockController::class, 'index']);
+        Route::post('inventory/salon/branch-stock/transfer', [SalonBranchStockController::class, 'transfer']);
         Route::get('inventory/salon/cashbook',             [SalonBooksController::class, 'cashbook']);
         Route::post('inventory/salon/cashbook/moves',      [SalonBooksController::class, 'storeMove']);
         Route::delete('inventory/salon/cashbook/moves/{id}', [SalonBooksController::class, 'destroyMove']);

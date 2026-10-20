@@ -195,5 +195,12 @@ void main() {
     expect(api.exports.single, 'tax|csv|2026-10-01|2026-10-31');
     expect(saved.single.$2, 'salon_tax_2026-10-31.csv');
     expect(saved.single.$1, hasLength(3));
+
+    await t.tap(find.byKey(const Key('exp_type_cashbook')));
+    await t.pump();
+    await t.tap(find.byKey(const Key('exp_go')));
+    await t.pump();
+    expect(api.exports.last, startsWith('cashbook|csv|'));
+    expect(saved.last.$2, startsWith('salon_cashbook_'));
   });
 }

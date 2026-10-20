@@ -642,6 +642,15 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 ->where('status', 'open')
                 ->update(['status' => 'done', 'updated_at' => now()]);
 
+            // ...and goods go back on the shelf of the branch they were sold from.
+            if (!empty($sale->branch_id)) {
+                foreach ($items as $returned) {
+                    if (empty($returned->is_service)) {
+                        \App\Support\Salon\SalonBranchStock::giveBack((int) $returned->product_id, (int) $sale->branch_id, (int) $returned->quantity);
+                    }
+                }
+            }
+
             \App\Support\Salon\SalonMaterials::restore($this->ledger, (int) $id, (string) $sale->number, optional($request->user())->id);
 
             $this->audit->record($request, 'sale', $id, 'cancelled', [
@@ -1086,6 +1095,11 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
+                // Goods sold in a branch come off that branch's own shelf first.
+                if (!$isService && \App\Support\Salon\SalonBranch::forNew($request) !== null) {
+                    \App\Support\Salon\SalonBranchStock::take((int) $item['product_id'], (int) \App\Support\Salon\SalonBranch::forNew($request), (int) $qty);
+                }
 
                 // The goods a service uses up leave the shelf with it (never stopping the sale).
                 if ($isService) {

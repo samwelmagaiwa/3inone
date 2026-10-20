@@ -138,3 +138,15 @@ business profile reachable from the salon menu (the existing audit trail is unde
 Backend 836 + Flutter 1083 green; migration 2026_11_03 rehearsed on MariaDB 10.11.
 Still NOT built: WhatsApp (excluded by the owner), SMS-reply feedback (needs provider number), customer mobile app,
 goods stock per branch, refunds not paid in cash are assumed cash in the cashbook.
+
+## Status 2026-10-21 (stock per branch, cashbook export, installable booking app)
+
+Built: goods stock by branch (`inventory_branch_stock`: the product quantity stays the whole stock, each branch holds a
+share, the rest is the main store; a sale in a branch takes from its shelf first and never fails for it; a cancel puts the
+goods back on that branch's shelf; move goods in the app "Goods by branch"); cashbook export (CSV/PDF); date rules now use
+the salon's own clock (Dar es Salaam is a day ahead of the server late in the evening); the booking page is an installable
+app for the client's phone (salon's name and icon, manifest, service worker: opens with no signal, shows the last services
+and prices and the bookings made from that phone; booking itself needs a connection).
+Backend 844 + Flutter 1089 green; migrations through 2026_11_04 rehearsed on MariaDB 10.11.
+Still NOT built: WhatsApp (excluded), SMS-reply feedback (provider number), a native customer app in the app stores (the
+installable page is what clients get), reorder alerts per branch, branch transfers history.
