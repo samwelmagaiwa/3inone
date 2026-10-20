@@ -601,6 +601,8 @@ class InventoryProvider extends ChangeNotifier {
     int? durationMinutes,
     int? rebookAfterWeeks,
     double? commissionPercent,
+    List<String>? staffIds,
+    List<PriceOption>? priceOptions,
   }) async {
     _lastError = null;
     try {
@@ -618,6 +620,8 @@ class InventoryProvider extends ChangeNotifier {
         if (durationMinutes != null) 'duration_minutes': durationMinutes,
         if (rebookAfterWeeks != null) 'rebook_after_weeks': rebookAfterWeeks,
         if (commissionPercent != null) 'commission_percent': commissionPercent,
+        if (staffIds != null && staffIds.isNotEmpty) 'staff_ids': staffIds,
+        if (priceOptions != null && priceOptions.isNotEmpty) 'price_options': <Map<String, dynamic>>[for (final PriceOption o in priceOptions) o.toJson()],
         'category': category,
         if (categoryId != null) 'category_id': categoryId,
         if (brandId != null) 'brand_id': brandId,
@@ -711,6 +715,8 @@ class InventoryProvider extends ChangeNotifier {
     int? durationMinutes,
     int? rebookAfterWeeks,
     double? commissionPercent,
+    List<String>? staffIds,
+    List<PriceOption>? priceOptions,
   }) async {
     _lastError = null;
     try {
@@ -727,6 +733,9 @@ class InventoryProvider extends ChangeNotifier {
         if (isService == true) 'duration_minutes': durationMinutes,
         if (isService == true) 'rebook_after_weeks': rebookAfterWeeks,
         if (isService == true) 'commission_percent': commissionPercent,
+        // An empty list clears it on the server (anyone may do it again; one price).
+        if (isService == true && staffIds != null) 'staff_ids': staffIds,
+        if (isService == true && priceOptions != null) 'price_options': <Map<String, dynamic>>[for (final PriceOption o in priceOptions) o.toJson()],
         if (categoryId != null) 'category_id': categoryId,
         if (brandId != null) 'brand_id': brandId,
         'cost_price': costPrice,
@@ -1034,10 +1043,10 @@ class InventoryProvider extends ChangeNotifier {
 
   /// Add one of a product to the cart, in [unit] (null = the product's own base unit). The same product in
   /// another unit is its own line: 1 crate and 3 bottles are two lines.
-  void addProductToCart(InvProduct product, {InvProductUnit? unit}) {
+  void addProductToCart(InvProduct product, {InvProductUnit? unit, PriceOption? option}) {
     final InvProductUnit? chosen = unit ?? defaultUnitFor(product);
     final InvProductUnit? u = (chosen != null && !chosen.isBase) ? chosen : null;
-    final String key = '${product.id}:${u?.id ?? 0}';
+    final String key = '${product.id}:${u?.id ?? 0}${option == null ? '' : ':${option.label}'}';
 
     final idx = _cart.indexWhere((it) => it.key == key);
     if (idx >= 0) {
@@ -1046,9 +1055,10 @@ class InventoryProvider extends ChangeNotifier {
     } else {
       final InvSaleItem line = InvSaleItem(
         productId: product.id,
-        name: product.name,
+        name: option == null ? product.name : '${product.name} (${option.label})',
+        optionLabel: option?.label,
         qty: 1,
-        unitPrice: unitPriceFor(product, u, customerId: _selectedCustomerId),
+        unitPrice: option?.price ?? unitPriceFor(product, u, customerId: _selectedCustomerId),
         unitCostSnapshot: product.isService ? 0 : product.costPrice,
         unitId: u?.id,
         unitName: u?.name,
@@ -2135,6 +2145,13 @@ InvProduct _fromProductJson(Map<String, dynamic> j) => InvProduct(
       durationMinutes: j['duration_minutes'] == null ? null : int.tryParse(j['duration_minutes'].toString()),
       rebookAfterWeeks: j['rebook_after_weeks'] == null ? null : int.tryParse(j['rebook_after_weeks'].toString()),
       commissionPercent: j['commission_percent'] == null ? null : double.tryParse(j['commission_percent'].toString()),
+      staffIds: j['staff_ids'] is List ? <String>[for (final dynamic s in j['staff_ids'] as List) '$s'] : const <String>[],
+      priceOptions: j['price_options'] is List
+          ? <PriceOption>[
+              for (final dynamic o in j['price_options'] as List)
+                if (o is Map) PriceOption(label: '${o['label'] ?? ''}', price: double.tryParse('${o['price'] ?? ''}') ?? 0),
+            ]
+          : const <PriceOption>[],
     );
 
 InvCustomer _fromCustomerJson(Map<String, dynamic> j) => InvCustomer(

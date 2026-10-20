@@ -13,8 +13,12 @@ class InvSaleItem {
     this.staffId,
     this.staffName,
     this.isService = false,
+    this.optionLabel,
   });
   final int productId;
+
+  /// Salon: the price option this line was added with ("Long"); two options of one service are two lines.
+  final String? optionLabel;
   final String name;
 
   /// How many of the selling unit (a crate, a kg) -- always a whole number.
@@ -42,7 +46,7 @@ class InvSaleItem {
   final bool isService;
 
   /// A cart holds one line per product AND unit: 1 crate and 3 bottles of the same drink are two lines.
-  String get key => '$productId:${unitId ?? 0}';
+  String get key => '$productId:${unitId ?? 0}${optionLabel == null ? '' : ':$optionLabel'}';
 
   /// What leaves the stock: whole base units.
   int get baseQty => qty * (unitFactor < 1 ? 1 : unitFactor);

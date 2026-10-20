@@ -21,6 +21,7 @@ final class TenantTables
     /** @var array<int, string> */
     public const INVENTORY = [
         'inventory_alerts',
+        'inventory_appointments',
         'inventory_audit_log',
         'inventory_barcode_labels',
         'inventory_batches',

@@ -36,6 +36,14 @@ class _FakeApi extends ApiService {
         'data': <String, dynamic>{'inventory_type': 'retail', 'use_crates': '0', 'sale_tier': 'retail', 'prices_include_vat': '1', 'tax_percent': '0'},
       };
     }
+    if (endpoint.startsWith('/inventory/salon/staff')) {
+      return <String, dynamic>{
+        'data': <Map<String, dynamic>>[
+          <String, dynamic>{'id': 'u-asha', 'name': 'Asha', 'role': 'sales_officer'},
+          <String, dynamic>{'id': 'u-bahati', 'name': 'Bahati', 'role': 'manager'},
+        ],
+      };
+    }
     return <String, dynamic>{'data': <dynamic>[]};
   }
 }
@@ -285,6 +293,63 @@ void main() {
       expect(_api.posts.where(((String, Map<String, dynamic>) p) => p.$1 == '/inventory/products'), isEmpty);
     });
 
+    testWidgets('who can do it and the other prices are sent with the service', (t) async {
+      await _open(t);
+      await t.enterText(_hint('e.g. Braids (long)'), 'Braids');
+      await t.enterText(_hint('e.g. 15,000'), '40000');
+      await t.tap(_key('service_staff_u-bahati'));
+      await t.pump();
+      await t.tap(_key('service_option_add'));
+      await t.pump();
+      await t.tap(_key('service_option_add'));
+      await t.pump();
+      await t.enterText(_hint('e.g. Long').first, 'Short');
+      await t.enterText(find.byWidgetPredicate((Widget w) => w is TextField && w.decoration?.hintText == '60,000').first, '30000');
+      await t.enterText(_hint('e.g. Long').last, 'Long');
+      await t.enterText(find.byWidgetPredicate((Widget w) => w is TextField && w.decoration?.hintText == '60,000').last, '60000');
+      await _save(t);
+
+      final Map<String, dynamic> body = _api.posts.firstWhere(((String, Map<String, dynamic>) p) => p.$1 == '/inventory/products').$2;
+      expect(body['staff_ids'], <String>['u-bahati']);
+      expect(body['price_options'], <Map<String, dynamic>>[
+        <String, dynamic>{'label': 'Short', 'price': 30000.0},
+        <String, dynamic>{'label': 'Long', 'price': 60000.0},
+      ]);
+    });
+
+    testWidgets('nobody chosen and no other prices send neither', (t) async {
+      await _open(t);
+      await t.enterText(_hint('e.g. Braids (long)'), 'Wash');
+      await t.enterText(_hint('e.g. 15,000'), '5000');
+      await _save(t);
+
+      final Map<String, dynamic> body = _api.posts.firstWhere(((String, Map<String, dynamic>) p) => p.$1 == '/inventory/products').$2;
+      expect(body.containsKey('staff_ids'), isFalse);
+      expect(body.containsKey('price_options'), isFalse);
+    });
+
+    testWidgets('an empty row of other prices is ignored, a half-filled one is refused', (t) async {
+      await _open(t);
+      await t.enterText(_hint('e.g. Braids (long)'), 'Braids');
+      await t.enterText(_hint('e.g. 15,000'), '40000');
+      await t.tap(_key('service_option_add'));
+      await t.pump();
+      await _save(t);
+      final Map<String, dynamic> body = _api.posts.firstWhere(((String, Map<String, dynamic>) p) => p.$1 == '/inventory/products').$2;
+      expect(body.containsKey('price_options'), isFalse, reason: 'the empty row was ignored');
+
+      _api.posts.clear();
+      await _open(t);
+      await t.enterText(_hint('e.g. Braids (long)'), 'Braids');
+      await t.enterText(_hint('e.g. 15,000'), '40000');
+      await t.tap(_key('service_option_add'));
+      await t.pump();
+      await t.enterText(_hint('e.g. Long'), 'Long');
+      await _save(t);
+      expect(find.text('Each other price needs a name (e.g. Long) and a price.'), findsOneWidget);
+      expect(_api.posts.where(((String, Map<String, dynamic>) p) => p.$1 == '/inventory/products'), isEmpty);
+    });
+
     testWidgets('the time and the wait are optional', (t) async {
       await _open(t);
       await t.enterText(_hint('e.g. Braids (long)'), 'Wash');
@@ -366,6 +431,40 @@ void main() {
       final Map<String, dynamic> body = _api.puts.single.$2;
       expect(body.containsKey('rebook_after_weeks'), isTrue);
       expect(body['rebook_after_weeks'], isNull, reason: 'null clears it on the server');
+    });
+
+    testWidgets('a service comes back with its people ticked and its other prices listed, and saving keeps them', (t) async {
+      final InvProduct p = _braids()
+        ..staffIds = <String>['u-asha']
+        ..priceOptions = <PriceOption>[const PriceOption(label: 'Long', price: 60000)];
+      await _open(t, product: p);
+
+      expect(t.widget<FilterChip>(_key('service_staff_u-asha')).selected, isTrue);
+      expect(t.widget<FilterChip>(_key('service_staff_u-bahati')).selected, isFalse);
+      expect(_typed(t, _hint('e.g. Long')), 'Long');
+      expect(_typed(t, _hint('60,000')), '60,000');
+
+      await _save(t);
+      final Map<String, dynamic> body = _api.puts.single.$2;
+      expect(body['staff_ids'], <String>['u-asha']);
+      expect((body['price_options'] as List<dynamic>).single, <String, dynamic>{'label': 'Long', 'price': 60000.0});
+    });
+
+    testWidgets('taking everyone off and every other price away sends empty lists, which clear them on the server', (t) async {
+      final InvProduct p = _braids()
+        ..staffIds = <String>['u-asha']
+        ..priceOptions = <PriceOption>[const PriceOption(label: 'Long', price: 60000)];
+      await _open(t, product: p);
+      await t.tap(_key('service_staff_u-asha'));
+      await t.pump();
+      await t.tap(_key('service_option_remove_0'));
+      await t.pump();
+
+      await _save(t);
+
+      final Map<String, dynamic> body = _api.puts.single.$2;
+      expect(body['staff_ids'], isEmpty);
+      expect(body['price_options'], isEmpty);
     });
 
     testWidgets('goods stay goods: no service fields are sent for them', (t) async {

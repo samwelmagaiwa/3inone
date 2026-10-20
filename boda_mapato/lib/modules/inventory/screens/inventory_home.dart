@@ -20,6 +20,7 @@ import 'hubs/finance_reports_hub_screen.dart';
 import 'barcode_scanner_screen.dart';
 import 'notifications/approval_notifications_screen.dart';
 import 'reports/profit_by_product_screen.dart';
+import 'salon/appointments_screen.dart';
 import 'salon/rebook_screen.dart';
 import 'salon/stylists_screen.dart';
 import '../providers/inventory_provider.dart';
@@ -168,6 +169,14 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.point_of_sale_outlined,
       color: ThemeConstants.primaryGradientEnd,
       pageBuilder: () => const SalesHubScreen(),
+      visible: (UserPermissions p) => p.has('inv_create_sales'),
+    ),
+    _InvMenuEntry(
+      key: 'appointments',
+      staticTitle: sw ? 'Miadi' : 'Appointments',
+      icon: Icons.event_available_outlined,
+      color: ThemeConstants.warningAmber,
+      pageBuilder: () => const AppointmentsScreen(),
       visible: (UserPermissions p) => p.has('inv_create_sales'),
     ),
     _InvMenuEntry(

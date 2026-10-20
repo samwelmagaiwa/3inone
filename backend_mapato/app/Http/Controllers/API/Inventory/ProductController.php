@@ -140,6 +140,15 @@ class ProductController extends Controller
             }
         }
 
+        // A service's two lists are stored as JSON text; the app gets real lists.
+        foreach ($items as $product) {
+            foreach (['staff_ids', 'price_options'] as $list) {
+                if (property_exists($product, $list)) {
+                    $product->$list = json_decode((string) $product->$list, true) ?: [];
+                }
+            }
+        }
+
         return response()->json([
             'data' => $items,
             'meta' => [
@@ -269,6 +278,12 @@ class ProductController extends Controller
             'rebook_after_weeks' => 'nullable|integer|min:1|max:52',
             // Salon: the share (percent) of a service's price the stylist who did it earns.
             'commission_percent' => 'nullable|numeric|min:0|max:100',
+            // Salon: who may do this service (account ids; none = anyone) and its price options (short / medium / long hair).
+            'staff_ids' => 'nullable|array|max:50',
+            'staff_ids.*' => 'string|max:64',
+            'price_options' => 'nullable|array|max:10',
+            'price_options.*.label' => 'required|string|max:40',
+            'price_options.*.price' => 'required|numeric|min:0',
             // The product's own unit's price at the OTHER level: `selling_price` is stored at the product's
             // price_tier (retail or wholesale); this is the same unit's price at the one that is left.
             'other_price' => 'nullable|numeric|min:0',
@@ -348,6 +363,12 @@ class ProductController extends Controller
             'rebook_after_weeks' => $p['rebook_after_weeks'] ?? null,
             ...(\Illuminate\Support\Facades\Schema::hasColumn('inventory_products', 'commission_percent')
                 ? ['commission_percent' => !empty($p['is_service']) ? ($p['commission_percent'] ?? null) : null]
+                : []),
+            ...(\Illuminate\Support\Facades\Schema::hasColumn('inventory_products', 'staff_ids')
+                ? [
+                    'staff_ids' => !empty($p['is_service']) ? self::jsonList($p['staff_ids'] ?? null) : null,
+                    'price_options' => !empty($p['is_service']) ? self::jsonList($p['price_options'] ?? null) : null,
+                ]
                 : []),
             'tax_percent' => $p['tax_percent'] ?? null,
             'variant_label' => $p['variant_label'] ?? null,
@@ -501,7 +522,6 @@ class ProductController extends Controller
             'is_service' => (bool) ($source->is_service ?? false),
             'duration_minutes' => $source->duration_minutes ?? null,
             'rebook_after_weeks' => $source->rebook_after_weeks ?? null,
-            'commission_percent' => isset($source->commission_percent) ? (float) $source->commission_percent : null,
             'units' => $this->unitsOf($id),
         ];
 
@@ -652,6 +672,12 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'rebook_after_weeks' => 'nullable|integer|min:1|max:52',
             // Salon: the share (percent) of a service's price the stylist who did it earns.
             'commission_percent' => 'nullable|numeric|min:0|max:100',
+            // Salon: who may do this service (account ids; none = anyone) and its price options (short / medium / long hair).
+            'staff_ids' => 'nullable|array|max:50',
+            'staff_ids.*' => 'string|max:64',
+            'price_options' => 'nullable|array|max:10',
+            'price_options.*.label' => 'required|string|max:40',
+            'price_options.*.price' => 'required|numeric|min:0',
         ]);
 
         // Goods and services are told apart on every old sale line, so an item that has been sold cannot change
@@ -676,6 +702,15 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             if (str_ends_with((string) $existing->name, $suffix)) {
                 $label = trim((string) ($data['variant_label'] ?? ''));
                 $data['name'] = substr((string) $existing->name, 0, -strlen($suffix)) . ($label !== '' ? ' — ' . $label : '');
+            }
+        }
+
+        // The two lists of a service are kept as JSON; only a service has them.
+        foreach (['staff_ids', 'price_options'] as $list) {
+            if (array_key_exists($list, $data) || (array_key_exists('is_service', $data) && empty($data['is_service']))) {
+                $data[$list] = !empty($data['is_service']) || (!array_key_exists('is_service', $data) && !empty($existing->is_service))
+                    ? self::jsonList($data[$list] ?? null)
+                    : null;
             }
         }
 
@@ -776,5 +811,15 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         $this->audit->record($request, 'product', $id, 'deleted', (array) $existing, null, $existing->name);
 
         return response()->json(['message' => 'Product deleted']);
+    }
+
+    /** A list kept as JSON text; an empty one (or none) is stored as null. */
+    private static function jsonList(mixed $list): ?string
+    {
+        if (!is_array($list) || $list === []) {
+            return null;
+        }
+
+        return json_encode(array_values(array_unique($list, SORT_REGULAR)));
     }
 }

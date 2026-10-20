@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\Inventory;
 
 use App\Models\User;
+use App\Support\Salon\AppointmentPlanner;
 use App\Support\Salon\RebookPlanner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -205,7 +206,12 @@ class SalonController extends Controller
         $data = $request->validate([
             'rebook_enabled' => 'sometimes|boolean',
             'rebook_weeks' => 'sometimes|integer|min:1|max:' . RebookPlanner::MAX_WEEKS,
+            'appointment_reminders' => 'sometimes|boolean',
         ]);
+
+        if (array_key_exists('appointment_reminders', $data)) {
+            AppointmentPlanner::saveReminders((bool) $data['appointment_reminders']);
+        }
 
         RebookPlanner::save(
             array_key_exists('rebook_enabled', $data) ? (bool) $data['rebook_enabled'] : null,
@@ -232,6 +238,7 @@ class SalonController extends Controller
         return [
             'rebook_enabled' => $s['enabled'],
             'rebook_weeks' => $s['weeks'],
+            'appointment_reminders' => AppointmentPlanner::remindersOn(),
             'max_weeks' => RebookPlanner::MAX_WEEKS,
             'grace_days' => RebookPlanner::GRACE_DAYS,
         ];

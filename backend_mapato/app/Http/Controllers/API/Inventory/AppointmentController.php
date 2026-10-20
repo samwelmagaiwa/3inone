@@ -1,0 +1,213 @@
+<?php
+
+namespace App\Http\Controllers\API\Inventory;
+
+use App\Models\User;
+use App\Support\Salon\AppointmentPlanner;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use OpenApi\Attributes as OA;
+
+/**
+ * A salon's diary: who is booked with which stylist, when, for what. Every query runs against the signed-in business's
+ * salon only (the inventory tables are limited to it automatically). The rules (clashes, which state may follow which)
+ * are in {@see AppointmentPlanner}.
+ */
+#[OA\Tag(name: 'Inventory / Salon', description: 'Salon appointments')]
+class AppointmentController extends Controller
+{
+    #[OA\Get(path: '/inventory/salon/appointments', summary: 'The appointments of a day (default today), or of a period', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 200, description: 'Success')])]
+    public function index(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'date' => 'nullable|date',
+            'from' => 'nullable|date',
+            'to' => 'nullable|date|after_or_equal:from',
+            'staff_id' => 'nullable|string|max:64',
+        ]);
+
+        $from = Carbon::parse($data['from'] ?? $data['date'] ?? now(AppointmentPlanner::TIMEZONE))->toDateString();
+        $to = Carbon::parse($data['to'] ?? $data['date'] ?? $from)->toDateString();
+
+        $rows = DB::table('inventory_appointments')
+            ->where('starts_at', '>=', $from . ' 00:00:00')
+            ->where('starts_at', '<=', $to . ' 23:59:59')
+            ->when(!empty($data['staff_id']), fn ($q) => $q->where('staff_id', $data['staff_id']))
+            ->orderBy('starts_at')
+            ->orderBy('id')
+            ->get()
+            ->map(fn ($r) => $this->present($r))
+            ->values();
+
+        return response()->json(['data' => $rows]);
+    }
+
+    #[OA\Post(path: '/inventory/salon/appointments', summary: 'Book an appointment', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 201, description: 'Created'), new OA\Response(response: 422, description: 'Invalid, or the stylist is already booked then')])]
+    public function store(Request $request): JsonResponse
+    {
+        $fields = $this->fields($request, null);
+        $id = DB::table('inventory_appointments')->insertGetId($fields + [
+            'status' => 'booked',
+            'created_by' => (string) $request->user()->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['message' => 'Appointment booked', 'data' => $this->present(DB::table('inventory_appointments')->find($id))], 201);
+    }
+
+    #[OA\Put(path: '/inventory/salon/appointments/{id}', summary: 'Change or move an appointment', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success')])]
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $row = DB::table('inventory_appointments')->find($id);
+        abort_if($row === null, 404, 'Appointment not found');
+        if (!in_array($row->status, AppointmentPlanner::ACTIVE, true)) {
+            throw ValidationException::withMessages(['status' => ['A finished appointment can no longer be changed.']]);
+        }
+
+        DB::table('inventory_appointments')->where('id', $id)->update($this->fields($request, $row) + ['updated_at' => now()]);
+
+        return response()->json(['message' => 'Appointment updated', 'data' => $this->present(DB::table('inventory_appointments')->find($id))]);
+    }
+
+    #[OA\Post(path: '/inventory/salon/appointments/{id}/status', summary: 'Confirm, start, finish, cancel or mark a no-show', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success')])]
+    public function status(Request $request, int $id): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => 'required|in:confirmed,in_progress,done,cancelled,no_show',
+        ]);
+
+        $row = DB::table('inventory_appointments')->find($id);
+        abort_if($row === null, 404, 'Appointment not found');
+        if (!in_array($data['status'], AppointmentPlanner::NEXT[$row->status] ?? [], true)) {
+            throw ValidationException::withMessages(['status' => ["An appointment that is {$row->status} cannot become {$data['status']}."]]);
+        }
+
+        DB::table('inventory_appointments')->where('id', $id)->update(['status' => $data['status'], 'updated_at' => now()]);
+
+        return response()->json(['message' => 'Appointment updated', 'data' => $this->present(DB::table('inventory_appointments')->find($id))]);
+    }
+
+    /**
+     * Check a booking and work out what is stored. The services are read from the business's own list (never trusted
+     * from the app): their names and minutes are copied as they are now, and the price is the one asked for when it
+     * is one of the service's price options or its own.
+     *
+     * @return array<string, mixed>
+     */
+    private function fields(Request $request, ?object $existing): array
+    {
+        $data = $request->validate([
+            'customer_id' => 'nullable|integer',
+            'client_name' => ($existing === null ? 'required_without:customer_id' : 'sometimes') . '|nullable|string|max:120',
+            'client_phone' => 'nullable|string|max:30',
+            'staff_id' => 'nullable|string|max:64',
+            'starts_at' => ($existing === null ? 'required' : 'sometimes') . '|date_format:Y-m-d H:i',
+            'services' => ($existing === null ? 'required' : 'sometimes') . '|array|min:1|max:12',
+            'services.*.product_id' => 'required|integer',
+            'services.*.price' => 'nullable|numeric|min:0',
+            'services.*.label' => 'nullable|string|max:40',
+            'duration_minutes' => 'nullable|integer|min:5|max:1440',
+            'notes' => 'nullable|string|max:1000',
+            'force' => 'sometimes|boolean',
+        ]);
+
+        // Who is being booked.
+        $customerId = array_key_exists('customer_id', $data) ? $data['customer_id'] : ($existing->customer_id ?? null);
+        $name = array_key_exists('client_name', $data) ? trim((string) $data['client_name']) : ($existing->client_name ?? '');
+        $phone = array_key_exists('client_phone', $data) ? trim((string) $data['client_phone']) : ($existing->client_phone ?? '');
+        if ($customerId !== null) {
+            $client = DB::table('inventory_customers')->where('id', $customerId)->first();
+            if ($client === null) {
+                throw ValidationException::withMessages(['customer_id' => ['That client does not exist.']]);
+            }
+            $name = $name !== '' ? $name : (string) $client->name;
+            $phone = $phone !== '' ? $phone : (string) ($client->phone ?? '');
+        }
+        if ($name === '') {
+            throw ValidationException::withMessages(['client_name' => ['Say who the appointment is for.']]);
+        }
+
+        // The services, as the business has them now.
+        $existingServices = $existing ? (json_decode((string) $existing->services, true) ?: []) : [];
+        $asked = $data['services'] ?? array_map(fn ($s) => ['product_id' => $s['product_id'], 'price' => $s['price'] ?? null, 'label' => $s['label'] ?? null], $existingServices);
+        $lines = [];
+        $minutes = 0;
+        $total = 0.0;
+        foreach ($asked as $line) {
+            $product = DB::table('inventory_products')->where('id', $line['product_id'])->where('is_service', true)->first();
+            if ($product === null) {
+                throw ValidationException::withMessages(['services' => ['One of the services does not exist (or is goods, not a service).']]);
+            }
+            $price = isset($line['price']) ? (float) $line['price'] : (float) $product->selling_price;
+            $own = (int) ($product->duration_minutes ?? 0);
+            $minutes += $own > 0 ? $own : 0;
+            $total += $price;
+            $lines[] = array_filter([
+                'product_id' => (int) $product->id,
+                'name' => (string) $product->name,
+                'price' => $price,
+                'minutes' => $own > 0 ? $own : null,
+                'label' => !empty($line['label']) ? (string) $line['label'] : null,
+            ], fn ($v) => $v !== null);
+        }
+        $minutes = (int) ($data['duration_minutes'] ?? ($minutes > 0 ? $minutes : AppointmentPlanner::DEFAULT_MINUTES));
+
+        // When, and who with.
+        $start = Carbon::createFromFormat('Y-m-d H:i', $data['starts_at'] ?? Carbon::parse($existing->starts_at)->format('Y-m-d H:i'));
+        $end = $start->copy()->addMinutes($minutes);
+        $staffId = array_key_exists('staff_id', $data) ? ($data['staff_id'] ?: null) : ($existing->staff_id ?? null);
+        $staffName = null;
+        if ($staffId !== null) {
+            $member = User::query()->whereIn('id', $request->user()->accountMemberIds())->where('is_active', true)->where('id', $staffId)->first(['id', 'name']);
+            if ($member === null) {
+                throw ValidationException::withMessages(['staff_id' => ['That person cannot be booked.']]);
+            }
+            $staffName = $member->name;
+        }
+
+        $clash = AppointmentPlanner::clash($staffId, $start, $end, $existing->id ?? null);
+        if ($clash !== null && empty($data['force'])) {
+            $at = Carbon::parse($clash->starts_at)->format('H:i') . '-' . Carbon::parse($clash->ends_at)->format('H:i');
+            throw ValidationException::withMessages(['staff_id' => ["{$staffName} ana miadi saa {$at} ({$clash->client_name}). / {$staffName} is already booked {$at} ({$clash->client_name})."]]);
+        }
+
+        return [
+            'customer_id' => $customerId,
+            'client_name' => $name,
+            'client_phone' => $phone !== '' ? $phone : null,
+            'staff_id' => $staffId,
+            'staff_name' => $staffName,
+            'starts_at' => $start->format('Y-m-d H:i:s'),
+            'ends_at' => $end->format('Y-m-d H:i:s'),
+            'services' => json_encode($lines),
+            'notes' => array_key_exists('notes', $data) ? ($data['notes'] ?: null) : ($existing->notes ?? null),
+            'total' => $total,
+            // A moved appointment is reminded again.
+            'reminder_sent_at' => $existing !== null && ($data['starts_at'] ?? null) !== null && Carbon::parse($existing->starts_at)->format('Y-m-d H:i') !== $data['starts_at'] ? null : ($existing->reminder_sent_at ?? null),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function present(object $r): array
+    {
+        return [
+            'id' => (int) $r->id,
+            'customer_id' => $r->customer_id === null ? null : (int) $r->customer_id,
+            'client_name' => (string) $r->client_name,
+            'client_phone' => $r->client_phone,
+            'staff_id' => $r->staff_id,
+            'staff_name' => $r->staff_name,
+            'starts_at' => Carbon::parse($r->starts_at)->format('Y-m-d H:i'),
+            'ends_at' => Carbon::parse($r->ends_at)->format('Y-m-d H:i'),
+            'status' => (string) $r->status,
+            'services' => json_decode((string) $r->services, true) ?: [],
+            'notes' => $r->notes,
+            'total' => (float) $r->total == floor((float) $r->total) ? (int) $r->total : (float) $r->total,
+        ];
+    }
+}

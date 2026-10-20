@@ -23,6 +23,7 @@ import '../widgets/inventory_widgets.dart';
 import 'crate_checkout_rules.dart';
 import 'sale_confirmation_dialog.dart';
 import 'sale_receipt_screen.dart';
+import '../salon/price_option_picker.dart';
 import '../salon/salon_mode.dart';
 import '../salon/staff_picker.dart';
 
@@ -1461,7 +1462,7 @@ class _SalesScreenState extends State<SalesScreen>
       return;
     }
 
-    inv.addProductToCart(matches.first);
+    if (!await addToCartAskingPrice(context, inv, matches.first)) return;
     if (context.mounted) {
       ThemeConstants.showSuccessSnackBar(
         context,
@@ -1783,9 +1784,9 @@ class _ProductPickTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(8.r),
           ),
         ),
-        onPressed: () {
-          inv.addProductToCart(product);
-          ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('added_to_cart'));
+        onPressed: () async {
+          final bool added = await addToCartAskingPrice(context, inv, product);
+          if (added && context.mounted) ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('added_to_cart'));
         },
         child: Text(LocalizationService.instance.translate('add_2'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp)),
       ),

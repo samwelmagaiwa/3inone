@@ -73,13 +73,14 @@ class StylistReport {
 // ------------------------------------------------------------------ "come back" reminders
 
 class RebookSettings {
-  const RebookSettings({required this.enabled, required this.weeks, this.maxWeeks = 52, this.graceDays = 14});
+  const RebookSettings({required this.enabled, required this.weeks, this.maxWeeks = 52, this.graceDays = 14, this.appointmentReminders = false});
 
   factory RebookSettings.fromJson(final Map<String, dynamic> j) => RebookSettings(
         enabled: _flag(j['rebook_enabled']),
         weeks: _int(j['rebook_weeks']) <= 0 ? 4 : _int(j['rebook_weeks']),
         maxWeeks: _int(j['max_weeks']) <= 0 ? 52 : _int(j['max_weeks']),
         graceDays: _int(j['grace_days']) <= 0 ? 14 : _int(j['grace_days']),
+        appointmentReminders: _flag(j['appointment_reminders']),
       );
 
   final bool enabled;
@@ -87,8 +88,16 @@ class RebookSettings {
   final int maxWeeks;
   final int graceDays;
 
-  RebookSettings copyWith({final bool? enabled, final int? weeks}) =>
-      RebookSettings(enabled: enabled ?? this.enabled, weeks: weeks ?? this.weeks, maxWeeks: maxWeeks, graceDays: graceDays);
+  /// Clients are texted the day before their appointment.
+  final bool appointmentReminders;
+
+  RebookSettings copyWith({final bool? enabled, final int? weeks, final bool? appointmentReminders}) => RebookSettings(
+        enabled: enabled ?? this.enabled,
+        weeks: weeks ?? this.weeks,
+        maxWeeks: maxWeeks,
+        graceDays: graceDays,
+        appointmentReminders: appointmentReminders ?? this.appointmentReminders,
+      );
 }
 
 class RebookClient {
@@ -255,4 +264,85 @@ class ClientHistory {
   final String? favouriteService;
   final NextVisit? nextVisit;
   final List<ClientVisit> visits;
+}
+
+// ------------------------------------------------------------------ appointments
+
+class AppointmentService {
+  const AppointmentService({required this.productId, required this.name, required this.price, this.minutes, this.label});
+
+  factory AppointmentService.fromJson(final Map<String, dynamic> j) => AppointmentService(
+        productId: _int(j['product_id']),
+        name: _text(j['name']),
+        price: _num(j['price']),
+        minutes: j['minutes'] == null ? null : _int(j['minutes']),
+        label: j['label'] == null || _text(j['label']).isEmpty ? null : _text(j['label']),
+      );
+
+  final int productId;
+  final String name;
+  final double price;
+  final int? minutes;
+
+  /// The price option it was booked with ("Long"), if any.
+  final String? label;
+
+  /// "Braids (Long)".
+  String get shown => label == null ? name : '$name ($label)';
+}
+
+class SalonAppointment {
+  const SalonAppointment({
+    required this.id,
+    required this.clientName,
+    required this.startsAt,
+    required this.endsAt,
+    required this.status,
+    required this.services,
+    required this.total,
+    this.customerId,
+    this.clientPhone,
+    this.staffId,
+    this.staffName,
+    this.notes,
+  });
+
+  factory SalonAppointment.fromJson(final Map<String, dynamic> j) => SalonAppointment(
+        id: _int(j['id']),
+        customerId: j['customer_id'] == null ? null : _int(j['customer_id']),
+        clientName: _text(j['client_name']),
+        clientPhone: j['client_phone'] == null || _text(j['client_phone']).isEmpty ? null : _text(j['client_phone']),
+        staffId: j['staff_id'] == null ? null : _text(j['staff_id']),
+        staffName: j['staff_name'] == null ? null : _text(j['staff_name']),
+        startsAt: _date(j['starts_at']) ?? DateTime.now(),
+        endsAt: _date(j['ends_at']) ?? DateTime.now(),
+        status: _text(j['status']).isEmpty ? 'booked' : _text(j['status']),
+        services: _rows(j['services']).map(AppointmentService.fromJson).toList(),
+        notes: j['notes'] == null || _text(j['notes']).isEmpty ? null : _text(j['notes']),
+        total: _num(j['total']),
+      );
+
+  /// The states in which an appointment still takes up its stylist's time.
+  static const List<String> activeStates = <String>['booked', 'confirmed', 'in_progress'];
+
+  final int id;
+  final int? customerId;
+  final String clientName;
+  final String? clientPhone;
+  final String? staffId;
+  final String? staffName;
+  final DateTime startsAt;
+  final DateTime endsAt;
+
+  /// booked, confirmed, in_progress, done, cancelled or no_show.
+  final String status;
+  final List<AppointmentService> services;
+  final String? notes;
+  final double total;
+
+  bool get isActive => activeStates.contains(status);
+
+  int get minutes => endsAt.difference(startsAt).inMinutes;
+
+  String get servicesText => services.map((AppointmentService s) => s.shown).join(', ');
 }

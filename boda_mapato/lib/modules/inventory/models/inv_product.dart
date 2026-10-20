@@ -1,3 +1,13 @@
+/// One price of a service that comes at several: "Long" for 60,000.
+class PriceOption {
+  const PriceOption({required this.label, required this.price});
+
+  final String label;
+  final double price;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{'label': label, 'price': price};
+}
+
 class InvProduct {
   InvProduct({
     required this.id,
@@ -27,6 +37,8 @@ class InvProduct {
     this.durationMinutes,
     this.rebookAfterWeeks,
     this.commissionPercent,
+    this.staffIds = const <String>[],
+    this.priceOptions = const <PriceOption>[],
   });
 
   final int id;
@@ -73,6 +85,12 @@ class InvProduct {
 
   /// Salon: the percent of a service's price the stylist who did it earns (null = none).
   double? commissionPercent;
+
+  /// Salon: who may do this service (account ids); empty = anyone.
+  List<String> staffIds;
+
+  /// Salon: the same service at other prices (short, medium or long hair); empty = one price.
+  List<PriceOption> priceOptions;
 
   bool get isVariant => variantLabel != null && variantLabel!.isNotEmpty;
   bool get isWeighed => measure == 'weight' || measure == 'volume';

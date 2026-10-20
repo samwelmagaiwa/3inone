@@ -31,6 +31,59 @@ class SalonApi {
     return RebookSettings.fromJson(_data(res));
   }
 
+  /// The settings as they are now ("come back" reminders and appointment reminders).
+  Future<RebookSettings> settings() async => RebookSettings.fromJson(_data(await _api.get('/inventory/salon/settings')));
+
+  Future<RebookSettings> saveAppointmentReminders(final bool on) async =>
+      RebookSettings.fromJson(_data(await _api.put('/inventory/salon/settings', <String, dynamic>{'appointment_reminders': on})));
+
+  static String _stamp(final DateTime d) => '${_day(d)} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+  /// The appointments of one day, earliest first.
+  Future<List<SalonAppointment>> appointments(final DateTime day) async {
+    final Map<String, dynamic> res = await _api.get('/inventory/salon/appointments?date=${_day(day)}');
+    final dynamic rows = res['data'];
+    return <SalonAppointment>[
+      if (rows is List)
+        for (final dynamic r in rows)
+          if (r is Map) SalonAppointment.fromJson(Map<String, dynamic>.from(r)),
+    ];
+  }
+
+  /// Book a new appointment ([id] null) or change one. The server refuses a stylist already booked then, unless
+  /// [force] says to book anyway.
+  Future<SalonAppointment> saveAppointment({
+    final int? id,
+    final int? customerId,
+    required final String clientName,
+    final String? clientPhone,
+    final String? staffId,
+    required final DateTime startsAt,
+    required final List<AppointmentService> services,
+    final String? notes,
+    final bool force = false,
+  }) async {
+    final Map<String, dynamic> body = <String, dynamic>{
+      if (customerId != null) 'customer_id': customerId,
+      'client_name': clientName,
+      'client_phone': clientPhone ?? '',
+      'staff_id': staffId,
+      'starts_at': _stamp(startsAt),
+      'services': <Map<String, dynamic>>[
+        for (final AppointmentService s in services)
+          <String, dynamic>{'product_id': s.productId, 'price': s.price, if (s.label != null) 'label': s.label},
+      ],
+      'notes': notes ?? '',
+      if (force) 'force': true,
+    };
+    final Map<String, dynamic> res = id == null ? await _api.post('/inventory/salon/appointments', body) : await _api.put('/inventory/salon/appointments/$id', body);
+    return SalonAppointment.fromJson(_data(res));
+  }
+
+  /// confirmed, in_progress, done, cancelled or no_show.
+  Future<SalonAppointment> setAppointmentStatus(final int id, final String status) async =>
+      SalonAppointment.fromJson(_data(await _api.post('/inventory/salon/appointments/$id/status', <String, dynamic>{'status': status})));
+
   Future<ClientHistory> clientHistory(final int customerId) async =>
       ClientHistory.fromJson(_data(await _api.get('/inventory/salon/clients/$customerId/history')));
 

@@ -49,6 +49,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final TextEditingController _duration = TextEditingController();
   final TextEditingController _rebook = TextEditingController();
   final TextEditingController _commission = TextEditingController();
+  // Salon: who may do this service (none chosen = anyone) and its price options (short / medium / long hair).
+  final Set<String> _staffIds = <String>{};
+  final List<_OptionDraft> _options = <_OptionDraft>[];
 
   String _unit = 'crate';
   // How many of `_unit` the cost/selling price below cover, e.g. "5" for "per 5 KG".
@@ -142,8 +145,18 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       _duration.text = p.durationMinutes?.toString() ?? '';
       _rebook.text = p.rebookAfterWeeks?.toString() ?? '';
       _commission.text = p.commissionPercent == null ? '' : _plainNumber(p.commissionPercent!);
+      _staffIds.addAll(p.staffIds);
+      for (final PriceOption o in p.priceOptions) {
+        _options.add(_OptionDraft(o.label, formatAmount(o.price)));
+      }
     }
     _name.addListener(_onNameChanged);
+    if (context.read<InventoryProvider>().salonMode) {
+      // the people to pick from ("who can do it")
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.read<InventoryProvider>().fetchSalonStaff();
+      });
+    }
     _sku.addListener(_onSkuChanged);
     _barcode.addListener(_onBarcodeChanged);
     _cost.addListener(_rebuild);
@@ -259,6 +272,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _duration.dispose();
     _rebook.dispose();
     _commission.dispose();
+    for (final _OptionDraft o in _options) {
+      o.dispose();
+    }
     for (final UnitDraft d in _unitDrafts) {
       d.dispose();
     }
@@ -685,6 +701,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           SizedBox(height: 8.h),
           _input(sw ? 'Kamisheni ya mhudumu (%)' : 'Stylist commission (%)', _commission,
               keyboard: const TextInputType.numberWithOptions(decimal: true), hint: 'e.g. 30'),
+          ..._staffAndOptions(sw),
           Padding(
             padding: EdgeInsets.only(top: 6.h, left: 2.w),
             child: Text(
@@ -697,6 +714,100 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           ),
         ],
       ];
+
+  /// Salon: who may do this service, and its price options. Both are optional: nobody chosen means anyone may do it,
+  /// and no options means the one price above.
+  List<Widget> _staffAndOptions(bool sw) {
+    final List<Map<String, String>> staff = context.watch<InventoryProvider>().salonStaff;
+
+    return <Widget>[
+      SizedBox(height: 14.h),
+      _sectionTitle(sw ? 'Nani anaweza kuifanya' : 'Who can do it'),
+      Wrap(
+        spacing: 8.w,
+        runSpacing: 4.h,
+        children: <Widget>[
+          for (final Map<String, String> m in staff)
+            FilterChip(
+              key: ValueKey<String>('service_staff_${m['id']}'),
+              label: Text(m['name'] ?? ''),
+              selected: _staffIds.contains(m['id']),
+              onSelected: (bool on) => setState(() => on ? _staffIds.add(m['id'] ?? '') : _staffIds.remove(m['id'])),
+            ),
+        ],
+      ),
+      Padding(
+        padding: EdgeInsets.only(top: 4.h, left: 2.w),
+        child: Text(
+          sw ? 'Usichague yeyote: kila mhudumu anaweza kuifanya.' : 'Choose nobody: anyone may do it.',
+          key: const ValueKey<String>('service_staff_hint'),
+          style: ThemeConstants.captionStyle.copyWith(fontSize: 11.sp, color: Colors.white70),
+        ),
+      ),
+      SizedBox(height: 14.h),
+      _sectionTitle(sw ? 'Bei nyingine (si lazima)' : 'Other prices (optional)'),
+      Text(
+        sw
+            ? 'Kwa huduma yenye bei tofauti, mf. nywele fupi, za kati au ndefu. Mauzo na miadi yataulizwa ipi.'
+            : 'For a service that costs differently, e.g. short, medium or long hair. Sales and appointments ask which one.',
+        key: const ValueKey<String>('service_options_hint'),
+        style: ThemeConstants.captionStyle.copyWith(fontSize: 11.sp, color: Colors.white70),
+      ),
+      SizedBox(height: 6.h),
+      for (int i = 0; i < _options.length; i++)
+        Padding(
+          key: ValueKey<String>('service_option_$i'),
+          padding: EdgeInsets.only(bottom: 8.h),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(flex: 3, child: _boxField(_options[i].label, hint: sw ? 'mf. Ndefu' : 'e.g. Long')),
+              SizedBox(width: 8.w),
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  controller: _options[i].price,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
+                  style: ThemeConstants.bodyStyle,
+                  decoration: ThemeConstants.invInputDecoration('60,000').copyWith(hintText: '60,000'),
+                ),
+              ),
+              IconButton(
+                key: ValueKey<String>('service_option_remove_$i'),
+                onPressed: () => setState(() => _options.removeAt(i).dispose()),
+                icon: const Icon(Icons.close, color: Colors.white54, size: 18),
+              ),
+            ],
+          ),
+        ),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          key: const ValueKey<String>('service_option_add'),
+          onPressed: () => setState(() => _options.add(_OptionDraft('', ''))),
+          icon: const Icon(Icons.add_circle_outline, color: Colors.white70),
+          label: Text(sw ? 'Ongeza bei' : 'Add a price', style: const TextStyle(color: Colors.white70)),
+        ),
+      ),
+    ];
+  }
+
+  /// The price options typed in, or null when a row is half filled (the message is then in [_saveError]).
+  List<PriceOption>? _readOptions(bool sw) {
+    final List<PriceOption> out = <PriceOption>[];
+    for (final _OptionDraft d in _options) {
+      final String label = d.label.text.trim();
+      final double price = parseAmount(d.price.text);
+      if (label.isEmpty && d.price.text.trim().isEmpty) continue; // an untouched row
+      if (label.isEmpty || price <= 0) {
+        setState(() => _saveError = sw ? 'Kila bei nyingine inahitaji jina (mf. Ndefu) na bei.' : 'Each other price needs a name (e.g. Long) and a price.');
+        return null;
+      }
+      out.add(PriceOption(label: label, price: price));
+    }
+    return out;
+  }
 
   /// The unit, price and stock fields. A depot's are exactly what they always were; the others quote prices
   /// per the unit they think in (a piece, a kg, a litre) and count stock in whole base units.
@@ -1287,6 +1398,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final int? duration = int.tryParse(_duration.text.trim());
     final int? rebookWeeks = int.tryParse(_rebook.text.trim());
     final double? commission = double.tryParse(_commission.text.trim().replaceAll(',', '.'));
+    List<PriceOption> options = const <PriceOption>[];
+    if (_isService) {
+      final List<PriceOption>? read = _readOptions(sw);
+      if (read == null) return;
+      options = read;
+    }
     if (_isService) {
       if (commission != null && (commission < 0 || commission > 100)) {
         setState(() => _saveError = sw ? 'Kamisheni iwe kati ya 0 na 100.' : 'The commission must be between 0 and 100 percent.');
@@ -1395,6 +1512,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         durationMinutes: duration,
         rebookAfterWeeks: rebookWeeks,
         commissionPercent: _isService ? commission : null,
+        staffIds: _isService ? _staffIds.toList() : null,
+        priceOptions: _isService ? options : null,
       );
       if (ok) {
         await _saveOtherPrices(inv, existing, caps, req);
@@ -1428,6 +1547,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         durationMinutes: _isService ? duration : null,
         rebookAfterWeeks: _isService ? rebookWeeks : null,
         commissionPercent: _isService ? commission : null,
+        staffIds: _isService ? _staffIds.toList() : null,
+        priceOptions: _isService ? options : null,
       );
     }
 
@@ -1553,5 +1674,20 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     } else {
       ThemeConstants.showErrorSnackBar(context, err);
     }
+  }
+}
+
+/// One row of the price options being typed in a service's form: a name ("Long") and its price.
+class _OptionDraft {
+  _OptionDraft(final String label, final String price)
+      : label = TextEditingController(text: label),
+        price = TextEditingController(text: price);
+
+  final TextEditingController label;
+  final TextEditingController price;
+
+  void dispose() {
+    label.dispose();
+    price.dispose();
   }
 }

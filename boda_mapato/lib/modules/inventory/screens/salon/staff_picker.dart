@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
+import '../../models/inv_product.dart';
 import '../../models/inv_sale.dart';
 import '../../providers/inventory_provider.dart';
 import '../widgets/inventory_widgets.dart';
@@ -32,7 +33,12 @@ class _StaffSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     final InventoryProvider inv = context.watch<InventoryProvider>();
-    final List<Map<String, String>> staff = inv.salonStaff;
+    // A service can name who may do it; then only those people are offered for its line.
+    final List<String> allowed = inv.products.where((InvProduct p) => p.id == item.productId).firstOrNull?.staffIds ?? const <String>[];
+    final List<Map<String, String>> staff = <Map<String, String>>[
+      for (final Map<String, String> s in inv.salonStaff)
+        if (allowed.isEmpty || allowed.contains(s['id'])) s,
+    ];
 
     void choose(String? id, String? name) {
       inv.setCartStaff(item, id, name);

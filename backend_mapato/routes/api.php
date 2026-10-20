@@ -42,6 +42,7 @@ use App\Http\Controllers\API\Inventory\BarcodeController as InventoryBarcodeCont
 use App\Http\Controllers\API\Inventory\ReportController as InventoryReportController;
 use App\Http\Controllers\API\Inventory\AlertController as InventoryAlertController;
 use App\Http\Controllers\API\Inventory\CustomerController as InventoryCustomerController;
+use App\Http\Controllers\API\Inventory\AppointmentController;
 use App\Http\Controllers\API\Inventory\SalonController;
 use App\Http\Controllers\API\Inventory\SalesController as InventorySalesController;
 use App\Http\Controllers\API\Inventory\StockMovementController as InventoryStockMovementController;
@@ -398,6 +399,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('inventory/salon/settings',             [SalonController::class, 'settings']);
         Route::get('inventory/salon/clients/{id}/history', [SalonController::class, 'clientHistory']);
         Route::get('inventory/salon/rebook/due',           [SalonController::class, 'rebookDue']);
+        // The diary: whoever may sell may look at it and book.
+        Route::get('inventory/salon/appointments',         [AppointmentController::class, 'index']);
+        Route::post('inventory/salon/appointments',        [AppointmentController::class, 'store']);
+        Route::match(['put', 'patch'], 'inventory/salon/appointments/{id}', [AppointmentController::class, 'update']);
+        Route::post('inventory/salon/appointments/{id}/status', [AppointmentController::class, 'status']);
     });
     Route::middleware('inv_perm:inv_manage_products,inv_create_sales')->group(function () {
         // PUT as well as PATCH: the app's HTTP client has PUT, and this changes only the two fields it is given.
