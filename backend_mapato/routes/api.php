@@ -43,7 +43,10 @@ use App\Http\Controllers\API\Inventory\ReportController as InventoryReportContro
 use App\Http\Controllers\API\Inventory\AlertController as InventoryAlertController;
 use App\Http\Controllers\API\Inventory\CustomerController as InventoryCustomerController;
 use App\Http\Controllers\API\Inventory\AppointmentController;
+use App\Http\Controllers\API\Inventory\SalonBooksController;
 use App\Http\Controllers\API\Inventory\SalonBranchController;
+use App\Http\Controllers\API\Inventory\SalonQueueController;
+use App\Http\Controllers\API\Inventory\SalonSetupController;
 use App\Http\Controllers\API\Inventory\SalonClientController;
 use App\Http\Controllers\API\Inventory\SalonController;
 use App\Http\Controllers\API\Inventory\SalonEquipmentController;
@@ -435,6 +438,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('inventory/salon/photos/{id}',       [SalonClientController::class, 'destroyPhoto']);
         Route::get('inventory/salon/campaigns',            [SalonClientController::class, 'campaigns']);
         // Equipment and its upkeep (the owner, managers and the stock manager: checked in the controller).
+        // The owner's books and the walk-in queue, ready-made categories and the goods a service uses up.
+        Route::get('inventory/salon/cashbook',             [SalonBooksController::class, 'cashbook']);
+        Route::post('inventory/salon/cashbook/moves',      [SalonBooksController::class, 'storeMove']);
+        Route::delete('inventory/salon/cashbook/moves/{id}', [SalonBooksController::class, 'destroyMove']);
+        Route::post('inventory/salon/cashbook/counts',     [SalonBooksController::class, 'storeCount']);
+        Route::get('inventory/salon/analytics',            [SalonBooksController::class, 'analytics']);
+        Route::get('inventory/salon/queue',                [SalonQueueController::class, 'index']);
+        Route::post('inventory/salon/queue',               [SalonQueueController::class, 'store']);
+        Route::post('inventory/salon/queue/{id}/status',   [SalonQueueController::class, 'status']);
+        Route::post('inventory/salon/category-presets',    [SalonSetupController::class, 'presets']);
+        Route::get('inventory/salon/services/{id}/materials', [SalonSetupController::class, 'materials']);
+        Route::put('inventory/salon/services/{id}/materials', [SalonSetupController::class, 'saveMaterials']);
+        Route::get('inventory/salon/materials-usage',      [SalonSetupController::class, 'usage']);
         // Branches: everyone sees the list; the owner and managers change it (checked in the controller).
         Route::get('inventory/salon/branches',             [SalonBranchController::class, 'index']);
         Route::post('inventory/salon/branches',            [SalonBranchController::class, 'store']);

@@ -642,6 +642,8 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 ->where('status', 'open')
                 ->update(['status' => 'done', 'updated_at' => now()]);
 
+            \App\Support\Salon\SalonMaterials::restore($this->ledger, (int) $id, (string) $sale->number, optional($request->user())->id);
+
             $this->audit->record($request, 'sale', $id, 'cancelled', [
                 'payment_status' => $sale->payment_status,
                 'total'          => $sale->total,
@@ -1084,6 +1086,11 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
+                // The goods a service uses up leave the shelf with it (never stopping the sale).
+                if ($isService) {
+                    \App\Support\Salon\SalonMaterials::consume($this->ledger, (int) $saleId, (int) $itemId, (int) $item['product_id'], (int) $unitQty, (string) $number, optional($request->user())->id ?? 1);
+                }
 
                 $insertedItems[] = [
                     'id' => (int) $itemId,

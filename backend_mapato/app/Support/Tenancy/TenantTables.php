@@ -30,7 +30,9 @@ final class TenantTables
         'inventory_branches',
         'inventory_brands',
         'inventory_campaigns',
+        'inventory_cash_counts',
         'inventory_cash_expenses',
+        'inventory_cash_moves',
         'inventory_cash_sessions',
         'inventory_categories',
         'inventory_client_packages',
@@ -65,6 +67,8 @@ final class TenantTables
         'inventory_sale_returns',
         'inventory_sales',
         'inventory_salon_shifts',
+        'inventory_service_materials',
+        'inventory_service_usage',
         'inventory_settings',
         'inventory_staff_days_off',
         'inventory_staff_payouts',
@@ -76,6 +80,7 @@ final class TenantTables
         'inventory_supplier_payments',
         'inventory_suppliers',
         'inventory_vouchers',
+        'inventory_walkins',
         'inventory_write_offs',
     ];
 

@@ -48,6 +48,9 @@ final class SalonFinance
         $discounts = (float) ($lines['service']->discount ?? 0) + (float) ($lines['goods']->discount ?? 0);
         // Only goods cost something to give: a service takes no stock (its cost snapshot is zero anyway).
         $costOfGoods = (float) ($lines['goods']->cost ?? 0);
+        // ...and what the services used up (shampoo, dye, towels) once they are set up to use goods.
+        $materialsCost = SalonMaterials::cost($f, $t, $b ? $branch : null);
+        $costOfGoods += $materialsCost;
         $gross = $serviceRevenue + $goodsRevenue - $costOfGoods;
 
         $expenses = self::expensesBetween($f, $t, $b ? $branch : null);
@@ -148,6 +151,7 @@ final class SalonFinance
             'revenue' => self::money($serviceRevenue + $goodsRevenue),
             'discounts' => self::money($discounts),
             'cost_of_goods' => self::money($costOfGoods),
+            'materials_cost' => self::money($materialsCost),
             'gross_profit' => self::money($gross),
             'expenses' => self::money($expenses['total']),
             'expenses_by_category' => $expenses['by_category'],
