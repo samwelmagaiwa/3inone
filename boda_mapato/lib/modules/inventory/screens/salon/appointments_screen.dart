@@ -115,6 +115,20 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
     }
   }
 
+  Future<void> _switchDaily(final bool on) async {
+    final RebookSettings? before = _settings;
+    if (before == null) return;
+    setState(() => _settings = before.copyWith(dailySummary: on));
+    try {
+      final RebookSettings saved = await _api.saveDailySummary(on);
+      if (mounted) setState(() => _settings = saved);
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() => _settings = before);
+      ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
+    }
+  }
+
   Future<void> _openForm({final SalonAppointment? appointment}) async {
     final bool? saved = await Navigator.push<bool>(
       context,
@@ -296,6 +310,29 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 key: const ValueKey<String>('appt_reminders_switch'),
                 value: s.appointmentReminders,
                 onChanged: _switchReminders,
+                activeThumbColor: Colors.white,
+                activeTrackColor: ThemeConstants.invAccent,
+              ),
+            ],
+          ),
+        ),
+      ],
+      // The owner's evening text: how the day went. (Only the owner and managers: it is the business's money.)
+      if (s != null && canSeeSalonMoneyHere(context)) ...<Widget>[
+        SizedBox(height: 8.h),
+        Container(
+          key: const ValueKey<String>('daily_summary_card'),
+          decoration: ThemeConstants.glassCardDecoration,
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+          child: Row(
+            children: <Widget>[
+              Icon(Icons.summarize_outlined, color: ThemeConstants.invAccent, size: 20.sp),
+              SizedBox(width: 10.w),
+              Expanded(child: Text(sw ? 'Nitumie muhtasari wa siku jioni (SMS)' : 'Text me how the day went each evening', style: ThemeConstants.bodyStyle)),
+              Switch(
+                key: const ValueKey<String>('daily_summary_switch'),
+                value: s.dailySummary,
+                onChanged: _switchDaily,
                 activeThumbColor: Colors.white,
                 activeTrackColor: ThemeConstants.invAccent,
               ),

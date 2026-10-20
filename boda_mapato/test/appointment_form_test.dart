@@ -331,6 +331,24 @@ void main() {
       expect(result.popped, isTrue);
     });
 
+    testWidgets('a stylist who is off that day, or does not work then, can also be booked anyway', (t) async {
+      for (final String message in <String>['Asha is off on 13/10/2026.', 'Asha works 09:00-17:00.', 'Asha does not work on Saturdays (10/10/2026).']) {
+        final _FakeSalon api = _FakeSalon()..failures.add(ApiException(message));
+        final _Result result = await _open(t, api);
+        await t.enterText(_key('appt_name'), 'Neema');
+        await _addService(t, '2');
+        await _save(t);
+
+        expect(find.text('Stylist is booked'), findsOneWidget, reason: message);
+        await t.tap(_key('appt_clash_force'));
+        await _settle(t);
+        await t.pump(const Duration(seconds: 4));
+
+        expect(api.saved.map((_Saved x) => x.force).toList(), <bool>[false, true], reason: message);
+        expect(result.popped, isTrue);
+      }
+    });
+
     testWidgets('"change the time" leaves the form open and sends nothing more', (t) async {
       final _FakeSalon api = _FakeSalon()..failures.add(ApiException('Asha is already booked 09:00-10:00 (First).'));
       final _Result result = await _open(t, api);

@@ -41,8 +41,18 @@ class _FakeSalon extends SalonApi {
   @override
   Future<List<SalonAppointment>> appointments(DateTime day) async => items;
 
+  RebookSettings settingsNow = const RebookSettings(enabled: false, weeks: 4);
+  final List<bool> summaries = <bool>[];
+
   @override
-  Future<RebookSettings> salonSettings() async => const RebookSettings(enabled: false, weeks: 4);
+  Future<RebookSettings> salonSettings() async => settingsNow;
+
+  @override
+  Future<RebookSettings> saveDailySummary(bool on) async {
+    summaries.add(on);
+    settingsNow = settingsNow.copyWith(dailySummary: on);
+    return settingsNow;
+  }
 }
 
 class _Server extends ApiService {
@@ -133,7 +143,10 @@ void main() {
       staffName: 'Asha',
     );
 
+    late _FakeSalon api;
+
     Future<void> open(WidgetTester t, String role) async {
+      api = _FakeSalon(<SalonAppointment>[mine]);
       SharedPreferences.setMockInitialValues(<String, Object>{});
       await LocalizationService.instance.changeLanguage('en');
       t.view.physicalSize = const Size(411, 1400);
@@ -151,7 +164,7 @@ void main() {
           child: ScreenUtilInit(
             designSize: const Size(411, 1400),
             minTextAdapt: true,
-            builder: (_, __) => MaterialApp(home: Scaffold(body: AppointmentsScreen(api: _FakeSalon(<SalonAppointment>[mine]), today: DateTime(2026, 10, 15)))),
+            builder: (_, __) => MaterialApp(home: Scaffold(body: AppointmentsScreen(api: api, today: DateTime(2026, 10, 15)))),
           ),
         ),
       );
@@ -172,6 +185,27 @@ void main() {
         expect(find.byKey(ValueKey<String>(k)), findsOneWidget, reason: k);
       }
     });
+
+    testWidgets('the owner can switch on the evening summary text; reception and stylists do not even see it', (t) async {
+      await open(t, 'admin');
+      expect(t.widget<Switch>(find.byKey(const ValueKey<String>('daily_summary_switch'))).value, isFalse);
+
+      await t.tap(find.byKey(const ValueKey<String>('daily_summary_switch')));
+      for (int i = 0; i < 4; i++) {
+        await t.pump(const Duration(milliseconds: 150));
+      }
+      expect(api.summaries, <bool>[true]);
+      expect(t.widget<Switch>(find.byKey(const ValueKey<String>('daily_summary_switch'))).value, isTrue);
+    });
+
+    for (final String role in <String>['receptionist', 'cashier', 'hair_stylist']) {
+      testWidgets('$role does not see the evening summary switch', (t) async {
+        await open(t, role);
+
+        expect(find.byKey(const ValueKey<String>('daily_summary_card')), findsNothing);
+        expect(find.byKey(const ValueKey<String>('appt_reminders_card')), findsOneWidget, reason: 'the client reminder is not money');
+      });
+    }
 
     testWidgets('a stylist sees the diary but has no "book" button and may only start or finish', (t) async {
       await open(t, 'hair_stylist');

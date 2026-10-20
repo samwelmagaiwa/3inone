@@ -253,9 +253,10 @@ class _AppointmentFormScreenState extends State<AppointmentFormScreen> {
         _saving = false;
         _error = message;
       });
-      // The stylist is already booked then (the server's words name the booked hours, "10:00-11:00", in either
-      // language): say so, and let the owner book anyway if that is what they mean.
-      if (!force && RegExp(r'\d{1,2}:\d{2}-\d{1,2}:\d{2}').hasMatch(message)) {
+      // The stylist is already booked then, is off that day or works other hours (the server's words name the booked
+      // hours, "10:00-11:00", or the date, "13/10/2026", in either language): say so, and let the owner book anyway
+      // if that is what they mean.
+      if (!force && RegExp(r'\d{1,2}:\d{2}-\d{1,2}:\d{2}|\d{2}/\d{2}/\d{4}').hasMatch(message)) {
         final bool? anyway = await showDialog<bool>(
           context: context,
           builder: (BuildContext d) => AlertDialog(

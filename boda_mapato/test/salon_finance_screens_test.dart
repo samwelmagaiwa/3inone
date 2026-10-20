@@ -103,7 +103,7 @@ class _FakeSalon extends SalonApi {
   Future<List<StaffProfile>> staffProfiles() async => profiles;
 
   @override
-  Future<void> saveStaffProfile(String staffId, {String? specialization, double? monthlySalary, double? commissionPercent, bool clearCommission = false}) async {
+  Future<void> saveStaffProfile(String staffId, {String? specialization, double? monthlySalary, double? commissionPercent, bool clearCommission = false, List<int>? workDays, String? shiftStart, String? shiftEnd, bool clearHours = false}) async {
     profilesSaved.add(<String, dynamic>{'staff': staffId, 'specialization': specialization, 'salary': monthlySalary, 'rate': commissionPercent, 'clear': clearCommission});
   }
 

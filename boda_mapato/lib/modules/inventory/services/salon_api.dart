@@ -128,13 +128,87 @@ class SalonApi {
     ];
   }
 
-  Future<void> saveStaffProfile(final String staffId, {final String? specialization, final double? monthlySalary, final double? commissionPercent, final bool clearCommission = false}) async {
+  Future<void> saveStaffProfile(
+    final String staffId, {
+    final String? specialization,
+    final double? monthlySalary,
+    final double? commissionPercent,
+    final bool clearCommission = false,
+    final List<int>? workDays,
+    final String? shiftStart,
+    final String? shiftEnd,
+    final bool clearHours = false,
+  }) async {
     await _api.put('/inventory/salon/staff-profiles/$staffId', <String, dynamic>{
       if (specialization != null) 'specialization': specialization,
       if (monthlySalary != null) 'monthly_salary': monthlySalary,
       if (commissionPercent != null || clearCommission) 'commission_percent': commissionPercent,
+      if (workDays != null) 'work_days': workDays,
+      if (shiftStart != null || clearHours) 'shift_start': shiftStart,
+      if (shiftEnd != null || clearHours) 'shift_end': shiftEnd,
     });
   }
+
+  // ---------------------------------------------------------------- people at work
+
+  Future<AttendanceNow> attendanceToday() async => AttendanceNow.fromJson(_data(await _api.get('/inventory/salon/attendance/today')));
+
+  /// Start work ([staffId] null = me; the owner and managers may clock someone else in).
+  Future<void> clockIn({final String? staffId}) async {
+    await _api.post('/inventory/salon/attendance/clock-in', <String, dynamic>{if (staffId != null) 'staff_id': staffId});
+  }
+
+  Future<void> clockOut({final String? staffId}) async {
+    await _api.post('/inventory/salon/attendance/clock-out', <String, dynamic>{if (staffId != null) 'staff_id': staffId});
+  }
+
+  Future<List<AttendancePerson>> attendance(final String month) async {
+    final Map<String, dynamic> res = await _api.get('/inventory/salon/attendance?month=$month');
+    final Map<String, dynamic> data = _data(res);
+    final dynamic rows = data['staff'];
+    return <AttendancePerson>[
+      if (rows is List)
+        for (final dynamic r in rows)
+          if (r is Map) AttendancePerson.fromJson(Map<String, dynamic>.from(r)),
+    ];
+  }
+
+  Future<List<DayOff>> daysOff(final String month) async {
+    final Map<String, dynamic> res = await _api.get('/inventory/salon/days-off?month=$month');
+    final dynamic rows = res['data'];
+    return <DayOff>[
+      if (rows is List)
+        for (final dynamic r in rows)
+          if (r is Map) DayOff.fromJson(Map<String, dynamic>.from(r)),
+    ];
+  }
+
+  Future<void> addDayOff(final String staffId, final DateTime day, {final String? reason}) async {
+    await _api.post('/inventory/salon/days-off', <String, dynamic>{'staff_id': staffId, 'off_on': _day(day), if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim()});
+  }
+
+  Future<void> deleteDayOff(final int id) async {
+    await _api.delete('/inventory/salon/days-off/$id');
+  }
+
+  /// My open shift, with what I have taken so far; null when none is open.
+  Future<SalonShift?> currentShift() async {
+    final Map<String, dynamic> res = await _api.get('/inventory/salon/shifts/current');
+    return res['data'] is Map ? SalonShift.fromJson(Map<String, dynamic>.from(res['data'] as Map)) : null;
+  }
+
+  Future<SalonShift> openShift(final double openingFloat) async =>
+      SalonShift.fromJson(_data(await _api.post('/inventory/salon/shifts/open', <String, dynamic>{'opening_float': openingFloat})));
+
+  /// Count the cash and hand it over; the answer says what the till should have held and the difference.
+  Future<SalonShift> closeShift(final int id, {required final double countedCash, final String? handedToId, final String? note}) async =>
+      SalonShift.fromJson(_data(await _api.post('/inventory/salon/shifts/$id/close', <String, dynamic>{
+        'counted_cash': countedCash,
+        if (handedToId != null) 'handed_to_id': handedToId,
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      })));
+
+  Future<ShiftsReport> shifts(final String month) async => ShiftsReport.fromJson(_data(await _api.get('/inventory/salon/shifts?month=$month')));
 
   /// The "come back" settings and who is due now.
   Future<RebookOverview> rebookOverview() async => RebookOverview.fromJson(_data(await _api.get('/inventory/salon/rebook/due')));
@@ -149,6 +223,9 @@ class SalonApi {
 
   /// The settings as they are now ("come back" reminders and appointment reminders).
   Future<RebookSettings> salonSettings() async => RebookSettings.fromJson(_data(await _api.get('/inventory/salon/settings')));
+
+  Future<RebookSettings> saveDailySummary(final bool on) async =>
+      RebookSettings.fromJson(_data(await _api.put('/inventory/salon/settings', <String, dynamic>{'daily_summary': on})));
 
   Future<RebookSettings> saveAppointmentReminders(final bool on) async =>
       RebookSettings.fromJson(_data(await _api.put('/inventory/salon/settings', <String, dynamic>{'appointment_reminders': on})));

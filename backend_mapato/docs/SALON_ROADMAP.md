@@ -32,8 +32,8 @@ Legend: [x] done  [~] partly  [ ] not started
    cancelled sales (done, in Profit & loss and the dashboard); refunds and reconciliation against cash handed over [ ]
 7. Expenses  [x] rent, salaries, products, utilities, transport, repairs, marketing, licences; supplier, date, amount,
    how paid, receipt photo, owner approval of other people's spending, totals by category (by entered-by [ ] small)
-8. Staff management  [~] accounts and roles exist; specialization, photo, services each may do, work schedule and
-   days off, attendance/hours, active flag, history and ranking [ ]
+8. Staff management  [x] accounts and roles, specialization, services each may do, working days and hours, days off
+   (bookings respect them), attendance with hours, active flag, ranking and history (Stylists page); photo = the account's avatar
 9. Inventory & stock  [x] goods on the inventory engine (stock in/out/adjust, suppliers, alerts, expiry, valuation);
    use of products during a service, damaged/lost/used-not-sold [ ]
 
@@ -42,8 +42,8 @@ Legend: [x] done  [~] partly  [ ] not started
     value, discount and why, net, status, how paid, date/time, commission)
 11. Commission & salary  [x] % or fixed amount per service, a person's own rate, fixed on each sale line, monthly salary,
     payments and advances, commission earned/paid/owed, payroll per month (Payroll tab)
-12. Staff cash accountability  [ ] own transactions only, cash collected vs handed over, expected balance,
-    difference, shift open/close, owner alerts, audit trail for refunds/cancellations
+12. Staff cash accountability  [x] own transactions only, cash collected vs handed over, expected balance, difference,
+    shift open/close, owner alert on a difference; audit trail for refunds/cancellations (existing audit log) [~]
 
 ## C. Financial control & reports
 13. Profit & loss  [x] service revenue + goods, cost of goods, expenses, commissions + salaries, gross and net profit,
@@ -52,12 +52,13 @@ Legend: [x] done  [~] partly  [ ] not started
     balance, owner deposits/withdrawals, reconciliation [ ]
 15. Reports & analytics  [~] revenue by staff/service/method, expenses by category, trends, best staff, popular
     services, retention, outstanding, stock valuation, export PDF/Excel [ ]
-16. Notifications & alerts  [~] booking reminders (SMS); new booking, payment confirmation, low stock, expense
-    approval, daily revenue summary to owner, cash discrepancy, pending payments, commission updates [ ]
+16. Notifications & alerts  [x] booking reminders (SMS to client), new booking (to the stylist), expense waiting approval,
+    cash discrepancy, pay recorded (to the person), low stock (existing), daily summary SMS to the owner; pending
+    payments = the existing reminders
 
 ## D. Administration, security, operations
 17 Authentication [x]  18 Role-based access: owner, manager, receptionist, cashier, hair stylist, nail technician,
-lash & makeup artist, accountant, stock manager [~]  19 Audit trail [~]  20 Business settings (name, logo, address,
+lash & makeup artist, accountant, stock manager [x]  19 Audit trail [~]  20 Business settings (name, logo, address,
 phone, TSh, tax, receipt) [~]  21 Multi-branch [ ]  22 Backup & recovery [x]  23 Export & printing [ ]
 24 Tax & accounting support [ ]  25 Feedback & complaints [ ]  26 Loyalty & promotions (points, vouchers, referrals,
 packages) [ ]  27 Equipment management [ ]  28 Online customer booking [ ]  29 Marketing & retention [ ]

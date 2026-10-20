@@ -21,6 +21,7 @@ import 'barcode_scanner_screen.dart';
 import 'notifications/approval_notifications_screen.dart';
 import 'reports/profit_by_product_screen.dart';
 import 'hubs/salon_finance_hub_screen.dart';
+import 'hubs/salon_team_hub_screen.dart';
 import 'salon/appointments_screen.dart';
 import 'salon/rebook_screen.dart';
 import 'salon/stylists_screen.dart';
@@ -211,6 +212,14 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       color: ThemeConstants.successGreen,
       pageBuilder: () => const SalonFinanceHubScreen(),
       visible: (UserPermissions p) => p.has('inv_view_reports') || p.has('inv_view_expenses'),
+    ),
+    _InvMenuEntry(
+      key: 'team',
+      staticTitle: sw ? 'Timu' : 'Team',
+      icon: Icons.badge_outlined,
+      color: const Color(0xFF8B5CF6),
+      pageBuilder: () => const SalonTeamHubScreen(),
+      visible: (UserPermissions p) => p.has('inv_create_sales') || p.has('inv_view_reports'),
     ),
     _InvMenuEntry(
       key: 'credit',

@@ -77,7 +77,7 @@ class StylistReport {
 // ------------------------------------------------------------------ "come back" reminders
 
 class RebookSettings {
-  const RebookSettings({required this.enabled, required this.weeks, this.maxWeeks = 52, this.graceDays = 14, this.appointmentReminders = false});
+  const RebookSettings({required this.enabled, required this.weeks, this.maxWeeks = 52, this.graceDays = 14, this.appointmentReminders = false, this.dailySummary = false});
 
   factory RebookSettings.fromJson(final Map<String, dynamic> j) => RebookSettings(
         enabled: _flag(j['rebook_enabled']),
@@ -85,6 +85,7 @@ class RebookSettings {
         maxWeeks: _int(j['max_weeks']) <= 0 ? 52 : _int(j['max_weeks']),
         graceDays: _int(j['grace_days']) <= 0 ? 14 : _int(j['grace_days']),
         appointmentReminders: _flag(j['appointment_reminders']),
+        dailySummary: _flag(j['daily_summary']),
       );
 
   final bool enabled;
@@ -95,12 +96,16 @@ class RebookSettings {
   /// Clients are texted the day before their appointment.
   final bool appointmentReminders;
 
-  RebookSettings copyWith({final bool? enabled, final int? weeks, final bool? appointmentReminders}) => RebookSettings(
+  /// The owner is texted how the day went each evening.
+  final bool dailySummary;
+
+  RebookSettings copyWith({final bool? enabled, final int? weeks, final bool? appointmentReminders, final bool? dailySummary}) => RebookSettings(
         enabled: enabled ?? this.enabled,
         weeks: weeks ?? this.weeks,
         maxWeeks: maxWeeks,
         graceDays: graceDays,
         appointmentReminders: appointmentReminders ?? this.appointmentReminders,
+        dailySummary: dailySummary ?? this.dailySummary,
       );
 }
 
@@ -672,7 +677,7 @@ class Payout {
 }
 
 class StaffProfile {
-  const StaffProfile({required this.staffId, required this.name, required this.role, required this.monthlySalary, this.specialization, this.commissionPercent});
+  const StaffProfile({required this.staffId, required this.name, required this.role, required this.monthlySalary, this.specialization, this.commissionPercent, this.workDays = const <int>[], this.shiftStart, this.shiftEnd});
 
   factory StaffProfile.fromJson(final Map<String, dynamic> j) => StaffProfile(
         staffId: _text(j['staff_id']),
@@ -681,11 +686,21 @@ class StaffProfile {
         specialization: j['specialization'] == null || _text(j['specialization']).isEmpty ? null : _text(j['specialization']),
         monthlySalary: _num(j['monthly_salary']),
         commissionPercent: j['commission_percent'] == null ? null : _num(j['commission_percent']),
+        workDays: j['work_days'] is List ? <int>[for (final dynamic d in j['work_days'] as List) _int(d)] : const <int>[],
+        shiftStart: j['shift_start'] == null || _text(j['shift_start']).isEmpty ? null : _text(j['shift_start']),
+        shiftEnd: j['shift_end'] == null || _text(j['shift_end']).isEmpty ? null : _text(j['shift_end']),
       );
 
   final String staffId;
   final String name;
   final String role;
+
+  /// The weekdays they work (Monday = 1); empty = not said.
+  final List<int> workDays;
+
+  /// Their hours, "08:30" to "17:00"; null = not said.
+  final String? shiftStart;
+  final String? shiftEnd;
   final String? specialization;
   final double monthlySalary;
 
@@ -766,4 +781,169 @@ class SalonOverview {
   final List<RankedItem> topStaff;
   final int bookingsToday;
   final int bookingsUpcoming;
+}
+
+// ------------------------------------------------------------------ people at work
+
+class AttendanceRecord {
+  const AttendanceRecord({required this.id, required this.staffId, required this.date, required this.clockIn, this.clockOut, this.hours, this.name});
+
+  factory AttendanceRecord.fromJson(final Map<String, dynamic> j) => AttendanceRecord(
+        id: _int(j['id']),
+        staffId: _text(j['staff_id']),
+        name: j['name'] == null ? null : _text(j['name']),
+        date: _date(j['date']) ?? DateTime.now(),
+        clockIn: _date(j['clock_in']) ?? DateTime.now(),
+        clockOut: _date(j['clock_out']),
+        hours: j['hours'] == null ? null : _num(j['hours']),
+      );
+
+  final int id;
+  final String staffId;
+  final String? name;
+  final DateTime date;
+  final DateTime clockIn;
+  final DateTime? clockOut;
+
+  /// Null while they are still at work.
+  final double? hours;
+}
+
+class AttendancePerson {
+  const AttendancePerson({required this.staffId, required this.name, required this.days, required this.hours, required this.atWork, required this.records});
+
+  factory AttendancePerson.fromJson(final Map<String, dynamic> j) => AttendancePerson(
+        staffId: _text(j['staff_id']),
+        name: _text(j['name']),
+        days: _int(j['days']),
+        hours: _num(j['hours']),
+        atWork: _flag(j['at_work']),
+        records: _rows(j['records']).map(AttendanceRecord.fromJson).toList(),
+      );
+
+  final String staffId;
+  final String name;
+  final int days;
+  final double hours;
+  final bool atWork;
+  final List<AttendanceRecord> records;
+}
+
+class AttendanceNow {
+  const AttendanceNow({required this.atWork, this.since});
+
+  factory AttendanceNow.fromJson(final Map<String, dynamic> j) => AttendanceNow(atWork: _flag(j['at_work']), since: _date(j['since']));
+
+  final bool atWork;
+  final DateTime? since;
+}
+
+class DayOff {
+  const DayOff({required this.id, required this.staffId, required this.offOn, this.staffName, this.reason});
+
+  factory DayOff.fromJson(final Map<String, dynamic> j) => DayOff(
+        id: _int(j['id']),
+        staffId: _text(j['staff_id']),
+        staffName: j['staff_name'] == null ? null : _text(j['staff_name']),
+        offOn: _date(j['off_on']) ?? DateTime.now(),
+        reason: j['reason'] == null || _text(j['reason']).isEmpty ? null : _text(j['reason']),
+      );
+
+  final int id;
+  final String staffId;
+  final String? staffName;
+  final DateTime offOn;
+  final String? reason;
+}
+
+class ShiftCollected {
+  const ShiftCollected({required this.cash, required this.mobileMoney, required this.bank});
+
+  factory ShiftCollected.fromJson(final dynamic j) {
+    final Map<String, dynamic> m = j is Map ? Map<String, dynamic>.from(j) : <String, dynamic>{};
+    return ShiftCollected(cash: _num(m['cash']), mobileMoney: _num(m['mobile_money']), bank: _num(m['bank_transfer']));
+  }
+
+  final double cash;
+  final double mobileMoney;
+  final double bank;
+}
+
+class SalonShift {
+  const SalonShift({
+    required this.id,
+    required this.staffId,
+    required this.staffName,
+    required this.status,
+    required this.openedAt,
+    required this.openingFloat,
+    required this.expectedCash,
+    required this.collected,
+    this.closedAt,
+    this.countedCash,
+    this.difference,
+    this.handedToName,
+    this.note,
+  });
+
+  factory SalonShift.fromJson(final Map<String, dynamic> j) => SalonShift(
+        id: _int(j['id']),
+        staffId: _text(j['staff_id']),
+        staffName: _text(j['staff_name']),
+        status: _text(j['status']),
+        openedAt: _date(j['opened_at']) ?? DateTime.now(),
+        closedAt: _date(j['closed_at']),
+        openingFloat: _num(j['opening_float']),
+        expectedCash: _num(j['expected_cash']),
+        collected: ShiftCollected.fromJson(j['collected']),
+        countedCash: j['counted_cash'] == null ? null : _num(j['counted_cash']),
+        difference: j['difference'] == null ? null : _num(j['difference']),
+        handedToName: j['handed_to_name'] == null ? null : _text(j['handed_to_name']),
+        note: j['note'] == null || _text(j['note']).isEmpty ? null : _text(j['note']),
+      );
+
+  final int id;
+  final String staffId;
+  final String staffName;
+
+  /// open or closed.
+  final String status;
+  final DateTime openedAt;
+  final DateTime? closedAt;
+  final double openingFloat;
+
+  /// What the till should hold: the float plus the cash taken.
+  final double expectedCash;
+  final ShiftCollected collected;
+
+  /// What the person counted and handed over, and the difference (counted - expected; negative = short).
+  final double? countedCash;
+  final double? difference;
+  final String? handedToName;
+  final String? note;
+
+  bool get isOpen => status == 'open';
+
+  bool get hasDifference => (difference ?? 0).abs() >= 0.01;
+}
+
+class ShiftsReport {
+  const ShiftsReport({required this.month, required this.shifts, required this.count, required this.withDifference, required this.difference});
+
+  factory ShiftsReport.fromJson(final Map<String, dynamic> j) {
+    final Map<String, dynamic> totals = j['totals'] is Map ? Map<String, dynamic>.from(j['totals'] as Map) : <String, dynamic>{};
+    return ShiftsReport(
+      month: _text(j['month']),
+      shifts: _rows(j['shifts']).map(SalonShift.fromJson).toList(),
+      count: _int(totals['shifts']),
+      withDifference: _int(totals['with_difference']),
+      difference: _num(totals['difference']),
+    );
+  }
+
+  final String month;
+  final List<SalonShift> shifts;
+  final int count;
+  final int withDifference;
+  final double difference;
 }
