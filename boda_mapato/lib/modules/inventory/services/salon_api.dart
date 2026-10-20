@@ -20,6 +20,13 @@ class SalonApi {
     return StylistReport.fromJson(_data(res));
   }
 
+  /// Every service behind one stylist's total for the period; [staffId] null = "nobody named".
+  Future<StylistPage> stylistPage(final String? staffId, {final DateTime? from, final DateTime? to}) async {
+    final List<String> q = <String>[if (from != null) 'from=${_day(from)}', if (to != null) 'to=${_day(to)}'];
+    final Map<String, dynamic> res = await _api.get('/inventory/salon/stylists/${staffId ?? 'none'}/transactions${q.isEmpty ? '' : '?${q.join('&')}'}');
+    return StylistPage.fromJson(_data(res));
+  }
+
   /// The "come back" settings and who is due now.
   Future<RebookOverview> rebookOverview() async => RebookOverview.fromJson(_data(await _api.get('/inventory/salon/rebook/due')));
 

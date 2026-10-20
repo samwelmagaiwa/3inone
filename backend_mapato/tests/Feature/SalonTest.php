@@ -438,7 +438,7 @@ class SalonTest extends TestCase
         $this->assertSame(['services' => 1, 'revenue' => 40000, 'visits' => 1, 'clients' => 1], collect($byName['Bahati'])->only(['services', 'revenue', 'visits', 'clients'])->all(), 'the cancelled sale and the shampoo do not count');
         $this->assertSame(['services' => 1, 'revenue' => 5000, 'visits' => 1, 'clients' => 0], collect($byName['(nobody)'])->only(['services', 'revenue', 'visits', 'clients'])->all(), 'a walk-in with no stylist named is still shown');
         $this->assertSame('Asha', $data['stylists'][0]['name'], 'best first');
-        $this->assertSame(['services' => 5, 'revenue' => 95000, 'commission' => 0, 'visits' => 4], $data['totals'], 'no rate set: no commission');
+        $this->assertSame(['services' => 5, 'revenue' => 95000, 'commission' => 0, 'discount' => 0, 'visits' => 4], $data['totals'], 'no rate set: no commission');
     }
 
     public function test_a_stylist_earns_the_service_rate_fixed_when_it_was_sold(): void

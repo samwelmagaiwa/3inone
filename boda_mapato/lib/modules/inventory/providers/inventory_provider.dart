@@ -221,7 +221,33 @@ class InventoryProvider extends ChangeNotifier {
   String get partialPaymentMethod => _partialPaymentMethod;
 
   double get cartSubtotal => _cart.fold(0, (sum, it) => sum + it.total);
-  double get cartDiscount => 0; // MVP
+  // Salon: a discount on the whole sale, why it was given, and how the client paid. (The shop has none of these:
+  // its cart discount stays zero and a full payment is cash.)
+  double _salonDiscount = 0;
+  String _discountReason = '';
+  String _cashChannel = 'cash';
+
+  /// The ways a salon client may pay: cash, the mobile money networks, the bank.
+  static const List<String> paymentChannels = <String>['cash', 'mpesa', 'mixx', 'airtel_money', 'halopesa', 'bank_transfer'];
+
+  double get cartDiscount => !_salonMode ? 0 : (_salonDiscount > cartSubtotal ? cartSubtotal : _salonDiscount);
+  String get discountReason => _discountReason;
+  String get cashChannel => _cashChannel;
+
+  void setCartDiscount(double amount) {
+    _salonDiscount = amount < 0 ? 0 : amount;
+    notifyListeners();
+  }
+
+  void setDiscountReason(String reason) {
+    _discountReason = reason;
+    notifyListeners();
+  }
+
+  void setCashChannel(String channel) {
+    _cashChannel = channel;
+    notifyListeners();
+  }
 
   /// The VAT the cart carries: each line's, from its product's rate (or the business's default).
   double get cartTax => _cart.fold(0, (double sum, InvSaleItem it) => sum + it.taxAmount);
@@ -1181,6 +1207,8 @@ class InventoryProvider extends ChangeNotifier {
     _defaultStaffId = null;
     _defaultStaffName = null;
     _tierOverride = null;
+    _salonDiscount = 0;
+    _discountReason = '';
     notifyListeners();
   }
 
@@ -1243,7 +1271,7 @@ class InventoryProvider extends ChangeNotifier {
       payments = [
         {
           'amount': total,
-          'method': 'cash',
+          'method': _salonMode ? _cashChannel : 'cash',
           'reference': null,
           'paid_at': DateTime.now().toIso8601String(),
         }
@@ -1279,6 +1307,7 @@ class InventoryProvider extends ChangeNotifier {
       'payment_status': status,
       'subtotal': subtotal,
       'discount': cartDiscount,
+      if (cartDiscount > 0 && _discountReason.trim().isNotEmpty) 'discount_reason': _discountReason.trim(),
       'tax': cartTax,
       'total': total,
       'paid_total': paidTotal,
@@ -1319,6 +1348,9 @@ class InventoryProvider extends ChangeNotifier {
       _manualName = '';
       _paidAmount = 0;
       _partialPaymentMethod = 'cash';
+      _cashChannel = 'cash';
+      _salonDiscount = 0;
+      _discountReason = '';
       notifyListeners();
 
       // Emit events — the bus listener re-fetches sales, products,

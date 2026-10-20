@@ -9,6 +9,7 @@ import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
 import 'salon_text.dart';
+import 'stylist_detail_screen.dart';
 
 enum _Period { thisMonth, lastMonth, last7 }
 
@@ -165,7 +166,25 @@ class _StylistsScreenState extends State<StylistsScreen> {
         )
       else
         for (int i = 0; i < report.stylists.length; i++) ...<Widget>[
-          _StylistCard(rank: i + 1, row: report.stylists[i], share: top <= 0 ? 0 : report.stylists[i].revenue / top, sw: sw),
+          _StylistCard(
+            rank: i + 1,
+            row: report.stylists[i],
+            share: top <= 0 ? 0 : report.stylists[i].revenue / top,
+            sw: sw,
+            // The services behind the total, for the period the report covers.
+            onTap: () => Navigator.push<void>(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => StylistDetailScreen(
+                  api: _api,
+                  title: report.stylists[i].isUnassigned || report.stylists[i].name.trim().isEmpty ? (sw ? 'Hakutajwa mhudumu' : 'No stylist named') : report.stylists[i].name,
+                  staffId: report.stylists[i].staffId,
+                  from: report.from,
+                  to: report.to,
+                ),
+              ),
+            ),
+          ),
           SizedBox(height: 8.h),
         ],
     ];
@@ -173,18 +192,22 @@ class _StylistsScreenState extends State<StylistsScreen> {
 }
 
 class _StylistCard extends StatelessWidget {
-  const _StylistCard({required this.rank, required this.row, required this.share, required this.sw});
+  const _StylistCard({required this.rank, required this.row, required this.share, required this.sw, required this.onTap});
 
   final int rank;
   final StylistRow row;
   final double share;
   final bool sw;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final String name = row.isUnassigned || row.name.trim().isEmpty ? (sw ? 'Hakutajwa mhudumu' : 'No stylist named') : row.name;
 
-    return Container(
+    return InkWell(
+      borderRadius: BorderRadius.circular(20.r),
+      onTap: onTap,
+      child: Container(
       key: ValueKey<String>('stylist_${row.staffId ?? 'none'}'),
       decoration: ThemeConstants.glassCardDecoration,
       padding: EdgeInsets.all(12.w),
@@ -221,9 +244,11 @@ class _StylistCard extends StatelessWidget {
             sw ? 'Huduma' : 'Services': '${row.services}',
             sw ? 'Ziara' : 'Visits': '${row.visits}',
             sw ? 'Wateja' : 'Clients': '${row.clients}',
+            if (row.discount > 0) sw ? 'Punguzo' : 'Discount': tsh(row.discount),
             if (row.commission > 0) sw ? 'Kamisheni' : 'Commission': tsh(row.commission),
           }),
         ],
+      ),
       ),
     );
   }

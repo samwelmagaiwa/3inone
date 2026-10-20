@@ -2,6 +2,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
@@ -91,6 +92,76 @@ class _SalesScreenState extends State<SalesScreen>
     _searchCtrl.dispose();
     _searchDebounce?.cancel();
     super.dispose();
+  }
+
+  /// Salon: a discount (with why) and how the client paid. Only a salon sees this; the shop's sale screen is as it was.
+  Widget _salonMoneyCard(InventoryProvider inv, bool sw) {
+    final bool pays = inv.paymentMode != 'debt';
+    final String chosen = inv.paymentMode == 'partial' ? inv.partialPaymentMethod : inv.cashChannel;
+    String label(String c) {
+      switch (c) {
+        case 'cash':
+          return sw ? 'Taslimu' : 'Cash';
+        case 'mpesa':
+          return 'M-Pesa';
+        case 'mixx':
+          return 'Mixx by Yas';
+        case 'airtel_money':
+          return 'Airtel Money';
+        case 'halopesa':
+          return 'HaloPesa';
+        default:
+          return sw ? 'Benki' : 'Bank';
+      }
+    }
+
+    return Container(
+      key: const ValueKey<String>('salon_money_card'),
+      decoration: ThemeConstants.invCardDecoration,
+      padding: EdgeInsets.all(12.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(sw ? 'Punguzo' : 'Discount', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
+          SizedBox(height: 6.h),
+          TextField(
+            key: const ValueKey<String>('salon_discount'),
+            keyboardType: TextInputType.number,
+            inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
+            onChanged: (String v) => inv.setCartDiscount(parseAmount(v)),
+            decoration: ThemeConstants.invInputDecoration(sw ? 'Kiasi cha punguzo (TZS)' : 'Discount amount (TZS)'),
+            style: ThemeConstants.bodyStyle,
+          ),
+          if (inv.cartDiscount > 0) ...<Widget>[
+            SizedBox(height: 8.h),
+            TextField(
+              key: const ValueKey<String>('salon_discount_reason'),
+              onChanged: inv.setDiscountReason,
+              decoration: ThemeConstants.invInputDecoration(sw ? 'Sababu ya punguzo' : 'Reason for the discount'),
+              style: ThemeConstants.bodyStyle,
+            ),
+          ],
+          if (pays) ...<Widget>[
+            SizedBox(height: 12.h),
+            Text(sw ? 'Amelipa kwa' : 'Paid by', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
+            SizedBox(height: 6.h),
+            Wrap(
+              spacing: 8.w,
+              runSpacing: 4.h,
+              children: <Widget>[
+                for (final String c in InventoryProvider.paymentChannels)
+                  ChoiceChip(
+                    key: ValueKey<String>('channel_$c'),
+                    label: Text(label(c)),
+                    selected: chosen == c,
+                    onSelected: (_) => inv.paymentMode == 'partial' ? inv.setPartialPaymentMethod(c) : inv.setCashChannel(c),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   /// Crate exchange toggle: ON (default) = customer brought their own empty
@@ -576,6 +647,7 @@ class _SalesScreenState extends State<SalesScreen>
                         loc.translate('paid_amount')),
                     style: ThemeConstants.bodyStyle,
                   ),
+                  if (!isSalonMode(context)) ...[
                   SizedBox(height: 8.h),
                   DropdownButtonFormField<String>(
                     initialValue: inv.partialPaymentMethod,
@@ -594,11 +666,16 @@ class _SalesScreenState extends State<SalesScreen>
                     onChanged: (v) =>
                         inv.setPartialPaymentMethod(v ?? 'cash'),
                   ),
+                  ],
                 ],
               ],
             ),
           ),
           SizedBox(height: 10.h),
+          if (isSalonMode(context)) ...[
+            _salonMoneyCard(inv, loc.isSwahili),
+            SizedBox(height: 10.h),
+          ],
           // Crates and empties: only for businesses that deal in returnable packaging (a depot).
           // (Never in a salon, whatever the settings say: it has no returnable packaging.)
           if (!isSalonMode(context) && context.watch<DepotProvider>().capabilities.useCrates) _crateExchangeCard(context, inv),
@@ -631,6 +708,17 @@ class _SalesScreenState extends State<SalesScreen>
                     ),
                   ],
                 ),
+                if (inv.cartDiscount > 0) ...[
+                  SizedBox(height: 4.h),
+                  Row(
+                    key: const ValueKey<String>('cart_discount_row'),
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(loc.isSwahili ? 'Punguzo' : 'Discount', style: ThemeConstants.captionStyle),
+                      Text('- TZS ${inv.cartDiscount.toStringAsFixed(0)}', style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.warningAmber)),
+                    ],
+                  ),
+                ],
                 if (inv.cartTax > 0) ...[
                   SizedBox(height: 4.h),
                   Row(
@@ -687,6 +775,11 @@ class _SalesScreenState extends State<SalesScreen>
                     onPressed: (inv.cart.isEmpty || _checkingOut)
                         ? null
                         : () async {
+                            // A salon says why a discount was given.
+                            if (isSalonMode(context, listen: false) && inv.cartDiscount > 0 && inv.discountReason.trim().isEmpty) {
+                              ThemeConstants.showErrorSnackBar(context, loc.isSwahili ? 'Andika sababu ya punguzo.' : 'Write the reason for the discount.');
+                              return;
+                            }
                             // If the customer did not bring empties, the crates they
                             // owe MUST be recorded with the sale -- never skipped.
                             final depot = context.read<DepotProvider>();

@@ -141,6 +141,7 @@ class SalesController extends Controller
             $sArray = (array) $s;
             $sArray['subtotal']   = (int) $s->subtotal;
             $sArray['discount']   = (int) $s->discount;
+            $sArray['discount_reason'] = $s->discount_reason ?? null;
             $sArray['tax']        = (int) $s->tax;
             $sArray['total']      = (int) $s->total;
             $sArray['paid_total'] = (int) $s->paid_total;
@@ -229,6 +230,7 @@ class SalesController extends Controller
         // Cast sale-level decimals to int
         $saleArray['subtotal']   = (int) $sale->subtotal;
         $saleArray['discount']   = (int) $sale->discount;
+        $saleArray['discount_reason'] = $sale->discount_reason ?? null;
         $saleArray['tax']        = (int) $sale->tax;
         $saleArray['total']      = (int) $sale->total;
         $saleArray['paid_total'] = (int) $sale->paid_total;
@@ -474,7 +476,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         $v = Validator::make($request->all(), [
             'amount'    => 'required|numeric|min:0.01',
-            'method'    => 'required|in:cash,mobile_money,bank_transfer',
+            'method'    => ['required', \Illuminate\Validation\Rule::in(\App\Support\PaymentChannels::all())],
             'reference' => 'nullable|string|max:100',
             'paid_at'   => 'nullable|date',
         ]);
@@ -497,10 +499,12 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             $outstanding = (float) $sale->total - (float) $sale->paid_total;
             $amount = min((float) $request->amount, $outstanding); // never overpay
 
+            [$method, $channel] = \App\Support\PaymentChannels::split($request->method);
             DB::table('inventory_sale_payments')->insert([
                 'sale_id'    => $id,
                 'amount'     => $amount,
-                'method'     => $request->method,
+                'method'     => $method,
+                'method_extended' => $channel,
                 'reference'  => $request->reference,
                 'paid_at'    => ClientTime::parse($request->paid_at),
                 'created_at' => now(),
@@ -852,6 +856,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'payment_status' => 'required|in:paid,debt,partial',
             'subtotal' => 'required|numeric|min:0',
             'discount' => 'nullable|numeric|min:0',
+            'discount_reason' => 'nullable|string|max:160',
             'tax' => 'nullable|numeric|min:0',
             'total' => 'required|numeric|min:0',
             'paid_total' => 'required|numeric|min:0',
@@ -869,7 +874,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'items.*.staff_id' => ['nullable', new \App\Rules\UserInAccount($request->user())],
             'payments' => 'sometimes|array',
             'payments.*.amount' => 'required|numeric|min:0.01',
-            'payments.*.method' => 'required|in:cash,mobile_money,bank_transfer',
+            'payments.*.method' => ['required', \Illuminate\Validation\Rule::in(\App\Support\PaymentChannels::all())],
             'payments.*.reference' => 'nullable|string',
             'payments.*.paid_at' => 'nullable|date',
             // Optional crate exchange — recorded atomically with the sale
@@ -884,6 +889,11 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         if (in_array($request->payment_status, ['debt', 'partial']) && empty($request->customer_id)) {
             return response()->json(['message' => 'Customer required for debt/partial'], 422);
+        }
+
+        // A salon records WHY a discount was given (the owner reads it when the takings are lower than expected).
+        if (\App\Support\Tenancy\TenantContext::service() === 'salon' && (float) ($request->discount ?? 0) > 0 && trim((string) $request->discount_reason) === '') {
+            return response()->json(['message' => 'Andika sababu ya punguzo. / Write the reason for the discount.'], 422);
         }
 
         // Each chosen selling unit must be an active unit of that very product.
@@ -933,6 +943,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'payment_status' => $request->payment_status,
                 'subtotal' => $request->subtotal,
                 'discount' => $request->discount ?? 0,
+                ...(\Illuminate\Support\Facades\Schema::hasColumn('inventory_sales', 'discount_reason')
+                    ? ['discount_reason' => (float) ($request->discount ?? 0) > 0 ? (trim((string) $request->discount_reason) ?: null) : null]
+                    : []),
                 'tax' => $request->tax ?? 0,
                 'total' => $request->total,
                 'paid_total' => $request->paid_total,
@@ -1067,10 +1080,12 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
             if (is_array($request->payments)) {
                 foreach ($request->payments as $p) {
+                    [$method, $channel] = \App\Support\PaymentChannels::split($p['method'] ?? 'cash');
                     DB::table('inventory_sale_payments')->insert([
                         'sale_id' => (int) $saleId,
                         'amount' => (float) $p['amount'],
-                        'method' => $p['method'] ?? 'cash',
+                        'method' => $method,
+                        'method_extended' => $channel,
                         'reference' => $p['reference'] ?? null,
                         'paid_at' => ClientTime::parse($p['paid_at'] ?? null),
                         'created_at' => now(),

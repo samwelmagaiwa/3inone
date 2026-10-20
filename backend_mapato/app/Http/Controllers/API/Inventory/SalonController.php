@@ -79,7 +79,8 @@ class SalonController extends Controller
                 'si.staff_id as staff_id,
                  MAX(si.staff_name) as staff_name,
                  SUM(COALESCE(si.unit_qty, si.quantity)) as services,
-                 COALESCE(SUM(si.total), 0) as revenue,
+                 COALESCE(SUM(si.total - COALESCE(s.discount * si.total / NULLIF(s.subtotal, 0), 0)), 0) as revenue,
+                 COALESCE(SUM(COALESCE(s.discount * si.total / NULLIF(s.subtotal, 0), 0)), 0) as discount,
                  COALESCE(SUM(' . $commission . '), 0) as commission,
                  COUNT(DISTINCT s.id) as visits,
                  COUNT(DISTINCT s.customer_id) as clients'
@@ -90,7 +91,8 @@ class SalonController extends Controller
                 'staff_id' => $r->staff_id,
                 'name' => $r->staff_name,
                 'services' => (int) $r->services,
-                'revenue' => (float) $r->revenue == floor((float) $r->revenue) ? (int) $r->revenue : (float) $r->revenue,
+                'revenue' => self::money($r->revenue),
+                'discount' => self::money($r->discount),
                 'commission' => (float) $r->commission == floor((float) $r->commission) ? (int) $r->commission : (float) $r->commission,
                 'visits' => (int) $r->visits,
                 'clients' => (int) $r->clients,
@@ -104,10 +106,106 @@ class SalonController extends Controller
                 'services' => $rows->sum('services'),
                 'revenue' => $rows->sum('revenue'),
                 'commission' => $rows->sum('commission'),
+                'discount' => self::money($rows->sum('discount')),
                 'visits' => $rows->sum('visits'),
             ],
             'stylists' => $rows,
         ]]);
+    }
+
+    /**
+     * Every sale line behind one stylist's total (or behind "nobody named"): the client, the service, its value, the
+     * share of the sale's discount it carried, what is left after it, what the stylist earns on it, and how it was
+     * paid. The owner and managers may open anyone; anyone else only their own.
+     */
+    #[OA\Get(
+        path: '/inventory/salon/stylists/{staffId}/transactions',
+        summary: 'The services behind one stylist total for a period (default: this month); staffId "none" = nobody named',
+        security: [['bearerAuth' => []]],
+        tags: ['Inventory / Salon'],
+        parameters: [
+            new OA\Parameter(name: 'staffId', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'from', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'to', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
+        ],
+        responses: [new OA\Response(response: 200, description: 'Success')],
+    )]
+    public function stylistTransactions(Request $request, string $staffId): JsonResponse
+    {
+        $data = $request->validate(['from' => 'nullable|date', 'to' => 'nullable|date|after_or_equal:from']);
+        $from = isset($data['from']) ? Carbon::parse($data['from'])->toDateString() : now()->startOfMonth()->toDateString();
+        $to = isset($data['to']) ? Carbon::parse($data['to'])->toDateString() : now()->toDateString();
+
+        $viewer = $request->user();
+        $sees = $viewer->seesAllAccounts() || in_array(strtolower((string) $viewer->role), ['admin', 'administrator', 'manager'], true);
+        abort_if(!$sees && $staffId !== (string) $viewer->id, 403, 'Huwezi kuona mapato ya mhudumu mwingine. / You cannot see another stylist\'s income.');
+
+        $query = DB::table('inventory_sale_items as si')
+            ->join('inventory_sales as s', 's.id', '=', 'si.sale_id')
+            ->leftJoin('inventory_products as p', 'p.id', '=', 'si.product_id')
+            ->leftJoin('inventory_customers as c', 'c.id', '=', 's.customer_id')
+            ->whereNull('s.cancelled_at')
+            ->where('si.is_service', true)
+            ->whereDate('s.created_at', '>=', $from)
+            ->whereDate('s.created_at', '<=', $to);
+        $staffId === 'none' ? $query->whereNull('si.staff_id') : $query->where('si.staff_id', $staffId);
+
+        $hasCommission = \Illuminate\Support\Facades\Schema::hasColumn('inventory_sale_items', 'commission_amount');
+        $hasReason = \Illuminate\Support\Facades\Schema::hasColumn('inventory_sales', 'discount_reason');
+        $lines = $query->orderByDesc('s.created_at')->orderByDesc('si.id')->get(array_merge([
+            'si.id', 'si.sale_id', 'p.name as product_name', 'si.staff_name', 'si.quantity', 'si.unit_qty', 'si.total',
+            's.number', 's.created_at', 's.subtotal', 's.discount', 's.payment_status',
+            's.customer_name_override', 'c.name as customer_name',
+        ], $hasCommission ? ['si.commission_amount'] : [], $hasReason ? ['s.discount_reason'] : []));
+
+        $paid = DB::table('inventory_sale_payments')
+            ->whereIn('sale_id', $lines->pluck('sale_id')->unique()->values())
+            ->get(['sale_id', 'method', 'method_extended'])
+            ->groupBy('sale_id')
+            ->map(fn ($rows) => $rows->map(fn ($p) => $p->method_extended ?: $p->method)->unique()->values()->all());
+
+        $rows = $lines->map(function ($l) use ($paid) {
+            $discount = (float) $l->subtotal > 0 ? (float) $l->discount * (float) $l->total / (float) $l->subtotal : 0.0;
+
+            return [
+                'sale_id' => (int) $l->sale_id,
+                'number' => $l->number,
+                'date' => Carbon::parse($l->created_at)->format('Y-m-d H:i'),
+                'client' => $l->customer_name ?: ($l->customer_name_override ?: null),
+                'service' => $l->product_name,
+                'qty' => (int) ($l->unit_qty ?? $l->quantity),
+                'value' => self::money($l->total),
+                'discount' => self::money($discount),
+                'net' => self::money((float) $l->total - $discount),
+                'commission' => self::money($l->commission_amount ?? 0),
+                'discount_reason' => $l->discount_reason ?? null,
+                'payment_status' => $l->payment_status,
+                'methods' => $paid[$l->sale_id] ?? [],
+            ];
+        })->values();
+
+        return response()->json(['data' => [
+            'from' => $from,
+            'to' => $to,
+            'staff_id' => $staffId === 'none' ? null : $staffId,
+            'name' => $lines->pluck('staff_name')->filter()->first(),
+            'totals' => [
+                'services' => $rows->sum('qty'),
+                'value' => self::money($rows->sum('value')),
+                'discount' => self::money($rows->sum('discount')),
+                'net' => self::money($rows->sum('net')),
+                'commission' => self::money($rows->sum('commission')),
+            ],
+            'transactions' => $rows,
+        ]]);
+    }
+
+    /** A money amount as the app reads it: a whole number when it is one, else two decimals. */
+    private static function money(mixed $v): int|float
+    {
+        $f = round((float) $v, 2);
+
+        return $f == floor($f) ? (int) $f : $f;
     }
 
     /** A client's page: how often they come, what they spend, what they like, and when they are due back. */

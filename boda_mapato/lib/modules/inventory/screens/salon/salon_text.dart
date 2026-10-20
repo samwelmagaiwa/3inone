@@ -26,3 +26,25 @@ String tsh(final num amount) {
   }
   return 'TSH ${amount < 0 ? '-' : ''}$out';
 }
+
+/// How a payment was made, as people say it: "M-Pesa", "Mixx by Yas", "Cash" / "Taslimu".
+String channelLabel({required final bool sw, required final String channel}) {
+  switch (channel) {
+    case 'cash':
+      return sw ? 'Taslimu' : 'Cash';
+    case 'mpesa':
+      return 'M-Pesa';
+    case 'mixx':
+      return 'Mixx by Yas';
+    case 'airtel_money':
+      return 'Airtel Money';
+    case 'halopesa':
+      return 'HaloPesa';
+    case 'mobile_money':
+      return sw ? 'Pesa za simu' : 'Mobile money';
+    case 'bank_transfer':
+      return sw ? 'Benki' : 'Bank';
+    default:
+      return channel;
+  }
+}

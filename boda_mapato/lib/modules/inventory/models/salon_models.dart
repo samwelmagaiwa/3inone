@@ -19,7 +19,7 @@ List<Map<String, dynamic>> _rows(final dynamic v) =>
 // ------------------------------------------------------------------ how each stylist did
 
 class StylistRow {
-  const StylistRow({required this.staffId, required this.name, required this.services, required this.revenue, required this.visits, required this.clients, this.commission = 0});
+  const StylistRow({required this.staffId, required this.name, required this.services, required this.revenue, required this.visits, required this.clients, this.commission = 0, this.discount = 0});
 
   factory StylistRow.fromJson(final Map<String, dynamic> j) => StylistRow(
         staffId: j['staff_id'] == null ? null : _text(j['staff_id']),
@@ -27,6 +27,7 @@ class StylistRow {
         services: _int(j['services']),
         revenue: _num(j['revenue']),
         commission: _num(j['commission']),
+        discount: _num(j['discount']),
         visits: _int(j['visits']),
         clients: _int(j['clients']),
       );
@@ -39,6 +40,9 @@ class StylistRow {
 
   /// What this stylist earned in commission on those services (0 when no service has a rate).
   final double commission;
+
+  /// The share of the sales' discounts that came off this stylist's services (their revenue is already net of it).
+  final double discount;
   final int visits;
   final int clients;
 
@@ -345,4 +349,91 @@ class SalonAppointment {
   int get minutes => endsAt.difference(startsAt).inMinutes;
 
   String get servicesText => services.map((AppointmentService s) => s.shown).join(', ');
+}
+
+// ------------------------------------------------------------------ the services behind a stylist's total
+
+class StylistLine {
+  const StylistLine({
+    required this.saleId,
+    required this.number,
+    required this.date,
+    required this.service,
+    required this.qty,
+    required this.value,
+    required this.discount,
+    required this.net,
+    required this.commission,
+    required this.paymentStatus,
+    required this.methods,
+    this.client,
+    this.discountReason,
+  });
+
+  factory StylistLine.fromJson(final Map<String, dynamic> j) => StylistLine(
+        saleId: _int(j['sale_id']),
+        number: _text(j['number']),
+        date: _date(j['date']) ?? DateTime.now(),
+        client: j['client'] == null || _text(j['client']).isEmpty ? null : _text(j['client']),
+        service: _text(j['service']),
+        qty: _int(j['qty']),
+        value: _num(j['value']),
+        discount: _num(j['discount']),
+        net: _num(j['net']),
+        commission: _num(j['commission']),
+        discountReason: j['discount_reason'] == null || _text(j['discount_reason']).isEmpty ? null : _text(j['discount_reason']),
+        paymentStatus: _text(j['payment_status']),
+        methods: j['methods'] is List ? <String>[for (final dynamic m in j['methods'] as List) _text(m)] : <String>[],
+      );
+
+  final int saleId;
+  final String number;
+  final DateTime date;
+  final String? client;
+  final String service;
+  final int qty;
+
+  /// What the service was worth, the share of the sale's discount it carried, and what is left.
+  final double value;
+  final double discount;
+  final double net;
+
+  /// What the stylist earns on it.
+  final double commission;
+  final String? discountReason;
+
+  /// paid, partial or debt (the whole sale's).
+  final String paymentStatus;
+
+  /// How the sale was paid: cash, mpesa, mixx, airtel_money, halopesa, bank_transfer.
+  final List<String> methods;
+}
+
+class StylistPage {
+  const StylistPage({required this.from, required this.to, required this.lines, required this.services, required this.value, required this.discount, required this.net, required this.commission, this.name});
+
+  factory StylistPage.fromJson(final Map<String, dynamic> j) {
+    final Map<String, dynamic> totals = j['totals'] is Map ? Map<String, dynamic>.from(j['totals'] as Map) : <String, dynamic>{};
+    return StylistPage(
+      from: _date(j['from']) ?? DateTime.now(),
+      to: _date(j['to']) ?? DateTime.now(),
+      name: j['name'] == null ? null : _text(j['name']),
+      lines: _rows(j['transactions']).map(StylistLine.fromJson).toList(),
+      services: _int(totals['services']),
+      value: _num(totals['value']),
+      discount: _num(totals['discount']),
+      net: _num(totals['net']),
+      commission: _num(totals['commission']),
+    );
+  }
+
+  final DateTime from;
+  final DateTime to;
+  final String? name;
+  final List<StylistLine> lines;
+  final int services;
+  final double value;
+  final double discount;
+  final double net;
+  final double commission;
 }

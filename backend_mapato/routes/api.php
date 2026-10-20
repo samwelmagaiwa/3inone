@@ -412,6 +412,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Results per stylist: the owner and managers see everyone, a stylist only their own line.
     Route::middleware('inv_perm:inv_view_reports,inv_create_sales')->group(function () {
         Route::get('inventory/salon/stylists',             [SalonController::class, 'stylists']);
+        Route::get('inventory/salon/stylists/{staffId}/transactions', [SalonController::class, 'stylistTransactions']);
     });
     Route::middleware('inv_perm:inv_manage_settings')->group(function () {
         Route::put('inventory/salon/settings',             [SalonController::class, 'updateSettings']);
