@@ -117,3 +117,14 @@ Done since the note above: branch name on the overview, a client's points histor
 service history, the sale text with the feedback link at the bottom, answers kept on the phone when there is no signal.
 Left: release (`./deploy.sh release`), the customer mobile app (the web booking page is the customer side), and replying
 to the SMS with a number (needs an incoming-SMS number from the provider).
+
+## Honest remaining list (2026-10-21; the checkboxes above are older than this)
+
+Built since they were written: 3 (all of CRM), 4 deposits + cancel policy, 21 branches, 23 export, 24 VAT report, 25 feedback,
+26 loyalty/vouchers/referrals/packages, 27 equipment, 28 online booking, 29 campaigns.
+Engine already had: returns with approval (`inventory/returns`, `decide`), write-offs for damaged/lost goods, daily cash.
+
+NOT built: category presets for services; walk-in queue; WhatsApp reminders; use of products inside a service (stock used
+per service); cashbook with opening/closing balance, owner deposits/withdrawals and reconciliation; retention/trend
+reports beyond the dashboard; fuller audit trail screen; business settings page for salon (logo/receipt wording is the
+shop's); SMS reply feedback (needs provider number); customer mobile app (web booking page exists); goods stock per branch.
