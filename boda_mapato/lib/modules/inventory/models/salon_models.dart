@@ -947,3 +947,22 @@ class ShiftsReport {
   final int withDifference;
   final double difference;
 }
+
+/// One of the salon's branches.
+class SalonBranchInfo {
+  const SalonBranchInfo({required this.id, required this.name, this.address = '', this.phone = '', this.active = true});
+
+  factory SalonBranchInfo.fromJson(final Map<String, dynamic> j) => SalonBranchInfo(
+        id: _int(j['id']),
+        name: _text(j['name']),
+        address: _text(j['address']),
+        phone: _text(j['phone']),
+        active: j['active'] == null ? true : _flag(j['active']),
+      );
+
+  final int id;
+  final String name;
+  final String address;
+  final String phone;
+  final bool active;
+}

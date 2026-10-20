@@ -21,6 +21,7 @@ import 'barcode_scanner_screen.dart';
 import 'notifications/approval_notifications_screen.dart';
 import 'reports/profit_by_product_screen.dart';
 import 'hubs/salon_finance_hub_screen.dart';
+import 'salon/branches_screen.dart';
 import 'hubs/salon_team_hub_screen.dart';
 import 'salon/appointments_screen.dart';
 import 'salon/rebook_screen.dart';
@@ -220,6 +221,14 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       color: const Color(0xFF8B5CF6),
       pageBuilder: () => const SalonTeamHubScreen(),
       visible: (UserPermissions p) => p.has('inv_create_sales') || p.has('inv_view_reports'),
+    ),
+    _InvMenuEntry(
+      key: 'branches',
+      staticTitle: sw ? 'Matawi' : 'Branches',
+      icon: Icons.store_mall_directory_outlined,
+      color: const Color(0xFF0EA5E9),
+      pageBuilder: () => const BranchesScreen(),
+      visible: (UserPermissions p) => p.has('inv_manage_settings'),
     ),
     _InvMenuEntry(
       key: 'credit',

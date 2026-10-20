@@ -287,4 +287,35 @@ class SalonApi {
       if (smsOptOut != null) 'sms_opt_out': smsOptOut,
     });
   }
+
+  // ---------------------------------------------------------------- branches
+
+  Future<List<SalonBranchInfo>> branches() async {
+    final Map<String, dynamic> res = await _api.get('/inventory/salon/branches');
+    final dynamic rows = res['data'];
+    return <SalonBranchInfo>[
+      if (rows is List)
+        for (final dynamic r in rows)
+          if (r is Map) SalonBranchInfo.fromJson(Map<String, dynamic>.from(r)),
+    ];
+  }
+
+  Future<void> saveBranch({final int? id, required final String name, final String? address, final String? phone, final bool? active}) async {
+    final Map<String, dynamic> body = <String, dynamic>{
+      'name': name,
+      if (address != null) 'address': address,
+      if (phone != null) 'phone': phone,
+      if (active != null) 'active': active,
+    };
+    if (id == null) {
+      await _api.post('/inventory/salon/branches', body);
+    } else {
+      await _api.put('/inventory/salon/branches/$id', body);
+    }
+  }
+
+  Future<void> deleteBranch(final int id) async {
+    await _api.delete("/inventory/salon/branches/$id");
+  }
 }
+

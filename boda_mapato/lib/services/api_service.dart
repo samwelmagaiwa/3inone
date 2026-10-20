@@ -39,12 +39,16 @@ class ApiService {
   /// Sent with every request so the server keeps the salon's books apart from the shop's.
   static String? activeService;
 
+  /// The salon branch being looked at / worked in (its id), or null for all branches. Sent as `X-Branch`.
+  static int? activeBranch;
+
   Future<Map<String, String>> get _authHeaders async {
     final String? token = await _getStoredToken();
     return <String, String>{
       ..._headers,
       if (token != null) "Authorization": "Bearer $token",
       if (activeService != null) "X-Service": activeService!,
+      if (activeBranch != null && activeService == 'salon') "X-Branch": '$activeBranch',
     };
   }
 
