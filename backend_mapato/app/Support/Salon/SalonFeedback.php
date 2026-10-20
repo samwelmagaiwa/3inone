@@ -110,7 +110,7 @@ final class SalonFeedback
     /**
      * What the page shows a client who opens their link, or null when the link is not (or no longer) good.
      *
-     * @return array{business: string, stylist: ?string, client: ?string}|null
+     * @return array{business: string, services: array<int, string>, stylist: ?string, client: ?string}|null
      */
     public static function lookup(string $token): ?array
     {
@@ -123,8 +123,15 @@ final class SalonFeedback
         return TenantContext::runAs($owner, fn () => TenantContext::runInService('salon', function () use ($owner, $row) {
             $client = $row->customer_id ? DB::table('inventory_customers')->where('id', $row->customer_id)->value('name') : null;
 
+            // The services the client had on this visit, so the review is about them.
+            $services = $row->sale_id === null ? [] : DB::table('inventory_sale_items as si')
+                ->leftJoin('inventory_products as p', 'p.id', '=', 'si.product_id')
+                ->where('si.sale_id', $row->sale_id)->where('si.is_service', true)
+                ->pluck('p.name')->filter()->unique()->values()->all();
+
             return [
                 'business' => (string) (Business::forOwnerId((string) $owner->id)?->name ?? ''),
+                'services' => $services,
                 'stylist' => $row->staff_name,
                 'client' => $client === null ? null : ClientSegments::firstName((string) $client),
             ];

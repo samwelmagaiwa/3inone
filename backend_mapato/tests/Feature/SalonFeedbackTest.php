@@ -318,6 +318,7 @@ class SalonFeedbackTest extends TestCase
         $this->assertStringContainsString('Glow &amp; &lt;Co&gt;', $html, 'the salon\'s name is escaped');
         $this->assertStringNotContainsString('<Co>', $html);
         $this->assertStringContainsString('Habari Neema', $html);
+        $this->assertStringContainsString('class="svc"', $html, 'the page names the service the client had');
         $this->assertStringContainsString($token, $html);
         $this->assertStringContainsString('noindex', (string) $page->headers->get('X-Robots-Tag'));
         $this->assertStringContainsString('no-store', (string) $page->headers->get('Cache-Control'));

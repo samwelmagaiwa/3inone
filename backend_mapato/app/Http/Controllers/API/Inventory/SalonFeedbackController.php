@@ -194,9 +194,11 @@ class SalonFeedbackController extends Controller
         } else {
             $hello = $info['client'] ? $e($info['client']) : '';
             $who = $info['stylist'] ? ' (' . $e($info['stylist']) . ')' : '';
+            $services = $info['services'] === [] ? '' : '<p class="svc">' . $e(implode(', ', $info['services'])) . '</p>';
             $body = <<<HTML
 <h1>{$e($info['business'])}</h1>
 <p>Habari {$hello}! Ulihudumiwa vipi{$who}? / Hello {$hello}! How was your visit{$who}?</p>
+{$services}
 <div id="stars" role="radiogroup" aria-label="rating">
   <button type="button" data-v="1">★</button><button type="button" data-v="2">★</button><button type="button" data-v="3">★</button><button type="button" data-v="4">★</button><button type="button" data-v="5">★</button>
 </div>
