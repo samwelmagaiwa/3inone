@@ -12,6 +12,7 @@ import '../../models/inv_depot_models.dart';
 import '../../providers/depot_provider.dart';
 import '../../services/inventory_export_service.dart';
 import '../widgets/inventory_widgets.dart';
+import '../salon/salon_mode.dart';
 
 /// Area 11 — the 12 standard reports. One list, one viewer: every report
 /// arrives in the same shape, so a single table renders all of them.
@@ -60,9 +61,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final LocalizationService loc = context.watch<LocalizationService>();
     final DepotProvider depot = context.watch<DepotProvider>();
     final bool crates = depot.capabilities.useCrates;
-    final List<InvReportMeta> rows = crates
-        ? depot.reports
-        : depot.reports.where((InvReportMeta r) => r.key != 'crates_position').toList(growable: false);
+    // A salon reports on sales, clients' debts, cash and what its services and goods earn: not on stock, purchases or crates.
+    const Set<String> shopOnly = <String>{'stock_valuation', 'stock_movements', 'stock_count_variance', 'damages', 'purchases', 'crates_position'};
+    final bool salon = isSalonMode(context);
+    final List<InvReportMeta> rows = depot.reports
+        .where((InvReportMeta r) => salon ? !shopOnly.contains(r.key) : (crates || r.key != 'crates_position'))
+        .toList(growable: false);
 
     return Scaffold(
       backgroundColor: Colors.transparent,

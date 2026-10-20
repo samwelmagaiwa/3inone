@@ -892,7 +892,7 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
           child: _insightTile(
             Icons.warning_amber_rounded,
             lowStock == 0 ? Colors.greenAccent.shade400 : Colors.orangeAccent.shade200,
-            loc.translate('low_stock_alerts'),
+            inv.salonMode ? (loc.isSwahili ? 'Bidhaa zinazoisha' : 'Goods running low') : loc.translate('low_stock_alerts'),
             '$lowStock ${loc.translate('items')}',
           ),
         ),

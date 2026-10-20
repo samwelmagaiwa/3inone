@@ -7,6 +7,7 @@ import '../brands/brands_screen.dart';
 import '../categories/categories_screen.dart';
 import '../products/products_screen.dart';
 import '../widgets/inventory_widgets.dart';
+import '../salon/salon_mode.dart';
 
 class ProductsHubScreen extends StatelessWidget {
   const ProductsHubScreen({super.key});
@@ -17,7 +18,7 @@ class ProductsHubScreen extends StatelessWidget {
     return InvTabScaffold(
       title: '',
       tabs: [
-        loc.translate('products'),
+        isSalonMode(context) ? (loc.isSwahili ? 'Huduma na Bidhaa' : 'Services & Goods') : loc.translate('products'),
         loc.translate('categories'),
         loc.translate('brands'),
       ],

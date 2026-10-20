@@ -181,6 +181,26 @@ class SalonTest extends TestCase
         $this->assertSame(['salon'], $staff->serviceTypes());
     }
 
+    public function test_a_super_admin_has_the_salon_like_every_other_service_even_if_their_saved_services_predate_it(): void
+    {
+        $super = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+        // what an account made before the salon existed has saved: the three old services
+        foreach (['inventory', 'rental', 'transport'] as $service) {
+            $super->services()->create(['service_type' => $service]);
+        }
+        $super->unsetRelation('services');
+
+        $this->assertContains('salon', $super->allowedServiceTypes());
+        $this->assertTrue($super->canUseService('salon'));
+        $this->assertContains('salon', $super->effectiveServiceTypes());
+
+        // signing in brings the saved list up to date, and the salon's screens answer
+        $services = $this->api($super, 'GET', '/api/auth/user')->assertOk()->json('data.user.services');
+        $this->assertContains('salon', array_column($services, 'service_type'));
+        $this->api($super, 'GET', '/api/inventory/products')->assertOk();
+        $this->api($super, 'GET', '/api/inventory/salon/settings')->assertOk();
+    }
+
     public function test_four_services_are_sold_but_a_plan_covers_at_most_three(): void
     {
         $this->assertSame(['transport', 'rental', 'inventory', 'salon'], config('billing.services'));

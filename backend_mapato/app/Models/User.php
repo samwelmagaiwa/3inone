@@ -375,6 +375,12 @@ class User extends Authenticatable
      */
     public function allowedServiceTypes(): array
     {
+        // A super admin has EVERY service, including one added after their account was made: the rows saved for them
+        // are only what they had at that time, and are brought up to date the next time they sign in.
+        if (strtolower((string) $this->role) === 'super_admin') {
+            return self::SERVICE_ROLE_DEFAULTS['super_admin'];
+        }
+
         $bound = $this->serviceTypes();
         if (!empty($bound)) {
             return $bound;

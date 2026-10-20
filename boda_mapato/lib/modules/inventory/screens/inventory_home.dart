@@ -364,7 +364,7 @@ class _InventoryHomeState extends State<InventoryHome> {
     // screen on top rather than switching a tab, so it is not in the bottom bar or drawer.
     if (perms.has('inv_view_reports')) {
       items.add(_GridNavItem(
-        label: loc.translate('profit_margins_title'),
+        label: widget.salon ? (loc.isSwahili ? 'Faida ya Huduma na Bidhaa' : 'Services & Goods Profit') : loc.translate('profit_margins_title'),
         icon: Icons.trending_up_rounded,
         color: ThemeConstants.successGreen.withOpacity(0.85),
         onTap: () {

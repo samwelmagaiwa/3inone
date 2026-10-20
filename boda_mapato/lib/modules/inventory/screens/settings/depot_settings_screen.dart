@@ -19,6 +19,7 @@ import '../widgets/joined_sections.dart';
 import 'business_kind_card.dart';
 import 'crate_deposit_card.dart';
 import 'receipt_header_screen.dart';
+import '../salon/salon_mode.dart';
 
 /// Area 13 — depot settings and the permanent audit trail.
 class DepotSettingsScreen extends StatefulWidget {
@@ -211,6 +212,7 @@ class _SettingsTabState extends State<_SettingsTab> {
     final List<Widget> sections = <Widget>[
       // What kind of business this is: the first thing an owner looks for here, because it decides how the
       // product page and the till behave.
+      if (!isSalonMode(context))
       BusinessKindCard(
         joined: true,
         // A server that has never heard of kinds does not send one with the settings.

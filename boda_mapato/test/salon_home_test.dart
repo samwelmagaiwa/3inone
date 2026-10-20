@@ -130,9 +130,10 @@ void main() {
       await _openHome(t, salon: true);
       await _openMenu(t);
 
-      for (final String label in <String>['Services & Goods', 'Sales', 'Stylists', 'Come back', 'Reports', 'Clients & Credit', 'Settings']) {
+      for (final String label in <String>['Services & Goods', 'Sales', 'Stylists', 'Come back', 'Reports', 'Clients & Credit', 'Settings', 'Services & Goods Profit']) {
         expect(find.text(label), findsWidgets, reason: label);
       }
+      expect(find.text('Product Profit Margins'), findsNothing, reason: 'a salon has services, not only products');
       expect(find.text('Stock Levels'), findsNothing);
       expect(find.text('Purchasing'), findsNothing);
     });
@@ -143,6 +144,8 @@ void main() {
       expect(find.text('Salon Dashboard'), findsOneWidget);
       expect(find.text('Inventory Valuation'), findsNothing);
       expect(find.text('Services Overview'), findsOneWidget, reason: 'the same table, with the services in it');
+      expect(find.text('Goods running low'), findsOneWidget);
+      expect(find.text('Low Stock Alerts'), findsNothing);
       expect(find.text('Time'), findsOneWidget);
     });
 
