@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../models/user_permissions.dart';
 import '../../../../services/localization_service.dart';
+import '../salon/export_screen.dart';
 import '../salon/payroll_screen.dart';
 import '../salon/profit_loss_screen.dart';
 import '../salon/salon_expenses_screen.dart';
@@ -23,15 +24,18 @@ class SalonFinanceHubScreen extends StatelessWidget {
         sw ? 'Faida na hasara' : 'Profit & loss',
         sw ? 'Matumizi' : 'Expenses',
         sw ? 'Mishahara' : 'Payroll',
+        sw ? 'Hamisha' : 'Export',
       ],
       views: const <Widget>[
         ProfitLossScreen(),
         SalonExpensesScreen(),
         PayrollScreen(),
+        ExportScreen(),
       ],
       tabPermissions: <bool Function(UserPermissions)?>[
         (UserPermissions p) => p.has('inv_view_reports'),
         (UserPermissions p) => p.has('inv_view_expenses'),
+        (UserPermissions p) => p.has('inv_view_reports'),
         (UserPermissions p) => p.has('inv_view_reports'),
       ],
     );

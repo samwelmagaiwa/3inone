@@ -22,6 +22,10 @@ import 'notifications/approval_notifications_screen.dart';
 import 'reports/profit_by_product_screen.dart';
 import 'hubs/salon_finance_hub_screen.dart';
 import 'salon/branches_screen.dart';
+import 'salon/equipment_screen.dart';
+import 'salon/feedback_screen.dart';
+import 'salon/offers_screens.dart';
+import 'salon/salon_settings_screen.dart';
 import 'hubs/salon_team_hub_screen.dart';
 import 'salon/appointments_screen.dart';
 import 'salon/rebook_screen.dart';
@@ -221,6 +225,38 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       color: const Color(0xFF8B5CF6),
       pageBuilder: () => const SalonTeamHubScreen(),
       visible: (UserPermissions p) => p.has('inv_create_sales') || p.has('inv_view_reports'),
+    ),
+    _InvMenuEntry(
+      key: 'offers',
+      staticTitle: sw ? 'Kuponi na ujumbe' : 'Offers & texts',
+      icon: Icons.campaign_outlined,
+      color: const Color(0xFFEC4899),
+      pageBuilder: () => const OffersHubScreen(),
+      visible: (UserPermissions p) => p.has('inv_manage_settings') || p.has('inv_view_reports'),
+    ),
+    _InvMenuEntry(
+      key: 'salon_settings',
+      staticTitle: sw ? 'Mipangilio ya saluni' : 'Salon settings',
+      icon: Icons.tune_outlined,
+      color: const Color(0xFF64748B),
+      pageBuilder: () => const SalonSettingsScreen(),
+      visible: (UserPermissions p) => p.has('inv_manage_settings'),
+    ),
+    _InvMenuEntry(
+      key: 'feedback',
+      staticTitle: sw ? 'Maoni ya wateja' : 'Feedback',
+      icon: Icons.reviews_outlined,
+      color: const Color(0xFFF59E0B),
+      pageBuilder: () => const FeedbackScreen(),
+      visible: (UserPermissions p) => p.has('inv_create_sales') || p.has('inv_view_reports'),
+    ),
+    _InvMenuEntry(
+      key: 'equipment',
+      staticTitle: sw ? 'Vifaa' : 'Equipment',
+      icon: Icons.handyman_outlined,
+      color: const Color(0xFF14B8A6),
+      pageBuilder: () => const EquipmentScreen(),
+      visible: (UserPermissions p) => p.has('inv_manage_settings') || p.has('inv_manage_stock'),
     ),
     _InvMenuEntry(
       key: 'branches',

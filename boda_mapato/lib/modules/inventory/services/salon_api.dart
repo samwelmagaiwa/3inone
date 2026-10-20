@@ -317,5 +317,88 @@ class SalonApi {
   Future<void> deleteBranch(final int id) async {
     await _api.delete("/inventory/salon/branches/$id");
   }
-}
 
+  // ---------------------------------------------------------------- equipment
+
+  /// {equipment: [...], totals: {...}} as the server sends it.
+  Future<Map<String, dynamic>> equipment() async => _data(await _api.get('/inventory/salon/equipment'));
+
+  Future<void> saveEquipment(final Map<String, dynamic> body, {final int? id}) async {
+    if (id == null) {
+      await _api.post('/inventory/salon/equipment', body);
+    } else {
+      await _api.put('/inventory/salon/equipment/$id', body);
+    }
+  }
+
+  Future<void> deleteEquipment(final int id) async {
+    await _api.delete('/inventory/salon/equipment/$id');
+  }
+
+  Future<List<Map<String, dynamic>>> equipmentLogs(final int id) async {
+    final dynamic rows = (await _api.get('/inventory/salon/equipment/$id/logs'))['data'];
+    return <Map<String, dynamic>>[
+      if (rows is List)
+        for (final dynamic r in rows)
+          if (r is Map) Map<String, dynamic>.from(r),
+    ];
+  }
+
+  Future<void> addEquipmentLog(final int id, final Map<String, dynamic> body) async {
+    await _api.post('/inventory/salon/equipment/$id/logs', body);
+  }
+
+  // ---------------------------------------------------------------- feedback
+
+  /// {summary: {...}, feedback: [...]}; [status] 'new' / 'resolved' narrows it.
+  Future<Map<String, dynamic>> feedback({final String? status}) async =>
+      _data(await _api.get('/inventory/salon/feedback${status == null ? '' : '?status=$status'}'));
+
+  Future<void> resolveFeedback(final int id, {final String? note}) async {
+    await _api.post('/inventory/salon/feedback/$id/resolve', <String, dynamic>{if (note != null && note.isNotEmpty) 'note': note});
+  }
+
+  // ---------------------------------------------------------------- settings, loyalty, offers, exports
+
+  Future<Map<String, dynamic>> salonSettingsMap() async => _data(await _api.get('/inventory/salon/settings'));
+
+  Future<Map<String, dynamic>> saveSalonSettingsMap(final Map<String, dynamic> body) async => _data(await _api.put('/inventory/salon/settings', body));
+
+  Future<Map<String, dynamic>> loyaltySettings() async => _data(await _api.get('/inventory/salon/loyalty/settings'));
+
+  Future<Map<String, dynamic>> saveLoyaltySettings(final Map<String, dynamic> body) async => _data(await _api.put('/inventory/salon/loyalty/settings', body));
+
+  Future<List<Map<String, dynamic>>> vouchers() => _list('/inventory/salon/vouchers');
+
+  Future<void> saveVoucher(final Map<String, dynamic> body, {final int? id}) async {
+    if (id == null) {
+      await _api.post('/inventory/salon/vouchers', body);
+    } else {
+      await _api.put('/inventory/salon/vouchers/$id', body);
+    }
+  }
+
+  Future<void> deleteVoucher(final int id) async {
+    await _api.delete('/inventory/salon/vouchers/$id');
+  }
+
+  /// {segments: [{segment, members, reachable}], campaigns: [...], max_per_message}.
+  Future<Map<String, dynamic>> campaigns() async => _data(await _api.get('/inventory/salon/campaigns'));
+
+  Future<void> sendCampaign({required final String segment, required final String message, final String? name}) async {
+    await _api.post('/inventory/salon/campaigns', <String, dynamic>{'segment': segment, 'message': message, if (name != null && name.isNotEmpty) 'name': name});
+  }
+
+  /// A report as a file: [type] sales / expenses / payroll / stylists / profit-loss / tax, [format] csv / pdf.
+  Future<Uint8List> exportReport(final String type, {required final String format, required final bool sw, required final DateTime from, required final DateTime to}) =>
+      _api.getFileBytes('/inventory/salon/export/$type?format=$format&lang=${sw ? 'sw' : 'en'}&from=${_day(from)}&to=${_day(to)}&month=${_day(to).substring(0, 7)}');
+
+  Future<List<Map<String, dynamic>>> _list(final String path) async {
+    final dynamic rows = (await _api.get(path))['data'];
+    return <Map<String, dynamic>>[
+      if (rows is List)
+        for (final dynamic r in rows)
+          if (r is Map) Map<String, dynamic>.from(r),
+    ];
+  }
+}

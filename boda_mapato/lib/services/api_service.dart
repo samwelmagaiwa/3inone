@@ -230,6 +230,24 @@ class ApiService {
     throw last404 ?? ApiException('Rasilimali haipatikani');
   }
 
+  /// Any file the server sends back (a CSV or PDF export), as bytes. A refusal throws the server's own words.
+  Future<Uint8List> getFileBytes(final String endpoint) async {
+    try {
+      final http.Response response = await http.get(Uri.parse("$baseUrl$endpoint"), headers: await _authHeaders).timeout(timeoutDuration);
+      if (response.statusCode == 200) return response.bodyBytes;
+      String message = "Server returned status ${response.statusCode}";
+      try {
+        final dynamic body = jsonDecode(response.body);
+        if (body is Map && body['message'] != null) message = '${body['message']}';
+      } on FormatException {
+        // not JSON: keep the status text
+      }
+      throw ApiException(message);
+    } on SocketException catch (e) {
+      throw ApiException(LocalizationService.instance.translateWith('no_network_connection', <Object?>[e.message]));
+    }
+  }
+
   // Fetch raw PDF bytes from API (application/pdf)
   Future<Uint8List> getPdf(
     final String endpoint, {
