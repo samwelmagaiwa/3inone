@@ -437,4 +437,50 @@ class SalonApi {
   Future<void> adjustLoyalty(final int customerId, {required final int points, required final String note}) async {
     await _api.post('/inventory/salon/clients/$customerId/loyalty/adjust', <String, dynamic>{'points': points, 'note': note});
   }
+
+  // ---------------------------------------------------------------- the owner's books, queue, setup
+
+  /// {places: {cash|mobile|bank: {opening, in, out, closing, days}}, total, moves}.
+  Future<Map<String, dynamic>> cashbook(final DateTime from, final DateTime to) async => _data(await _api.get('/inventory/salon/cashbook?from=${_day(from)}&to=${_day(to)}'));
+
+  /// [kind] opening / owner_deposit / owner_withdrawal; [method] cash / mobile / bank.
+  Future<void> addCashMove({required final String kind, required final String method, required final double amount, final String? note}) async {
+    await _api.post('/inventory/salon/cashbook/moves', <String, dynamic>{'kind': kind, 'method': method, 'amount': amount, if (note != null && note.isNotEmpty) 'note': note});
+  }
+
+  Future<void> deleteCashMove(final int id) async {
+    await _api.delete('/inventory/salon/cashbook/moves/$id');
+  }
+
+  /// Count what is really held; answers {expected, difference}.
+  Future<Map<String, dynamic>> countCash({required final String method, required final double counted, final String? note}) async =>
+      _data(await _api.post('/inventory/salon/cashbook/counts', <String, dynamic>{'method': method, 'counted': counted, if (note != null && note.isNotEmpty) 'note': note}));
+
+  Future<Map<String, dynamic>> analytics({final int months = 6}) async => _data(await _api.get('/inventory/salon/analytics?months=$months'));
+
+  /// {queue: [...], waiting, serving, done, left}.
+  Future<Map<String, dynamic>> queue() async => _data(await _api.get('/inventory/salon/queue'));
+
+  Future<void> addToQueue({required final String name, final String? phone, final int? productId, final String? staffId, final String? note}) async {
+    await _api.post('/inventory/salon/queue', <String, dynamic>{
+      'name': name,
+      if (phone != null && phone.isNotEmpty) 'phone': phone,
+      if (productId != null) 'product_id': productId,
+      if (staffId != null) 'staff_id': staffId,
+      if (note != null && note.isNotEmpty) 'note': note,
+    });
+  }
+
+  Future<void> setQueueStatus(final int id, final String status) async {
+    await _api.post('/inventory/salon/queue/$id/status', <String, dynamic>{'status': status});
+  }
+
+  Future<List<Map<String, dynamic>>> serviceMaterials(final int serviceId) => _list('/inventory/salon/services/$serviceId/materials');
+
+  Future<void> saveServiceMaterials(final int serviceId, final List<Map<String, dynamic>> items) async {
+    await _api.put('/inventory/salon/services/$serviceId/materials', <String, dynamic>{'items': items});
+  }
+
+  /// Add the standard salon categories that are not there yet; answers {added: [...], already}.
+  Future<Map<String, dynamic>> addCategoryPresets() async => _data(await _api.post('/inventory/salon/category-presets', <String, dynamic>{}));
 }

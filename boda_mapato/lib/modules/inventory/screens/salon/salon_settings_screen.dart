@@ -98,6 +98,18 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
     }
   }
 
+  Future<void> _presets() async {
+    final bool sw = context.read<LocalizationService>().isSwahili;
+    try {
+      final Map<String, dynamic> r = await _api.addCategoryPresets();
+      if (!mounted) return;
+      final int added = (r['added'] is List) ? (r['added'] as List).length : 0;
+      ThemeConstants.showSuccessSnackBar(context, added == 0 ? (sw ? 'Makundi yote yapo tayari.' : 'All the categories are already there.') : (sw ? 'Makundi $added yameongezwa.' : '$added categories added.'));
+    } on Exception catch (e) {
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
+    }
+  }
+
   Widget _switch(final String key, final String field, final String title, final String sub) => SwitchListTile(
         key: Key(key),
         value: _s[field] == true || _s[field] == 1,
@@ -168,6 +180,14 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                         },
                       ),
                     ),
+                  _head(sw ? 'Makundi ya huduma' : 'Service categories'),
+                  ListTile(
+                    key: const Key('set_presets'),
+                    leading: const Icon(Icons.category_outlined),
+                    title: Text(sw ? 'Weka makundi ya kawaida ya saluni' : 'Add the standard salon categories'),
+                    subtitle: Text(sw ? 'Nywele, kusuka, rangi, kucha, make-up, kope, ngozi, masaji, kinyozi… (yaliyopo hayarudiwi)' : 'Hair, braiding, colour, nails, makeup, lashes, skin, massage, barber… (existing ones are not repeated)'),
+                    onTap: _presets,
+                  ),
                   _head(sw ? 'Pointi za uaminifu' : 'Loyalty points'),
                   SwitchListTile(
                     key: const Key('set_loyalty'),

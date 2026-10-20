@@ -17,6 +17,7 @@ import '../../models/inv_product.dart';
 import '../../models/inv_product_unit.dart';
 import '../../providers/inventory_provider.dart';
 import '../inventory_home.dart';
+import '../salon/service_materials_screen.dart';
 import '../widgets/inventory_widgets.dart';
 import '../widgets/joined_sections.dart';
 import 'product_form_logic.dart';
@@ -763,6 +764,16 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         _twoCol(
           left: _input(sw ? 'Idadi ya ziara' : 'Number of visits', _packageSessions, keyboard: TextInputType.number, hint: 'e.g. 5', inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
           right: _input(sw ? 'Siku za matumizi (si lazima)' : 'Valid for days (optional)', _packageDays, keyboard: TextInputType.number, hint: 'e.g. 90', inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+        ),
+      ],
+      // The goods this service uses up (a saved service only: the goods belong to its id).
+      if (widget.product != null) ...<Widget>[
+        SizedBox(height: 8.h),
+        OutlinedButton.icon(
+          key: const ValueKey<String>('service_materials'),
+          icon: const Icon(Icons.inventory_2_outlined),
+          label: Text(sw ? 'Bidhaa zinazotumika kwenye huduma hii' : 'Goods this service uses up'),
+          onPressed: () => Navigator.push<bool>(context, MaterialPageRoute<bool>(builder: (_) => ServiceMaterialsScreen(serviceId: widget.product!.id, serviceName: widget.product!.name))),
         ),
       ],
     ];

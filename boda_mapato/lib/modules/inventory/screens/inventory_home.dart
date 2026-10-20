@@ -24,6 +24,9 @@ import 'hubs/salon_finance_hub_screen.dart';
 import 'salon/branches_screen.dart';
 import 'salon/equipment_screen.dart';
 import 'salon/feedback_screen.dart';
+import 'salon/insights_screen.dart';
+import 'salon/queue_screen.dart';
+import 'salon/salon_business_profile.dart';
 import 'salon/offers_screens.dart';
 import 'salon/salon_settings_screen.dart';
 import 'hubs/salon_team_hub_screen.dart';
@@ -225,6 +228,30 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       color: const Color(0xFF8B5CF6),
       pageBuilder: () => const SalonTeamHubScreen(),
       visible: (UserPermissions p) => p.has('inv_create_sales') || p.has('inv_view_reports'),
+    ),
+    _InvMenuEntry(
+      key: 'queue',
+      staticTitle: sw ? 'Wanaosubiri' : 'Walk-ins',
+      icon: Icons.groups_2_outlined,
+      color: const Color(0xFF22C55E),
+      pageBuilder: () => const _QueuePage(),
+      visible: (UserPermissions p) => p.has('inv_create_sales'),
+    ),
+    _InvMenuEntry(
+      key: 'insights',
+      staticTitle: sw ? 'Mwenendo' : 'Insights',
+      icon: Icons.insights_outlined,
+      color: const Color(0xFF6366F1),
+      pageBuilder: () => const InsightsScreen(),
+      visible: (UserPermissions p) => p.has('inv_view_reports'),
+    ),
+    _InvMenuEntry(
+      key: 'business',
+      staticTitle: sw ? 'Taarifa za biashara' : 'Business profile',
+      icon: Icons.storefront_outlined,
+      color: const Color(0xFF0EA5E9),
+      pageBuilder: () => const SalonBusinessProfilePage(),
+      visible: (UserPermissions p) => p.has('inv_manage_settings'),
     ),
     _InvMenuEntry(
       key: 'offers',
@@ -862,4 +889,15 @@ class _InventoryDrawer extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The walk-in queue as a page of its own (the screen itself is only a body).
+class _QueuePage extends StatelessWidget {
+  const _QueuePage();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: Text(context.watch<LocalizationService>().isSwahili ? 'Wanaosubiri' : 'Walk-ins')),
+        body: const QueueScreen(),
+      );
 }

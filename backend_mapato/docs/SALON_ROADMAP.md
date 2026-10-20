@@ -128,3 +128,13 @@ NOT built: category presets for services; walk-in queue; WhatsApp reminders; use
 per service); cashbook with opening/closing balance, owner deposits/withdrawals and reconciliation; retention/trend
 reports beyond the dashboard; fuller audit trail screen; business settings page for salon (logo/receipt wording is the
 shop's); SMS reply feedback (needs provider number); customer mobile app (web booking page exists); goods stock per branch.
+
+## Status 2026-10-21 (books, queue, materials)
+
+Built: cashbook (opening balance, owner put in / took out, counts with difference + alert; cash/mobile/bank), insights
+(monthly trend, new vs returning, 60-day retention, busiest days/hours, best services), walk-in queue with rough wait,
+ready-made service categories, goods a service uses up (stock out per sale, cost in profit and loss, restored on cancel),
+business profile reachable from the salon menu (the existing audit trail is under the salon "Settings").
+Backend 836 + Flutter 1083 green; migration 2026_11_03 rehearsed on MariaDB 10.11.
+Still NOT built: WhatsApp (excluded by the owner), SMS-reply feedback (needs provider number), customer mobile app,
+goods stock per branch, refunds not paid in cash are assumed cash in the cashbook.
