@@ -85,7 +85,7 @@ class SalonEquipmentController extends Controller
             'name' => "{$req}|string|min:2|max:120",
             'kind' => 'sometimes|nullable|string|max:40',
             'serial' => 'sometimes|nullable|string|max:80',
-            'bought_on' => 'sometimes|nullable|date_format:Y-m-d|before_or_equal:today',
+            'bought_on' => 'sometimes|nullable|date_format:Y-m-d|before_or_equal:' . \Carbon\Carbon::now(\App\Support\Salon\AppointmentPlanner::TIMEZONE)->toDateString(),
             'cost' => 'sometimes|nullable|numeric|min:0|max:1000000000',
             'status' => ['sometimes', Rule::in(['working', 'repair', 'retired'])],
             'next_service_on' => 'sometimes|nullable|date_format:Y-m-d',
@@ -172,7 +172,7 @@ class SalonEquipmentController extends Controller
         abort_if($equipment === null, 404, 'Equipment not found');
         $data = $request->validate([
             'kind' => ['required', Rule::in(['maintenance', 'repair'])],
-            'done_on' => 'nullable|date_format:Y-m-d|before_or_equal:today',
+            'done_on' => 'nullable|date_format:Y-m-d|before_or_equal:' . \Carbon\Carbon::now(\App\Support\Salon\AppointmentPlanner::TIMEZONE)->toDateString(),
             'cost' => 'nullable|numeric|min:0|max:1000000000',
             'description' => 'required|string|min:3|max:255',
             'next_service_on' => 'nullable|date_format:Y-m-d',

@@ -63,7 +63,7 @@ class SalonBooksController extends Controller
             'kind' => ['required', Rule::in(['opening', 'owner_deposit', 'owner_withdrawal'])],
             'method' => ['required', Rule::in(SalonBooks::BUCKETS)],
             'amount' => 'required|numeric|gt:0|max:1000000000',
-            'moved_on' => 'nullable|date_format:Y-m-d|before_or_equal:today',
+            'moved_on' => 'nullable|date_format:Y-m-d|before_or_equal:' . \Carbon\Carbon::now(\App\Support\Salon\AppointmentPlanner::TIMEZONE)->toDateString(),
             'note' => 'nullable|string|max:160',
         ]);
         $on = $data['moved_on'] ?? $this->today()->toDateString();
@@ -101,7 +101,7 @@ class SalonBooksController extends Controller
         $data = $request->validate([
             'method' => ['required', Rule::in(SalonBooks::BUCKETS)],
             'counted' => 'required|numeric|min:0|max:1000000000',
-            'counted_on' => 'nullable|date_format:Y-m-d|before_or_equal:today',
+            'counted_on' => 'nullable|date_format:Y-m-d|before_or_equal:' . \Carbon\Carbon::now(\App\Support\Salon\AppointmentPlanner::TIMEZONE)->toDateString(),
             'note' => 'nullable|string|max:160',
         ]);
         $on = $data['counted_on'] ?? $this->today()->toDateString();

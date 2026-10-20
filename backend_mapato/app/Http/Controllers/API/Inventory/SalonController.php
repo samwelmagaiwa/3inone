@@ -293,7 +293,7 @@ class SalonController extends Controller
         $data = $request->validate([
             'notes' => 'nullable|string|max:1000',
             'sms_opt_out' => 'sometimes|boolean',
-            'birthday' => 'sometimes|nullable|date|before_or_equal:today',
+            'birthday' => 'sometimes|nullable|date|before_or_equal:' . \Carbon\Carbon::now(\App\Support\Salon\AppointmentPlanner::TIMEZONE)->toDateString(),
             // What they like: {hairstyle, colour, nails, allergies}, each a short text.
             'preferences' => 'sometimes|nullable|array',
             'preferences.hairstyle' => 'nullable|string|max:160',

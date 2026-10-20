@@ -24,7 +24,7 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Inventory / Salon', description: 'Salon exports (PDF and CSV)')]
 class SalonExportController extends Controller
 {
-    public const TYPES = ['sales', 'expenses', 'payroll', 'stylists', 'profit-loss', 'tax'];
+    public const TYPES = ['sales', 'expenses', 'payroll', 'stylists', 'profit-loss', 'tax', 'cashbook'];
 
     /** A report longer than this is a mistake (or the whole history): ask for a shorter period. */
     private const MAX_ROWS = 20000;
@@ -56,6 +56,7 @@ class SalonExportController extends Controller
             'payroll' => $this->payroll($request, $month, $sw),
             'stylists' => $this->stylists($request, $sw),
             'profit-loss' => $this->profitLoss($from, $to, $sw),
+            'cashbook' => $this->cashbook($from, $to, $sw),
             default => $this->tax($from, $to, $sw),
         };
 
@@ -197,6 +198,27 @@ class SalonExportController extends Controller
         ];
 
         return [$sw ? 'Faida na hasara' : 'Profit and loss', $sw ? ['Maelezo', 'Kiasi (TSh)'] : ['Item', 'Amount (TSh)'], $rows, [$sw ? 'Faida halisi' : 'Net profit', $s['net_profit']]];
+    }
+
+    /** One line per place per day with money moving or counted: in, out, what should be held, and the count if one was made. */
+    private function cashbook(Carbon $from, Carbon $to, bool $sw): array
+    {
+        $book = \App\Support\Salon\SalonBooks::book($from->toDateString(), $to->toDateString());
+        $name = fn (string $p) => $p === 'cash' ? ($sw ? 'Taslimu' : 'Cash') : ($p === 'mobile' ? ($sw ? 'Simu' : 'Mobile money') : ($sw ? 'Benki' : 'Bank'));
+        $rows = [];
+        foreach ($book['places'] as $place => $data) {
+            $rows[] = [$from->toDateString(), $name($place), $sw ? 'Salio la kuanzia' : 'Opening balance', '', '', $data['opening'], '', ''];
+            foreach ($data['days'] as $d) {
+                $rows[] = [$d['date'], $name($place), '', $d['in'], $d['out'], $d['closing'], $d['count']['counted'] ?? '', $d['count']['difference'] ?? ''];
+            }
+        }
+
+        return [
+            $sw ? 'Kitabu cha pesa' : 'Cashbook',
+            $sw ? ['Tarehe', 'Mahali', 'Maelezo', 'Ndani', 'Nje', 'Inapaswa kuwepo', 'Iliyohesabiwa', 'Tofauti'] : ['Date', 'Place', 'Note', 'In', 'Out', 'Should be held', 'Counted', 'Difference'],
+            $rows,
+            [$sw ? 'Jumla inapaswa kuwepo' : 'Total that should be held', $book['total']['closing']],
+        ];
     }
 
     private function tax(Carbon $from, Carbon $to, bool $sw): array

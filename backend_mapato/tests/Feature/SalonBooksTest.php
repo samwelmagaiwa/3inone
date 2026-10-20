@@ -26,6 +26,12 @@ class SalonBooksTest extends TestCase
         return $owner;
     }
 
+    /** The salon's own clock (Dar es Salaam), which is a day ahead of the server late in the evening. */
+    private function eat(): \Carbon\Carbon
+    {
+        return \Carbon\Carbon::now('Africa/Dar_es_Salaam');
+    }
+
     private function stylist(User $owner): User
     {
         return $this->givenServices(User::factory()->create(['name' => 'Asha', 'role' => 'hair_stylist', 'is_active' => true, 'created_by' => $owner->id]), 'salon');
@@ -66,7 +72,7 @@ class SalonBooksTest extends TestCase
         $p = $this->service($owner);
         $this->sell($owner, $p, 10000, 'cash');
         $this->sell($owner, $p, 5000, 'mpesa');
-        $this->api($owner, 'POST', '/api/inventory/expenses', ['description' => 'Soap', 'category' => 'supplies', 'amount' => 2000, 'expense_date' => now()->toDateString(), 'payment_method' => 'cash'])->assertSuccessful();
+        $this->api($owner, 'POST', '/api/inventory/expenses', ['description' => 'Soap', 'category' => 'supplies', 'amount' => 2000, 'expense_date' => $this->eat()->toDateString(), 'payment_method' => 'cash'])->assertSuccessful();
         $this->api($owner, 'POST', '/api/inventory/salon/cashbook/moves', ['kind' => 'owner_deposit', 'method' => 'cash', 'amount' => 3000, 'note' => 'Float'])->assertCreated();
 
         $book = $this->api($owner, 'GET', '/api/inventory/salon/cashbook')->assertOk()->json('data');
@@ -81,7 +87,7 @@ class SalonBooksTest extends TestCase
     public function test_an_opening_balance_carries_into_the_period_and_a_withdrawal_cannot_exceed_the_book(): void
     {
         $owner = $this->salon();
-        $this->api($owner, 'POST', '/api/inventory/salon/cashbook/moves', ['kind' => 'opening', 'method' => 'cash', 'amount' => 50000, 'moved_on' => now()->subDays(40)->toDateString()])->assertCreated();
+        $this->api($owner, 'POST', '/api/inventory/salon/cashbook/moves', ['kind' => 'opening', 'method' => 'cash', 'amount' => 50000, 'moved_on' => $this->eat()->subDays(40)->toDateString()])->assertCreated();
 
         $book = $this->api($owner, 'GET', '/api/inventory/salon/cashbook')->assertOk()->json('data');
         $this->assertEquals(50000, $book['places']['cash']['opening']);
@@ -131,7 +137,7 @@ class SalonBooksTest extends TestCase
         $d = $this->api($owner, 'GET', '/api/inventory/salon/analytics?months=3')->assertOk()->json('data');
         $this->assertCount(3, $d['trend']);
         $now = end($d['trend']);
-        $this->assertSame(now()->format('Y-m'), $now['month']);
+        $this->assertSame($this->eat()->format('Y-m'), $now['month']);
         $this->assertSame(3, $now['visits']);
         $this->assertSame(2, $now['clients']);
         $this->assertSame(2, $now['new_clients']);
@@ -228,5 +234,64 @@ class SalonBooksTest extends TestCase
 
         $this->api($owner, 'PUT', "/api/inventory/salon/services/{$braids}/materials", ['items' => [['material_product_id' => $braids, 'quantity' => 1]]])->assertStatus(422);
         $this->api($this->stylist($owner), 'PUT', "/api/inventory/salon/services/{$braids}/materials", ['items' => []])->assertForbidden();
+    }
+
+    public function test_the_cashbook_can_be_exported_as_csv_and_pdf(): void
+    {
+        $owner = $this->salon();
+        $this->api($owner, 'POST', '/api/inventory/salon/cashbook/moves', ['kind' => 'opening', 'method' => 'cash', 'amount' => 11000, 'moved_on' => $this->eat()->subDays(2)->toDateString()])->assertCreated();
+        $this->api($owner, 'POST', '/api/inventory/salon/cashbook/counts', ['method' => 'cash', 'counted' => 10900, 'counted_on' => $this->eat()->toDateString()])->assertCreated();
+
+        $csv = $this->api($owner, 'GET', '/api/inventory/salon/export/cashbook?format=csv&from=' . $this->eat()->subDays(5)->toDateString() . '&to=' . $this->eat()->toDateString());
+        $csv->assertOk();
+        $body = (string) $csv->getContent();
+        $this->assertStringContainsString('Cashbook', $body);
+        $this->assertStringContainsString('Opening balance', $body);
+        $this->assertStringContainsString('10900', $body, 'the counted amount is in the file');
+        $this->assertStringContainsString('-100', $body, 'and the difference');
+        $this->assertStringContainsString('"Total that should be held",11000', $body);
+
+        $pdf = $this->api($owner, 'GET', '/api/inventory/salon/export/cashbook?format=pdf&lang=sw');
+        $pdf->assertOk();
+        $this->assertStringStartsWith('%PDF', (string) $pdf->getContent());
+
+        $this->api($this->stylist($owner), 'GET', '/api/inventory/salon/export/cashbook')->assertForbidden();
+    }
+
+    public function test_a_past_day_can_be_entered_and_counted_and_a_future_one_cannot(): void
+    {
+        $owner = $this->salon();
+        $three = $this->eat()->subDays(3)->toDateString();
+        $two = $this->eat()->subDays(2)->toDateString();
+        $this->api($owner, 'POST', '/api/inventory/salon/cashbook/moves', ['kind' => 'opening', 'method' => 'cash', 'amount' => 10000, 'moved_on' => $three])->assertCreated();
+        $this->api($owner, 'POST', '/api/inventory/salon/cashbook/moves', ['kind' => 'owner_withdrawal', 'method' => 'cash', 'amount' => 4000, 'moved_on' => $two])->assertCreated();
+
+        // As the book stood on that day (the later withdrawal does not exist yet): 10 000, so 12 000 cannot be taken out then.
+        $this->api($owner, 'POST', '/api/inventory/salon/cashbook/moves', ['kind' => 'owner_withdrawal', 'method' => 'cash', 'amount' => 12000, 'moved_on' => $three])->assertStatus(422);
+
+        $count = $this->api($owner, 'POST', '/api/inventory/salon/cashbook/counts', ['method' => 'cash', 'counted' => 6000, 'counted_on' => $two])->assertCreated();
+        $this->assertEquals(6000, $count->json('data.expected'));
+        $this->assertEquals(0, $count->json('data.difference'));
+
+        // Yesterday's count of the earlier day sees only what was entered up to then.
+        $early = $this->api($owner, 'POST', '/api/inventory/salon/cashbook/counts', ['method' => 'cash', 'counted' => 10000, 'counted_on' => $three])->assertCreated();
+        $this->assertEquals(10000, $early->json('data.expected'));
+
+        $this->api($owner, 'POST', '/api/inventory/salon/cashbook/moves', ['kind' => 'owner_deposit', 'method' => 'cash', 'amount' => 1, 'moved_on' => $this->eat()->addDay()->toDateString()])->assertStatus(422);
+        $this->api($owner, 'POST', '/api/inventory/salon/cashbook/counts', ['method' => 'cash', 'counted' => 1, 'counted_on' => $this->eat()->addDay()->toDateString()])->assertStatus(422);
+    }
+
+    public function test_today_is_the_default_view_and_a_single_day_range_works(): void
+    {
+        $owner = $this->salon();
+        $this->api($owner, 'POST', '/api/inventory/salon/cashbook/moves', ['kind' => 'owner_deposit', 'method' => 'bank', 'amount' => 7000])->assertCreated();
+        $today = $this->eat()->toDateString();
+        $day = $this->api($owner, 'GET', "/api/inventory/salon/cashbook?from={$today}&to={$today}")->assertOk()->json('data');
+        $this->assertSame($today, $day['from']);
+        $this->assertSame($today, $day['to']);
+        $this->assertEquals(7000, $day['places']['bank']['closing']);
+        $this->assertEquals(0, $day['places']['bank']['opening']);
+
+        $this->api($owner, 'GET', "/api/inventory/salon/cashbook?from={$today}&to=" . $this->eat()->subDay()->toDateString())->assertStatus(422);
     }
 }
