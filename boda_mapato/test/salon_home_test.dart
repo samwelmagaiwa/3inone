@@ -179,6 +179,13 @@ void main() {
       expect(kBusinessServices, <String>['inventory', 'rental', 'transport', 'salon']);
     });
 
+    test('a super admin picks from every service even if their saved list predates the salon; others from what they were given', () {
+      expect(pickableServices(bound: <String>['inventory', 'rental', 'transport'], role: 'super_admin', isSuperAdmin: true), contains('salon'));
+      expect(pickableServices(bound: <String>['inventory'], role: 'admin', isSuperAdmin: false), <String>['inventory']);
+      expect(pickableServices(bound: <String>[], role: 'sales_officer', isSuperAdmin: false), <String>['inventory']);
+      expect(pickableServices(bound: <String>[], role: 'admin', isSuperAdmin: false), isEmpty);
+    });
+
     testWidgets('Salon is a tile of its own, and opens the salon', (t) async {
       SharedPreferences.setMockInitialValues(<String, Object>{});
       String? opened;

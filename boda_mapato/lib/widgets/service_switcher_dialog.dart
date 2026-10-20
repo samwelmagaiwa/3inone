@@ -45,10 +45,11 @@ class ServiceSwitcherDialog extends StatelessWidget {
     // Compute which services this user may actually switch to —
     // same logic as the initial routing: explicit bindings take
     // priority, then role-based defaults.
-    final List<String> bound = user?.serviceTypes ?? [];
-    final List<String> allowed = bound.isNotEmpty
-        ? bound
-        : servicesForRole(user?.role ?? '');
+    final List<String> allowed = pickableServices(
+      bound: user?.serviceTypes ?? <String>[],
+      role: user?.role ?? '',
+      isSuperAdmin: user?.isSuperAdmin ?? false,
+    );
 
     return Dialog(
       backgroundColor: ThemeConstants.primaryBlue,
@@ -96,6 +97,12 @@ class ServiceSwitcherDialog extends StatelessWidget {
                       icon: Icons.local_shipping_rounded,
                       label: loc.translate('transport_service'),
                       onTap: () => _switchService(context, 'transport'),
+                    ),
+                  if (allowed.contains('salon'))
+                    _ServiceOption(
+                      icon: Icons.content_cut_rounded,
+                      label: loc.translate('salon_service'),
+                      onTap: () => _switchService(context, 'salon'),
                     ),
                 ],
               ),

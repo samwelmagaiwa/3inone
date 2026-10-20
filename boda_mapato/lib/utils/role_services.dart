@@ -1,3 +1,11 @@
+/// The services a person may PICK from (the service picker and the switcher): a super admin has every service, even
+/// one added after their account was made (their saved list is only what they had then); anyone else has what a
+/// super admin bound to them, else what their role implies.
+List<String> pickableServices({required final List<String> bound, required final String role, required final bool isSuperAdmin}) {
+  if (isSuperAdmin) return servicesForRole('super_admin');
+  return bound.isNotEmpty ? bound : servicesForRole(role);
+}
+
 /// Maps a user role to the list of services they are permitted to access.
 /// Used both for routing (when no explicit service bindings exist) and for
 /// the ServiceGuard widget that blocks cross-service navigation.

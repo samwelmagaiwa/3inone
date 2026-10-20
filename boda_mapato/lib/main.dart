@@ -798,7 +798,5 @@ List<String> _servicesForRole(String role) => servicesForRole(role);
 /// Single source of truth so "Select Service" always reflects who's
 /// actually logged in, instead of a route that forgets to look.
 List<String> _allowedServicesFor(UserData user) {
-  final List<String> bound = user.serviceTypes;
-  if (bound.isNotEmpty) return bound;
-  return _servicesForRole(user.role ?? '');
+  return pickableServices(bound: user.serviceTypes, role: user.role ?? '', isSuperAdmin: user.isSuperAdmin);
 }
