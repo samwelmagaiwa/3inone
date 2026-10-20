@@ -86,3 +86,16 @@ transactions behind the total; also expenses, estimated profit and cash not yet 
 Phase 1 money core (items 5, 6, 7, 10, 11, 13, 14 part, dashboard additions, finish 2 and 4) ->
 Phase 2 people and control (8, 12, 18 roles, 16 alerts) -> Phase 3 customers (3, 25, 26, packages, deposits) ->
 Phase 4 later (27, 23 exports, 21 multi-branch, 28/F customer app, 29, 24).
+
+## Status 2026-10-20 (end of backend work)
+
+Backend for ALL phases is built, tested (SQLite 826 green; migrations 2026_10_23 -> 2026_11_02 rehearsed on MariaDB 10.11:
+fresh, rollback 8, re-migrate) and committed, NOT released (user runs `./deploy.sh release`).
+
+Done on the backend: CRM extras (birthday, preferences, photos, segments, campaigns, birthday offer), loyalty points,
+vouchers, packages, deposits + cancel policy, feedback (SMS link, public page, complaints), equipment, PDF/CSV exports with
+VAT, online booking page (`/book/{slug}`), multi-branch (`X-Branch` header, `inventory_branches`, `branch_id` on sales,
+expenses, appointments, shifts, attendance, staff profiles; goods stock is NOT split by branch).
+
+Still to do: Flutter UI for phases 3-4 (client extras, campaigns, loyalty/vouchers/packages at POS, deposits, feedback list,
+equipment, export buttons, VAT card, online-booking settings, branch switcher sending `X-Branch`), new APK, release.
