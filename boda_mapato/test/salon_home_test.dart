@@ -72,7 +72,7 @@ class _Counting extends ApiService {
   }
 }
 
-Future<(_Counting, InventoryProvider)> _openHome(WidgetTester t, {required bool salon, bool sw = false}) async {
+Future<(_Counting, InventoryProvider)> _openHome(WidgetTester t, {required bool salon, bool sw = false, int initialIndex = 0, String role = 'admin'}) async {
   final void Function(FlutterErrorDetails)? original = FlutterError.onError;
   FlutterError.onError = (FlutterErrorDetails d) {
     if (d.exceptionAsString().contains('overflowed')) return;
@@ -93,13 +93,13 @@ Future<(_Counting, InventoryProvider)> _openHome(WidgetTester t, {required bool 
         ChangeNotifierProvider<InventoryProvider>.value(value: inv),
         ChangeNotifierProvider<DepotProvider>(create: (_) => DepotProvider(api: server)),
         ChangeNotifierProvider<NotificationsProvider>(create: (_) => NotificationsProvider(api: server)),
-        ChangeNotifierProvider<AuthProvider>(create: (_) => _Auth()),
+        ChangeNotifierProvider<AuthProvider>(create: (_) => _Auth(role: role)),
         ChangeNotifierProvider<LocalizationService>.value(value: LocalizationService.instance),
       ],
       child: ScreenUtilInit(
         designSize: const Size(411, 900),
         minTextAdapt: true,
-        builder: (_, __) => MaterialApp(home: InventoryHome(salon: salon)),
+        builder: (_, __) => MaterialApp(home: InventoryHome(salon: salon, initialIndex: initialIndex)),
       ),
     ),
   );
@@ -150,6 +150,15 @@ void main() {
       await _openHome(t, salon: false);
 
       expect(find.text('Inventory Dashboard'), findsOneWidget);
+    });
+
+    testWidgets('a person who can see fewer sections than the page they were on does not crash it', (t) async {
+      // the page asked for is far past the end of what a viewer sees: it opens the last one instead of failing
+      await _openHome(t, salon: true, initialIndex: 40, role: 'viewer');
+
+      expect(t.takeException(), isNull);
+      expect(find.byType(InventoryHome), findsOneWidget);
+      expect(find.byType(InventoryFooter), findsOneWidget);
     });
 
     testWidgets('in Swahili the sections are Swahili', (t) async {

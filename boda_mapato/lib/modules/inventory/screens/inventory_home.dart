@@ -264,9 +264,11 @@ class InventoryHome extends StatefulWidget {
     }
     final LocalizationService loc = LocalizationService.instance;
     final UserPermissions perms = context.read<AuthProvider>().permissions;
-    final int? page = _pageForSlot(slot, _invEntries(loc).where((_InvMenuEntry e) => e.isVisible(perms)).toList());
+    // The home to bring back is the same kind as the one this screen was opened from (a salon's, or inventory's).
+    final bool salon = context.read<InventoryProvider>().salonMode;
+    final int? page = _pageForSlot(slot, _invEntries(loc, salon: salon).where((_InvMenuEntry e) => e.isVisible(perms)).toList());
     navigator.pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => InventoryHome(initialIndex: page ?? 0)),
+      MaterialPageRoute<void>(builder: (_) => InventoryHome(initialIndex: page ?? 0, salon: salon)),
     );
   }
 
@@ -488,6 +490,10 @@ class _InventoryHomeState extends State<InventoryHome> {
     final int settingsIndex = visible.indexWhere((e) => e.key == 'settings');
 
     final int productsIndex = visible.indexWhere((e) => e.key == 'products_hub');
+
+    // The sections a person sees can be fewer than when this page was last chosen (another account, fewer
+    // permissions): never point past the end of the list.
+    if (_index >= visible.length) _index = visible.isEmpty ? 0 : visible.length - 1;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
