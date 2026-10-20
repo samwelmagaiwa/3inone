@@ -498,4 +498,13 @@ class SalonApi {
       'quantity': quantity,
     });
   }
+
+  /// Say when a branch is told a product is running low ([minQuantity] null = no alert).
+  Future<void> setBranchLevel({required final int productId, required final int branchId, final int? minQuantity}) async {
+    await _api.put('/inventory/salon/branch-stock/level', <String, dynamic>{'product_id': productId, 'branch_id': branchId, 'min_quantity': minQuantity});
+  }
+
+  /// Goods moved between the main store and branches, newest first.
+  Future<List<Map<String, dynamic>>> branchTransfers({final int? productId, final int? branchId}) =>
+      _list('/inventory/salon/branch-stock/transfers?limit=100${productId == null ? '' : '&product_id=$productId'}${branchId == null ? '' : '&branch_id=$branchId'}');
 }

@@ -150,3 +150,10 @@ and prices and the bookings made from that phone; booking itself needs a connect
 Backend 844 + Flutter 1089 green; migrations through 2026_11_04 rehearsed on MariaDB 10.11.
 Still NOT built: WhatsApp (excluded), SMS-reply feedback (provider number), a native customer app in the app stores (the
 installable page is what clients get), reorder alerts per branch, branch transfers history.
+
+## Status 2026-10-21 (branch stock extras, full verification)
+
+Built: history of moves between the main store and branches; a running-low level per product per branch with one alert when
+a shelf drops to it (sale or move), a warning mark in the app. Migration 2026_11_05 (rehearsed on MariaDB).
+Verified: backend 850 tests (SQLite); every salon test + the tenancy guards (279) also pass on MariaDB 10.11; Flutter 1092.
+Still NOT built: WhatsApp (excluded), SMS-reply feedback (provider number), native customer app in the stores.
