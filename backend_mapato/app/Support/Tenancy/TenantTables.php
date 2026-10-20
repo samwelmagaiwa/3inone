@@ -40,6 +40,8 @@ final class TenantTables
         'inventory_dispatch_lines',
         'inventory_dispatches',
         'inventory_expenses',
+        'inventory_feedback',
+        'inventory_feedback_requests',
         'inventory_goods_receipt_lines',
         'inventory_goods_receipts',
         'inventory_loyalty_ledger',

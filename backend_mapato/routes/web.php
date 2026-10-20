@@ -21,6 +21,16 @@ Route::get('/', function () {
     \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
 ]);
 
+// The page a client opens from the text a salon sends after a visit: rate it, leave a comment or a complaint. It needs
+// no sign-in and no session; the secret is in the link.
+Route::get('/f/{token}', [\App\Http\Controllers\API\Inventory\SalonFeedbackController::class, 'page'])
+    ->middleware('throttle:60,1')
+    ->withoutMiddleware([
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+    ]);
+
 // Admin Dashboard Routes
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');

@@ -484,7 +484,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             return response()->json(['message' => $v->errors()->first()], 422);
         }
 
-        return DB::transaction(function () use ($request, $id) {
+        $response = DB::transaction(function () use ($request, $id) {
             $sale = DB::table('inventory_sales')->lockForUpdate()->find($id);
             if (!$sale) {
                 return response()->json(['message' => 'Sale not found'], 404);
@@ -554,6 +554,13 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 ],
             ]);
         });
+
+        // A debt paid off completes the visit: a salon asks the client how it went.
+        if ($response->getStatusCode() === 200 && ($response->getData(true)['data']['payment_status'] ?? '') === 'paid') {
+            \App\Support\Salon\SalonFeedback::afterPaid((int) $id);
+        }
+
+        return $response;
     }
 
     /**
@@ -929,7 +936,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             $units[$index] = $unit;
         }
 
-        return DB::transaction(function () use ($request, $units, $perksPlan) {
+        $response = DB::transaction(function () use ($request, $units, $perksPlan) {
             // Never sell more than is in stock. Checked first, for the whole cart and under a row lock, so
             // the same product on two lines (or two tills at once) cannot slip past, and nothing is written
             // when it is short.
@@ -1217,6 +1224,13 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 ],
             ], 201);
         });
+
+        // A salon asks a client how the visit went, once the sale is made and paid (after it is safely saved).
+        if ($response->getStatusCode() === 201 && (string) $request->payment_status === 'paid') {
+            \App\Support\Salon\SalonFeedback::afterPaid((int) ($response->getData(true)['data']['id'] ?? 0));
+        }
+
+        return $response;
     }
 
     /**

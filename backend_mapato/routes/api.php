@@ -45,6 +45,7 @@ use App\Http\Controllers\API\Inventory\CustomerController as InventoryCustomerCo
 use App\Http\Controllers\API\Inventory\AppointmentController;
 use App\Http\Controllers\API\Inventory\SalonClientController;
 use App\Http\Controllers\API\Inventory\SalonController;
+use App\Http\Controllers\API\Inventory\SalonFeedbackController;
 use App\Http\Controllers\API\Inventory\SalonMoneyController;
 use App\Http\Controllers\API\Inventory\SalonPerksController;
 use App\Http\Controllers\API\Inventory\SalonStaffController;
@@ -118,6 +119,13 @@ Route::middleware(['auth:sanctum', 'role:admin', 'service:transport'])->prefix('
 // ACCOUNT MANAGEMENT -- staff of the caller's own business. Not tied to one service:
 // an owner may create staff for whichever services they were given (the controller
 // checks that), so these are deliberately outside the service: gates below.
+// A client's answer to "how was your visit": opened from a link in a text, so nobody is signed in. The secret is the
+// token in the link (one use, a few days); every call is throttled.
+Route::prefix('public/salon')->middleware('throttle:30,1')->group(function () {
+    Route::get('feedback/{token}', [SalonFeedbackController::class, 'show']);
+    Route::post('feedback/{token}', [SalonFeedbackController::class, 'answer']);
+});
+
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
     // Users management
     Route::prefix('users')->group(function () {
@@ -417,6 +425,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('inventory/salon/clients/{id}/photos', [SalonClientController::class, 'storePhoto']);
         Route::delete('inventory/salon/photos/{id}',       [SalonClientController::class, 'destroyPhoto']);
         Route::get('inventory/salon/campaigns',            [SalonClientController::class, 'campaigns']);
+        Route::get('inventory/salon/feedback',             [SalonFeedbackController::class, 'index']);
+        Route::post('inventory/salon/feedback',            [SalonFeedbackController::class, 'store']);
+        Route::post('inventory/salon/feedback/{id}/resolve', [SalonFeedbackController::class, 'resolve']);
         Route::post('inventory/salon/campaigns',           [SalonClientController::class, 'sendCampaign']);
         Route::get('inventory/salon/rebook/due',           [SalonController::class, 'rebookDue']);
         // The diary: whoever may sell may look at it and book.

@@ -339,6 +339,7 @@ class SalonController extends Controller
             'daily_summary' => 'sometimes|boolean',
             'birthday_offer' => 'sometimes|boolean',
             'cancel_hours' => 'sometimes|integer|min:0|max:168',
+            'feedback_sms' => 'sometimes|boolean',
             'birthday_text' => 'sometimes|nullable|string|max:160',
         ]);
 
@@ -347,6 +348,10 @@ class SalonController extends Controller
                 array_key_exists('birthday_offer', $data) ? (bool) $data['birthday_offer'] : null,
                 array_key_exists('birthday_text', $data) ? (string) ($data['birthday_text'] ?? '') : null,
             );
+        }
+
+        if (array_key_exists('feedback_sms', $data)) {
+            \App\Support\Salon\SalonFeedback::save((bool) $data['feedback_sms']);
         }
 
         if (array_key_exists('cancel_hours', $data)) {
@@ -389,6 +394,7 @@ class SalonController extends Controller
             'appointment_reminders' => AppointmentPlanner::remindersOn(),
             'daily_summary' => \App\Support\Salon\DailySummary::isOn(),
             'cancel_hours' => AppointmentPlanner::cancelHours(),
+            'feedback_sms' => \App\Support\Salon\SalonFeedback::isOn(),
             'birthday_offer' => \App\Support\Salon\BirthdayOffer::isOn(),
             'birthday_text' => \App\Support\Salon\BirthdayOffer::text(),
             'max_weeks' => RebookPlanner::MAX_WEEKS,
