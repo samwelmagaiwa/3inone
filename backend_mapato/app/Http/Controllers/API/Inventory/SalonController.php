@@ -69,6 +69,9 @@ class SalonController extends Controller
             $query->where('si.staff_id', (string) $viewer->id);
         }
 
+        // (A server that has not run the migration yet has no commission to add up.)
+        $commission = \Illuminate\Support\Facades\Schema::hasColumn('inventory_sale_items', 'commission_amount') ? 'si.commission_amount' : '0';
+
         $rows = $query
             ->groupBy('si.staff_id')
             ->selectRaw(
@@ -76,6 +79,7 @@ class SalonController extends Controller
                  MAX(si.staff_name) as staff_name,
                  SUM(COALESCE(si.unit_qty, si.quantity)) as services,
                  COALESCE(SUM(si.total), 0) as revenue,
+                 COALESCE(SUM(' . $commission . '), 0) as commission,
                  COUNT(DISTINCT s.id) as visits,
                  COUNT(DISTINCT s.customer_id) as clients'
             )
@@ -86,6 +90,7 @@ class SalonController extends Controller
                 'name' => $r->staff_name,
                 'services' => (int) $r->services,
                 'revenue' => (float) $r->revenue == floor((float) $r->revenue) ? (int) $r->revenue : (float) $r->revenue,
+                'commission' => (float) $r->commission == floor((float) $r->commission) ? (int) $r->commission : (float) $r->commission,
                 'visits' => (int) $r->visits,
                 'clients' => (int) $r->clients,
             ])
@@ -97,6 +102,7 @@ class SalonController extends Controller
             'totals' => [
                 'services' => $rows->sum('services'),
                 'revenue' => $rows->sum('revenue'),
+                'commission' => $rows->sum('commission'),
                 'visits' => $rows->sum('visits'),
             ],
             'stylists' => $rows,

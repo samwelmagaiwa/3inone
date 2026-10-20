@@ -600,6 +600,7 @@ class InventoryProvider extends ChangeNotifier {
     bool isService = false,
     int? durationMinutes,
     int? rebookAfterWeeks,
+    double? commissionPercent,
   }) async {
     _lastError = null;
     try {
@@ -616,6 +617,7 @@ class InventoryProvider extends ChangeNotifier {
         if (isService) 'is_service': true,
         if (durationMinutes != null) 'duration_minutes': durationMinutes,
         if (rebookAfterWeeks != null) 'rebook_after_weeks': rebookAfterWeeks,
+        if (commissionPercent != null) 'commission_percent': commissionPercent,
         'category': category,
         if (categoryId != null) 'category_id': categoryId,
         if (brandId != null) 'brand_id': brandId,
@@ -708,6 +710,7 @@ class InventoryProvider extends ChangeNotifier {
     bool? isService,
     int? durationMinutes,
     int? rebookAfterWeeks,
+    double? commissionPercent,
   }) async {
     _lastError = null;
     try {
@@ -723,6 +726,7 @@ class InventoryProvider extends ChangeNotifier {
         if (isService != null) 'is_service': isService,
         if (isService == true) 'duration_minutes': durationMinutes,
         if (isService == true) 'rebook_after_weeks': rebookAfterWeeks,
+        if (isService == true) 'commission_percent': commissionPercent,
         if (categoryId != null) 'category_id': categoryId,
         if (brandId != null) 'brand_id': brandId,
         'cost_price': costPrice,
@@ -2130,6 +2134,7 @@ InvProduct _fromProductJson(Map<String, dynamic> j) => InvProduct(
       isService: j['is_service'] == true || j['is_service'] == 1 || j['is_service'] == '1',
       durationMinutes: j['duration_minutes'] == null ? null : int.tryParse(j['duration_minutes'].toString()),
       rebookAfterWeeks: j['rebook_after_weeks'] == null ? null : int.tryParse(j['rebook_after_weeks'].toString()),
+      commissionPercent: j['commission_percent'] == null ? null : double.tryParse(j['commission_percent'].toString()),
     );
 
 InvCustomer _fromCustomerJson(Map<String, dynamic> j) => InvCustomer(

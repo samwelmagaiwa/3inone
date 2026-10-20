@@ -48,6 +48,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   bool _isService = false;
   final TextEditingController _duration = TextEditingController();
   final TextEditingController _rebook = TextEditingController();
+  final TextEditingController _commission = TextEditingController();
 
   String _unit = 'crate';
   // How many of `_unit` the cost/selling price below cover, e.g. "5" for "per 5 KG".
@@ -109,6 +110,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final InvCapabilities caps = context.read<InventoryProvider>().capabilities;
     if (p == null) {
       _generateSku();
+      // A new thing in a salon is a service far more often than goods.
+      _isService = context.read<InventoryProvider>().salonMode;
       // A depot starts on crates; everyone else on single pieces.
       if (!caps.isDepot) {
         _unit = 'pcs';
@@ -138,6 +141,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       _isService = p.isService;
       _duration.text = p.durationMinutes?.toString() ?? '';
       _rebook.text = p.rebookAfterWeeks?.toString() ?? '';
+      _commission.text = p.commissionPercent == null ? '' : _plainNumber(p.commissionPercent!);
     }
     _name.addListener(_onNameChanged);
     _sku.addListener(_onSkuChanged);
@@ -254,6 +258,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _variantLabel.dispose();
     _duration.dispose();
     _rebook.dispose();
+    _commission.dispose();
     for (final UnitDraft d in _unitDrafts) {
       d.dispose();
     }
@@ -275,15 +280,21 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final bool sw = loc.isSwahili;
     final bool creating = widget.product == null;
     final bool salon = context.watch<InventoryProvider>().salonMode;
+    // A salon's service is a name, a price, a time and a rate: none of the shelf's paperwork (SKU, barcode, packs, VAT).
+    final bool salonService = salon && _isService;
     if (creating && !_unitTouched && !caps.isDepot && _unit == 'crate') {
       _unit = 'pcs'; // the settings arrived after the page opened
     }
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: ThemeConstants.buildAppBar(
-        widget.product == null
-            ? loc.translate('add_product')
-            : loc.translate('edit_product'),
+        salon
+            ? (sw
+                ? '${widget.product == null ? 'Ongeza' : 'Hariri'} ${_isService ? 'huduma' : 'bidhaa'}'
+                : '${widget.product == null ? 'Add' : 'Edit'} ${_isService ? 'service' : 'goods'}')
+            : widget.product == null
+                ? loc.translate('add_product')
+                : loc.translate('edit_product'),
         actions: [
           TextButton.icon(
             onPressed: _saving ? null : _onSave,
@@ -414,8 +425,11 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       _section(
                         id: 'details',
                         icon: Icons.inventory_2_outlined,
-                        title: sw ? 'Taarifa za bidhaa' : 'Product details',
+                        title: salonService ? (sw ? 'Taarifa za huduma' : 'Service details') : (sw ? 'Taarifa za bidhaa' : 'Product details'),
                         children: [
+                          if (salonService)
+                            _input(loc.translate('name'), _name, hint: sw ? 'mf. Kusuka rasta (ndefu)' : 'e.g. Braids (long)')
+                          else
                           _twoCol(
                             left: _input(loc.translate('name'), _name,
                                 hint: 'e.g. Coca-Cola 350ml'),
@@ -430,10 +444,11 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                                 )),
                           ),
                           SizedBox(height: 10.h),
-                          _sectionTitle(loc.translate('product_description')),
+                          _sectionTitle(salonService ? (sw ? 'Maelezo (si lazima)' : 'Notes (optional)') : loc.translate('product_description')),
                           _boxField(_description,
-                              hint:
-                                  'e.g. Cold carbonated soft drink in 350ml glass bottles.'),
+                              hint: salonService
+                                  ? (sw ? 'mf. Inajumuisha kuosha na mafuta.' : 'e.g. Includes a wash and oil.')
+                                  : 'e.g. Cold carbonated soft drink in 350ml glass bottles.'),
                           // A salon sells services too; nobody else is asked about them.
                           if (salon || _isService) ..._serviceFields(sw),
                         ],
@@ -497,6 +512,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         ],
                       ),
                       // ---- everything beyond the basics: other ways to sell it, sizes / colours, VAT ----
+                      if (!salonService) ...[
                       _sectionDivider('extras'),
                       _section(
                         id: 'extras',
@@ -505,6 +521,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         title: caps.isDepot ? null : (sw ? 'Mengineyo (si lazima)' : 'Extra options (optional)'),
                         children: _extras(loc, caps),
                       ),
+                      ],
                       if (_saveError != null)
                         Padding(
                           padding: EdgeInsets.fromLTRB(10.w, 10.h, 10.w, 0),
@@ -517,10 +534,11 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       _section(
                         id: 'barcode',
                         icon: Icons.qr_code_2_rounded,
-                        title: sw ? 'Barcode na hali' : 'Barcode & status',
+                        title: salonService ? (sw ? 'Hali' : 'Status') : (sw ? 'Barcode na hali' : 'Barcode & status'),
                         children: [
                           // Each size / colour carries its own barcode; the status still applies to all of them.
-                          if (creating && _hasVariants) ...[
+                          // (A service has no barcode to print.)
+                          if ((creating && _hasVariants) || salonService) ...[
                             _switchRow(loc.translate('status'), _active, (v) => setState(() => _active = v)),
                           ] else ...[
                           _twoCol(
@@ -664,6 +682,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
             right: _input(sw ? 'Mkumbushe baada ya (wiki)' : 'Remind after (weeks)', _rebook,
                 keyboard: TextInputType.number, hint: 'e.g. 6', inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
           ),
+          SizedBox(height: 8.h),
+          _input(sw ? 'Kamisheni ya mhudumu (%)' : 'Stylist commission (%)', _commission,
+              keyboard: const TextInputType.numberWithOptions(decimal: true), hint: 'e.g. 30'),
           Padding(
             padding: EdgeInsets.only(top: 6.h, left: 2.w),
             child: Text(
@@ -1265,7 +1286,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     // A service: how long it takes and when to bring the client back must be sensible numbers (or empty).
     final int? duration = int.tryParse(_duration.text.trim());
     final int? rebookWeeks = int.tryParse(_rebook.text.trim());
+    final double? commission = double.tryParse(_commission.text.trim().replaceAll(',', '.'));
     if (_isService) {
+      if (commission != null && (commission < 0 || commission > 100)) {
+        setState(() => _saveError = sw ? 'Kamisheni iwe kati ya 0 na 100.' : 'The commission must be between 0 and 100 percent.');
+        return;
+      }
       if (duration != null && (duration < 1 || duration > 1440)) {
         setState(() => _saveError = sw ? 'Muda uwe kati ya dakika 1 na 1440.' : 'The duration must be between 1 and 1440 minutes.');
         return;
@@ -1368,6 +1394,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         isService: _isService,
         durationMinutes: duration,
         rebookAfterWeeks: rebookWeeks,
+        commissionPercent: _isService ? commission : null,
       );
       if (ok) {
         await _saveOtherPrices(inv, existing, caps, req);
@@ -1400,6 +1427,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         isService: _isService,
         durationMinutes: _isService ? duration : null,
         rebookAfterWeeks: _isService ? rebookWeeks : null,
+        commissionPercent: _isService ? commission : null,
       );
     }
 

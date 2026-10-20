@@ -147,6 +147,14 @@ class _StylistsScreenState extends State<StylistsScreen> {
           Expanded(child: InvStatTile(label: sw ? 'Ziara' : 'Visits', value: '${report.visits}', icon: Icons.people_alt_outlined)),
         ],
       ),
+      if (report.commission > 0) ...<Widget>[
+        SizedBox(height: 8.h),
+        InvStatTile(
+            label: sw ? 'Kamisheni ya wahudumu' : 'Stylists\' commission',
+            value: tsh(report.commission),
+            icon: Icons.percent_rounded,
+            accent: ThemeConstants.warningAmber),
+      ],
       SizedBox(height: 12.h),
       if (report.stylists.isEmpty)
         InvEmptyState(
@@ -213,6 +221,7 @@ class _StylistCard extends StatelessWidget {
             sw ? 'Huduma' : 'Services': '${row.services}',
             sw ? 'Ziara' : 'Visits': '${row.visits}',
             sw ? 'Wateja' : 'Clients': '${row.clients}',
+            if (row.commission > 0) sw ? 'Kamisheni' : 'Commission': tsh(row.commission),
           }),
         ],
       ),

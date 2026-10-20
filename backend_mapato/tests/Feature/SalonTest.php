@@ -438,7 +438,41 @@ class SalonTest extends TestCase
         $this->assertSame(['services' => 1, 'revenue' => 40000, 'visits' => 1, 'clients' => 1], collect($byName['Bahati'])->only(['services', 'revenue', 'visits', 'clients'])->all(), 'the cancelled sale and the shampoo do not count');
         $this->assertSame(['services' => 1, 'revenue' => 5000, 'visits' => 1, 'clients' => 0], collect($byName['(nobody)'])->only(['services', 'revenue', 'visits', 'clients'])->all(), 'a walk-in with no stylist named is still shown');
         $this->assertSame('Asha', $data['stylists'][0]['name'], 'best first');
-        $this->assertSame(['services' => 5, 'revenue' => 95000, 'visits' => 4], $data['totals']);
+        $this->assertSame(['services' => 5, 'revenue' => 95000, 'commission' => 0, 'visits' => 4], $data['totals'], 'no rate set: no commission');
+    }
+
+    public function test_a_stylist_earns_the_service_rate_fixed_when_it_was_sold(): void
+    {
+        $owner = $this->salon();
+        $asha = $this->stylist($owner, 'Asha');
+        $braids = $this->service($owner, 'Braids', 40000, ['commission_percent' => 30]);
+        $wash = $this->service($owner, 'Wash', 5000);
+        $shampoo = $this->goods($owner, 'Shampoo', 10, 8000);
+        $a = (string) $asha->id;
+
+        $this->at('2026-10-05 10:00:00');
+        $this->sell($owner, [[$braids, 1, 40000, $a], [$wash, 1, 5000, $a], [$shampoo, 1, 8000, $a]])->assertCreated();
+        // The rate changes afterwards: what was already earned stays.
+        $this->api($owner, 'PUT', "/api/inventory/products/{$braids}", ['commission_percent' => 50])->assertOk();
+        $this->sell($owner, [[$braids, 1, 40000, $a]])->assertCreated();
+        // A sale with nobody named earns nobody anything.
+        $this->sell($owner, [[$braids, 1, 40000]])->assertCreated();
+        $this->at('2026-10-07 09:00:00');
+
+        $data = $this->api($owner, 'GET', '/api/inventory/salon/stylists')->assertOk()->json('data');
+        $row = collect($data['stylists'])->firstWhere('name', 'Asha');
+
+        $this->assertSame(12000 + 20000, $row['commission'], '30% of the first braids, then 50% of the second; wash and goods none');
+        $this->assertSame(32000, $data['totals']['commission']);
+        $this->assertEquals(50, $this->rows($owner, fn () => DB::table('inventory_products')->where('id', $braids)->value('commission_percent')), 'the new rate is kept');
+        $listed = collect($this->api($owner, 'GET', '/api/inventory/products')->assertOk()->json('data'))->firstWhere('id', $braids);
+        $this->assertEquals(50, $listed['commission_percent'], 'and the app can read it back');
+        $this->api($owner, 'POST', '/api/inventory/products', [
+            'name' => 'Gel', 'quantity' => 1, 'min_stock' => 0, 'status' => 'active', 'cost_price' => 1, 'selling_price' => 5, 'commission_percent' => 20,
+        ])->assertCreated()->assertJsonPath('data.commission_percent', null);
+        $this->api($owner, 'POST', '/api/inventory/products', [
+            'name' => 'Odd', 'is_service' => true, 'quantity' => 0, 'min_stock' => 0, 'status' => 'active', 'cost_price' => 0, 'selling_price' => 5, 'commission_percent' => 101,
+        ])->assertStatus(422);
     }
 
     public function test_the_stylist_report_follows_the_period_asked_for(): void

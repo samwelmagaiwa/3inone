@@ -26,6 +26,7 @@ class InvProduct {
     this.isService = false,
     this.durationMinutes,
     this.rebookAfterWeeks,
+    this.commissionPercent,
   });
 
   final int id;
@@ -69,6 +70,9 @@ class InvProduct {
 
   /// After how many weeks the client is reminded to come back for this service (null = the salon's own number).
   int? rebookAfterWeeks;
+
+  /// Salon: the percent of a service's price the stylist who did it earns (null = none).
+  double? commissionPercent;
 
   bool get isVariant => variantLabel != null && variantLabel!.isNotEmpty;
   bool get isWeighed => measure == 'weight' || measure == 'volume';

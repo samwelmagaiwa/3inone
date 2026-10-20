@@ -140,9 +140,19 @@ Future<void> _save(WidgetTester t) async {
   await t.pump(const Duration(seconds: 4));
 }
 
+/// A new item in a salon opens as a service; these make sure of the one a test wants.
 Future<void> _serviceOn(WidgetTester t) async {
-  await t.tap(_switchLabelled('This is a service (no stock)'));
-  await t.pump();
+  if (!t.widget<Switch>(_switchLabelled('This is a service (no stock)')).value) {
+    await t.tap(_switchLabelled('This is a service (no stock)'));
+    await t.pump();
+  }
+}
+
+Future<void> _goodsOn(WidgetTester t) async {
+  if (t.widget<Switch>(_switchLabelled('This is a service (no stock)')).value) {
+    await t.tap(_switchLabelled('This is a service (no stock)'));
+    await t.pump();
+  }
 }
 
 void main() {
@@ -153,18 +163,39 @@ void main() {
       expect(find.text('This is a service (no stock)'), findsNothing);
     });
 
-    testWidgets('a salon is asked, and it starts off: a new item is goods until it says otherwise', (t) async {
+    testWidgets('a salon is asked, and it starts on: a new item is a service until it says otherwise', (t) async {
       await _open(t);
 
       expect(find.text('This is a service (no stock)'), findsOneWidget);
-      expect(t.widget<Switch>(_switchLabelled('This is a service (no stock)')).value, isFalse);
-      expect(_hint('e.g. 100'), findsOneWidget, reason: 'the stock count is there for goods');
+      expect(t.widget<Switch>(_switchLabelled('This is a service (no stock)')).value, isTrue);
+      expect(_hint('e.g. 100'), findsNothing, reason: 'no stock count for a service');
+      expect(find.text('Add service'), findsOneWidget);
+    });
+
+    testWidgets('the service form in a salon has no shelf paperwork: no SKU, barcode, packs, sizes or VAT', (t) async {
+      await _open(t);
+
+      expect(find.text('Service details'), findsOneWidget);
+      expect(find.text('SKU Code'), findsNothing);
+      expect(find.text('Barcode & status'), findsNothing);
+      expect(find.text('Extra options (optional)'), findsNothing);
+      expect(find.text('Does this product have its own VAT rate?'), findsNothing);
+      expect(find.text('Status'), findsWidgets, reason: 'a service can still be switched off');
+      expect(find.text('Stylist commission (%)'), findsOneWidget);
+    });
+
+    testWidgets('switched to goods, the form is the goods form again, with its title', (t) async {
+      await _open(t);
+      await _goodsOn(t);
+
+      expect(find.text('Add goods'), findsOneWidget);
+      expect(find.text('Product details'), findsOneWidget);
+      expect(find.text('Barcode & status'), findsOneWidget);
+      expect(find.text('Stylist commission (%)'), findsNothing);
     });
 
     testWidgets('in Swahili the switch and its fields are Swahili', (t) async {
       await _open(t, sw: true);
-      await t.tap(_switchLabelled('Hii ni huduma (haina stock)'));
-      await t.pump();
 
       expect(find.text('Muda (dakika)'), findsOneWidget);
       expect(find.text('Mkumbushe baada ya (wiki)'), findsOneWidget);
@@ -175,6 +206,7 @@ void main() {
   group('a service has no stock', () {
     testWidgets('switching it on removes cost, stock, alert level, packs and sizes, and asks for the price, time and wait', (t) async {
       await _open(t);
+      await _goodsOn(t);
       expect(_hint('e.g. 20,000'), findsOneWidget, reason: 'cost price, for goods');
       expect(_hint('e.g. 24'), findsOneWidget, reason: 'stock alert level, for goods');
 
@@ -192,7 +224,6 @@ void main() {
 
     testWidgets('switching it off brings the stock fields back', (t) async {
       await _open(t);
-      await _serviceOn(t);
       await t.tap(_switchLabelled('This is a service (no stock)'));
       await t.pump();
 
@@ -204,7 +235,7 @@ void main() {
   group('adding a service', () {
     testWidgets('sends it as a service, with its time and wait, and nothing about stock', (t) async {
       await _open(t);
-      await t.enterText(_hint('e.g. Coca-Cola 350ml'), 'Braids');
+      await t.enterText(_hint('e.g. Braids (long)'), 'Braids');
       await _serviceOn(t);
       await t.enterText(_hint('e.g. 15,000'), '40000');
       await t.enterText(_hint('e.g. 120'), '180');
@@ -225,9 +256,38 @@ void main() {
       expect(body.containsKey('variants'), isFalse);
     });
 
+    testWidgets('the commission of the stylist is sent with the service, and left out when empty', (t) async {
+      await _open(t);
+      await t.enterText(_hint('e.g. Braids (long)'), 'Braids');
+      await t.enterText(_hint('e.g. 15,000'), '40000');
+      await t.enterText(_hint('e.g. 30'), '30');
+      await _save(t);
+      final Map<String, dynamic> withRate = _api.posts.firstWhere(((String, Map<String, dynamic>) p) => p.$1 == '/inventory/products').$2;
+      expect(withRate['commission_percent'], 30.0);
+    });
+
+    testWidgets('no commission typed sends none', (t) async {
+      await _open(t);
+      await t.enterText(_hint('e.g. Braids (long)'), 'Wash');
+      await t.enterText(_hint('e.g. 15,000'), '5000');
+      await _save(t);
+      final Map<String, dynamic> body = _api.posts.firstWhere(((String, Map<String, dynamic>) p) => p.$1 == '/inventory/products').$2;
+      expect(body.containsKey('commission_percent'), isFalse);
+    });
+
+    testWidgets('a commission above 100 is refused with a reason', (t) async {
+      await _open(t);
+      await t.enterText(_hint('e.g. Braids (long)'), 'Braids');
+      await t.enterText(_hint('e.g. 15,000'), '40000');
+      await t.enterText(_hint('e.g. 30'), '150');
+      await _save(t);
+      expect(find.text('The commission must be between 0 and 100 percent.'), findsOneWidget);
+      expect(_api.posts.where(((String, Map<String, dynamic>) p) => p.$1 == '/inventory/products'), isEmpty);
+    });
+
     testWidgets('the time and the wait are optional', (t) async {
       await _open(t);
-      await t.enterText(_hint('e.g. Coca-Cola 350ml'), 'Wash');
+      await t.enterText(_hint('e.g. Braids (long)'), 'Wash');
       await _serviceOn(t);
       await t.enterText(_hint('e.g. 15,000'), '5000');
       await _save(t);
@@ -240,6 +300,7 @@ void main() {
 
     testWidgets('goods added in a salon are not marked as services', (t) async {
       await _open(t);
+      await _goodsOn(t);
       await t.enterText(_hint('e.g. Coca-Cola 350ml'), 'Shampoo');
       await t.enterText(_hint('e.g. 20,000'), '3000');
       await t.enterText(_hint('e.g. 25,000'), '8000');
@@ -260,7 +321,7 @@ void main() {
     ]) {
       testWidgets('$field is refused with a reason, and nothing is sent', (t) async {
         await _open(t);
-        await t.enterText(_hint('e.g. Coca-Cola 350ml'), 'Braids');
+        await t.enterText(_hint('e.g. Braids (long)'), 'Braids');
         await _serviceOn(t);
         await t.enterText(_hint('e.g. 15,000'), '40000');
         await t.enterText(_hint(hint), typed);

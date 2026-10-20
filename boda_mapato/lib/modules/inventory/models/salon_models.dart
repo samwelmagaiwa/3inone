@@ -19,13 +19,14 @@ List<Map<String, dynamic>> _rows(final dynamic v) =>
 // ------------------------------------------------------------------ how each stylist did
 
 class StylistRow {
-  const StylistRow({required this.staffId, required this.name, required this.services, required this.revenue, required this.visits, required this.clients});
+  const StylistRow({required this.staffId, required this.name, required this.services, required this.revenue, required this.visits, required this.clients, this.commission = 0});
 
   factory StylistRow.fromJson(final Map<String, dynamic> j) => StylistRow(
         staffId: j['staff_id'] == null ? null : _text(j['staff_id']),
         name: _text(j['name']),
         services: _int(j['services']),
         revenue: _num(j['revenue']),
+        commission: _num(j['commission']),
         visits: _int(j['visits']),
         clients: _int(j['clients']),
       );
@@ -35,6 +36,9 @@ class StylistRow {
   final String name;
   final int services;
   final double revenue;
+
+  /// What this stylist earned in commission on those services (0 when no service has a rate).
+  final double commission;
   final int visits;
   final int clients;
 
@@ -42,7 +46,7 @@ class StylistRow {
 }
 
 class StylistReport {
-  const StylistReport({required this.from, required this.to, required this.stylists, required this.services, required this.revenue, required this.visits});
+  const StylistReport({required this.from, required this.to, required this.stylists, required this.services, required this.revenue, required this.visits, this.commission = 0});
 
   factory StylistReport.fromJson(final Map<String, dynamic> j) {
     final Map<String, dynamic> totals = j['totals'] is Map ? Map<String, dynamic>.from(j['totals'] as Map) : <String, dynamic>{};
@@ -52,6 +56,7 @@ class StylistReport {
       stylists: _rows(j['stylists']).map(StylistRow.fromJson).toList(),
       services: _int(totals['services']),
       revenue: _num(totals['revenue']),
+      commission: _num(totals['commission']),
       visits: _int(totals['visits']),
     );
   }
@@ -61,6 +66,7 @@ class StylistReport {
   final List<StylistRow> stylists;
   final int services;
   final double revenue;
+  final double commission;
   final int visits;
 }
 

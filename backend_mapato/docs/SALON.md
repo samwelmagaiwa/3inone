@@ -60,3 +60,11 @@ category name, settings key, ...) are per business AND service. Settings are see
 retail-type book. The rebooking reminder command works inside the salon service. A super admin in salon mode sees all
 salons. The migration `2026_10_22_000100_separate_salon_from_shop_data` is re-runnable; its `down()` refuses while salon
 rows exist.
+
+## Service form and stylist commission (2026-10-23)
+
+In a salon a new item opens as a SERVICE: name, notes, price, duration, come-back weeks and the stylist's commission
+percent (`inventory_products.commission_percent`). No SKU, barcode, packs, sizes or VAT. When a service line is sold with
+a stylist named, the commission AMOUNT is fixed on the line (`inventory_sale_items.commission_amount`), so changing the
+rate later never rewrites earnings. `GET /inventory/salon/stylists` returns `commission` per stylist and in `totals`.
+Migration `2026_10_23_000100_add_service_commission`; the code tolerates it not having run yet.

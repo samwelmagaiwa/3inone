@@ -1030,6 +1030,11 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'is_service' => $isService,
                     'staff_id' => $item['staff_id'] ?? null,
                     'staff_name' => isset($item['staff_id']) ? ($staffNames[$item['staff_id']] ?? null) : null,
+                    // What the stylist earns on this line, fixed now: a later change of the rate does not rewrite it.
+                    ...(\Illuminate\Support\Facades\Schema::hasColumn('inventory_sale_items', 'commission_amount')
+                        ? ['commission_amount' => $isService && (float) ($product->commission_percent ?? 0) > 0 && !empty($item['staff_id'])
+                            ? round($lineTotal * (float) $product->commission_percent / 100, 2) : null]
+                        : []),
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);

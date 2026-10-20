@@ -78,6 +78,22 @@ void main() {
     expect(t.getTopLeft(_key('stylist_u-bahati')).dy, lessThan(t.getTopLeft(_key('stylist_none')).dy));
   });
 
+  testWidgets('shows what each stylist earned in commission, and says nothing when no service has a rate', (t) async {
+    const StylistRow earns = StylistRow(staffId: 'u-asha', name: 'Asha', services: 2, revenue: 50000, visits: 2, clients: 1, commission: 15000);
+    await _open(t, _FakeSalon((_, __) async => StylistReport(from: DateTime(2026, 10), to: DateTime(2026, 10, 15), stylists: <StylistRow>[earns, _bahati], services: 3, revenue: 90000, visits: 3, commission: 15000)));
+
+    expect(find.text('TSH 15,000'), findsNWidgets(2), reason: 'the total, and Ashas card');
+    expect(find.descendant(of: _key('stylist_u-asha'), matching: find.text('Commission')), findsOneWidget);
+    expect(find.descendant(of: _key('stylist_u-bahati'), matching: find.text('Commission')), findsNothing);
+  });
+
+  testWidgets('no commission anywhere shows no commission line', (t) async {
+    await _open(t, _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha])));
+
+    expect(find.text('Commission'), findsNothing);
+    expect(find.text("Stylists' commission"), findsNothing);
+  });
+
   testWidgets('says services, visits and clients for each stylist', (t) async {
     await _open(t, _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha])));
 

@@ -267,6 +267,8 @@ class ProductController extends Controller
             'is_service' => 'sometimes|boolean',
             'duration_minutes' => 'nullable|integer|min:1|max:1440',
             'rebook_after_weeks' => 'nullable|integer|min:1|max:52',
+            // Salon: the share (percent) of a service's price the stylist who did it earns.
+            'commission_percent' => 'nullable|numeric|min:0|max:100',
             // The product's own unit's price at the OTHER level: `selling_price` is stored at the product's
             // price_tier (retail or wholesale); this is the same unit's price at the one that is left.
             'other_price' => 'nullable|numeric|min:0',
@@ -344,6 +346,9 @@ class ProductController extends Controller
             'is_service' => !empty($p['is_service']),
             'duration_minutes' => $p['duration_minutes'] ?? null,
             'rebook_after_weeks' => $p['rebook_after_weeks'] ?? null,
+            ...(\Illuminate\Support\Facades\Schema::hasColumn('inventory_products', 'commission_percent')
+                ? ['commission_percent' => !empty($p['is_service']) ? ($p['commission_percent'] ?? null) : null]
+                : []),
             'tax_percent' => $p['tax_percent'] ?? null,
             'variant_label' => $p['variant_label'] ?? null,
             'measure' => $measure,
@@ -496,6 +501,7 @@ class ProductController extends Controller
             'is_service' => (bool) ($source->is_service ?? false),
             'duration_minutes' => $source->duration_minutes ?? null,
             'rebook_after_weeks' => $source->rebook_after_weeks ?? null,
+            'commission_percent' => isset($source->commission_percent) ? (float) $source->commission_percent : null,
             'units' => $this->unitsOf($id),
         ];
 
@@ -644,6 +650,8 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'is_service' => 'sometimes|boolean',
             'duration_minutes' => 'nullable|integer|min:1|max:1440',
             'rebook_after_weeks' => 'nullable|integer|min:1|max:52',
+            // Salon: the share (percent) of a service's price the stylist who did it earns.
+            'commission_percent' => 'nullable|numeric|min:0|max:100',
         ]);
 
         // Goods and services are told apart on every old sale line, so an item that has been sold cannot change
