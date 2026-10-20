@@ -43,7 +43,10 @@ class SendRebookReminders extends Command
                 continue;
             }
 
+            // The salon's own books: its clients, its sales (never the shop's).
+            // (a plain closure, not an arrow function: the counters must be shared, not copied)
             TenantContext::runAs($owner, function () use ($business, $today, $dry, &$sent, &$found, &$salons) {
+                TenantContext::runInService('salon', function () use ($business, $today, $dry, &$sent, &$found, &$salons) {
                 if (!RebookPlanner::settings()['enabled']) {
                     return;
                 }
@@ -93,6 +96,7 @@ class SendRebookReminders extends Command
                     }
                     $sent++;
                 }
+                });
             });
         }
 

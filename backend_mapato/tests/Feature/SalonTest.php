@@ -60,12 +60,13 @@ class SalonTest extends TestCase
         $token = $as->createToken('test')->plainTextToken;
         $this->app['auth']->forgetGuards();
 
-        return $this->withHeader('Authorization', "Bearer {$token}")->json($method, $uri, $body);
+        // the salon's screens say so with this header; everything here is the salon's books
+        return $this->withHeader('Authorization', "Bearer {$token}")->withHeader('X-Service', 'salon')->json($method, $uri, $body);
     }
 
     private function rows(User $as, callable $fn)
     {
-        return TenantContext::runAs($as, $fn);
+        return TenantContext::runAs($as, fn () => TenantContext::runInService('salon', $fn));
     }
 
     private function service(User $as, string $name, int $price, array $extra = []): int

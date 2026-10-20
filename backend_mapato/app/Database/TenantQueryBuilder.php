@@ -81,12 +81,19 @@ class TenantQueryBuilder extends Builder
             return $values;
         }
 
+        // Which service's books the row goes in (nothing is added until the tables have the column).
+        $service = TenantTables::splitByService() ? TenantContext::service() : null;
+
         $restricted = TenantContext::readOwner() !== null;
         $isBatch = is_array(reset($values));
         $rows = $isBatch ? $values : [$values];
 
         foreach ($rows as $i => $row) {
             $given = $row[TenantTables::OWNER_COLUMN] ?? null;
+
+            if ($service !== null && !isset($row[TenantTables::SERVICE_COLUMN])) {
+                $rows[$i][TenantTables::SERVICE_COLUMN] = $service;
+            }
 
             if ($given === null) {
                 $rows[$i][TenantTables::OWNER_COLUMN] = $owner;

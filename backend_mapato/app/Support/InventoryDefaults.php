@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Business;
 use App\Models\User;
 use App\Support\Tenancy\TenantContext;
+use App\Support\Tenancy\TenantTables;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -26,12 +27,18 @@ final class InventoryDefaults
      * record crates owed). Only adds what is missing, so calling it again -- or for
      * the existing depot -- changes nothing.
      */
-    public static function seedFor(User $owner): void
+    public static function seedFor(User $owner, string $service = 'inventory'): void
+    {
+        TenantContext::runAs($owner, fn () => TenantContext::runInService($service, fn () => self::seedHere($service, $owner)));
+    }
+
+    /** [seedFor] for the service the context is already working in. */
+    private static function seedHere(string $service, User $owner): void
     {
         // A new depot's receipts say who it really is, not the platform's placeholder.
         $defaults = self::defaultsFor($owner);
 
-        TenantContext::runAs($owner, function () use ($defaults) {
+        (function () use ($defaults, $service) {
             foreach ($defaults as $key => $value) {
                 if (!DB::table('inventory_settings')->where('key', $key)->exists()) {
                     DB::table('inventory_settings')->insert([
@@ -42,7 +49,8 @@ final class InventoryDefaults
                 }
             }
 
-            foreach (self::CRATE_TYPES as $name => $deposit) {
+            // A salon has no returnable crates.
+            foreach ($service === 'salon' ? [] : self::CRATE_TYPES as $name => $deposit) {
                 if (!DB::table('inventory_crate_types')->where('name', $name)->exists()) {
                     DB::table('inventory_crate_types')->insert([
                         'name' => $name,
@@ -53,7 +61,7 @@ final class InventoryDefaults
                     ]);
                 }
             }
-        });
+        })();
     }
 
     /**
@@ -70,7 +78,8 @@ final class InventoryDefaults
             return self::SETTINGS;
         }
 
-        $fromBusiness = self::presetFor($business->inventory_type);
+        // The salon's books are a retail business's, whatever kind the shop beside them is.
+        $fromBusiness = self::presetFor(TenantContext::service() === 'salon' ? 'retail' : $business->inventory_type);
         foreach (self::BUSINESS_FIELDS as $key => $field) {
             $value = trim((string) $business->{$field});
             if ($value !== '') {
@@ -144,7 +153,8 @@ final class InventoryDefaults
             return;
         }
 
-        TenantContext::runAs($owner, function () use ($business, $before) {
+        foreach (TenantTables::SERVICES as $service) {
+        TenantContext::runAs($owner, fn () => TenantContext::runInService($service, function () use ($business, $before) {
             foreach (self::BUSINESS_FIELDS as $key => $field) {
                 $current = DB::table('inventory_settings')->where('key', $key)->value('value');
                 if ($current === null) {
@@ -159,7 +169,8 @@ final class InventoryDefaults
                     DB::table('inventory_settings')->where('key', $key)->update(['value' => $new, 'updated_at' => now()]);
                 }
             }
-        });
+        }));
+        }
     }
 
     /**

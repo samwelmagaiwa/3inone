@@ -30,6 +30,12 @@ final class TenantContext
 
     private static ?User $defaultBusiness = null;
 
+    /** The service chosen on purpose (a scheduled job, a test); null = read it from the request. */
+    private static ?string $service = null;
+
+    /** @var array<string, string> viewer id => the service they were let into for this request */
+    private static array $resolved = [];
+
     /** The user whose account every scoped query is limited to. */
     public static function viewer(): ?User
     {
@@ -66,6 +72,56 @@ final class TenantContext
         self::$acting = null;
         self::$unscoped = false;
         self::$defaultBusiness = null;
+        self::$service = null;
+        self::$resolved = [];
+    }
+
+    /**
+     * Which service's books this request works in: 'salon' when the app says so (the `X-Service: salon` header,
+     * sent only from the salon's screens) AND the person really has the salon; otherwise 'inventory', which is what
+     * every request meant before the salon existed. Null when nobody is signed in or nothing is scoped (migrations,
+     * maintenance), so those still see every row.
+     */
+    public static function service(): ?string
+    {
+        $viewer = self::viewer();
+        if ($viewer === null) {
+            return null;
+        }
+
+        if (self::$service !== null) {
+            return self::$service;
+        }
+
+        $asked = app()->bound('request') ? (string) request()->header('X-Service', '') : '';
+        if ($asked !== 'salon') {
+            return 'inventory';
+        }
+
+        return self::$resolved[(string) $viewer->id] ??= $viewer->canUseService('salon') ? 'salon' : 'inventory';
+    }
+
+    /**
+     * Run $callback in one service's books (a scheduled job texting salon clients), whatever the request says.
+     *
+     * @template T
+     * @param  Closure(): T  $callback
+     * @return T
+     */
+    public static function runInService(string $service, Closure $callback): mixed
+    {
+        if (!in_array($service, TenantTables::SERVICES, true)) {
+            throw new LogicException('Unknown service.');
+        }
+
+        $previous = self::$service;
+        self::$service = $service;
+
+        try {
+            return $callback();
+        } finally {
+            self::$service = $previous;
+        }
     }
 
     /**

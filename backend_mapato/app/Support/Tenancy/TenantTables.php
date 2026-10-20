@@ -75,6 +75,53 @@ final class TenantTables
     /** The column that holds the owning business (the account head's user id). */
     public const OWNER_COLUMN = 'owner_id';
 
+    /**
+     * The column that says which SERVICE a row belongs to: 'inventory' (the shop or depot) or 'salon'. A business
+     * that has both runs two separate sets of books on the same tables: the salon's sales, clients, goods,
+     * settings and cash are never mixed with the shop's.
+     */
+    public const SERVICE_COLUMN = 'service';
+
+    /** The services the inventory tables are split by. */
+    public const SERVICES = ['inventory', 'salon'];
+
+    private static ?bool $splitByService = null;
+
+    private static int $splitCheckedAt = 0;
+
+    /**
+     * Do the tables have the service column yet? Asked again at most every 30 seconds, so the moments between a new
+     * release starting and its migration finishing do not break every inventory query (the code is ready before the
+     * column is), and a running server notices the column without being restarted.
+     */
+    public static function splitByService(): bool
+    {
+        $now = time();
+        if (self::$splitByService === null || $now - self::$splitCheckedAt >= 30) {
+            try {
+                self::$splitByService = \Illuminate\Support\Facades\Schema::hasColumn('inventory_products', self::SERVICE_COLUMN);
+            } catch (\Throwable) {
+                self::$splitByService = false;
+            }
+            self::$splitCheckedAt = $now;
+        }
+
+        return self::$splitByService;
+    }
+
+    /** Forget what was learnt about the column (a test that has just migrated). */
+    public static function forgetSplit(): void
+    {
+        self::$splitByService = null;
+    }
+
+    /** Fix the answer for a test that compiles SQL without a database (so it reads the same on every engine). */
+    public static function pretendSplit(bool $split): void
+    {
+        self::$splitByService = $split;
+        self::$splitCheckedAt = PHP_INT_MAX;
+    }
+
     /** @var array<string, true>|null */
     private static ?array $lookup = null;
 

@@ -6,6 +6,7 @@ use App\Database\MySqlConnection57;
 use App\Database\TenantSQLiteConnection;
 use App\Models\User;
 use App\Support\Tenancy\TenantContext;
+use App\Support\Tenancy\TenantTables;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -31,9 +32,17 @@ class TenantQueryScopeTest extends TestCase
     {
         parent::setUp();
 
+        // These pin the SQL of one business's scope; the service split has its own tests (SalonSeparationTest).
+        TenantTables::pretendSplit(false);
         $this->ownerId = (string) Str::uuid();
         $this->business = (new User())->forceFill(['id' => $this->ownerId, 'role' => 'admin']);
         $this->superAdmin = (new User())->forceFill(['id' => (string) Str::uuid(), 'role' => 'super_admin']);
+    }
+
+    protected function tearDown(): void
+    {
+        TenantTables::forgetSplit();
+        parent::tearDown();
     }
 
     /** @return array<string, array{0: Connection, 1: string}> connection and its identifier quote */

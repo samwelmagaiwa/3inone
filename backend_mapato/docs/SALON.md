@@ -49,3 +49,14 @@ Off until the owner switches it on (`GET|PUT /inventory/salon/settings`: `rebook
 `./deploy.sh release` runs the migration `2026_10_21_000100_add_salon_service` (backs up first). It turns
 `user_services.service_type` into a plain string (the allowed names live in `config/tenancy.php`), adds the columns above and the
 reminders table. It is safe to repeat. Rehearsed on MariaDB 10.11: fresh, rollback and migrate again.
+
+## Salon data is kept apart from the shop's (2026-10-22)
+
+A business with both a shop and a salon has two separate sets of books on the same inventory tables. Every
+`inventory_*` table has a `service` column (`inventory` or `salon`; existing rows are `inventory`, so the shop is
+unchanged). The app sends `X-Service: salon` from the salon's screens only (honoured only if the user may use the
+salon); the query scope then limits every statement to that service and stamps new rows with it. Unique keys (SKU,
+category name, settings key, ...) are per business AND service. Settings are seeded per service; the salon is always a
+retail-type book. The rebooking reminder command works inside the salon service. A super admin in salon mode sees all
+salons. The migration `2026_10_22_000100_separate_salon_from_shop_data` is re-runnable; its `down()` refuses while salon
+rows exist.

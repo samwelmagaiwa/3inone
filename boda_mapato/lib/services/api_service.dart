@@ -35,11 +35,16 @@ class ApiService {
         "Accept": "application/json",
       };
 
+  /// Which service the screens in front of the person belong to: 'salon' while the salon is open, else null (the shop).
+  /// Sent with every request so the server keeps the salon's books apart from the shop's.
+  static String? activeService;
+
   Future<Map<String, String>> get _authHeaders async {
     final String? token = await _getStoredToken();
     return <String, String>{
       ..._headers,
       if (token != null) "Authorization": "Bearer $token",
+      if (activeService != null) "X-Service": activeService!,
     };
   }
 
@@ -311,7 +316,7 @@ class ApiService {
   static final Map<String, Future<http.Response>> _inFlight = <String, Future<http.Response>>{};
 
   Future<http.Response> _sharedGet(final Uri uri, final Map<String, String> headers) {
-    final String key = '${headers["Authorization"] ?? ""} $uri';
+    final String key = '${headers["Authorization"] ?? ""} ${headers["X-Service"] ?? ""} $uri';
     final Future<http.Response>? running = _inFlight[key];
     if (running != null) return running;
 

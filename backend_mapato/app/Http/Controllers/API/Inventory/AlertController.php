@@ -349,7 +349,8 @@ class AlertController extends Controller
                 DB::table('inventory_settings')->pluck('value', 'key')->all(),
                 // What kind of business this is (retail, wholesale, mixed, depot). Read from the business,
                 // never stored with the settings; an unset one is a depot.
-                ['inventory_type' => \App\Models\Business::forUser($viewer)?->inventory_type ?: 'depot'],
+                // (A salon's books are always a retail business's.)
+                ['inventory_type' => \App\Support\Tenancy\TenantContext::service() === 'salon' ? 'retail' : (\App\Models\Business::forUser($viewer)?->inventory_type ?: 'depot')],
             ),
         ]);
     }

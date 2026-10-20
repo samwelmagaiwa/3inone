@@ -40,7 +40,10 @@ trait ScopesTenantTables
         return $sql === '' ? 'where ' . $constraint : 'where (' . substr($sql, 6) . ') and ' . $constraint;
     }
 
-    /** `alias.owner_id = '<uuid>'` for a scoped table and a restricted viewer, else null. */
+    /**
+     * `alias.owner_id = '<uuid>'` for a scoped table and a restricted viewer, and `alias.service = '<service>'` for
+     * everyone signed in (a super admin sees every business, but one service's books at a time), else null.
+     */
     protected function tenantConstraint(Builder $query): ?string
     {
         $table = TenantTables::resolve($query instanceof JoinClause ? $query->table : $query->from);
@@ -48,11 +51,18 @@ trait ScopesTenantTables
             return null;
         }
 
+        $parts = [];
         $owner = TenantContext::readOwner();
-        if ($owner === null) {
-            return null;
+        if ($owner !== null) {
+            $parts[] = $this->wrap($table[1] . '.' . TenantTables::OWNER_COLUMN) . " = '" . $owner . "'";
         }
 
-        return $this->wrap($table[1] . '.' . TenantTables::OWNER_COLUMN) . " = '" . $owner . "'";
+        // The service is one of two fixed words, never user text, so it is spliced in like the owner id.
+        $service = TenantTables::splitByService() ? TenantContext::service() : null;
+        if ($service !== null && in_array($service, TenantTables::SERVICES, true)) {
+            $parts[] = $this->wrap($table[1] . '.' . TenantTables::SERVICE_COLUMN) . " = '" . $service . "'";
+        }
+
+        return $parts === [] ? null : implode(' and ', $parts);
     }
 }

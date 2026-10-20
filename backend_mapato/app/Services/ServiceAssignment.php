@@ -60,7 +60,10 @@ class ServiceAssignment
                 }
             }
 
-            InventoryDefaults::seedFor($user);
+            // Each service that holds the engine has its own settings: a shop's, a salon's.
+            foreach (array_intersect(['inventory', 'salon'], $held) as $service) {
+                InventoryDefaults::seedFor($user, $service);
+            }
         }
     }
 }
