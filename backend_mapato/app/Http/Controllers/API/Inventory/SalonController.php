@@ -268,6 +268,7 @@ class SalonController extends Controller
             'stats' => [
                 // A client is "new" until they have come twice.
                 'is_returning' => $serviceVisits->count() >= 2,
+                'loyalty_points' => \App\Support\Salon\SalonPerks::active() && \App\Support\Salon\SalonPerks::settings()['on'] ? \App\Support\Salon\SalonPerks::balance($id) : null,
                 'first_visit_on' => $firstVisit,
                 'visits' => $serviceVisits->count(),
                 'total_spent' => (float) $sales->sum('total'),
@@ -337,6 +338,7 @@ class SalonController extends Controller
             'appointment_reminders' => 'sometimes|boolean',
             'daily_summary' => 'sometimes|boolean',
             'birthday_offer' => 'sometimes|boolean',
+            'cancel_hours' => 'sometimes|integer|min:0|max:168',
             'birthday_text' => 'sometimes|nullable|string|max:160',
         ]);
 
@@ -345,6 +347,10 @@ class SalonController extends Controller
                 array_key_exists('birthday_offer', $data) ? (bool) $data['birthday_offer'] : null,
                 array_key_exists('birthday_text', $data) ? (string) ($data['birthday_text'] ?? '') : null,
             );
+        }
+
+        if (array_key_exists('cancel_hours', $data)) {
+            AppointmentPlanner::saveCancelHours((int) $data['cancel_hours']);
         }
 
         if (array_key_exists('daily_summary', $data)) {
@@ -382,6 +388,7 @@ class SalonController extends Controller
             'rebook_weeks' => $s['weeks'],
             'appointment_reminders' => AppointmentPlanner::remindersOn(),
             'daily_summary' => \App\Support\Salon\DailySummary::isOn(),
+            'cancel_hours' => AppointmentPlanner::cancelHours(),
             'birthday_offer' => \App\Support\Salon\BirthdayOffer::isOn(),
             'birthday_text' => \App\Support\Salon\BirthdayOffer::text(),
             'max_weeks' => RebookPlanner::MAX_WEEKS,

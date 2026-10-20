@@ -32,6 +32,7 @@ final class TenantTables
         'inventory_cash_expenses',
         'inventory_cash_sessions',
         'inventory_categories',
+        'inventory_client_packages',
         'inventory_client_photos',
         'inventory_crate_movements',
         'inventory_crate_types',
@@ -41,6 +42,7 @@ final class TenantTables
         'inventory_expenses',
         'inventory_goods_receipt_lines',
         'inventory_goods_receipts',
+        'inventory_loyalty_ledger',
         'inventory_notifications',
         'inventory_parked_sales',
         'inventory_payment_allocations',
@@ -68,6 +70,7 @@ final class TenantTables
         'inventory_supplier_invoices',
         'inventory_supplier_payments',
         'inventory_suppliers',
+        'inventory_vouchers',
         'inventory_write_offs',
     ];
 

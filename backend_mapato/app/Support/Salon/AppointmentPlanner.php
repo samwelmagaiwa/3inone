@@ -31,9 +31,22 @@ final class AppointmentPlanner
 
     private const KEY_REMINDERS = 'salon_appointment_reminders';
 
+    private const KEY_CANCEL_HOURS = 'salon_cancel_hours';
+
     public static function remindersOn(): bool
     {
         return DB::table('inventory_settings')->where('key', self::KEY_REMINDERS)->value('value') === '1';
+    }
+
+    /** How many hours before an appointment a client must cancel to get their deposit back (0 = always given back). */
+    public static function cancelHours(): int
+    {
+        return max(0, min(168, (int) (DB::table('inventory_settings')->where('key', self::KEY_CANCEL_HOURS)->value('value') ?? 0)));
+    }
+
+    public static function saveCancelHours(int $hours): void
+    {
+        DB::table('inventory_settings')->updateOrInsert(['key' => self::KEY_CANCEL_HOURS], ['value' => (string) max(0, min(168, $hours)), 'updated_at' => now()]);
     }
 
     public static function saveReminders(bool $on): void

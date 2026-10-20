@@ -522,6 +522,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'updated_at'     => now(),
             ]);
 
+            if ($newStatus === 'paid') {
+                \App\Support\Salon\SalonPerks::onPaid((int) $id, optional($request->user())->id === null ? null : (string) $request->user()->id);
+            }
+
             // Close the reminder when fully settled
             if ($newStatus === 'paid') {
                 DB::table('inventory_reminders')
@@ -620,6 +624,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'cancellation_reason' => $data['reason'],
                 'updated_at'          => now(),
             ]);
+
+            // A salon's points, voucher, package sessions and packages go back as they were.
+            \App\Support\Salon\SalonPerks::onCancel($sale, optional($request->user())->id === null ? null : (string) $request->user()->id);
 
             // Close any open reminders for this sale
             DB::table('inventory_reminders')
@@ -892,6 +899,14 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             return response()->json(['message' => 'Customer required for debt/partial'], 422);
         }
 
+        // A salon's vouchers, loyalty points and packages are checked before anything is written.
+        $perksPlan = \App\Support\Salon\SalonPerks::check($request);
+        if ($perksPlan['voucher'] !== null && trim((string) $request->discount_reason) === '') {
+            $request->merge(['discount_reason' => 'Kuponi / Voucher ' . $perksPlan['voucher']->code]);
+        } elseif ($perksPlan['points'] > 0 && trim((string) $request->discount_reason) === '') {
+            $request->merge(['discount_reason' => 'Pointi / Loyalty points']);
+        }
+
         // A salon records WHY a discount was given (the owner reads it when the takings are lower than expected).
         if (\App\Support\Tenancy\TenantContext::service() === 'salon' && (float) ($request->discount ?? 0) > 0 && trim((string) $request->discount_reason) === '') {
             return response()->json(['message' => 'Andika sababu ya punguzo. / Write the reason for the discount.'], 422);
@@ -914,7 +929,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             $units[$index] = $unit;
         }
 
-        return DB::transaction(function () use ($request, $units) {
+        return DB::transaction(function () use ($request, $units, $perksPlan) {
             // Never sell more than is in stock. Checked first, for the whole cart and under a row lock, so
             // the same product on two lines (or two tills at once) cannot slip past, and nothing is written
             // when it is short.
@@ -1016,6 +1031,13 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 $unitPrice = isset($item['unit_price'])
                     ? (float) $item['unit_price']
                     : $this->defaultUnitPrice($product, $unit, $item, $tillSettings, $request->integer('customer_id', 0) ?: null);
+                // A visit paid for in a package is free at the till (the package was the sale); the stylist still earns on
+                // what the service is worth.
+                $commissionBasis = null;
+                if (isset($perksPlan['redemptions'][$index])) {
+                    $commissionBasis = round((float) $product->selling_price * $unitQty, 2);
+                    $unitPrice = 0.0;
+                }
                 $unitCost = $issuedQty > 0 ? ($issuedCost / $issuedQty) : $fallbackUnitCost;
                 $lineTotal = round($unitPrice * $unitQty, 2);
 
@@ -1046,7 +1068,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'staff_name' => isset($item['staff_id']) ? ($staffNames[$item['staff_id']] ?? null) : null,
                     // What the stylist earns on this line, fixed now: a later change of the rate does not rewrite it.
                     ...(\Illuminate\Support\Facades\Schema::hasColumn('inventory_sale_items', 'commission_amount')
-                        ? ['commission_amount' => $this->commissionFor($product, $item['staff_id'] ?? null, $isService, (float) $lineTotal, (int) $unitQty)]
+                        ? ['commission_amount' => $this->commissionFor($product, $item['staff_id'] ?? null, $isService, (float) $lineTotal, (int) $unitQty, $commissionBasis)]
+                        : []),
+                    ...(isset($perksPlan['redemptions'][$index]) && \Illuminate\Support\Facades\Schema::hasColumn('inventory_sale_items', 'package_id')
+                        ? ['package_id' => (int) $perksPlan['redemptions'][$index]->id]
                         : []),
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -1093,6 +1118,16 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     ]);
                 }
             }
+
+            // The salon's perks: the voucher and points spent, the packages sold or used, the points earned.
+            \App\Support\Salon\SalonPerks::apply(
+                (int) $saleId,
+                $request->integer('customer_id', 0) ?: null,
+                (string) $request->payment_status,
+                (float) $request->total,
+                $perksPlan,
+                optional($request->user())->id === null ? null : (string) $request->user()->id,
+            );
 
             if (in_array($request->payment_status, ['debt', 'partial'])) {
                 DB::table('inventory_reminders')->insert([
@@ -1296,7 +1331,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
      * of the line, else the person's own rate. Fixed when the sale is made, so a later change of rate never rewrites
      * what was earned. Goods and lines with nobody named earn nobody anything.
      */
-    private function commissionFor(object $product, ?string $staffId, bool $isService, float $lineTotal, int $unitQty): ?float
+    private function commissionFor(object $product, ?string $staffId, bool $isService, float $lineTotal, int $unitQty, ?float $basis = null): ?float
     {
         if (!$isService || $staffId === null || $staffId === '') {
             return null;
@@ -1312,6 +1347,6 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             $percent = (float) DB::table('inventory_staff_profiles')->where('staff_id', $staffId)->value('commission_percent');
         }
 
-        return $percent > 0 ? round($lineTotal * $percent / 100, 2) : null;
+        return $percent > 0 ? round(($basis ?? $lineTotal) * $percent / 100, 2) : null;
     }
 }

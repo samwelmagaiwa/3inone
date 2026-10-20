@@ -9,6 +9,9 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Support\PaymentChannels;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
 
@@ -105,9 +108,31 @@ class AppointmentController extends Controller
             throw ValidationException::withMessages(['status' => ["An appointment that is {$row->status} cannot become {$data['status']}."]]);
         }
 
-        DB::table('inventory_appointments')->where('id', $id)->update(['status' => $data['status'], 'updated_at' => now()]);
+        DB::table('inventory_appointments')->where('id', $id)->update(['status' => $data['status'], 'updated_at' => now()] + $this->settleDeposit($row, $data['status']));
 
         return response()->json(['message' => 'Appointment updated', 'data' => $this->present(DB::table('inventory_appointments')->find($id))]);
+    }
+
+    /**
+     * What happens to a deposit when the appointment ends: put into the sale when it is done; kept when the client did
+     * not come, or cancelled too late (inside the salon's cancellation hours); given back otherwise.
+     *
+     * @return array<string, mixed>
+     */
+    private function settleDeposit(object $row, string $status): array
+    {
+        if (!Schema::hasColumn('inventory_appointments', 'deposit_status') || ($row->deposit_status ?? 'none') !== 'held') {
+            return [];
+        }
+
+        $outcome = match ($status) {
+            'done' => 'applied',
+            'no_show' => 'forfeited',
+            'cancelled' => ($hours = AppointmentPlanner::cancelHours()) > 0 && Carbon::parse($row->starts_at, AppointmentPlanner::TIMEZONE)->diffInHours(now(AppointmentPlanner::TIMEZONE), false) > -$hours ? 'forfeited' : 'refunded',
+            default => null,
+        };
+
+        return $outcome === null ? [] : ['deposit_status' => $outcome, 'deposit_resolved_at' => now()];
     }
 
     /** The people who do the work themselves: hair stylists, nail technicians, lash and makeup artists. */
@@ -142,6 +167,9 @@ class AppointmentController extends Controller
             'services.*.price' => 'nullable|numeric|min:0',
             'services.*.label' => 'nullable|string|max:40',
             'duration_minutes' => 'nullable|integer|min:5|max:1440',
+            // A deposit taken to hold the booking (kept, given back or put into the sale when it is settled).
+            'deposit_amount' => 'nullable|numeric|min:0|max:100000000',
+            'deposit_method' => ['nullable', Rule::in(PaymentChannels::all())],
             'notes' => 'nullable|string|max:1000',
             'force' => 'sometimes|boolean',
         ]);
@@ -212,7 +240,21 @@ class AppointmentController extends Controller
             throw ValidationException::withMessages(['staff_id' => ["{$staffName} ana miadi saa {$at} ({$clash->client_name}). / {$staffName} is already booked {$at} ({$clash->client_name})."]]);
         }
 
-        return [
+        // The deposit: held from the moment it is taken; once settled (sale, kept or given back) it cannot be changed.
+        $deposit = [];
+        if (Schema::hasColumn('inventory_appointments', 'deposit_status')) {
+            $settled = $existing !== null && in_array($existing->deposit_status, ['applied', 'forfeited', 'refunded'], true);
+            if (!$settled) {
+                $amount = array_key_exists('deposit_amount', $data) ? (float) ($data['deposit_amount'] ?? 0) : (float) ($existing->deposit_amount ?? 0);
+                $method = array_key_exists('deposit_method', $data) ? ($data['deposit_method'] ?: null) : ($existing->deposit_method ?? null);
+                if ($amount > 0 && $method === null) {
+                    throw ValidationException::withMessages(['deposit_method' => ['Sema amana ililipwa kwa njia gani. / Say how the deposit was paid.']]);
+                }
+                $deposit = ['deposit_amount' => $amount, 'deposit_method' => $amount > 0 ? $method : null, 'deposit_status' => $amount > 0 ? 'held' : 'none'];
+            }
+        }
+
+        return $deposit + [
             'customer_id' => $customerId,
             'client_name' => $name,
             'client_phone' => $phone !== '' ? $phone : null,
@@ -241,6 +283,11 @@ class AppointmentController extends Controller
             'starts_at' => Carbon::parse($r->starts_at)->format('Y-m-d H:i'),
             'ends_at' => Carbon::parse($r->ends_at)->format('Y-m-d H:i'),
             'status' => (string) $r->status,
+            'deposit' => (float) ($r->deposit_amount ?? 0) > 0 ? [
+                'amount' => (float) $r->deposit_amount == floor((float) $r->deposit_amount) ? (int) $r->deposit_amount : (float) $r->deposit_amount,
+                'method' => $r->deposit_method,
+                'status' => $r->deposit_status,
+            ] : null,
             'services' => json_decode((string) $r->services, true) ?: [],
             'notes' => $r->notes,
             'total' => (float) $r->total == floor((float) $r->total) ? (int) $r->total : (float) $r->total,

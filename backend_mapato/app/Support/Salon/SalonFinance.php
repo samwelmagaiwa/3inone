@@ -61,6 +61,22 @@ final class SalonFinance
             : 0.0;
         $operating = $expenses['total'] + $commissions + $salaries;
 
+        // A deposit the salon kept (a no-show, a late cancellation) is income, on the day it was settled; deposits
+        // still held are the clients' money until then, and deposits put into a sale are in that sale's payment.
+        $keptDeposits = collect();
+        $heldDeposits = 0.0;
+        if (Schema::hasColumn('inventory_appointments', 'deposit_status')) {
+            $keptDeposits = DB::table('inventory_appointments')
+                ->where('deposit_status', 'forfeited')
+                ->whereDate('deposit_resolved_at', '>=', $f)
+                ->whereDate('deposit_resolved_at', '<=', $t)
+                ->groupBy('deposit_method')
+                ->selectRaw('deposit_method as method, SUM(deposit_amount) as amount')
+                ->pluck('amount', 'method');
+            $heldDeposits = (float) DB::table('inventory_appointments')->where('deposit_status', 'held')->sum('deposit_amount');
+        }
+        $otherIncome = (float) $keptDeposits->sum();
+
         $collections = DB::table('inventory_sale_payments as p')
             ->join('inventory_sales as s', 's.id', '=', 'p.sale_id')
             ->whereNull('s.cancelled_at')
@@ -70,8 +86,13 @@ final class SalonFinance
             ->selectRaw('COALESCE(p.method_extended, p.method) as method, SUM(p.amount) as amount')
             ->orderByRaw('SUM(p.amount) DESC')
             ->get()
-            ->map(fn ($r) => ['method' => (string) $r->method, 'amount' => self::money($r->amount)])
-            ->values();
+            ->map(fn ($r) => ['method' => (string) $r->method, 'amount' => (float) $r->amount])
+            ->keyBy('method');
+        foreach ($keptDeposits as $method => $amount) {
+            $key = (string) ($method ?: 'cash');
+            $collections[$key] = ['method' => $key, 'amount' => (float) ($collections[$key]['amount'] ?? 0) + (float) $amount];
+        }
+        $collections = $collections->sortByDesc('amount')->map(fn ($r) => ['method' => $r['method'], 'amount' => self::money($r['amount'])])->values();
 
         $sales = DB::table('inventory_sales')
             ->whereNull('cancelled_at')
@@ -108,7 +129,9 @@ final class SalonFinance
             'commissions' => self::money($commissions),
             'salaries' => self::money($salaries),
             'operating_costs' => self::money($operating),
-            'net_profit' => self::money($gross - $operating),
+            'other_income' => self::money($otherIncome),
+            'deposits_held' => self::money($heldDeposits),
+            'net_profit' => self::money($gross - $operating + $otherIncome),
             'collections' => $collections,
             'collected' => self::money($collections->sum('amount')),
             'outstanding' => self::money($outstanding),

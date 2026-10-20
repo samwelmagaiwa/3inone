@@ -222,6 +222,7 @@ class ProductController extends Controller
             'barcode' => 'nullable|string|max:255',
             'price_tier' => 'nullable|in:retail,wholesale',
         ], $this->extraRules()));
+        $this->assertPackageTarget($data['package_service_id'] ?? null, null);
 
         $this->assertUnitNamesAreFree($data['unit'] ?? null, $data['units'] ?? [], $data['measure'] ?? 'count');
 
@@ -280,6 +281,10 @@ class ProductController extends Controller
             'commission_percent' => 'nullable|numeric|min:0|max:100',
             // ... or a fixed amount each time it is done (the fixed amount wins when both are given).
             'commission_fixed' => 'nullable|numeric|min:0',
+            // Salon: a package gives N visits of another service, for so many days.
+            'package_sessions' => 'nullable|integer|min:2|max:100',
+            'package_service_id' => 'nullable|integer',
+            'package_valid_days' => 'nullable|integer|min:1|max:730',
             // Salon: who may do this service (account ids; none = anyone) and its price options (short / medium / long hair).
             'staff_ids' => 'nullable|array|max:50',
             'staff_ids.*' => 'string|max:64',
@@ -368,6 +373,13 @@ class ProductController extends Controller
                 : []),
             ...(\Illuminate\Support\Facades\Schema::hasColumn('inventory_products', 'commission_fixed')
                 ? ['commission_fixed' => !empty($p['is_service']) ? ($p['commission_fixed'] ?? null) : null]
+                : []),
+            ...(\Illuminate\Support\Facades\Schema::hasColumn('inventory_products', 'package_sessions')
+                ? [
+                    'package_sessions' => !empty($p['is_service']) && !empty($p['package_service_id']) ? ($p['package_sessions'] ?? null) : null,
+                    'package_service_id' => !empty($p['is_service']) && !empty($p['package_sessions']) ? ($p['package_service_id'] ?? null) : null,
+                    'package_valid_days' => !empty($p['is_service']) && !empty($p['package_sessions']) ? ($p['package_valid_days'] ?? null) : null,
+                ]
                 : []),
             ...(\Illuminate\Support\Facades\Schema::hasColumn('inventory_products', 'staff_ids')
                 ? [
@@ -679,6 +691,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'commission_percent' => 'nullable|numeric|min:0|max:100',
             // ... or a fixed amount each time it is done (the fixed amount wins when both are given).
             'commission_fixed' => 'nullable|numeric|min:0',
+            // Salon: a package gives N visits of another service, for so many days.
+            'package_sessions' => 'nullable|integer|min:2|max:100',
+            'package_service_id' => 'nullable|integer',
+            'package_valid_days' => 'nullable|integer|min:1|max:730',
             // Salon: who may do this service (account ids; none = anyone) and its price options (short / medium / long hair).
             'staff_ids' => 'nullable|array|max:50',
             'staff_ids.*' => 'string|max:64',
@@ -686,6 +702,8 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'price_options.*.label' => 'required|string|max:40',
             'price_options.*.price' => 'required|numeric|min:0',
         ]);
+
+        $this->assertPackageTarget($data['package_service_id'] ?? null, $id);
 
         // Goods and services are told apart on every old sale line, so an item that has been sold cannot change
         // from one to the other: make a new item instead.
@@ -713,7 +731,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         }
 
         // A column the server has not been migrated to yet is left out rather than failing the whole save.
-        foreach (['commission_percent', 'commission_fixed', 'staff_ids', 'price_options'] as $column) {
+        foreach (['commission_percent', 'commission_fixed', 'staff_ids', 'price_options', 'package_sessions', 'package_service_id', 'package_valid_days'] as $column) {
             if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_products', $column)) {
                 unset($data[$column]);
             }
@@ -835,5 +853,18 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         }
 
         return json_encode(array_values(array_unique($list, SORT_REGULAR)));
+    }
+
+    /** A package's visits are for another SERVICE of this business (never goods, never itself). */
+    private function assertPackageTarget(mixed $serviceId, ?int $selfId): void
+    {
+        if ($serviceId === null || $serviceId === '') {
+            return;
+        }
+        $ok = (int) $serviceId !== $selfId
+            && DB::table('inventory_products')->where('id', (int) $serviceId)->where('is_service', true)->whereNull('package_sessions')->exists();
+        if (!$ok) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['package_service_id' => ['Kifurushi kinahitaji huduma halisi ya saluni (si bidhaa, wala kifurushi kingine). / A package needs a real salon service (not goods, not another package).']]);
+        }
     }
 }
