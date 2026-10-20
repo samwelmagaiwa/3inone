@@ -156,6 +156,12 @@ Future<void> _serviceOn(WidgetTester t) async {
   }
 }
 
+Future<void> _commissionOn(WidgetTester t) async {
+  await t.ensureVisible(_key('service_commission_switch'));
+  await t.tap(find.descendant(of: _key('service_commission_switch'), matching: find.byType(Switch)));
+  await t.pump();
+}
+
 Future<void> _goodsOn(WidgetTester t) async {
   if (t.widget<Switch>(_switchLabelled('This is a service (no stock)')).value) {
     await t.tap(_switchLabelled('This is a service (no stock)'));
@@ -189,7 +195,10 @@ void main() {
       expect(find.text('Extra options (optional)'), findsNothing);
       expect(find.text('Does this product have its own VAT rate?'), findsNothing);
       expect(find.text('Status'), findsWidgets, reason: 'a service can still be switched off');
-      expect(find.text('Stylist commission (%)'), findsOneWidget);
+      expect(find.text('Stylist earns a commission'), findsOneWidget, reason: 'optional: a switch, off until wanted');
+      expect(_hint('e.g. 30'), findsNothing, reason: 'the boxes only show once the switch is on');
+      expect(find.text('Inventory & Pricing'), findsNothing, reason: 'a service has a price, not an inventory');
+      expect(find.text('Price & category'), findsOneWidget);
     });
 
     testWidgets('switched to goods, the form is the goods form again, with its title', (t) async {
@@ -199,7 +208,8 @@ void main() {
       expect(find.text('Add goods'), findsOneWidget);
       expect(find.text('Product details'), findsOneWidget);
       expect(find.text('Barcode & status'), findsOneWidget);
-      expect(find.text('Stylist commission (%)'), findsNothing);
+      expect(find.text('Stylist earns a commission'), findsNothing);
+      expect(find.text('Inventory & Pricing'), findsOneWidget, reason: 'goods keep their own heading');
     });
 
     testWidgets('in Swahili the switch and its fields are Swahili', (t) async {
@@ -226,7 +236,7 @@ void main() {
       expect(find.text('Service price (TZS)'), findsOneWidget);
       expect(_hint('e.g. 120'), findsOneWidget, reason: 'duration');
       expect(_hint('e.g. 6'), findsOneWidget, reason: 'weeks to remind');
-      expect(_key('service_rebook_hint'), findsOneWidget);
+      expect(_key('service_rebook_hint'), findsNothing, reason: 'no paragraph of explanation under the form');
       expect(find.text('Packs and cartons'), findsNothing);
     });
 
@@ -268,6 +278,7 @@ void main() {
       await _open(t);
       await t.enterText(_hint('e.g. Braids (long)'), 'Braids');
       await t.enterText(_hint('e.g. 15,000'), '40000');
+      await _commissionOn(t);
       await t.enterText(_hint('e.g. 30'), '30');
       await _save(t);
       final Map<String, dynamic> withRate = _api.posts.firstWhere(((String, Map<String, dynamic>) p) => p.$1 == '/inventory/products').$2;
@@ -278,6 +289,7 @@ void main() {
       await _open(t);
       await t.enterText(_hint('e.g. Braids (long)'), 'Wash');
       await t.enterText(_hint('e.g. 15,000'), '5000');
+      await _commissionOn(t);
       await t.enterText(_hint('e.g. 2,000'), '2000');
       await _save(t);
 
@@ -299,6 +311,7 @@ void main() {
       await _open(t);
       await t.enterText(_hint('e.g. Braids (long)'), 'Braids');
       await t.enterText(_hint('e.g. 15,000'), '40000');
+      await _commissionOn(t);
       await t.enterText(_hint('e.g. 30'), '150');
       await _save(t);
       expect(find.text('The commission must be between 0 and 100 percent.'), findsOneWidget);
@@ -488,6 +501,38 @@ void main() {
       expect(body.containsKey('duration_minutes'), isFalse);
       expect(body.containsKey('rebook_after_weeks'), isFalse);
       expect(body['quantity'], 20);
+    });
+  });
+
+  group('commission is optional', () {
+    testWidgets('a service that already pays a commission shows the switch on with its numbers', (t) async {
+      await _open(t, product: _braids()..commissionPercent = 25);
+      expect(t.widget<Switch>(find.descendant(of: _key('service_commission_switch'), matching: find.byType(Switch))).value, isTrue);
+      expect(_typed(t, _hint('e.g. 30')), '25');
+    });
+
+    testWidgets('turning it off sends nothing, which clears it on the server', (t) async {
+      await _open(t, product: _braids()..commissionPercent = 25);
+      await t.tap(find.descendant(of: _key('service_commission_switch'), matching: find.byType(Switch)));
+      await t.pump();
+      expect(_hint('e.g. 30'), findsNothing);
+      await _save(t);
+      final Map<String, dynamic> sent = _api.puts.firstWhere(((String, Map<String, dynamic>) p) => p.$1 == '/inventory/products/9').$2;
+      expect(sent['commission_percent'], isNull);
+      expect(sent['commission_fixed'], isNull);
+    });
+
+    testWidgets('numbers typed and then switched off are not sent', (t) async {
+      await _open(t);
+      await t.enterText(_hint('e.g. Braids (long)'), 'Braids');
+      await t.enterText(_hint('e.g. 15,000'), '40000');
+      await _commissionOn(t);
+      await t.enterText(_hint('e.g. 30'), '30');
+      await t.tap(find.descendant(of: _key('service_commission_switch'), matching: find.byType(Switch)));
+      await t.pump();
+      await _save(t);
+      final Map<String, dynamic> body = _api.posts.firstWhere(((String, Map<String, dynamic>) p) => p.$1 == '/inventory/products').$2;
+      expect(body.containsKey('commission_percent'), isFalse);
     });
   });
 

@@ -51,6 +51,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final TextEditingController _rebook = TextEditingController();
   final TextEditingController _commission = TextEditingController();
   final TextEditingController _commissionFixed = TextEditingController();
+  bool _commissionOn = false;
   final TextEditingController _packageSessions = TextEditingController();
   final TextEditingController _packageDays = TextEditingController();
   bool _isPackage = false;
@@ -152,6 +153,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       _rebook.text = p.rebookAfterWeeks?.toString() ?? '';
       _commission.text = p.commissionPercent == null ? '' : _plainNumber(p.commissionPercent!);
       _commissionFixed.text = p.commissionFixed == null ? '' : formatAmount(p.commissionFixed);
+      _commissionOn = p.commissionPercent != null || p.commissionFixed != null;
       _isPackage = p.isPackage;
       _packageServiceId = p.packageServiceId;
       _packageSessions.text = p.packageSessions?.toString() ?? '';
@@ -509,7 +511,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                       _section(
                         id: 'pricing',
                         icon: Icons.payments_outlined,
-                        title: loc.translate('inventory_pricing'),
+                        title: _isService ? (sw ? 'Bei na kundi' : 'Price & category') : loc.translate('inventory_pricing'),
                         children: [
                           _twoCol(
                             left: _categoryPicker(loc),
@@ -713,24 +715,16 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 keyboard: TextInputType.number, hint: 'e.g. 6', inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
           ),
           SizedBox(height: 8.h),
-          _twoCol(
-            left: _input(sw ? 'Kamisheni ya mhudumu (%)' : 'Stylist commission (%)', _commission,
-                keyboard: const TextInputType.numberWithOptions(decimal: true), hint: 'e.g. 30'),
-            right: _input(sw ? 'Au kiasi kwa kila mara (TZS)' : 'Or a fixed amount each time (TZS)', _commissionFixed,
-                keyboard: TextInputType.number, hint: 'e.g. 2,000', inputFormatters: [ThousandsFormatter()]),
-          ),
+          _switchRow(sw ? 'Mhudumu apate kamisheni' : 'Stylist earns a commission', _commissionOn, (bool v) => setState(() => _commissionOn = v), key: const ValueKey<String>('service_commission_switch')),
+          if (_commissionOn) ...[
+            SizedBox(height: 8.h),
+            _twoCol(
+              left: _input(sw ? 'Asilimia (%)' : 'Percent (%)', _commission, keyboard: const TextInputType.numberWithOptions(decimal: true), hint: 'e.g. 30'),
+              right: _input(sw ? 'Au kiasi (TZS)' : 'Or fixed (TZS)', _commissionFixed, keyboard: TextInputType.number, hint: 'e.g. 2,000', inputFormatters: [ThousandsFormatter()]),
+            ),
+          ],
           ..._staffAndOptions(sw),
           ..._packageSection(sw),
-          Padding(
-            padding: EdgeInsets.only(top: 6.h, left: 2.w),
-            child: Text(
-              sw
-                  ? 'Wiki: mteja atatumiwa ujumbe wa kurudi baada ya muda huu. Acha wazi kutumia idadi ya saluni nzima.'
-                  : "Weeks: the client is texted to come back after this long. Leave empty to use the salon's own number.",
-              key: const ValueKey<String>('service_rebook_hint'),
-              style: ThemeConstants.captionStyle.copyWith(fontSize: 11.sp, color: Colors.white70),
-            ),
-          ),
         ],
       ];
 
@@ -745,7 +739,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
             Text(sw ? 'Huu ni kifurushi' : 'This is a package', style: ThemeConstants.bodyStyle),
-            Text(sw ? 'Mteja analipa mara moja kwa ziara kadhaa' : 'The client pays once for several visits', style: ThemeConstants.captionStyle),
+            Text(sw ? 'Ziara kadhaa, malipo mara moja' : 'Several visits, paid once', style: ThemeConstants.captionStyle),
           ]),
         ),
         Switch(key: const ValueKey<String>('service_is_package'), value: _isPackage, activeThumbColor: ThemeConstants.invAccent, onChanged: (bool on) => setState(() => _isPackage = on)),
@@ -786,7 +780,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
     return <Widget>[
       SizedBox(height: 14.h),
-      _sectionTitle(sw ? 'Nani anaweza kuifanya' : 'Who can do it'),
+      _sectionTitle(sw ? 'Anayefanya huduma hii (acha wazi = yeyote)' : 'Done by (leave empty = anyone)'),
       Wrap(
         spacing: 8.w,
         runSpacing: 4.h,
@@ -800,20 +794,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
             ),
         ],
       ),
-      Padding(
-        padding: EdgeInsets.only(top: 4.h, left: 2.w),
-        child: Text(
-          sw ? 'Usichague yeyote: kila mhudumu anaweza kuifanya.' : 'Choose nobody: anyone may do it.',
-          key: const ValueKey<String>('service_staff_hint'),
-          style: ThemeConstants.captionStyle.copyWith(fontSize: 11.sp, color: Colors.white70),
-        ),
-      ),
       SizedBox(height: 14.h),
       _sectionTitle(sw ? 'Bei nyingine (si lazima)' : 'Other prices (optional)'),
       Text(
-        sw
-            ? 'Kwa huduma yenye bei tofauti, mf. nywele fupi, za kati au ndefu. Mauzo na miadi yataulizwa ipi.'
-            : 'For a service that costs differently, e.g. short, medium or long hair. Sales and appointments ask which one.',
+        sw ? 'mf. fupi, kati, ndefu' : 'e.g. short, medium, long',
         key: const ValueKey<String>('service_options_hint'),
         style: ThemeConstants.captionStyle.copyWith(fontSize: 11.sp, color: Colors.white70),
       ),
@@ -1228,8 +1212,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         ],
       );
 
-  Widget _switchRow(String label, bool val, ValueChanged<bool> onChanged) =>
+  Widget _switchRow(String label, bool val, ValueChanged<bool> onChanged, {Key? key}) =>
       Container(
+        key: key,
         padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 12.h),
         decoration: BoxDecoration(
           color: ThemeConstants.invFill,
@@ -1461,8 +1446,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     // A service: how long it takes and when to bring the client back must be sensible numbers (or empty).
     final int? duration = int.tryParse(_duration.text.trim());
     final int? rebookWeeks = int.tryParse(_rebook.text.trim());
-    final double? commission = double.tryParse(_commission.text.trim().replaceAll(',', '.'));
-    final double? commissionFixed = _commissionFixed.text.trim().isEmpty ? null : parseAmount(_commissionFixed.text);
+    final double? commission = !_commissionOn ? null : double.tryParse(_commission.text.trim().replaceAll(',', '.'));
+    final double? commissionFixed = !_commissionOn || _commissionFixed.text.trim().isEmpty ? null : parseAmount(_commissionFixed.text);
     // A package says which service it is for and how many visits (at least two) it holds.
     final int? packageSessions = int.tryParse(_packageSessions.text.trim());
     final int? packageDays = int.tryParse(_packageDays.text.trim());
