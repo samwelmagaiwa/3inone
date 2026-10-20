@@ -22,6 +22,7 @@ final class TenantTables
     public const INVENTORY = [
         'inventory_alerts',
         'inventory_appointments',
+        'inventory_attendance',
         'inventory_audit_log',
         'inventory_barcode_labels',
         'inventory_batches',
@@ -53,7 +54,9 @@ final class TenantTables
         'inventory_sale_return_lines',
         'inventory_sale_returns',
         'inventory_sales',
+        'inventory_salon_shifts',
         'inventory_settings',
+        'inventory_staff_days_off',
         'inventory_staff_payouts',
         'inventory_staff_profiles',
         'inventory_stock_count_lines',

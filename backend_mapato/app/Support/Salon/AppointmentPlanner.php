@@ -64,6 +64,47 @@ final class AppointmentPlanner
             ->first();
     }
 
+    /**
+     * Is this person working when they are asked to be? Their days off, the weekdays they work and their hours (each
+     * only when the owner has set them). Returns the reason in both languages, or null when it is fine. The message
+     * always names a date or the hours, so the app can offer "book anyway".
+     */
+    public static function availability(?string $staffId, string $staffName, Carbon $start): ?string
+    {
+        if ($staffId === null || $staffId === '') {
+            return null;
+        }
+        $date = $start->format('d/m/Y');
+
+        if (DB::table('inventory_staff_days_off')->where('staff_id', $staffId)->where('off_on', $start->toDateString())->exists()) {
+            return "{$staffName} ana mapumziko tarehe {$date}. / {$staffName} is off on {$date}.";
+        }
+
+        $profile = DB::table('inventory_staff_profiles')->where('staff_id', $staffId)->first();
+        if ($profile === null) {
+            return null;
+        }
+
+        $days = array_values(array_filter(array_map('intval', explode(',', (string) ($profile->work_days ?? '')))));
+        if ($days !== [] && !in_array($start->dayOfWeekIso, $days, true)) {
+            $en = $start->locale('en')->dayName;
+            $sw = ['Jumatatu', 'Jumanne', 'Jumatano', 'Alhamisi', 'Ijumaa', 'Jumamosi', 'Jumapili'][$start->dayOfWeekIso - 1];
+
+            return "{$staffName} hafanyi kazi siku ya {$sw} ({$date}). / {$staffName} does not work on {$en}s ({$date}).";
+        }
+
+        $from = (string) ($profile->shift_start ?? '');
+        $to = (string) ($profile->shift_end ?? '');
+        if ($from !== '' && $to !== '') {
+            $time = $start->format('H:i');
+            if ($time < $from || $time >= $to) {
+                return "{$staffName} anafanya kazi saa {$from}-{$to}. / {$staffName} works {$from}-{$to}.";
+            }
+        }
+
+        return null;
+    }
+
     /** The reminder text, Swahili then English like every text this app sends. */
     public static function message(string $clientName, string $when, array $serviceNames, string $business): string
     {

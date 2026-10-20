@@ -85,6 +85,9 @@ class SalonMoneyController extends Controller
                     'specialization' => $p->specialization ?? null,
                     'monthly_salary' => SalonFinance::money($p->monthly_salary ?? 0),
                     'commission_percent' => $p && $p->commission_percent !== null ? (float) $p->commission_percent : null,
+                    'work_days' => array_values(array_filter(array_map('intval', explode(',', (string) ($p->work_days ?? ''))))),
+                    'shift_start' => $p->shift_start ?? null,
+                    'shift_end' => $p->shift_end ?? null,
                 ];
             })
             ->values();
@@ -101,7 +104,15 @@ class SalonMoneyController extends Controller
             'specialization' => 'nullable|string|max:60',
             'monthly_salary' => 'nullable|numeric|min:0|max:100000000',
             'commission_percent' => 'nullable|numeric|min:0|max:100',
+            // The weekdays they work (Monday = 1) and their hours; none = not said (anyone, any time).
+            'work_days' => 'nullable|array|max:7',
+            'work_days.*' => 'integer|between:1,7',
+            'shift_start' => ['nullable', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
+            'shift_end' => ['nullable', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
         ]);
+        if (!empty($data['shift_start']) && !empty($data['shift_end']) && $data['shift_start'] >= $data['shift_end']) {
+            throw ValidationException::withMessages(['shift_end' => ['Saa ya kuondoka iwe baada ya saa ya kuanza. / The finishing time must be after the starting time.']]);
+        }
 
         $existing = DB::table('inventory_staff_profiles')->where('staff_id', $staffId)->first();
         // Only what is sent changes; what is not sent stays.
@@ -110,6 +121,16 @@ class SalonMoneyController extends Controller
             'monthly_salary' => array_key_exists('monthly_salary', $data) ? (float) ($data['monthly_salary'] ?? 0) : (float) ($existing->monthly_salary ?? 0),
             'commission_percent' => array_key_exists('commission_percent', $data) ? $data['commission_percent'] : ($existing->commission_percent ?? null),
         ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('inventory_staff_profiles', 'work_days')) {
+            if (array_key_exists('work_days', $data)) {
+                $row['work_days'] = $data['work_days'] ? implode(',', collect($data['work_days'])->unique()->sort()->values()->all()) : null;
+            }
+            foreach (['shift_start', 'shift_end'] as $k) {
+                if (array_key_exists($k, $data)) {
+                    $row[$k] = $data[$k] ?: null;
+                }
+            }
+        }
 
         if ($existing) {
             DB::table('inventory_staff_profiles')->where('id', $existing->id)->update($row + ['updated_at' => now()]);
@@ -238,7 +259,7 @@ class SalonMoneyController extends Controller
         $member = $this->memberOrFail($request, $data['staff_id']);
         $paidOn = $data['paid_on'] ?? $this->today()->toDateString();
 
-        $id = DB::table('inventory_staff_payouts')->insertGetId([
+        $payoutRow = [
             'staff_id' => (string) $member->id,
             'staff_name' => $member->name,
             'kind' => $data['kind'],
@@ -251,7 +272,20 @@ class SalonMoneyController extends Controller
             'created_by' => (string) $request->user()->id,
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
+        ];
+        $id = DB::table('inventory_staff_payouts')->insertGetId($payoutRow);
+
+        // They are told what was paid to them (and for what), so pay is never a surprise or a secret.
+        if ((string) $member->id !== (string) $request->user()->id) {
+            $kinds = ['salary' => 'Mshahara / Salary', 'commission' => 'Kamisheni / Commission', 'advance' => 'Advance'];
+            app(\App\Services\Inventory\InventoryNotifier::class)->notifyUser(
+                (string) $member->id,
+                'salon_payout',
+                'Malipo yamerekodiwa / A payment was recorded',
+                ($kinds[$data['kind']] ?? $data['kind']) . ': ' . number_format((float) $data['amount']) . ' TSh',
+                ['payout_id' => (int) $id],
+            );
+        }
 
         return response()->json(['message' => 'Recorded', 'data' => ['id' => (int) $id]], 201);
     }

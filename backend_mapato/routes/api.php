@@ -45,6 +45,7 @@ use App\Http\Controllers\API\Inventory\CustomerController as InventoryCustomerCo
 use App\Http\Controllers\API\Inventory\AppointmentController;
 use App\Http\Controllers\API\Inventory\SalonController;
 use App\Http\Controllers\API\Inventory\SalonMoneyController;
+use App\Http\Controllers\API\Inventory\SalonStaffController;
 use App\Http\Controllers\API\Inventory\SalesController as InventorySalesController;
 use App\Http\Controllers\API\Inventory\StockMovementController as InventoryStockMovementController;
 use App\Http\Controllers\API\Inventory\ReminderController as InventoryReminderController;
@@ -405,6 +406,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('inventory/salon/appointments',        [AppointmentController::class, 'store']);
         Route::match(['put', 'patch'], 'inventory/salon/appointments/{id}', [AppointmentController::class, 'update']);
         Route::post('inventory/salon/appointments/{id}/status', [AppointmentController::class, 'status']);
+        // People at work: attendance, days off and the cash of each shift. A person sees only their own; the owner
+        // and managers see everyone's (checked in the controller).
+        Route::get('inventory/salon/days-off',             [SalonStaffController::class, 'daysOff']);
+        Route::post('inventory/salon/days-off',            [SalonStaffController::class, 'storeDayOff']);
+        Route::delete('inventory/salon/days-off/{id}',     [SalonStaffController::class, 'destroyDayOff']);
+        Route::get('inventory/salon/attendance',           [SalonStaffController::class, 'attendance']);
+        Route::get('inventory/salon/attendance/today',     [SalonStaffController::class, 'attendanceToday']);
+        Route::post('inventory/salon/attendance/clock-in', [SalonStaffController::class, 'clockIn']);
+        Route::post('inventory/salon/attendance/clock-out', [SalonStaffController::class, 'clockOut']);
+        Route::get('inventory/salon/shifts',               [SalonStaffController::class, 'shifts']);
+        Route::get('inventory/salon/shifts/current',       [SalonStaffController::class, 'currentShift']);
+        Route::post('inventory/salon/shifts/open',         [SalonStaffController::class, 'openShift']);
+        Route::post('inventory/salon/shifts/{id}/close',   [SalonStaffController::class, 'closeShift']);
     });
     Route::middleware('inv_perm:inv_manage_products,inv_create_sales')->group(function () {
         // PUT as well as PATCH: the app's HTTP client has PUT, and this changes only the two fields it is given.
@@ -603,7 +617,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     // ── Approval notifications (any authenticated user, own inbox only) ──────
-    Route::middleware('service:inventory')->group(function () {
+    // (The Salon service uses the same inbox: its alerts about cash, spending and bookings arrive here.)
+    Route::middleware('service:inventory,salon')->group(function () {
         Route::get('inventory/notifications',               [InventoryNotificationController::class, 'index']);
         Route::post('inventory/notifications/{id}/read',    [InventoryNotificationController::class, 'markRead']);
         Route::post('inventory/notifications/read-all',     [InventoryNotificationController::class, 'markAllRead']);

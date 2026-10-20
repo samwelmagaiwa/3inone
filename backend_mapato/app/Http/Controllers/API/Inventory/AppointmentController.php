@@ -60,6 +60,18 @@ class AppointmentController extends Controller
             'updated_at' => now(),
         ]);
 
+        // The stylist booked for it is told, unless they booked it themselves.
+        if (!empty($fields['staff_id']) && (string) $fields['staff_id'] !== (string) $request->user()->id) {
+            $when = Carbon::parse($fields['starts_at'])->format('d/m H:i');
+            app(\App\Services\Inventory\InventoryNotifier::class)->notifyUser(
+                (string) $fields['staff_id'],
+                'salon_new_booking',
+                'Miadi mpya / New appointment',
+                "{$fields['client_name']} - {$when}",
+                ['appointment_id' => (int) $id],
+            );
+        }
+
         return response()->json(['message' => 'Appointment booked', 'data' => $this->present(DB::table('inventory_appointments')->find($id))], 201);
     }
 
@@ -186,6 +198,12 @@ class AppointmentController extends Controller
                 throw ValidationException::withMessages(['staff_id' => ['That person cannot be booked.']]);
             }
             $staffName = $member->name;
+        }
+
+        // Not on a day off, not on a day they do not work, not outside their hours (unless the owner says book anyway).
+        $unavailable = AppointmentPlanner::availability($staffId, (string) $staffName, $start);
+        if ($unavailable !== null && empty($data['force'])) {
+            throw ValidationException::withMessages(['staff_id' => [$unavailable]]);
         }
 
         $clash = AppointmentPlanner::clash($staffId, $start, $end, $existing->id ?? null);

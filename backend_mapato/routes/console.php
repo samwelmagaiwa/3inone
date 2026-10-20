@@ -37,6 +37,11 @@ Schedule::command('salon:remind-appointments')
     ->dailyAt('15:00')
     ->withoutOverlapping();
 
+// Every evening (19:30 in Tanzania): text each salon owner how the day went, for salons that switched it on.
+Schedule::command('salon:daily-summary')
+    ->dailyAt('16:30')
+    ->withoutOverlapping();
+
 // Expired API tokens are already rejected; this just removes the dead rows.
 Schedule::command('sanctum:prune-expired --hours=24')
     ->daily();

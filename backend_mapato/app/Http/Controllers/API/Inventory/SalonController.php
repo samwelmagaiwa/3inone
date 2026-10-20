@@ -305,7 +305,12 @@ class SalonController extends Controller
             'rebook_enabled' => 'sometimes|boolean',
             'rebook_weeks' => 'sometimes|integer|min:1|max:' . RebookPlanner::MAX_WEEKS,
             'appointment_reminders' => 'sometimes|boolean',
+            'daily_summary' => 'sometimes|boolean',
         ]);
+
+        if (array_key_exists('daily_summary', $data)) {
+            \App\Support\Salon\DailySummary::save((bool) $data['daily_summary']);
+        }
 
         if (array_key_exists('appointment_reminders', $data)) {
             AppointmentPlanner::saveReminders((bool) $data['appointment_reminders']);
@@ -337,6 +342,7 @@ class SalonController extends Controller
             'rebook_enabled' => $s['enabled'],
             'rebook_weeks' => $s['weeks'],
             'appointment_reminders' => AppointmentPlanner::remindersOn(),
+            'daily_summary' => \App\Support\Salon\DailySummary::isOn(),
             'max_weeks' => RebookPlanner::MAX_WEEKS,
             'grace_days' => RebookPlanner::GRACE_DAYS,
         ];

@@ -118,6 +118,18 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'approved_at'    => $status === 'approved' ? now() : null,
         ] : []));
 
+        // Spending that waits tells the people who can approve it (never the one who recorded it).
+        if ($status === 'pending') {
+            app(\App\Services\Inventory\InventoryNotifier::class)->notifyByPermission(
+                ['inv_view_reports'],
+                'salon_expense_pending',
+                'Matumizi yanasubiri idhini / An expense is waiting for approval',
+                "{$data['description']}: " . number_format((float) $data['amount']) . ' TSh',
+                ['expense_id' => (int) $id],
+                excludeUserId: (string) optional($request->user())->id,
+            );
+        }
+
         return response()->json([
             'message' => 'Expense recorded',
             'data'    => $this->present(DB::table('inventory_expenses')->find($id)),
