@@ -137,6 +137,19 @@ void main() {
       expect(find.text('Purchasing'), findsNothing);
     });
 
+    testWidgets('its first page is the salon dashboard, without the value of the stock on the shelves', (t) async {
+      await _openHome(t, salon: true);
+
+      expect(find.text('Salon Dashboard'), findsOneWidget);
+      expect(find.text('Inventory Valuation'), findsNothing);
+    });
+
+    testWidgets('an ordinary inventory home still shows the value of the stock', (t) async {
+      await _openHome(t, salon: false);
+
+      expect(find.text('Inventory Dashboard'), findsOneWidget);
+    });
+
     testWidgets('in Swahili the sections are Swahili', (t) async {
       await _openHome(t, salon: true, sw: true);
       await _openMenu(t);

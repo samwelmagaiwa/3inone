@@ -1388,8 +1388,9 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                if (canViewReports) _buildInventoryValuationContent(loc, inv),
-                if (canViewReports) _sectionDivider(),
+                // The value of the stock on the shelves is a shop's figure: a salon sells time, not shelves.
+                if (canViewReports && !inv.salonMode) _buildInventoryValuationContent(loc, inv),
+                if (canViewReports && !inv.salonMode) _sectionDivider(),
                 if (canViewProducts) _buildProductsOverviewContent(loc, inv),
                 if (canViewProducts && canViewSalesChart) _sectionDivider(),
                 if (canViewSalesChart) _buildChartSectionContent(loc, inv),

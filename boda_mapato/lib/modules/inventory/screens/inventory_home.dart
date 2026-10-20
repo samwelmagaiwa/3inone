@@ -149,7 +149,7 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
   return <_InvMenuEntry>[
     _InvMenuEntry(
       key: 'dashboard',
-      titleKey: 'inventory_dashboard',
+      staticTitle: sw ? 'Dashibodi ya Saluni' : 'Salon Dashboard',
       icon: Icons.dashboard,
       color: ThemeConstants.footerBarColor,
       pageBuilder: () => const InventoryDashboardScreen(),
