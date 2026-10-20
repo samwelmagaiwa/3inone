@@ -27,7 +27,7 @@ final class PrivateFile
     public const LEGACY_DISK = 'public';
 
     /** First path segment of every upload that is private. */
-    public const FOLDERS = ['agreements', 'tenant_photos', 'maintenance', 'reports', 'salon_receipts'];
+    public const FOLDERS = ['agreements', 'tenant_photos', 'maintenance', 'reports', 'salon_receipts', 'salon_client_photos'];
 
     public static function isPrivatePath(string $path): bool
     {

@@ -43,6 +43,7 @@ use App\Http\Controllers\API\Inventory\ReportController as InventoryReportContro
 use App\Http\Controllers\API\Inventory\AlertController as InventoryAlertController;
 use App\Http\Controllers\API\Inventory\CustomerController as InventoryCustomerController;
 use App\Http\Controllers\API\Inventory\AppointmentController;
+use App\Http\Controllers\API\Inventory\SalonClientController;
 use App\Http\Controllers\API\Inventory\SalonController;
 use App\Http\Controllers\API\Inventory\SalonMoneyController;
 use App\Http\Controllers\API\Inventory\SalonStaffController;
@@ -399,7 +400,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::middleware('inv_perm:inv_manage_products,inv_create_sales,inv_view_credit')->group(function () {
         Route::get('inventory/salon/staff',                [SalonController::class, 'staff']);
         Route::get('inventory/salon/settings',             [SalonController::class, 'settings']);
+        Route::get('inventory/salon/clients/overview',     [SalonClientController::class, 'overview']);
         Route::get('inventory/salon/clients/{id}/history', [SalonController::class, 'clientHistory']);
+        Route::get('inventory/salon/clients/{id}/photos',  [SalonClientController::class, 'photos']);
+        Route::post('inventory/salon/clients/{id}/photos', [SalonClientController::class, 'storePhoto']);
+        Route::delete('inventory/salon/photos/{id}',       [SalonClientController::class, 'destroyPhoto']);
+        Route::get('inventory/salon/campaigns',            [SalonClientController::class, 'campaigns']);
+        Route::post('inventory/salon/campaigns',           [SalonClientController::class, 'sendCampaign']);
         Route::get('inventory/salon/rebook/due',           [SalonController::class, 'rebookDue']);
         // The diary: whoever may sell may look at it and book.
         Route::get('inventory/salon/appointments',         [AppointmentController::class, 'index']);

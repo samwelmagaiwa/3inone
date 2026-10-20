@@ -246,6 +246,8 @@ class SalonController extends Controller
         ])->values();
 
         $serviceVisits = $visits->filter(fn ($v) => $v['items']->contains(fn ($i) => $i['is_service']));
+        $referrer = !empty($client->referred_by ?? null) ? DB::table('inventory_customers')->where('id', $client->referred_by)->value('name') : null;
+        $firstVisit = $serviceVisits->last()['date'] ?? null;
 
         // The service this client has had most often.
         $favourite = $lines->flatten(1)->where('is_service', 1)->groupBy('product_name')
@@ -258,8 +260,15 @@ class SalonController extends Controller
                 'phone' => $client->phone,
                 'notes' => $client->notes ?? null,
                 'sms_opt_out' => (bool) ($client->sms_opt_out ?? false),
+                'birthday' => !empty($client->birthday ?? null) ? Carbon::parse($client->birthday)->toDateString() : null,
+                'preferences' => json_decode((string) ($client->preferences ?? ''), true) ?: new \stdClass(),
+                'referred_by' => !empty($client->referred_by ?? null) ? (int) $client->referred_by : null,
+                'referred_by_name' => $referrer,
             ],
             'stats' => [
+                // A client is "new" until they have come twice.
+                'is_returning' => $serviceVisits->count() >= 2,
+                'first_visit_on' => $firstVisit,
                 'visits' => $serviceVisits->count(),
                 'total_spent' => (float) $sales->sum('total'),
                 'last_visit_on' => $serviceVisits->first()['date'] ?? null,
@@ -281,10 +290,31 @@ class SalonController extends Controller
         $data = $request->validate([
             'notes' => 'nullable|string|max:1000',
             'sms_opt_out' => 'sometimes|boolean',
+            'birthday' => 'sometimes|nullable|date|before_or_equal:today',
+            // What they like: {hairstyle, colour, nails, allergies}, each a short text.
+            'preferences' => 'sometimes|nullable|array',
+            'preferences.hairstyle' => 'nullable|string|max:160',
+            'preferences.colour' => 'nullable|string|max:160',
+            'preferences.nails' => 'nullable|string|max:160',
+            'preferences.allergies' => 'nullable|string|max:200',
+            'referred_by' => ['sometimes', 'nullable', 'integer', \Illuminate\Validation\Rule::notIn([$id])],
         ]);
+        if (!empty($data['referred_by']) && !DB::table('inventory_customers')->where('id', $data['referred_by'])->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['referred_by' => ['That client does not exist.']]);
+        }
         if (array_key_exists('notes', $data)) {
             $data['notes'] = $data['notes'] !== null ? trim($data['notes']) : null;
             $data['notes'] = $data['notes'] === '' ? null : $data['notes'];
+        }
+        if (array_key_exists('preferences', $data)) {
+            $kept = array_filter(array_map(fn ($v) => is_string($v) ? trim($v) : '', (array) $data['preferences']), fn ($v) => $v !== '');
+            $data['preferences'] = $kept === [] ? null : json_encode($kept, JSON_UNESCAPED_UNICODE);
+        }
+        // A column the server has not been migrated to yet is left out rather than failing the whole save.
+        foreach (['birthday', 'preferences', 'referred_by'] as $column) {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_customers', $column)) {
+                unset($data[$column]);
+            }
         }
 
         DB::table('inventory_customers')->where('id', $id)->update($data + ['updated_at' => now()]);
@@ -306,7 +336,16 @@ class SalonController extends Controller
             'rebook_weeks' => 'sometimes|integer|min:1|max:' . RebookPlanner::MAX_WEEKS,
             'appointment_reminders' => 'sometimes|boolean',
             'daily_summary' => 'sometimes|boolean',
+            'birthday_offer' => 'sometimes|boolean',
+            'birthday_text' => 'sometimes|nullable|string|max:160',
         ]);
+
+        if (array_key_exists('birthday_offer', $data) || array_key_exists('birthday_text', $data)) {
+            \App\Support\Salon\BirthdayOffer::save(
+                array_key_exists('birthday_offer', $data) ? (bool) $data['birthday_offer'] : null,
+                array_key_exists('birthday_text', $data) ? (string) ($data['birthday_text'] ?? '') : null,
+            );
+        }
 
         if (array_key_exists('daily_summary', $data)) {
             \App\Support\Salon\DailySummary::save((bool) $data['daily_summary']);
@@ -343,6 +382,8 @@ class SalonController extends Controller
             'rebook_weeks' => $s['weeks'],
             'appointment_reminders' => AppointmentPlanner::remindersOn(),
             'daily_summary' => \App\Support\Salon\DailySummary::isOn(),
+            'birthday_offer' => \App\Support\Salon\BirthdayOffer::isOn(),
+            'birthday_text' => \App\Support\Salon\BirthdayOffer::text(),
             'max_weeks' => RebookPlanner::MAX_WEEKS,
             'grace_days' => RebookPlanner::GRACE_DAYS,
         ];
