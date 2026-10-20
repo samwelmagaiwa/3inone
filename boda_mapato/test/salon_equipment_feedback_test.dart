@@ -37,6 +37,11 @@ class _FakeSalon extends SalonApi {
   Future<Map<String, dynamic>> equipment() async => eq;
 
   @override
+  Future<List<Map<String, dynamic>>> equipmentLogs(int id) async => <Map<String, dynamic>>[
+        <String, dynamic>{'id': 1, 'kind': 'repair', 'done_on': '2026-09-01', 'cost': 35000, 'description': 'New heating element'},
+      ];
+
+  @override
   Future<void> saveEquipment(Map<String, dynamic> body, {int? id}) async => saves.add(<String, dynamic>{...body, 'id': id});
 
   @override
@@ -110,6 +115,16 @@ void main() {
     await t.tap(find.byKey(const Key('eq_retire')));
     await t.pumpAndSettle();
     expect(api.saves.last['status'], 'retired');
+  });
+
+  testWidgets('the service history of a piece lists what was done and what it cost', (WidgetTester t) async {
+    await _pump(t, EquipmentScreen(api: _FakeSalon()));
+    await t.tap(find.text('Hood dryer'));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('eq_history')));
+    await t.pumpAndSettle();
+    expect(find.text('New heating element'), findsOneWidget);
+    expect(find.text('TSH 35,000'), findsOneWidget);
   });
 
   testWidgets('feedback shows the average, the stylists and resolves a complaint with a note', (WidgetTester t) async {

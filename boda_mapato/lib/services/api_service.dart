@@ -42,6 +42,9 @@ class ApiService {
   /// The salon branch being looked at / worked in (its id), or null for all branches. Sent as `X-Branch`.
   static int? activeBranch;
 
+  /// The chosen branch's name, for showing where figures come from.
+  static String? activeBranchName;
+
   Future<Map<String, String>> get _authHeaders async {
     final String? token = await _getStoredToken();
     return <String, String>{

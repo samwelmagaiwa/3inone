@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../constants/theme_constants.dart';
+import '../../../../services/api_service.dart';
 import '../../../../services/localization_service.dart';
 import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
@@ -72,6 +73,11 @@ class _SalonOverviewCardState extends State<SalonOverviewCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(sw ? 'Muhtasari wa biashara' : 'Business overview', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w800)),
+          if (ApiService.activeBranchName != null)
+            Padding(
+              padding: EdgeInsets.only(top: 4.h),
+              child: Text(sw ? 'Tawi: ${ApiService.activeBranchName}' : 'Branch: ${ApiService.activeBranchName}', key: const ValueKey<String>('overview_branch'), style: ThemeConstants.captionStyle),
+            ),
           SizedBox(height: 10.h),
           Row(
             children: <Widget>[

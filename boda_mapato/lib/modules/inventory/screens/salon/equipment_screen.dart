@@ -81,6 +81,37 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     await _run(() => _api.addEquipmentLog((e['id'] as num).toInt(), got));
   }
 
+  Future<void> _history(final Map<String, dynamic> e) async {
+    final bool sw = context.read<LocalizationService>().isSwahili;
+    try {
+      final List<Map<String, dynamic>> logs = await _api.equipmentLogs((e['id'] as num).toInt());
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (BuildContext d) => AlertDialog(
+          title: Text('${e['name']}'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: logs.isEmpty
+                ? Text(sw ? 'Hakuna huduma iliyorekodiwa.' : 'No service recorded yet.', key: const Key('eq_history_empty'))
+                : ListView(shrinkWrap: true, children: <Widget>[
+                    for (final Map<String, dynamic> l in logs)
+                      ListTile(
+                        dense: true,
+                        title: Text('${l['done_on']} · ${l['kind'] == 'repair' ? (sw ? 'Ukarabati' : 'Repair') : (sw ? 'Huduma' : 'Service')}'),
+                        subtitle: Text('${l['description']}'),
+                        trailing: ((l['cost'] as num?) ?? 0) > 0 ? Text(tsh(l['cost'] as num)) : null,
+                      ),
+                  ]),
+          ),
+          actions: <Widget>[TextButton(onPressed: () => Navigator.pop(d), child: Text(sw ? 'Funga' : 'Close'))],
+        ),
+      );
+    } on Exception catch (err) {
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(err));
+    }
+  }
+
   Future<void> _open(final Map<String, dynamic> e) async {
     final bool sw = context.read<LocalizationService>().isSwahili;
     final String? pick = await showModalBottomSheet<String>(
@@ -88,6 +119,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
       builder: (BuildContext c) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
           ListTile(key: const Key('eq_log'), leading: const Icon(Icons.build_outlined), title: Text(sw ? 'Weka huduma / ukarabati' : 'Record a service / repair'), onTap: () => Navigator.pop(c, 'log')),
+          ListTile(key: const Key('eq_history'), leading: const Icon(Icons.history), title: Text(sw ? 'Historia ya huduma' : 'Service history'), onTap: () => Navigator.pop(c, 'history')),
           ListTile(leading: const Icon(Icons.edit_outlined), title: Text(sw ? 'Badili' : 'Edit'), onTap: () => Navigator.pop(c, 'edit')),
           if (e['status'] != 'retired') ListTile(key: const Key('eq_retire'), leading: const Icon(Icons.archive_outlined), title: Text(sw ? 'Ondoa kwenye matumizi' : 'Retire'), onTap: () => Navigator.pop(c, 'retire')),
           ListTile(leading: const Icon(Icons.delete_outline), title: Text(sw ? 'Futa' : 'Delete'), onTap: () => Navigator.pop(c, 'delete')),
@@ -97,6 +129,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     if (pick == null || !mounted) return;
     final int id = (e['id'] as num).toInt();
     if (pick == 'log') await _log(e);
+    if (pick == 'history') await _history(e);
     if (pick == 'edit') await _edit(e);
     if (pick == 'retire') await _run(() => _api.saveEquipment(<String, dynamic>{'status': 'retired'}, id: id));
     if (pick == 'delete') await _run(() => _api.deleteEquipment(id));

@@ -432,4 +432,9 @@ class SalonApi {
 
   /// {on, balance, worth, per, value, ledger} for one client's points.
   Future<Map<String, dynamic>> clientLoyalty(final int customerId) async => _data(await _api.get('/inventory/salon/clients/$customerId/loyalty'));
+
+  /// Give or take points by hand (owner and managers), with a reason.
+  Future<void> adjustLoyalty(final int customerId, {required final int points, required final String note}) async {
+    await _api.post('/inventory/salon/clients/$customerId/loyalty/adjust', <String, dynamic>{'points': points, 'note': note});
+  }
 }

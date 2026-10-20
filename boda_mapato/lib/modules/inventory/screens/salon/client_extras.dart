@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../constants/theme_constants.dart';
+import '../../../../providers/auth_provider.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../models/salon_models.dart';
@@ -115,6 +116,24 @@ class _ClientExtrasState extends State<ClientExtras> {
     }
   }
 
+  Future<void> _points(final bool sw, final bool manager) async {
+    try {
+      final Map<String, dynamic> l = await widget.api.clientLoyalty(widget.history.id);
+      if (!mounted) return;
+      final List<Map<String, dynamic>> ledger = <Map<String, dynamic>>[
+        if (l['ledger'] is List)
+          for (final dynamic r in l['ledger'] as List)
+            if (r is Map) Map<String, dynamic>.from(r),
+      ];
+      final (int, String)? adj = await showDialog<(int, String)>(context: context, builder: (BuildContext d) => _PointsDialog(balance: (l['balance'] as num?)?.toInt() ?? 0, ledger: ledger, manager: manager));
+      if (adj == null || !mounted) return;
+      await widget.api.adjustLoyalty(widget.history.id, points: adj.$1, note: adj.$2);
+      if (mounted) ThemeConstants.showSuccessSnackBar(context, sw ? 'Pointi zimebadilishwa' : 'Points changed');
+    } on Exception catch (e) {
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
+    }
+  }
+
   Future<void> _removePhoto(final Map<String, dynamic> p) async {
     try {
       await widget.api.deleteClientPhoto((p['id'] as num).toInt());
@@ -142,7 +161,7 @@ class _ClientExtrasState extends State<ClientExtras> {
           Wrap(spacing: 8, children: <Widget>[
             if (h.isReturning != null)
               Chip(key: const Key('client_kind'), label: Text(h.isReturning! ? (sw ? 'Mteja anayerudi' : 'Returning client') : (sw ? 'Mteja mpya' : 'New client'))),
-            if (h.loyaltyPoints != null) Chip(key: const Key('client_points'), label: Text(sw ? 'Pointi: ${h.loyaltyPoints}' : 'Points: ${h.loyaltyPoints}')),
+            if (h.loyaltyPoints != null) ActionChip(key: const Key('client_points'), label: Text(sw ? 'Pointi: ${h.loyaltyPoints}' : 'Points: ${h.loyaltyPoints}'), onPressed: () => _points(sw, context.read<AuthProvider>().permissions.has('inv_manage_settings'))),
             if ((h.referredByName ?? '').isNotEmpty) Chip(label: Text(sw ? 'Alileta: ${h.referredByName}' : 'Brought by ${h.referredByName}')),
           ]),
           TextField(style: salonInputStyle, key: const Key('client_birthday'), controller: _birthday, decoration: salonInput(labelText: sw ? 'Siku ya kuzaliwa (YYYY-MM-DD)' : 'Birthday (YYYY-MM-DD)')),
@@ -183,6 +202,70 @@ class _ClientExtrasState extends State<ClientExtras> {
             ]),
         ]),
       ),
+    );
+  }
+}
+
+/// A client's points: the balance and the list of what moved them; the owner and managers can add or take points with a
+/// reason (never below nothing: the server refuses).
+class _PointsDialog extends StatefulWidget {
+  const _PointsDialog({required this.balance, required this.ledger, required this.manager});
+
+  final int balance;
+  final List<Map<String, dynamic>> ledger;
+  final bool manager;
+
+  @override
+  State<_PointsDialog> createState() => _PointsDialogState();
+}
+
+class _PointsDialogState extends State<_PointsDialog> {
+  final TextEditingController _points = TextEditingController();
+  final TextEditingController _note = TextEditingController();
+  String? _problem;
+
+  @override
+  void dispose() {
+    _points.dispose();
+    _note.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool sw = context.watch<LocalizationService>().isSwahili;
+
+    return AlertDialog(
+      title: Text(sw ? 'Pointi: ${widget.balance}' : 'Points: ${widget.balance}'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ListView(shrinkWrap: true, children: <Widget>[
+          if (widget.ledger.isEmpty) Text(sw ? 'Hakuna mabadiliko bado.' : 'Nothing yet.', key: const Key('points_empty')),
+          for (final Map<String, dynamic> r in widget.ledger)
+            ListTile(dense: true, title: Text('${(r['points'] as num) > 0 ? '+' : ''}${r['points']}'), subtitle: Text('${r['note'] ?? r['kind']} · ${r['at']}')),
+          if (widget.manager) ...<Widget>[
+            const Divider(),
+            TextField(style: salonInputStyle, key: const Key('points_adjust'), controller: _points, keyboardType: const TextInputType.numberWithOptions(signed: true), decoration: salonInput(labelText: sw ? 'Ongeza au toa pointi (mf. -10)' : 'Add or take points (e.g. -10)')),
+            const SizedBox(height: 8),
+            TextField(style: salonInputStyle, key: const Key('points_note'), controller: _note, decoration: salonInput(labelText: sw ? 'Sababu' : 'Reason')),
+            if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
+          ],
+        ]),
+      ),
+      actions: <Widget>[
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(sw ? 'Funga' : 'Close')),
+        if (widget.manager)
+          FilledButton(
+            key: const Key('points_save'),
+            onPressed: () {
+              final int? p = int.tryParse(_points.text.trim());
+              if (p == null || p == 0) return setState(() => _problem = sw ? 'Weka idadi ya pointi.' : 'Enter the number of points.');
+              if (_note.text.trim().length < 3) return setState(() => _problem = sw ? 'Andika sababu.' : 'Say why.');
+              Navigator.pop(context, (p, _note.text.trim()));
+            },
+            child: Text(sw ? 'Hifadhi' : 'Save'),
+          ),
+      ],
     );
   }
 }

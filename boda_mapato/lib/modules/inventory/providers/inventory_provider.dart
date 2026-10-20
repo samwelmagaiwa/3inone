@@ -1226,7 +1226,10 @@ class InventoryProvider extends ChangeNotifier {
   void setSalonMode(bool value) {
     // Every request now says which service's books it is about (the server keeps them apart).
     ApiService.activeService = value ? 'salon' : null;
-    if (!value) ApiService.activeBranch = null;
+    if (!value) {
+      ApiService.activeBranch = null;
+      ApiService.activeBranchName = null;
+    }
     if (_salonMode == value) return;
     _salonMode = value;
     notifyListeners();

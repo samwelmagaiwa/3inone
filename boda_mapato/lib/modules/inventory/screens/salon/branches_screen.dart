@@ -47,6 +47,7 @@ class _BranchesScreenState extends State<BranchesScreen> {
       // A branch switched off since it was chosen no longer filters anything.
       if (ApiService.activeBranch != null && !rows.any((SalonBranchInfo b) => b.id == ApiService.activeBranch && b.active)) {
         ApiService.activeBranch = null;
+        ApiService.activeBranchName = null;
       }
       setState(() {
         _rows = rows;
@@ -77,7 +78,10 @@ class _BranchesScreenState extends State<BranchesScreen> {
   }
 
   void _choose(final int? id) {
-    setState(() => ApiService.activeBranch = id);
+    setState(() {
+      ApiService.activeBranch = id;
+      ApiService.activeBranchName = id == null ? null : _rows.where((SalonBranchInfo b) => b.id == id).map((SalonBranchInfo b) => b.name).firstOrNull;
+    });
   }
 
   @override

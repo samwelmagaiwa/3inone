@@ -52,6 +52,16 @@ void main() {
     expect(ApiService.activeBranch, isNull);
   });
 
+  testWidgets('the chosen branch name is remembered for the home header and forgotten on all', (WidgetTester t) async {
+    await _pump(t, _FakeSalon());
+    await t.tap(find.byKey(const Key('branch_1')));
+    await t.pump();
+    expect(ApiService.activeBranchName, 'Kariakoo');
+    await t.tap(find.byKey(const Key('branch_all')));
+    await t.pump();
+    expect(ApiService.activeBranchName, isNull);
+  });
+
   testWidgets('a switched-off branch cannot be chosen', (WidgetTester t) async {
     await _pump(t, _FakeSalon());
     await t.tap(find.byKey(const Key('branch_2')));

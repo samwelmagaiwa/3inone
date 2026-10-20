@@ -1,3 +1,5 @@
+import 'package:boda_mapato/models/user_permissions.dart';
+import 'package:boda_mapato/providers/auth_provider.dart';
 import 'package:boda_mapato/modules/inventory/models/salon_models.dart';
 import 'package:boda_mapato/modules/inventory/screens/salon/client_history_screen.dart';
 import 'package:boda_mapato/modules/inventory/services/salon_api.dart';
@@ -29,6 +31,16 @@ class _FakeSalon extends SalonApi {
   }
 
   final List<Map<String, dynamic>> profileSaves = <Map<String, dynamic>>[];
+  final List<(int, String)> adjusts = <(int, String)>[];
+
+  @override
+  Future<Map<String, dynamic>> clientLoyalty(int customerId) async => <String, dynamic>{
+        'balance': 42,
+        'ledger': <Map<String, dynamic>>[<String, dynamic>{'points': 10, 'kind': 'earn', 'note': 'Visit', 'at': '2026-10-01 10:00'}],
+      };
+
+  @override
+  Future<void> adjustLoyalty(int customerId, {required int points, required String note}) async => adjusts.add((points, note));
   List<Map<String, dynamic>> packages = <Map<String, dynamic>>[];
 
   @override
@@ -78,6 +90,11 @@ ClientHistory _neema({String? notes, bool optOut = false, NextVisit? next, bool 
 
 final NextVisit _due = NextVisit(visitOn: DateTime(2026, 9, 20), dueOn: DateTime(2026, 11), ruleWeeks: 6, service: 'Braids');
 
+class _Boss extends AuthProvider {
+  @override
+  UserPermissions get permissions => UserPermissions.fromRole('admin');
+}
+
 Future<void> _open(WidgetTester t, _FakeSalon api, {bool sw = false}) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   await LocalizationService.instance.changeLanguage(sw ? 'sw' : 'en');
@@ -86,8 +103,11 @@ Future<void> _open(WidgetTester t, _FakeSalon api, {bool sw = false}) async {
   t.view.devicePixelRatio = 1.0;
   addTearDown(t.view.reset);
   await t.pumpWidget(
-    ChangeNotifierProvider<LocalizationService>.value(
-      value: LocalizationService.instance,
+    MultiProvider(
+      providers: <ChangeNotifierProvider<ChangeNotifier>>[
+        ChangeNotifierProvider<LocalizationService>.value(value: LocalizationService.instance),
+        ChangeNotifierProvider<AuthProvider>(create: (_) => _Boss()),
+      ],
       child: ScreenUtilInit(
         designSize: const Size(411, 900),
         minTextAdapt: true,
@@ -251,6 +271,28 @@ void main() {
     expect(api.profileSaves.single['birthday'], '1996-01-02');
     expect((api.profileSaves.single['preferences'] as Map<String, String>)['colour'], 'Honey blonde');
     expect((api.profileSaves.single['preferences'] as Map<String, String>)['hairstyle'], 'Bob');
+    await t.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('the points chip opens the history and the owner can adjust with a reason', (t) async {
+    final ClientHistory h = ClientHistory(id: 7, name: 'Neema Juma', phone: '0711000001', notes: null, smsOptOut: false, visitCount: 1, totalSpent: 1, lastVisitOn: null, favouriteService: null, nextVisit: null, visits: const <ClientVisit>[], isReturning: false, loyaltyPoints: 42);
+    final _FakeSalon api = _FakeSalon(h);
+    await _open(t, api);
+    await t.pump();
+    await t.scrollUntilVisible(find.byKey(const Key('client_points')), 200, scrollable: find.byType(Scrollable).first);
+    await t.tap(find.byKey(const Key('client_points')));
+    await t.pumpAndSettle();
+    expect(find.text('Points: 42'), findsWidgets);
+    expect(find.text('+10'), findsOneWidget);
+
+    await t.tap(find.byKey(const Key('points_save')));
+    await t.pump();
+    expect(find.text('Enter the number of points.'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('points_adjust')), '-5');
+    await t.enterText(find.byKey(const Key('points_note')), 'Wrong visit');
+    await t.tap(find.byKey(const Key('points_save')));
+    await t.pumpAndSettle();
+    expect(api.adjusts.single, (-5, 'Wrong visit'));
     await t.pump(const Duration(seconds: 4));
   });
 
