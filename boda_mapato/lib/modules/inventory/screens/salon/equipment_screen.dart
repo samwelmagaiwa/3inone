@@ -5,6 +5,7 @@ import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
+import 'salon_input.dart';
 import 'salon_text.dart';
 
 /// The salon's equipment: what it owns and cost, whether it works, when it is next due for a service, and each service or
@@ -213,10 +214,10 @@ class _EquipmentDialogState extends State<_EquipmentDialog> {
       title: Text(widget.item == null ? (sw ? 'Kifaa kipya' : 'New equipment') : (sw ? 'Badili kifaa' : 'Edit equipment')),
       content: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-          TextField(key: const Key('eq_name'), controller: _name, decoration: InputDecoration(labelText: sw ? 'Jina' : 'Name')),
-          TextField(controller: _kind, decoration: InputDecoration(labelText: sw ? 'Aina (kiyoyozi, dryer…)' : 'Kind (dryer, chair…)')),
-          TextField(key: const Key('eq_cost'), controller: _cost, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: sw ? 'Gharama' : 'Cost')),
-          TextField(key: const Key('eq_next'), controller: _next, decoration: InputDecoration(labelText: sw ? 'Huduma ijayo (YYYY-MM-DD)' : 'Next service (YYYY-MM-DD)')),
+          TextField(style: salonInputStyle, key: const Key('eq_name'), controller: _name, decoration: salonInput(labelText: sw ? 'Jina' : 'Name')),
+          TextField(style: salonInputStyle, controller: _kind, decoration: salonInput(labelText: sw ? 'Aina (kiyoyozi, dryer…)' : 'Kind (dryer, chair…)')),
+          TextField(style: salonInputStyle, key: const Key('eq_cost'), controller: _cost, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'Gharama' : 'Cost')),
+          TextField(style: salonInputStyle, key: const Key('eq_next'), controller: _next, decoration: salonInput(labelText: sw ? 'Huduma ijayo (YYYY-MM-DD)' : 'Next service (YYYY-MM-DD)')),
           if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
         ]),
       ),
@@ -264,8 +265,8 @@ class _LogDialogState extends State<_LogDialog> {
             selected: <String>{_kind},
             onSelectionChanged: (Set<String> s) => setState(() => _kind = s.first),
           ),
-          TextField(key: const Key('log_what'), controller: _what, decoration: InputDecoration(labelText: sw ? 'Ilifanyika nini' : 'What was done')),
-          TextField(key: const Key('log_cost'), controller: _cost, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: sw ? 'Gharama (huingia kwenye matumizi)' : 'Cost (goes into expenses)')),
+          TextField(style: salonInputStyle, key: const Key('log_what'), controller: _what, decoration: salonInput(labelText: sw ? 'Ilifanyika nini' : 'What was done')),
+          TextField(style: salonInputStyle, key: const Key('log_cost'), controller: _cost, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'Gharama (huingia kwenye matumizi)' : 'Cost (goes into expenses)')),
           if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
         ]),
       ),

@@ -5,6 +5,7 @@ import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
+import 'salon_input.dart';
 
 /// What clients said after a visit: the average rating, each stylist's average (owner and managers), and the feedback
 /// list with open complaints first. A complaint is resolved with a note. A stylist sees only feedback about themselves.
@@ -164,7 +165,7 @@ class _NoteDialogState extends State<_NoteDialog> {
 
     return AlertDialog(
       title: Text(sw ? 'Tatua lalamiko' : 'Resolve complaint'),
-      content: TextField(key: const Key('fb_note'), controller: _note, decoration: InputDecoration(labelText: sw ? 'Ulifanya nini? (si lazima)' : 'What was done? (optional)')),
+      content: TextField(style: salonInputStyle, key: const Key('fb_note'), controller: _note, decoration: salonInput(labelText: sw ? 'Ulifanya nini? (si lazima)' : 'What was done? (optional)')),
       actions: <Widget>[
         TextButton(onPressed: () => Navigator.pop(context), child: Text(sw ? 'Ghairi' : 'Cancel')),
         FilledButton(key: const Key('fb_resolve_save'), onPressed: () => Navigator.pop(context, _note.text.trim()), child: Text(sw ? 'Tatua' : 'Resolve')),

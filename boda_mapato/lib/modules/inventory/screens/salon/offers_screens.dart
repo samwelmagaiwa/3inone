@@ -5,6 +5,7 @@ import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
+import 'salon_input.dart';
 import '../widgets/inventory_widgets.dart';
 
 /// Vouchers and bulk texts to groups of clients, side by side.
@@ -161,7 +162,7 @@ class _VoucherDialogState extends State<_VoucherDialog> {
       title: Text(sw ? 'Kuponi mpya' : 'New voucher'),
       content: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-          TextField(key: const Key('voucher_code'), controller: _code, textCapitalization: TextCapitalization.characters, decoration: InputDecoration(labelText: sw ? 'Msimbo' : 'Code')),
+          TextField(style: salonInputStyle, key: const Key('voucher_code'), controller: _code, textCapitalization: TextCapitalization.characters, decoration: salonInput(labelText: sw ? 'Msimbo' : 'Code')),
           SegmentedButton<String>(
             segments: <ButtonSegment<String>>[
               ButtonSegment<String>(value: 'percent', label: Text(sw ? 'Asilimia' : 'Percent')),
@@ -170,8 +171,8 @@ class _VoucherDialogState extends State<_VoucherDialog> {
             selected: <String>{_kind},
             onSelectionChanged: (Set<String> s) => setState(() => _kind = s.first),
           ),
-          TextField(key: const Key('voucher_value'), controller: _value, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: sw ? 'Thamani' : 'Value')),
-          TextField(key: const Key('voucher_uses'), controller: _uses, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: sw ? 'Mara za kutumika (si lazima)' : 'Times it can be used (optional)')),
+          TextField(style: salonInputStyle, key: const Key('voucher_value'), controller: _value, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'Thamani' : 'Value')),
+          TextField(style: salonInputStyle, key: const Key('voucher_uses'), controller: _uses, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'Mara za kutumika (si lazima)' : 'Times it can be used (optional)')),
           if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
         ]),
       ),
@@ -301,7 +302,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Text(sw ? 'Wanaoweza kutumiwa ujumbe: ${current['reachable'] ?? 0}' : 'Can be texted: ${current['reachable'] ?? 0}', key: const Key('seg_reach')),
                 ),
-                TextField(key: const Key('camp_message'), controller: _message, maxLength: 320, minLines: 3, maxLines: 5, decoration: InputDecoration(border: const OutlineInputBorder(), labelText: sw ? 'Ujumbe' : 'Message')),
+                TextField(style: salonInputStyle, key: const Key('camp_message'), controller: _message, maxLength: 320, minLines: 3, maxLines: 5, decoration: salonInput(labelText: sw ? 'Ujumbe' : 'Message')),
                 FilledButton.icon(key: const Key('camp_send'), onPressed: _busy ? null : _send, icon: const Icon(Icons.send), label: Text(sw ? 'Tuma' : 'Send')),
                 const SizedBox(height: 16),
                 Text(sw ? 'Zilizotumwa' : 'Sent', style: const TextStyle(fontWeight: FontWeight.bold)),

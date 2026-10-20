@@ -9,6 +9,7 @@ import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
+import 'salon_input.dart';
 
 /// Chooses a photo: its bytes and file name, or null when nothing was chosen.
 typedef PhotoPicker = Future<(Uint8List, String)?> Function();
@@ -144,8 +145,8 @@ class _ClientExtrasState extends State<ClientExtras> {
             if (h.loyaltyPoints != null) Chip(key: const Key('client_points'), label: Text(sw ? 'Pointi: ${h.loyaltyPoints}' : 'Points: ${h.loyaltyPoints}')),
             if ((h.referredByName ?? '').isNotEmpty) Chip(label: Text(sw ? 'Alileta: ${h.referredByName}' : 'Brought by ${h.referredByName}')),
           ]),
-          TextField(key: const Key('client_birthday'), controller: _birthday, decoration: InputDecoration(labelText: sw ? 'Siku ya kuzaliwa (YYYY-MM-DD)' : 'Birthday (YYYY-MM-DD)')),
-          for (final String k in _keys) TextField(key: Key('client_pref_$k'), controller: _prefs[k], maxLength: k == 'allergies' ? 200 : 160, decoration: InputDecoration(labelText: labels[k], counterText: '')),
+          TextField(style: salonInputStyle, key: const Key('client_birthday'), controller: _birthday, decoration: salonInput(labelText: sw ? 'Siku ya kuzaliwa (YYYY-MM-DD)' : 'Birthday (YYYY-MM-DD)')),
+          for (final String k in _keys) TextField(style: salonInputStyle, key: Key('client_pref_$k'), controller: _prefs[k], maxLength: k == 'allergies' ? 200 : 160, decoration: salonInput(labelText: labels[k] ?? k, counterText: '')),
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(key: const Key('client_profile_save'), onPressed: _saving ? null : () => _save(sw), child: Text(sw ? 'Hifadhi' : 'Save')),

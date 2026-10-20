@@ -6,6 +6,7 @@ import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
+import 'salon_input.dart';
 
 /// The salon's switches in one place: texts to clients (reminders, birthday offer, feedback link, come-back), the
 /// evening summary to the owner, the cancel/deposit window, the online booking page and the loyalty points. Each
@@ -125,7 +126,7 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(children: <Widget>[
-                      Expanded(child: TextField(key: const Key('set_birthday_text'), controller: _birthdayText, maxLength: 160, decoration: InputDecoration(labelText: sw ? 'Maneno ya zawadi' : 'Offer wording'))),
+                      Expanded(child: TextField(style: salonInputStyle, key: const Key('set_birthday_text'), controller: _birthdayText, maxLength: 160, decoration: salonInput(labelText: sw ? 'Maneno ya zawadi' : 'Offer wording'))),
                       TextButton(key: const Key('set_birthday_save'), onPressed: () => _save(<String, dynamic>{'birthday_text': _birthdayText.text.trim()}), child: Text(sw ? 'Hifadhi' : 'Save')),
                     ]),
                   ),
@@ -136,11 +137,11 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(children: <Widget>[
                       Expanded(
-                        child: TextField(
+                        child: TextField(style: salonInputStyle, 
                           key: const Key('set_cancel'),
                           controller: _cancel,
                           keyboardType: TextInputType.number,
-                          decoration: InputDecoration(labelText: sw ? 'Saa za mwisho kughairi bila kupoteza amana' : 'Hours before which a client can cancel and keep the deposit'),
+                          decoration: salonInput(labelText: sw ? 'Saa za mwisho kughairi bila kupoteza amana' : 'Hours before which a client can cancel and keep the deposit'),
                         ),
                       ),
                       TextButton(key: const Key('set_cancel_save'), onPressed: () => _save(<String, dynamic>{'cancel_hours': int.tryParse(_cancel.text.trim()) ?? 0}), child: Text(sw ? 'Hifadhi' : 'Save')),
@@ -151,7 +152,7 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(children: <Widget>[
-                      Expanded(child: TextField(key: const Key('set_slug'), controller: _slug, decoration: InputDecoration(labelText: sw ? 'Anwani (herufi ndogo, namba, -)' : 'Address (lowercase, numbers, -)'))),
+                      Expanded(child: TextField(style: salonInputStyle, key: const Key('set_slug'), controller: _slug, decoration: salonInput(labelText: sw ? 'Anwani (herufi ndogo, namba, -)' : 'Address (lowercase, numbers, -)'))),
                       TextButton(key: const Key('set_slug_save'), onPressed: () => _save(<String, dynamic>{'booking_slug': _slug.text.trim().toLowerCase()}), child: Text(sw ? 'Hifadhi' : 'Save')),
                     ]),
                   ),
@@ -177,9 +178,9 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(children: <Widget>[
-                      TextField(key: const Key('set_per'), controller: _per, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: sw ? 'TSh ngapi kwa pointi 1' : 'TSh spent for 1 point')),
-                      TextField(key: const Key('set_value'), controller: _value, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: sw ? 'TSh inayopunguzwa kwa pointi 1' : 'TSh off for 1 point used')),
-                      TextField(key: const Key('set_referral'), controller: _referral, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: sw ? 'Pointi za anayemleta mteja' : 'Points for bringing a client')),
+                      TextField(style: salonInputStyle, key: const Key('set_per'), controller: _per, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'TSh ngapi kwa pointi 1' : 'TSh spent for 1 point')),
+                      TextField(style: salonInputStyle, key: const Key('set_value'), controller: _value, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'TSh inayopunguzwa kwa pointi 1' : 'TSh off for 1 point used')),
+                      TextField(style: salonInputStyle, key: const Key('set_referral'), controller: _referral, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'Pointi za anayemleta mteja' : 'Points for bringing a client')),
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(

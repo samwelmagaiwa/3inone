@@ -7,6 +7,7 @@ import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
+import 'salon_input.dart';
 
 /// The salon's branches. Choosing one makes every figure, list and new record on the phone that branch's; "All branches"
 /// goes back to the whole salon. The owner and managers add, rename and switch branches off. A salon with one branch
@@ -166,8 +167,8 @@ class _BranchDialogState extends State<_BranchDialog> {
     return AlertDialog(
       title: Text(widget.branch == null ? (sw ? 'Tawi jipya' : 'New branch') : (sw ? 'Badili tawi' : 'Edit branch')),
       content: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-        TextField(key: const Key('branch_name'), controller: _name, decoration: InputDecoration(labelText: sw ? 'Jina la tawi' : 'Branch name')),
-        TextField(key: const Key('branch_address'), controller: _address, decoration: InputDecoration(labelText: sw ? 'Mahali' : 'Address')),
+        TextField(style: salonInputStyle, key: const Key('branch_name'), controller: _name, decoration: salonInput(labelText: sw ? 'Jina la tawi' : 'Branch name')),
+        TextField(style: salonInputStyle, key: const Key('branch_address'), controller: _address, decoration: salonInput(labelText: sw ? 'Mahali' : 'Address')),
       ]),
       actions: <Widget>[
         TextButton(onPressed: () => Navigator.pop(context), child: Text(sw ? 'Ghairi' : 'Cancel')),
