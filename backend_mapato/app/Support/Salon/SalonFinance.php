@@ -61,6 +61,24 @@ final class SalonFinance
             : 0.0;
         $operating = $expenses['total'] + $commissions + $salaries;
 
+        // The VAT in what was sold (per rate), for the tax return. Prices may or may not already include it.
+        $includesVat = (DB::table('inventory_settings')->where('key', 'prices_include_vat')->value('value') ?? '1') !== '0';
+        $vatRows = DB::table('inventory_sale_items as si')
+            ->join('inventory_sales as s', 's.id', '=', 'si.sale_id')
+            ->whereNull('s.cancelled_at')
+            ->where('si.tax_amount', '>', 0)
+            ->whereDate('s.created_at', '>=', $f)
+            ->whereDate('s.created_at', '<=', $t)
+            ->groupBy('si.tax_percent')
+            ->orderBy('si.tax_percent')
+            ->selectRaw('si.tax_percent as rate, SUM(si.total) as gross, SUM(si.tax_amount) as vat')
+            ->get()
+            ->map(fn ($r) => [
+                'rate' => (float) $r->rate == floor((float) $r->rate) ? (int) $r->rate : (float) $r->rate,
+                'taxable' => self::money($includesVat ? (float) $r->gross - (float) $r->vat : (float) $r->gross),
+                'vat' => self::money($r->vat),
+            ])->values();
+
         // A deposit the salon kept (a no-show, a late cancellation) is income, on the day it was settled; deposits
         // still held are the clients' money until then, and deposits put into a sale are in that sale's payment.
         $keptDeposits = collect();
@@ -129,6 +147,7 @@ final class SalonFinance
             'commissions' => self::money($commissions),
             'salaries' => self::money($salaries),
             'operating_costs' => self::money($operating),
+            'vat' => ['total' => self::money($vatRows->sum('vat')), 'by_rate' => $vatRows->all()],
             'other_income' => self::money($otherIncome),
             'deposits_held' => self::money($heldDeposits),
             'net_profit' => self::money($gross - $operating + $otherIncome),

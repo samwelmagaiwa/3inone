@@ -340,6 +340,8 @@ class SalonController extends Controller
             'birthday_offer' => 'sometimes|boolean',
             'cancel_hours' => 'sometimes|integer|min:0|max:168',
             'feedback_sms' => 'sometimes|boolean',
+            'online_booking' => 'sometimes|boolean',
+            'booking_slug' => ['sometimes', 'nullable', 'string', 'min:3', 'max:40', 'regex:/^[a-z0-9]+(-[a-z0-9]+)*$/'],
             'birthday_text' => 'sometimes|nullable|string|max:160',
         ]);
 
@@ -348,6 +350,10 @@ class SalonController extends Controller
                 array_key_exists('birthday_offer', $data) ? (bool) $data['birthday_offer'] : null,
                 array_key_exists('birthday_text', $data) ? (string) ($data['birthday_text'] ?? '') : null,
             );
+        }
+
+        if (array_key_exists('online_booking', $data) || array_key_exists('booking_slug', $data)) {
+            $this->saveBooking($request, $data);
         }
 
         if (array_key_exists('feedback_sms', $data)) {
@@ -384,6 +390,38 @@ class SalonController extends Controller
         ]]);
     }
 
+    /** Whether clients may book online, and the address of the page they book from. */
+    private function bookingPayload(): array
+    {
+        $business = \App\Models\Business::forUser(request()->user());
+        $slug = $business?->booking_slug;
+
+        return [
+            'online_booking' => (bool) ($business?->online_booking ?? false),
+            'booking_slug' => $slug,
+            'booking_url' => $slug ? rtrim((string) config('app.url'), '/') . '/book/' . $slug : null,
+        ];
+    }
+
+    /** Set the booking address and switch online booking on or off (it needs an address first). */
+    private function saveBooking(Request $request, array $data): void
+    {
+        $business = \App\Models\Business::forUser($request->user());
+        abort_if($business === null, 403, 'Fanya hivi kutoka kwenye akaunti ya saluni yenyewe. / Do this from the salon\'s own account.');
+        abort_unless(\App\Support\Salon\SalonAccess::isManager($request->user()), 403, 'Ni mmiliki au meneja tu. / Only the owner or a manager.');
+
+        $slug = array_key_exists('booking_slug', $data) ? ($data['booking_slug'] ?: null) : $business->booking_slug;
+        if ($slug !== null && \App\Models\Business::withoutAccountScope()->where('booking_slug', $slug)->where('id', '!=', $business->id)->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['booking_slug' => ['Anwani hii imeshachukuliwa. / That address is taken.']]);
+        }
+        $on = array_key_exists('online_booking', $data) ? (bool) $data['online_booking'] : (bool) $business->online_booking;
+        if ($on && $slug === null) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['booking_slug' => ['Weka anwani ya ukurasa wa miadi kwanza. / Choose the address of the booking page first.']]);
+        }
+
+        $business->forceFill(['booking_slug' => $slug, 'online_booking' => $slug === null ? false : $on])->save();
+    }
+
     private function settingsPayload(): array
     {
         $s = RebookPlanner::settings();
@@ -395,6 +433,7 @@ class SalonController extends Controller
             'daily_summary' => \App\Support\Salon\DailySummary::isOn(),
             'cancel_hours' => AppointmentPlanner::cancelHours(),
             'feedback_sms' => \App\Support\Salon\SalonFeedback::isOn(),
+            ...$this->bookingPayload(),
             'birthday_offer' => \App\Support\Salon\BirthdayOffer::isOn(),
             'birthday_text' => \App\Support\Salon\BirthdayOffer::text(),
             'max_weeks' => RebookPlanner::MAX_WEEKS,

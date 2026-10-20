@@ -24,7 +24,16 @@ Route::get('/', function () {
 // The page a client opens from the text a salon sends after a visit: rate it, leave a comment or a complaint. It needs
 // no sign-in and no session; the secret is in the link.
 Route::get('/f/{token}', [\App\Http\Controllers\API\Inventory\SalonFeedbackController::class, 'page'])
-    ->middleware('throttle:60,1')
+    ->middleware('throttle:60,1,salon-feedback-page')
+    ->withoutMiddleware([
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+    ]);
+
+// The page a client books from: the salon's own address. No sign-in, no session; throttled.
+Route::get('/book/{slug}', [\App\Http\Controllers\API\Inventory\SalonPublicBookingController::class, 'page'])
+    ->middleware('throttle:60,1,salon-booking-page')
     ->withoutMiddleware([
         \Illuminate\Session\Middleware\StartSession::class,
         \Illuminate\View\Middleware\ShareErrorsFromSession::class,

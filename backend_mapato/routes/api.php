@@ -45,7 +45,10 @@ use App\Http\Controllers\API\Inventory\CustomerController as InventoryCustomerCo
 use App\Http\Controllers\API\Inventory\AppointmentController;
 use App\Http\Controllers\API\Inventory\SalonClientController;
 use App\Http\Controllers\API\Inventory\SalonController;
+use App\Http\Controllers\API\Inventory\SalonEquipmentController;
+use App\Http\Controllers\API\Inventory\SalonExportController;
 use App\Http\Controllers\API\Inventory\SalonFeedbackController;
+use App\Http\Controllers\API\Inventory\SalonPublicBookingController;
 use App\Http\Controllers\API\Inventory\SalonMoneyController;
 use App\Http\Controllers\API\Inventory\SalonPerksController;
 use App\Http\Controllers\API\Inventory\SalonStaffController;
@@ -121,9 +124,14 @@ Route::middleware(['auth:sanctum', 'role:admin', 'service:transport'])->prefix('
 // checks that), so these are deliberately outside the service: gates below.
 // A client's answer to "how was your visit": opened from a link in a text, so nobody is signed in. The secret is the
 // token in the link (one use, a few days); every call is throttled.
-Route::prefix('public/salon')->middleware('throttle:30,1')->group(function () {
+// (Each limit has its own name: without one, every limit on the same address counts the same requests.)
+Route::prefix('public/salon')->middleware('throttle:120,1,public-salon')->group(function () {
     Route::get('feedback/{token}', [SalonFeedbackController::class, 'show']);
     Route::post('feedback/{token}', [SalonFeedbackController::class, 'answer']);
+    // A client booking for themselves from the salon's own page.
+    Route::get('book/{slug}', [SalonPublicBookingController::class, 'catalog']);
+    Route::get('book/{slug}/slots', [SalonPublicBookingController::class, 'slots']);
+    Route::post('book/{slug}', [SalonPublicBookingController::class, 'book'])->middleware('throttle:10,1,salon-book');
 });
 
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
@@ -425,6 +433,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('inventory/salon/clients/{id}/photos', [SalonClientController::class, 'storePhoto']);
         Route::delete('inventory/salon/photos/{id}',       [SalonClientController::class, 'destroyPhoto']);
         Route::get('inventory/salon/campaigns',            [SalonClientController::class, 'campaigns']);
+        // Equipment and its upkeep (the owner, managers and the stock manager: checked in the controller).
+        Route::get('inventory/salon/equipment',            [SalonEquipmentController::class, 'index']);
+        Route::post('inventory/salon/equipment',           [SalonEquipmentController::class, 'store']);
+        Route::match(['put', 'patch'], 'inventory/salon/equipment/{id}', [SalonEquipmentController::class, 'update']);
+        Route::delete('inventory/salon/equipment/{id}',    [SalonEquipmentController::class, 'destroy']);
+        Route::get('inventory/salon/equipment/{id}/logs',  [SalonEquipmentController::class, 'logs']);
+        Route::post('inventory/salon/equipment/{id}/logs', [SalonEquipmentController::class, 'addLog']);
+        // Reports as a PDF or a CSV (the owner, managers and accountants: checked in the controller).
+        Route::get('inventory/salon/export/{type}',        [SalonExportController::class, 'export']);
         Route::get('inventory/salon/feedback',             [SalonFeedbackController::class, 'index']);
         Route::post('inventory/salon/feedback',            [SalonFeedbackController::class, 'store']);
         Route::post('inventory/salon/feedback/{id}/resolve', [SalonFeedbackController::class, 'resolve']);

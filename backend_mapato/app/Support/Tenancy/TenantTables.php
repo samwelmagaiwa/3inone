@@ -39,6 +39,8 @@ final class TenantTables
         'inventory_customers',
         'inventory_dispatch_lines',
         'inventory_dispatches',
+        'inventory_equipment',
+        'inventory_equipment_logs',
         'inventory_expenses',
         'inventory_feedback',
         'inventory_feedback_requests',

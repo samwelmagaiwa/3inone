@@ -283,6 +283,7 @@ class AppointmentController extends Controller
             'starts_at' => Carbon::parse($r->starts_at)->format('Y-m-d H:i'),
             'ends_at' => Carbon::parse($r->ends_at)->format('Y-m-d H:i'),
             'status' => (string) $r->status,
+            'source' => (string) ($r->source ?? 'staff'),
             'deposit' => (float) ($r->deposit_amount ?? 0) > 0 ? [
                 'amount' => (float) $r->deposit_amount == floor((float) $r->deposit_amount) ? (int) $r->deposit_amount : (float) $r->deposit_amount,
                 'method' => $r->deposit_method,

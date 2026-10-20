@@ -40,6 +40,7 @@ class Business extends Model
         'sms_sender_id', 'sms_sender_status', 'sms_display_name', 'sms_sender_note',
         'sms_sender_requested_at', 'sms_sender_approved_at',
         'sms_sent_count', 'sms_own_count', 'sms_fallback_count', 'sms_last_sent_at', 'sms_last_error',
+        'booking_slug', 'online_booking',
     ];
 
     /** A business's own SMS account key and secret never leave the server, whatever serialises the model. */
