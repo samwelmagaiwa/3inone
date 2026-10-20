@@ -38,6 +38,9 @@ class InvProduct {
     this.rebookAfterWeeks,
     this.commissionPercent,
     this.commissionFixed,
+    this.packageSessions,
+    this.packageServiceId,
+    this.packageValidDays,
     this.staffIds = const <String>[],
     this.priceOptions = const <PriceOption>[],
   });
@@ -89,6 +92,14 @@ class InvProduct {
 
   /// Salon: a fixed amount the stylist earns each time it is done (wins over the percent when both are given).
   double? commissionFixed;
+
+  /// Salon: a package is a service that, once bought, gives the client [packageSessions] visits of [packageServiceId]
+  /// (valid for [packageValidDays] days, or for ever when null).
+  int? packageSessions;
+  int? packageServiceId;
+  int? packageValidDays;
+
+  bool get isPackage => isService && (packageSessions ?? 0) > 0;
 
   /// Salon: who may do this service (account ids); empty = anyone.
   List<String> staffIds;

@@ -701,6 +701,9 @@ class InventoryProvider extends ChangeNotifier {
     int? rebookAfterWeeks,
     double? commissionPercent,
     double? commissionFixed,
+    int? packageSessions,
+    int? packageServiceId,
+    int? packageValidDays,
     List<String>? staffIds,
     List<PriceOption>? priceOptions,
   }) async {
@@ -721,6 +724,11 @@ class InventoryProvider extends ChangeNotifier {
         if (rebookAfterWeeks != null) 'rebook_after_weeks': rebookAfterWeeks,
         if (commissionPercent != null) 'commission_percent': commissionPercent,
         if (commissionFixed != null) 'commission_fixed': commissionFixed,
+        if (isService && packageSessions != null && packageServiceId != null) ...{
+          'package_sessions': packageSessions,
+          'package_service_id': packageServiceId,
+          if (packageValidDays != null) 'package_valid_days': packageValidDays,
+        },
         if (staffIds != null && staffIds.isNotEmpty) 'staff_ids': staffIds,
         if (priceOptions != null && priceOptions.isNotEmpty) 'price_options': <Map<String, dynamic>>[for (final PriceOption o in priceOptions) o.toJson()],
         'category': category,
@@ -817,6 +825,9 @@ class InventoryProvider extends ChangeNotifier {
     int? rebookAfterWeeks,
     double? commissionPercent,
     double? commissionFixed,
+    int? packageSessions,
+    int? packageServiceId,
+    int? packageValidDays,
     List<String>? staffIds,
     List<PriceOption>? priceOptions,
   }) async {
@@ -836,6 +847,10 @@ class InventoryProvider extends ChangeNotifier {
         if (isService == true) 'rebook_after_weeks': rebookAfterWeeks,
         if (isService == true) 'commission_percent': commissionPercent,
         if (isService == true) 'commission_fixed': commissionFixed,
+        // Nothing here turns a package back into an ordinary service.
+        if (isService == true) 'package_sessions': packageSessions,
+        if (isService == true) 'package_service_id': packageServiceId,
+        if (isService == true) 'package_valid_days': packageValidDays,
         // An empty list clears it on the server (anyone may do it again; one price).
         if (isService == true && staffIds != null) 'staff_ids': staffIds,
         if (isService == true && priceOptions != null) 'price_options': <Map<String, dynamic>>[for (final PriceOption o in priceOptions) o.toJson()],
@@ -2268,6 +2283,9 @@ InvProduct _fromProductJson(Map<String, dynamic> j) => InvProduct(
       rebookAfterWeeks: j['rebook_after_weeks'] == null ? null : int.tryParse(j['rebook_after_weeks'].toString()),
       commissionPercent: j['commission_percent'] == null ? null : double.tryParse(j['commission_percent'].toString()),
       commissionFixed: j['commission_fixed'] == null ? null : double.tryParse(j['commission_fixed'].toString()),
+      packageSessions: j['package_sessions'] == null ? null : int.tryParse(j['package_sessions'].toString()),
+      packageServiceId: j['package_service_id'] == null ? null : int.tryParse(j['package_service_id'].toString()),
+      packageValidDays: j['package_valid_days'] == null ? null : int.tryParse(j['package_valid_days'].toString()),
       staffIds: j['staff_ids'] is List ? <String>[for (final dynamic s in j['staff_ids'] as List) '$s'] : const <String>[],
       priceOptions: j['price_options'] is List
           ? <PriceOption>[

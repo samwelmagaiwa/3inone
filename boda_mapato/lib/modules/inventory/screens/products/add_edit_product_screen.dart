@@ -50,6 +50,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final TextEditingController _rebook = TextEditingController();
   final TextEditingController _commission = TextEditingController();
   final TextEditingController _commissionFixed = TextEditingController();
+  final TextEditingController _packageSessions = TextEditingController();
+  final TextEditingController _packageDays = TextEditingController();
+  bool _isPackage = false;
+  int? _packageServiceId;
   // Salon: who may do this service (none chosen = anyone) and its price options (short / medium / long hair).
   final Set<String> _staffIds = <String>{};
   final List<_OptionDraft> _options = <_OptionDraft>[];
@@ -147,6 +151,10 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       _rebook.text = p.rebookAfterWeeks?.toString() ?? '';
       _commission.text = p.commissionPercent == null ? '' : _plainNumber(p.commissionPercent!);
       _commissionFixed.text = p.commissionFixed == null ? '' : formatAmount(p.commissionFixed);
+      _isPackage = p.isPackage;
+      _packageServiceId = p.packageServiceId;
+      _packageSessions.text = p.packageSessions?.toString() ?? '';
+      _packageDays.text = p.packageValidDays?.toString() ?? '';
       _staffIds.addAll(p.staffIds);
       for (final PriceOption o in p.priceOptions) {
         _options.add(_OptionDraft(o.label, formatAmount(o.price)));
@@ -275,6 +283,8 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _rebook.dispose();
     _commission.dispose();
     _commissionFixed.dispose();
+    _packageSessions.dispose();
+    _packageDays.dispose();
     for (final _OptionDraft o in _options) {
       o.dispose();
     }
@@ -709,6 +719,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 keyboard: TextInputType.number, hint: 'e.g. 2,000', inputFormatters: [ThousandsFormatter()]),
           ),
           ..._staffAndOptions(sw),
+          ..._packageSection(sw),
           Padding(
             padding: EdgeInsets.only(top: 6.h, left: 2.w),
             child: Text(
@@ -721,6 +732,41 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
           ),
         ],
       ];
+
+  /// Salon: sell this as a package (several visits of one service, paid once).
+  List<Widget> _packageSection(bool sw) {
+    final InventoryProvider inv = context.watch<InventoryProvider>();
+    final List<InvProduct> targets = inv.products.where((InvProduct p) => p.isService && !p.isPackage && p.id != widget.product?.id && p.status == 'active').toList();
+
+    return <Widget>[
+      SizedBox(height: 14.h),
+      Row(children: <Widget>[
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            Text(sw ? 'Huu ni kifurushi' : 'This is a package', style: ThemeConstants.bodyStyle),
+            Text(sw ? 'Mteja analipa mara moja kwa ziara kadhaa' : 'The client pays once for several visits', style: ThemeConstants.captionStyle),
+          ]),
+        ),
+        Switch(key: const ValueKey<String>('service_is_package'), value: _isPackage, activeThumbColor: ThemeConstants.invAccent, onChanged: (bool on) => setState(() => _isPackage = on)),
+      ]),
+      if (_isPackage) ...<Widget>[
+        DropdownButtonFormField<int>(
+          key: const ValueKey<String>('package_service'),
+          initialValue: targets.any((InvProduct p) => p.id == _packageServiceId) ? _packageServiceId : null,
+          items: <DropdownMenuItem<int>>[for (final InvProduct p in targets) DropdownMenuItem<int>(value: p.id, child: Text(p.name))],
+          onChanged: (int? v) => setState(() => _packageServiceId = v),
+          decoration: ThemeConstants.invInputDecoration(sw ? 'Huduma ya kifurushi' : 'Service the package is for'),
+          dropdownColor: const Color(0xFF0B3D4F),
+          style: ThemeConstants.bodyStyle,
+        ),
+        SizedBox(height: 8.h),
+        _twoCol(
+          left: _input(sw ? 'Idadi ya ziara' : 'Number of visits', _packageSessions, keyboard: TextInputType.number, hint: 'e.g. 5', inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+          right: _input(sw ? 'Siku za matumizi (si lazima)' : 'Valid for days (optional)', _packageDays, keyboard: TextInputType.number, hint: 'e.g. 90', inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
+        ),
+      ],
+    ];
+  }
 
   /// Salon: who may do this service, and its price options. Both are optional: nobody chosen means anyone may do it,
   /// and no options means the one price above.
@@ -1406,6 +1452,13 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final int? rebookWeeks = int.tryParse(_rebook.text.trim());
     final double? commission = double.tryParse(_commission.text.trim().replaceAll(',', '.'));
     final double? commissionFixed = _commissionFixed.text.trim().isEmpty ? null : parseAmount(_commissionFixed.text);
+    // A package says which service it is for and how many visits (at least two) it holds.
+    final int? packageSessions = int.tryParse(_packageSessions.text.trim());
+    final int? packageDays = int.tryParse(_packageDays.text.trim());
+    if (_isService && _isPackage && (_packageServiceId == null || packageSessions == null || packageSessions < 2)) {
+      ThemeConstants.showErrorSnackBar(context, sw ? 'Kifurushi kinahitaji huduma na ziara 2 au zaidi.' : 'A package needs a service and 2 or more visits.');
+      return;
+    }
     List<PriceOption> options = const <PriceOption>[];
     if (_isService) {
       final List<PriceOption>? read = _readOptions(sw);
@@ -1521,6 +1574,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         rebookAfterWeeks: rebookWeeks,
         commissionPercent: _isService ? commission : null,
         commissionFixed: _isService ? commissionFixed : null,
+        packageSessions: _isService && _isPackage ? packageSessions : null,
+        packageServiceId: _isService && _isPackage ? _packageServiceId : null,
+        packageValidDays: _isService && _isPackage ? packageDays : null,
         staffIds: _isService ? _staffIds.toList() : null,
         priceOptions: _isService ? options : null,
       );
@@ -1557,6 +1613,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         rebookAfterWeeks: _isService ? rebookWeeks : null,
         commissionPercent: _isService ? commission : null,
         commissionFixed: _isService ? commissionFixed : null,
+        packageSessions: _isService && _isPackage ? packageSessions : null,
+        packageServiceId: _isService && _isPackage ? _packageServiceId : null,
+        packageValidDays: _isService && _isPackage ? packageDays : null,
         staffIds: _isService ? _staffIds.toList() : null,
         priceOptions: _isService ? options : null,
       );

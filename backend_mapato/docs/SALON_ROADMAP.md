@@ -99,3 +99,14 @@ expenses, appointments, shifts, attendance, staff profiles; goods stock is NOT s
 
 Still to do: Flutter UI for phases 3-4 (client extras, campaigns, loyalty/vouchers/packages at POS, deposits, feedback list,
 equipment, export buttons, VAT card, online-booking settings, branch switcher sending `X-Branch`), new APK, release.
+
+## Status 2026-10-21 (Flutter for phases 3-4 built)
+
+App screens now exist for: branches (menu "Branches", `X-Branch`), equipment, client feedback + complaints, salon settings
+(texts, deposits window, online booking address + link, loyalty points), vouchers + bulk messages ("Offers & texts"),
+report export (PDF/CSV, Money hub "Export" tab), client page extras (birthday, preferences, packages, style photos with
+consent), the till (voucher, points, package use), packages in the product form, deposits + online/deposit badges on
+appointments, VAT / other income / deposits held on profit and loss. Flutter 1067 tests green, backend 826.
+
+Left: a branch name shown on the home header, loyalty history list + manual points adjustment screen, equipment
+history list, customer mobile app (the web booking page is the customer-facing part), release (`./deploy.sh release`).

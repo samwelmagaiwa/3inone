@@ -490,4 +490,51 @@ void main() {
       expect(body['quantity'], 20);
     });
   });
+
+  group('packages', () {
+    testWidgets('a package must name a service and have at least two visits before it is saved', (t) async {
+      await _open(t);
+      await _serviceOn(t);
+      await t.enterText(_hint('e.g. Braids (long)'), 'Braids x5');
+      await t.enterText(_hint('e.g. 15,000'), '150000');
+      await t.tap(_key('service_is_package'));
+      await t.pump();
+      expect(_key('package_service'), findsOneWidget);
+      await t.enterText(_hint('e.g. 5'), '1');
+      await _save(t);
+
+      expect(_api.posts.where((e) => e.$1 == '/inventory/products'), isEmpty, reason: 'nothing is saved');
+      expect(find.text('A package needs a service and 2 or more visits.'), findsNothing, reason: 'the banner has gone by now');
+    });
+
+    testWidgets('editing a package keeps its visits and service and sends them back', (t) async {
+      final InvProduct p = _braids()
+        ..packageSessions = 5
+        ..packageServiceId = 3
+        ..packageValidDays = 90;
+      await _open(t, product: p);
+      expect(t.widget<Switch>(_key('service_is_package')).value, isTrue);
+      expect(_typed(t, _hint('e.g. 5')), '5');
+      expect(_typed(t, _hint('e.g. 90')), '90');
+
+      await _save(t);
+      final Map<String, dynamic> sent = _api.puts.firstWhere((e) => e.$1 == '/inventory/products/9').$2;
+      expect(sent['package_sessions'], 5);
+      expect(sent['package_service_id'], 3);
+      expect(sent['package_valid_days'], 90);
+    });
+
+    testWidgets('an ordinary service sends no package, and turning the switch off clears it', (t) async {
+      final InvProduct p = _braids()
+        ..packageSessions = 5
+        ..packageServiceId = 3;
+      await _open(t, product: p);
+      await t.tap(_key('service_is_package'));
+      await t.pump();
+      await _save(t);
+      final Map<String, dynamic> sent = _api.puts.firstWhere((e) => e.$1 == '/inventory/products/9').$2;
+      expect(sent['package_sessions'], isNull);
+      expect(sent['package_service_id'], isNull);
+    });
+  });
 }
