@@ -254,9 +254,13 @@ class SalonApi {
     required final DateTime startsAt,
     required final List<AppointmentService> services,
     final String? notes,
+    final double? depositAmount,
+    final String? depositMethod,
     final bool force = false,
   }) async {
     final Map<String, dynamic> body = <String, dynamic>{
+      if (depositAmount != null) 'deposit_amount': depositAmount,
+      if (depositAmount != null && depositAmount > 0 && depositMethod != null) 'deposit_method': depositMethod,
       if (customerId != null) 'customer_id': customerId,
       'client_name': clientName,
       'client_phone': clientPhone ?? '',

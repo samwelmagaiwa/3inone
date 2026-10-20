@@ -29,6 +29,7 @@ class _Saved {
 class _FakeSalon extends SalonApi {
   final List<_Saved> saved = <_Saved>[];
   final List<Object> failures = <Object>[];
+  final List<(double?, String?)> deposits = <(double?, String?)>[];
 
   @override
   Future<SalonAppointment> saveAppointment({
@@ -40,8 +41,11 @@ class _FakeSalon extends SalonApi {
     required DateTime startsAt,
     required List<AppointmentService> services,
     String? notes,
+    double? depositAmount,
+    String? depositMethod,
     bool force = false,
   }) async {
+    deposits.add((depositAmount, depositMethod));
     saved.add(_Saved(id: id, customerId: customerId, name: clientName, phone: clientPhone, staffId: staffId, startsAt: startsAt, services: services, notes: notes, force: force));
     if (failures.isNotEmpty) throw failures.removeAt(0);
     return SalonAppointment(id: id ?? 1, clientName: clientName, startsAt: startsAt, endsAt: startsAt.add(const Duration(hours: 1)), status: 'booked', services: services, total: 0);
@@ -421,6 +425,50 @@ void main() {
       expect(s.startsAt, DateTime(2026, 10, 20, 14, 30));
       expect(s.staffId, 'u-asha');
       expect(s.notes, 'Allergic to dye, wants a wash first');
+    });
+  });
+
+  group('deposits', () {
+    SalonAppointment withDeposit(String status) => SalonAppointment(
+          id: 9,
+          clientName: 'Rehema Juma',
+          startsAt: DateTime(2026, 10, 20, 14, 30),
+          endsAt: DateTime(2026, 10, 20, 15),
+          status: 'booked',
+          services: const <AppointmentService>[AppointmentService(productId: 2, name: 'Wash', price: 5000, minutes: 30)],
+          total: 5000,
+          depositAmount: 3000,
+          depositMethod: 'mpesa',
+          depositStatus: status,
+        );
+
+    testWidgets('a deposit is sent with the way it was paid, and the ways only show once there is a deposit', (t) async {
+      final _FakeSalon api = _FakeSalon();
+      await _open(t, api, appointment: withDeposit('none'));
+      expect(find.byKey(const ValueKey<String>('appt_deposit_mpesa')), findsOneWidget);
+      await t.enterText(_key('appt_deposit'), '');
+      await t.pump();
+      expect(find.byKey(const ValueKey<String>('appt_deposit_mpesa')), findsNothing);
+      await t.enterText(_key('appt_deposit'), '5000');
+      await t.pump();
+      await t.ensureVisible(_key('appt_deposit_airtel_money'));
+      await t.tap(_key('appt_deposit_airtel_money'));
+      await t.pump();
+
+      await _save(t);
+      await t.pump(const Duration(seconds: 4));
+      expect(api.deposits.single, (5000.0, 'airtel_money'));
+    });
+
+    testWidgets('a deposit already settled is shown, not editable, and not sent again', (t) async {
+      final _FakeSalon api = _FakeSalon();
+      await _open(t, api, appointment: withDeposit('applied'));
+      expect(find.byKey(const ValueKey<String>('appt_deposit_settled')), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('appt_deposit')), findsNothing);
+
+      await _save(t);
+      await t.pump(const Duration(seconds: 4));
+      expect(api.deposits.single.$1, isNull);
     });
   });
 

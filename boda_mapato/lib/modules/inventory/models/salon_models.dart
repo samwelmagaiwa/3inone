@@ -353,6 +353,10 @@ class SalonAppointment {
     this.staffId,
     this.staffName,
     this.notes,
+    this.source = 'staff',
+    this.depositAmount = 0,
+    this.depositMethod,
+    this.depositStatus,
   });
 
   factory SalonAppointment.fromJson(final Map<String, dynamic> j) => SalonAppointment(
@@ -368,7 +372,24 @@ class SalonAppointment {
         services: _rows(j['services']).map(AppointmentService.fromJson).toList(),
         notes: j['notes'] == null || _text(j['notes']).isEmpty ? null : _text(j['notes']),
         total: _num(j['total']),
+        source: _text(j['source']).isEmpty ? 'staff' : _text(j['source']),
+        depositAmount: j['deposit'] is Map ? _num((j['deposit'] as Map)['amount']) : 0,
+        depositMethod: j['deposit'] is Map && (j['deposit'] as Map)['method'] != null ? _text((j['deposit'] as Map)['method']) : null,
+        depositStatus: j['deposit'] is Map && (j['deposit'] as Map)['status'] != null ? _text((j['deposit'] as Map)['status']) : null,
       );
+
+  /// 'online' when the client booked it themselves on the booking page, else 'staff'.
+  final String source;
+
+  /// A deposit taken to hold the booking: how much, how it was paid, and held / applied / forfeited / refunded.
+  final double depositAmount;
+  final String? depositMethod;
+  final String? depositStatus;
+
+  bool get isOnline => source == 'online';
+
+  /// A deposit that has been put into the sale, kept or given back can no longer be changed.
+  bool get depositSettled => depositStatus == 'applied' || depositStatus == 'forfeited' || depositStatus == 'refunded';
 
   /// The states in which an appointment still takes up its stylist's time.
   static const List<String> activeStates = <String>['booked', 'confirmed', 'in_progress'];

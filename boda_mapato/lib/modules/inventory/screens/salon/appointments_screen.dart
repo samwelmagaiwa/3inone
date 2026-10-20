@@ -451,6 +451,16 @@ class _AppointmentCard extends StatelessWidget {
                   Text(tsh(a.total), style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
                 ],
               ),
+              if (a.isOnline || a.depositAmount > 0) ...<Widget>[
+                SizedBox(height: 4.h),
+                Wrap(
+                  spacing: 6.w,
+                  children: <Widget>[
+                    if (a.isOnline) Chip(key: ValueKey<String>('appt_online_${a.id}'), visualDensity: VisualDensity.compact, label: Text(sw ? 'Mtandaoni' : 'Online')),
+                    if (a.depositAmount > 0) Chip(key: ValueKey<String>('appt_dep_${a.id}'), visualDensity: VisualDensity.compact, label: Text('${sw ? 'Amana' : 'Deposit'} ${tsh(a.depositAmount)}')),
+                  ],
+                ),
+              ],
               if (a.notes != null) ...<Widget>[
                 SizedBox(height: 4.h),
                 Text(a.notes!, maxLines: 2, overflow: TextOverflow.ellipsis, style: ThemeConstants.captionStyle.copyWith(fontStyle: FontStyle.italic)),

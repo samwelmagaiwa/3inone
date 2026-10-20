@@ -37,6 +37,8 @@ class _AppointmentFormScreenState extends State<AppointmentFormScreen> {
   final TextEditingController _name = TextEditingController();
   final TextEditingController _phone = TextEditingController();
   final TextEditingController _notes = TextEditingController();
+  final TextEditingController _deposit = TextEditingController();
+  String _depositMethod = 'cash';
 
   late DateTime _date = DateTime(widget.day.year, widget.day.month, widget.day.day);
   TimeOfDay _time = const TimeOfDay(hour: 9, minute: 0);
@@ -51,11 +53,17 @@ class _AppointmentFormScreenState extends State<AppointmentFormScreen> {
   @override
   void initState() {
     super.initState();
+    // The way the deposit was paid is asked only once there is a deposit.
+    _deposit.addListener(() => setState(() {}));
     final SalonAppointment? a = widget.appointment;
     if (a != null) {
       _name.text = a.clientName;
       _phone.text = a.clientPhone ?? '';
       _notes.text = a.notes ?? '';
+      if (a.depositAmount > 0) {
+        _deposit.text = '${a.depositAmount.round()}';
+        _depositMethod = a.depositMethod ?? 'cash';
+      }
       _date = DateTime(a.startsAt.year, a.startsAt.month, a.startsAt.day);
       _time = TimeOfDay(hour: a.startsAt.hour, minute: a.startsAt.minute);
       _customerId = a.customerId;
@@ -75,6 +83,7 @@ class _AppointmentFormScreenState extends State<AppointmentFormScreen> {
     _name.dispose();
     _phone.dispose();
     _notes.dispose();
+    _deposit.dispose();
     super.dispose();
   }
 
@@ -241,6 +250,9 @@ class _AppointmentFormScreenState extends State<AppointmentFormScreen> {
         startsAt: _startsAt,
         services: _services,
         notes: _notes.text.trim(),
+        // A settled deposit (in the sale, kept or given back) is not sent again.
+        depositAmount: widget.appointment?.depositSettled == true ? null : (double.tryParse(_deposit.text.replaceAll(',', '').trim()) ?? 0),
+        depositMethod: _depositMethod,
         force: force,
       );
       if (!mounted) return;
@@ -398,6 +410,24 @@ class _AppointmentFormScreenState extends State<AppointmentFormScreen> {
             ),
           SizedBox(height: 16.h),
           InvTextField(key: const ValueKey<String>('appt_notes'), controller: _notes, label: sw ? 'Maelezo' : 'Notes', isOptional: true, maxLines: 2),
+          SizedBox(height: 10.h),
+          if (widget.appointment?.depositSettled == true)
+            Text(
+              sw ? 'Amana ya ${tsh(widget.appointment!.depositAmount)}: ${widget.appointment!.depositStatus}' : 'Deposit ${tsh(widget.appointment!.depositAmount)}: ${widget.appointment!.depositStatus}',
+              key: const ValueKey<String>('appt_deposit_settled'),
+              style: ThemeConstants.captionStyle,
+            )
+          else ...<Widget>[
+            InvTextField(key: const ValueKey<String>('appt_deposit'), controller: _deposit, label: sw ? 'Amana iliyolipwa (TSh)' : 'Deposit paid (TSh)', isOptional: true, keyboardType: TextInputType.number),
+            if ((double.tryParse(_deposit.text.replaceAll(',', '').trim()) ?? 0) > 0)
+              Wrap(
+                spacing: 8.w,
+                children: <Widget>[
+                  for (final String c in <String>['cash', 'mpesa', 'mixx', 'airtel_money', 'halopesa', 'bank_transfer'])
+                    ChoiceChip(key: ValueKey<String>('appt_deposit_$c'), label: Text(channelLabel(sw: sw, channel: c)), selected: _depositMethod == c, onSelected: (_) => setState(() => _depositMethod = c)),
+                ],
+              ),
+          ],
           SizedBox(height: 14.h),
           Container(
             key: const ValueKey<String>('appt_summary'),
