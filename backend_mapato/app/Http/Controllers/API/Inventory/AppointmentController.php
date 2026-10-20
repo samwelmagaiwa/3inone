@@ -37,6 +37,8 @@ class AppointmentController extends Controller
             ->where('starts_at', '>=', $from . ' 00:00:00')
             ->where('starts_at', '<=', $to . ' 23:59:59')
             ->when(!empty($data['staff_id']), fn ($q) => $q->where('staff_id', $data['staff_id']))
+            // A stylist sees their own diary only.
+            ->when($this->isStylist($request), fn ($q) => $q->where('staff_id', (string) $request->user()->id))
             ->orderBy('starts_at')
             ->orderBy('id')
             ->get()
@@ -49,6 +51,7 @@ class AppointmentController extends Controller
     #[OA\Post(path: '/inventory/salon/appointments', summary: 'Book an appointment', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 201, description: 'Created'), new OA\Response(response: 422, description: 'Invalid, or the stylist is already booked then')])]
     public function store(Request $request): JsonResponse
     {
+        $this->refuseStylist($request);
         $fields = $this->fields($request, null);
         $id = DB::table('inventory_appointments')->insertGetId($fields + [
             'status' => 'booked',
@@ -63,6 +66,7 @@ class AppointmentController extends Controller
     #[OA\Put(path: '/inventory/salon/appointments/{id}', summary: 'Change or move an appointment', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function update(Request $request, int $id): JsonResponse
     {
+        $this->refuseStylist($request);
         $row = DB::table('inventory_appointments')->find($id);
         abort_if($row === null, 404, 'Appointment not found');
         if (!in_array($row->status, AppointmentPlanner::ACTIVE, true)) {
@@ -83,6 +87,8 @@ class AppointmentController extends Controller
 
         $row = DB::table('inventory_appointments')->find($id);
         abort_if($row === null, 404, 'Appointment not found');
+        // A stylist may move their own appointments along (start, finish), never someone else's.
+        abort_if($this->isStylist($request) && (string) $row->staff_id !== (string) $request->user()->id, 403, 'Hii si miadi yako. / This is not your appointment.');
         if (!in_array($data['status'], AppointmentPlanner::NEXT[$row->status] ?? [], true)) {
             throw ValidationException::withMessages(['status' => ["An appointment that is {$row->status} cannot become {$data['status']}."]]);
         }
@@ -90,6 +96,18 @@ class AppointmentController extends Controller
         DB::table('inventory_appointments')->where('id', $id)->update(['status' => $data['status'], 'updated_at' => now()]);
 
         return response()->json(['message' => 'Appointment updated', 'data' => $this->present(DB::table('inventory_appointments')->find($id))]);
+    }
+
+    /** The people who do the work themselves: hair stylists, nail technicians, lash and makeup artists. */
+    private function isStylist(Request $request): bool
+    {
+        return in_array(strtolower((string) $request->user()->role), ['hair_stylist', 'nail_technician', 'lash_makeup_artist'], true);
+    }
+
+    /** Booking is for the reception and the owner; a stylist works the diary, they do not write it. */
+    private function refuseStylist(Request $request): void
+    {
+        abort_if($this->isStylist($request), 403, 'Mapokezi au meneja ndiye anayeweka miadi. / Reception or a manager books appointments.');
     }
 
     /**

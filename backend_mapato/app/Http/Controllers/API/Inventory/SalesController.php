@@ -737,7 +737,8 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     /** Roles that may see every sales officer's data, not just their own. */
     private function isPrivileged(Request $request): bool
     {
-        return in_array(optional($request->user())->role, ['admin', 'super_admin', 'manager']);
+        // (A salon's cashier, receptionist and accountant work across everyone's sales; its stylists see only their own.)
+        return in_array(optional($request->user())->role, ['admin', 'super_admin', 'manager', 'cashier', 'receptionist', 'accountant']);
     }
 
     /**

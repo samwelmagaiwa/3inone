@@ -228,6 +228,24 @@ class UserPermissions {
           'inv_create_sales',
           'inv_view_reminders',
         ];
+      // ---- The salon's roles (mirror User::$INV_ROLE_DEFAULTS on the server) ----
+      case 'receptionist':
+        // Customers, appointments, the queue and service orders; no money reports, no pay.
+        return const ['inv_view_products', 'inv_create_sales', 'inv_view_reminders', 'inv_view_credit'];
+      case 'cashier':
+        // Payments, receipts, the cashbook and reconciliation.
+        return const ['inv_view_products', 'inv_create_sales', 'inv_manage_sales', 'inv_view_credit', 'inv_view_cash', 'inv_view_reminders'];
+      case 'hair_stylist':
+      case 'nail_technician':
+      case 'lash_makeup_artist':
+        // Their own services, appointments and performance (the server shows them only their own).
+        return const ['inv_view_products', 'inv_create_sales', 'inv_view_reminders'];
+      case 'accountant':
+        // Expenses, financial reports, payroll and reconciliation.
+        return const ['inv_view_products', 'inv_view_reports', 'inv_view_expenses', 'inv_manage_expenses', 'inv_view_cash', 'inv_view_credit'];
+      case 'stock_manager':
+        // Goods, suppliers, purchases and stock adjustments.
+        return const ['inv_view_products', 'inv_manage_products', 'inv_manage_stock', 'inv_view_purchasing', 'inv_report_damage', 'inv_view_reminders'];
       case 'viewer':
         return const [
           'view_drivers',

@@ -49,6 +49,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   bool get _isRental => _activeService == 'rental';
+  bool get _isSalon => _activeService == 'salon';
   // Salon runs on the same sales engine, so its staff are given the same kinds of roles and permissions.
   bool get _isInventory => _activeService == 'inventory' || _activeService == 'salon';
 
@@ -70,6 +71,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     return _allServices.where(own.contains).toList();
   }
 
+  /// The roles a salon gives its people (the server and the app both know what each may do).
+  static const List<String> _salonRoles = <String>['receptionist', 'cashier', 'hair_stylist', 'nail_technician', 'lash_makeup_artist', 'accountant', 'stock_manager'];
+
   List<DropdownMenuItem<String>> get _roleDropdownItems => _allRoleDropdownItems
       .where((DropdownMenuItem<String> item) =>
           _isSuperAdminUser || (item.value != 'admin' && item.value != 'landlord'))
@@ -82,6 +86,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         DropdownMenuItem(value: 'landlord', child: Text(LocalizationService.instance.translate('landlord'))),
         DropdownMenuItem(value: 'caretaker', child: Text(LocalizationService.instance.translate('caretaker'))),
         DropdownMenuItem(value: 'tenant', child: Text(LocalizationService.instance.translate('tenant'))),
+        DropdownMenuItem(value: 'viewer', child: Text(LocalizationService.instance.translate('viewer'))),
+      ];
+    }
+    if (_isSalon) {
+      return [
+        DropdownMenuItem(value: 'admin', child: Text(LocalizationService.instance.translate('admin'))),
+        DropdownMenuItem(value: 'manager', child: Text(LocalizationService.instance.translate('manager'))),
+        for (final String r in _salonRoles) DropdownMenuItem(value: r, child: Text(LocalizationService.instance.translate(r))),
         DropdownMenuItem(value: 'viewer', child: Text(LocalizationService.instance.translate('viewer'))),
       ];
     }

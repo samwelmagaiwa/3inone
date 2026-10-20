@@ -22,3 +22,16 @@ bool canSeeSalonMoneyHere(final BuildContext context) {
     return false;
   }
 }
+
+/// The people who do the work themselves: hair stylists, nail technicians, lash and makeup artists. They see their own
+/// diary and income; booking is for the reception and the owner. (The server enforces it; this decides what is shown.)
+bool isStylistRole(final UserData? user) =>
+    user != null && const <String>['hair_stylist', 'nail_technician', 'lash_makeup_artist'].contains(user.role.toLowerCase());
+
+bool isStylistHere(final BuildContext context, {final bool listen = true}) {
+  try {
+    return isStylistRole(listen ? context.watch<AuthProvider>().user : context.read<AuthProvider>().user);
+  } on ProviderNotFoundException {
+    return false;
+  }
+}

@@ -254,7 +254,7 @@ class UserManagementController extends Controller
             // Required: login verifies the phone number, so an account without
             // one could never sign in.
             'phone_number' => ['required', 'string', 'max:50', new UniquePhoneInBusiness($phoneBusiness)],
-            'role' => 'nullable|string|in:super_admin,admin,driver,landlord,caretaker,tenant,viewer,manager,operator,sales_officer',
+            'role' => 'nullable|string|in:super_admin,admin,driver,landlord,caretaker,tenant,viewer,manager,operator,sales_officer,receptionist,cashier,hair_stylist,nail_technician,lash_makeup_artist,accountant,stock_manager',
             'is_active' => 'nullable|boolean',
             // Legacy single value - still accepted for old clients.
             'service_type' => 'nullable|string|in:rental,transport,inventory,salon',
@@ -489,7 +489,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'email' => 'sometimes|email|unique:users,email,' . $user->id . ',id',
             // Unique inside this person's own business only.
             'phone_number' => ['sometimes', 'required', 'string', 'max:50', new UniquePhoneInBusiness(BusinessOwner::ofUser($user->id), (string) $user->id)],
-            'role' => 'sometimes|string|in:super_admin,admin,driver,landlord,caretaker,tenant,viewer,manager,operator,sales_officer',
+            'role' => 'sometimes|string|in:super_admin,admin,driver,landlord,caretaker,tenant,viewer,manager,operator,sales_officer,receptionist,cashier,hair_stylist,nail_technician,lash_makeup_artist,accountant,stock_manager',
             'is_active' => 'sometimes|boolean',
             'service_type' => 'nullable|string|in:rental,transport,inventory,salon',
             'service_types' => 'nullable|array',

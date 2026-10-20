@@ -2200,6 +2200,13 @@ class AppLocalizations {
       'permissions_management': 'Permissions Management',
       // Text that used to be written into the screens (translated by the language setting now).
       'sales_officer': 'Sales Officer',
+      'receptionist': 'Receptionist',
+      'cashier': 'Cashier',
+      'hair_stylist': 'Hair Stylist',
+      'nail_technician': 'Nail Technician',
+      'lash_makeup_artist': 'Lash & Makeup Artist',
+      'accountant': 'Accountant',
+      'stock_manager': 'Stock Manager',
       // Text that used to be written into the screens (translated by the language setting now).
       'view_products': 'View Products',
       'add_new_products': 'Add New Products',
@@ -4799,6 +4806,13 @@ class AppLocalizations {
       'permissions_management': 'Usimamizi wa Ruhusa',
       // Text that used to be written into the screens (translated by the language setting now).
       'sales_officer': 'Afisa Mauzo',
+      'receptionist': 'Mpokeaji wageni',
+      'cashier': 'Keshia',
+      'hair_stylist': 'Msusi wa nywele',
+      'nail_technician': 'Fundi wa kucha',
+      'lash_makeup_artist': 'Mtaalamu wa kope na makeup',
+      'accountant': 'Mhasibu',
+      'stock_manager': 'Msimamizi wa stoo',
       // Text that used to be written into the screens (translated by the language setting now).
       'view_products': 'Angalia Bidhaa',
       'add_new_products': 'Ongeza Bidhaa Mpya',

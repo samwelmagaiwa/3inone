@@ -58,7 +58,7 @@ class SalonController extends Controller
         $to = isset($data['to']) ? Carbon::parse($data['to'])->toDateString() : now()->toDateString();
 
         $viewer = $request->user();
-        $sees = $viewer->seesAllAccounts() || in_array(strtolower((string) $viewer->role), ['admin', 'administrator', 'manager'], true);
+        $sees = $viewer->seesAllAccounts() || in_array(strtolower((string) $viewer->role), ['admin', 'administrator', 'manager', 'accountant'], true);
 
         $query = DB::table('inventory_sale_items as si')
             ->join('inventory_sales as s', 's.id', '=', 'si.sale_id')
@@ -137,7 +137,7 @@ class SalonController extends Controller
         $to = isset($data['to']) ? Carbon::parse($data['to'])->toDateString() : now()->toDateString();
 
         $viewer = $request->user();
-        $sees = $viewer->seesAllAccounts() || in_array(strtolower((string) $viewer->role), ['admin', 'administrator', 'manager'], true);
+        $sees = $viewer->seesAllAccounts() || in_array(strtolower((string) $viewer->role), ['admin', 'administrator', 'manager', 'accountant'], true);
         abort_if(!$sees && $staffId !== (string) $viewer->id, 403, 'Huwezi kuona mapato ya mhudumu mwingine. / You cannot see another stylist\'s income.');
 
         $query = DB::table('inventory_sale_items as si')

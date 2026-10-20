@@ -12,6 +12,7 @@ import '../../providers/inventory_provider.dart';
 import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
 import 'appointment_form_screen.dart';
+import 'salon_access.dart';
 import 'salon_text.dart';
 
 /// The salon's diary for one day: who is booked with which stylist, when, for what. The owner books, confirms,
@@ -167,6 +168,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
   }
 
   void _actions(final SalonAppointment a, final bool sw) {
+    final bool stylist = isStylistHere(context, listen: false);
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -193,9 +195,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                   if (a.status == 'booked') tile(Icons.event_available_outlined, sw ? 'Thibitisha' : 'Confirm', () => _setStatus(a, 'confirmed'), key: 'appt_confirm'),
                   if (a.status == 'booked' || a.status == 'confirmed') tile(Icons.play_circle_outline, sw ? 'Ameanza' : 'Start', () => _setStatus(a, 'in_progress'), key: 'appt_start'),
                   if (a.isActive) tile(Icons.point_of_sale_outlined, sw ? 'Imekamilika: weka kwenye mauzo' : 'Done: put it in Sales', () => _sell(a), color: ThemeConstants.successGreen, key: 'appt_sell'),
-                  if (a.isActive) tile(Icons.edit_calendar_outlined, sw ? 'Badilisha au hamisha' : 'Change or move', () => _openForm(appointment: a), key: 'appt_edit'),
-                  if (a.status == 'booked' || a.status == 'confirmed') tile(Icons.person_off_outlined, sw ? 'Hakuja' : 'No-show', () => _setStatus(a, 'no_show'), color: ThemeConstants.warningAmber, key: 'appt_noshow'),
-                  if (a.isActive) tile(Icons.cancel_outlined, sw ? 'Ghairi' : 'Cancel', () => _setStatus(a, 'cancelled'), color: ThemeConstants.errorRed, key: 'appt_cancel'),
+                  if (a.isActive && !stylist) tile(Icons.edit_calendar_outlined, sw ? 'Badilisha au hamisha' : 'Change or move', () => _openForm(appointment: a), key: 'appt_edit'),
+                  if (!stylist && (a.status == 'booked' || a.status == 'confirmed')) tile(Icons.person_off_outlined, sw ? 'Hakuja' : 'No-show', () => _setStatus(a, 'no_show'), color: ThemeConstants.warningAmber, key: 'appt_noshow'),
+                  if (a.isActive && !stylist) tile(Icons.cancel_outlined, sw ? 'Ghairi' : 'Cancel', () => _setStatus(a, 'cancelled'), color: ThemeConstants.errorRed, key: 'appt_cancel'),
                   if (!a.isActive)
                     Padding(
                       padding: EdgeInsets.symmetric(vertical: 8.h),
@@ -231,6 +233,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   List<Widget> _body(final bool sw) {
     final bool isToday = _day == _today;
+    final bool stylist = isStylistHere(context);
     final RebookSettings? s = _settings;
 
     return <Widget>[
@@ -265,12 +268,14 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           ),
         ),
       SizedBox(height: 6.h),
-      InvPrimaryButton(
-        key: const ValueKey<String>('appt_add'),
-        busy: false,
-        label: sw ? 'Weka miadi' : 'Book an appointment',
-        onPressed: () => _openForm(),
-      ),
+      // Booking is for the reception and the owner; a stylist works the diary.
+      if (!stylist)
+        InvPrimaryButton(
+          key: const ValueKey<String>('appt_add'),
+          busy: false,
+          label: sw ? 'Weka miadi' : 'Book an appointment',
+          onPressed: () => _openForm(),
+        ),
       if (s != null) ...<Widget>[
         SizedBox(height: 10.h),
         Container(
