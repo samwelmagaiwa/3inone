@@ -51,7 +51,7 @@ class SalonMoneyController extends Controller
         $from = isset($data['from']) ? Carbon::parse($data['from']) : $today->copy()->startOfMonth();
         $to = isset($data['to']) ? Carbon::parse($data['to']) : $today;
 
-        return response()->json(['data' => SalonFinance::summary($from, $to)]);
+        return response()->json(['data' => SalonFinance::summary($from, $to, \App\Support\Salon\SalonBranch::selected($request))]);
     }
 
     #[OA\Get(path: '/inventory/salon/overview', summary: 'The dashboard: today, week, month, year, top services and staff, bookings', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 200, description: 'Success')])]
@@ -59,7 +59,7 @@ class SalonMoneyController extends Controller
     {
         $this->requireManager($request);
 
-        return response()->json(['data' => SalonFinance::overview($this->today())]);
+        return response()->json(['data' => SalonFinance::overview($this->today(), \App\Support\Salon\SalonBranch::selected($request))]);
     }
 
     // ------------------------------------------------------------------ who earns what
@@ -85,6 +85,7 @@ class SalonMoneyController extends Controller
                     'specialization' => $p->specialization ?? null,
                     'monthly_salary' => SalonFinance::money($p->monthly_salary ?? 0),
                     'commission_percent' => $p && $p->commission_percent !== null ? (float) $p->commission_percent : null,
+                    'branch_id' => isset($p->branch_id) ? (int) $p->branch_id : null,
                     'work_days' => array_values(array_filter(array_map('intval', explode(',', (string) ($p->work_days ?? ''))))),
                     'shift_start' => $p->shift_start ?? null,
                     'shift_end' => $p->shift_end ?? null,
@@ -109,7 +110,12 @@ class SalonMoneyController extends Controller
             'work_days.*' => 'integer|between:1,7',
             'shift_start' => ['nullable', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
             'shift_end' => ['nullable', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
+            // Their home branch (none = not tied to one).
+            'branch_id' => 'sometimes|nullable|integer',
         ]);
+        if (!empty($data['branch_id']) && DB::table('inventory_branches')->where('id', $data['branch_id'])->doesntExist()) {
+            throw ValidationException::withMessages(['branch_id' => ['Tawi hilo halipo. / That branch does not exist.']]);
+        }
         if (!empty($data['shift_start']) && !empty($data['shift_end']) && $data['shift_start'] >= $data['shift_end']) {
             throw ValidationException::withMessages(['shift_end' => ['Saa ya kuondoka iwe baada ya saa ya kuanza. / The finishing time must be after the starting time.']]);
         }
@@ -121,6 +127,9 @@ class SalonMoneyController extends Controller
             'monthly_salary' => array_key_exists('monthly_salary', $data) ? (float) ($data['monthly_salary'] ?? 0) : (float) ($existing->monthly_salary ?? 0),
             'commission_percent' => array_key_exists('commission_percent', $data) ? $data['commission_percent'] : ($existing->commission_percent ?? null),
         ];
+        if (array_key_exists('branch_id', $data) && \Illuminate\Support\Facades\Schema::hasColumn('inventory_staff_profiles', 'branch_id')) {
+            $row['branch_id'] = $data['branch_id'] ?: null;
+        }
         if (\Illuminate\Support\Facades\Schema::hasColumn('inventory_staff_profiles', 'work_days')) {
             if (array_key_exists('work_days', $data)) {
                 $row['work_days'] = $data['work_days'] ? implode(',', collect($data['work_days'])->unique()->sort()->values()->all()) : null;
@@ -159,6 +168,7 @@ class SalonMoneyController extends Controller
                 ->whereNotNull('si.staff_id')
                 ->whereDate('s.created_at', '>=', $from->toDateString())
                 ->whereDate('s.created_at', '<=', $to->toDateString())
+                ->when(\App\Support\Salon\SalonBranch::selected($request) !== null, fn ($q) => $q->where('s.branch_id', \App\Support\Salon\SalonBranch::selected($request)))
                 ->groupBy('si.staff_id')
                 ->selectRaw('si.staff_id as staff_id, COALESCE(SUM(si.commission_amount), 0) as earned')
                 ->pluck('earned', 'staff_id')

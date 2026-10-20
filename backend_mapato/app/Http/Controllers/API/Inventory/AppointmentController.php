@@ -40,6 +40,7 @@ class AppointmentController extends Controller
             ->where('starts_at', '>=', $from . ' 00:00:00')
             ->where('starts_at', '<=', $to . ' 23:59:59')
             ->when(!empty($data['staff_id']), fn ($q) => $q->where('staff_id', $data['staff_id']))
+            ->when(\App\Support\Salon\SalonBranch::selected($request) !== null, fn ($q) => $q->where('branch_id', \App\Support\Salon\SalonBranch::selected($request)))
             // A stylist sees their own diary only.
             ->when($this->isStylist($request), fn ($q) => $q->where('staff_id', (string) $request->user()->id))
             ->orderBy('starts_at')
@@ -56,7 +57,9 @@ class AppointmentController extends Controller
     {
         $this->refuseStylist($request);
         $fields = $this->fields($request, null);
-        $id = DB::table('inventory_appointments')->insertGetId($fields + [
+        // The branch it is for: the one chosen, else the stylist's own, else the booker's.
+        $branch = \App\Support\Salon\SalonBranch::selected($request) ?? (\App\Support\Salon\SalonBranch::homeOf((string) ($fields['staff_id'] ?? '')) ?? \App\Support\Salon\SalonBranch::forNew($request));
+        $id = DB::table('inventory_appointments')->insertGetId(($branch !== null && \Illuminate\Support\Facades\Schema::hasColumn('inventory_appointments', 'branch_id') ? ['branch_id' => $branch] : []) + $fields + [
             'status' => 'booked',
             'created_by' => (string) $request->user()->id,
             'created_at' => now(),
@@ -284,6 +287,7 @@ class AppointmentController extends Controller
             'ends_at' => Carbon::parse($r->ends_at)->format('Y-m-d H:i'),
             'status' => (string) $r->status,
             'source' => (string) ($r->source ?? 'staff'),
+            'branch_id' => isset($r->branch_id) ? (int) $r->branch_id : null,
             'deposit' => (float) ($r->deposit_amount ?? 0) > 0 ? [
                 'amount' => (float) $r->deposit_amount == floor((float) $r->deposit_amount) ? (int) $r->deposit_amount : (float) $r->deposit_amount,
                 'method' => $r->deposit_method,

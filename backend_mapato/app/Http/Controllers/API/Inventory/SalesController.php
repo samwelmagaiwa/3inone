@@ -974,6 +974,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'paid_total' => $request->paid_total,
                 'due_date' => $request->payment_status === 'paid' ? null : ($request->due_date ?? now()->addDays(7)),
                 'created_by' => optional($request->user())->id ?? 1,
+                ...(\Illuminate\Support\Facades\Schema::hasColumn('inventory_sales', 'branch_id') ? ['branch_id' => \App\Support\Salon\SalonBranch::forNew($request)] : []),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

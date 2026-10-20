@@ -43,6 +43,7 @@ use App\Http\Controllers\API\Inventory\ReportController as InventoryReportContro
 use App\Http\Controllers\API\Inventory\AlertController as InventoryAlertController;
 use App\Http\Controllers\API\Inventory\CustomerController as InventoryCustomerController;
 use App\Http\Controllers\API\Inventory\AppointmentController;
+use App\Http\Controllers\API\Inventory\SalonBranchController;
 use App\Http\Controllers\API\Inventory\SalonClientController;
 use App\Http\Controllers\API\Inventory\SalonController;
 use App\Http\Controllers\API\Inventory\SalonEquipmentController;
@@ -434,6 +435,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('inventory/salon/photos/{id}',       [SalonClientController::class, 'destroyPhoto']);
         Route::get('inventory/salon/campaigns',            [SalonClientController::class, 'campaigns']);
         // Equipment and its upkeep (the owner, managers and the stock manager: checked in the controller).
+        // Branches: everyone sees the list; the owner and managers change it (checked in the controller).
+        Route::get('inventory/salon/branches',             [SalonBranchController::class, 'index']);
+        Route::post('inventory/salon/branches',            [SalonBranchController::class, 'store']);
+        Route::match(['put', 'patch'], 'inventory/salon/branches/{id}', [SalonBranchController::class, 'update']);
+        Route::delete('inventory/salon/branches/{id}',     [SalonBranchController::class, 'destroy']);
         Route::get('inventory/salon/equipment',            [SalonEquipmentController::class, 'index']);
         Route::post('inventory/salon/equipment',           [SalonEquipmentController::class, 'store']);
         Route::match(['put', 'patch'], 'inventory/salon/equipment/{id}', [SalonEquipmentController::class, 'update']);

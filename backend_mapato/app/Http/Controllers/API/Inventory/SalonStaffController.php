@@ -132,7 +132,7 @@ class SalonStaffController extends Controller
         }
 
         $now = $this->salonNow();
-        $id = DB::table('inventory_attendance')->insertGetId([
+        $id = DB::table('inventory_attendance')->insertGetId((\Illuminate\Support\Facades\Schema::hasColumn('inventory_attendance', 'branch_id') ? ['branch_id' => \App\Support\Salon\SalonBranch::forNew($request)] : []) + [
             'staff_id' => (string) $who->id,
             'staff_name' => $who->name,
             'work_date' => $now->toDateString(),
@@ -173,6 +173,7 @@ class SalonStaffController extends Controller
             ->whereBetween('work_date', [$from->toDateString(), $from->copy()->endOfMonth()->toDateString()])
             ->when(!$manager, fn ($q) => $q->where('staff_id', (string) $request->user()->id))
             ->when($manager && !empty($data['staff_id']), fn ($q) => $q->where('staff_id', $data['staff_id']))
+            ->when(\App\Support\Salon\SalonBranch::selected($request) !== null, fn ($q) => $q->where('branch_id', \App\Support\Salon\SalonBranch::selected($request)))
             ->orderBy('clock_in')
             ->get();
 
@@ -233,7 +234,7 @@ class SalonStaffController extends Controller
         if (DB::table('inventory_salon_shifts')->where('staff_id', (string) $who->id)->where('status', 'open')->exists()) {
             throw ValidationException::withMessages(['shift' => ['Una zamu iliyo wazi tayari: ifunge kwanza. / You already have an open shift: close it first.']]);
         }
-        $id = DB::table('inventory_salon_shifts')->insertGetId([
+        $id = DB::table('inventory_salon_shifts')->insertGetId((\Illuminate\Support\Facades\Schema::hasColumn('inventory_salon_shifts', 'branch_id') ? ['branch_id' => \App\Support\Salon\SalonBranch::forNew($request)] : []) + [
             'staff_id' => (string) $who->id,
             'staff_name' => $who->name,
             'opened_at' => now(),
@@ -308,6 +309,7 @@ class SalonStaffController extends Controller
             ->whereBetween('opened_at', [$from->format('Y-m-d H:i:s'), $from->copy()->endOfMonth()->format('Y-m-d H:i:s')])
             ->when(!$manager, fn ($q) => $q->where('staff_id', (string) $request->user()->id))
             ->when($manager && !empty($data['staff_id']), fn ($q) => $q->where('staff_id', $data['staff_id']))
+            ->when(\App\Support\Salon\SalonBranch::selected($request) !== null, fn ($q) => $q->where('branch_id', \App\Support\Salon\SalonBranch::selected($request)))
             ->orderByDesc('opened_at')
             ->get()
             ->map(fn ($s) => $this->presentShift($s, $s->status === 'open'))

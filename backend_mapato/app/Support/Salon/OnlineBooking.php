@@ -188,6 +188,7 @@ final class OnlineBooking
                 'notes' => !empty($in['notes']) ? mb_substr(trim((string) $in['notes']), 0, 500) : null,
                 'total' => $total,
                 'source' => 'online',
+                ...(\Illuminate\Support\Facades\Schema::hasColumn('inventory_appointments', 'branch_id') ? ['branch_id' => SalonBranch::homeOf((string) $person->id)] : []),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

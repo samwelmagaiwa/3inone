@@ -65,7 +65,8 @@ class SalonController extends Controller
             ->whereNull('s.cancelled_at')
             ->where('si.is_service', true)
             ->whereDate('s.created_at', '>=', $from)
-            ->whereDate('s.created_at', '<=', $to);
+            ->whereDate('s.created_at', '<=', $to)
+            ->when(\App\Support\Salon\SalonBranch::selected($request) !== null, fn ($q) => $q->where('s.branch_id', \App\Support\Salon\SalonBranch::selected($request)));
         if (!$sees) {
             $query->where('si.staff_id', (string) $viewer->id);
         }
@@ -147,7 +148,8 @@ class SalonController extends Controller
             ->whereNull('s.cancelled_at')
             ->where('si.is_service', true)
             ->whereDate('s.created_at', '>=', $from)
-            ->whereDate('s.created_at', '<=', $to);
+            ->whereDate('s.created_at', '<=', $to)
+            ->when(\App\Support\Salon\SalonBranch::selected($request) !== null, fn ($q) => $q->where('s.branch_id', \App\Support\Salon\SalonBranch::selected($request)));
         $staffId === 'none' ? $query->whereNull('si.staff_id') : $query->where('si.staff_id', $staffId);
 
         $hasCommission = \Illuminate\Support\Facades\Schema::hasColumn('inventory_sale_items', 'commission_amount');

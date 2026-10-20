@@ -58,6 +58,7 @@ class ExpenseController extends Controller
         $rows = DB::table('inventory_expenses as e')
             ->leftJoin('users as u', 'u.id', '=', 'e.created_by')
             ->whereBetween('e.expense_date', [$from, $to])
+            ->when(\App\Support\Salon\SalonBranch::selected($request) !== null, fn ($q) => $q->where('e.branch_id', \App\Support\Salon\SalonBranch::selected($request)))
             ->orderByDesc('e.expense_date')
             ->orderByDesc('e.id')
             ->select('e.*', 'u.name as created_by_name')
@@ -102,7 +103,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         // In a salon, what the owner or a manager spends is approved at once; what anyone else records waits for them.
         $status = \App\Support\Tenancy\TenantContext::service() === 'salon' && !$this->isManager($request) ? 'pending' : 'approved';
 
-        $id = DB::table('inventory_expenses')->insertGetId([
+        $id = DB::table('inventory_expenses')->insertGetId((\Illuminate\Support\Facades\Schema::hasColumn('inventory_expenses', 'branch_id') ? ['branch_id' => \App\Support\Salon\SalonBranch::forNew($request)] : []) + [
             'category'     => $data['category'],
             'description'  => $data['description'],
             'amount'       => $data['amount'],
@@ -248,7 +249,8 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         // Expenses by category
         $byCategory = $this->counted(DB::table('inventory_expenses')
-            ->whereBetween('expense_date', [$from, $to]))
+            ->whereBetween('expense_date', [$from, $to])
+            ->when(\App\Support\Salon\SalonBranch::selected($request) !== null, fn ($q) => $q->where('branch_id', \App\Support\Salon\SalonBranch::selected($request))))
             ->groupBy('category')
             ->orderByRaw('SUM(amount) DESC')
             ->select('category', DB::raw('SUM(amount) as total'), DB::raw('COUNT(*) as count'))

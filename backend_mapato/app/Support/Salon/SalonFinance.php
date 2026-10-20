@@ -24,16 +24,19 @@ final class SalonFinance
     private const SHARE = 'COALESCE(s.discount * si.total / NULLIF(s.subtotal, 0), 0)';
 
     /** @return array<string, mixed> */
-    public static function summary(Carbon $from, Carbon $to): array
+    public static function summary(Carbon $from, Carbon $to, ?int $branch = null): array
     {
         $f = $from->toDateString();
         $t = $to->toDateString();
+        // One branch's figures (a salon with one branch never asks for this).
+        $b = $branch !== null && Schema::hasColumn('inventory_sales', 'branch_id');
+        $onSales = fn ($q, string $col = 's.branch_id') => $b ? $q->where($col, $branch) : $q;
 
-        $lines = DB::table('inventory_sale_items as si')
+        $lines = $onSales(DB::table('inventory_sale_items as si')
             ->join('inventory_sales as s', 's.id', '=', 'si.sale_id')
             ->whereNull('s.cancelled_at')
             ->whereDate('s.created_at', '>=', $f)
-            ->whereDate('s.created_at', '<=', $t)
+            ->whereDate('s.created_at', '<=', $t))
             ->groupBy('si.is_service')
             ->selectRaw('si.is_service as is_service, COALESCE(SUM(' . self::NET . '), 0) as net, COALESCE(SUM(' . self::SHARE . '), 0) as discount, '
                 . 'COALESCE(SUM(si.unit_cost_snapshot * si.quantity), 0) as cost')
@@ -47,28 +50,31 @@ final class SalonFinance
         $costOfGoods = (float) ($lines['goods']->cost ?? 0);
         $gross = $serviceRevenue + $goodsRevenue - $costOfGoods;
 
-        $expenses = self::expensesBetween($f, $t);
+        $expenses = self::expensesBetween($f, $t, $b ? $branch : null);
         $commissions = Schema::hasColumn('inventory_sale_items', 'commission_amount')
-            ? (float) DB::table('inventory_sale_items as si')
+            ? (float) $onSales(DB::table('inventory_sale_items as si')
                 ->join('inventory_sales as s', 's.id', '=', 'si.sale_id')
                 ->whereNull('s.cancelled_at')
                 ->whereDate('s.created_at', '>=', $f)
-                ->whereDate('s.created_at', '<=', $t)
+                ->whereDate('s.created_at', '<=', $t))
                 ->sum('si.commission_amount')
             : 0.0;
         $salaries = Schema::hasTable('inventory_staff_payouts')
-            ? (float) DB::table('inventory_staff_payouts')->where('kind', 'salary')->whereBetween('paid_on', [$f, $t])->sum('amount')
+            ? (float) DB::table('inventory_staff_payouts')->where('kind', 'salary')->whereBetween('paid_on', [$f, $t])
+                // A branch's salaries are those of the people whose home it is.
+                ->when($b && Schema::hasColumn('inventory_staff_profiles', 'branch_id'), fn ($q) => $q->whereIn('staff_id', DB::table('inventory_staff_profiles')->where('branch_id', $branch)->pluck('staff_id')))
+                ->sum('amount')
             : 0.0;
         $operating = $expenses['total'] + $commissions + $salaries;
 
         // The VAT in what was sold (per rate), for the tax return. Prices may or may not already include it.
         $includesVat = (DB::table('inventory_settings')->where('key', 'prices_include_vat')->value('value') ?? '1') !== '0';
-        $vatRows = DB::table('inventory_sale_items as si')
+        $vatRows = $onSales(DB::table('inventory_sale_items as si')
             ->join('inventory_sales as s', 's.id', '=', 'si.sale_id')
             ->whereNull('s.cancelled_at')
             ->where('si.tax_amount', '>', 0)
             ->whereDate('s.created_at', '>=', $f)
-            ->whereDate('s.created_at', '<=', $t)
+            ->whereDate('s.created_at', '<=', $t))
             ->groupBy('si.tax_percent')
             ->orderBy('si.tax_percent')
             ->selectRaw('si.tax_percent as rate, SUM(si.total) as gross, SUM(si.tax_amount) as vat')
@@ -84,22 +90,23 @@ final class SalonFinance
         $keptDeposits = collect();
         $heldDeposits = 0.0;
         if (Schema::hasColumn('inventory_appointments', 'deposit_status')) {
-            $keptDeposits = DB::table('inventory_appointments')
+            $onAppointments = fn ($q) => $b && Schema::hasColumn('inventory_appointments', 'branch_id') ? $q->where('branch_id', $branch) : $q;
+            $keptDeposits = $onAppointments(DB::table('inventory_appointments')
                 ->where('deposit_status', 'forfeited')
                 ->whereDate('deposit_resolved_at', '>=', $f)
-                ->whereDate('deposit_resolved_at', '<=', $t)
+                ->whereDate('deposit_resolved_at', '<=', $t))
                 ->groupBy('deposit_method')
                 ->selectRaw('deposit_method as method, SUM(deposit_amount) as amount')
                 ->pluck('amount', 'method');
-            $heldDeposits = (float) DB::table('inventory_appointments')->where('deposit_status', 'held')->sum('deposit_amount');
+            $heldDeposits = (float) $onAppointments(DB::table('inventory_appointments')->where('deposit_status', 'held'))->sum('deposit_amount');
         }
         $otherIncome = (float) $keptDeposits->sum();
 
-        $collections = DB::table('inventory_sale_payments as p')
+        $collections = $onSales(DB::table('inventory_sale_payments as p')
             ->join('inventory_sales as s', 's.id', '=', 'p.sale_id')
             ->whereNull('s.cancelled_at')
             ->whereDate('p.paid_at', '>=', $f)
-            ->whereDate('p.paid_at', '<=', $t)
+            ->whereDate('p.paid_at', '<=', $t))
             ->groupBy(DB::raw('COALESCE(p.method_extended, p.method)'))
             ->selectRaw('COALESCE(p.method_extended, p.method) as method, SUM(p.amount) as amount')
             ->orderByRaw('SUM(p.amount) DESC')
@@ -112,23 +119,23 @@ final class SalonFinance
         }
         $collections = $collections->sortByDesc('amount')->map(fn ($r) => ['method' => $r['method'], 'amount' => self::money($r['amount'])])->values();
 
-        $sales = DB::table('inventory_sales')
+        $sales = $onSales(DB::table('inventory_sales')
             ->whereNull('cancelled_at')
             ->whereDate('created_at', '>=', $f)
-            ->whereDate('created_at', '<=', $t);
+            ->whereDate('created_at', '<=', $t), 'branch_id');
         $outstanding = (float) ((clone $sales)->whereIn('payment_status', ['debt', 'partial'])->selectRaw('COALESCE(SUM(total - paid_total), 0) as due')->first()->due ?? 0);
-        $cancelled = DB::table('inventory_sales')
+        $cancelled = $onSales(DB::table('inventory_sales')
             ->whereNotNull('cancelled_at')
             ->whereDate('created_at', '>=', $f)
-            ->whereDate('created_at', '<=', $t)
+            ->whereDate('created_at', '<=', $t), 'branch_id')
             ->selectRaw('COUNT(*) as n, COALESCE(SUM(total), 0) as total')
             ->first();
 
         // Clients served: each different client once, plus each walk-in sale (nobody to count twice).
-        $servedSales = DB::table('inventory_sales as s')
+        $servedSales = $onSales(DB::table('inventory_sales as s')
             ->whereNull('s.cancelled_at')
             ->whereDate('s.created_at', '>=', $f)
-            ->whereDate('s.created_at', '<=', $t)
+            ->whereDate('s.created_at', '<=', $t))
             ->whereExists(fn ($q) => $q->select(DB::raw(1))->from('inventory_sale_items as si')->whereColumn('si.sale_id', 's.id')->where('si.is_service', true));
         $clients = (int) (clone $servedSales)->whereNotNull('s.customer_id')->distinct()->count('s.customer_id')
             + (int) (clone $servedSales)->whereNull('s.customer_id')->count();
@@ -166,8 +173,9 @@ final class SalonFinance
      *
      * @return array<string, mixed>
      */
-    public static function overview(Carbon $today): array
+    public static function overview(Carbon $today, ?int $branch = null): array
     {
+        $b = $branch !== null && Schema::hasColumn('inventory_sales', 'branch_id');
         $periods = [
             'today' => [$today->copy()->startOfDay(), $today],
             'week' => [$today->copy()->startOfWeek(), $today],
@@ -176,7 +184,7 @@ final class SalonFinance
         ];
         $out = [];
         foreach ($periods as $name => [$from, $to]) {
-            $s = self::summary($from, $to);
+            $s = self::summary($from, $to, $branch);
             $out[$name] = [
                 'revenue' => $s['revenue'],
                 'expenses' => $s['expenses'],
@@ -186,7 +194,7 @@ final class SalonFinance
             ];
         }
 
-        $month = self::summary($periods['month'][0], $today);
+        $month = self::summary($periods['month'][0], $today, $branch);
         $monthFrom = $periods['month'][0]->toDateString();
         $monthTo = $today->toDateString();
 
@@ -195,6 +203,7 @@ final class SalonFinance
             ->leftJoin('inventory_products as p', 'p.id', '=', 'si.product_id')
             ->whereNull('s.cancelled_at')
             ->where('si.is_service', true)
+            ->when($b, fn ($q) => $q->where('s.branch_id', $branch))
             ->whereDate('s.created_at', '>=', $monthFrom)
             ->whereDate('s.created_at', '<=', $monthTo)
             ->groupBy('si.product_id', 'p.name')
@@ -209,6 +218,7 @@ final class SalonFinance
             ->join('inventory_sales as s', 's.id', '=', 'si.sale_id')
             ->whereNull('s.cancelled_at')
             ->where('si.is_service', true)
+            ->when($b, fn ($q) => $q->where('s.branch_id', $branch))
             ->whereDate('s.created_at', '>=', $monthFrom)
             ->whereDate('s.created_at', '<=', $monthTo)
             ->groupBy('si.staff_id')
@@ -222,11 +232,12 @@ final class SalonFinance
         $diary = ['today' => 0, 'upcoming' => 0];
         if (Schema::hasTable('inventory_appointments')) {
             $now = Carbon::now(AppointmentPlanner::TIMEZONE);
-            $diary['today'] = (int) DB::table('inventory_appointments')
+            $onBranch = fn ($q) => $b && Schema::hasColumn('inventory_appointments', 'branch_id') ? $q->where('branch_id', $branch) : $q;
+            $diary['today'] = (int) $onBranch(DB::table('inventory_appointments'))
                 ->whereIn('status', AppointmentPlanner::ACTIVE)
                 ->whereBetween('starts_at', [$now->toDateString() . ' 00:00:00', $now->toDateString() . ' 23:59:59'])
                 ->count();
-            $diary['upcoming'] = (int) DB::table('inventory_appointments')
+            $diary['upcoming'] = (int) $onBranch(DB::table('inventory_appointments'))
                 ->whereIn('status', AppointmentPlanner::ACTIVE)
                 ->where('starts_at', '>', $now->toDateString() . ' 23:59:59')
                 ->count();
@@ -246,9 +257,10 @@ final class SalonFinance
     }
 
     /** @return array{total: float, by_category: array<int, array{category: string, total: int|float, count: int}>} */
-    private static function expensesBetween(string $from, string $to): array
+    private static function expensesBetween(string $from, string $to, ?int $branch = null): array
     {
-        $q = DB::table('inventory_expenses')->whereBetween('expense_date', [$from, $to]);
+        $q = DB::table('inventory_expenses')->whereBetween('expense_date', [$from, $to])
+            ->when($branch !== null && Schema::hasColumn('inventory_expenses', 'branch_id'), fn ($q) => $q->where('branch_id', $branch));
         if (Schema::hasColumn('inventory_expenses', 'status')) {
             // Waiting for approval or turned down is not yet a cost.
             $q->where('status', 'approved');
