@@ -23,6 +23,8 @@ import '../hubs/stock_hub_screen.dart';
 import '../hubs/supply_chain_hub_screen.dart';
 import '../../../../widgets/month_selector.dart';
 import '../reports/profit_by_product_screen.dart';
+import '../salon/salon_access.dart';
+import '../salon/salon_overview_card.dart';
 import '../widgets/inventory_widgets.dart';
 import '../widgets/profit_by_product_table.dart';
 
@@ -1391,6 +1393,8 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 // The value of the stock on the shelves is a shop's figure: a salon sells time, not shelves.
+                // A salon's owner sees the business at a glance instead: takings, profit, bookings, who and what earns most.
+                if (inv.salonMode && canSeeSalonMoneyHere(context)) ...<Widget>[const SalonOverviewCard(), _sectionDivider()],
                 if (canViewReports && !inv.salonMode) _buildInventoryValuationContent(loc, inv),
                 if (canViewReports && !inv.salonMode) _sectionDivider(),
                 if (canViewProducts) _buildProductsOverviewContent(loc, inv),

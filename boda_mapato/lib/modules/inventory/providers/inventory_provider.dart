@@ -627,6 +627,7 @@ class InventoryProvider extends ChangeNotifier {
     int? durationMinutes,
     int? rebookAfterWeeks,
     double? commissionPercent,
+    double? commissionFixed,
     List<String>? staffIds,
     List<PriceOption>? priceOptions,
   }) async {
@@ -646,6 +647,7 @@ class InventoryProvider extends ChangeNotifier {
         if (durationMinutes != null) 'duration_minutes': durationMinutes,
         if (rebookAfterWeeks != null) 'rebook_after_weeks': rebookAfterWeeks,
         if (commissionPercent != null) 'commission_percent': commissionPercent,
+        if (commissionFixed != null) 'commission_fixed': commissionFixed,
         if (staffIds != null && staffIds.isNotEmpty) 'staff_ids': staffIds,
         if (priceOptions != null && priceOptions.isNotEmpty) 'price_options': <Map<String, dynamic>>[for (final PriceOption o in priceOptions) o.toJson()],
         'category': category,
@@ -741,6 +743,7 @@ class InventoryProvider extends ChangeNotifier {
     int? durationMinutes,
     int? rebookAfterWeeks,
     double? commissionPercent,
+    double? commissionFixed,
     List<String>? staffIds,
     List<PriceOption>? priceOptions,
   }) async {
@@ -759,6 +762,7 @@ class InventoryProvider extends ChangeNotifier {
         if (isService == true) 'duration_minutes': durationMinutes,
         if (isService == true) 'rebook_after_weeks': rebookAfterWeeks,
         if (isService == true) 'commission_percent': commissionPercent,
+        if (isService == true) 'commission_fixed': commissionFixed,
         // An empty list clears it on the server (anyone may do it again; one price).
         if (isService == true && staffIds != null) 'staff_ids': staffIds,
         if (isService == true && priceOptions != null) 'price_options': <Map<String, dynamic>>[for (final PriceOption o in priceOptions) o.toJson()],
@@ -2177,6 +2181,7 @@ InvProduct _fromProductJson(Map<String, dynamic> j) => InvProduct(
       durationMinutes: j['duration_minutes'] == null ? null : int.tryParse(j['duration_minutes'].toString()),
       rebookAfterWeeks: j['rebook_after_weeks'] == null ? null : int.tryParse(j['rebook_after_weeks'].toString()),
       commissionPercent: j['commission_percent'] == null ? null : double.tryParse(j['commission_percent'].toString()),
+      commissionFixed: j['commission_fixed'] == null ? null : double.tryParse(j['commission_fixed'].toString()),
       staffIds: j['staff_ids'] is List ? <String>[for (final dynamic s in j['staff_ids'] as List) '$s'] : const <String>[],
       priceOptions: j['price_options'] is List
           ? <PriceOption>[

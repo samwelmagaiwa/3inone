@@ -437,3 +437,333 @@ class StylistPage {
   final double net;
   final double commission;
 }
+
+// ------------------------------------------------------------------ expenses
+
+class SalonExpense {
+  const SalonExpense({
+    required this.id,
+    required this.category,
+    required this.description,
+    required this.amount,
+    required this.date,
+    required this.status,
+    this.supplier,
+    this.paymentMethod,
+    this.receiptUrl,
+    this.createdByName,
+  });
+
+  factory SalonExpense.fromJson(final Map<String, dynamic> j) => SalonExpense(
+        id: _int(j['id']),
+        category: _text(j['category']),
+        description: _text(j['description']),
+        amount: _num(j['amount']),
+        date: _date(j['expense_date']) ?? DateTime.now(),
+        status: _text(j['status']).isEmpty ? 'approved' : _text(j['status']),
+        supplier: j['supplier'] == null || _text(j['supplier']).isEmpty ? null : _text(j['supplier']),
+        paymentMethod: j['payment_method'] == null || _text(j['payment_method']).isEmpty ? null : _text(j['payment_method']),
+        receiptUrl: j['receipt_url'] == null || _text(j['receipt_url']).isEmpty ? null : _text(j['receipt_url']),
+        createdByName: j['created_by_name'] == null ? null : _text(j['created_by_name']),
+      );
+
+  final int id;
+  final String category;
+  final String description;
+  final double amount;
+  final DateTime date;
+
+  /// approved, pending (waiting for the owner) or rejected.
+  final String status;
+  final String? supplier;
+  final String? paymentMethod;
+  final String? receiptUrl;
+  final String? createdByName;
+
+  bool get isPending => status == 'pending';
+}
+
+// ------------------------------------------------------------------ profit and loss
+
+class ExpenseGroup {
+  const ExpenseGroup({required this.category, required this.total, required this.count});
+
+  factory ExpenseGroup.fromJson(final Map<String, dynamic> j) => ExpenseGroup(category: _text(j['category']), total: _num(j['total']), count: _int(j['count']));
+
+  final String category;
+  final double total;
+  final int count;
+}
+
+class Collection {
+  const Collection({required this.method, required this.amount});
+
+  factory Collection.fromJson(final Map<String, dynamic> j) => Collection(method: _text(j['method']), amount: _num(j['amount']));
+
+  /// cash, mpesa, mixx, airtel_money, halopesa or bank_transfer.
+  final String method;
+  final double amount;
+}
+
+class ProfitLoss {
+  const ProfitLoss({
+    required this.from,
+    required this.to,
+    required this.serviceRevenue,
+    required this.goodsRevenue,
+    required this.revenue,
+    required this.discounts,
+    required this.costOfGoods,
+    required this.grossProfit,
+    required this.expenses,
+    required this.expensesByCategory,
+    required this.commissions,
+    required this.salaries,
+    required this.operatingCosts,
+    required this.netProfit,
+    required this.collections,
+    required this.collected,
+    required this.outstanding,
+    required this.cancelledCount,
+    required this.cancelledTotal,
+    required this.sales,
+    required this.clients,
+  });
+
+  factory ProfitLoss.fromJson(final Map<String, dynamic> j) {
+    final Map<String, dynamic> cancelled = j['cancelled'] is Map ? Map<String, dynamic>.from(j['cancelled'] as Map) : <String, dynamic>{};
+    return ProfitLoss(
+      from: _date(j['from']) ?? DateTime.now(),
+      to: _date(j['to']) ?? DateTime.now(),
+      serviceRevenue: _num(j['service_revenue']),
+      goodsRevenue: _num(j['goods_revenue']),
+      revenue: _num(j['revenue']),
+      discounts: _num(j['discounts']),
+      costOfGoods: _num(j['cost_of_goods']),
+      grossProfit: _num(j['gross_profit']),
+      expenses: _num(j['expenses']),
+      expensesByCategory: _rows(j['expenses_by_category']).map(ExpenseGroup.fromJson).toList(),
+      commissions: _num(j['commissions']),
+      salaries: _num(j['salaries']),
+      operatingCosts: _num(j['operating_costs']),
+      netProfit: _num(j['net_profit']),
+      collections: _rows(j['collections']).map(Collection.fromJson).toList(),
+      collected: _num(j['collected']),
+      outstanding: _num(j['outstanding']),
+      cancelledCount: _int(cancelled['count']),
+      cancelledTotal: _num(cancelled['total']),
+      sales: _int(j['sales']),
+      clients: _int(j['clients']),
+    );
+  }
+
+  final DateTime from;
+  final DateTime to;
+
+  /// Revenue is what the lines were sold for AFTER the discount.
+  final double serviceRevenue;
+  final double goodsRevenue;
+  final double revenue;
+  final double discounts;
+  final double costOfGoods;
+  final double grossProfit;
+  final double expenses;
+  final List<ExpenseGroup> expensesByCategory;
+  final double commissions;
+  final double salaries;
+  final double operatingCosts;
+  final double netProfit;
+
+  /// Money received in the period, by how it was paid (not the same as revenue).
+  final List<Collection> collections;
+  final double collected;
+  final double outstanding;
+  final int cancelledCount;
+  final double cancelledTotal;
+  final int sales;
+  final int clients;
+}
+
+// ------------------------------------------------------------------ payroll
+
+class PayrollRow {
+  const PayrollRow({
+    required this.staffId,
+    required this.name,
+    required this.salary,
+    required this.commissionEarned,
+    required this.salaryPaid,
+    required this.commissionPaid,
+    required this.advances,
+    required this.owed,
+  });
+
+  factory PayrollRow.fromJson(final Map<String, dynamic> j) => PayrollRow(
+        staffId: _text(j['staff_id']),
+        name: _text(j['name']),
+        salary: _num(j['salary']),
+        commissionEarned: _num(j['commission_earned']),
+        salaryPaid: _num(j['salary_paid']),
+        commissionPaid: _num(j['commission_paid']),
+        advances: _num(j['advances']),
+        owed: _num(j['owed']),
+      );
+
+  final String staffId;
+  final String name;
+  final double salary;
+  final double commissionEarned;
+  final double salaryPaid;
+  final double commissionPaid;
+  final double advances;
+
+  /// What the salon still owes them for the month.
+  final double owed;
+}
+
+class PayrollReport {
+  const PayrollReport({required this.month, required this.staff, required this.salary, required this.commissionEarned, required this.owed});
+
+  factory PayrollReport.fromJson(final Map<String, dynamic> j) {
+    final Map<String, dynamic> totals = j['totals'] is Map ? Map<String, dynamic>.from(j['totals'] as Map) : <String, dynamic>{};
+    return PayrollReport(
+      month: _text(j['month']),
+      staff: _rows(j['staff']).map(PayrollRow.fromJson).toList(),
+      salary: _num(totals['salary']),
+      commissionEarned: _num(totals['commission_earned']),
+      owed: _num(totals['owed']),
+    );
+  }
+
+  /// "2026-10".
+  final String month;
+  final List<PayrollRow> staff;
+  final double salary;
+  final double commissionEarned;
+  final double owed;
+}
+
+class Payout {
+  const Payout({required this.id, required this.staffId, required this.kind, required this.amount, required this.paidOn, required this.periodMonth, required this.method, this.staffName, this.note});
+
+  factory Payout.fromJson(final Map<String, dynamic> j) => Payout(
+        id: _int(j['id']),
+        staffId: _text(j['staff_id']),
+        staffName: j['staff_name'] == null ? null : _text(j['staff_name']),
+        kind: _text(j['kind']),
+        amount: _num(j['amount']),
+        paidOn: _date(j['paid_on']) ?? DateTime.now(),
+        periodMonth: _text(j['period_month']),
+        method: _text(j['method']).isEmpty ? 'cash' : _text(j['method']),
+        note: j['note'] == null || _text(j['note']).isEmpty ? null : _text(j['note']),
+      );
+
+  final int id;
+  final String staffId;
+  final String? staffName;
+
+  /// salary, commission or advance.
+  final String kind;
+  final double amount;
+  final DateTime paidOn;
+  final String periodMonth;
+  final String method;
+  final String? note;
+}
+
+class StaffProfile {
+  const StaffProfile({required this.staffId, required this.name, required this.role, required this.monthlySalary, this.specialization, this.commissionPercent});
+
+  factory StaffProfile.fromJson(final Map<String, dynamic> j) => StaffProfile(
+        staffId: _text(j['staff_id']),
+        name: _text(j['name']),
+        role: _text(j['role']),
+        specialization: j['specialization'] == null || _text(j['specialization']).isEmpty ? null : _text(j['specialization']),
+        monthlySalary: _num(j['monthly_salary']),
+        commissionPercent: j['commission_percent'] == null ? null : _num(j['commission_percent']),
+      );
+
+  final String staffId;
+  final String name;
+  final String role;
+  final String? specialization;
+  final double monthlySalary;
+
+  /// Their own rate, used for a service that has none of its own.
+  final double? commissionPercent;
+}
+
+// ------------------------------------------------------------------ the dashboard
+
+class PeriodFigures {
+  const PeriodFigures({required this.revenue, required this.expenses, required this.netProfit, required this.clients, required this.sales});
+
+  factory PeriodFigures.fromJson(final dynamic j) {
+    final Map<String, dynamic> m = j is Map ? Map<String, dynamic>.from(j) : <String, dynamic>{};
+    return PeriodFigures(revenue: _num(m['revenue']), expenses: _num(m['expenses']), netProfit: _num(m['net_profit']), clients: _int(m['clients']), sales: _int(m['sales']));
+  }
+
+  final double revenue;
+  final double expenses;
+  final double netProfit;
+  final int clients;
+  final int sales;
+}
+
+class RankedItem {
+  const RankedItem({required this.name, required this.revenue, this.times = 0});
+
+  factory RankedItem.fromJson(final Map<String, dynamic> j) => RankedItem(name: _text(j['name']), revenue: _num(j['revenue']), times: _int(j['times']));
+
+  final String name;
+  final double revenue;
+
+  /// How many times it was done (services only).
+  final int times;
+}
+
+class SalonOverview {
+  const SalonOverview({
+    required this.today,
+    required this.week,
+    required this.month,
+    required this.year,
+    required this.collections,
+    required this.outstanding,
+    required this.topServices,
+    required this.topStaff,
+    required this.bookingsToday,
+    required this.bookingsUpcoming,
+  });
+
+  factory SalonOverview.fromJson(final Map<String, dynamic> j) {
+    final Map<String, dynamic> periods = j['periods'] is Map ? Map<String, dynamic>.from(j['periods'] as Map) : <String, dynamic>{};
+    final Map<String, dynamic> month = j['month'] is Map ? Map<String, dynamic>.from(j['month'] as Map) : <String, dynamic>{};
+    final Map<String, dynamic> bookings = j['bookings'] is Map ? Map<String, dynamic>.from(j['bookings'] as Map) : <String, dynamic>{};
+    return SalonOverview(
+      today: PeriodFigures.fromJson(periods['today']),
+      week: PeriodFigures.fromJson(periods['week']),
+      month: PeriodFigures.fromJson(periods['month']),
+      year: PeriodFigures.fromJson(periods['year']),
+      collections: _rows(month['collections']).map(Collection.fromJson).toList(),
+      outstanding: _num(month['outstanding']),
+      topServices: _rows(j['top_services']).map(RankedItem.fromJson).toList(),
+      topStaff: _rows(j['top_staff']).map(RankedItem.fromJson).toList(),
+      bookingsToday: _int(bookings['today']),
+      bookingsUpcoming: _int(bookings['upcoming']),
+    );
+  }
+
+  final PeriodFigures today;
+  final PeriodFigures week;
+  final PeriodFigures month;
+  final PeriodFigures year;
+
+  /// Money received this month, by how it was paid.
+  final List<Collection> collections;
+  final double outstanding;
+  final List<RankedItem> topServices;
+  final List<RankedItem> topStaff;
+  final int bookingsToday;
+  final int bookingsUpcoming;
+}

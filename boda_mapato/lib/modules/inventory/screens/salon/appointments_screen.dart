@@ -78,7 +78,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
 
   Future<void> _loadSettings() async {
     try {
-      final RebookSettings s = await _api.settings();
+      final RebookSettings s = await _api.salonSettings();
       if (mounted) setState(() => _settings = s);
     } on Exception {
       // the diary works without it: the switch just stays hidden

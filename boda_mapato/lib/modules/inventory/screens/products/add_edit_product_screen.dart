@@ -49,6 +49,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   final TextEditingController _duration = TextEditingController();
   final TextEditingController _rebook = TextEditingController();
   final TextEditingController _commission = TextEditingController();
+  final TextEditingController _commissionFixed = TextEditingController();
   // Salon: who may do this service (none chosen = anyone) and its price options (short / medium / long hair).
   final Set<String> _staffIds = <String>{};
   final List<_OptionDraft> _options = <_OptionDraft>[];
@@ -145,6 +146,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       _duration.text = p.durationMinutes?.toString() ?? '';
       _rebook.text = p.rebookAfterWeeks?.toString() ?? '';
       _commission.text = p.commissionPercent == null ? '' : _plainNumber(p.commissionPercent!);
+      _commissionFixed.text = p.commissionFixed == null ? '' : formatAmount(p.commissionFixed);
       _staffIds.addAll(p.staffIds);
       for (final PriceOption o in p.priceOptions) {
         _options.add(_OptionDraft(o.label, formatAmount(o.price)));
@@ -272,6 +274,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     _duration.dispose();
     _rebook.dispose();
     _commission.dispose();
+    _commissionFixed.dispose();
     for (final _OptionDraft o in _options) {
       o.dispose();
     }
@@ -699,8 +702,12 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                 keyboard: TextInputType.number, hint: 'e.g. 6', inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
           ),
           SizedBox(height: 8.h),
-          _input(sw ? 'Kamisheni ya mhudumu (%)' : 'Stylist commission (%)', _commission,
-              keyboard: const TextInputType.numberWithOptions(decimal: true), hint: 'e.g. 30'),
+          _twoCol(
+            left: _input(sw ? 'Kamisheni ya mhudumu (%)' : 'Stylist commission (%)', _commission,
+                keyboard: const TextInputType.numberWithOptions(decimal: true), hint: 'e.g. 30'),
+            right: _input(sw ? 'Au kiasi kwa kila mara (TZS)' : 'Or a fixed amount each time (TZS)', _commissionFixed,
+                keyboard: TextInputType.number, hint: 'e.g. 2,000', inputFormatters: [ThousandsFormatter()]),
+          ),
           ..._staffAndOptions(sw),
           Padding(
             padding: EdgeInsets.only(top: 6.h, left: 2.w),
@@ -1398,6 +1405,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     final int? duration = int.tryParse(_duration.text.trim());
     final int? rebookWeeks = int.tryParse(_rebook.text.trim());
     final double? commission = double.tryParse(_commission.text.trim().replaceAll(',', '.'));
+    final double? commissionFixed = _commissionFixed.text.trim().isEmpty ? null : parseAmount(_commissionFixed.text);
     List<PriceOption> options = const <PriceOption>[];
     if (_isService) {
       final List<PriceOption>? read = _readOptions(sw);
@@ -1512,6 +1520,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         durationMinutes: duration,
         rebookAfterWeeks: rebookWeeks,
         commissionPercent: _isService ? commission : null,
+        commissionFixed: _isService ? commissionFixed : null,
         staffIds: _isService ? _staffIds.toList() : null,
         priceOptions: _isService ? options : null,
       );
@@ -1547,6 +1556,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         durationMinutes: _isService ? duration : null,
         rebookAfterWeeks: _isService ? rebookWeeks : null,
         commissionPercent: _isService ? commission : null,
+        commissionFixed: _isService ? commissionFixed : null,
         staffIds: _isService ? _staffIds.toList() : null,
         priceOptions: _isService ? options : null,
       );

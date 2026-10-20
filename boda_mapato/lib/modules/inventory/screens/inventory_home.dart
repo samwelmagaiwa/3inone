@@ -20,6 +20,7 @@ import 'hubs/finance_reports_hub_screen.dart';
 import 'barcode_scanner_screen.dart';
 import 'notifications/approval_notifications_screen.dart';
 import 'reports/profit_by_product_screen.dart';
+import 'hubs/salon_finance_hub_screen.dart';
 import 'salon/appointments_screen.dart';
 import 'salon/rebook_screen.dart';
 import 'salon/stylists_screen.dart';
@@ -202,6 +203,14 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       color: const Color(0xFF00E5FF),
       pageBuilder: () => const FinanceReportsHubScreen(),
       visible: (UserPermissions p) => p.has('inv_view_cash') || p.has('inv_view_reports') || p.has('inv_view_reminders'),
+    ),
+    _InvMenuEntry(
+      key: 'finance',
+      staticTitle: sw ? 'Fedha' : 'Money',
+      icon: Icons.account_balance_wallet_outlined,
+      color: ThemeConstants.successGreen,
+      pageBuilder: () => const SalonFinanceHubScreen(),
+      visible: (UserPermissions p) => p.has('inv_view_reports') || p.has('inv_view_expenses'),
     ),
     _InvMenuEntry(
       key: 'credit',

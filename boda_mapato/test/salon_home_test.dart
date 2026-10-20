@@ -130,7 +130,7 @@ void main() {
       await _openHome(t, salon: true);
       await _openMenu(t);
 
-      for (final String label in <String>['Services & Goods', 'Sales', 'Stylists', 'Come back', 'Reports', 'Clients & Credit', 'Settings', 'Services & Goods Profit']) {
+      for (final String label in <String>['Services & Goods', 'Sales', 'Appointments', 'Stylists', 'Come back', 'Reports', 'Money', 'Clients & Credit', 'Settings', 'Services & Goods Profit']) {
         expect(find.text(label), findsWidgets, reason: label);
       }
       expect(find.text('Product Profit Margins'), findsNothing, reason: 'a salon has services, not only products');

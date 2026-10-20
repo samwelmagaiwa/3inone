@@ -37,6 +37,7 @@ class InvProduct {
     this.durationMinutes,
     this.rebookAfterWeeks,
     this.commissionPercent,
+    this.commissionFixed,
     this.staffIds = const <String>[],
     this.priceOptions = const <PriceOption>[],
   });
@@ -85,6 +86,9 @@ class InvProduct {
 
   /// Salon: the percent of a service's price the stylist who did it earns (null = none).
   double? commissionPercent;
+
+  /// Salon: a fixed amount the stylist earns each time it is done (wins over the percent when both are given).
+  double? commissionFixed;
 
   /// Salon: who may do this service (account ids); empty = anyone.
   List<String> staffIds;

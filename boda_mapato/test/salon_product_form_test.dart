@@ -274,6 +274,18 @@ void main() {
       expect(withRate['commission_percent'], 30.0);
     });
 
+    testWidgets('a fixed amount each time is sent beside the percent', (t) async {
+      await _open(t);
+      await t.enterText(_hint('e.g. Braids (long)'), 'Wash');
+      await t.enterText(_hint('e.g. 15,000'), '5000');
+      await t.enterText(_hint('e.g. 2,000'), '2000');
+      await _save(t);
+
+      final Map<String, dynamic> body = _api.posts.firstWhere(((String, Map<String, dynamic>) p) => p.$1 == '/inventory/products').$2;
+      expect(body['commission_fixed'], 2000);
+      expect(body.containsKey('commission_percent'), isFalse);
+    });
+
     testWidgets('no commission typed sends none', (t) async {
       await _open(t);
       await t.enterText(_hint('e.g. Braids (long)'), 'Wash');

@@ -1001,6 +1001,28 @@ class ApiService {
     }
   }
 
+  /// Upload one file (a photo) to [endpoint] as the multipart field [field]. The answer is the server's JSON.
+  Future<Map<String, dynamic>> uploadFile(
+    final String endpoint,
+    final String field,
+    final Uint8List bytes,
+    final String filename,
+  ) async {
+    final Map<String, String> headers = await _authHeaders;
+    if (!headers.containsKey("Authorization")) {
+      throw ApiException(LocalizationService.instance.translate('not_allowed_please_log_in_again'));
+    }
+
+    final http.MultipartRequest request = http.MultipartRequest('POST', Uri.parse("$baseUrl$endpoint"));
+    final Map<String, String> h = Map.of(headers);
+    // Let MultipartRequest set the correct boundary header
+    h.remove('Content-Type');
+    request.headers.addAll(h);
+    request.files.add(http.MultipartFile.fromBytes(field, bytes, filename: filename));
+    final http.StreamedResponse streamed = await request.send().timeout(timeoutDuration);
+    return _handleResponse(await http.Response.fromStream(streamed));
+  }
+
   // Users management endpoints
   Future<Map<String, dynamic>> getUsers(
       {int page = 1,

@@ -36,7 +36,7 @@ class _FakeSalon extends SalonApi {
   }
 
   @override
-  Future<RebookSettings> settings() async => settingsNow;
+  Future<RebookSettings> salonSettings() async => settingsNow;
 
   @override
   Future<RebookSettings> saveAppointmentReminders(bool on) async {

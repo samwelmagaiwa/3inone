@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../../services/api_service.dart';
 import '../models/salon_models.dart';
 
@@ -27,6 +29,113 @@ class SalonApi {
     return StylistPage.fromJson(_data(res));
   }
 
+  // ---------------------------------------------------------------- expenses
+
+  Future<List<SalonExpense>> expenses(final DateTime from, final DateTime to) async {
+    final Map<String, dynamic> res = await _api.get('/inventory/expenses?from=${_day(from)}&to=${_day(to)}');
+    final dynamic rows = res['data'];
+    return <SalonExpense>[
+      if (rows is List)
+        for (final dynamic r in rows)
+          if (r is Map) SalonExpense.fromJson(Map<String, dynamic>.from(r)),
+    ];
+  }
+
+  /// Record an expense ([id] null) or change one. What a stylist records waits for the owner's approval.
+  Future<SalonExpense> saveExpense({
+    final int? id,
+    required final String category,
+    required final String description,
+    required final double amount,
+    required final DateTime date,
+    final String? supplier,
+    final String? paymentMethod,
+  }) async {
+    final Map<String, dynamic> body = <String, dynamic>{
+      'category': category,
+      'description': description,
+      'amount': amount,
+      'expense_date': _day(date),
+      'supplier': supplier ?? '',
+      if (paymentMethod != null) 'payment_method': paymentMethod,
+    };
+    final Map<String, dynamic> res = id == null ? await _api.post('/inventory/expenses', body) : await _api.put('/inventory/expenses/$id', body);
+    return SalonExpense.fromJson(_data(res));
+  }
+
+  Future<SalonExpense> decideExpense(final int id, {required final bool approve}) async => SalonExpense.fromJson(
+      _data(await _api.post('/inventory/expenses/$id/approval', <String, dynamic>{'decision': approve ? 'approve' : 'reject'})));
+
+  /// A photo of the receipt.
+  Future<SalonExpense> attachReceipt(final int id, final Uint8List bytes, final String filename) async =>
+      SalonExpense.fromJson(_data(await _api.uploadFile('/inventory/expenses/$id/receipt', 'photo', bytes, filename)));
+
+  // ---------------------------------------------------------------- the dashboard
+
+  Future<SalonOverview> overview() async => SalonOverview.fromJson(_data(await _api.get('/inventory/salon/overview')));
+
+  // ---------------------------------------------------------------- profit and loss
+
+  Future<ProfitLoss> profitLoss(final DateTime from, final DateTime to) async =>
+      ProfitLoss.fromJson(_data(await _api.get('/inventory/salon/profit-loss?from=${_day(from)}&to=${_day(to)}')));
+
+  // ---------------------------------------------------------------- payroll
+
+  Future<PayrollReport> payroll(final String month) async => PayrollReport.fromJson(_data(await _api.get('/inventory/salon/payroll?month=$month')));
+
+  Future<List<Payout>> payouts(final String month) async {
+    final Map<String, dynamic> res = await _api.get('/inventory/salon/payouts?month=$month');
+    final dynamic rows = res['data'];
+    return <Payout>[
+      if (rows is List)
+        for (final dynamic r in rows)
+          if (r is Map) Payout.fromJson(Map<String, dynamic>.from(r)),
+    ];
+  }
+
+  /// Record a salary, commission or advance paid to someone. [kind]: salary, commission or advance.
+  Future<void> savePayout({
+    required final String staffId,
+    required final String kind,
+    required final double amount,
+    required final DateTime paidOn,
+    required final String method,
+    final String? periodMonth,
+    final String? note,
+  }) async {
+    await _api.post('/inventory/salon/payouts', <String, dynamic>{
+      'staff_id': staffId,
+      'kind': kind,
+      'amount': amount,
+      'paid_on': _day(paidOn),
+      if (periodMonth != null) 'period_month': periodMonth,
+      'method': method,
+      if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+    });
+  }
+
+  Future<void> deletePayout(final int id) async {
+    await _api.delete('/inventory/salon/payouts/$id');
+  }
+
+  Future<List<StaffProfile>> staffProfiles() async {
+    final Map<String, dynamic> res = await _api.get('/inventory/salon/staff-profiles');
+    final dynamic rows = res['data'];
+    return <StaffProfile>[
+      if (rows is List)
+        for (final dynamic r in rows)
+          if (r is Map) StaffProfile.fromJson(Map<String, dynamic>.from(r)),
+    ];
+  }
+
+  Future<void> saveStaffProfile(final String staffId, {final String? specialization, final double? monthlySalary, final double? commissionPercent, final bool clearCommission = false}) async {
+    await _api.put('/inventory/salon/staff-profiles/$staffId', <String, dynamic>{
+      if (specialization != null) 'specialization': specialization,
+      if (monthlySalary != null) 'monthly_salary': monthlySalary,
+      if (commissionPercent != null || clearCommission) 'commission_percent': commissionPercent,
+    });
+  }
+
   /// The "come back" settings and who is due now.
   Future<RebookOverview> rebookOverview() async => RebookOverview.fromJson(_data(await _api.get('/inventory/salon/rebook/due')));
 
@@ -39,7 +148,7 @@ class SalonApi {
   }
 
   /// The settings as they are now ("come back" reminders and appointment reminders).
-  Future<RebookSettings> settings() async => RebookSettings.fromJson(_data(await _api.get('/inventory/salon/settings')));
+  Future<RebookSettings> salonSettings() async => RebookSettings.fromJson(_data(await _api.get('/inventory/salon/settings')));
 
   Future<RebookSettings> saveAppointmentReminders(final bool on) async =>
       RebookSettings.fromJson(_data(await _api.put('/inventory/salon/settings', <String, dynamic>{'appointment_reminders': on})));

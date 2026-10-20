@@ -18,39 +18,38 @@ Rules for every item
 Legend: [x] done  [~] partly  [ ] not started
 
 ## A. Core business
-1. Dashboard & overview  [~] revenue today/week/month/year, expenses and profit, clients served, revenue per staff,
-   top services, today's and coming bookings, debts/unpaid, cash vs mobile money vs bank
-2. Service management  [~] add/edit/delete, price, duration, staff commission %, price options (short/medium/long),
-   who can do it (done, tested); packages and promotional offers [ ]; category presets [ ]
+1. Dashboard & overview  [x] (owner/manager view, SalonOverviewCard) revenue today/week/month/year with profit, clients
+   served, top stylists, top services, today's and coming bookings, debts, money received by channel
+2. Service management  [~] add/edit/delete, price, duration, commission % or fixed amount per time, price options
+   (short/medium/long), who can do it (done, tested); packages and promotional offers [ ]; category presets [ ]
 3. Customers (CRM)  [~] name/phone, service history, payment history, notes (done); style/colour/nail preferences,
    photos with consent, new vs returning, birthday offers, loyalty points, feedback [ ]
 4. Appointments & booking  [~] diary per day, no double booking, confirm/reschedule/cancel/no-show, SMS reminder
    (done, tested); calendar per staff, walk-in queue, deposits and cancellation policy, WhatsApp [ ]
-5. Service orders & POS  [~] services + goods, stylist per line, partial payment, receipt (engine); discount reason,
-   refunds with approval, status pending/paid/partial/cancelled [ ] verify
-6. Revenue & income  [~] per staff/service/period; per payment method (M-Pesa, Mixx by Yas, Airtel Money, HaloPesa,
-   bank, cash), advances and balances, discounts/refunds/voids, reconciliation [ ]
-7. Expenses  [ ] rent, salaries, products, utilities, transport, repairs, marketing, licences; supplier, date,
-   amount, category, notes, receipt photo, approval, reports by category/date/entered-by
+5. Service orders & POS  [~] services + goods, stylist per line, partial payment, receipt (engine); discount with its
+   reason, how paid (cash/M-Pesa/Mixx/Airtel/HaloPesa/bank) done; refunds with approval [ ] verify
+6. Revenue & income  [~] per staff/service/period, money received per payment method, outstanding balances, discounts,
+   cancelled sales (done, in Profit & loss and the dashboard); refunds and reconciliation against cash handed over [ ]
+7. Expenses  [x] rent, salaries, products, utilities, transport, repairs, marketing, licences; supplier, date, amount,
+   how paid, receipt photo, owner approval of other people's spending, totals by category (by entered-by [ ] small)
 8. Staff management  [~] accounts and roles exist; specialization, photo, services each may do, work schedule and
    days off, attendance/hours, active flag, history and ranking [ ]
 9. Inventory & stock  [x] goods on the inventory engine (stock in/out/adjust, suppliers, alerts, expiry, valuation);
    use of products during a service, damaged/lost/used-not-sold [ ]
 
 ## B. Staff revenue & commission
-10. Individual staff revenue  [~] per stylist totals; tap a name to see every transaction (client, service, value,
-    discount, net, payment received, method, date/time, commission) [ ]
-11. Commission & salary  [~] % per service and the amount fixed per sale line (done); fixed amount per service,
-    per-staff overrides, monthly salary, salary advances, commission earned/paid/owed, payroll summary, report for a
-    period [ ]
+10. Individual staff revenue  [x] per stylist totals net of discount; tap a name to see every transaction (client, service,
+    value, discount and why, net, status, how paid, date/time, commission)
+11. Commission & salary  [x] % or fixed amount per service, a person's own rate, fixed on each sale line, monthly salary,
+    payments and advances, commission earned/paid/owed, payroll per month (Payroll tab)
 12. Staff cash accountability  [ ] own transactions only, cash collected vs handed over, expected balance,
     difference, shift open/close, owner alerts, audit trail for refunds/cancellations
 
 ## C. Financial control & reports
-13. Profit & loss  [ ] service revenue + product sales, cost of products, expenses, commissions + salaries, gross and
-    net profit, daily/weekly/monthly/annual
-14. Cashbook & reconciliation  [~] daily cash exists in the engine; cash in/out, opening/closing balance, mobile
-    money/bank records, owner deposits/withdrawals, reconciliation, daily summary [ ]
+13. Profit & loss  [x] service revenue + goods, cost of goods, expenses, commissions + salaries, gross and net profit,
+    today/week/month/year
+14. Cashbook & reconciliation  [~] daily cash exists in the engine; money received by channel (done); opening/closing
+    balance, owner deposits/withdrawals, reconciliation [ ]
 15. Reports & analytics  [~] revenue by staff/service/method, expenses by category, trends, best staff, popular
     services, retention, outstanding, stock valuation, export PDF/Excel [ ]
 16. Notifications & alerts  [~] booking reminders (SMS); new booking, payment confirmation, low stock, expense

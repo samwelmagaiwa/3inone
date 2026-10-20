@@ -68,3 +68,22 @@ percent (`inventory_products.commission_percent`). No SKU, barcode, packs, sizes
 a stylist named, the commission AMOUNT is fixed on the line (`inventory_sale_items.commission_amount`), so changing the
 rate later never rewrites earnings. `GET /inventory/salon/stylists` returns `commission` per stylist and in `totals`.
 Migration `2026_10_23_000100_add_service_commission`; the code tolerates it not having run yet.
+
+## Salon money (2026-10-26)
+
+`docs/SALON_ROADMAP.md` is the checklist. What exists now, all salon-only (`service` column, `X-Service: salon`):
+
+- **How a client paid**: `PaymentChannels` keeps the stored method one of cash / mobile_money / bank_transfer and the
+  particular channel (mpesa, mixx, airtel_money, halopesa) in `inventory_sale_payments.method_extended`.
+- **Discount with a reason** (`inventory_sales.discount_reason`, required in a salon when a discount is given).
+- **Stylist revenue is net of the sale's discount** (each line carries its share); `GET /inventory/salon/stylists/{id}/transactions`
+  lists the lines behind a total.
+- **Commission**: a service's fixed amount per time, else its percent, else the person's own rate
+  (`inventory_staff_profiles`); the amount is fixed on the sale line when sold.
+- **Expenses** (the shared `inventory_expenses`): supplier, how paid, receipt photo (private `salon_receipts/`), and
+  approval: what the owner or a manager records counts at once, anyone else's waits (`status`); only approved
+  spending is counted anywhere.
+- **Payroll** (`inventory_staff_payouts`): per month, salary + commission earned - paid - advances = owed.
+- **Profit and loss** and the dashboard overview come from one class, `App\Support\Salon\SalonFinance`.
+- Only the owner, managers and accountants see anyone's pay or the business's money (checked in `SalonMoneyController`
+  and again in the app).
