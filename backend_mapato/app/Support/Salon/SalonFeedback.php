@@ -189,19 +189,34 @@ final class SalonFeedback
                 'updated_at' => now(),
             ]);
             if ($complaint) {
-                self::tellAboutComplaint((int) $id, (string) ($row->staff_name ?? ''), $message);
+                self::tellAboutComplaint((int) $id, (string) ($row->staff_name ?? ''), $message, null, self::who($row->customer_id));
             }
         }));
     }
 
     /** A complaint is told to everyone who can act on it, the moment it is made. */
-    public static function tellAboutComplaint(int $id, string $about, string $message, ?string $exclude = null): void
+    /** Who is complaining, as the owner should read it: "Neema (0711000001)", or nothing when there is no client on it. */
+    public static function who(mixed $customerId): string
     {
+        if ($customerId === null) {
+            return '';
+        }
+        $c = DB::table('inventory_customers')->where('id', $customerId)->first(['name', 'phone']);
+        if ($c === null) {
+            return '';
+        }
+
+        return trim($c->name . (trim((string) $c->phone) !== '' ? " ({$c->phone})" : ''));
+    }
+
+    public static function tellAboutComplaint(int $id, string $about, string $message, ?string $exclude = null, string $client = ''): void
+    {
+        $parts = array_filter([$client, $about !== '' ? "kuhusu / about {$about}" : '']);
         app(InventoryNotifier::class)->notifyByPermission(
             ['inv_view_reports'],
             'salon_complaint',
             'Malalamiko mapya / A new complaint',
-            trim(($about !== '' ? "{$about}: " : '') . Str::limit($message, 80)),
+            trim(implode(' · ', $parts) . ($parts === [] ? '' : ': ') . Str::limit($message, 80)),
             ['feedback_id' => $id],
             excludeUserId: $exclude,
         );

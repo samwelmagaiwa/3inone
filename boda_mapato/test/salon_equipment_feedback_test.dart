@@ -28,7 +28,7 @@ class _FakeSalon extends SalonApi {
       'by_staff': <Map<String, dynamic>>[<String, dynamic>{'name': 'Asha', 'average': 4.5, 'ratings': 2}],
     },
     'feedback': <Map<String, dynamic>>[
-      <String, dynamic>{'id': 7, 'kind': 'complaint', 'rating': 1, 'message': 'Waited long', 'client': 'Neema', 'status': 'new', 'at': '2026-10-20 10:00'},
+      <String, dynamic>{'id': 7, 'kind': 'complaint', 'rating': 1, 'message': 'Waited long', 'client': 'Neema', 'client_phone': '0711000001', 'status': 'new', 'at': '2026-10-20 10:00'},
       <String, dynamic>{'id': 8, 'kind': 'review', 'rating': 5, 'message': 'Lovely', 'status': 'resolved', 'at': '2026-10-19 10:00'},
     ],
   };
@@ -133,6 +133,7 @@ void main() {
     expect(find.text('4.5 ★'), findsOneWidget);
     expect(find.text('Waited long'), findsNothing); // inside the subtitle with other lines
     expect(find.textContaining('Waited long'), findsOneWidget);
+    expect(find.textContaining('Neema (0711000001)'), findsOneWidget, reason: 'the owner sees who is complaining and the number');
     expect(find.byKey(const Key('fb_resolve_8')), findsNothing);
 
     await t.tap(find.byKey(const Key('fb_resolve_7')));

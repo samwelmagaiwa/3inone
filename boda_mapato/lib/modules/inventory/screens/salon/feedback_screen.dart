@@ -110,7 +110,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                           title: Text(<String>[
                             if (f['rating'] != null) '${'★' * (f['rating'] as num).toInt()}',
                             if (f['kind'] == 'complaint') (sw ? 'Lalamiko' : 'Complaint'),
-                            if ('${f['client'] ?? ''}'.isNotEmpty) '${f['client']}',
+                            if ('${f['client'] ?? ''}'.isNotEmpty) '${f['client']}${'${f['client_phone'] ?? ''}'.isEmpty ? '' : ' (${f['client_phone']})'}',
                           ].join('  ·  ')),
                           subtitle: Text(<String>[
                             if ('${f['message'] ?? ''}'.isNotEmpty) '${f['message']}',

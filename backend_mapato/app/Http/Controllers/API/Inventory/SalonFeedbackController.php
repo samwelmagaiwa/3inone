@@ -54,13 +54,15 @@ class SalonFeedbackController extends Controller
             ->orderByRaw("CASE WHEN f.status = 'new' THEN 0 ELSE 1 END")
             ->orderByDesc('f.id')
             ->limit(200)
-            ->get(['f.*', 'c.name as customer_name'])
+            ->get(['f.*', 'c.name as customer_name', 'c.phone as customer_phone'])
             ->map(fn ($f) => [
                 'id' => (int) $f->id,
                 'kind' => $f->kind,
                 'rating' => $f->rating === null ? null : (int) $f->rating,
                 'message' => $f->message,
                 'client' => $f->customer_name,
+                // The owner and managers can ring the client back; a stylist sees the feedback about her, not the number.
+                'client_phone' => $manager ? $f->customer_phone : null,
                 'staff_id' => $f->staff_id,
                 'staff_name' => $f->staff_name,
                 'status' => $f->status,
@@ -131,7 +133,7 @@ class SalonFeedbackController extends Controller
             'updated_at' => now(),
         ]);
         if ($data['kind'] === 'complaint') {
-            SalonFeedback::tellAboutComplaint((int) $id, (string) ($staff?->name ?? ''), $message, (string) $request->user()->id);
+            SalonFeedback::tellAboutComplaint((int) $id, (string) ($staff?->name ?? ''), $message, (string) $request->user()->id, SalonFeedback::who($data['customer_id'] ?? null));
         }
 
         return response()->json(['message' => 'Saved', 'data' => ['id' => (int) $id]], 201);

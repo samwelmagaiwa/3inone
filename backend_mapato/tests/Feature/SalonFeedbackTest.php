@@ -279,8 +279,13 @@ class SalonFeedbackTest extends TestCase
         foreach ([$owner, $manager] as $who) {
             $n = collect($this->api($who, 'GET', '/api/inventory/notifications')->json('data'))->firstWhere('type', 'salon_complaint');
             $this->assertNotNull($n);
-            $this->assertSame('Asha: She burnt my hair', $n['body']);
+            $this->assertSame('neema juma (0711000001) · kuhusu / about Asha: She burnt my hair', $n['body'], 'the owner is told WHO is complaining, and the number to ring back');
         }
+
+        $list = $this->api($owner, 'GET', '/api/inventory/salon/feedback')->assertOk()->json('data.feedback');
+        $this->assertSame(['neema juma', '0711000001'], [$list[0]['client'], $list[0]['client_phone']]);
+        $manager->refresh();
+        $this->assertSame('0711000001', $this->api($manager, 'GET', '/api/inventory/salon/feedback')->json('data.feedback.0.client_phone'));
         $this->assertNull(collect($this->api($asha, 'GET', '/api/inventory/notifications')->json('data'))->firstWhere('type', 'salon_complaint'));
     }
 
