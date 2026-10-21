@@ -147,7 +147,7 @@ class AppointmentController extends Controller
     /** Booking is for the reception and the owner; a stylist works the diary, they do not write it. */
     private function refuseStylist(Request $request): void
     {
-        abort_if($this->isStylist($request), 403, 'Mapokezi au meneja ndiye anayeweka miadi. / Reception or a manager books appointments.');
+        abort_if($this->isStylist($request), 403, 'Mmiliki au mhasibu ndiye anayeweka miadi. / The owner or the accountant books appointments.');
     }
 
     /**

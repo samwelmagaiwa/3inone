@@ -113,8 +113,14 @@ class _FakeSalon extends SalonApi {
   @override
   Future<Map<String, dynamic>> salonSettingsMap() async => <String, dynamic>{'cancel_hours': 24};
 
+  bool loyaltyMissing = false;
+
   @override
-  Future<Map<String, dynamic>> loyaltySettings() async => <String, dynamic>{'on': false, 'per': 1000, 'value': 50, 'referral': 5};
+  Future<Map<String, dynamic>> loyaltySettings() async {
+    if (loyaltyMissing) throw Exception('API endpoint not found');
+
+    return <String, dynamic>{'on': false, 'per': 1000, 'value': 50, 'referral': 5};
+  }
 }
 
 InvProduct _goods(int id, String name) => InvProduct(id: id, name: name, sku: 'S-$id', category: '', costPrice: 100, sellingPrice: 200, unit: 'pcs', quantity: 5, minStock: 0, status: 'active', barcode: '', createdBy: 1);
@@ -308,6 +314,17 @@ void main() {
       await t.tap(find.byKey(const Key('mat_remove_8')));
       await t.pump();
       expect(find.byKey(const Key('mat_8')), findsNothing);
+    });
+  });
+
+  group('settings on a server that does not know the loyalty page yet', () {
+    testWidgets('the rest of the settings still show, without the loyalty section', (t) async {
+      final _FakeSalon api = _FakeSalon()..loyaltyMissing = true;
+      await _pump(t, SalonSettingsScreen(api: api));
+      expect(find.byKey(const Key('set_cancel')), findsOneWidget);
+      expect(find.byKey(const Key('set_presets')), findsOneWidget);
+      expect(find.byKey(const Key('set_loyalty')), findsNothing);
+      expect(find.byKey(const Key('set_per')), findsNothing);
     });
   });
 

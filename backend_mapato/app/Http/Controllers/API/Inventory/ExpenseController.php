@@ -18,6 +18,11 @@ class ExpenseController extends Controller
     private function isManager(Request $request): bool
     {
         $user = $request->user();
+
+        // The salon decides by rights (the owner and the accountant by default); the shop's other roles are as they were.
+        if (\App\Support\Tenancy\TenantContext::service() === 'salon') {
+            return \App\Support\Salon\SalonAccess::isManager($user);
+        }
         $role = strtolower($user->role ?? '');
 
         return in_array($role, ['admin', 'super_admin', 'manager', 'accountant'], true) || (bool) $user->full_access;

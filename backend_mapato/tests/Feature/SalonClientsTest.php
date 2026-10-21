@@ -324,7 +324,7 @@ class SalonClientsTest extends TestCase
         $this->assertSame(0, $this->rows($lonely, fn () => DB::table('inventory_campaigns')->count()));
     }
 
-    public function test_only_the_owner_and_managers_send_messages_and_never_the_super_admin(): void
+    public function test_only_whoever_holds_the_settings_right_sends_messages_and_never_the_super_admin(): void
     {
         $owner = $this->salon();
         $this->mixOfClients($owner);
@@ -337,7 +337,10 @@ class SalonClientsTest extends TestCase
         $this->api($asha, 'GET', '/api/inventory/salon/campaigns')->assertStatus(403);
         $this->api($super, 'POST', '/api/inventory/salon/campaigns', ['segment' => 'all', 'message' => 'Hello there'])->assertStatus(403);
         $this->assertCount(0, $this->sms->sent);
-        $this->api($manager, 'POST', '/api/inventory/salon/campaigns', ['segment' => 'returning', 'message' => 'Hello there'])->assertCreated();
+        // Sending texts to groups of clients is setting the salon up: the "settings" right (the owner's), not a role name.
+        $this->api($manager, 'POST', '/api/inventory/salon/campaigns', ['segment' => 'returning', 'message' => 'Hello there'])->assertStatus(403);
+        $manager->forceFill(['permissions' => ['inv_manage_settings']])->save();
+        $this->api($manager->refresh(), 'POST', '/api/inventory/salon/campaigns', ['segment' => 'returning', 'message' => 'Hello there'])->assertCreated();
     }
 
     public function test_one_salon_never_messages_or_sees_the_clients_of_another(): void

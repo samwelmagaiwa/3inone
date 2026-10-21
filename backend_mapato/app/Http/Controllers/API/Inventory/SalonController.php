@@ -58,7 +58,7 @@ class SalonController extends Controller
         $to = isset($data['to']) ? Carbon::parse($data['to'])->toDateString() : now()->toDateString();
 
         $viewer = $request->user();
-        $sees = $viewer->seesAllAccounts() || in_array(strtolower((string) $viewer->role), ['admin', 'administrator', 'manager', 'accountant'], true);
+        $sees = \App\Support\Salon\SalonAccess::isManager($viewer);
 
         $query = DB::table('inventory_sale_items as si')
             ->join('inventory_sales as s', 's.id', '=', 'si.sale_id')
@@ -138,7 +138,7 @@ class SalonController extends Controller
         $to = isset($data['to']) ? Carbon::parse($data['to'])->toDateString() : now()->toDateString();
 
         $viewer = $request->user();
-        $sees = $viewer->seesAllAccounts() || in_array(strtolower((string) $viewer->role), ['admin', 'administrator', 'manager', 'accountant'], true);
+        $sees = \App\Support\Salon\SalonAccess::isManager($viewer);
         abort_if(!$sees && $staffId !== (string) $viewer->id, 403, 'Huwezi kuona mapato ya mhudumu mwingine. / You cannot see another stylist\'s income.');
 
         $query = DB::table('inventory_sale_items as si')
@@ -410,7 +410,7 @@ class SalonController extends Controller
     {
         $business = \App\Models\Business::forUser($request->user());
         abort_if($business === null, 403, 'Fanya hivi kutoka kwenye akaunti ya saluni yenyewe. / Do this from the salon\'s own account.');
-        abort_unless(\App\Support\Salon\SalonAccess::isManager($request->user()), 403, 'Ni mmiliki au meneja tu. / Only the owner or a manager.');
+        abort_unless(\App\Support\Salon\SalonAccess::canConfigure($request->user()), 403, 'Ni mmiliki tu. / Only the owner.');
 
         $slug = array_key_exists('booking_slug', $data) ? ($data['booking_slug'] ?: null) : $business->booking_slug;
         if ($slug !== null && \App\Models\Business::withoutAccountScope()->where('booking_slug', $slug)->where('id', '!=', $business->id)->exists()) {

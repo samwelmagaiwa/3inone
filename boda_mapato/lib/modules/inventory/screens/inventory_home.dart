@@ -260,7 +260,7 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.campaign_outlined,
       color: const Color(0xFFEC4899),
       pageBuilder: () => const OffersHubScreen(),
-      visible: (UserPermissions p) => p.has('inv_manage_settings') || p.has('inv_view_reports'),
+      visible: (UserPermissions p) => p.has('inv_manage_settings'),
     ),
     _InvMenuEntry(
       key: 'salon_settings',

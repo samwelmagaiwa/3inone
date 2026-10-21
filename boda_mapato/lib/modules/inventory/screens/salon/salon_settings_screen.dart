@@ -33,6 +33,9 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
   String? _error;
   bool _loading = true;
 
+  /// The server this app talks to may not know the loyalty page yet (a newer app on an older server): the rest still works.
+  bool _loyaltyKnown = true;
+
   @override
   void initState() {
     super.initState();
@@ -63,11 +66,18 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
     });
     try {
       final Map<String, dynamic> s = await _api.salonSettingsMap();
-      final Map<String, dynamic> l = await _api.loyaltySettings();
+      Map<String, dynamic> l = <String, dynamic>{};
+      bool known = true;
+      try {
+        l = await _api.loyaltySettings();
+      } on Exception {
+        known = false;
+      }
       if (!mounted) return;
       setState(() {
         _s = s;
         _loyalty = l;
+        _loyaltyKnown = known;
         _fill();
         _loading = false;
       });
@@ -188,6 +198,7 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                     subtitle: Text(sw ? 'Nywele, kusuka, rangi, kucha, make-up, kope, ngozi, masaji, kinyozi… (yaliyopo hayarudiwi)' : 'Hair, braiding, colour, nails, makeup, lashes, skin, massage, barber… (existing ones are not repeated)'),
                     onTap: _presets,
                   ),
+                  if (_loyaltyKnown) ...<Widget>[
                   _head(sw ? 'Pointi za uaminifu' : 'Loyalty points'),
                   SwitchListTile(
                     key: const Key('set_loyalty'),
@@ -215,6 +226,7 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                       ),
                     ]),
                   ),
+                  ],
                 ]),
     );
   }

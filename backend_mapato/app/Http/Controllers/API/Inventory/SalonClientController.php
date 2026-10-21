@@ -33,7 +33,7 @@ class SalonClientController extends Controller
 
     private function requireManager(Request $request): void
     {
-        abort_unless(SalonAccess::isManager($request->user()), 403, 'Ni mmiliki au meneja tu anayeweza kufanya hivi. / Only the owner or a manager can do this.');
+        abort_unless(SalonAccess::canConfigure($request->user()), 403, 'Ni mmiliki tu anayeweza kufanya hivi. / Only the owner can do this.');
     }
 
     // ------------------------------------------------------------------ photos

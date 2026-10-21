@@ -32,12 +32,12 @@ class SalonMoneyController extends Controller
     {
         $u = $request->user();
 
-        return $u->seesAllAccounts() || in_array(strtolower((string) $u->role), ['admin', 'administrator', 'manager', 'accountant'], true);
+        return \App\Support\Salon\SalonAccess::isManager($u);
     }
 
     private function requireManager(Request $request): void
     {
-        abort_unless($this->isManager($request), 403, 'Ni mmiliki au meneja tu anayeweza kuona hii. / Only the owner or a manager can see this.');
+        abort_unless($this->isManager($request), 403, 'Ni mmiliki au mhasibu tu anayeweza kuona hii. / Only the owner or the accountant can see this.');
     }
 
     // ------------------------------------------------------------------ profit and loss, the dashboard

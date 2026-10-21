@@ -114,7 +114,19 @@ void main() {
   });
 
   group('who sees the money', () {
-    test('the owner, managers, accountants and the super admin; nobody else', () {
+    test('it follows the rights, not the role name: a stylist given "reports" sees it, and loses it when it is taken back', () {
+      UserData stylist(List<String>? extra) => UserData(id: 'u1', name: 'Asha', email: 'a@example.test', role: 'hair_stylist', isActive: true, serviceTypes: const <String>['salon'], permissions: extra);
+      expect(canSeeSalonMoney(stylist(null)), isFalse);
+      expect(canSeeSalonMoney(stylist(<String>['inv_view_cash'])), isFalse, reason: 'another right is not this one');
+      expect(canSeeSalonMoney(stylist(<String>['inv_view_reports'])), isTrue);
+      expect(canSeeSalonMoney(stylist(<String>[])), isFalse);
+    });
+
+    test('the accountant by default, and an accountant with no extras still sees it', () {
+      expect(canSeeSalonMoney(_user('accountant')), isTrue);
+    });
+
+    test('whoever holds the reports right: the owner, the accountant, the shop\'s manager and the super admin; nobody else', () {
       for (final String role in <String>['admin', 'administrator', 'manager', 'accountant', 'super_admin']) {
         expect(canSeeSalonMoney(_user(role)), isTrue, reason: role);
       }

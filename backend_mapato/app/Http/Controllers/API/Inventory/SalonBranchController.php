@@ -20,7 +20,7 @@ class SalonBranchController extends Controller
 {
     private function requireManager(Request $request): void
     {
-        abort_unless(SalonAccess::isManager($request->user()), 403, 'Ni mmiliki au meneja tu anayeweza kufanya hivi. / Only the owner or a manager can do this.');
+        abort_unless(SalonAccess::canConfigure($request->user()), 403, 'Ni mmiliki tu anayeweza kufanya hivi. / Only the owner can do this.');
     }
 
     private function used(int $id): bool
@@ -37,7 +37,7 @@ class SalonBranchController extends Controller
     #[OA\Get(path: '/inventory/salon/branches', summary: 'The salon\'s branches', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function index(Request $request): JsonResponse
     {
-        $manager = SalonAccess::isManager($request->user());
+        $manager = SalonAccess::canConfigure($request->user());
         $rows = DB::table('inventory_branches')->when(!$manager, fn ($q) => $q->where('active', true))->orderByDesc('active')->orderBy('name')->get()->map(fn ($b) => [
             'id' => (int) $b->id, 'name' => $b->name, 'address' => $b->address, 'phone' => $b->phone, 'active' => (bool) $b->active,
         ])->values();

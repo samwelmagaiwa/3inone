@@ -169,3 +169,10 @@ no rights; the shop's own "manager" role is unchanged). Their work went to:
 - Stylists: their own diary, sales, results and pay; they also report damaged goods.
 Each person's rights can be adjusted one by one on the access-rights screen (it now has the salon's list, like the other
 services). An old account that still carries a removed role must be given one of the roles above.
+
+## Access rights (2026-10-21): the salon decides by rights, like the other services
+
+`SalonAccess::isManager` = the "reports" right (money, books, everyone's work; owner + accountant by default);
+`SalonAccess::canConfigure` = the "settings" right (branches, vouchers, loyalty, messages, online booking; owner by default).
+Role names no longer decide anything except which people are "stylists" (own diary only). Per-person extras and removals on the
+access-rights screen take effect (tests: SalonAccessRightsTest). The app mirrors it (canSeeSalonMoney uses the same rule).
