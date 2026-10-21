@@ -229,6 +229,7 @@ class SalonSeparationTest extends TestCase
             'customer_id' => $client, 'payment_status' => 'paid', 'subtotal' => 40000, 'discount' => 0, 'tax' => 0, 'total' => 40000, 'paid_total' => 40000,
             'items' => [['product_id' => $service, 'quantity' => 1, 'unit_price' => 40000]],
         ], true)->assertCreated();
+        $this->sms->sent = []; // the thank-you for the visit went out when it was paid; this counts only what the job sends
         \Carbon\Carbon::setTestNow('2026-09-29 07:00:00');
 
         $this->artisan('salon:remind-rebooking')->assertExitCode(0);

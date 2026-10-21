@@ -114,17 +114,20 @@ class SalonFeedbackTest extends TestCase
 
     // ------------------------------------------------------------------ the text after a visit
 
-    public function test_nothing_is_sent_until_the_owner_switches_it_on(): void
+    public function test_the_thank_you_goes_out_without_anyone_switching_anything_and_stops_when_the_owner_switches_it_off(): void
     {
         $owner = $this->salon();
         $wash = $this->service($owner);
         $neema = $this->client($owner);
         $this->freshSms();
 
+        $this->assertTrue($this->api($owner, 'GET', '/api/inventory/salon/settings')->json('data.feedback_sms'), 'on from the start');
         $this->visit($owner, $neema, [[$wash, 1, 10000]])->assertCreated();
+        $this->assertCount(1, $this->sms->sent);
 
-        $this->assertCount(0, $this->sms->sent);
-        $this->assertSame(0, $this->rows($owner, fn () => DB::table('inventory_feedback_requests')->count()));
+        $this->api($owner, 'PUT', '/api/inventory/salon/settings', ['feedback_sms' => false])->assertOk()->assertJsonPath('data.feedback_sms', false);
+        $this->visit($owner, $neema, [[$wash, 1, 10000]])->assertCreated();
+        $this->assertCount(1, $this->sms->sent, 'switched off: no second text');
     }
 
     public function test_a_paid_visit_sends_one_text_with_a_private_link(): void
@@ -145,9 +148,9 @@ class SalonFeedbackTest extends TestCase
         $token = $this->token($owner);
         $this->assertSame('0711000001', $this->sms->sent[0]['to']);
         $this->assertSame(
-            "Asante Neema! Umelipa TSh 45,000 kwa Wash, Braids - Glow Salon. / Thank you Neema! You paid TSh 45,000 for Wash, Braids at Glow Salon.
-"
-            . "Maoni / Feedback: https://3inone.example/f/{$token}",
+            "Asante Neema kwa kuwa mteja wetu, tunathamini mchango wako! Umelipa TSh 45,000 kwa Wash, Braids - Glow Salon.\n"
+            . "Thank you Neema for being our customer, we appreciate your support! You paid TSh 45,000 for Wash, Braids at Glow Salon.\n\n"
+            . "Tupe maoni yako / Your feedback: https://3inone.example/f/{$token}",
             $this->sms->sent[0]['message']
         );
         $req = $this->rows($owner, fn () => DB::table('inventory_feedback_requests')->first());

@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * What clients say, and how they are asked. After a visit with a service, a client with a phone number (who has not asked
  * not to be texted) gets one text with a private link to rate the visit and leave a comment or a complaint; the link
- * works once and for {@see self::VALID_DAYS} days. It is off until the owner switches it on (it is an SMS).
+ * works once and for {@see self::VALID_DAYS} days. It is on unless the owner switches it off (it is an SMS).
  *
  * The link is opened by someone who is not signed in, so everything here that touches a salon's rows first signs in
  * AS that salon ({@see TenantContext::runAs}) from the token: one salon can never read or write another's feedback.
@@ -27,9 +27,10 @@ final class SalonFeedback
 
     public const VALID_DAYS = 14;
 
+    /** On by default: a client whose bill is cleared is thanked, unless the owner has switched it off. */
     public static function isOn(): bool
     {
-        return DB::table('inventory_settings')->where('key', self::KEY)->value('value') === '1';
+        return DB::table('inventory_settings')->where('key', self::KEY)->value('value') !== '0';
     }
 
     public static function save(bool $on): void
@@ -59,16 +60,18 @@ final class SalonFeedback
         $business = trim((string) preg_replace('/\s+/u', ' ', $business)) ?: 'saluni yetu';
         $what = trim(mb_substr(implode(', ', $services), 0, 60));
         $amount = 'TSh ' . number_format($paid, 0, '.', ',');
-        $sw = ($first !== '' ? "Asante {$first}!" : 'Asante!') . ($paid > 0 ? " Umelipa {$amount}" . ($what !== '' ? " kwa {$what}" : '') . " - {$business}." : " Karibu tena {$business}.");
-        $en = ($first !== '' ? "Thank you {$first}!" : 'Thank you!') . ($paid > 0 ? " You paid {$amount}" . ($what !== '' ? " for {$what}" : '') . " at {$business}." : " See you again at {$business}.");
+        // The client is thanked for being a customer; what was paid follows; the link to say how it went is the last line.
+        $sw = ($first !== '' ? "Asante {$first} kwa kuwa mteja wetu, tunathamini mchango wako!" : 'Asante kwa kuwa mteja wetu, tunathamini mchango wako!')
+            . ($paid > 0 ? " Umelipa {$amount}" . ($what !== '' ? " kwa {$what}" : '') . " - {$business}." : " Karibu tena {$business}.");
+        $en = ($first !== '' ? "Thank you {$first} for being our customer, we appreciate your support!" : 'Thank you for being our customer, we appreciate your support!')
+            . ($paid > 0 ? " You paid {$amount}" . ($what !== '' ? " for {$what}" : '') . " at {$business}." : " See you again at {$business}.");
 
-        return "{$sw} / {$en}
-Maoni / Feedback: {$url}";
+        return "{$sw}\n{$en}\n\nTupe maoni yako / Your feedback: {$url}";
     }
 
     /**
      * A visit has been paid for: ask the client how it went. Once per sale; never for goods only, a client with no phone
-     * or who opted out, or when the owner has not switched it on. A text that cannot be sent leaves no link behind.
+     * or who opted out, or when the owner has switched it off. A text that cannot be sent leaves no link behind.
      */
     public static function afterPaid(int $saleId): void
     {
