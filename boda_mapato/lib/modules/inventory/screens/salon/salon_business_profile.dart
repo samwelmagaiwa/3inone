@@ -1,3 +1,4 @@
+import 'salon_input.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -18,7 +19,7 @@ class SalonBusinessProfilePage extends StatelessWidget {
       final bool sw = context.watch<LocalizationService>().isSwahili;
 
       return Scaffold(
-        appBar: AppBar(title: Text(sw ? 'Taarifa za biashara' : 'Business profile')),
+        appBar: salonAppBar(context, sw ? 'Taarifa za biashara' : 'Business profile'),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),

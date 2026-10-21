@@ -25,3 +25,18 @@ InputDecoration salonInput({required final String labelText, final String? count
 
 /// The text style typed into a salon text box (light, readable on the dark fill).
 const TextStyle salonInputStyle = TextStyle(color: ThemeConstants.textPrimary, fontSize: 14);
+
+/// Set by the salon home around the page it shows: that page already sits under the home's own title bar, so it must not
+/// draw a second one.
+class SalonEmbedded extends InheritedWidget {
+  const SalonEmbedded({super.key, required super.child});
+
+  static bool of(final BuildContext context) => context.dependOnInheritedWidgetOfExactType<SalonEmbedded>() != null;
+
+  @override
+  bool updateShouldNotify(final SalonEmbedded oldWidget) => false;
+}
+
+/// The page's own title bar, or none when the home already shows one.
+PreferredSizeWidget? salonAppBar(final BuildContext context, final String title, {final List<Widget>? actions}) =>
+    SalonEmbedded.of(context) ? null : AppBar(title: Text(title), actions: actions);

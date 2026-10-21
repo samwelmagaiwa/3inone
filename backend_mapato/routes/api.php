@@ -47,6 +47,7 @@ use App\Http\Controllers\API\Inventory\SalonBooksController;
 use App\Http\Controllers\API\Inventory\SalonBranchController;
 use App\Http\Controllers\API\Inventory\SalonBranchStockController;
 use App\Http\Controllers\API\Inventory\SalonQueueController;
+use App\Http\Controllers\API\Inventory\SalonReportsController;
 use App\Http\Controllers\API\Inventory\SalonSetupController;
 use App\Http\Controllers\API\Inventory\SalonClientController;
 use App\Http\Controllers\API\Inventory\SalonController;
@@ -444,6 +445,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('inventory/salon/branch-stock/transfer', [SalonBranchStockController::class, 'transfer']);
         Route::put('inventory/salon/branch-stock/level',   [SalonBranchStockController::class, 'level']);
         Route::get('inventory/salon/branch-stock/transfers', [SalonBranchStockController::class, 'transfers']);
+        Route::get('inventory/salon/reports',              [SalonReportsController::class, 'index']);
         Route::get('inventory/salon/cashbook',             [SalonBooksController::class, 'cashbook']);
         Route::post('inventory/salon/cashbook/moves',      [SalonBooksController::class, 'storeMove']);
         Route::delete('inventory/salon/cashbook/moves/{id}', [SalonBooksController::class, 'destroyMove']);

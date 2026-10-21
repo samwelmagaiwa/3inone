@@ -1,3 +1,4 @@
+import 'salon_input.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -76,7 +77,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     final int maxDay = days.fold<int>(0, (int m, Map<String, dynamic> r) => ((r['visits'] as num?)?.toInt() ?? 0) > m ? (r['visits'] as num).toInt() : m);
 
     return Scaffold(
-      appBar: AppBar(title: Text(sw ? 'Mwenendo wa biashara' : 'Business insights')),
+      appBar: salonAppBar(context, sw ? 'Mwenendo wa biashara' : 'Business insights'),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

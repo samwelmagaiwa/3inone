@@ -176,3 +176,11 @@ services). An old account that still carries a removed role must be given one of
 `SalonAccess::canConfigure` = the "settings" right (branches, vouchers, loyalty, messages, online booking; owner by default).
 Role names no longer decide anything except which people are "stylists" (own diary only). Per-person extras and removals on the
 access-rights screen take effect (tests: SalonAccessRightsTest). The app mirrors it (canSeeSalonMoney uses the same rule).
+
+## Reports and the branch filter (2026-10-21)
+
+Reports tab "Salon" (Reports hub): summary, takings by service / stylist / way of payment / branch, spending by category, the
+diary (booked, done, no-shows, cancelled, online, deposits kept), clients (new, returning, best spenders, stopped coming,
+birthdays), what is owed, goods on the shelves (cost / price / low). `GET /inventory/salon/reports`.
+The dashboard's period sheet also chooses a branch; sales lists, summaries and the dashboard figures follow `X-Branch`.
+Pages opened from the salon home no longer draw a second title bar.

@@ -90,7 +90,7 @@ class _BranchesScreenState extends State<BranchesScreen> {
     final int? chosen = ApiService.activeBranch;
 
     return Scaffold(
-      appBar: AppBar(title: Text(sw ? 'Matawi' : 'Branches')),
+      appBar: salonAppBar(context, sw ? 'Matawi' : 'Branches'),
       floatingActionButton: widget.manage
           ? FloatingActionButton.extended(key: const Key('branch_add'), onPressed: _edit, icon: const Icon(Icons.add), label: Text(sw ? 'Ongeza tawi' : 'Add branch'))
           : null,

@@ -72,6 +72,13 @@ class _BranchStockScreenState extends State<BranchStockScreen> {
     }
   }
 
+  Widget history(final bool sw) => IconButton(
+        key: const Key('bs_history'),
+        tooltip: sw ? 'Historia ya uhamisho' : 'Moves so far',
+        icon: const Icon(Icons.history),
+        onPressed: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => BranchTransfersScreen(api: _api))),
+      );
+
   Future<void> _level(final Map<String, dynamic> product) async {
     final List<Map<String, dynamic>> branches = _list(_data['branches']);
     final Map<String, dynamic>? got = await showDialog<Map<String, dynamic>>(context: context, builder: (BuildContext d) => _LevelDialog(product: product, branches: branches));
@@ -90,12 +97,7 @@ class _BranchStockScreenState extends State<BranchStockScreen> {
     final List<Map<String, dynamic>> branches = _list(_data['branches']);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(sw ? 'Bidhaa kwa tawi' : 'Goods by branch'),
-        actions: <Widget>[
-          IconButton(key: const Key('bs_history'), tooltip: sw ? 'Historia ya uhamisho' : 'Moves so far', icon: const Icon(Icons.history), onPressed: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => BranchTransfersScreen(api: _api)))),
-        ],
-      ),
+      appBar: salonAppBar(context, sw ? 'Bidhaa kwa tawi' : 'Goods by branch', actions: <Widget>[history(sw)]),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -103,6 +105,8 @@ class _BranchStockScreenState extends State<BranchStockScreen> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(padding: const EdgeInsets.all(16), children: <Widget>[
+                    if (SalonEmbedded.of(context)) Align(alignment: Alignment.centerRight, child: history(sw)),
+                    if (_list(_data['products']).isEmpty && branches.isNotEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Hakuna bidhaa bado. Ongeza bidhaa kwenye Huduma na Bidhaa.' : 'No goods yet. Add goods in Services & Goods.', key: const Key('bs_no_goods'), textAlign: TextAlign.center)),
                     if (branches.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Ongeza tawi kwanza (menyu ya Matawi).' : 'Add a branch first (the Branches menu).', key: const Key('bs_no_branches'), textAlign: TextAlign.center)),
                     for (final Map<String, dynamic> p in _list(_data['products']))
                       Card(

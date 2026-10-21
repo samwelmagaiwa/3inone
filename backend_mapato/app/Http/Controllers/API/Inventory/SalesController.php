@@ -780,6 +780,12 @@ responses: [new OA\Response(response: 200, description: 'Success')],
      */
     private function applyOfficerScope($query, Request $request, string $column = 'created_by')
     {
+        // A salon looking at one branch sees that branch's sales (every query here is over the sales table, whatever its alias).
+        $branch = \App\Support\Salon\SalonBranch::selected($request);
+        if ($branch !== null) {
+            $query->where(str_contains($column, '.') ? explode('.', $column)[0] . '.branch_id' : 'branch_id', $branch);
+        }
+
         if (!$this->isPrivileged($request)) {
             return $query->where($column, optional($request->user())->id);
         }

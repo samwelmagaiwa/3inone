@@ -305,4 +305,24 @@ class SalonBranchesTest extends TestCase
         $this->api($stylist, 'PUT', '/api/inventory/salon/branch-stock/level', ['product_id' => $p, 'branch_id' => $br, 'min_quantity' => 1])->assertForbidden();
         $this->api($other, 'PUT', '/api/inventory/salon/branch-stock/level', ['product_id' => $p, 'branch_id' => $br, 'min_quantity' => 1])->assertStatus(422);
     }
+
+    public function test_the_sales_lists_and_summaries_follow_the_chosen_branch(): void
+    {
+        $owner = $this->salon();
+        $a = $this->api($owner, 'POST', '/api/inventory/salon/branches', ['name' => 'Kariakoo'])->assertCreated()->json('data.id');
+        $b = $this->api($owner, 'POST', '/api/inventory/salon/branches', ['name' => 'Mikocheni'])->assertCreated()->json('data.id');
+        $p = $this->product($owner);
+        $this->sell($owner, $p, 10000, ['X-Branch' => (string) $a]);
+        $this->sell($owner, $p, 10000, ['X-Branch' => (string) $a]);
+        $this->sell($owner, $p, 10000, ['X-Branch' => (string) $b]);
+
+        $this->assertCount(3, $this->api($owner, 'GET', '/api/inventory/sales')->assertOk()->json('data'));
+        $this->assertCount(2, $this->api($owner, 'GET', '/api/inventory/sales', [], ['X-Branch' => (string) $a])->assertOk()->json('data'));
+        $this->assertCount(1, $this->api($owner, 'GET', '/api/inventory/sales', [], ['X-Branch' => (string) $b])->assertOk()->json('data'));
+
+        $summary = fn (array $h) => $this->api($owner, 'GET', '/api/inventory/sales/summary', [], $h)->assertOk()->json('data');
+        $this->assertSame([3, 30000], [$summary([])['count'], $summary([])['total']]);
+        $this->assertSame([2, 20000], [$summary(['X-Branch' => (string) $a])['count'], $summary(['X-Branch' => (string) $a])['total']]);
+        $this->assertSame([1, 10000], [$summary(['X-Branch' => (string) $b])['count'], $summary(['X-Branch' => (string) $b])['total']]);
+    }
 }

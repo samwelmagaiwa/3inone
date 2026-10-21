@@ -23,6 +23,7 @@ import 'reports/profit_by_product_screen.dart';
 import 'hubs/salon_finance_hub_screen.dart';
 import 'salon/branch_stock_screen.dart';
 import 'salon/branches_screen.dart';
+import 'salon/salon_input.dart';
 import 'salon/equipment_screen.dart';
 import 'salon/feedback_screen.dart';
 import 'salon/insights_screen.dart';
@@ -592,7 +593,7 @@ class _InventoryHomeState extends State<InventoryHome> {
     final List<_InvMenuEntry> visible =
         _invEntries(loc, salon: widget.salon).where((e) => e.isVisible(perms)).toList();
 
-    final pages = visible.map((e) => e.pageBuilder()).toList(growable: false);
+    final pages = visible.map((e) => SalonEmbedded(child: e.pageBuilder())).toList(growable: false);
     final titles = visible.map((e) => e.title(loc)).toList(growable: false);
     final int salesIndex = visible.indexWhere((e) => e.key == 'sales_hub');
     final int settingsIndex = visible.indexWhere((e) => e.key == 'settings');
@@ -906,7 +907,7 @@ class _QueuePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(context.watch<LocalizationService>().isSwahili ? 'Wanaosubiri' : 'Walk-ins')),
+        appBar: salonAppBar(context, context.watch<LocalizationService>().isSwahili ? 'Wanaosubiri' : 'Walk-ins'),
         body: const QueueScreen(),
       );
 }

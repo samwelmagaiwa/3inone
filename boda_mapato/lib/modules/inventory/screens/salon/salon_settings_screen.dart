@@ -134,7 +134,7 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
     final String? url = _s['booking_url'] as String?;
 
     return Scaffold(
-      appBar: AppBar(title: Text(sw ? 'Mipangilio ya saluni' : 'Salon settings')),
+      appBar: salonAppBar(context, sw ? 'Mipangilio ya saluni' : 'Salon settings'),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

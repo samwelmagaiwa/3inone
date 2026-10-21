@@ -507,4 +507,7 @@ class SalonApi {
   /// Goods moved between the main store and branches, newest first.
   Future<List<Map<String, dynamic>>> branchTransfers({final int? productId, final int? branchId}) =>
       _list('/inventory/salon/branch-stock/transfers?limit=100${productId == null ? '' : '&product_id=$productId'}${branchId == null ? '' : '&branch_id=$branchId'}');
+
+  /// All the salon's reports for a period (takings by service, stylist, payment and branch, the diary, clients, debts, stock).
+  Future<Map<String, dynamic>> salonReports(final DateTime from, final DateTime to) async => _data(await _api.get('/inventory/salon/reports?from=${_day(from)}&to=${_day(to)}'));
 }

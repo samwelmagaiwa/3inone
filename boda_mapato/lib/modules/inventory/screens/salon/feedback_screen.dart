@@ -77,7 +77,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     final List<Map<String, dynamic>> byStaff = _list(s['by_staff']);
 
     return Scaffold(
-      appBar: AppBar(title: Text(sw ? 'Maoni ya wateja' : 'Client feedback')),
+      appBar: salonAppBar(context, sw ? 'Maoni ya wateja' : 'Client feedback'),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

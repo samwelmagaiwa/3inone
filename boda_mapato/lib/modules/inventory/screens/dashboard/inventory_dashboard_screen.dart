@@ -24,6 +24,9 @@ import '../hubs/supply_chain_hub_screen.dart';
 import '../../../../widgets/month_selector.dart';
 import '../reports/profit_by_product_screen.dart';
 import '../salon/salon_access.dart';
+import '../../models/salon_models.dart';
+import '../../services/salon_api.dart';
+import '../../../../services/api_service.dart';
 import '../salon/salon_overview_card.dart';
 import '../widgets/inventory_widgets.dart';
 import '../widgets/profit_by_product_table.dart';
@@ -31,7 +34,10 @@ import '../widgets/profit_by_product_table.dart';
 /// Inventory dashboard styled to match the Transport (Modern) dashboard:
 /// hero balance card, glass stat cards, month strip + line chart.
 class InventoryDashboardScreen extends StatefulWidget {
-  const InventoryDashboardScreen({super.key});
+  const InventoryDashboardScreen({super.key, this.salonApi});
+
+  /// The salon's server calls (a fake in tests); used for the list of branches in the period sheet.
+  final SalonApi? salonApi;
 
   @override
   State<InventoryDashboardScreen> createState() =>
@@ -642,6 +648,19 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
   int _filteredSalesCount(InventoryProvider inv) => _filteredSales(inv).length;
 
   Future<void> _showFilterSheet() async {
+    // A salon with branches can also look at one branch (everything on this page then follows it).
+    List<Map<String, dynamic>> branches = <Map<String, dynamic>>[];
+    if (context.read<InventoryProvider>().salonMode) {
+      try {
+        branches = <Map<String, dynamic>>[
+          for (final SalonBranchInfo b in await (widget.salonApi ?? SalonApi()).branches())
+            if (b.active) <String, dynamic>{'id': b.id, 'name': b.name},
+        ];
+      } on Exception {
+        branches = <Map<String, dynamic>>[];
+      }
+      if (!mounted) return;
+    }
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -650,6 +669,14 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
         current: _filter,
         customStart: _customStart,
         customEnd: _customEnd,
+        branches: branches,
+        branchId: ApiService.activeBranch,
+        onBranch: (int? id, String? name) {
+          if (id == ApiService.activeBranch) return;
+          ApiService.activeBranch = id;
+          ApiService.activeBranchName = name;
+          _refresh();
+        },
         onSelect: (f, start, end) {
           setState(() {
             _filter = f;
@@ -1399,7 +1426,7 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
               children: <Widget>[
                 // The value of the stock on the shelves is a shop's figure: a salon sells time, not shelves.
                 // A salon's owner sees the business at a glance instead: takings, profit, bookings, who and what earns most.
-                if (inv.salonMode && canSeeSalonMoneyHere(context)) ...<Widget>[const SalonOverviewCard(), _sectionDivider()],
+                if (inv.salonMode && canSeeSalonMoneyHere(context)) ...<Widget>[SalonOverviewCard(key: ValueKey<int?>(ApiService.activeBranch)), _sectionDivider()],
                 if (canViewReports && !inv.salonMode) _buildInventoryValuationContent(loc, inv),
                 if (canViewReports && !inv.salonMode) _sectionDivider(),
                 if (canViewProducts) _buildProductsOverviewContent(loc, inv),
@@ -1920,11 +1947,19 @@ class _FilterSheet extends StatefulWidget {
     required this.onSelect,
     this.customStart,
     this.customEnd,
+    this.branches = const <Map<String, dynamic>>[],
+    this.branchId,
+    this.onBranch,
   });
   final _DateFilter current;
   final DateTime? customStart;
   final DateTime? customEnd;
   final void Function(_DateFilter, DateTime?, DateTime?) onSelect;
+
+  /// The salon's branches to choose from (empty = no branch choice), the one chosen now, and what to do when it changes.
+  final List<Map<String, dynamic>> branches;
+  final int? branchId;
+  final void Function(int? id, String? name)? onBranch;
 
   @override
   State<_FilterSheet> createState() => _FilterSheetState();
@@ -1949,6 +1984,34 @@ class _FilterSheetState extends State<_FilterSheet> {
     _selected = widget.current;
     _start = widget.customStart;
     _end = widget.customEnd;
+    _branch = widget.branchId;
+  }
+
+  int? _branch;
+
+  Widget _branchTile(final String label, final int? id, final String keyName) {
+    final bool active = _branch == id;
+
+    return GestureDetector(
+      key: Key(keyName),
+      onTap: () => setState(() => _branch = id),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: active ? ThemeConstants.primaryBlue.withOpacity(0.35) : Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: active ? ThemeConstants.primaryBlue : Colors.white12, width: active ? 1.5 : 1),
+        ),
+        child: Row(children: <Widget>[
+          Icon(Icons.store_mall_directory_outlined, color: active ? Colors.white : Colors.white54, size: 20),
+          const SizedBox(width: 12),
+          Expanded(child: Text(label, style: TextStyle(color: active ? Colors.white : Colors.white70, fontSize: 14, fontWeight: active ? FontWeight.w700 : FontWeight.w400))),
+          if (active) const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+        ]),
+      ),
+    );
   }
 
   Future<void> _pickCustomRange() async {
@@ -2052,6 +2115,13 @@ class _FilterSheetState extends State<_FilterSheet> {
               ),
             );
           }),
+          if (widget.branches.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 8),
+            Text(LocalizationService.instance.isSwahili ? 'Tawi' : 'Branch', style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            _branchTile(LocalizationService.instance.isSwahili ? 'Matawi yote' : 'All branches', null, 'filter_branch_all'),
+            for (final Map<String, dynamic> br in widget.branches) _branchTile('${br['name']}', (br['id'] as num).toInt(), 'filter_branch_${br['id']}'),
+          ],
           const SizedBox(height: 8),
           // Apply button
           SizedBox(
@@ -2065,6 +2135,13 @@ class _FilterSheetState extends State<_FilterSheet> {
                     borderRadius: BorderRadius.circular(14)),
               ),
               onPressed: () {
+                if (widget.onBranch != null) {
+                  String? name;
+                  for (final Map<String, dynamic> br in widget.branches) {
+                    if ((br['id'] as num).toInt() == _branch) name = '${br['name']}';
+                  }
+                  widget.onBranch!(_branch, name);
+                }
                 widget.onSelect(_selected, _start, _end);
                 Navigator.of(context).pop();
               },

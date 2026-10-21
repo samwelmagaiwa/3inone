@@ -140,7 +140,7 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
     final bool sw = context.watch<LocalizationService>().isSwahili;
 
     return Scaffold(
-      appBar: AppBar(title: Text(sw ? 'Vifaa vya saluni' : 'Equipment')),
+      appBar: salonAppBar(context, sw ? 'Vifaa vya saluni' : 'Equipment'),
       floatingActionButton: FloatingActionButton.extended(key: const Key('eq_add'), onPressed: _edit, icon: const Icon(Icons.add), label: Text(sw ? 'Ongeza kifaa' : 'Add equipment')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
