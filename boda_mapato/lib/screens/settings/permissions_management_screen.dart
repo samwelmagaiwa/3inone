@@ -54,6 +54,15 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
         DropdownMenuItem(value: 'viewer', child: Text(LocalizationService.instance.translate('viewer'))),
       ];
     }
+    if (_activeService == 'salon') {
+      // The salon's roles: the owner, the accountant (till and books) and the people who do the work.
+      return [
+        DropdownMenuItem(value: 'admin', child: Text(LocalizationService.instance.translate('admin'))),
+        for (final String r in <String>['accountant', 'hair_stylist', 'nail_technician', 'lash_makeup_artist'])
+          DropdownMenuItem(value: r, child: Text(LocalizationService.instance.translate(r))),
+        DropdownMenuItem(value: 'viewer', child: Text(LocalizationService.instance.translate('viewer'))),
+      ];
+    }
     return [
       DropdownMenuItem(value: 'admin', child: Text(LocalizationService.instance.translate('admin'))),
       DropdownMenuItem(value: 'manager', child: Text(LocalizationService.instance.translate('manager'))),

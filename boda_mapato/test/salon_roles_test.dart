@@ -17,7 +17,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// The salon's roles in the app: what each is allowed (the same table as the server), that each means the salon, who
 /// sees the money, and that a stylist works the diary but does not write it.
-const List<String> _salonRoles = <String>['receptionist', 'cashier', 'hair_stylist', 'nail_technician', 'lash_makeup_artist', 'accountant', 'stock_manager'];
+const List<String> _salonRoles = <String>['hair_stylist', 'nail_technician', 'lash_makeup_artist', 'accountant'];
+const List<String> _removedRoles = <String>['receptionist', 'cashier', 'stock_manager'];
 
 UserData _user(String role) => UserData(id: 'u1', name: 'Someone', email: 's@example.test', role: role, isActive: true, serviceTypes: const <String>['salon']);
 
@@ -63,13 +64,10 @@ class _Server extends ApiService {
 void main() {
   group('what each role may do', () {
     const Map<String, Map<String, bool>> table = <String, Map<String, bool>>{
-      'receptionist': <String, bool>{'inv_create_sales': true, 'inv_view_credit': true, 'inv_view_reports': false, 'inv_view_expenses': false, 'inv_manage_stock': false},
-      'cashier': <String, bool>{'inv_create_sales': true, 'inv_manage_sales': true, 'inv_view_cash': true, 'inv_view_reports': false, 'inv_manage_expenses': false},
-      'hair_stylist': <String, bool>{'inv_create_sales': true, 'inv_view_reports': false, 'inv_view_expenses': false, 'inv_view_cash': false, 'inv_manage_settings': false},
-      'nail_technician': <String, bool>{'inv_create_sales': true, 'inv_view_reports': false, 'inv_manage_products': false},
-      'lash_makeup_artist': <String, bool>{'inv_create_sales': true, 'inv_view_reports': false, 'inv_manage_products': false},
-      'accountant': <String, bool>{'inv_view_reports': true, 'inv_view_expenses': true, 'inv_manage_expenses': true, 'inv_view_cash': true, 'inv_create_sales': false, 'inv_manage_stock': false},
-      'stock_manager': <String, bool>{'inv_manage_products': true, 'inv_manage_stock': true, 'inv_view_purchasing': true, 'inv_view_reports': false, 'inv_create_sales': false},
+      'hair_stylist': <String, bool>{'inv_create_sales': true, 'inv_report_damage': true, 'inv_view_reports': false, 'inv_view_expenses': false, 'inv_view_cash': false, 'inv_manage_settings': false, 'inv_manage_stock': false},
+      'nail_technician': <String, bool>{'inv_create_sales': true, 'inv_report_damage': true, 'inv_view_reports': false, 'inv_manage_products': false},
+      'lash_makeup_artist': <String, bool>{'inv_create_sales': true, 'inv_report_damage': true, 'inv_view_reports': false, 'inv_manage_products': false},
+      'accountant': <String, bool>{'inv_create_sales': true, 'inv_manage_sales': true, 'inv_view_cash': true, 'inv_view_credit': true, 'inv_view_reports': true, 'inv_view_expenses': true, 'inv_manage_expenses': true, 'inv_manage_stock': false, 'inv_manage_products': false, 'inv_manage_settings': false},
     };
 
     for (final MapEntry<String, Map<String, bool>> e in table.entries) {
@@ -79,6 +77,13 @@ void main() {
           expect(p.has(perm.key), perm.value, reason: '${e.key} / ${perm.key}');
         }
       });
+    }
+  });
+
+  test('the roles that were folded away carry no rights and mean no service', () {
+    for (final String role in _removedRoles) {
+      expect(UserPermissions.fromRole(role).all, isEmpty, reason: role);
+      expect(servicesForRole(role), isEmpty, reason: role);
     }
   });
 
@@ -102,9 +107,9 @@ void main() {
       }
     }
     await LocalizationService.instance.changeLanguage('en');
-    expect(LocalizationService.instance.translate('cashier'), 'Cashier');
+    expect(LocalizationService.instance.translate('accountant'), 'Accountant');
     await LocalizationService.instance.changeLanguage('sw');
-    expect(LocalizationService.instance.translate('cashier'), 'Keshia');
+    expect(LocalizationService.instance.translate('accountant'), 'Mhasibu');
     await LocalizationService.instance.changeLanguage('en');
   });
 
@@ -113,7 +118,7 @@ void main() {
       for (final String role in <String>['admin', 'administrator', 'manager', 'accountant', 'super_admin']) {
         expect(canSeeSalonMoney(_user(role)), isTrue, reason: role);
       }
-      for (final String role in <String>['receptionist', 'cashier', 'hair_stylist', 'nail_technician', 'lash_makeup_artist', 'stock_manager', 'sales_officer', 'viewer']) {
+      for (final String role in <String>['hair_stylist', 'nail_technician', 'lash_makeup_artist', 'sales_officer', 'viewer']) {
         expect(canSeeSalonMoney(_user(role)), isFalse, reason: role);
       }
       expect(canSeeSalonMoney(null), isFalse);
@@ -123,7 +128,7 @@ void main() {
       for (final String role in <String>['hair_stylist', 'nail_technician', 'lash_makeup_artist']) {
         expect(isStylistRole(_user(role)), isTrue, reason: role);
       }
-      for (final String role in <String>['receptionist', 'cashier', 'admin', 'manager', 'accountant']) {
+      for (final String role in <String>['admin', 'manager', 'accountant']) {
         expect(isStylistRole(_user(role)), isFalse, reason: role);
       }
       expect(isStylistRole(null), isFalse);
@@ -173,8 +178,8 @@ void main() {
       }
     }
 
-    testWidgets('reception can book, move and cancel', (t) async {
-      await open(t, 'receptionist');
+    testWidgets('the accountant can book, move and cancel', (t) async {
+      await open(t, 'accountant');
 
       expect(find.byKey(const ValueKey<String>('appt_add')), findsOneWidget);
       await t.tap(find.byKey(const ValueKey<String>('appt_1')));
@@ -186,7 +191,7 @@ void main() {
       }
     });
 
-    testWidgets('the owner can switch on the evening summary text; reception and stylists do not even see it', (t) async {
+    testWidgets('the owner can switch on the evening summary text; stylists do not even see it', (t) async {
       await open(t, 'admin');
       expect(t.widget<Switch>(find.byKey(const ValueKey<String>('daily_summary_switch'))).value, isFalse);
 
@@ -198,7 +203,7 @@ void main() {
       expect(t.widget<Switch>(find.byKey(const ValueKey<String>('daily_summary_switch'))).value, isTrue);
     });
 
-    for (final String role in <String>['receptionist', 'cashier', 'hair_stylist']) {
+    for (final String role in <String>['hair_stylist', 'nail_technician']) {
       testWidgets('$role does not see the evening summary switch', (t) async {
         await open(t, role);
 

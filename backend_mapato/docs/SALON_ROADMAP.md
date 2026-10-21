@@ -157,3 +157,15 @@ Built: history of moves between the main store and branches; a running-low level
 a shelf drops to it (sale or move), a warning mark in the app. Migration 2026_11_05 (rehearsed on MariaDB).
 Verified: backend 850 tests (SQLite); every salon test + the tenancy guards (279) also pass on MariaDB 10.11; Flutter 1092.
 Still NOT built: WhatsApp (excluded), SMS-reply feedback (provider number), native customer app in the stores.
+
+## Roles (changed 2026-10-21) - supersedes every earlier role list above
+
+Salon roles are now: Owner (admin: everything), Accountant, and the people who do the work (hair stylist, nail technician,
+lash and makeup artist). Receptionist, cashier, manager and stock manager were removed (they cannot be given any more and carry
+no rights; the shop's own "manager" role is unchanged). Their work went to:
+- Accountant: the till and the books: sales, bookings and walk-ins, payments and receipts, returns, daily cash, clients'
+  credit, expenses (approved on entry), reports, money, insights, cashbook, payroll, equipment and goods by branch.
+- Owner (admin): everything, including products and stock, settings, branches, business profile, who is who.
+- Stylists: their own diary, sales, results and pay; they also report damaged goods.
+Each person's rights can be adjusted one by one on the access-rights screen (it now has the salon's list, like the other
+services). An old account that still carries a removed role must be given one of the roles above.

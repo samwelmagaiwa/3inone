@@ -284,7 +284,7 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.handyman_outlined,
       color: const Color(0xFF14B8A6),
       pageBuilder: () => const EquipmentScreen(),
-      visible: (UserPermissions p) => p.has('inv_manage_settings') || p.has('inv_manage_stock'),
+      visible: (UserPermissions p) => p.has('inv_manage_settings') || p.has('inv_view_reports'),
     ),
     _InvMenuEntry(
       key: 'branch_stock',
@@ -292,7 +292,7 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.warehouse_outlined,
       color: const Color(0xFFF97316),
       pageBuilder: () => const BranchStockScreen(),
-      visible: (UserPermissions p) => p.has('inv_manage_settings') || p.has('inv_manage_stock'),
+      visible: (UserPermissions p) => p.has('inv_manage_settings') || p.has('inv_view_reports'),
     ),
     _InvMenuEntry(
       key: 'branches',

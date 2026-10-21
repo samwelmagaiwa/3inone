@@ -415,7 +415,7 @@ class SalonStaffTest extends TestCase
     {
         $owner = $this->salon();
         $manager = $this->person($owner, 'Mary', 'manager');
-        $helper = $this->person($owner, 'Helper', 'receptionist');
+        $helper = $this->person($owner, 'Helper', 'hair_stylist');
         $helper->forceFill(['permissions' => ['inv_view_expenses', 'inv_manage_expenses']])->save();
 
         $this->api($helper, 'POST', '/api/inventory/expenses', ['category' => 'transport', 'description' => 'Taxi', 'amount' => 20000, 'expense_date' => '2026-10-07'])->assertCreated()->assertJsonPath('data.status', 'pending');

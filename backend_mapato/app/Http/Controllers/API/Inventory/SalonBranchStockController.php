@@ -21,8 +21,7 @@ class SalonBranchStockController extends Controller
 {
     private function requireKeeper(Request $request): void
     {
-        $role = (string) $request->user()->role;
-        abort_unless(SalonAccess::isManager($request->user()) || $role === 'stock_manager', 403, 'Ni mmiliki, meneja au msimamizi wa bidhaa tu. / Only the owner, a manager or the stock manager.');
+        abort_unless(SalonAccess::isManager($request->user()), 403, 'Ni mmiliki au mhasibu tu. / Only the owner or the accountant.');
     }
 
     #[OA\Get(path: '/inventory/salon/branch-stock', summary: 'Goods with what each branch holds', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 200, description: 'Success')])]

@@ -386,13 +386,10 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
       case 'manager':       return LocalizationService.instance.translate('manager');
       case 'operator':      return LocalizationService.instance.translate('operator');
       case 'viewer':        return LocalizationService.instance.translate('viewer');
-      case 'receptionist':
-      case 'cashier':
       case 'hair_stylist':
       case 'nail_technician':
       case 'lash_makeup_artist':
       case 'accountant':
-      case 'stock_manager':
         return LocalizationService.instance.translate(role.toLowerCase());
       default:              return role.replaceAll('_', ' ');
     }

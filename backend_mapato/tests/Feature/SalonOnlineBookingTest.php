@@ -144,7 +144,7 @@ class SalonOnlineBookingTest extends TestCase
         $this->person($owner, 'Asha');
         $this->person($owner, 'Bahati', 'nail_technician');
         $this->person($owner, 'Mary', 'manager');
-        $this->person($owner, 'Desk', 'receptionist');
+        $this->person($owner, 'Acc', 'accountant');
         $this->service($owner, 'Braids', 40000, 180, ['price_options' => [['label' => 'Short', 'price' => 30000], ['label' => 'Long', 'price' => 60000]]]);
         $this->service($owner, 'Wash', 5000, 30);
         $hidden = $this->service($owner, 'Retired', 1000);

@@ -72,7 +72,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   /// The roles a salon gives its people (the server and the app both know what each may do).
-  static const List<String> _salonRoles = <String>['receptionist', 'cashier', 'hair_stylist', 'nail_technician', 'lash_makeup_artist', 'accountant', 'stock_manager'];
+  static const List<String> _salonRoles = <String>['accountant', 'hair_stylist', 'nail_technician', 'lash_makeup_artist'];
 
   List<DropdownMenuItem<String>> get _roleDropdownItems => _allRoleDropdownItems
       .where((DropdownMenuItem<String> item) =>
@@ -92,7 +92,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     if (_isSalon) {
       return [
         DropdownMenuItem(value: 'admin', child: Text(LocalizationService.instance.translate('admin'))),
-        DropdownMenuItem(value: 'manager', child: Text(LocalizationService.instance.translate('manager'))),
         for (final String r in _salonRoles) DropdownMenuItem(value: r, child: Text(LocalizationService.instance.translate(r))),
         DropdownMenuItem(value: 'viewer', child: Text(LocalizationService.instance.translate('viewer'))),
       ];

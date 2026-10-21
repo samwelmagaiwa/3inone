@@ -27,8 +27,7 @@ class SalonEquipmentController extends Controller
 
     private function requireKeeper(Request $request): void
     {
-        $u = $request->user();
-        abort_unless(SalonAccess::isManager($u) || strtolower((string) $u->role) === 'stock_manager', 403, 'Mmiliki, meneja au msimamizi wa stoo tu. / Only the owner, a manager or the stock manager.');
+        abort_unless(SalonAccess::isManager($request->user()), 403, 'Ni mmiliki au mhasibu tu. / Only the owner or the accountant.');
     }
 
     private function today(): Carbon

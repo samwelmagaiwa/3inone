@@ -94,8 +94,7 @@ class SalonEquipmentAndExportsTest extends TestCase
     {
         $owner = $this->salon();
         $asha = $this->person($owner, 'Asha');
-        $stock = $this->person($owner, 'Stock', 'stock_manager');
-        $cashier = $this->person($owner, 'Cash', 'cashier');
+        $accountant = $this->person($owner, 'Acc', 'accountant');
 
         $this->dryer($owner, ['name' => 'x'])->assertStatus(422);
         $this->dryer($owner, ['cost' => -1])->assertStatus(422);
@@ -103,10 +102,9 @@ class SalonEquipmentAndExportsTest extends TestCase
         $this->dryer($owner, ['status' => 'exploded'])->assertStatus(422);
         $this->dryer($owner, ['next_service_on' => 'soon'])->assertStatus(422);
         $this->dryer($asha)->assertStatus(403);
-        $this->dryer($cashier)->assertStatus(403);
         $this->api($asha, 'GET', '/api/inventory/salon/equipment')->assertStatus(403);
-        $this->dryer($stock)->assertCreated();
-        $this->api($stock, 'GET', '/api/inventory/salon/equipment')->assertOk();
+        $this->dryer($accountant)->assertCreated();
+        $this->api($accountant, 'GET', '/api/inventory/salon/equipment')->assertOk();
     }
 
     public function test_equipment_is_changed_in_part_and_can_be_put_in_repair_or_retired(): void
@@ -284,7 +282,7 @@ class SalonEquipmentAndExportsTest extends TestCase
         $accountant = $this->person($owner, 'Acc', 'accountant');
         $manager = $this->person($owner, 'Mary', 'manager');
 
-        foreach (['hair_stylist', 'cashier', 'receptionist', 'stock_manager'] as $role) {
+        foreach (['hair_stylist', 'nail_technician', 'lash_makeup_artist'] as $role) {
             $this->api($this->person($owner, ucfirst($role), $role), 'GET', '/api/inventory/salon/export/sales')->assertStatus(403);
         }
         $this->api($accountant, 'GET', '/api/inventory/salon/export/sales')->assertOk();

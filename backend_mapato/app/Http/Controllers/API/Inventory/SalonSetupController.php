@@ -35,8 +35,7 @@ class SalonSetupController extends Controller
 
     private function requireKeeper(Request $request): void
     {
-        $role = (string) $request->user()->role;
-        abort_unless(SalonAccess::isManager($request->user()) || $role === 'stock_manager', 403, 'Ni mmiliki, meneja au msimamizi wa bidhaa tu. / Only the owner, a manager or the stock manager.');
+        abort_unless(SalonAccess::isManager($request->user()), 403, 'Ni mmiliki au mhasibu tu. / Only the owner or the accountant.');
     }
 
     #[OA\Post(path: '/inventory/salon/category-presets', summary: 'Add the standard salon categories that are not there yet', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 200, description: 'Success')])]

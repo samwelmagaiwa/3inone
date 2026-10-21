@@ -95,13 +95,10 @@ class User extends Authenticatable
         'manager'       => 'Manager',
         'sales_officer' => 'Sales Officer',
         // The salon's own roles.
-        'receptionist'  => 'Receptionist',
-        'cashier'       => 'Cashier',
         'hair_stylist'  => 'Hair Stylist',
         'nail_technician' => 'Nail Technician',
         'lash_makeup_artist' => 'Lash & Makeup Artist',
         'accountant'    => 'Accountant',
-        'stock_manager' => 'Stock Manager',
         'operator'      => 'Operator',
         'viewer'        => 'Viewer',
         'driver'        => 'Driver',
@@ -364,13 +361,10 @@ class User extends Authenticatable
         'sales_officer' => ['inventory'],
         'manager'       => ['inventory'],
         'operator'      => ['inventory'],
-        'receptionist'  => ['salon'],
-        'cashier'       => ['salon'],
         'hair_stylist'  => ['salon'],
         'nail_technician' => ['salon'],
         'lash_makeup_artist' => ['salon'],
         'accountant'    => ['salon'],
-        'stock_manager' => ['salon'],
         'driver'        => ['transport'],
         'landlord'      => ['rental'],
         'caretaker'     => ['rental'],
@@ -511,29 +505,17 @@ class User extends Authenticatable
             'inv_view_products','inv_manage_products',
             'inv_create_sales','inv_view_reminders',
         ],
-        // ---- The salon's roles ----
-        // Customers, appointments, the queue and service orders; no money reports, no pay.
-        'receptionist' => [
-            'inv_view_products','inv_create_sales','inv_view_reminders','inv_view_credit',
-        ],
-        // Payments, receipts, the cashbook and reconciliation.
-        'cashier'      => [
-            'inv_view_products','inv_create_sales','inv_manage_sales','inv_view_credit',
-            'inv_view_cash','inv_view_reminders',
-        ],
-        // Their own services, appointments and performance (the server shows them only their own).
-        'hair_stylist' => ['inv_view_products','inv_create_sales','inv_view_reminders'],
-        'nail_technician' => ['inv_view_products','inv_create_sales','inv_view_reminders'],
-        'lash_makeup_artist' => ['inv_view_products','inv_create_sales','inv_view_reminders'],
-        // Expenses, financial reports, payroll and reconciliation.
+        // ---- The salon's roles: the owner (admin) runs everything; the accountant also keeps the till, books and the money;
+        // the people who do the work see only their own. (Reception, cashier, manager and stock work were folded into these.)
+        // Their own services, appointments and performance (the server shows them only their own); they flag damaged goods.
+        'hair_stylist' => ['inv_view_products','inv_create_sales','inv_view_reminders','inv_report_damage'],
+        'nail_technician' => ['inv_view_products','inv_create_sales','inv_view_reminders','inv_report_damage'],
+        'lash_makeup_artist' => ['inv_view_products','inv_create_sales','inv_view_reminders','inv_report_damage'],
+        // The till and the books: sales, bookings, payments, receipts, returns, the daily cash, clients' credit, expenses,
+        // financial reports and payroll.
         'accountant'   => [
-            'inv_view_products','inv_view_reports','inv_view_expenses','inv_manage_expenses',
-            'inv_view_cash','inv_view_credit',
-        ],
-        // Goods, suppliers, purchases and stock adjustments.
-        'stock_manager' => [
-            'inv_view_products','inv_manage_products','inv_manage_stock','inv_view_purchasing',
-            'inv_report_damage','inv_view_reminders',
+            'inv_view_products','inv_create_sales','inv_manage_sales','inv_view_credit','inv_view_cash',
+            'inv_view_reports','inv_view_expenses','inv_manage_expenses','inv_view_reminders',
         ],
         'viewer'       => ['inv_view_products'],
     ];

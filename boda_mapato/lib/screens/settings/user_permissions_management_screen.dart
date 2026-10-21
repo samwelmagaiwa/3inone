@@ -11,10 +11,14 @@ class UserPermissionsManagementScreen extends StatefulWidget {
   const UserPermissionsManagementScreen({
     required this.user,
     required this.serviceType,
+    this.api,
     super.key,
   });
   final Map<String, dynamic> user;
   final String serviceType;
+
+  /// The server calls (a fake in tests).
+  final ApiService? api;
 
   @override
   State<UserPermissionsManagementScreen> createState() =>
@@ -23,7 +27,7 @@ class UserPermissionsManagementScreen extends StatefulWidget {
 
 class _UserPermissionsManagementScreenState
     extends State<UserPermissionsManagementScreen> {
-  final ApiService _api = ApiService();
+  late final ApiService _api = widget.api ?? ApiService();
   final LocalizationService _loc = LocalizationService.instance;
 
   late List<String> _currentPermissions;
@@ -56,6 +60,24 @@ class _UserPermissionsManagementScreenState
       // Misc
       {'id': 'inv_view_reminders',   'name': LocalizationService.instance.translate('reminders'),        'icon': 'notifications'},
       {'id': 'inv_manage_settings',  'name': LocalizationService.instance.translate('settings'),         'icon': 'settings'},
+    ],
+    // The salon runs on the same permission keys as the inventory, with the salon's own words.
+    'salon': [
+      {'id': 'inv_view_products', 'name': LocalizationService.instance.translate('salon_right_services'),            'icon': 'inventory_2'},
+      {'id': 'inv_create_products', 'name': LocalizationService.instance.translate('salon_right_add'),                 'icon': 'add_box'},
+      {'id': 'inv_manage_products', 'name': LocalizationService.instance.translate('salon_right_change'), 'icon': 'edit'},
+      {'id': 'inv_manage_stock', 'name': LocalizationService.instance.translate('salon_right_stock'), 'icon': 'track_changes'},
+      {'id': 'inv_report_damage', 'name': LocalizationService.instance.translate('salon_right_damage'), 'icon': 'report_problem'},
+      {'id': 'inv_create_sales', 'name': LocalizationService.instance.translate('salon_right_sales'), 'icon': 'point_of_sale'},
+      {'id': 'inv_manage_sales', 'name': LocalizationService.instance.translate('salon_right_returns'), 'icon': 'manage_accounts'},
+      {'id': 'inv_view_credit', 'name': LocalizationService.instance.translate('salon_right_credit'),          'icon': 'credit_card'},
+      {'id': 'inv_view_cash', 'name': LocalizationService.instance.translate('salon_right_cash'),         'icon': 'payments'},
+      {'id': 'inv_view_expenses', 'name': LocalizationService.instance.translate('salon_right_expenses_view'),                  'icon': 'receipt_long'},
+      {'id': 'inv_manage_expenses', 'name': LocalizationService.instance.translate('salon_right_expenses_record'),            'icon': 'edit_note'},
+      {'id': 'inv_view_purchasing', 'name': LocalizationService.instance.translate('salon_right_purchasing'),                          'icon': 'local_shipping'},
+      {'id': 'inv_view_reports', 'name': LocalizationService.instance.translate('salon_right_reports'), 'icon': 'bar_chart'},
+      {'id': 'inv_view_reminders', 'name': LocalizationService.instance.translate('salon_right_reminders'),                         'icon': 'notifications'},
+      {'id': 'inv_manage_settings', 'name': LocalizationService.instance.translate('salon_right_settings'), 'icon': 'settings'},
     ],
     'rental': [
       {'id': 'manage_properties_rental', 'name': LocalizationService.instance.translate('properties'),  'icon': 'home_work'},
@@ -148,6 +170,7 @@ class _UserPermissionsManagementScreenState
     if (widget.serviceType == 'rental') return LocalizationService.instance.translate('rental_service_title');
     if (widget.serviceType == 'transport') return LocalizationService.instance.translate('transport_service_2');
     if (widget.serviceType == 'inventory') return LocalizationService.instance.translate('inventory_service');
+    if (widget.serviceType == 'salon') return LocalizationService.instance.translate('salon_service');
     return LocalizationService.instance.translateWith('service', <Object?>[widget.serviceType.toUpperCase()]);
   }
 

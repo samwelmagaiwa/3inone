@@ -22,13 +22,10 @@ List<String> servicesForRole(String role) {
     case 'manager':
     case 'operator':
       return ['inventory'];
-    case 'receptionist':
-    case 'cashier':
     case 'hair_stylist':
     case 'nail_technician':
     case 'lash_makeup_artist':
     case 'accountant':
-    case 'stock_manager':
       return ['salon'];
     case 'driver':
       return ['transport'];
