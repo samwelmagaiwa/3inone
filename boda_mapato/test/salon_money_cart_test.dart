@@ -36,7 +36,7 @@ late _FakeApi _api;
 
 InvProduct _braids() => InvProduct(id: 1, name: 'Braids', sku: 'B-1', category: '', costPrice: 0, sellingPrice: 40000, unit: 'pcs', quantity: 0, minStock: 0, status: 'active', barcode: '', createdBy: 1, isService: true);
 
-Future<InventoryProvider> _pump(WidgetTester t, {required bool salon, bool sw = false}) async {
+Future<InventoryProvider> _pump(WidgetTester t, {required bool salon, bool sw = false, bool named = true}) async {
   final void Function(FlutterErrorDetails)? original = FlutterError.onError;
   FlutterError.onError = (FlutterErrorDetails d) {
     if (d.exceptionAsString().contains('overflowed')) return;
@@ -70,6 +70,8 @@ Future<InventoryProvider> _pump(WidgetTester t, {required bool salon, bool sw = 
   );
   await t.pumpAndSettle();
   inv.addProductToCart(_braids());
+  // a salon names who served the client before it can sell
+  if (named) inv.setCartStaff(inv.cart.single, 'u-asha', 'Asha');
   await t.pumpAndSettle();
   return inv;
 }
@@ -191,6 +193,17 @@ void main() {
       expect(sale['discount'], 0);
       expect(sale.containsKey('discount_reason'), isFalse);
       expect((sale['payments'] as List<dynamic>).single, containsPair('method', 'cash'));
+    });
+
+    testWidgets('a salon sale cannot be made until the stylist who served the client is chosen', (t) async {
+      await _pump(t, salon: true, named: false);
+
+      await _checkout(t);
+
+      expect(find.text('Choose the stylist who served the client.'), findsOneWidget);
+      expect(find.text('Who served the client?'), findsOneWidget, reason: 'the list of stylists opens at once');
+      expect(_api.sales, isEmpty);
+      await t.pump(const Duration(seconds: 4));
     });
 
     testWidgets('a part payment names its channel too', (t) async {

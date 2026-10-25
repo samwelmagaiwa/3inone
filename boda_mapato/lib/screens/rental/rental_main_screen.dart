@@ -107,12 +107,15 @@ class _RentalMainScreenState extends State<RentalMainScreen> {
                   children: <Widget>[
                     _FooterIcon(
                       icon: Icons.payments_rounded,
+                      label: LocalizationService.instance
+                          .translate('rent_payments'),
                       isSelected: _selectedIndex == 1,
                       onTap: () => _onItemTapped(1),
                     ),
                     SizedBox(width: 14.w),
                     _FooterIcon(
                       icon: Icons.pending_actions_rounded,
+                      label: LocalizationService.instance.translate('arrears'),
                       isSelected: _selectedIndex == 2,
                       onTap: () => _onItemTapped(2),
                     ),
@@ -121,6 +124,7 @@ class _RentalMainScreenState extends State<RentalMainScreen> {
                 // Center: Menu
                 _FooterIcon(
                   icon: Icons.apps_rounded,
+                  label: LocalizationService.instance.translate('menu'),
                   isCenter: true,
                   onTap: () =>
                       NavigationBuilder.showGridMenu(context, customItems: [
@@ -133,12 +137,14 @@ class _RentalMainScreenState extends State<RentalMainScreen> {
                   children: <Widget>[
                     _FooterIcon(
                       icon: Icons.people_alt_rounded,
+                      label: LocalizationService.instance.translate('tenants'),
                       isSelected: _selectedIndex == 3,
                       onTap: () => _onItemTapped(3),
                     ),
                     SizedBox(width: 14.w),
                     _FooterIcon(
                       icon: Icons.receipt_long_rounded,
+                      label: LocalizationService.instance.translate('receipts'),
                       isSelected: _selectedIndex == 4,
                       onTap: () => _onItemTapped(4),
                     ),
@@ -262,10 +268,12 @@ class _FooterIcon extends StatelessWidget {
   const _FooterIcon({
     required this.icon,
     required this.onTap,
+    required this.label,
     this.isSelected = false,
     this.isCenter = false,
   });
   final IconData icon;
+  final String label;
   final bool isSelected;
   final bool isCenter;
   final VoidCallback onTap;
@@ -278,17 +286,40 @@ class _FooterIcon extends StatelessWidget {
             ? ThemeConstants.primaryOrange.withOpacity(0.5)
             : ThemeConstants.primaryBlue.withOpacity(0.22));
 
-    return InkResponse(
-      onTap: onTap,
-      radius: 28.r,
-      child: Container(
-        width: 46.w,
-        height: 46.w,
-        decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-        child: Icon(
-          icon,
-          color: Colors.white,
-          size: isCenter ? 26.sp : 22.sp,
+    // Flexible: on a very narrow screen the five buttons share the width instead of overflowing.
+    return Flexible(
+      child: InkResponse(
+        onTap: onTap,
+        radius: 28.r,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 64.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                width: 42.w,
+                height: 42.w,
+                decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+                child: Icon(icon,
+                    color: Colors.white, size: isCenter ? 24.sp : 21.sp),
+              ),
+              SizedBox(height: 3.h),
+              // The name of what the button opens, so nobody has to guess from the picture.
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Colors.white
+                        .withValues(alpha: (isSelected || isCenter) ? 1 : 0.85),
+                    fontSize: 10.sp,
+                    fontWeight: (isSelected || isCenter)
+                        ? FontWeight.w800
+                        : FontWeight.w500),
+              ),
+            ],
+          ),
         ),
       ),
     );

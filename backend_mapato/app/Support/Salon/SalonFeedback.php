@@ -189,7 +189,7 @@ final class SalonFeedback
                 'updated_at' => now(),
             ]);
             if ($complaint) {
-                self::tellAboutComplaint((int) $id, (string) ($row->staff_name ?? ''), $message, null, self::who($row->customer_id));
+                self::tellAboutComplaint((int) $id, self::staffWithPhone($row->staff_id, (string) ($row->staff_name ?? '')), $message, null, self::who($row->customer_id));
             }
         }));
     }
@@ -209,9 +209,40 @@ final class SalonFeedback
         return trim($c->name . (trim((string) $c->phone) !== '' ? " ({$c->phone})" : ''));
     }
 
+    /** The stylist's name with the number to ring, "Asha (0712345678)"; just the name when there is no number. */
+    public static function staffWithPhone(?string $staffId, string $name = ''): string
+    {
+        $phone = $staffId === null || $staffId === '' ? '' : trim((string) User::query()->where('id', $staffId)->value('phone_number'));
+
+        return trim($name . ($phone !== '' ? " ({$phone})" : ''));
+    }
+
+    /** The client is told sorry once the complaint has been put right. Quiet when there is no number or they opted out. */
+    public static function apologise(object $feedback, ?Business $business): void
+    {
+        if ($feedback->customer_id === null) {
+            return;
+        }
+        $client = DB::table('inventory_customers')->where('id', $feedback->customer_id)->first(['name', 'phone', 'sms_opt_out']);
+        $phone = trim((string) ($client->phone ?? ''));
+        if ($client === null || $phone === '' || (bool) ($client->sms_opt_out ?? false)) {
+            return;
+        }
+        $first = ClientSegments::firstName((string) $client->name);
+        $name = trim((string) ($business?->name ?? '')) ?: 'saluni yetu';
+        $sw = ($first !== '' ? "Habari {$first}, " : '') . "tumeshughulikia lalamiko lako. Pole sana kwa usumbufu uliopata, tunakuahidi huduma bora zaidi. - {$name}";
+        $en = ($first !== '' ? "Hello {$first}, " : '') . "your complaint has been sorted out. We are very sorry for the inconvenience and promise better service. - {$name}";
+        try {
+            SmsService::sendFor($business, $phone, "{$sw}
+{$en}");
+        } catch (\Throwable) {
+            // The complaint is settled either way.
+        }
+    }
+
     public static function tellAboutComplaint(int $id, string $about, string $message, ?string $exclude = null, string $client = ''): void
     {
-        $parts = array_filter([$client, $about !== '' ? "kuhusu / about {$about}" : '']);
+        $parts = array_filter([$client, $about !== '' ? "huduma ya / served by {$about}" : '']);
         app(InventoryNotifier::class)->notifyByPermission(
             ['inv_view_reports'],
             'salon_complaint',

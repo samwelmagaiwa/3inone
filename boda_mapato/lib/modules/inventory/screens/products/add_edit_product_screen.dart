@@ -360,6 +360,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       // The inventory's own footer, lit on Products (this is where the form belongs). Its buttons bring the
       // inventory home back to the front on the section they stand for: the gear is the inventory's Settings.
       bottomNavigationBar: InventoryFooter(
+        salon: context.read<InventoryProvider>().salonMode,
         index: InvFooterSlot.products,
         productsIndex: InvFooterSlot.products,
         salesIndex: -1,

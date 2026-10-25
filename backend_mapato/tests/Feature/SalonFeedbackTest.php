@@ -215,6 +215,7 @@ class SalonFeedbackTest extends TestCase
     private function asked(User $owner, string $name = 'Glow Salon'): string
     {
         $asha = $this->person($owner, 'Asha');
+        $asha->forceFill(['phone_number' => '0755111222'])->save();
         $wash = $this->service($owner);
         $neema = $this->client($owner);
         $this->switchOn($owner);
@@ -279,11 +280,11 @@ class SalonFeedbackTest extends TestCase
         foreach ([$owner, $manager] as $who) {
             $n = collect($this->api($who, 'GET', '/api/inventory/notifications')->json('data'))->firstWhere('type', 'salon_complaint');
             $this->assertNotNull($n);
-            $this->assertSame('neema juma (0711000001) · kuhusu / about Asha: She burnt my hair', $n['body'], 'the owner is told WHO is complaining, and the number to ring back');
+            $this->assertSame('neema juma (0711000001) · huduma ya / served by Asha (0755111222): She burnt my hair', $n['body'], 'the owner is told WHO is complaining, and the number to ring back');
         }
 
         $list = $this->api($owner, 'GET', '/api/inventory/salon/feedback')->assertOk()->json('data.feedback');
-        $this->assertSame(['neema juma', '0711000001'], [$list[0]['client'], $list[0]['client_phone']]);
+        $this->assertSame(['neema juma', '0711000001', 'Asha', '0755111222'], [$list[0]['client'], $list[0]['client_phone'], $list[0]['staff_name'], $list[0]['staff_phone']], 'the complaint names the stylist and the number to ring');
         $manager->refresh();
         $this->assertSame('0711000001', $this->api($manager, 'GET', '/api/inventory/salon/feedback')->json('data.feedback.0.client_phone'));
         $this->assertNull(collect($this->api($asha, 'GET', '/api/inventory/notifications')->json('data'))->firstWhere('type', 'salon_complaint'));
@@ -398,5 +399,51 @@ class SalonFeedbackTest extends TestCase
         $this->assertSame([0, 'resolved', 'New towels bought'], [$d['summary']['open_complaints'], $d['feedback'][0]['status'], $d['feedback'][0]['resolution']]);
         $this->assertCount(1, $this->api($owner, 'GET', '/api/inventory/salon/feedback?status=resolved')->json('data.feedback'));
         $this->assertCount(0, $this->api($owner, 'GET', '/api/inventory/salon/feedback?status=new')->json('data.feedback'));
+    }
+
+    public function test_a_service_cannot_be_sold_without_naming_who_served_the_client_but_goods_can(): void
+    {
+        config(['inventory.salon_stylist_required' => true]);
+        $owner = $this->salon();
+        $asha = $this->person($owner, 'Asha');
+        $wash = $this->service($owner);
+        $goods = $this->api($owner, 'POST', '/api/inventory/products', ['name' => 'Gel', 'quantity' => 10, 'min_stock' => 0, 'status' => 'active', 'cost_price' => 1000, 'selling_price' => 2000])->assertCreated()->json('data.id');
+
+        $this->visit($owner, null, [[$wash, 1, 10000]])->assertStatus(422)->assertJsonValidationErrors('items');
+        $this->visit($owner, null, [[$wash, 1, 10000, (string) $asha->id]])->assertCreated();
+        $this->visit($owner, null, [[$goods, 1, 2000]])->assertCreated();
+    }
+
+    public function test_resolving_a_complaint_sends_the_client_a_sorry_text_once(): void
+    {
+        $owner = $this->salon();
+        $neema = $this->client($owner);
+        $sms = $this->freshSms();
+        $id = $this->api($owner, 'POST', '/api/inventory/salon/feedback', ['kind' => 'complaint', 'message' => 'Dirty towels', 'customer_id' => $neema])->json('data.id');
+        $this->assertCount(0, $sms->sent ?? []);
+
+        $this->api($owner, 'POST', "/api/inventory/salon/feedback/{$id}/resolve", ['note' => 'New towels'])->assertOk();
+        $this->api($owner, 'POST', "/api/inventory/salon/feedback/{$id}/resolve", [])->assertStatus(422);
+
+        $this->assertCount(1, $sms->sent);
+        $this->assertSame('0711000001', $sms->sent[0]['to'] ?? $sms->sent[0]['phone'] ?? null);
+        $this->assertStringContainsString('Pole sana', $sms->sent[0]['message']);
+        $this->assertStringContainsString('sorry', $sms->sent[0]['message']);
+        $this->assertStringContainsString('Neema', $sms->sent[0]['message']);
+    }
+
+    public function test_no_sorry_text_when_the_complaint_has_no_client_or_the_client_opted_out(): void
+    {
+        $owner = $this->salon();
+        $sms = $this->freshSms();
+        $anon = $this->api($owner, 'POST', '/api/inventory/salon/feedback', ['kind' => 'complaint', 'message' => 'Cold'])->json('data.id');
+        $this->api($owner, 'POST', "/api/inventory/salon/feedback/{$anon}/resolve", [])->assertOk();
+
+        $c = $this->client($owner, 'juma ali', '0711000009');
+        $this->rows($owner, fn () => DB::table('inventory_customers')->where('id', $c)->update(['sms_opt_out' => true]));
+        $opted = $this->api($owner, 'POST', '/api/inventory/salon/feedback', ['kind' => 'complaint', 'message' => 'Late', 'customer_id' => $c])->json('data.id');
+        $this->api($owner, 'POST', "/api/inventory/salon/feedback/{$opted}/resolve", [])->assertOk();
+
+        $this->assertCount(0, $sms->sent);
     }
 }

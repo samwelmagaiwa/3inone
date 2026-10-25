@@ -205,8 +205,8 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
         try {
           unawaited(_animationController.forward());
         } on Exception catch (_) {}
-        _showErrorSnackBar(
-            LocalizationService.instance.translate('the_server_is_not_reachable_please'));
+        _showErrorSnackBar(LocalizationService.instance
+            .translate('the_server_is_not_reachable_please'));
       }
     }
   }
@@ -325,7 +325,8 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
       // Initialize with empty data if all fails
       _dashboardData = _getEmptyDashboardData();
       if (mounted) {
-        _showErrorSnackBar(LocalizationService.instance.translateWith('could_not_load_the_dashboard_data', <Object?>[e]));
+        _showErrorSnackBar(LocalizationService.instance
+            .translateWith('could_not_load_the_dashboard_data', <Object?>[e]));
       }
     }
   }
@@ -852,7 +853,8 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.notifications_none_rounded, color: textPrimary),
+          icon:
+              const Icon(Icons.notifications_none_rounded, color: textPrimary),
           onPressed: () => _navigateToReceiptsList(filter: 'all'),
         ),
       ],
@@ -875,9 +877,9 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
 
     final bool canViewRevenue =
         Provider.of<AuthProvider>(context, listen: false)
-            .user
-            ?.hasPermission('view_reports_transport') ??
-        false;
+                .user
+                ?.hasPermission('view_reports_transport') ??
+            false;
 
     if (!canViewRevenue) return const SizedBox.shrink();
 
@@ -989,9 +991,12 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
         );
 
         final user = Provider.of<AuthProvider>(context, listen: false).user;
-        final bool canViewDrivers = user?.hasPermission('manage_drivers_transport') ?? false;
-        final bool canViewVehicles = user?.hasPermission('manage_vehicles_transport') ?? false;
-        final bool canViewRevenue = user?.hasPermission('view_reports_transport') ?? false;
+        final bool canViewDrivers =
+            user?.hasPermission('manage_drivers_transport') ?? false;
+        final bool canViewVehicles =
+            user?.hasPermission('manage_vehicles_transport') ?? false;
+        final bool canViewRevenue =
+            user?.hasPermission('view_reports_transport') ?? false;
 
         return Column(
           children: <Widget>[
@@ -1363,6 +1368,7 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
                   children: <Widget>[
                     _FooterIcon(
                       icon: Icons.account_balance_wallet_rounded,
+                      label: LocalizationService.instance.translate('payments'),
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -1372,6 +1378,7 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
                     SizedBox(width: 14.w),
                     _FooterIcon(
                       icon: Icons.pending_actions_rounded,
+                      label: LocalizationService.instance.translate('debts'),
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -1383,6 +1390,7 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
                 // Center: Menu
                 _FooterIcon(
                   icon: Icons.apps_rounded,
+                  label: LocalizationService.instance.translate('menu'),
                   onTap: () => NavigationBuilder.showGridMenu(context),
                 ),
                 // Right side: Drivers, Receipts
@@ -1390,6 +1398,7 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
                   children: <Widget>[
                     _FooterIcon(
                       icon: Icons.people_alt_rounded,
+                      label: LocalizationService.instance.translate('drivers'),
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -1399,6 +1408,7 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
                     SizedBox(width: 14.w),
                     _FooterIcon(
                       icon: Icons.receipt_long_rounded,
+                      label: LocalizationService.instance.translate('receipts'),
                       onTap: () => _navigateToReceiptsList(filter: 'generated'),
                     ),
                   ],
@@ -1829,7 +1839,8 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
           _showSuccessSnackBar(
               localizationService.translate('pending_receipts_processed'));
         } on Exception catch (e) {
-          _showErrorSnackBar(LocalizationService.instance.translateWith('failed_to_process_receipts', <Object?>[e]));
+          _showErrorSnackBar(LocalizationService.instance
+              .translateWith('failed_to_process_receipts', <Object?>[e]));
         }
       },
     );
@@ -2335,20 +2346,47 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
 
 // Custom Chart Painter
 class _FooterIcon extends StatelessWidget {
-  const _FooterIcon({required this.icon, required this.onTap});
+  const _FooterIcon(
+      {required this.icon, required this.onTap, required this.label});
   final IconData icon;
   final VoidCallback onTap;
+  final String label;
+
+  bool get selected => false;
   @override
   Widget build(BuildContext context) {
     final Color bg = ThemeConstants.primaryBlue.withOpacity(0.22);
-    return InkResponse(
-      onTap: onTap,
-      radius: 28.r,
-      child: Container(
-        width: 46.w,
-        height: 46.w,
-        decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-        child: Icon(icon, color: Colors.white, size: 22.sp),
+    // Flexible: on a very narrow screen the five buttons share the width instead of overflowing.
+    return Flexible(
+      child: InkResponse(
+        onTap: onTap,
+        radius: 28.r,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 64.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                width: 42.w,
+                height: 42.w,
+                decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+                child: Icon(icon, color: Colors.white, size: 21.sp),
+              ),
+              SizedBox(height: 3.h),
+              // The name of what the button opens, so nobody has to guess from the picture.
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Colors.white.withValues(alpha: selected ? 1 : 0.85),
+                    fontSize: 10.sp,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

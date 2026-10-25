@@ -1027,6 +1027,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 if (!$product) {
                     throw new \RuntimeException('Product not found: ' . $item['product_id']);
                 }
+                // A salon names who served the client on every service, so a complaint can say who it is about.
+                if (!empty($product->is_service) && config('inventory.salon_stylist_required', true) && \App\Support\Tenancy\TenantContext::service() === 'salon' && empty($item['staff_id'])) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['items' => ['Chagua mhudumu aliyemhudumia mteja kwa kila huduma. / Choose the stylist who served the client on every service.']]);
+                }
 
                 // How many of the chosen selling unit were sold, and how many BASE units that takes out of stock.
                 $unit = $units[$index] ?? null;

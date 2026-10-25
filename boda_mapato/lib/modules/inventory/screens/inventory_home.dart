@@ -70,89 +70,93 @@ class _InvMenuEntry {
   bool isVisible(UserPermissions perms) => visible?.call(perms) ?? true;
 }
 
-List<_InvMenuEntry> _invEntries(LocalizationService loc, {bool salon = false}) => salon ? _salonEntries(loc) : <_InvMenuEntry>[
-      // 1 — always-visible landing page
-      _InvMenuEntry(
-        key: 'dashboard',
-        titleKey: 'inventory_dashboard',
-        icon: Icons.dashboard,
-        color: ThemeConstants.footerBarColor,
-        pageBuilder: () => const InventoryDashboardScreen(),
-      ),
-      // 2 — Products + Categories + Brands
-      _InvMenuEntry(
-        key: 'products_hub',
-        titleKey: 'products',
-        icon: Icons.inventory_2_outlined,
-        color: ThemeConstants.primaryOrange,
-        pageBuilder: () => const ProductsHubScreen(),
-        visible: (UserPermissions p) => p.has('inv_view_products'),
-      ),
-      // 3 — Stock Levels + Stock In/Out + Batches + Counts + Write-offs
-      _InvMenuEntry(
-        key: 'stock_hub',
-        titleKey: 'stock_levels',
-        icon: Icons.track_changes_outlined,
-        color: ThemeConstants.successGreen,
-        pageBuilder: () => const StockHubScreen(),
-        visible: (UserPermissions p) =>
-            p.has('inv_manage_stock') || p.has('inv_report_damage'),
-      ),
-      // 4 — Sales + Returns & Parked + Past Orders
-      _InvMenuEntry(
-        key: 'sales_hub',
-        titleKey: 'sales',
-        icon: Icons.point_of_sale_outlined,
-        color: ThemeConstants.primaryGradientEnd,
-        pageBuilder: () => const SalesHubScreen(),
-        visible: (UserPermissions p) => p.has('inv_create_sales'),
-      ),
-      // 5 — Purchasing + Crates & Empties + Warehouse Expenses
-      _InvMenuEntry(
-        key: 'supply_chain_hub',
-        titleKey: 'purchasing',
-        icon: Icons.local_shipping_outlined,
-        color: const Color(0xFF667eea),
-        pageBuilder: () => const SupplyChainHubScreen(),
-        visible: (UserPermissions p) =>
-            p.has('inv_view_purchasing') ||
-            p.has('inv_view_crates') ||
-            p.has('inv_view_expenses'),
-      ),
-      // 6 — Daily Cash + Reports + Alerts + Reminders
-      // Visible when the user can access at least one tab inside the hub.
-      // inv_view_products alone (sales_officer) does NOT trigger this —
-      // they see Alerts inside the hub, but their primary entry is Sales.
-      _InvMenuEntry(
-        key: 'finance_hub',
-        titleKey: 'reports',
-        icon: Icons.bar_chart_outlined,
-        color: const Color(0xFF00E5FF),
-        pageBuilder: () => const FinanceReportsHubScreen(),
-        visible: (UserPermissions p) =>
-            p.has('inv_view_cash') ||
-            p.has('inv_view_reports') ||
-            p.has('inv_view_reminders'),
-      ),
-      // 7 — Customers & Credit (standalone)
-      _InvMenuEntry(
-        key: 'credit',
-        titleKey: 'customers_and_credit',
-        icon: Icons.credit_card_outlined,
-        color: const Color(0xFF20B8CE),
-        pageBuilder: () => const CreditScreen(),
-        visible: (UserPermissions p) => p.has('inv_view_credit'),
-      ),
-      // 8 — Settings (standalone)
-      _InvMenuEntry(
-        key: 'settings',
-        titleKey: 'settings',
-        icon: Icons.settings_outlined,
-        color: const Color(0xFF64748B),
-        pageBuilder: () => const DepotSettingsScreen(),
-        visible: (UserPermissions p) => p.has('inv_manage_settings'),
-      ),
-    ];
+List<_InvMenuEntry> _invEntries(LocalizationService loc,
+        {bool salon = false}) =>
+    salon
+        ? _salonEntries(loc)
+        : <_InvMenuEntry>[
+            // 1 — always-visible landing page
+            _InvMenuEntry(
+              key: 'dashboard',
+              titleKey: 'inventory_dashboard',
+              icon: Icons.dashboard,
+              color: ThemeConstants.footerBarColor,
+              pageBuilder: () => const InventoryDashboardScreen(),
+            ),
+            // 2 — Products + Categories + Brands
+            _InvMenuEntry(
+              key: 'products_hub',
+              titleKey: 'products',
+              icon: Icons.inventory_2_outlined,
+              color: ThemeConstants.primaryOrange,
+              pageBuilder: () => const ProductsHubScreen(),
+              visible: (UserPermissions p) => p.has('inv_view_products'),
+            ),
+            // 3 — Stock Levels + Stock In/Out + Batches + Counts + Write-offs
+            _InvMenuEntry(
+              key: 'stock_hub',
+              titleKey: 'stock_levels',
+              icon: Icons.track_changes_outlined,
+              color: ThemeConstants.successGreen,
+              pageBuilder: () => const StockHubScreen(),
+              visible: (UserPermissions p) =>
+                  p.has('inv_manage_stock') || p.has('inv_report_damage'),
+            ),
+            // 4 — Sales + Returns & Parked + Past Orders
+            _InvMenuEntry(
+              key: 'sales_hub',
+              titleKey: 'sales',
+              icon: Icons.point_of_sale_outlined,
+              color: ThemeConstants.primaryGradientEnd,
+              pageBuilder: () => const SalesHubScreen(),
+              visible: (UserPermissions p) => p.has('inv_create_sales'),
+            ),
+            // 5 — Purchasing + Crates & Empties + Warehouse Expenses
+            _InvMenuEntry(
+              key: 'supply_chain_hub',
+              titleKey: 'purchasing',
+              icon: Icons.local_shipping_outlined,
+              color: const Color(0xFF667eea),
+              pageBuilder: () => const SupplyChainHubScreen(),
+              visible: (UserPermissions p) =>
+                  p.has('inv_view_purchasing') ||
+                  p.has('inv_view_crates') ||
+                  p.has('inv_view_expenses'),
+            ),
+            // 6 — Daily Cash + Reports + Alerts + Reminders
+            // Visible when the user can access at least one tab inside the hub.
+            // inv_view_products alone (sales_officer) does NOT trigger this —
+            // they see Alerts inside the hub, but their primary entry is Sales.
+            _InvMenuEntry(
+              key: 'finance_hub',
+              titleKey: 'reports',
+              icon: Icons.bar_chart_outlined,
+              color: const Color(0xFF00E5FF),
+              pageBuilder: () => const FinanceReportsHubScreen(),
+              visible: (UserPermissions p) =>
+                  p.has('inv_view_cash') ||
+                  p.has('inv_view_reports') ||
+                  p.has('inv_view_reminders'),
+            ),
+            // 7 — Customers & Credit (standalone)
+            _InvMenuEntry(
+              key: 'credit',
+              titleKey: 'customers_and_credit',
+              icon: Icons.credit_card_outlined,
+              color: const Color(0xFF20B8CE),
+              pageBuilder: () => const CreditScreen(),
+              visible: (UserPermissions p) => p.has('inv_view_credit'),
+            ),
+            // 8 — Settings (standalone)
+            _InvMenuEntry(
+              key: 'settings',
+              titleKey: 'settings',
+              icon: Icons.settings_outlined,
+              color: const Color(0xFF64748B),
+              pageBuilder: () => const DepotSettingsScreen(),
+              visible: (UserPermissions p) => p.has('inv_manage_settings'),
+            ),
+          ];
 
 /// The sections of a SALON, in the same shell: its own words, no stock-taking or purchasing, and two sections that
 /// are only for a salon (how each stylist did, and the "come back" reminders). Every other section is the one
@@ -197,7 +201,8 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.groups_2_outlined,
       color: ThemeConstants.successGreen,
       pageBuilder: () => const StylistsScreen(),
-      visible: (UserPermissions p) => p.has('inv_view_reports') || p.has('inv_create_sales'),
+      visible: (UserPermissions p) =>
+          p.has('inv_view_reports') || p.has('inv_create_sales'),
     ),
     _InvMenuEntry(
       key: 'rebook',
@@ -213,7 +218,10 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.bar_chart_outlined,
       color: const Color(0xFF00E5FF),
       pageBuilder: () => const FinanceReportsHubScreen(),
-      visible: (UserPermissions p) => p.has('inv_view_cash') || p.has('inv_view_reports') || p.has('inv_view_reminders'),
+      visible: (UserPermissions p) =>
+          p.has('inv_view_cash') ||
+          p.has('inv_view_reports') ||
+          p.has('inv_view_reminders'),
     ),
     _InvMenuEntry(
       key: 'finance',
@@ -221,7 +229,8 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.account_balance_wallet_outlined,
       color: ThemeConstants.successGreen,
       pageBuilder: () => const SalonFinanceHubScreen(),
-      visible: (UserPermissions p) => p.has('inv_view_reports') || p.has('inv_view_expenses'),
+      visible: (UserPermissions p) =>
+          p.has('inv_view_reports') || p.has('inv_view_expenses'),
     ),
     _InvMenuEntry(
       key: 'team',
@@ -229,7 +238,8 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.badge_outlined,
       color: const Color(0xFF8B5CF6),
       pageBuilder: () => const SalonTeamHubScreen(),
-      visible: (UserPermissions p) => p.has('inv_create_sales') || p.has('inv_view_reports'),
+      visible: (UserPermissions p) =>
+          p.has('inv_create_sales') || p.has('inv_view_reports'),
     ),
     _InvMenuEntry(
       key: 'queue',
@@ -277,7 +287,8 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.reviews_outlined,
       color: const Color(0xFFF59E0B),
       pageBuilder: () => const FeedbackScreen(),
-      visible: (UserPermissions p) => p.has('inv_create_sales') || p.has('inv_view_reports'),
+      visible: (UserPermissions p) =>
+          p.has('inv_create_sales') || p.has('inv_view_reports'),
     ),
     _InvMenuEntry(
       key: 'equipment',
@@ -285,7 +296,8 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.handyman_outlined,
       color: const Color(0xFF14B8A6),
       pageBuilder: () => const EquipmentScreen(),
-      visible: (UserPermissions p) => p.has('inv_manage_settings') || p.has('inv_view_reports'),
+      visible: (UserPermissions p) =>
+          p.has('inv_manage_settings') || p.has('inv_view_reports'),
     ),
     _InvMenuEntry(
       key: 'branch_stock',
@@ -293,7 +305,8 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.warehouse_outlined,
       color: const Color(0xFFF97316),
       pageBuilder: () => const BranchStockScreen(),
-      visible: (UserPermissions p) => p.has('inv_manage_settings') || p.has('inv_view_reports'),
+      visible: (UserPermissions p) =>
+          p.has('inv_manage_settings') || p.has('inv_view_reports'),
     ),
     _InvMenuEntry(
       key: 'branches',
@@ -334,7 +347,8 @@ abstract final class InvFooterSlot {
 /// The page of the home a footer button opens, or null when the button opens no page of its own (the menu) or
 /// the business has no such section.
 int? _pageForSlot(int slot, List<_InvMenuEntry> visible) {
-  int indexOf(String key) => visible.indexWhere((_InvMenuEntry e) => e.key == key);
+  int indexOf(String key) =>
+      visible.indexWhere((_InvMenuEntry e) => e.key == key);
   switch (slot) {
     case InvFooterSlot.dashboard:
       return 0;
@@ -375,9 +389,14 @@ class InventoryHome extends StatefulWidget {
     final UserPermissions perms = context.read<AuthProvider>().permissions;
     // The home to bring back is the same kind as the one this screen was opened from (a salon's, or inventory's).
     final bool salon = context.read<InventoryProvider>().salonMode;
-    final int? page = _pageForSlot(slot, _invEntries(loc, salon: salon).where((_InvMenuEntry e) => e.isVisible(perms)).toList());
+    final int? page = _pageForSlot(
+        slot,
+        _invEntries(loc, salon: salon)
+            .where((_InvMenuEntry e) => e.isVisible(perms))
+            .toList());
     navigator.pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => InventoryHome(initialIndex: page ?? 0, salon: salon)),
+      MaterialPageRoute<void>(
+          builder: (_) => InventoryHome(initialIndex: page ?? 0, salon: salon)),
     );
   }
 
@@ -405,7 +424,9 @@ class _InventoryHomeState extends State<InventoryHome> {
   /// What a tap on a footer button does.
   void _onFooterSlot(int slot) {
     final LocalizationService loc = LocalizationService.instance;
-    final List<_InvMenuEntry> visible = _invEntries(loc, salon: widget.salon).where((_InvMenuEntry e) => e.isVisible(_perms(context))).toList();
+    final List<_InvMenuEntry> visible = _invEntries(loc, salon: widget.salon)
+        .where((_InvMenuEntry e) => e.isVisible(_perms(context)))
+        .toList();
     if (slot == InvFooterSlot.menu) {
       _openQuickMenu(context); // All sections grid
       return;
@@ -451,8 +472,9 @@ class _InventoryHomeState extends State<InventoryHome> {
   Future<void> _openQuickMenu(BuildContext context) async {
     final loc = LocalizationService.instance;
     final perms = _perms(context);
-    final List<_InvMenuEntry> visible =
-        _invEntries(loc, salon: widget.salon).where((e) => e.isVisible(perms)).toList();
+    final List<_InvMenuEntry> visible = _invEntries(loc, salon: widget.salon)
+        .where((e) => e.isVisible(perms))
+        .toList();
 
     // Build the same navigation items as the drawer, but as a 3-column grid.
     final List<_GridNavItem> items = <_GridNavItem>[
@@ -473,7 +495,11 @@ class _InventoryHomeState extends State<InventoryHome> {
     // screen on top rather than switching a tab, so it is not in the bottom bar or drawer.
     if (perms.has('inv_view_reports')) {
       items.add(_GridNavItem(
-        label: widget.salon ? (loc.isSwahili ? 'Faida ya Huduma na Bidhaa' : 'Services & Goods Profit') : loc.translate('profit_margins_title'),
+        label: widget.salon
+            ? (loc.isSwahili
+                ? 'Faida ya Huduma na Bidhaa'
+                : 'Services & Goods Profit')
+            : loc.translate('profit_margins_title'),
         icon: Icons.trending_up_rounded,
         color: ThemeConstants.successGreen.withOpacity(0.85),
         onTap: () {
@@ -580,7 +606,8 @@ class _InventoryHomeState extends State<InventoryHome> {
     return IndexedStack(
       index: current,
       children: <Widget>[
-        for (int i = 0; i < pages.length; i++) _opened.contains(i) ? pages[i] : const SizedBox.shrink(),
+        for (int i = 0; i < pages.length; i++)
+          _opened.contains(i) ? pages[i] : const SizedBox.shrink(),
       ],
     );
   }
@@ -590,19 +617,24 @@ class _InventoryHomeState extends State<InventoryHome> {
     final loc = context.watch<LocalizationService>();
 
     final perms = _perms(context);
-    final List<_InvMenuEntry> visible =
-        _invEntries(loc, salon: widget.salon).where((e) => e.isVisible(perms)).toList();
+    final List<_InvMenuEntry> visible = _invEntries(loc, salon: widget.salon)
+        .where((e) => e.isVisible(perms))
+        .toList();
 
-    final pages = visible.map((e) => SalonEmbedded(child: e.pageBuilder())).toList(growable: false);
+    final pages = visible
+        .map((e) => SalonEmbedded(child: e.pageBuilder()))
+        .toList(growable: false);
     final titles = visible.map((e) => e.title(loc)).toList(growable: false);
     final int salesIndex = visible.indexWhere((e) => e.key == 'sales_hub');
     final int settingsIndex = visible.indexWhere((e) => e.key == 'settings');
 
-    final int productsIndex = visible.indexWhere((e) => e.key == 'products_hub');
+    final int productsIndex =
+        visible.indexWhere((e) => e.key == 'products_hub');
 
     // The sections a person sees can be fewer than when this page was last chosen (another account, fewer
     // permissions): never point past the end of the list.
-    if (_index >= visible.length) _index = visible.isEmpty ? 0 : visible.length - 1;
+    if (_index >= visible.length)
+      _index = visible.isEmpty ? 0 : visible.length - 1;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -623,7 +655,8 @@ class _InventoryHomeState extends State<InventoryHome> {
         ),
         actions: [
           Consumer<NotificationsProvider>(
-            builder: (BuildContext context, NotificationsProvider n, __) => Stack(
+            builder: (BuildContext context, NotificationsProvider n, __) =>
+                Stack(
               clipBehavior: Clip.none,
               children: <Widget>[
                 IconButton(
@@ -642,7 +675,8 @@ class _InventoryHomeState extends State<InventoryHome> {
                     top: 6,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
-                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      constraints:
+                          const BoxConstraints(minWidth: 16, minHeight: 16),
                       decoration: BoxDecoration(
                         color: ThemeConstants.errorRed,
                         borderRadius: BorderRadius.circular(8),
@@ -650,7 +684,8 @@ class _InventoryHomeState extends State<InventoryHome> {
                       child: Text(
                         n.unreadCount > 9 ? '9+' : '${n.unreadCount}',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontSize: 10),
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 10),
                       ),
                     ),
                   ),
@@ -695,6 +730,7 @@ class _InventoryHomeState extends State<InventoryHome> {
         ),
       ),
       bottomNavigationBar: InventoryFooter(
+        salon: widget.salon,
         index: _index,
         salesIndex: salesIndex,
         productsIndex: productsIndex >= 0 ? productsIndex : 1,
@@ -716,8 +752,12 @@ class InventoryFooter extends StatelessWidget {
     this.salesIndex = 3,
     this.productsIndex = 1,
     this.settingsIndex = 7,
+    this.salon = false,
   });
   final int index;
+
+  /// A salon's second button opens its services, not products.
+  final bool salon;
   final int salesIndex;
   final int productsIndex;
   final int settingsIndex;
@@ -754,30 +794,36 @@ class InventoryFooter extends StatelessWidget {
                 _FooterIcon(
                   selected: index == 0,
                   icon: Icons.bar_chart_rounded,
+                  label: LocalizationService.instance.translate('dashboard'),
                   onTap: () => onTap(0),
                 ),
                 // Products hub
                 _FooterIcon(
                   selected: index == productsIndex,
                   icon: Icons.inventory_2_rounded,
+                  label: LocalizationService.instance
+                      .translate(salon ? 'footer_services' : 'products'),
                   onTap: () => onTap(1),
                 ),
                 // Quick menu (all sections)
                 _FooterIcon(
                   selected: false,
                   icon: Icons.grid_view_rounded,
+                  label: LocalizationService.instance.translate('menu'),
                   onTap: () => onTap(2),
                 ),
                 // Sales
                 _FooterIcon(
                   selected: index == salesIndex,
                   icon: Icons.point_of_sale_rounded,
+                  label: LocalizationService.instance.translate('sales'),
                   onTap: () => onTap(3),
                 ),
                 // Settings
                 _FooterIcon(
                   selected: index == settingsIndex,
                   icon: Icons.settings_rounded,
+                  label: LocalizationService.instance.translate('settings'),
                   onTap: () => onTap(4),
                 ),
               ],
@@ -791,24 +837,51 @@ class InventoryFooter extends StatelessWidget {
 
 class _FooterIcon extends StatelessWidget {
   const _FooterIcon(
-      {required this.selected, required this.icon, required this.onTap});
+      {required this.selected,
+      required this.icon,
+      required this.onTap,
+      required this.label});
   final bool selected;
   final IconData icon;
   final VoidCallback onTap;
+  final String label;
   @override
   Widget build(BuildContext context) {
     // Blue-toned background circles for icons (to match requested style)
     final Color bg = selected
         ? ThemeConstants.primaryBlue.withOpacity(0.35)
         : ThemeConstants.primaryBlue.withOpacity(0.22);
-    return InkResponse(
-      onTap: onTap,
-      radius: 28.r,
-      child: Container(
-        width: 46.w,
-        height: 46.w,
-        decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-        child: Icon(icon, color: Colors.white, size: 22.sp),
+    // Flexible: on a very narrow screen the five buttons share the width instead of overflowing.
+    return Flexible(
+      child: InkResponse(
+        onTap: onTap,
+        radius: 28.r,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 64.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                width: 42.w,
+                height: 42.w,
+                decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+                child: Icon(icon, color: Colors.white, size: 21.sp),
+              ),
+              SizedBox(height: 3.h),
+              // The name of what the button opens, so nobody has to guess from the picture.
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Colors.white.withValues(alpha: selected ? 1 : 0.85),
+                    fontSize: 10.sp,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -827,7 +900,8 @@ class _GridNavItem {
 }
 
 class _InventoryDrawer extends StatelessWidget {
-  const _InventoryDrawer({required this.index, required this.onSelected, this.salon = false});
+  const _InventoryDrawer(
+      {required this.index, required this.onSelected, this.salon = false});
   final int index;
   final bool salon;
   final ValueChanged<int> onSelected;
@@ -835,9 +909,11 @@ class _InventoryDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.watch<LocalizationService>();
-    final perms = context.select<AuthProvider, UserPermissions>((AuthProvider a) => a.permissions);
-    final List<_InvMenuEntry> visible =
-        _invEntries(loc, salon: salon).where((e) => e.isVisible(perms)).toList();
+    final perms = context.select<AuthProvider, UserPermissions>(
+        (AuthProvider a) => a.permissions);
+    final List<_InvMenuEntry> visible = _invEntries(loc, salon: salon)
+        .where((e) => e.isVisible(perms))
+        .toList();
 
     return Drawer(
       backgroundColor: ThemeConstants.primaryBlue,
@@ -907,7 +983,11 @@ class _QueuePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: salonAppBar(context, context.watch<LocalizationService>().isSwahili ? 'Wanaosubiri' : 'Walk-ins'),
+        appBar: salonAppBar(
+            context,
+            context.watch<LocalizationService>().isSwahili
+                ? 'Wanaosubiri'
+                : 'Walk-ins'),
         body: const QueueScreen(),
       );
 }

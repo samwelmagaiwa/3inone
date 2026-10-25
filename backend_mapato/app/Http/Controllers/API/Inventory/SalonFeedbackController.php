@@ -54,8 +54,9 @@ class SalonFeedbackController extends Controller
             ->orderByRaw("CASE WHEN f.status = 'new' THEN 0 ELSE 1 END")
             ->orderByDesc('f.id')
             ->limit(200)
-            ->get(['f.*', 'c.name as customer_name', 'c.phone as customer_phone'])
-            ->map(fn ($f) => [
+            ->get(['f.*', 'c.name as customer_name', 'c.phone as customer_phone']);
+        $phones = $manager ? User::query()->whereIn('id', $rows->pluck('staff_id')->filter()->unique()->values())->pluck('phone_number', 'id') : collect();
+        $rows = $rows->map(fn ($f) => [
                 'id' => (int) $f->id,
                 'kind' => $f->kind,
                 'rating' => $f->rating === null ? null : (int) $f->rating,
@@ -65,6 +66,8 @@ class SalonFeedbackController extends Controller
                 'client_phone' => $manager ? $f->customer_phone : null,
                 'staff_id' => $f->staff_id,
                 'staff_name' => $f->staff_name,
+                // Managers can ring the stylist the complaint is about.
+                'staff_phone' => $manager ? (trim((string) ($phones[$f->staff_id] ?? '')) ?: null) : null,
                 'status' => $f->status,
                 'resolution' => $f->resolution,
                 'source' => $f->source,
@@ -133,7 +136,7 @@ class SalonFeedbackController extends Controller
             'updated_at' => now(),
         ]);
         if ($data['kind'] === 'complaint') {
-            SalonFeedback::tellAboutComplaint((int) $id, (string) ($staff?->name ?? ''), $message, (string) $request->user()->id, SalonFeedback::who($data['customer_id'] ?? null));
+            SalonFeedback::tellAboutComplaint((int) $id, SalonFeedback::staffWithPhone($staff ? (string) $staff->id : null, (string) ($staff?->name ?? '')), $message, (string) $request->user()->id, SalonFeedback::who($data['customer_id'] ?? null));
         }
 
         return response()->json(['message' => 'Saved', 'data' => ['id' => (int) $id]], 201);
@@ -156,6 +159,9 @@ class SalonFeedbackController extends Controller
             'resolved_at' => now(),
             'updated_at' => now(),
         ]);
+
+        // The client who complained is told it has been put right, with an apology.
+        SalonFeedback::apologise($row, \App\Models\Business::forUser($request->user()));
 
         return response()->json(['message' => 'Resolved']);
     }

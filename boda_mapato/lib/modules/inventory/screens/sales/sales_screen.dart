@@ -783,6 +783,15 @@ class _SalesScreenState extends State<SalesScreen>
                               ThemeConstants.showErrorSnackBar(context, loc.isSwahili ? 'Andika sababu ya punguzo.' : 'Write the reason for the discount.');
                               return;
                             }
+                            // A salon names who served the client on every service: a complaint then says who it is about.
+                            if (isSalonMode(context, listen: false)) {
+                              final InvSaleItem? unnamed = inv.cart.where((InvSaleItem i) => i.isService && (i.staffId ?? '').isEmpty).firstOrNull;
+                              if (unnamed != null) {
+                                ThemeConstants.showErrorSnackBar(context, loc.isSwahili ? 'Chagua mhudumu aliyemhudumia mteja.' : 'Choose the stylist who served the client.');
+                                await pickStylist(context, unnamed);
+                                return;
+                              }
+                            }
                             // If the customer did not bring empties, the crates they
                             // owe MUST be recorded with the sale -- never skipped.
                             final depot = context.read<DepotProvider>();

@@ -348,7 +348,7 @@ void main() {
       expect(find.text('Who served the client?'), findsOneWidget);
       expect(find.text('Asha'), findsOneWidget);
       expect(find.text('Bahati'), findsOneWidget);
-      expect(find.text('Nobody (do not name a stylist)'), findsOneWidget);
+      expect(find.text('Nobody (do not name a stylist)'), findsNothing);
     });
 
     testWidgets('choosing someone names them on the line and closes the sheet', (t) async {
@@ -364,16 +364,15 @@ void main() {
       expect(find.text('Who served the client?'), findsNothing);
     });
 
-    testWidgets('the one already chosen is ticked, and "nobody" clears it', (t) async {
+    testWidgets('the one already chosen is ticked, and choosing another replaces them', (t) async {
       final InvSaleItem line = InvSaleItem(productId: 1, name: 'Braids', qty: 1, unitPrice: 40000, unitCostSnapshot: 0, isService: true, staffId: 'u-asha', staffName: 'Asha');
       await openSheet(t, item: line);
       expect(find.byIcon(Icons.check_circle), findsOneWidget);
 
-      await t.tap(find.text('Nobody (do not name a stylist)'));
+      await t.tap(find.text('Bahati'));
       await t.pump(const Duration(milliseconds: 400));
 
-      expect(line.staffId, isNull);
-      expect(line.staffName, isNull);
+      expect(line.staffId, 'u-bahati');
     });
   });
 }

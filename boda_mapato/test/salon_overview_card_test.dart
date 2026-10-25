@@ -90,10 +90,10 @@ void main() {
   testWidgets('says how many are booked today and coming up, how many clients, and what is owed', (t) async {
     await _host(t, _FakeSalon(_overview()));
 
-    expect(find.text('Bookings today: 2'), findsOneWidget);
-    expect(find.text('Coming up: 5'), findsOneWidget);
-    expect(find.text('Clients this month: 4'), findsOneWidget);
-    expect(find.text('Owed: TSH 20,000'), findsOneWidget);
+    expect(find.descendant(of: _key('ov_bookings_today'), matching: find.text('2')) , findsOneWidget);
+    expect(find.descendant(of: _key('ov_bookings_upcoming'), matching: find.text('5')), findsOneWidget);
+    expect(find.descendant(of: _key('ov_clients'), matching: find.text('4')), findsOneWidget);
+    expect(find.descendant(of: _key('ov_outstanding'), matching: find.text('TSH 20,000')), findsOneWidget);
   });
 
   testWidgets('says nothing about debts when there are none', (t) async {
@@ -105,18 +105,18 @@ void main() {
   testWidgets('ranks the stylists and the services, and names the unnamed', (t) async {
     await _host(t, _FakeSalon(_overview()));
 
-    expect(find.descendant(of: _key('ov_staff_0'), matching: find.text('1. Asha')), findsOneWidget);
+    expect(find.descendant(of: _key('ov_staff_0'), matching: find.text('Asha')), findsOneWidget);
     expect(find.descendant(of: _key('ov_staff_0'), matching: find.text('TSH 110,000')), findsOneWidget);
-    expect(find.descendant(of: _key('ov_staff_1'), matching: find.text('2. No stylist named')), findsOneWidget);
-    expect(find.descendant(of: _key('ov_service_0'), matching: find.text('Braids × 1')), findsOneWidget);
-    expect(find.descendant(of: _key('ov_service_1'), matching: find.text('Wash × 2')), findsOneWidget);
+    expect(find.descendant(of: _key('ov_staff_1'), matching: find.text('No stylist named')), findsOneWidget);
+    expect(find.descendant(of: _key('ov_service_0'), matching: find.text('× 1')), findsOneWidget);
+    expect(find.descendant(of: _key('ov_service_1'), matching: find.text('× 2')), findsOneWidget);
   });
 
   testWidgets('shows how the money came in', (t) async {
     await _host(t, _FakeSalon(_overview()));
 
-    expect(find.text('M-Pesa TSH 90,000'), findsOneWidget);
-    expect(find.text('Cash TSH 16,000'), findsOneWidget);
+    expect(find.descendant(of: _key('ov_col_mpesa'), matching: find.text('TSH 90,000')), findsOneWidget);
+    expect(find.descendant(of: _key('ov_col_cash'), matching: find.text('TSH 16,000')), findsOneWidget);
   });
 
   testWidgets('a failed load says so quietly and can be retried', (t) async {
@@ -138,10 +138,10 @@ void main() {
     await _host(t, _FakeSalon(_overview()), sw: true);
 
     expect(find.text('Muhtasari wa biashara'), findsOneWidget);
-    expect(find.text('Miadi ya leo: 2'), findsOneWidget);
+    expect(find.descendant(of: _key('ov_bookings_today'), matching: find.text('2')), findsOneWidget);
     expect(find.text('Wahudumu bora mwezi huu'), findsOneWidget);
     expect(find.text('Huduma zinazouza zaidi'), findsOneWidget);
     expect(find.text('Pesa zilizopokelewa mwezi huu'), findsOneWidget);
-    expect(find.text('Madeni: TSH 20,000'), findsOneWidget);
+    expect(find.descendant(of: _key('ov_outstanding'), matching: find.text('TSH 20,000')), findsOneWidget);
   });
 }

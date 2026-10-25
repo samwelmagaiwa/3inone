@@ -198,13 +198,13 @@ void main() {
       expect(find.text('Bahati'), findsOneWidget);
     });
 
-    testWidgets('a service that names someone offers only them, and "nobody" is still there', (t) async {
+    testWidgets('a service that names someone offers only them, and there is no way to skip', (t) async {
       final InventoryProvider inv = await _load();
       await openFor(t, inv, InvSaleItem(productId: 3, name: 'Bridal makeup', qty: 1, unitPrice: 150000, unitCostSnapshot: 0, isService: true));
 
       expect(find.text('Asha'), findsNothing);
       expect(find.text('Bahati'), findsOneWidget);
-      expect(find.text('Nobody (do not name a stylist)'), findsOneWidget);
+      expect(find.text('Nobody (do not name a stylist)'), findsNothing);
     });
   });
 }

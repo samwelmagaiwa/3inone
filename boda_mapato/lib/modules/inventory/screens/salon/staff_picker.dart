@@ -10,7 +10,7 @@ import '../../providers/inventory_provider.dart';
 import '../widgets/inventory_widgets.dart';
 
 /// Say who served the client for this line of the sale. The list is the salon's own active people (the owner too);
-/// "Nobody" leaves it unnamed (it then shows up as "No stylist named" in the results).
+/// A stylist must be named on every service: it is what a complaint, the commission and the results are about.
 Future<void> pickStylist(BuildContext context, InvSaleItem item) {
   final InventoryProvider inv = context.read<InventoryProvider>();
   // refreshed each time it opens: someone may have been added since
@@ -71,14 +71,6 @@ class _StaffSheet extends StatelessWidget {
             trailing: item.staffId == s['id'] ? const Icon(Icons.check_circle, color: ThemeConstants.successGreen) : null,
             onTap: () => choose(s['id'], s['name']),
           ),
-        ListTile(
-          key: const ValueKey<String>('staff_nobody'),
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.person_off_outlined, color: Colors.white54, size: 22.sp),
-          title: Text(sw ? 'Hakuna (usitaje mhudumu)' : 'Nobody (do not name a stylist)', style: ThemeConstants.bodyStyle.copyWith(color: Colors.white70)),
-          trailing: item.staffId == null ? const Icon(Icons.check_circle, color: Colors.white38) : null,
-          onTap: () => choose(null, null),
-        ),
           ]),
         ),
       ],

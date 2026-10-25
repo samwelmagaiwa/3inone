@@ -70,6 +70,65 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     }
   }
 
+  /// One piece of feedback: who said it (and the number to ring), what they said, who served them (and their number), and
+  /// for an open complaint a clear Resolve button. Open complaints are tinted red with light text so they read on the dark page.
+  Widget _item(final Map<String, dynamic> f, final bool sw) {
+    final bool complaint = f['kind'] == 'complaint';
+    final bool open = complaint && f['status'] == 'new';
+    String s(final String k) => '${f[k] ?? ''}'.trim();
+    final String client = s('client');
+    final String phone = s('client_phone');
+    final String staff = s('staff_name');
+    final String staffPhone = s('staff_phone');
+
+    Widget line(final IconData icon, final String text, {final FontWeight? weight}) => Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            Icon(icon, size: 16, color: Colors.white70),
+            const SizedBox(width: 8),
+            Expanded(child: Text(text, style: TextStyle(color: Colors.white, fontWeight: weight))),
+          ]),
+        );
+
+    return Card(
+      key: Key('fb_${f['id']}'),
+      color: open ? const Color(0xFF7A2230) : null,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+          Row(children: <Widget>[
+            if (complaint) ...<Widget>[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: open ? Colors.white : Colors.white24, borderRadius: BorderRadius.circular(10)),
+                child: Text(sw ? 'Lalamiko' : 'Complaint', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: open ? const Color(0xFF7A2230) : Colors.white)),
+              ),
+              const SizedBox(width: 8),
+            ],
+            if (f['rating'] != null) Text('★' * (f['rating'] as num).toInt(), style: const TextStyle(color: Colors.amber, fontSize: 16)),
+            const Spacer(),
+            Text('${f['at']}', style: const TextStyle(color: Colors.white60, fontSize: 12)),
+          ]),
+          if (client.isNotEmpty) line(Icons.person_outline, '$client${phone.isEmpty ? '' : '  ·  $phone'}', weight: FontWeight.w700),
+          if (s('message').isNotEmpty) line(Icons.chat_bubble_outline, s('message')),
+          if (staff.isNotEmpty) line(Icons.content_cut_rounded, '${sw ? 'Alihudumiwa na' : 'Served by'}: $staff${staffPhone.isEmpty ? '' : '  ·  $staffPhone'}'),
+          if (s('resolution').isNotEmpty) line(Icons.check_circle_outline, '${sw ? 'Suluhisho' : 'Resolved'}: ${s('resolution')}'),
+          if (open)
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                key: Key('fb_resolve_${f['id']}'),
+                style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF7A2230)),
+                onPressed: () => _resolve(f),
+                icon: const Icon(Icons.done_all, size: 18),
+                label: Text(sw ? 'Tatua' : 'Resolve'),
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
@@ -101,28 +160,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                         ListTile(dense: true, title: Text('${r['name'] ?? ''}'), trailing: Text('${r['average']} ★  (${r['ratings']})')),
                     ],
                     Padding(padding: const EdgeInsets.only(top: 12, bottom: 4), child: Text(sw ? 'Maoni' : 'Feedback', style: const TextStyle(fontWeight: FontWeight.bold))),
-                    for (final Map<String, dynamic> f in _list(_data['feedback']))
-                      Card(
-                        key: Key('fb_${f['id']}'),
-                        color: f['kind'] == 'complaint' && f['status'] == 'new' ? Colors.red.shade50 : null,
-                        child: ListTile(
-                          isThreeLine: true,
-                          title: Text(<String>[
-                            if (f['rating'] != null) '${'★' * (f['rating'] as num).toInt()}',
-                            if (f['kind'] == 'complaint') (sw ? 'Lalamiko' : 'Complaint'),
-                            if ('${f['client'] ?? ''}'.isNotEmpty) '${f['client']}${'${f['client_phone'] ?? ''}'.isEmpty ? '' : ' (${f['client_phone']})'}',
-                          ].join('  ·  ')),
-                          subtitle: Text(<String>[
-                            if ('${f['message'] ?? ''}'.isNotEmpty) '${f['message']}',
-                            if ('${f['staff_name'] ?? ''}'.isNotEmpty) '${sw ? 'Mtumishi' : 'Stylist'}: ${f['staff_name']}',
-                            if ('${f['resolution'] ?? ''}'.isNotEmpty) '${sw ? 'Suluhisho' : 'Resolved'}: ${f['resolution']}',
-                            '${f['at']}',
-                          ].join('\n')),
-                          trailing: f['kind'] == 'complaint' && f['status'] == 'new'
-                              ? TextButton(key: Key('fb_resolve_${f['id']}'), onPressed: () => _resolve(f), child: Text(sw ? 'Tatua' : 'Resolve'))
-                              : null,
-                        ),
-                      ),
+                    for (final Map<String, dynamic> f in _list(_data['feedback'])) _item(f, sw),
                     if (_list(_data['feedback']).isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Hakuna maoni bado.' : 'No feedback yet.', textAlign: TextAlign.center)),
                   ]),
                 ),
@@ -165,7 +203,11 @@ class _NoteDialogState extends State<_NoteDialog> {
 
     return AlertDialog(
       title: Text(sw ? 'Tatua lalamiko' : 'Resolve complaint'),
-      content: TextField(style: salonInputStyle, key: const Key('fb_note'), controller: _note, decoration: salonInput(labelText: sw ? 'Ulifanya nini? (si lazima)' : 'What was done? (optional)')),
+      content: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+        TextField(style: salonInputStyle, key: const Key('fb_note'), controller: _note, decoration: salonInput(labelText: sw ? 'Ulifanya nini? (si lazima)' : 'What was done? (optional)')),
+        const SizedBox(height: 8),
+        Text(sw ? 'Mteja atatumiwa ujumbe wa kuomba radhi kuwa tatizo limeshughulikiwa.' : 'The client will get a text saying sorry and that it has been sorted out.', style: const TextStyle(fontSize: 12)),
+      ]),
       actions: <Widget>[
         TextButton(onPressed: () => Navigator.pop(context), child: Text(sw ? 'Ghairi' : 'Cancel')),
         FilledButton(key: const Key('fb_resolve_save'), onPressed: () => Navigator.pop(context, _note.text.trim()), child: Text(sw ? 'Tatua' : 'Resolve')),
