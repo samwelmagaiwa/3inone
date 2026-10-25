@@ -25,9 +25,12 @@ import 'product_form_sections.dart';
 import 'product_units_screen.dart';
 
 class AddEditProductScreen extends StatefulWidget {
-  const AddEditProductScreen({super.key, this.product});
+  const AddEditProductScreen({super.key, this.product, this.goodsOnly = false});
   /// null => add mode, otherwise edit this existing product.
   final InvProduct? product;
+
+  /// Opened from a service's goods list: it is goods being added, so the service switch is off and not shown.
+  final bool goodsOnly;
 
   @override
   State<AddEditProductScreen> createState() => _AddEditProductScreenState();
@@ -121,7 +124,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     if (p == null) {
       _generateSku();
       // A new thing in a salon is a service far more often than goods.
-      _isService = context.read<InventoryProvider>().salonMode;
+      _isService = context.read<InventoryProvider>().salonMode && !widget.goodsOnly;
       // A depot starts on crates; everyone else on single pieces.
       if (!caps.isDepot) {
         _unit = 'pcs';
@@ -483,7 +486,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                                   ? (sw ? 'mf. Inajumuisha kuosha na mafuta.' : 'e.g. Includes a wash and oil.')
                                   : 'e.g. Cold carbonated soft drink in 350ml glass bottles.'),
                           // A salon sells services too; nobody else is asked about them.
-                          if (salon || _isService) ..._serviceFields(sw),
+                          if ((salon || _isService) && !widget.goodsOnly) ..._serviceFields(sw),
                         ],
                       ),
                       // A depot in retail mode sells it in packs too: the real selling units (they used to be

@@ -97,7 +97,7 @@ void main() {
     expect(inv.cart.single.name, 'Braids');
     expect(find.text('Goods used: Braids'), findsOneWidget);
     expect(find.descendant(of: _k('good_2'), matching: find.text('2')), findsOneWidget, reason: 'shampoo x2 is the usual');
-    expect(find.descendant(of: _k('good_3'), matching: find.text('0')), findsOneWidget);
+    expect(_k('good_3'), findsNothing, reason: 'dye is not used until it is selected');
     expect(find.descendant(of: _k('goods_cost'), matching: find.textContaining('TSH 6,000')), findsNothing);
     expect(find.text('Cost of the goods: TSH 6,000'), findsOneWidget);
   });
@@ -105,7 +105,10 @@ void main() {
   testWidgets('what is chosen goes onto the line and into the sale', (t) async {
     final InventoryProvider inv = await _open(t);
 
-    await t.tap(_k('good_plus_3'));
+    await t.tap(find.byType(DropdownButtonFormField<int>));
+    await t.pumpAndSettle();
+    await t.tap(find.textContaining('Dye').last);
+    await t.pumpAndSettle();
     await t.tap(_k('good_plus_3'));
     await t.tap(_k('good_minus_2'));
     await t.pump();
@@ -134,13 +137,12 @@ void main() {
     expect(usedGoodsSummary(inv.cart.single.usedGoods, sw: true), 'Bidhaa: hakuna');
   });
 
-  testWidgets('with no goods at all the sheet offers to add some, in a themed search box', (t) async {
+  testWidgets('with no goods at all the sheet offers to add some', (t) async {
     _Server.noGoods = true;
     await _open(t);
 
     expect(find.text('No goods yet.'), findsOneWidget);
     expect(_k('goods_add_first'), findsOneWidget);
-    expect(t.widget<TextField>(_k('goods_find')).decoration!.filled, isTrue, reason: 'no white box on the dark sheet');
   });
 
   test('a line nobody picked for says "the usual"', () {
