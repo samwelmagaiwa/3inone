@@ -51,10 +51,25 @@ class SalonReportsController extends Controller
             ->when($hasBranch, fn ($q) => $q->where('s.branch_id', $branch));
         $net = 'SUM(si.total - COALESCE(s.discount * si.total / NULLIF(s.subtotal, 0), 0))';
 
+        // What each service's goods cost (shampoo, dye, towels set on the service), so a service's profit is its own.
+        $materials = Schema::hasTable('inventory_service_usage')
+            ? DB::table('inventory_service_usage as u')
+                ->join('inventory_sale_items as si', 'si.id', '=', 'u.sale_item_id')
+                ->join('inventory_sales as s', 's.id', '=', 'u.sale_id')
+                ->whereNull('s.cancelled_at')
+                ->whereDate('s.created_at', '>=', $f)->whereDate('s.created_at', '<=', $t)
+                ->when($hasBranch, fn ($q) => $q->where('s.branch_id', $branch))
+                ->groupBy('si.product_id')->selectRaw('si.product_id as id, SUM(u.quantity * u.unit_cost) as cost')->pluck('cost', 'id')
+            : collect();
+
         $byService = $lines()->where('si.is_service', true)->groupBy('si.product_id', 'p.name')
-            ->selectRaw("p.name as name, SUM(COALESCE(si.unit_qty, si.quantity)) as times, {$net} as revenue")
+            ->selectRaw("si.product_id as id, p.name as name, SUM(COALESCE(si.unit_qty, si.quantity)) as times, {$net} as revenue, SUM(COALESCE(si.commission_amount, 0)) as commission")
             ->orderByRaw("{$net} DESC")->limit(30)->get()
-            ->map(fn ($r) => ['name' => (string) $r->name, 'times' => (int) $r->times, 'revenue' => SalonFinance::money($r->revenue)])->values();
+            ->map(fn ($r) => [
+                'name' => (string) $r->name, 'times' => (int) $r->times, 'revenue' => SalonFinance::money($r->revenue),
+                'commission' => SalonFinance::money($r->commission), 'materials_cost' => SalonFinance::money($materials[$r->id] ?? 0),
+                'profit' => SalonFinance::money((float) $r->revenue - (float) $r->commission - (float) ($materials[$r->id] ?? 0)),
+            ])->values();
 
         $byStylist = $lines()->where('si.is_service', true)->groupBy('si.staff_id')
             ->selectRaw("MAX(si.staff_name) as name, COUNT(*) as services, COUNT(DISTINCT s.customer_id) as clients, {$net} as revenue")
@@ -62,9 +77,9 @@ class SalonReportsController extends Controller
             ->map(fn ($r) => ['name' => $r->name ?: '—', 'services' => (int) $r->services, 'clients' => (int) $r->clients, 'revenue' => SalonFinance::money($r->revenue)])->values();
 
         $goods = $lines()->where(fn ($q) => $q->where('si.is_service', false)->orWhereNull('si.is_service'))->groupBy('si.product_id', 'p.name')
-            ->selectRaw("p.name as name, SUM(COALESCE(si.unit_qty, si.quantity)) as qty, {$net} as revenue")
+            ->selectRaw("p.name as name, SUM(COALESCE(si.unit_qty, si.quantity)) as qty, {$net} as revenue, SUM(si.unit_cost_snapshot * si.quantity) as cost")
             ->orderByRaw("{$net} DESC")->limit(15)->get()
-            ->map(fn ($r) => ['name' => (string) $r->name, 'qty' => (int) $r->qty, 'revenue' => SalonFinance::money($r->revenue)])->values();
+            ->map(fn ($r) => ['name' => (string) $r->name, 'qty' => (int) $r->qty, 'revenue' => SalonFinance::money($r->revenue), 'cost' => SalonFinance::money($r->cost), 'profit' => SalonFinance::money((float) $r->revenue - (float) $r->cost)])->values();
 
         // ---- by branch (only when the salon has branches; one number per branch)
         $byBranch = [];

@@ -184,3 +184,11 @@ diary (booked, done, no-shows, cancelled, online, deposits kept), clients (new, 
 birthdays), what is owed, goods on the shelves (cost / price / low). `GET /inventory/salon/reports`.
 The dashboard's period sheet also chooses a branch; sales lists, summaries and the dashboard figures follow `X-Branch`.
 Pages opened from the salon home no longer draw a second title bar.
+
+## Till client and profit breakdown (2026-10-25)
+
+A name and/or number typed at the salon till (no client picked) now makes a real client (found again by the number in any
+spelling), linked to the sale, so the visit is on her page and the thank-you SMS reaches her (`SalonClientFromSale`).
+Every salon sale returns `salon_breakdown`: per service (revenue, commission, goods used, profit), per goods line (revenue,
+cost, profit) and the totals; the receipt screen shows it to whoever holds the reports right. The Salon reports page shows
+the profit of each service and each goods line for the period.

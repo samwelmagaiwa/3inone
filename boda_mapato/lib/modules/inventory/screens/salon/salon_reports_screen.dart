@@ -124,9 +124,22 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
         _row(sw ? 'Mauzo / wateja' : 'Sales / clients', '${s['sales'] ?? 0} / ${s['clients'] ?? 0}'),
       ]),
       _section(sw ? 'Mapato kwa huduma' : 'Takings by service', 'service', <Widget>[
-        for (final Map<String, dynamic> r in _list(_d['by_service'])) _row('${r['name']}  ×${r['times']}', _n(r['revenue'])),
+        for (final Map<String, dynamic> r in _list(_d['by_service'])) ...<Widget>[
+          _row('${r['name']}  ×${r['times']}', _n(r['revenue'])),
+          _profitLine(sw, <String>[
+            if (((r['commission'] as num?) ?? 0) > 0) '${sw ? 'kamisheni' : 'commission'} ${_n(r['commission'])}',
+            if (((r['materials_cost'] as num?) ?? 0) > 0) '${sw ? 'bidhaa zilizotumika' : 'goods used'} ${_n(r['materials_cost'])}',
+          ], r['profit']),
+        ],
         if (_list(_d['by_service']).isEmpty) _none(sw),
       ]),
+      if (_list(_d['goods_sold']).isNotEmpty)
+        _section(sw ? 'Bidhaa zilizouzwa na faida yake' : 'Goods sold and what they earned', 'goods', <Widget>[
+          for (final Map<String, dynamic> r in _list(_d['goods_sold'])) ...<Widget>[
+            _row('${r['name']}  ×${r['qty']}', _n(r['revenue'])),
+            _profitLine(sw, <String>['${sw ? 'gharama' : 'cost'} ${_n(r['cost'])}'], r['profit']),
+          ],
+        ]),
       _section(sw ? 'Mapato kwa mhudumu' : 'Takings by stylist', 'stylist', <Widget>[
         for (final Map<String, dynamic> r in _list(_d['by_stylist'])) _row('${r['name']}  (${r['services']} · ${r['clients']} ${sw ? 'wateja' : 'clients'})', _n(r['revenue'])),
         if (_list(_d['by_stylist']).isEmpty) _none(sw),
@@ -173,6 +186,15 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
       ]),
     ];
   }
+
+  /// Under a service or goods line: what came off it (commission, goods used, cost) and the profit that is left.
+  Widget _profitLine(final bool sw, final List<String> takenOff, final dynamic profit) => Padding(
+        padding: const EdgeInsets.only(left: 12, bottom: 4),
+        child: Row(children: <Widget>[
+          Expanded(child: Text(takenOff.isEmpty ? '' : '− ${takenOff.join(' · ')}', style: const TextStyle(fontSize: 12, color: Colors.white70))),
+          Text('${sw ? 'faida' : 'profit'} ${_n(profit)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.lightGreenAccent)),
+        ]),
+      );
 
   Widget _none(final bool sw) => Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Text(sw ? 'Hakuna kwa kipindi hiki.' : 'Nothing in this period.'));
 

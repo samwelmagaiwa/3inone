@@ -250,6 +250,11 @@ class SalesController extends Controller
             ];
         })->values()->all();
 
+        // A salon sees what the service and the goods on this sale each earned.
+        if (\App\Support\Tenancy\TenantContext::service() === 'salon') {
+            $saleArray['salon_breakdown'] = \App\Support\Salon\SalonSaleBreakdown::for((int) $id);
+        }
+
         return response()->json(['data' => $saleArray]);
     }
 
@@ -921,6 +926,13 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         if ($v->fails()) {
             return response()->json(['message' => $v->errors()->first()], 422);
+        }
+
+        // A salon: a name and number typed at the till make her a real client (saved once, found again by her number), so
+        // the visit is on her page and the thank-you text can reach her.
+        $typed = \App\Support\Salon\SalonClientFromSale::resolve($request);
+        if ($typed !== null) {
+            $request->merge(['customer_id' => $typed, 'customer_name_override' => null]);
         }
 
         if (in_array($request->payment_status, ['debt', 'partial']) && empty($request->customer_id)) {

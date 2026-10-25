@@ -18,7 +18,8 @@ class _FakeSalon extends SalonApi {
 
     return <String, dynamic>{
       'summary': <String, dynamic>{'revenue': 110000, 'service_revenue': 110000, 'goods_revenue': 0, 'discounts': 0, 'expenses': 20000, 'commissions': 8000, 'net_profit': 82000, 'sales': 4, 'clients': 2},
-      'by_service': <Map<String, dynamic>>[<String, dynamic>{'name': 'Braids', 'times': 2, 'revenue': 80000}],
+      'by_service': <Map<String, dynamic>>[<String, dynamic>{'name': 'Braids', 'times': 2, 'revenue': 80000, 'commission': 8000, 'materials_cost': 12000, 'profit': 60000}],
+      'goods_sold': <Map<String, dynamic>>[<String, dynamic>{'name': 'Extensions', 'qty': 2, 'revenue': 50000, 'cost': 30000, 'profit': 20000}],
       'by_stylist': <Map<String, dynamic>>[<String, dynamic>{'name': 'Asha', 'services': 2, 'clients': 2, 'revenue': 80000}],
       'by_method': <Map<String, dynamic>>[<String, dynamic>{'method': 'mpesa', 'amount': 40000}, <String, dynamic>{'method': 'cash', 'amount': 60000}],
       'by_branch': noBranches ? <dynamic>[] : <Map<String, dynamic>>[<String, dynamic>{'name': 'Kariakoo', 'sales': 3, 'revenue': 80000}],
@@ -62,6 +63,12 @@ void main() {
     expect(find.descendant(of: find.byKey(const Key('sr_revenue')), matching: find.text('TSH 110,000')), findsOneWidget);
     expect(find.descendant(of: find.byKey(const Key('sr_profit')), matching: find.text('TSH 82,000')), findsOneWidget);
     expect(find.text('Braids  ×2'), findsOneWidget);
+    expect(find.text('profit TSH 60,000'), findsOneWidget, reason: 'the profit of the service itself, after commission and the goods it used');
+    expect(find.text('− commission TSH 8,000 · goods used TSH 12,000'), findsOneWidget);
+    expect(find.byKey(const Key('sr_section_goods')), findsOneWidget);
+    expect(find.text('Extensions  ×2'), findsOneWidget);
+    expect(find.text('profit TSH 20,000'), findsOneWidget);
+    expect(find.text('− cost TSH 30,000'), findsOneWidget);
     expect(find.text('Asha  (2 · 2 clients)'), findsOneWidget);
     expect(find.text('M-Pesa'), findsOneWidget);
     expect(find.text('Kariakoo  (3 sales)'), findsOneWidget);

@@ -19,6 +19,7 @@ import '../../../../providers/auth_provider.dart';
 import '../../../../services/localization_service.dart';
 import '../../models/inv_sale.dart';
 import '../../providers/depot_provider.dart';
+import '../salon/salon_sale_breakdown_card.dart';
 import '../settings/receipt_header_screen.dart';
 
 /// Full-screen thermal receipt viewer.
@@ -622,7 +623,10 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Center(
+        child: Column(children: <Widget>[
+          // A salon's owner sees what the service and the goods on this sale each earned (nobody else, and not on a shop's sale).
+          SalonSaleBreakdownCard(saleId: sale.id),
+          Center(
           child: RepaintBoundary(
             key: _receiptKey,
             child: _ReceiptPaper(
@@ -642,6 +646,7 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
             ),
           ),
         ),
+        ]),
       ),
     );
   }

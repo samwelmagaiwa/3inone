@@ -510,4 +510,11 @@ class SalonApi {
 
   /// All the salon's reports for a period (takings by service, stylist, payment and branch, the diary, clients, debts, stock).
   Future<Map<String, dynamic>> salonReports(final DateTime from, final DateTime to) async => _data(await _api.get('/inventory/salon/reports?from=${_day(from)}&to=${_day(to)}'));
+
+  /// What one sale's services and goods each earned (empty when the server has none: a shop's sale, or no right to see it).
+  Future<Map<String, dynamic>> saleBreakdown(final int saleId) async {
+    final Map<String, dynamic> d = _data(await _api.get('/inventory/sales/$saleId'));
+
+    return d['salon_breakdown'] is Map ? Map<String, dynamic>.from(d['salon_breakdown'] as Map) : <String, dynamic>{};
+  }
 }
