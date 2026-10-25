@@ -913,6 +913,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'items.*.tier' => 'nullable|in:retail,wholesale',
             // Salon: who served the client for this line (someone in this business, never a stranger's id).
             'items.*.staff_id' => ['nullable', new \App\Rules\UserInAccount($request->user())],
+            // Salon: the goods this visit used up for a service line (replaces the service's usual goods).
+            'items.*.materials' => 'nullable|array|max:50',
+            'items.*.materials.*.product_id' => 'required|integer|exists:inventory_products,id',
+            'items.*.materials.*.quantity' => 'required|integer|min:1|max:100000',
             'payments' => 'sometimes|array',
             'payments.*.amount' => 'required|numeric|min:0.01',
             'payments.*.method' => ['required', \Illuminate\Validation\Rule::in(\App\Support\PaymentChannels::all())],
@@ -1129,7 +1133,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
                 // The goods a service uses up leave the shelf with it (never stopping the sale).
                 if ($isService) {
-                    \App\Support\Salon\SalonMaterials::consume($this->ledger, (int) $saleId, (int) $itemId, (int) $item['product_id'], (int) $unitQty, (string) $number, optional($request->user())->id ?? 1);
+                    \App\Support\Salon\SalonMaterials::consume($this->ledger, (int) $saleId, (int) $itemId, (int) $item['product_id'], (int) $unitQty, (string) $number, optional($request->user())->id ?? 1, isset($item['materials']) ? $item['materials'] : null);
                 }
 
                 $insertedItems[] = [

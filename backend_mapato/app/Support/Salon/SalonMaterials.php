@@ -18,19 +18,36 @@ final class SalonMaterials
         return Schema::hasTable('inventory_service_materials') && Schema::hasTable('inventory_service_usage');
     }
 
-    /** Take the goods one service line uses (for `$unitQty` of the service). Never throws: the sale must go on. */
-    public static function consume(StockLedger $ledger, int $saleId, int $itemId, int $serviceProductId, int $unitQty, string $reference, int|string|null $userId): void
+    /**
+     * Take the goods one service line uses (for `$unitQty` of the service). Never throws: the sale must go on.
+     *
+     * `$chosen` is what the till picked for THIS visit ([product_id, quantity] for the whole line): when it is given
+     * (even empty) it replaces the service's usual goods; when null the service's usual goods are taken.
+     *
+     * @param  array<int, array{product_id: int|string, quantity: int|string}>|null  $chosen
+     */
+    public static function consume(StockLedger $ledger, int $saleId, int $itemId, int $serviceProductId, int $unitQty, string $reference, int|string|null $userId, ?array $chosen = null): void
     {
         if (!self::active()) {
             return;
         }
-        $materials = DB::table('inventory_service_materials')->where('service_product_id', $serviceProductId)->get();
+        if ($chosen !== null) {
+            $merged = [];
+            foreach ($chosen as $c) {
+                $id = (int) ($c['product_id'] ?? 0);
+                $merged[$id] = ($merged[$id] ?? 0) + max(0, (int) ($c['quantity'] ?? 0));
+            }
+            $materials = collect($merged)->filter(fn ($q, $id) => $id > 0 && $q > 0 && $id !== $serviceProductId)
+                ->map(fn ($q, $id) => (object) ['material_product_id' => $id, 'quantity' => $q, 'whole_line' => true])->values();
+        } else {
+            $materials = DB::table('inventory_service_materials')->where('service_product_id', $serviceProductId)->get();
+        }
         foreach ($materials as $m) {
             $product = DB::table('inventory_products')->where('id', $m->material_product_id)->first();
-            if ($product === null) {
+            if ($product === null || !empty($product->is_service)) {
                 continue;
             }
-            $take = min((int) $m->quantity * $unitQty, (int) $product->quantity);
+            $take = min((int) $m->quantity * (empty($m->whole_line) ? $unitQty : 1), (int) $product->quantity);
             if ($take < 1) {
                 continue;
             }

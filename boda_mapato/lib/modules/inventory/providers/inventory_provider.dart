@@ -1427,6 +1427,11 @@ class InventoryProvider extends ChangeNotifier {
                 'unit_cost_snapshot': e.unitCostSnapshot,
                 if (e.taxPercent != null) 'tax_percent': e.taxPercent,
                 if (e.staffId != null) 'staff_id': e.staffId,
+                if (e.isService && e.usedGoods != null)
+                  'materials': <Map<String, dynamic>>[
+                    for (final InvUsedGood g in e.usedGoods!)
+                      if (g.qty > 0) <String, dynamic>{'product_id': g.productId, 'quantity': g.qty},
+                  ],
                 if (e.packageId != null) 'package_id': e.packageId,
               })
           .toList(),

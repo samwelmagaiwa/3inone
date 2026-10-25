@@ -294,4 +294,36 @@ class SalonBooksTest extends TestCase
 
         $this->api($owner, 'GET', "/api/inventory/salon/cashbook?from={$today}&to=" . $this->eat()->subDay()->toDateString())->assertStatus(422);
     }
+
+    public function test_the_till_picks_the_goods_a_visit_used_and_that_replaces_the_usual_ones(): void
+    {
+        $owner = $this->salon();
+        $braids = $this->service($owner);
+        $shampoo = $this->goods($owner, 'Shampoo', 20, 3000);
+        $dye = $this->goods($owner, 'Dye', 20, 5000);
+        $this->api($owner, 'PUT', "/api/inventory/salon/services/{$braids}/materials", ['items' => [['material_product_id' => $shampoo, 'quantity' => 2]]])->assertOk();
+        $this->assertSame([['product_id' => $shampoo, 'name' => 'Shampoo', 'quantity' => 2]], $this->api($owner, 'GET', "/api/inventory/salon/services/{$braids}/usual-goods")->assertOk()->json('data'));
+
+        $visit = fn (?array $materials) => $this->api($owner, 'POST', '/api/inventory/sales', [
+            'payment_status' => 'paid', 'subtotal' => 10000, 'discount' => 0, 'tax' => 0, 'total' => 10000, 'paid_total' => 10000,
+            'items' => [array_filter(['product_id' => $braids, 'quantity' => 1, 'unit_price' => 10000, 'materials' => $materials], fn ($v) => $v !== null)],
+        ])->assertCreated();
+        $stock = fn (int $id) => (int) DB::table('inventory_products')->where('id', $id)->value('quantity');
+
+        $visit(null);                                                            // nothing picked: the usual goods
+        $this->assertSame([18, 20], [$stock($shampoo), $stock($dye)]);
+
+        $sale = $visit([['product_id' => $dye, 'quantity' => 3], ['product_id' => $shampoo, 'quantity' => 1]])->json('data.id'); // picked: these instead
+        $this->assertSame([17, 17], [$stock($shampoo), $stock($dye)]);
+        $used = collect($this->api($owner, 'GET', "/api/inventory/sales/{$sale}")->json('data.salon_breakdown.services.0.materials'))->pluck('quantity', 'name')->all();
+        $this->assertSame(['Dye' => 3, 'Shampoo' => 1], $used);
+
+        $visit([]);                                                              // picked nothing: no goods used
+        $this->assertSame([17, 17], [$stock($shampoo), $stock($dye)]);
+
+        $this->api($owner, 'POST', '/api/inventory/sales', [
+            'payment_status' => 'paid', 'subtotal' => 10000, 'discount' => 0, 'tax' => 0, 'total' => 10000, 'paid_total' => 10000,
+            'items' => [['product_id' => $braids, 'quantity' => 1, 'unit_price' => 10000, 'materials' => [['product_id' => $dye, 'quantity' => 0]]]],
+        ])->assertStatus(422);
+    }
 }

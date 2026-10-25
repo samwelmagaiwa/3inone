@@ -80,6 +80,21 @@ class SalonSetupController extends Controller
         return response()->json(['data' => $rows]);
     }
 
+    #[OA\Get(path: '/inventory/salon/services/{id}/usual-goods', summary: 'The goods a service usually uses, for the till to start from', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success')])]
+    public function usualGoods(Request $request, int $id): JsonResponse
+    {
+        // The same list as materials(), but for whoever sells (the till picks from it), not only the owner and accountant.
+        abort_if(DB::table('inventory_products')->where('id', $id)->where('is_service', true)->doesntExist(), 404, 'Service not found');
+
+        $rows = DB::table('inventory_service_materials as m')
+            ->join('inventory_products as p', 'p.id', '=', 'm.material_product_id')
+            ->where('m.service_product_id', $id)->orderBy('p.name')
+            ->get(['m.material_product_id', 'm.quantity', 'p.name'])
+            ->map(fn ($r) => ['product_id' => (int) $r->material_product_id, 'name' => $r->name, 'quantity' => (int) $r->quantity])->values();
+
+        return response()->json(['data' => $rows]);
+    }
+
     #[OA\Put(path: '/inventory/salon/services/{id}/materials', summary: 'Say which goods (and how many) a service uses up', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function saveMaterials(Request $request, int $id): JsonResponse
     {

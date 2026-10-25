@@ -75,7 +75,8 @@ final class InventoryDefaults
     {
         $business = Business::forUser($user);
         if ($business === null) {
-            return self::SETTINGS;
+            // No business of its own (a super admin): the plain retail setup, not a depot's crates.
+            return array_merge(self::SETTINGS, self::presetFor('retail'));
         }
 
         // The salon's books are a retail business's, whatever kind the shop beside them is.

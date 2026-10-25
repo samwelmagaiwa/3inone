@@ -80,7 +80,8 @@ class TenantQueryScopeTest extends TestCase
         $plain = "select * from {$q}inventory_products{$q} where {$q}id{$q} = ?";
 
         $this->assertSame($plain, $this->sql($connection, null, fn ($c) => $c->table('inventory_products')->where('id', 1)->toSql()));
-        $this->assertSame($plain, $this->sql($connection, $this->superAdmin, fn ($c) => $c->table('inventory_products')->where('id', 1)->toSql()));
+        // A super admin is limited to their own account like everyone else: a business's rows are never theirs to read.
+        $this->assertStringContainsString('owner_id', $this->sql($connection, $this->superAdmin, fn ($c) => $c->table('inventory_products')->where('id', 1)->toSql()));
     }
 
     #[DataProvider('connections')]

@@ -224,7 +224,7 @@ class TenancyContractTest extends TestCase
     }
 
     #[DataProvider('services')]
-    public function test_the_platform_sees_every_business(string $service): void
+    public function test_the_platform_sees_every_business_except_inside_their_stock(string $service): void
     {
         $alpha = $this->business($service, 'Alpha');
         $bravo = $this->business($service, 'Bravo');
@@ -233,6 +233,14 @@ class TenancyContractTest extends TestCase
 
         $super = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
         $text = $this->listText($super, $service);
+
+        if ($service === 'inventory') {
+            // Stock, sales and clients are a business's own: the platform owner never reads them.
+            $this->assertStringNotContainsString('Alpha', $text);
+            $this->assertStringNotContainsString('Bravo', $text);
+
+            return;
+        }
 
         $this->assertStringContainsString('Alpha', $text);
         $this->assertStringContainsString('Bravo', $text);

@@ -200,7 +200,7 @@ class SalonSeparationTest extends TestCase
         $this->assertSame([], $this->names('/api/inventory/products', salon: true, as: $other));
     }
 
-    public function test_a_super_admin_sees_every_salon_in_the_salon_and_every_shop_in_the_shop(): void
+    public function test_a_super_admin_sees_no_salon_and_no_shop(): void
     {
         $this->product('Cola', salon: false);
         $this->product('Shampoo', salon: true);
@@ -213,8 +213,8 @@ class SalonSeparationTest extends TestCase
         $inSalon = $this->names('/api/inventory/products', salon: true, as: $super);
         $inShop = $this->names('/api/inventory/products', salon: false, as: $super);
 
-        $this->assertEqualsCanonicalizing(['Shampoo', 'Nail polish'], $inSalon);
-        $this->assertSame(['Cola'], $inShop);
+        $this->assertSame([], $inSalon);
+        $this->assertSame([], $inShop);
     }
 
     public function test_the_reminder_job_reads_the_salons_books_only(): void

@@ -400,13 +400,13 @@ class InventoryIsolationTest extends TestCase
         $this->assertNotContains((string) $bravoManager->id, $alphaOfficers);
     }
 
-    public function test_super_admin_sees_every_business_but_what_they_create_is_their_own(): void
+    public function test_super_admin_sees_no_business_and_what_they_create_is_their_own(): void
     {
         $super = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
 
         $names = $this->strings($this->as($super, 'GET', '/api/inventory/products')->assertOk());
-        $this->assertTrue($this->mentions($names, 'Alpha Soda'));
-        $this->assertTrue($this->mentions($names, 'Bravo Soda'));
+        $this->assertFalse($this->mentions($names, 'Alpha Soda'), 'the platform owner does not read any business stock');
+        $this->assertFalse($this->mentions($names, 'Bravo Soda'));
 
         $this->as($super, 'POST', '/api/inventory/products', [
             'name' => 'Platform Soda', 'sku' => 'PLAT-1', 'cost_price' => 1, 'selling_price' => 2,

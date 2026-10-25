@@ -422,6 +422,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // engine, so these use the same permissions: whoever may sell may look a client up and note them down.
     Route::middleware('inv_perm:inv_manage_products,inv_create_sales,inv_view_credit')->group(function () {
         Route::get('inventory/salon/staff',                [SalonController::class, 'staff']);
+        Route::get('inventory/salon/services/{id}/usual-goods', [SalonSetupController::class, 'usualGoods']);
         Route::get('inventory/salon/settings',             [SalonController::class, 'settings']);
         Route::get('inventory/salon/clients/overview',     [SalonClientController::class, 'overview']);
         Route::get('inventory/salon/clients/{id}/history', [SalonController::class, 'clientHistory']);

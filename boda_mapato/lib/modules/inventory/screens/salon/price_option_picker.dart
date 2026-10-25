@@ -5,14 +5,18 @@ import '../../../../services/localization_service.dart';
 import '../../models/inv_product.dart';
 import '../../providers/inventory_provider.dart';
 import '../widgets/inventory_widgets.dart';
+import '../../models/inv_sale.dart';
+import '../../services/salon_api.dart';
+import 'goods_used_sheet.dart';
 import 'salon_text.dart';
 
 /// Put a product in the cart. A service that comes at several prices (short, medium or long hair) first asks which
 /// one, and the line carries that price and name; anything else goes straight in, as it always did. Returns false
 /// when the person chose nothing, so the caller can leave the cart alone.
-Future<bool> addToCartAskingPrice(BuildContext context, InventoryProvider inv, InvProduct product) async {
+Future<bool> addToCartAskingPrice(BuildContext context, InventoryProvider inv, InvProduct product, {SalonApi? api}) async {
   if (!product.isService || product.priceOptions.isEmpty) {
     inv.addProductToCart(product);
+    await _askGoods(context, inv, product, api);
     return true;
   }
 
@@ -52,7 +56,17 @@ Future<bool> addToCartAskingPrice(BuildContext context, InventoryProvider inv, I
   );
   if (chosen == null) return false;
   inv.addProductToCart(product, option: chosen.option);
+  if (context.mounted) await _askGoods(context, inv, product, api);
   return true;
+}
+
+/// A salon service has just gone in the cart: say which goods this visit used, starting from the usual ones. (Only for a
+/// service that was not already picked for this client in this cart.)
+Future<void> _askGoods(BuildContext context, InventoryProvider inv, InvProduct product, SalonApi? api) async {
+  if (!product.isService || !inv.salonMode || !context.mounted) return;
+  final InvSaleItem? line = inv.cart.where((InvSaleItem i) => i.productId == product.id && i.usedGoods == null).lastOrNull;
+  if (line == null) return;
+  await pickGoodsUsed(context, inv, line, api: api);
 }
 
 class _Choice {

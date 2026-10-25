@@ -1,3 +1,12 @@
+/// Salon: one kind of goods a service line used up on this visit (shampoo, dye...) and how many.
+class InvUsedGood {
+  InvUsedGood({required this.productId, required this.name, required this.qty});
+
+  final int productId;
+  final String name;
+  int qty;
+}
+
 class InvSaleItem {
   InvSaleItem({
     required this.productId,
@@ -50,6 +59,10 @@ class InvSaleItem {
   String? staffId;
   String? staffName;
   final bool isService;
+
+  /// Salon: the goods picked at the till for this service line. Null = nothing picked, the service's usual goods are
+  /// taken; an empty list = no goods were used.
+  List<InvUsedGood>? usedGoods;
 
   /// A cart holds one line per product AND unit: 1 crate and 3 bottles of the same drink are two lines.
   String get key => '$productId:${unitId ?? 0}${optionLabel == null ? '' : ':$optionLabel'}';

@@ -165,7 +165,7 @@ class InventoryTypeTest extends TestCase
 
         $this->api($retail, 'GET', '/api/inventory/settings')->assertOk()->assertJsonPath('data.inventory_type', 'retail');
         $this->api($retail, 'GET', '/api/business')->assertOk()->assertJsonPath('data.inventory_type', 'retail');
-        $this->api($this->superAdmin(), 'GET', '/api/inventory/settings')->assertOk()->assertJsonPath('data.inventory_type', 'depot');
+        $this->api($this->superAdmin(), 'GET', '/api/inventory/settings')->assertOk()->assertJsonPath('data.inventory_type', 'retail');
     }
 
     // ---------------------------------------------------------- changing it later

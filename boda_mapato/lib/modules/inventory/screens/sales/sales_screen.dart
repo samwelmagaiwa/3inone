@@ -27,6 +27,7 @@ import 'sale_receipt_screen.dart';
 import '../salon/price_option_picker.dart';
 import '../salon/salon_perks_card.dart';
 import '../salon/salon_mode.dart';
+import '../salon/goods_used_sheet.dart';
 import '../salon/staff_picker.dart';
 
 class SalesScreen extends StatefulWidget {
@@ -1971,6 +1972,21 @@ class _CartRow extends StatelessWidget {
                 backgroundColor: ThemeConstants.invFill,
                 side: const BorderSide(color: ThemeConstants.invBorder),
                 onPressed: () => pickStylist(context, item),
+              ),
+            ),
+          ],
+          // Salon: the goods this visit used, shown on the line and changeable.
+          if (item.isService && inv.salonMode) ...[
+            SizedBox(height: 4.h),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ActionChip(
+                key: ValueKey<String>('cart_goods_${item.key}'),
+                avatar: Icon(Icons.inventory_2_outlined, size: 16.sp, color: Colors.white70),
+                label: Text(usedGoodsSummary(item.usedGoods, sw: loc.isSwahili), style: TextStyle(color: Colors.white, fontSize: 12.sp)),
+                backgroundColor: ThemeConstants.invFill,
+                side: const BorderSide(color: ThemeConstants.invBorder),
+                onPressed: () => pickGoodsUsed(context, inv, item),
               ),
             ),
           ],

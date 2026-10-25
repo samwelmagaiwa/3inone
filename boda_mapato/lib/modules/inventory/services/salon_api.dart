@@ -475,6 +475,9 @@ class SalonApi {
     await _api.post('/inventory/salon/queue/$id/status', <String, dynamic>{'status': status});
   }
 
+  /// The goods a service usually uses, for the till to start from (anyone who sells may ask).
+  Future<List<Map<String, dynamic>>> usualGoods(final int serviceId) => _list('/inventory/salon/services/$serviceId/usual-goods');
+
   Future<List<Map<String, dynamic>>> serviceMaterials(final int serviceId) => _list('/inventory/salon/services/$serviceId/materials');
 
   Future<void> saveServiceMaterials(final int serviceId, final List<Map<String, dynamic>> items) async {

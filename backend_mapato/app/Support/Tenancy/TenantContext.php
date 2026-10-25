@@ -14,8 +14,8 @@ use LogicException;
  * Inventory (the tenant-aware query grammar) can never disagree:
  *
  *   - a signed-in user acts as themself;
- *   - super_admin reads everything (readOwner() is null) but anything they
- *     create is stamped with their own account;
+ *   - super_admin reads and writes only their own account's operational rows, like everyone else (the platform's
+ *     own records -- businesses, payments, users -- are read through the admin endpoints);
  *   - everyone else reads and writes only their account head's rows;
  *   - with nobody signed in (queue workers, artisan, the login flow) nothing is
  *     scoped and nothing is stamped -- use runAs() to act as a business there.
@@ -178,7 +178,9 @@ final class TenantContext
     {
         $viewer = self::viewer();
 
-        if ($viewer === null || $viewer->seesAllAccounts()) {
+        // Nobody signed in: unscoped (jobs, login). A super admin is scoped like anyone else: the platform owner runs the
+        // platform (businesses, plans, payments, users), and never reads or writes a business's products, sales or clients.
+        if ($viewer === null) {
             return null;
         }
 
