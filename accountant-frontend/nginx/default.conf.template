@@ -8,10 +8,11 @@ server {
     # Redirects stay relative, so they keep whatever address the browser used (also behind a reverse proxy).
     absolute_redirect off;
 
-    # When the app is built for /app/ (sharing a domain with the API) the files are still kept at the root here, so
-    # /app/main.js is found whether or not the proxy in front strips the /app/ prefix.
-    location = /app { return 301 /app/; }
-    rewrite ^/app/(.*)$ /$1 last;
+    # When the app is built for /web/ (sharing a domain with the API) the files are still kept at the root here, so
+    # /web/main.js is found whether or not the proxy in front strips the /web/ prefix (/app/ was its first address).
+    location = /web { return 301 /web/; }
+    location = /app { return 301 /web/; }
+    rewrite ^/(?:web|app)/(.*)$ /$1 last;
 
     gzip on;
     gzip_vary on;

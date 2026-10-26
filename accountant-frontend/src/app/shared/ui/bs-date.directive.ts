@@ -3,10 +3,10 @@ import { isPlatformBrowser } from '@angular/common';
 import { NgModel } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { CALENDAR_ICON, openPopover } from './bs-popover';
+import { uiText } from './ui-text';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const toIso = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const parseIso = (v: string): { y: number; m: number; d: number } | null => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v || '');
   return m ? { y: +m[1], m: +m[2] - 1, d: +m[3] } : null;
@@ -75,10 +75,10 @@ export class BsDateDirective implements AfterViewInit, OnDestroy {
     const p = parseIso(input.value);
     if (p) {
       const date = new Date(p.y, p.m, p.d);
-      this.labelEl.textContent = date.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+      this.labelEl.textContent = date.toLocaleDateString(uiText().locale, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
       this.labelEl.classList.remove('is-placeholder');
     } else {
-      this.labelEl.textContent = 'Select date';
+      this.labelEl.textContent = uiText().selectDate;
       this.labelEl.classList.add('is-placeholder');
     }
     this.trigger.disabled = input.disabled;
@@ -117,7 +117,7 @@ export class BsDateDirective implements AfterViewInit, OnDestroy {
             <span class="bs-cal-title" style="cursor:default">${view.y}</span>
             <button type="button" class="bs-cal-nav" data-act="next-year" aria-label="Next year">${chevron('right')}</button>
           </div>
-          <div class="bs-months">${MONTHS.map((n, i) => `<button type="button" class="bs-month${i === view.m ? ' is-selected' : ''}" data-month="${i}">${n.slice(0, 3)}</button>`).join('')}</div>`;
+          <div class="bs-months">${uiText().months.map((n, i) => `<button type="button" class="bs-month${i === view.m ? ' is-selected' : ''}" data-month="${i}">${n.slice(0, 3)}</button>`).join('')}</div>`;
         return;
       }
 
@@ -140,14 +140,14 @@ export class BsDateDirective implements AfterViewInit, OnDestroy {
       pop.innerHTML = `
         <div class="bs-cal-head">
           <button type="button" class="bs-cal-nav" data-act="prev" aria-label="Previous month"${prevDisabled}>${chevron('left')}</button>
-          <button type="button" class="bs-cal-title" data-act="months">${MONTHS[view.m]} ${view.y}</button>
+          <button type="button" class="bs-cal-title" data-act="months">${uiText().months[view.m]} ${view.y}</button>
           <button type="button" class="bs-cal-nav" data-act="next" aria-label="Next month"${nextDisabled}>${chevron('right')}</button>
         </div>
-        <div class="bs-cal-week"><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span></div>
+        <div class="bs-cal-week">${uiText().week.map((w) => `<span>${w}</span>`).join('')}</div>
         <div class="bs-cal-grid">${cells.join('')}</div>
         <div class="bs-cal-foot">
-          <button type="button" class="bs-cal-link" data-act="today"${todayDisabled}>Today</button>
-          ${input.required ? '' : '<button type="button" class="bs-cal-link" data-act="clear">Clear</button>'}
+          <button type="button" class="bs-cal-link" data-act="today"${todayDisabled}>${uiText().today}</button>
+          ${input.required ? '' : `<button type="button" class="bs-cal-link" data-act="clear">${uiText().clear}</button>`}
         </div>`;
     };
 

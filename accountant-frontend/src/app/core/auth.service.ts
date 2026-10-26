@@ -4,7 +4,8 @@ import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { ApiEnvelope, ServiceName, SessionUser } from './models';
+import { ApiEnvelope, ServiceName, SessionUser, Subscription } from './models';
+import { WEB_SERVICES, allServices } from './role-services';
 
 const TOKEN_KEY = 'accountant_token';
 const USER_KEY = 'accountant_user';
@@ -31,13 +32,14 @@ function write(key: string, value: string | null): void {
 function readUser(): SessionUser | null {
   try {
     const raw = read(USER_KEY);
-    return raw ? (JSON.parse(raw) as SessionUser) : null;
+    // a session saved by an older version has no list of phone-only services: read it as empty
+    return raw ? ({ otherServices: [], ...JSON.parse(raw) } as SessionUser) : null;
   } catch {
     return null;
   }
 }
 
-const SUPPORTED: ServiceName[] = ['inventory', 'salon'];
+const PICK_KEY = 'accountant_pick';
 
 /** What the server sends at sign-in, as far as this app reads it. */
 interface LoginPayload {
@@ -59,7 +61,8 @@ interface LoginPayload {
 /** Turn the server's user into what the app needs; the rights are the server's own resolved list, never guessed here. */
 export function toSessionUser(p: LoginPayload): SessionUser {
   const u = p.user;
-  const services = (u.services ?? []).map((s) => s.service_type).filter((s): s is ServiceName => SUPPORTED.includes(s as ServiceName));
+  // The services as the mobile app decides them: what was bound to the person, else what their role implies.
+  const all = allServices((u.services ?? []).map((s) => s.service_type), u.role);
   return {
     id: String(u.id),
     name: u.name,
@@ -67,7 +70,8 @@ export function toSessionUser(p: LoginPayload): SessionUser {
     role: u.role,
     roleLabel: p.role_display ?? u.role,
     phone: u.phone_number,
-    services: services.filter((s, i) => services.indexOf(s) === i),
+    services: all.filter((s): s is ServiceName => WEB_SERVICES.includes(s)),
+    otherServices: all.filter((s) => !WEB_SERVICES.includes(s)),
     permissions: u.effective_permissions ?? [],
     business: u.business?.name ?? undefined,
   };
@@ -86,6 +90,13 @@ export class AuthService {
   /** The service the pages work in (the server answers from that service's books). */
   readonly service = signal<ServiceName>(this.initialService());
 
+  /** Someone with more than one service chooses which to open right after signing in (as on the phone). */
+  readonly needsPick = signal<boolean>(read(PICK_KEY) === '1');
+
+  /** Where the business's plan stands, and whether the server is holding the business back until it pays. */
+  readonly subscription = signal<Subscription | null>(null);
+  readonly blocked = signal(false);
+
   private initialService(): ServiceName {
     const wanted = read(SERVICE_KEY) as ServiceName | null;
     const mine = readUser()?.services ?? [];
@@ -100,6 +111,9 @@ export class AuthService {
     this.token.set(res.data.token);
     this.user.set(user);
     this.service.set(user.services[0] ?? environment.defaultService);
+    this.needsPick.set(user.services.length > 1);
+    this.blocked.set(false);
+    write(PICK_KEY, user.services.length > 1 ? '1' : null);
     write(TOKEN_KEY, res.data.token);
     write(USER_KEY, JSON.stringify(user));
     write(SERVICE_KEY, this.service());
@@ -126,6 +140,13 @@ export class AuthService {
     write(SERVICE_KEY, service);
   }
 
+  /** The person chose a service in the picker: open it, and do not ask again until the next sign-in. */
+  pick(service: ServiceName): void {
+    this.switchService(service);
+    this.needsPick.set(false);
+    write(PICK_KEY, null);
+  }
+
   /** Sign out here at once; tell the server too (so the token stops working), but never wait on it. */
   logout(goToLogin = true): void {
     if (this.token()) {
@@ -142,5 +163,9 @@ export class AuthService {
     write(TOKEN_KEY, null);
     write(USER_KEY, null);
     write(SERVICE_KEY, null);
+    write(PICK_KEY, null);
+    this.needsPick.set(false);
+    this.subscription.set(null);
+    this.blocked.set(false);
   }
 }

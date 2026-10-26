@@ -18,6 +18,8 @@ export interface SessionUser {
   phone?: string;
   /** The services this person works in, among those the web app supports. */
   services: ServiceName[];
+  /** Services they have that are used on the phone (rental, transport): listed, never opened here. */
+  otherServices: string[];
   /** Inventory rights such as `inv_view_reports`; `__all__` means all of them. */
   permissions: string[];
   business?: string;
@@ -103,7 +105,7 @@ export interface Debt {
   note: string | null;
 }
 
-export interface DebtsPage {
+export interface DebtsListing {
   kind: DebtKind;
   debts: Debt[];
   total: number;
@@ -127,6 +129,9 @@ export interface Expense {
   is_personal?: boolean | number;
   created_by_name?: string | null;
   status?: string;
+  supplier?: string | null;
+  payment_method?: string | null;
+  receipt_url?: string | null;
 }
 
 export interface ExpenseSummary {
@@ -148,12 +153,26 @@ export interface SaleRow {
   customer_name: string | null;
   created_at: string;
   cancelled_at?: string | null;
-  items?: { product_name?: string; quantity?: number; unit_qty?: number; total?: number }[];
+  items?: { product_name?: string; qty?: number; unit_name?: string | null; total?: number; staff_name?: string | null }[];
+  payments?: { amount: number; method: string | null; paid_at: string }[];
 }
 
 export interface Paged<T> {
   data: T[];
   meta?: { current_page?: number; last_page?: number; total?: number; per_page?: number };
+}
+
+/** Where the business's plan stands (GET /business/subscription). */
+export interface Subscription {
+  status: 'never' | 'active' | 'expiring' | 'grace' | 'expired' | string;
+  plan: string;
+  business_name?: string;
+  valid_until: string | null;
+  days_left: number | null;
+  grace_ends_at?: string | null;
+  enforced: boolean;
+  blocked: boolean;
+  contact_phone?: string;
 }
 
 export interface AppNotification {
@@ -163,4 +182,45 @@ export interface AppNotification {
   body: string;
   read_at: string | null;
   created_at: string;
+}
+
+/** The AI assistant: what this person may ask about, and the answers (with the records they rest on). */
+export interface AssistantSuggestion {
+  id: string;
+  en: string;
+  sw: string;
+  /** null = a "how do I..." question that needs no data. */
+  tool: string | null;
+}
+
+export interface AssistantStatus {
+  available: boolean;
+  topics: string[];
+  suggestions: AssistantSuggestion[];
+  services: string[];
+  questions_left: number;
+}
+
+export interface AssistantCardRow {
+  title: string;
+  value?: string;
+  note?: string;
+}
+
+export interface AssistantCard {
+  type: 'rows';
+  title: string;
+  rows: AssistantCardRow[];
+}
+
+export interface AssistantAnswer {
+  answer: string;
+  cards: AssistantCard[];
+  tools: string[];
+  questions_left: number;
+}
+
+export interface AssistantTurnOut {
+  role: 'user' | 'model';
+  text: string;
 }

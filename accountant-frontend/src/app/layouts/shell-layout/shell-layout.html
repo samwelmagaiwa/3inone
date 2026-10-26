@@ -1,0 +1,1083 @@
+<!-- Shell Layout -->
+<div class="shell-wrap">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" [class.sidebar--collapsed]="sidebarCollapsed()" [class.sidebar--open]="sidebarOpen()">
+
+    <!-- Logo row -->
+    <div class="sidebar-logo">
+      <img src="logo.svg" alt="" class="sidebar-logo-img">
+      <div class="sidebar-logo-text">
+        <span class="sidebar-logo-name">{{ appName }}</span>
+        <span class="sidebar-logo-sub">{{ user().business || i18n.t('shell.business.none') }}</span>
+      </div>
+    </div>
+
+    <!-- Navigation links: only the pages this person may open -->
+    <nav class="sidebar-nav">
+      @if (overview().length) {
+        <p class="nav-group-title">{{ i18n.t('nav.group.overview') }}</p>
+        @for (item of overview(); track item.key) {
+          <a [routerLink]="item.path" routerLinkActive="nav-active" class="nav-item" [title]="i18n.t(item.hintKey)">
+            <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" [attr.d]="item.icon"/></svg>
+            <span class="nav-label">{{ i18n.t(item.labelKey) }}</span>
+          </a>
+        }
+      }
+      @if (money().length) {
+        <p class="nav-group-title">{{ i18n.t('nav.group.money') }}</p>
+        @for (item of money(); track item.key) {
+          <a [routerLink]="item.path" routerLinkActive="nav-active" class="nav-item" [title]="i18n.t(item.hintKey)">
+            <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" [attr.d]="item.icon"/></svg>
+            <span class="nav-label">{{ i18n.t(item.labelKey) }}</span>
+          </a>
+        }
+      }
+      @if (!overview().length && !money().length) {
+        <p class="nav-group-title">{{ i18n.t('welcome.empty.title') }}</p>
+      }
+
+      <p class="nav-group-title">{{ i18n.t('nav.group.help') }}</p>
+      @for (item of helpPages(); track item.key) {
+        <a [routerLink]="item.path" routerLinkActive="nav-active" class="nav-item" [title]="i18n.t(item.hintKey)">
+          <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" [attr.d]="item.icon"/></svg>
+          <span class="nav-label">{{ i18n.t(item.labelKey) }}</span>
+        </a>
+      }
+      <button type="button" class="nav-item w-full text-left cursor-pointer" (click)="openHelp()" [title]="i18n.t('help.title')">
+        <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span class="nav-label">{{ i18n.t('help.title') }}</span>
+      </button>
+    </nav>
+
+    <!-- Sidebar Bottom: Sign Out -->
+    <div class="sidebar-footer">
+      <button (click)="signOut()" class="signout-btn" [title]="i18n.t('signout.button')">
+        <svg class="signout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+        </svg>
+        <span class="signout-label">{{ i18n.t('signout.button') }}</span>
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- Phone: tap outside to close the menu -->
+  @if (sidebarOpen()) {
+    <div class="mobile-overlay" (click)="toggleSidebar()"></div>
+  }
+
+  <!-- Main area -->
+  <div class="main-area">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <button class="topbar-toggle-btn group transition-all duration-300 hover:scale-105 cursor-pointer" (click)="toggleCollapse()" [title]="i18n.t('shell.toggle')" [attr.aria-label]="i18n.t('shell.toggle')">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="transition-transform duration-300 ease-in-out" [class.rotate-90]="sidebarCollapsed()">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+
+      <!-- Search -->
+      <div class="topbar-search">
+        <svg class="topbar-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <input type="text" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event); searchOpen.set(true)"
+          (focus)="searchOpen.set(true)" (keydown.enter)="searchEnter()" [placeholder]="i18n.t('shell.search')" [attr.aria-label]="i18n.t('shell.search')" autocomplete="off">
+        @if (searchOpen() && searchQuery().trim()) {
+          <div class="topbar-search-panel">
+            @for (r of searchResults(); track r.key) {
+              <button type="button" (click)="openSearchResult(r)" class="topbar-search-item">
+                <span class="font-black text-slate-800">{{ i18n.t(r.labelKey) }}</span>
+                <span class="text-[11px] font-semibold text-slate-400">{{ i18n.t(r.hintKey) }}</span>
+              </button>
+            } @empty {
+              <p class="px-4 py-3 text-xs font-semibold text-slate-400">{{ i18n.t('shell.search.none', searchQuery()) }}</p>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Right cluster -->
+      <div class="topbar-right">
+
+        <!-- Shop / salon: only for people who work in both -->
+        @if (user().services.length > 1) {
+          <div class="svc-switch" role="group" [attr.aria-label]="i18n.t('service.label')">
+            @for (s of user().services; track s) {
+              <button type="button" class="svc-btn" [class.svc-on]="auth.service() === s" (click)="switchService(s)">{{ i18n.t(serviceNames[s]) }}</button>
+            }
+          </div>
+        }
+
+        <!-- The AI assistant: always labelled, so nobody has to guess what the sparkle is -->
+        <a routerLink="/assistant" routerLinkActive="top-chip--on" class="top-chip top-chip--ai" data-testid="header-ai" [title]="i18n.t('assistant.header.hint')" [attr.aria-label]="i18n.t('nav.assistant')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+          <span>{{ i18n.t('nav.assistant') }}</span>
+        </a>
+
+        <!-- Language -->
+        <button type="button" class="top-chip" (click)="i18n.toggle()" [title]="i18n.t('lang.switch')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/></svg>
+          <span>{{ i18n.lang() === 'sw' ? 'EN' : 'SW' }}</span>
+        </button>
+
+        <!-- Notification bell -->
+        <div class="bell-wrap relative">
+          <button class="bell-btn" [title]="i18n.t('bell.title')" (click)="toggleBell()" [attr.aria-label]="i18n.t('bell.title')">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            @if (unreadCount() > 0) {
+              <span class="bell-badge">{{ unreadCount() > 99 ? '99+' : unreadCount() }}</span>
+            }
+          </button>
+
+          @if (bellOpen()) {
+            <div class="bell-panel">
+              <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                <p class="text-sm font-black text-slate-900">{{ i18n.t('bell.title') }}</p>
+                @if (unreadCount() > 0) {
+                  <button type="button" (click)="markAllRead()" class="text-[11px] font-black text-[#1a2f6e] hover:underline cursor-pointer">{{ i18n.t('bell.readall') }}</button>
+                }
+              </div>
+              <div class="max-h-[420px] overflow-y-auto">
+                @for (n of notifications(); track n.id) {
+                  <button type="button" (click)="openNotification(n)" class="bell-item" [class.bell-item--unread]="!n.read_at">
+                    <span class="bell-dot" [class.bell-dot--on]="!n.read_at"></span>
+                    <span class="min-w-0 flex-1 text-left">
+                      <span class="block text-xs font-black text-slate-900 truncate">{{ n.title }}</span>
+                      <span class="block text-[11px] font-semibold text-slate-500 leading-snug mt-0.5">{{ n.body }}</span>
+                      <span class="block text-[10px] font-bold text-slate-400 mt-1">{{ timeAgo(n.created_at) }}</span>
+                    </span>
+                  </button>
+                } @empty {
+                  <p class="px-4 py-10 text-center text-xs font-semibold text-slate-400">{{ i18n.t('bell.empty') }}</p>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Profile button -->
+        <div class="profile-menu-wrap">
+          <span class="profile-name">{{ user().name }}</span>
+          <button class="profile-btn" (click)="toggleProfile()" [title]="i18n.t('profile.menu')" [attr.aria-label]="i18n.t('profile.menu')">
+            <div class="profile-avatar">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+              </svg>
+            </div>
+          </button>
+
+          @if (profileOpen()) {
+            <div class="profile-dropdown">
+              <div class="pm-list">
+                <button class="pm-item" (click)="openProfile()">
+                  <span class="pm-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></span>
+                  <span class="pm-text"><b>{{ i18n.t('profile.mine') }}</b><small>{{ i18n.t('profile.mine.hint') }}</small></span>
+                  <svg class="pm-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </button>
+                <button class="pm-item" (click)="openHelp()">
+                  <span class="pm-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>
+                  <span class="pm-text"><b>{{ i18n.t('help.title') }}</b><small>{{ i18n.t('help.hint') }}</small></span>
+                  <svg class="pm-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </button>
+              </div>
+              <div class="pm-foot">
+                <button class="pm-logout" (click)="signOut()">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                  <span>{{ i18n.t('signout.button.short') }}</span>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Content Container -->
+    <main class="page-content">
+      <div class="breadcrumb-strip">
+        <div class="breadcrumb-content">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="breadcrumb-home-icon">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+          <span class="breadcrumb-pipe">|</span>
+          <span class="breadcrumb-parent">{{ user().business || appName }}</span>
+          <span class="breadcrumb-sep">&gt;</span>
+          <span class="breadcrumb-active">{{ breadcrumb() }}</span>
+        </div>
+        <span class="breadcrumb-date">{{ today() }}</span>
+      </div>
+
+      @if (planBanner(); as banner) {
+        <div class="plan-banner" [class.plan-banner--bad]="banner.tone === 'bad'" role="status" data-testid="plan-banner">{{ banner.text }}@if (payPhone()) { <b> {{ payPhone() }}</b> }</div>
+      }
+
+      <div class="p-8 page-body">
+        <router-outlet />
+      </div>
+    </main>
+
+    <footer class="app-footer">
+      <span>COPYRIGHT &copy; 2026 3inone. {{ i18n.t('footer.rights') }}</span>
+    </footer>
+  </div>
+</div>
+
+<!-- The business's plan has ended and the server holds it back until it pays: nothing else is usable meanwhile -->
+@if (blocked()) {
+  <div class="pay-cover" role="alertdialog" aria-modal="true" data-testid="pay-cover">
+    <div class="pay-card">
+      <div class="pay-icon"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+      <h2 class="pay-title">{{ i18n.t('sub.cover.title') }}</h2>
+      <p class="pay-text">{{ i18n.t('sub.cover.message', user().business || appName) }}</p>
+      @if (payPhone()) { <p class="pay-phone" data-testid="pay-phone">{{ i18n.t('sub.cover.phone') }}: <b>{{ payPhone() }}</b></p> }
+      @if (stillUnpaid()) { <p class="pay-still" role="status">{{ i18n.t('sub.cover.still') }}</p> }
+      <button type="button" class="btn-primary pay-btn" (click)="recheckPlan(true)" [disabled]="checking()" data-testid="pay-recheck">{{ checking() ? i18n.t('common.loading') : i18n.t('sub.cover.paid') }}</button>
+      <button type="button" class="pay-out" (click)="signOut()">{{ i18n.t('signout.button.short') }}</button>
+    </div>
+  </div>
+}
+
+<!-- Floating messages -->
+<div class="toast-container" aria-live="polite">
+  @for (toast of toastService.toasts(); track toast.id) {
+    <div class="toast-item" [class]="'toast-item-' + toast.type" role="status">
+      <span class="toast-icon-bg">
+        @switch (toast.type) {
+          @case ('success') { <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> }
+          @case ('error') { <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg> }
+          @case ('warning') { <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"/></svg> }
+          @default { <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> }
+        }
+      </span>
+      <div class="toast-body">
+        <p class="toast-title">{{ toast.title }}</p>
+        <p class="toast-message">{{ toast.message }}</p>
+      </div>
+      <button type="button" class="toast-close" (click)="toastService.dismiss(toast.id)" [attr.aria-label]="i18n.t('common.close')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+  }
+</div>
+
+<!-- My profile -->
+<app-modal-dialog [show]="showProfile()" [eyebrow]="i18n.t('profile.eyebrow')" [title]="i18n.t('profile.mine')" size="sm" (close)="showProfile.set(false)">
+  <div slot="body" class="space-y-4">
+    <div class="flex items-center gap-3 p-3.5 bg-white border border-slate-100" style="border-radius: 12px;">
+      <div class="w-12 h-12 flex items-center justify-center font-black text-sm text-[#1a2f6e] bg-[#f3f5ff] shrink-0" style="border-radius: 12px;">{{ initials() }}</div>
+      <div class="min-w-0">
+        <p class="font-black text-slate-900 text-sm leading-tight truncate">{{ user().name }}</p>
+        <p class="text-[11px] text-slate-500 font-bold uppercase tracking-wide mt-0.5">{{ user().roleLabel }}</p>
+      </div>
+    </div>
+    <dl class="grid grid-cols-3 gap-y-2 text-sm">
+      <dt class="text-slate-400 font-bold text-xs uppercase">{{ i18n.t('login.email') }}</dt><dd class="col-span-2 font-bold text-slate-800 break-all">{{ user().email }}</dd>
+      @if (user().phone) { <dt class="text-slate-400 font-bold text-xs uppercase">{{ i18n.t('login.phone') }}</dt><dd class="col-span-2 font-bold text-slate-800">{{ user().phone }}</dd> }
+      @if (user().business) { <dt class="text-slate-400 font-bold text-xs uppercase">{{ i18n.t('profile.business') }}</dt><dd class="col-span-2 font-bold text-slate-800">{{ user().business }}</dd> }
+      <dt class="text-slate-400 font-bold text-xs uppercase">{{ i18n.t('service.label') }}</dt>
+      <dd class="col-span-2 font-bold text-slate-800">
+        @for (s of user().services; track s) { <span class="mr-2">{{ i18n.t(serviceNames[s]) }}</span> } @empty { - }
+      </dd>
+    </dl>
+    <div>
+      <p class="label-eyebrow mb-2">{{ i18n.t('profile.rights') }}</p>
+      <ul class="space-y-1.5">
+        @for (r of rightsInWords(); track r) {
+          <li class="flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>{{ r }}
+          </li>
+        } @empty {
+          <li class="text-sm text-slate-500">{{ i18n.t('profile.rights.none') }}</li>
+        }
+      </ul>
+    </div>
+  </div>
+  <div slot="footer"><button type="button" class="btn-primary" (click)="showProfile.set(false)">{{ i18n.t('common.close') }}</button></div>
+</app-modal-dialog>
+
+<!-- Help: written for someone new to computers -->
+<app-modal-dialog [show]="showHelp()" [eyebrow]="i18n.t('help.eyebrow')" [title]="i18n.t('help.title')" size="md" variant="teal" (close)="showHelp.set(false)">
+  <div slot="body" class="space-y-4 text-sm text-slate-700">
+    <p class="font-semibold">{{ i18n.t('help.intro') }}</p>
+    <ol class="space-y-3">
+      <li class="flex gap-3"><span class="help-step">1</span><span>{{ i18n.t('help.step.menu') }}</span></li>
+      <li class="flex gap-3"><span class="help-step">2</span><span>{{ i18n.t('help.step.click') }}</span></li>
+      <li class="flex gap-3"><span class="help-step">3</span><span>{{ i18n.t('help.step.save') }}</span></li>
+      <li class="flex gap-3"><span class="help-step">4</span><span>{{ i18n.t('help.step.lang') }}</span></li>
+      <li class="flex gap-3"><span class="help-step">5</span><span>{{ i18n.t('help.step.out') }}</span></li>
+    </ol>
+    <p class="rounded-lg bg-slate-50 border border-slate-200 p-3 text-[13px]">{{ i18n.t('help.nothing.lost') }}</p>
+  </div>
+  <div slot="footer"><button type="button" class="btn-primary" (click)="showHelp.set(false)">{{ i18n.t('help.gotit') }}</button></div>
+</app-modal-dialog>
+<style>
+  .plan-banner { margin: 0 32px; padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+  .plan-banner--bad { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+  .pay-cover { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(15,31,82,.92); backdrop-filter: blur(6px); }
+  .pay-card { width: 100%; max-width: 440px; background: #fff; border-radius: 18px; padding: 32px 28px; text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,.4); }
+  .pay-icon { width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 18px; display: flex; align-items: center; justify-content: center; background: #eef2ff; color: #1a2f6e; }
+  .pay-title { font-size: 20px; font-weight: 900; color: #0f172a; }
+  .pay-text { margin-top: 8px; font-size: 14px; color: #475569; line-height: 1.5; }
+  .pay-phone { margin-top: 14px; font-size: 15px; color: #1a2f6e; }
+  .pay-still { margin-top: 12px; font-size: 13px; font-weight: 700; color: #b45309; }
+  .pay-btn { width: 100%; margin-top: 20px; padding: 13px; font-size: 14px; }
+  .pay-out { margin-top: 12px; font-size: 12px; font-weight: 800; color: #64748b; cursor: pointer; }
+  .svc-switch { display: inline-flex; padding: 3px; border-radius: 10px; background: #eef2ff; border: 1px solid #dbe4ff; }
+  .svc-btn { padding: 6px 14px; border-radius: 8px; font-weight: 800; font-size: 12px; color: #475a8f; cursor: pointer; }
+  .svc-btn.svc-on { background: #1a2f6e; color: #fff; box-shadow: 0 2px 6px rgba(26,47,110,.3); }
+  .top-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 10px; font-weight: 800; font-size: 12px; color: #1a2f6e; background: #f3f5ff; border: 1px solid #dbe4ff; cursor: pointer; }
+  .top-chip:hover { background: #e6ebff; }
+  .top-chip--ai { color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b5bdb); border-color: #1a2f6e; text-decoration: none; }
+  .top-chip--ai:hover, .top-chip--on { background: linear-gradient(135deg, #14255a, #2f4bc4); }
+  .help-step { flex: none; width: 26px; height: 26px; border-radius: 99px; display: inline-flex; align-items: center; justify-content: center; background: #1a2f6e; color: #fff; font-weight: 900; font-size: 12px; }
+  .breadcrumb-strip { justify-content: space-between; }
+  .breadcrumb-date { font-size: 12px; font-weight: 700; color: #64748b; padding-right: 8px; }
+  @media (max-width: 720px) { .breadcrumb-date { display: none; } }
+</style>
+<style>
+  .shell-wrap {
+    --navy:        #1a2f6e;
+    --navy-dark:   #0f1f52;
+    --sidebar-w:   272px;
+    --sidebar-col: 76px;
+    --topbar-h:    56px;
+    --font:        'Nunito', sans-serif;
+  }
+
+  /* Shell Wrap */
+  .shell-wrap {
+    font-family: var(--font);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    background: #f8fafc;
+  }
+
+  /* ─── SIDEBAR ─────────────────── */
+  .sidebar {
+    background: #ffffff;
+    border-right: 1px solid #e4e9f5;
+    box-shadow: 1px 0 12px rgba(26, 47, 110, 0.04);
+    width: var(--sidebar-w);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    position: relative;
+    z-index: 50;
+    will-change: width;
+  }
+  .sidebar--collapsed { width: var(--sidebar-col); }
+  /* a thin stripe in the colours of the hospital crest (navy, red, yellow), one stripe across the whole top: sidebar and topbar */
+  .shell-wrap { position: relative; }
+  @keyframes crest-stripe { from { background-position-x: 0; } to { background-position-x: 600px; } }
+  @media (prefers-reduced-motion: reduce) { .shell-wrap::before { animation: none; } }
+  .shell-wrap::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #1a2f6e 0, #1a2f6e 300px, #e11d2e 300px, #e11d2e 450px, #f5b800 450px, #f5b800 600px);
+    background-size: 600px 100%;
+    animation: crest-stripe 9s linear infinite;
+    z-index: 200;
+    pointer-events: none;
+  }
+
+  @media (max-width: 1023px) {
+    .sidebar {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      transform: translateX(-100%);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .sidebar--open { transform: translateX(0); }
+  }
+
+  .mobile-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(0,0,0,0.45);
+    display: none;
+  }
+  @media (max-width: 1023px) {
+    .mobile-overlay { display: block; }
+  }
+
+  /* Logo */
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 20px;
+    box-sizing: border-box;
+    border-bottom: 1px solid #e4e9f5;
+    flex-shrink: 0;
+    overflow: hidden;
+    height: var(--topbar-h);
+  }
+  .sidebar-logo-img {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    object-fit: contain;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+  }
+  .sidebar--collapsed .sidebar-logo-img {
+    transform: scale(1.08);
+  }
+  .sidebar-logo-text {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    white-space: nowrap;
+    opacity: 1;
+    max-width: 200px;
+    transition: opacity 0.25s ease, max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .sidebar--collapsed .sidebar-logo-text {
+    opacity: 0;
+    max-width: 0;
+    pointer-events: none;
+  }
+  .sidebar-logo-name {
+    color: #1a2f6e;
+    font-size: 16px;
+    font-weight: 900;
+  }
+  .sidebar-logo-sub {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* Nav */
+  .sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .nav-group-title {
+    margin: 14px 14px 4px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    white-space: nowrap;
+  }
+  .sidebar--collapsed .nav-group-title { visibility: hidden; height: 6px; margin: 6px 0; overflow: hidden; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 16px;
+    border-radius: 14px;
+    color: #475569;
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 700;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .nav-item:hover {
+    border-radius: 14px;
+    background: #eef2ff;
+    color: #1a2f6e;
+    transform: translateX(2px);
+  }
+  /* Active Pill Style */
+  .nav-item.nav-active {
+    border-radius: 14px;
+    background: #1a2f6e;
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(26, 47, 110, 0.22);
+  }
+  .nav-icon {
+    width: 19px;
+    height: 19px;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+  }
+  .nav-item:hover .nav-icon {
+    transform: scale(1.1);
+  }
+  .nav-label {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 200px;
+    opacity: 1;
+    transition: opacity 0.25s ease, max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .sidebar--collapsed .nav-label {
+    opacity: 0;
+    max-width: 0;
+    pointer-events: none;
+  }
+
+  /* Sidebar Footer Signout */
+  .sidebar-footer {
+    padding: 16px;
+    border-top: 1px solid #eef2f8;
+    flex-shrink: 0;
+  }
+  .signout-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.15s;
+    width: 100%;
+  }
+  .signout-btn:hover {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+  .signout-icon { width: 18px; height: 18px; flex-shrink: 0; }
+  .sidebar--collapsed .signout-label { opacity: 0; width: 0; display: none; }
+
+  /* ─── MAIN AREA ─────────────────────────────── */
+  .main-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  /* ─── TOPBAR (Full Width, Matching Screenshot Spacing) ─── */
+  .topbar {
+    width: 100%;
+    height: var(--topbar-h);
+    background: #ffffff;
+    box-sizing: border-box;
+    border-bottom: 1px solid #e4e9f5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 50;
+  }
+
+  /* Rounded square toggle button (Deep Navy) */
+  .topbar-toggle-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #1a2f6e;
+    color: #ffffff;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.15s;
+    box-shadow: 0 3px 10px rgba(26,47,110,0.25);
+  }
+  .topbar-toggle-btn:hover {
+    background: #253f9a;
+    transform: scale(1.02);
+  }
+
+  .topbar-search {
+    position: relative;
+    flex: 1;
+    max-width: 520px;
+    margin: 0 28px;
+  }
+  .topbar-search input {
+    width: 100%;
+    height: 38px;
+    padding: 0 16px 0 44px;
+    background: #f1f5f9;
+    border: 1.5px solid transparent;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .topbar-search input:focus { background: #ffffff; border-color: #1a2f6e; }
+  .topbar-search-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+  }
+  .topbar-search-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 18px 40px -12px rgba(15, 23, 42, 0.25);
+    min-width: 280px;
+    overflow: hidden;
+    z-index: 80;
+  }
+  .topbar-search-item {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    padding: 10px 16px;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .topbar-search-item:last-child { border-bottom: 0; }
+  .topbar-search-item:hover { background: #eef2ff; }
+  @media (max-width: 767px) {
+    .topbar-search { margin: 0 10px; }
+  }
+
+  .bell-panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: -10px;
+    width: 340px;
+    max-width: calc(100vw - 24px);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 18px 40px -12px rgba(15, 23, 42, 0.25);
+    overflow: hidden;
+    z-index: 90;
+  }
+  @media (max-width: 640px) {
+    .bell-panel { position: fixed; top: 76px; left: 12px; right: 12px; width: auto; max-width: none; }
+  }
+  .bell-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 16px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+  }
+  .bell-item:hover { background: #f5f7ff; }
+  .bell-item--unread { background: #fafbff; }
+  .bell-dot { width: 8px; height: 8px; margin-top: 5px; flex-shrink: 0; border-radius: 99px; background: transparent; }
+  .bell-dot--on { background: #3b61e2; }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  /* Bell Button */
+  .bell-btn {
+    position: relative;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    padding: 6px;
+    border-radius: 8px;
+    transition: color 0.15s;
+  }
+  .bell-btn:hover { color: #1a2f6e; }
+  .bell-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 15px;
+    height: 15px;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 8.5px;
+    font-weight: 800;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid #ffffff;
+  }
+
+  /* Profile Button (Full name + Avatar bubble) */
+  .profile-menu-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .profile-btn {
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    transition: background 0.15s;
+  }
+  .profile-btn:hover { background: #f1f5f9; }
+  .profile-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: #1e293b;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .profile-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #1a2f6e;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Profile menu */
+  .profile-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 10px);
+    width: 300px;
+    max-width: calc(100vw - 24px);
+    background: #fcfdff;
+    border: 1px solid #e6eaf5;
+    border-radius: 16px;
+    box-shadow: 0 22px 48px -14px rgba(26, 47, 110, 0.28);
+    overflow: hidden;
+    z-index: 200;
+    animation: dropdown-in 0.16s ease;
+  }
+  @keyframes dropdown-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .pm-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 16px 14px;
+    background: linear-gradient(180deg, #f4f6ff 0%, #fcfdff 100%);
+    border-bottom: 1px solid #eef1fa;
+  }
+  .pm-avatar {
+    width: 46px;
+    height: 46px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 99px;
+    background: #ffffff;
+    border: 1px solid #dfe5f7;
+    color: #1a2f6e;
+    font-weight: 900;
+    font-size: 15px;
+  }
+  .pm-name { font-size: 13.5px; font-weight: 800; color: #1e293b; line-height: 1.2; }
+  .pm-role { font-size: 10.5px; font-weight: 800; color: #3b61e2; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 3px; }
+  .pm-mail { font-size: 11px; font-weight: 600; color: #94a3b8; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pm-notice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: calc(100% - 24px);
+    margin: 10px 12px 0;
+    padding: 9px 12px;
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 800;
+    color: #1a2f6e;
+    text-align: left;
+    background: #f3f5ff;
+    border: 1px dashed #c7d2fe;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .pm-notice-dot { width: 7px; height: 7px; flex-shrink: 0; border-radius: 99px; background: #3b61e2; }
+  .pin-input {
+    width: 100%;
+    height: 42px;
+    padding: 0 14px;
+    background: #fafbff;
+    border: 1.5px solid #e2e8f5;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: #1e293b;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .pin-input::placeholder { letter-spacing: 0; font-weight: 600; font-size: 12px; color: #a8b3c7; }
+  .pin-input:focus { background: #ffffff; border-color: #1a2f6e; }
+  .pm-outline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 42px;
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #1a2f6e;
+    background: #ffffff;
+    border: 1.5px solid #c7d2fe;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .pm-outline:hover { background: #f3f5ff; border-color: #1a2f6e; }
+  .pm-list { padding: 8px; }
+  .pm-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: 0;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: left;
+    font-family: var(--font);
+    transition: background 0.12s;
+  }
+  .pm-item:hover { background: #f3f5ff; }
+  .pm-icon {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: #f1f4fd;
+    color: #1a2f6e;
+  }
+  .pm-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .pm-text b { font-size: 12.5px; font-weight: 800; color: #1e293b; }
+  .pm-text small { font-size: 11px; font-weight: 600; color: #94a3b8; margin-top: 1px; }
+  .pm-chevron { color: #cbd5e1; flex-shrink: 0; }
+  .pm-foot { padding: 8px; border-top: 1px solid #eef1fa; background: #fafbff; }
+  .pm-logout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px;
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 800;
+    color: #dc2626;
+    background: transparent;
+    border: 0;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .pm-logout:hover { background: #fef2f2; }
+
+  /* ─── BREADCRUMB STRIP (Matching Screenshot Style) ─── */
+  .breadcrumb-strip {
+    background: #f8fafc;
+    border-bottom: 1px solid #eef2f6;
+    padding: 12px 32px;
+    flex-shrink: 0;
+  }
+  .breadcrumb-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+  }
+  .breadcrumb-home-icon {
+    color: #475569;
+  }
+  .breadcrumb-pipe {
+    color: #cbd5e1;
+    font-weight: 400;
+  }
+  .breadcrumb-parent {
+    color: #475569;
+    font-weight: 700;
+  }
+  .breadcrumb-sep {
+    color: #94a3b8;
+    font-weight: 900;
+  }
+  .breadcrumb-active {
+    color: #0f172a;
+    font-weight: 800;
+  }
+
+  /* Page Content */
+  .page-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    background: #f8fafc;
+  }
+
+  /* A slim footer fixed to the bottom of the window on every page; only the page above it scrolls */
+  .app-footer {
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px 10px;
+    padding: 9px 16px;
+    background: #1a2f6e;
+    border-top: 1px solid #0f1f52;
+    color: #dbe4fb;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .app-footer-sep { color: #8fa3d9; }
+
+  /* Red numbers on the menu entries that have something waiting for the user */
+  .nav-item { position: relative; }
+  .nav-badge {
+    margin-left: auto;
+    flex-shrink: 0;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 99px;
+    background: #e11d2e;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 20px;
+    text-align: center;
+    box-shadow: 0 0 0 2px #ffffff;
+    animation: navBadgePulse 2.4s ease-in-out infinite;
+  }
+  .nav-item.nav-active .nav-badge { box-shadow: 0 0 0 2px #1a2f6e; }
+  @keyframes navBadgePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+  }
+  /* with the menu folded away only a red dot remains */
+  .sidebar--collapsed .nav-badge {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    min-width: 10px;
+    width: 10px;
+    height: 10px;
+    padding: 0;
+    font-size: 0;
+    line-height: 0;
+  }
+  @media (prefers-reduced-motion: reduce) { .nav-badge { animation: none; } }
+
+  /* Bottom Navy Footer Bar */
+  .bottom-footer {
+    background: #1a2f6e;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-align: center;
+    padding: 12px 16px;
+    flex-shrink: 0;
+  }
+
+  /* Toast Host */
+  .toast-host {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+  }
+  .toast-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    min-width: 290px;
+    max-width: 380px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+    pointer-events: all;
+    animation: toast-slide-in 0.3s cubic-bezier(.4,0,.2,1);
+  }
+  @keyframes toast-slide-in {
+    from { opacity: 0; transform: translateX(40px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .toast-success { background: #eff4ff; border: 1px solid #bfd1ff; color: #1a2f6e; }
+  .toast-error   { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+  .toast-warning { background: #f5f7fb; border: 1px solid #d3dcee; color: #2f3a55; }
+  .toast-info    { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; }
+  .toast-icon { width: 18px; height: 18px; flex-shrink: 0; }
+  .toast-msg  { flex: 1; }
+  .toast-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: currentColor;
+    opacity: 0.5;
+    display: flex;
+    align-items: center;
+    padding: 2px;
+    border-radius: 4px;
+    transition: opacity 0.15s;
+  }
+  .toast-close:hover { opacity: 1; }
+</style>

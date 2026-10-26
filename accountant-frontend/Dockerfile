@@ -9,7 +9,7 @@ COPY package.json package-lock.json .npmrc ./
 RUN npm ci --no-audit --no-fund
 
 COPY . .
-# Where the app lives in the address: "/" on its own port, "/app/" when it shares a domain with the API.
+# Where the app lives in the address: "/" on its own port, "/web/" when it shares a domain with the API.
 ARG BASE_HREF=/
 RUN npx ng build --base-href "${BASE_HREF}"
 

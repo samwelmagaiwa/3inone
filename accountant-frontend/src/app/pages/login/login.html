@@ -1,60 +1,764 @@
-<main class="min-h-dvh grid place-items-center bg-gradient-to-br from-brand-900 to-brand-700 p-4">
-  <form
-    [formGroup]="form"
-    (ngSubmit)="submit()"
-    class="w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl"
-    novalidate
-  >
-    <h1 class="text-2xl font-extrabold text-brand-800">{{ appName }}</h1>
-    <p class="mt-1 mb-6 text-sm text-slate-500">Sign in with the account you use in the mobile app.</p>
+<!-- Login Page -->
+<div class="login-page">
 
-    <label class="block text-sm font-semibold text-slate-700" for="email">Email</label>
-    <input
-      id="email"
-      type="email"
-      formControlName="email"
-      autocomplete="username"
-      class="mt-1 mb-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-    />
-    @if (form.controls.email.touched && form.controls.email.invalid) {
-      <p class="mb-2 text-xs text-red-600">Enter a valid email.</p>
+  <!-- Background -->
+  <div class="login-bg" style="background-image: url('login-bg.svg');"></div>
+  <div class="login-overlay"></div>
+
+  <!-- Top-Left: Logo + Brand -->
+  <div class="login-brand">
+    <img src="logo.svg" alt="" class="brand-logo">
+    <div class="brand-text">
+      <span class="brand-name">{{ appName }}</span>
+      <span class="brand-sub">{{ i18n.t('login.brand.sub') }}</span>
+    </div>
+  </div>
+
+  <!-- Language: one tap, always in reach -->
+  <button type="button" class="lang-toggle" (click)="i18n.toggle()" [attr.aria-label]="i18n.t('lang.switch')">
+    <span [class.lang-on]="i18n.lang() === 'sw'">Kiswahili</span>
+    <span class="lang-sep">|</span>
+    <span [class.lang-on]="i18n.lang() === 'en'">English</span>
+  </button>
+
+  <!-- Card -->
+  <div class="login-center">
+    <div class="login-card">
+
+      <!-- LEFT PANEL -->
+      <div class="card-left">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+
+        <div class="left-content">
+          <div class="bed-icon-wrap">
+            <svg class="bed-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="8" y="38" width="10" height="16" rx="2" fill="rgba(255,255,255,0.25)" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/>
+              <rect x="23" y="30" width="10" height="24" rx="2" fill="rgba(255,255,255,0.32)" stroke="rgba(255,255,255,0.55)" stroke-width="1.2"/>
+              <rect x="38" y="22" width="10" height="32" rx="2" fill="rgba(147,197,253,0.35)" stroke="rgba(147,197,253,0.6)" stroke-width="1.2"/>
+              <rect x="6" y="54" width="52" height="3" rx="1.5" fill="rgba(255,255,255,0.3)"/>
+              <circle cx="51" cy="14" r="8" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/>
+              <text x="51" y="18" text-anchor="middle" font-size="11" font-weight="800" fill="rgba(255,255,255,0.8)" font-family="sans-serif">$</text>
+              <polyline points="8,30 20,20 30,24 44,10" stroke="rgba(147,197,253,0.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </div>
+
+          <div class="left-tag">{{ i18n.t('login.tag') }}</div>
+          <h2 class="left-title">{{ i18n.t('login.title.1') }}<br>{{ i18n.t('login.title.2') }}</h2>
+          <p class="left-desc">{{ i18n.t('login.desc') }}</p>
+
+          <div class="feature-pills">
+            <span class="pill">{{ i18n.t('nav.debts') }}</span>
+            <span class="pill">{{ i18n.t('nav.expenses') }}</span>
+            <span class="pill">{{ i18n.t('nav.sales') }}</span>
+            <span class="pill">{{ i18n.t('nav.dashboard') }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL: Form -->
+      <div class="card-right">
+
+        <!-- ── LOGIN VIEW ── -->
+        @if (view() === 'login') {
+          <h1 class="form-title">{{ i18n.t('login.heading') }}</h1>
+          <p class="form-subtitle">{{ i18n.t('login.subheading') }}</p>
+
+          <form (ngSubmit)="onLogin()" class="login-form" novalidate>
+
+            <!-- Email -->
+            <div class="field-wrap">
+              <input id="email" name="email" type="email" [(ngModel)]="email" placeholder=" " required autocomplete="username" class="field-input field-input--icon">
+              <label for="email" class="field-label">{{ i18n.t('login.email') }}</label>
+              <span class="field-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="2" y="4" width="20" height="16" rx="3" stroke="currentColor" stroke-width="1.6" fill="currentColor" opacity="0.06"/>
+                  <path d="M2 8l10 7 10-7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+            </div>
+
+            <!-- Phone -->
+            <div class="field-wrap">
+              <input id="phone" name="phone" type="tel" [(ngModel)]="phone" placeholder=" " required autocomplete="tel" class="field-input field-input--icon">
+              <label for="phone" class="field-label">{{ i18n.t('login.phone') }}</label>
+              <span class="field-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="7" y="2" width="10" height="20" rx="2.5" stroke="currentColor" stroke-width="1.6" fill="currentColor" opacity="0.06"/>
+                  <path d="M11 18h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+              </span>
+            </div>
+            <p class="field-help">{{ i18n.t('login.phone.help') }}</p>
+
+            <!-- Password -->
+            <div class="field-wrap">
+              <input id="password" name="password" [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password" placeholder=" " required autocomplete="current-password" class="field-input field-input--icon">
+              <label for="password" class="field-label">{{ i18n.t('login.password') }}</label>
+              <button type="button" (click)="togglePassword()" class="eye-btn" tabindex="-1" [title]="i18n.t(showPassword() ? 'login.hide' : 'login.show')">
+                @if (showPassword()) {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 12C1 12 5 4 12 4C19 4 23 12 23 12C23 12 19 20 12 20C5 20 1 12 1 12Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" fill="currentColor" opacity="0.12"/>
+                    <circle cx="12" cy="12" r="3.2" fill="currentColor" opacity="0.9"/>
+                    <circle cx="13.1" cy="10.9" r="1" fill="white" opacity="0.7"/>
+                  </svg>
+                } @else {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.94 17.94A10.07 10.07 0 0112 20C5 20 1 12 1 12a18.45 18.45 0 015.06-5.94" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    <path d="M14.12 14.12A3 3 0 019.88 9.88" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                    <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                  </svg>
+                }
+              </button>
+            </div>
+
+            <!-- Forgot -->
+            <div class="form-row">
+              <span></span>
+              <a href="javascript:void(0)" (click)="showForgot()" class="forgot-link">{{ i18n.t('login.forgot') }}</a>
+            </div>
+
+            @if (error()) {
+              <div class="form-error" role="alert">{{ error() }}</div>
+            }
+
+            <button type="submit" [disabled]="loading()" class="login-btn" id="loginSubmitBtn">
+              @if (loading()) {
+                <span class="btn-loading">
+                  <svg class="spin-icon" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                  </svg>
+                  {{ i18n.t('login.signing') }}
+                </span>
+              } @else {
+                <span class="btn-text">
+                  {{ i18n.t('login.submit') }}
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                  </svg>
+                </span>
+              }
+            </button>
+          </form>
+        }
+
+        <!-- ── FORGOT PASSWORD VIEW ── -->
+        @if (view() === 'forgot') {
+          <h1 class="form-title">{{ i18n.t('forgot.heading') }}</h1>
+          <p class="form-subtitle">{{ i18n.t('forgot.sub') }}</p>
+
+          <form (ngSubmit)="onForgot()" class="login-form" novalidate>
+            <div class="field-wrap">
+              <input id="forgotEmail" name="forgotEmail" type="email" [(ngModel)]="email" placeholder=" " required autocomplete="username" class="field-input field-input--icon">
+              <label for="forgotEmail" class="field-label">{{ i18n.t('login.email') }}</label>
+            </div>
+            <div class="field-wrap">
+              <input id="forgotPhone" name="forgotPhone" type="tel" [(ngModel)]="phone" placeholder=" " required autocomplete="tel" class="field-input field-input--icon">
+              <label for="forgotPhone" class="field-label">{{ i18n.t('login.phone') }}</label>
+            </div>
+
+            @if (error()) {
+              <div class="form-error" role="alert">{{ error() }}</div>
+            }
+
+            <button type="submit" [disabled]="loading()" class="login-btn" id="forgotSubmitBtn">
+              <span class="btn-text">{{ loading() ? i18n.t('forgot.sending') : i18n.t('forgot.send') }}</span>
+            </button>
+            <button type="button" (click)="showLogin()" class="back-btn">← {{ i18n.t('forgot.back') }}</button>
+          </form>
+        }
+
+        <!-- ── CODE SENT ── -->
+        @if (view() === 'forgot-sent') {
+          <div class="sent-confirm">
+            <div class="sent-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" fill="rgba(26,47,110,0.08)" stroke="#1a2f6e" stroke-width="1.5"/>
+                <path d="M8 12l3 3 5-5" stroke="#1a2f6e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h2 class="sent-title">{{ i18n.t('forgot.sent.title') }}</h2>
+            <p class="sent-desc">{{ i18n.t('forgot.sent.desc') }}</p>
+            <button type="button" (click)="view.set('reset')" class="login-btn" style="margin-top: 12px;">
+              <span class="btn-text">{{ i18n.t('forgot.sent.next') }}</span>
+            </button>
+            <button type="button" (click)="showLogin()" class="back-btn">← {{ i18n.t('forgot.back') }}</button>
+          </div>
+        }
+
+        <!-- ── NEW PASSWORD ── -->
+        @if (view() === 'reset') {
+          <h1 class="form-title">{{ i18n.t('reset.heading') }}</h1>
+          <p class="form-subtitle">{{ i18n.t('reset.sub') }}</p>
+
+          <form (ngSubmit)="onReset()" class="login-form" novalidate>
+            <div class="field-wrap">
+              <input id="resetEmail" name="resetEmail" type="email" [(ngModel)]="email" placeholder=" " required class="field-input field-input--icon">
+              <label for="resetEmail" class="field-label">{{ i18n.t('login.email') }}</label>
+            </div>
+            <div class="field-wrap">
+              <input id="resetCode" name="resetCode" type="text" inputmode="numeric" maxlength="6" [(ngModel)]="code" placeholder=" " required autocomplete="one-time-code" class="field-input field-input--icon">
+              <label for="resetCode" class="field-label">{{ i18n.t('reset.code') }}</label>
+            </div>
+            <div class="field-wrap">
+              <input id="newPassword" name="newPassword" type="password" [(ngModel)]="newPassword" placeholder=" " required autocomplete="new-password" class="field-input field-input--icon">
+              <label for="newPassword" class="field-label">{{ i18n.t('reset.new') }}</label>
+            </div>
+            <div class="field-wrap">
+              <input id="confirmNewPassword" name="confirmNewPassword" type="password" [(ngModel)]="confirmPassword" placeholder=" " required autocomplete="new-password" class="field-input field-input--icon">
+              <label for="confirmNewPassword" class="field-label">{{ i18n.t('reset.confirm') }}</label>
+            </div>
+            <p class="field-help">{{ i18n.t('reset.help') }}</p>
+
+            @if (error()) {
+              <div class="form-error" role="alert">{{ error() }}</div>
+            }
+
+            <button type="submit" [disabled]="loading()" class="login-btn" id="resetSubmitBtn">
+              <span class="btn-text">{{ loading() ? i18n.t('reset.saving') : i18n.t('reset.save') }}</span>
+            </button>
+            <button type="button" (click)="showLogin()" class="back-btn">← {{ i18n.t('forgot.back') }}</button>
+          </form>
+        }
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="login-footer">
+    <p>COPYRIGHT &copy; 2026 3inone. {{ i18n.t('footer.rights') }}</p>
+  </div>
+
+  <!-- Floating messages -->
+  <div class="toast-container" aria-live="polite">
+    @for (toast of toastService.toasts(); track toast.id) {
+      <div class="toast-item" [class]="'toast-item-' + toast.type" role="status">
+        <span class="toast-icon-bg">
+          @switch (toast.type) {
+            @case ('success') { <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> }
+            @case ('error') { <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg> }
+            @default { <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> }
+          }
+        </span>
+        <div class="toast-body">
+          <p class="toast-title">{{ toast.title }}</p>
+          <p class="toast-message">{{ toast.message }}</p>
+        </div>
+        <button type="button" class="toast-close" (click)="toastService.dismiss(toast.id)" [attr.aria-label]="i18n.t('common.close')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
     }
+  </div>
 
-    <label class="mt-3 block text-sm font-semibold text-slate-700" for="phone">Phone number</label>
-    <input
-      id="phone"
-      type="tel"
-      formControlName="phone"
-      placeholder="Phone number on your account"
-      autocomplete="tel"
-      class="mt-1 mb-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-    />
-    @if (form.controls.phone.touched && form.controls.phone.invalid) {
-      <p class="mb-2 text-xs text-red-600">Enter the phone number saved on your account.</p>
-    }
+</div>
+<style>
+  .lang-toggle {
+    position: absolute; top: 22px; right: 28px; z-index: 5;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; border-radius: 99px; cursor: pointer;
+    background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.3);
+    color: rgba(255,255,255,0.65); font-weight: 800; font-size: 13px; backdrop-filter: blur(6px);
+  }
+  .lang-toggle:hover { background: rgba(255,255,255,0.22); }
+  .lang-toggle .lang-on { color: #fff; text-decoration: underline; text-underline-offset: 4px; }
+  .lang-toggle .lang-sep { opacity: 0.4; }
+  .field-help { margin: -6px 2px 14px; font-size: 12px; color: #64748b; font-weight: 600; line-height: 1.4; }
+</style>
+<style>
+  /* ───────────────────────── PAGE ───────────────────────── */
+  .login-page {
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
 
-    <label class="mt-3 block text-sm font-semibold text-slate-700" for="password">Password</label>
-    <input
-      id="password"
-      type="password"
-      formControlName="password"
-      autocomplete="current-password"
-      class="mt-1 mb-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-    />
-    @if (form.controls.password.touched && form.controls.password.invalid) {
-      <p class="mb-2 text-xs text-red-600">Enter your password.</p>
-    }
+  /* ── Background ── */
+  .login-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 0;
+  }
+  .login-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(10,22,65,0.72) 0%, rgba(12,30,80,0.55) 100%);
+    z-index: 1;
+  }
 
-    @if (error(); as message) {
-      <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{{ message }}</p>
-    }
+  /* ───────────────── TOP-LEFT BRAND (enlarged) ───────────── */
+  .login-brand {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 20px 32px;
+  }
+  .brand-logo {
+    width: 54px;
+    height: 54px;
+    object-fit: contain;
+    border-radius: 12px;
+    border: 2px solid rgba(255,255,255,0.35);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    flex-shrink: 0;
+  }
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+  }
+  .brand-name {
+    color: #fff;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+  .brand-sub {
+    color: rgba(180, 215, 255, 0.85);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
 
-    <button
-      type="submit"
-      [disabled]="busy()"
-      class="mt-6 w-full rounded-lg bg-brand-800 px-4 py-2.5 font-bold text-white transition hover:bg-brand-700 disabled:opacity-60"
-    >
-      {{ busy() ? 'Signing in…' : 'Sign in' }}
-    </button>
-  </form>
-</main>
+  /* ─────────────── CENTER / CARD LAYOUT ──────────────────── */
+  .login-center {
+    position: relative;
+    z-index: 10;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+  }
+
+  /* Card with strong rounded corners */
+  .login-card {
+    width: 100%;
+    max-width: 960px;
+    min-height: 510px;
+    display: grid;
+    grid-template-columns: 42% 58%;
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+    border: 1.5px solid rgba(255,255,255,0.18);
+  }
+
+  /* ─────────────────── LEFT PANEL ────────────────────────── */
+  .card-left {
+    background: linear-gradient(160deg, #1a2f6e 0%, #0f1f52 100%);
+    padding: 44px 36px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Decorative blobs */
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .blob-1 {
+    width: 260px; height: 260px;
+    background: radial-gradient(circle, rgba(96,165,250,0.12) 0%, transparent 70%);
+    top: -80px; right: -80px;
+  }
+  .blob-2 {
+    width: 180px; height: 180px;
+    background: radial-gradient(circle, rgba(147,197,253,0.08) 0%, transparent 70%);
+    bottom: -40px; left: -40px;
+  }
+
+  .left-content {
+    position: relative;
+    z-index: 2;
+  }
+
+  /* Bed icon */
+  .bed-icon-wrap {
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.14);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .bed-icon {
+    width: 52px;
+    height: 52px;
+  }
+
+  /* Tag */
+  .left-tag {
+    display: inline-block;
+    background: rgba(147,197,253,0.15);
+    border: 1px solid rgba(147,197,253,0.3);
+    color: rgba(147,197,253,0.95);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-radius: 99px;
+    padding: 4px 12px;
+    margin-bottom: 14px;
+  }
+
+  /* Title */
+  .left-title {
+    color: #fff;
+    font-size: 1.75rem;
+    font-weight: 900;
+    line-height: 1.2;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+  }
+
+  /* Desc */
+  .left-desc {
+    color: rgba(186, 215, 255, 0.68);
+    font-size: 12.5px;
+    line-height: 1.7;
+    max-width: 238px;
+    margin: 0 0 28px;
+  }
+
+  /* Feature pills */
+  .feature-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .pill {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.13);
+    color: rgba(200,225,255,0.85);
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 99px;
+    padding: 5px 12px;
+    white-space: nowrap;
+  }
+
+  /* ─────────────────── RIGHT PANEL ───────────────────────── */
+  .card-right {
+    background: #f0f3fc;
+    padding: 48px 46px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .form-title {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #1a2f6e;
+    margin: 0 0 4px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+  .form-subtitle {
+    font-size: 12.5px;
+    color: #94a3b8;
+    font-weight: 500;
+    margin: 0 0 28px;
+  }
+
+  /* ─────────────────── FORM ───────────────────────────────── */
+  .login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Floating label field */
+  .field-wrap {
+    position: relative;
+  }
+  .field-input {
+    width: 100%;
+    background: #fff;
+    border: 1.5px solid #dde1f0;
+    border-radius: 11px;
+    padding: 20px 14px 8px;
+    font-size: 13.5px;
+    font-family: 'Nunito', sans-serif;
+    color: #1e293b;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  /* Extra right padding when there's a field icon */
+  .field-input--icon {
+    padding-right: 52px;
+  }
+  .field-input:focus {
+    border-color: #1a2f6e;
+    box-shadow: 0 0 0 3px rgba(26,47,110,0.08);
+  }
+  /* Right-side field icon — with vertical divider stripe */
+  .field-icon {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #b0bdd6;
+    pointer-events: none;
+    border-left: 1.5px solid #e2e7f3;
+    transition: color 0.2s, border-color 0.2s;
+    border-radius: 0 11px 11px 0;
+  }
+  .field-input:focus ~ .field-icon {
+    color: #1a2f6e;
+    border-left-color: #c5cfe8;
+  }
+
+  /* Floating label — default: vertically centred in the field */
+  .field-label {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 13.5px;
+    color: #94a3b8;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 500;
+    pointer-events: none;
+    transition: top 0.2s ease, transform 0.2s ease, font-size 0.2s ease, color 0.2s ease, background 0.2s ease;
+    padding: 0 4px;
+    background: transparent;
+    white-space: nowrap;
+  }
+
+  /* When focused OR has content: float up to sit ON the top border */
+  .field-input:focus ~ .field-label,
+  .field-input:not(:placeholder-shown) ~ .field-label {
+    top: 0;
+    transform: translateY(-50%);
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #1a2f6e;
+    background: #fff;
+    padding: 0 4px;
+  }
+
+  /* Eye button — with vertical divider stripe */
+  .eye-btn {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 44px;
+    background: none;
+    border: none;
+    border-left: 1.5px solid #e2e7f3;
+    border-radius: 0 11px 11px 0;
+    cursor: pointer;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .eye-btn:hover { color: #475569; }
+  .field-input:focus ~ .eye-btn,
+  .field-wrap:focus-within .eye-btn {
+    border-left-color: #c5cfe8;
+  }
+
+  /* Row: remember + forgot */
+  .form-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: -4px;
+  }
+  .remember-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+  }
+  .remember-check {
+    width: 14px;
+    height: 14px;
+    accent-color: #1a2f6e;
+    cursor: pointer;
+  }
+  .forgot-link {
+    font-size: 11px;
+    font-weight: 700;
+    color: #1a2f6e;
+    text-decoration: none;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .forgot-link:hover { text-decoration: underline; }
+
+  /* Error */
+  .form-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  /* ─────────────── LOGIN BUTTON ──────────────────────────── */
+  .login-btn {
+    width: 100%;
+    padding: 15px;
+    border-radius: 11px;
+    border: none;
+    background: linear-gradient(90deg, #1a2f6e 0%, #2444a8 50%, #1a2f6e 100%);
+    background-size: 200% auto;
+    color: #fff;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 5px 18px rgba(26,47,110,0.40);
+
+    /* Continuous shimmer on the gradient */
+    animation: btn-shimmer 2.8s linear infinite;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+
+  .login-btn:hover:not(:disabled) {
+    box-shadow: 0 7px 24px rgba(26,47,110,0.55);
+    transform: translateY(-1px);
+  }
+
+  .login-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    animation: none;
+  }
+
+  /* Shimmer sweep animation */
+  @keyframes btn-shimmer {
+    0%   { background-position: 200% center; }
+    100% { background-position: -200% center; }
+  }
+
+  /* "Dance" animation triggered on click (added/removed via JS) */
+  .btn-dance {
+    animation: btn-dance 0.55s ease !important;
+  }
+  @keyframes btn-dance {
+    0%   { transform: translateY(0)   rotate(0deg)    scale(1);    }
+    15%  { transform: translateY(-5px) rotate(-3deg)  scale(1.03); }
+    30%  { transform: translateY(-8px) rotate(3deg)   scale(1.04); }
+    45%  { transform: translateY(-5px) rotate(-2deg)  scale(1.03); }
+    60%  { transform: translateY(-3px) rotate(2deg)   scale(1.02); }
+    75%  { transform: translateY(-1px) rotate(-1deg)  scale(1.01); }
+    100% { transform: translateY(0)   rotate(0deg)    scale(1);    }
+  }
+
+  /* Button inner text/icon row */
+  .btn-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .spin-icon {
+    width: 16px;
+    height: 16px;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─────────────── FOOTER ──────────────────────────────────  */
+  .login-footer {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding: 14px;
+  }
+  .login-footer p {
+    color: rgba(255,255,255,0.4);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ── Back button (Forgot flow) ── */
+  .back-btn {
+    background: none;
+    border: 1.5px solid #dde1f0;
+    border-radius: 11px;
+    padding: 12px;
+    width: 100%;
+    font-family: 'Nunito', sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #64748b;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .back-btn:hover { border-color: #1a2f6e; color: #1a2f6e; }
+
+  /* ── Sent confirmation panel ── */
+  .sent-confirm {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    padding: 20px 0;
+  }
+  .sent-icon { margin-bottom: 6px; }
+  .sent-title {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: #1a2f6e;
+    margin: 0;
+  }
+  .sent-desc {
+    font-size: 13px;
+    color: #64748b;
+    line-height: 1.65;
+    max-width: 280px;
+    margin: 0;
+  }
+</style>

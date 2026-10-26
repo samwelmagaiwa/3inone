@@ -5,26 +5,45 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   Advice,
+  AssistantAnswer,
+  AssistantStatus,
+  AssistantTurnOut,
   ApiEnvelope,
   AppNotification,
   Debt,
   DebtKind,
   DebtPayment,
-  DebtsPage,
+  DebtsListing,
   Expense,
   ExpenseSummary,
   MonthlyReport,
   Paged,
   SaleRow,
+  Subscription,
   Target,
 } from './models';
 
 const API = environment.apiUrl;
 
 /** Everything the pages ask of the server, in one place. The same API the mobile app uses; the server decides what each person may see. */
+export interface ExpenseBody {
+  category: string;
+  description: string;
+  amount: number;
+  expense_date: string;
+  is_personal: boolean;
+  supplier?: string | null;
+  payment_method?: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AccountantApi {
   private readonly http = inject(HttpClient);
+
+  // ------------------------------------------------------------------ the business and its plan
+  subscription(): Observable<Subscription> {
+    return this.http.get<ApiEnvelope<Subscription>>(`${API}/business/subscription`).pipe(map((r) => r.data));
+  }
 
   // ------------------------------------------------------------------ the month
   monthlyReport(month: string): Observable<MonthlyReport> {
@@ -36,6 +55,16 @@ export class AccountantApi {
     return this.http.put<ApiEnvelope<Target | null>>(`${API}/inventory/monthly-target`, { month, profit_target: profitTarget }).pipe(map((r) => r.data));
   }
 
+  // ------------------------------------------------------------------ the AI assistant
+  assistantStatus(): Observable<AssistantStatus> {
+    return this.http.get<ApiEnvelope<AssistantStatus>>(`${API}/assistant`).pipe(map((r) => r.data));
+  }
+
+  /** Ask a question. `topic` is the id of a one-tap suggestion: the server then reads the data first and answers faster. */
+  assistantAsk(question: string, lang: 'sw' | 'en', history: AssistantTurnOut[], topic?: string): Observable<AssistantAnswer> {
+    return this.http.post<ApiEnvelope<AssistantAnswer>>(`${API}/assistant`, { question, lang, history, ...(topic ? { topic } : {}) }).pipe(map((r) => r.data));
+  }
+
   advice(month: string, lang: 'sw' | 'en', refresh = false): Observable<Advice> {
     let params = new HttpParams().set('month', month).set('lang', lang);
     if (refresh) params = params.set('refresh', '1');
@@ -43,8 +72,8 @@ export class AccountantApi {
   }
 
   // ------------------------------------------------------------------ debts from before the app
-  debts(kind: DebtKind): Observable<DebtsPage> {
-    return this.http.get<ApiEnvelope<DebtsPage>>(`${API}/inventory/opening-debts`, { params: { kind } }).pipe(map((r) => r.data));
+  debts(kind: DebtKind): Observable<DebtsListing> {
+    return this.http.get<ApiEnvelope<DebtsListing>>(`${API}/inventory/opening-debts`, { params: { kind } }).pipe(map((r) => r.data));
   }
 
   addDebt(body: { kind: DebtKind; name: string; phone?: string; amount: number; started_on?: string; due_on?: string; note?: string }): Observable<void> {
@@ -76,8 +105,23 @@ export class AccountantApi {
     return this.http.get<ApiEnvelope<string[]>>(`${API}/inventory/expenses/categories`).pipe(map((r) => r.data));
   }
 
-  addExpense(body: { category: string; description: string; amount: number; expense_date: string; is_personal: boolean }): Observable<void> {
-    return this.http.post(`${API}/inventory/expenses`, body).pipe(map(() => undefined));
+  addExpense(body: ExpenseBody): Observable<Expense> {
+    return this.http.post<ApiEnvelope<Expense>>(`${API}/inventory/expenses`, body).pipe(map((r) => r.data));
+  }
+
+  updateExpense(id: number, body: ExpenseBody): Observable<Expense> {
+    return this.http.put<ApiEnvelope<Expense>>(`${API}/inventory/expenses/${id}`, body).pipe(map((r) => r.data));
+  }
+
+  /** The owner or a manager decides an expense somebody else recorded. */
+  decideExpense(id: number, decision: 'approve' | 'reject'): Observable<void> {
+    return this.http.post(`${API}/inventory/expenses/${id}/approval`, { decision }).pipe(map(() => undefined));
+  }
+
+  attachReceipt(id: number, photo: File): Observable<void> {
+    const form = new FormData();
+    form.append('photo', photo);
+    return this.http.post(`${API}/inventory/expenses/${id}/receipt`, form).pipe(map(() => undefined));
   }
 
   deleteExpense(id: number): Observable<void> {
@@ -89,6 +133,12 @@ export class AccountantApi {
     let p = new HttpParams();
     for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== '') p = p.set(k, String(v));
     return this.http.get<Paged<SaleRow>>(`${API}/inventory/sales`, { params: p });
+  }
+
+  salesSummary(params: { from?: string; to?: string; status?: string; q?: string }): Observable<{ count: number; total: number; paid: number; debt: number }> {
+    let p = new HttpParams();
+    for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== '') p = p.set(k, String(v));
+    return this.http.get<ApiEnvelope<{ count: number; total: number; paid: number; debt: number }>>(`${API}/inventory/sales/summary`, { params: p }).pipe(map((r) => r.data));
   }
 
   // ------------------------------------------------------------------ the bell

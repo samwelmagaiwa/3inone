@@ -1,4 +1,6 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+
+import { I18nService } from '../../../core/i18n.service';
 
 @Component({
   selector: 'app-modal-dialog',
@@ -11,11 +13,11 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
           <div class="modal-header" [class]="headerVariantClass">
             <div>
               @if (eyebrow) {
-                <p class="text-[10px] font-black uppercase tracking-widest text-blue-200">{{ eyebrow }}</p>
+                <p class="modal-eyebrow">{{ eyebrow }}</p>
               }
-              <h3 class="text-white font-extrabold text-lg tracking-tight mt-0.5">{{ title }}</h3>
+              <h3 class="modal-title">{{ title }}</h3>
             </div>
-            <button (click)="onClose()" class="modal-close-btn" aria-label="Close modal">
+            <button (click)="onClose()" class="modal-close-btn" [attr.aria-label]="i18n.t('common.close')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
@@ -34,6 +36,8 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
   `,
 })
 export class ModalDialogComponent {
+  protected readonly i18n = inject(I18nService);
+
   @Input() show: boolean = false;
   @Input() title: string = '';
   @Input() eyebrow?: string;

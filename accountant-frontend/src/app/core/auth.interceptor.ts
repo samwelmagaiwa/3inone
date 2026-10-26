@@ -30,6 +30,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(authed).pipe(
     catchError((err: HttpErrorResponse) => {
+      // The business's plan ended and the server holds it back until it pays: cover the app once, not a string of errors.
+      if (err.status === 402 && !req.url.endsWith('/auth/login') && (err.error?.errors?.code ?? err.error?.code) === 'subscription_expired') {
+        auth.blocked.set(true);
+      }
       if (err.status === 401 && !req.url.endsWith('/auth/login') && auth.isLoggedIn()) {
         auth.clear();
         toast.warning(i18n.t('session.expired'), i18n.t('session.expired.title'));

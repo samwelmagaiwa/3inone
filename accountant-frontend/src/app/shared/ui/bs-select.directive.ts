@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { NgModel } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { CHECK, CHEVRON, openPopover } from './bs-popover';
+import { uiText } from './ui-text';
 
 /**
  * Restyles every single-choice <select> as a dropdown with a rounded list and a blue selected row.
@@ -76,7 +77,7 @@ export class BsSelectDirective implements AfterViewInit, OnDestroy {
     if (!this.trigger || !this.labelEl) return;
     const opt = select.options[select.selectedIndex];
     const text = opt ? opt.text.trim() : '';
-    this.labelEl.textContent = text || 'Select…';
+    this.labelEl.textContent = text || uiText().select;
     this.labelEl.classList.toggle('is-placeholder', !text || (opt?.value === '' && !!opt));
     this.trigger.disabled = select.disabled;
   };

@@ -1,0 +1,196 @@
+<!-- Expenses -->
+@for (k of [motion.tick()]; track k) {
+<div class="space-y-5 animate-fade-in-up">
+
+  <div class="page-header-card flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="min-w-0">
+      <h1 class="text-slate-900 font-black text-xl tracking-tight">{{ i18n.t('exp.title') }}</h1>
+      <p class="text-slate-500 text-sm mt-0.5">{{ i18n.t('exp.sub') }}</p>
+    </div>
+    @if (canAdd()) {
+      <button type="button" class="btn-primary big-btn shrink-0" (click)="openAdd()" data-testid="exp-add">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        {{ i18n.t('exp.add') }}
+      </button>
+    }
+  </div>
+
+  <!-- Period -->
+  <div class="flex flex-wrap gap-2" role="tablist">
+    @for (p of periods; track p) {
+      <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="setPeriod(p)" [attr.data-testid]="'period-' + p">{{ i18n.t('period.' + p) }}</button>
+    }
+  </div>
+
+  @if (loading() && !summary()) {
+    <div class="skeleton-box" style="height: 130px; border-radius: 14px;"></div>
+  } @else if (error(); as message) {
+    <div class="section-card p-8 text-center space-y-3" role="alert">
+      <p class="text-slate-900 font-black text-base">{{ i18n.t('error.title') }}</p>
+      <p class="text-slate-500 text-sm">{{ message }}</p>
+      <button type="button" class="btn-primary" (click)="load()">{{ i18n.t('common.retry') }}</button>
+    </div>
+  } @else if (summary(); as s) {
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="kpi-card">
+        <p class="label-eyebrow">{{ i18n.t('exp.kpi.business') }}</p>
+        <h3 class="text-3xl font-black tracking-tight mt-2" style="color: #1a2f6e;" [appCountUp]="tsh(s.total_expenses)" data-testid="exp-business">{{ tsh(s.total_expenses) }}</h3>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('exp.kpi.business.hint') }}</p>
+      </div>
+      <div class="kpi-card">
+        <p class="label-eyebrow">{{ i18n.t('exp.kpi.personal') }}</p>
+        <h3 class="text-2xl font-black tracking-tight mt-2 text-slate-800" data-testid="exp-personal">{{ tsh(s.personal_total) }}</h3>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('exp.kpi.personal.hint') }}</p>
+      </div>
+      <div class="kpi-card">
+        <p class="label-eyebrow">{{ i18n.t('exp.kpi.net') }}</p>
+        <h3 class="text-2xl font-black tracking-tight mt-2" [style.color]="s.net_profit < 0 ? '#dc2626' : '#059669'" data-testid="exp-net">{{ tsh(s.net_profit) }}</h3>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('exp.kpi.net.hint') }}</p>
+      </div>
+    </div>
+
+    @if (s.by_category.length) {
+      <section class="section-card p-5">
+        <div class="border-b border-slate-100 pb-3 mb-3">
+          <p class="label-eyebrow">{{ i18n.t('exp.cat.eyebrow') }}</p>
+          <h3 class="text-slate-900 font-black text-base">{{ i18n.t('exp.cat.title') }}</h3>
+        </div>
+        @for (c of s.by_category; track c.category) {
+          <div class="mb-3">
+            <div class="flex justify-between text-sm font-bold text-slate-700 mb-1"><span>{{ categoryName(c.category) }}</span><span>{{ tsh(c.total) }}</span></div>
+            <div class="bar-track"><div class="bar-fill" [style.width.%]="barWidth(c.total, s.total_expenses)"></div></div>
+          </div>
+        }
+      </section>
+    }
+
+    <section class="section-card overflow-hidden">
+      <app-table-toolbar [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('exp.search')" [count]="rows().length" [noun]="noun()" />
+
+      @if (rows().length) {
+        <div class="table-scroll-container">
+          <table class="premium-table">
+            <thead>
+              <tr>
+                <th>{{ i18n.t('exp.col.date') }}</th>
+                <th>{{ i18n.t('exp.col.what') }}</th>
+                <th>{{ i18n.t('exp.col.category') }}</th>
+                <th class="text-right">{{ i18n.t('exp.col.amount') }}</th>
+                <th class="text-right"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (e of pageRows(); track e.id) {
+                <tr [attr.data-testid]="'exp-row-' + e.id">
+                  <td class="font-bold text-slate-600">{{ dayLabel(e.expense_date) }}</td>
+                  <td>
+                    <div class="font-black text-slate-900">{{ e.description }}</div>
+                    @if (e.created_by_name) { <div class="text-xs font-semibold text-slate-400">{{ e.created_by_name }}</div> }
+                  </td>
+                  <td>
+                    <span class="font-bold text-slate-700">{{ categoryName(e.category) }}</span>
+                    @if (isPersonal(e)) { <span class="pill-inactive ml-2">{{ i18n.t('exp.personal.tag') }}</span> }
+                    @if (e.status === 'pending') { <span class="pill-critical ml-2">{{ i18n.t('exp.pending') }}</span> }
+                  </td>
+                  <td class="text-right font-black">{{ tsh(e.amount) }}</td>
+                  <td class="text-right">
+                    @if (e.receipt_url) { <a class="icon-del" [href]="e.receipt_url" target="_blank" rel="noopener" [title]="i18n.t('exp.receipt.view')" [attr.aria-label]="i18n.t('exp.receipt.view')">&#128206;</a> }
+                    @if (e.status === 'pending' && canDecide()) {
+                      <button type="button" class="status-ok" (click)="decide(e, 'approve')" [attr.data-testid]="'exp-approve-' + e.id">{{ i18n.t('exp.approve') }}</button>
+                      <button type="button" class="icon-del" (click)="decide(e, 'reject')" [attr.data-testid]="'exp-reject-' + e.id">{{ i18n.t('exp.reject') }}</button>
+                    }
+                    @if (canAdd()) {
+                      <button type="button" class="icon-del" (click)="openEdit(e)" [title]="i18n.t('exp.edit')" [attr.aria-label]="i18n.t('exp.edit')" [attr.data-testid]="'exp-edit-' + e.id">&#9998;</button>
+                      <button type="button" class="icon-del" (click)="remove(e)" [title]="i18n.t('common.delete')" [attr.aria-label]="i18n.t('common.delete')" [attr.data-testid]="'exp-del-' + e.id">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <app-table-pagination [totalItems]="rows().length" [page]="page()" [pageSize]="pageSize()" (pageChange)="page.set($event)" (pageSizeChange)="pageSize.set($event); page.set(1)" />
+      } @else {
+        <div class="empty-state" data-testid="exp-empty">
+          <span class="empty-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg></span>
+          <p class="empty-title">{{ i18n.t(query() ? 'exp.empty.search' : 'exp.empty') }}</p>
+          @if (!query()) {
+            <p class="empty-hint">{{ i18n.t('exp.empty.hint') }}</p>
+            @if (canAdd()) { <button type="button" class="btn-primary mt-3" (click)="openAdd()">{{ i18n.t('exp.add') }}</button> }
+          }
+        </div>
+      }
+    </section>
+  }
+</div>
+}
+
+<!-- Record an expense -->
+<app-modal-dialog [show]="addOpen()" [eyebrow]="i18n.t('exp.title')" [title]="i18n.t(editing() ? 'exp.edit' : 'exp.add')" size="md" (close)="addOpen.set(false)">
+  <div slot="body" class="space-y-4">
+    <p class="text-sm text-slate-500">{{ i18n.t('exp.form.hint') }}</p>
+    <div>
+      <label class="modal-label" for="expCategory">{{ i18n.t('exp.form.category') }}</label>
+      <select id="expCategory" name="expCategory" class="modal-input" [(ngModel)]="category">
+        @for (c of categories(); track c) { <option [value]="c">{{ categoryName(c) }}</option> }
+      </select>
+    </div>
+    <div>
+      <label class="modal-label" for="expDesc">{{ i18n.t('exp.form.what') }}</label>
+      <input id="expDesc" name="expDesc" class="modal-input" [(ngModel)]="description" autocomplete="off" [placeholder]="i18n.t('exp.form.what.example')" data-testid="exp-desc">
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="modal-label" for="expAmount">{{ i18n.t('exp.form.amount') }}</label>
+        <input id="expAmount" name="expAmount" class="modal-input" inputmode="numeric" [(ngModel)]="amountText" autocomplete="off" data-testid="exp-amount">
+      </div>
+      <div>
+        <label class="modal-label" for="expDate">{{ i18n.t('exp.form.date') }}</label>
+        <input id="expDate" name="expDate" class="modal-input" type="date" [(ngModel)]="date" [max]="today()" required>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="modal-label" for="expSupplier">{{ i18n.t('exp.form.supplier') }}</label>
+        <input id="expSupplier" name="expSupplier" class="modal-input" [(ngModel)]="supplier" autocomplete="off">
+      </div>
+      <div>
+        <label class="modal-label" for="expMethod">{{ i18n.t('exp.form.method') }}</label>
+        <select id="expMethod" name="expMethod" class="modal-input" [(ngModel)]="method">@for (c of channels; track c) { <option [value]="c">{{ i18n.t('pay.' + c) }}</option> }</select>
+      </div>
+    </div>
+    <div>
+      <label class="modal-label" for="expReceipt">{{ i18n.t('exp.form.receipt') }}</label>
+      <input id="expReceipt" name="expReceipt" class="modal-input" type="file" accept="image/png,image/jpeg" (change)="pickReceipt($event)" data-testid="exp-receipt">
+      <p class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('exp.form.receipt.hint') }}</p>
+    </div>
+    <label class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer" [class.opacity-70]="forcedPersonal()">
+      <span class="toggle-switch shrink-0 mt-0.5">
+        <input type="checkbox" name="expPersonal" [ngModel]="personal || forcedPersonal()" (ngModelChange)="personal = $event" [disabled]="forcedPersonal()" data-testid="exp-personal-switch">
+        <span class="toggle-slider"></span>
+      </span>
+      <span>
+        <span class="block font-black text-slate-800 text-sm">{{ i18n.t('exp.form.personal') }}</span>
+        <span class="block text-xs text-slate-500 font-semibold mt-0.5">{{ i18n.t(forcedPersonal() ? 'exp.form.personal.forced' : 'exp.form.personal.hint') }}</span>
+      </span>
+    </label>
+    @if (addError()) { <p class="form-error" role="alert" data-testid="exp-error">{{ addError() }}</p> }
+  </div>
+  <div slot="footer" class="flex gap-2 justify-end">
+    <button type="button" class="modal-cancel-btn" (click)="addOpen.set(false)">{{ i18n.t('common.cancel') }}</button>
+    <button type="button" class="btn-primary" [disabled]="saving()" (click)="saveExpense()" data-testid="exp-save">{{ saving() ? i18n.t('common.saving') : i18n.t('common.save') }}</button>
+  </div>
+</app-modal-dialog>
+
+<style>
+  .big-btn { padding: 12px 22px; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+  .big-tab { padding: 12px 22px; font-size: 14px; font-weight: 800; }
+  .bar-track { height: 8px; border-radius: 99px; background: #eef2f7; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #f59e0b, #d97706); }
+  .icon-del { padding: 8px; border-radius: 8px; color: #94a3b8; cursor: pointer; }
+  .status-ok { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; color: #fff; background: #059669; cursor: pointer; margin-right: 4px; }
+  .icon-del:hover { color: #dc2626; background: #fef2f2; }
+</style>

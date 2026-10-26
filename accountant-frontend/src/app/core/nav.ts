@@ -1,0 +1,83 @@
+import { AuthService } from './auth.service';
+
+/**
+ * Every page of the app, with who may open it. The sidebar, the page guards, the search box and the "where do I start" redirect all
+ * read this one list, so a person is never shown a page they cannot open (or able to open one that is not shown).
+ * The server enforces the same rights; this keeps the screens honest.
+ */
+export interface NavItem {
+  key: 'dashboard' | 'sales' | 'debts' | 'expenses' | 'assistant';
+  path: string;
+  labelKey: string;
+  hintKey: string;
+  group: 'overview' | 'money' | 'help';
+  /** An SVG path (24x24, stroke icon). */
+  icon: string;
+  allowed: (auth: AuthService) => boolean;
+}
+
+export const NAV: NavItem[] = [
+  {
+    key: 'dashboard',
+    path: '/dashboard',
+    labelKey: 'nav.dashboard',
+    hintKey: 'nav.dashboard.hint',
+    group: 'overview',
+    icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+    allowed: (a) => a.service() === 'inventory' && a.can('inv_view_reports'),
+  },
+  {
+    key: 'sales',
+    path: '/sales',
+    labelKey: 'nav.sales',
+    hintKey: 'nav.sales.hint',
+    group: 'money',
+    icon: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z',
+    allowed: (a) => a.canAny('inv_create_sales', 'inv_manage_sales', 'inv_view_reports'),
+  },
+  {
+    key: 'debts',
+    path: '/debts',
+    labelKey: 'nav.debts',
+    hintKey: 'nav.debts.hint',
+    group: 'money',
+    icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
+    allowed: (a) => a.service() === 'inventory' && a.can('inv_view_credit'),
+  },
+  {
+    key: 'expenses',
+    path: '/expenses',
+    labelKey: 'nav.expenses',
+    hintKey: 'nav.expenses.hint',
+    group: 'money',
+    icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z',
+    allowed: (a) => a.canAny('inv_view_expenses', 'inv_manage_expenses'),
+  },
+  {
+    key: 'assistant',
+    path: '/assistant',
+    labelKey: 'nav.assistant',
+    hintKey: 'nav.assistant.hint',
+    group: 'help',
+    // a sparkle: the AI mark
+    icon: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z',
+    // Everyone who is signed in: the server decides what it may read for them, and how-to help needs no data at all.
+    allowed: (a) => !!a.user(),
+  },
+];
+
+/** The pages this person may open, in sidebar order. */
+export function allowedPages(auth: AuthService): NavItem[] {
+  return NAV.filter((n) => n.allowed(auth));
+}
+
+/** Where a person lands: the first page they may open, or the "nothing here yet" page. */
+export function homePath(auth: AuthService): string {
+  // (the assistant is for everyone, so it never counts as "their first page": someone with no page still lands on the explanation)
+  return allowedPages(auth).find((p) => p.key !== 'assistant')?.path ?? '/welcome';
+}
+
+/** Where "/" leads after sign-in: the picker for someone with several services, else their first page. */
+export function startPath(auth: AuthService): string {
+  return auth.needsPick() ? '/services' : homePath(auth);
+}

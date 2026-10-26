@@ -1,6 +1,7 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BsSelectDirective } from '../../ui/bs-select.directive';
+import { I18nService } from '../../../core/i18n.service';
 
 /** Footer shared by every table: rows-per-page selector, "1–10 of 42" range and Prev / Next buttons. */
 @Component({
@@ -20,7 +21,7 @@ import { BsSelectDirective } from '../../ui/bs-select.directive';
   template: `
     <div class="pager-box flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2">
-        <span class="uppercase text-[10px] tracking-wider text-slate-400 font-bold">Rows per page</span>
+        <span class="uppercase text-[10px] tracking-wider text-slate-400 font-bold">{{ i18n.t('table.rows') }}</span>
         <select [ngModel]="pageSize" (ngModelChange)="onPageSizeChange(+$event)"
           class="bg-white border border-slate-200 px-2 py-1 text-xs font-bold text-slate-800 outline-none cursor-pointer rounded-md">
           @for (opt of pageSizeOptions; track opt) {
@@ -29,22 +30,24 @@ import { BsSelectDirective } from '../../ui/bs-select.directive';
         </select>
       </div>
 
-      <span class="font-bold text-slate-500 text-xs">{{ startIndex() }}–{{ endIndex() }} of {{ totalItems }}</span>
+      <span class="font-bold text-slate-500 text-xs">{{ startIndex() }}–{{ endIndex() }} {{ i18n.t('table.of') }} {{ totalItems }}</span>
 
       <div class="flex items-center gap-2">
         <button (click)="goToPage(page - 1)" [disabled]="page <= 1"
           class="px-3.5 py-1.5 text-[10px] font-extrabold uppercase bg-white border border-slate-200 text-slate-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all hover:border-[#1a2f6e] hover:text-[#1a2f6e] rounded-md">
-          Prev
+          {{ i18n.t('table.prev') }}
         </button>
         <button (click)="goToPage(page + 1)" [disabled]="page >= totalPages()"
           class="px-3.5 py-1.5 text-[10px] font-extrabold uppercase bg-white border border-slate-200 text-slate-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all hover:border-[#1a2f6e] hover:text-[#1a2f6e] rounded-md">
-          Next
+          {{ i18n.t('table.next') }}
         </button>
       </div>
     </div>
   `
 })
 export class TablePaginationComponent {
+  protected readonly i18n = inject(I18nService);
+
   @Input() totalItems: number = 0;
   @Input() page: number = 1;
   @Input() pageSize: number = 10;

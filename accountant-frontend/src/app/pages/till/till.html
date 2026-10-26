@@ -1,0 +1,291 @@
+<!-- The till -->
+<div class="space-y-5 animate-fade-in-up">
+
+  <div class="page-header-card flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="min-w-0">
+      <h1 class="text-slate-900 font-black text-xl tracking-tight">{{ i18n.t('till.title') }}</h1>
+      <p class="text-slate-500 text-sm mt-0.5">{{ i18n.t('till.intro') }}</p>
+    </div>
+    <div class="flex gap-2">
+      <button type="button" class="modal-cancel-btn" (click)="openParked()" data-testid="till-parked">{{ i18n.t('till.parked.open') }}</button>
+      <button type="button" class="modal-cancel-btn" [disabled]="!till.lines().length" (click)="park()" data-testid="till-park">{{ i18n.t('till.park') }}</button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-5 gap-5">
+
+    <!-- 1. The goods -->
+    <section class="section-card p-5 xl:col-span-2 space-y-4">
+      <div>
+        <p class="label-eyebrow">{{ i18n.t('till.step1') }}</p>
+        <input class="modal-input mt-2" type="search" [ngModel]="query()" (ngModelChange)="setQuery($event)" (keydown.enter)="onEnter()" [placeholder]="i18n.t('till.search')" autocomplete="off" data-testid="till-search">
+        <p class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('till.search.hint') }}</p>
+      </div>
+      @if (productError(); as message) {
+        <div class="text-center space-y-2" role="alert"><p class="text-sm text-slate-500">{{ message }}</p><button type="button" class="btn-primary" (click)="loadProducts()">{{ i18n.t('common.retry') }}</button></div>
+      } @else if (loadingProducts() && !products().length) {
+        <div class="skeleton-box" style="height: 160px; border-radius: 12px;"></div>
+      } @else {
+        <div class="goods-list">
+          @for (p of products(); track p.id) {
+            <button type="button" class="good" [class.is-out]="soldOut(p)" [disabled]="soldOut(p)" (click)="pick(p)" [attr.data-testid]="'good-' + p.id">
+              <span class="min-w-0 text-left">
+                <span class="block font-black text-slate-900 truncate">{{ p.name }}</span>
+                <span class="block text-xs font-semibold text-slate-400">
+                  @if (p.isService) { {{ i18n.t('till.service') }} } @else if (soldOut(p)) { {{ i18n.t('till.soldout') }} } @else { {{ i18n.t('till.instock', p.quantity - inCart(p)) }} }
+                </span>
+              </span>
+              <span class="font-black text-sm shrink-0" style="color:#1a2f6e;">{{ p.priceOptions.length ? i18n.t('till.choose') : tsh(p.sellingPrice) }}</span>
+            </button>
+          } @empty {
+            <p class="text-sm text-slate-400 text-center py-6" data-testid="till-nogoods">{{ i18n.t('till.nogoods') }}</p>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- 2. The cart, the customer and the payment -->
+    <section class="section-card p-5 xl:col-span-3 space-y-5">
+      <div>
+        <p class="label-eyebrow">{{ i18n.t('till.step2') }}</p>
+        @if (till.lines().length) {
+          <div class="mt-2 space-y-2">
+            @for (l of till.lines(); track l.key) {
+              <div class="cart-line" [attr.data-testid]="'line-' + l.productId">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="font-black text-slate-900">{{ l.name }}</p>
+                    <p class="text-xs font-semibold text-slate-400">{{ tsh(l.unitPrice) }}@if (l.unitName) { · {{ l.unitName }} }</p>
+                  </div>
+                  <p class="font-black text-slate-900 shrink-0">{{ tsh(l.qty * l.unitPrice) }}</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 mt-2">
+                  <div class="qty-box">
+                    <button type="button" (click)="till.setQty(l.key, l.qty - 1)" [attr.aria-label]="i18n.t('till.less')" [disabled]="l.qty <= 1">−</button>
+                    <input type="number" min="1" [ngModel]="l.qty" (change)="setQty(l.key, l.productId, $any($event.target).value)" [attr.aria-label]="i18n.t('till.qty')" [attr.data-testid]="'qty-' + l.productId">
+                    <button type="button" (click)="setQty(l.key, l.productId, '' + (l.qty + 1))" [attr.aria-label]="i18n.t('till.more')" [attr.data-testid]="'plus-' + l.productId">+</button>
+                  </div>
+                  @if (unitsOf(l.productId).length > 1 && !l.optionLabel) {
+                    <select class="modal-input unit-pick" [ngModel]="l.unitId ?? ''" (ngModelChange)="changeUnit(l.key, l.productId, $event)" [attr.aria-label]="i18n.t('till.unit')">
+                      @for (u of unitsOf(l.productId); track u.id) { <option [value]="u.isBase ? '' : u.id">{{ u.name }}</option> }
+                    </select>
+                  }
+                  @if (till.salon() && l.isService) {
+                    <select class="modal-input unit-pick" [ngModel]="l.staffId ?? ''" (ngModelChange)="staffChosen(l.key, $event)" [attr.aria-label]="i18n.t('till.stylist')" [attr.data-testid]="'stylist-' + l.productId">
+                      <option value="">{{ i18n.t('till.stylist.pick') }}</option>
+                      @for (s of staff(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
+                    </select>
+                    <button type="button" class="link-btn" (click)="openGoods(l.key)" [attr.data-testid]="'goods-' + l.productId">{{ i18n.t('till.goods') }}</button>
+                    @if (packagesFor(l.productId).length) {
+                      <select class="modal-input unit-pick" [ngModel]="l.packageId ?? ''" (ngModelChange)="usePackage(l.key, $event)" [attr.aria-label]="i18n.t('till.package')">
+                        <option value="">{{ i18n.t('till.package.none') }}</option>
+                        @for (pk of packagesFor(l.productId); track pk.id) { <option [value]="pk.id">{{ pk.name }} ({{ pk.sessions_left }})</option> }
+                      </select>
+                    }
+                  }
+                  <button type="button" class="link-btn danger ml-auto" (click)="till.remove(l.key)" [attr.data-testid]="'remove-' + l.productId">{{ i18n.t('till.remove') }}</button>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-state" data-testid="till-empty">
+            <p class="empty-title">{{ i18n.t('till.empty') }}</p>
+            <p class="empty-hint">{{ i18n.t('till.empty.hint') }}</p>
+          </div>
+        }
+      </div>
+
+      <!-- Customer -->
+      <div>
+        <p class="label-eyebrow">{{ i18n.t('till.step3') }}</p>
+        @if (till.customer(); as c) {
+          <div class="flex items-center justify-between gap-3 mt-2 p-3 bg-slate-50 border border-slate-200 rounded-lg" data-testid="till-customer">
+            <div class="min-w-0"><p class="font-black text-slate-900 truncate">{{ c.name }}</p>@if (c.phone) { <p class="text-xs font-semibold text-slate-400">{{ c.phone }}</p> }</div>
+            <button type="button" class="link-btn" (click)="chooseCustomer(null)">{{ i18n.t('common.change') }}</button>
+          </div>
+        } @else {
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+            <div class="relative">
+              <input class="modal-input" type="search" [ngModel]="customerQuery()" (ngModelChange)="searchCustomers($event)" [placeholder]="i18n.t('till.customer.search')" autocomplete="off" data-testid="till-customer-search">
+              @if (customerHits().length || customerQuery().trim().length >= 2) {
+                <div class="hits">
+                  @for (h of customerHits(); track h.id) { <button type="button" (click)="chooseCustomer(h)" [attr.data-testid]="'hit-' + h.id"><b>{{ h.name }}</b> <small>{{ h.phone }}</small></button> }
+                  <button type="button" class="add" (click)="addNewCustomer()" data-testid="till-customer-new">+ {{ i18n.t('till.customer.new', customerQuery().trim()) }}</button>
+                </div>
+              }
+            </div>
+            <input class="modal-input" [ngModel]="till.manualName()" (ngModelChange)="till.manualName.set($event)" [placeholder]="i18n.t('till.customer.walkin')" autocomplete="off" data-testid="till-walkin">
+          </div>
+          <p class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('till.customer.hint') }}</p>
+        }
+      </div>
+
+      <!-- Salon: discount, voucher, points -->
+      @if (till.salon() && till.lines().length) {
+        <div>
+          <p class="label-eyebrow">{{ i18n.t('till.perks') }}</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+            <div><label class="modal-label" for="disc">{{ i18n.t('till.discount') }}</label><input id="disc" class="modal-input" inputmode="numeric" [ngModel]="discountText" (ngModelChange)="setDiscount($event)" autocomplete="off" data-testid="till-discount"></div>
+            <div><label class="modal-label" for="why">{{ i18n.t('till.discount.reason') }}</label><input id="why" class="modal-input" [ngModel]="till.discountReason()" (ngModelChange)="till.discountReason.set($event)" autocomplete="off" data-testid="till-reason"></div>
+            <div class="flex gap-2 items-end">
+              <div class="grow"><label class="modal-label" for="vch">{{ i18n.t('till.voucher') }}</label><input id="vch" class="modal-input" [(ngModel)]="voucherCode" autocomplete="off"></div>
+              <button type="button" class="modal-cancel-btn" (click)="applyVoucher()">{{ i18n.t('till.voucher.apply') }}</button>
+            </div>
+            @if (loyaltyBalance() > 0) {
+              <div><label class="modal-label" for="pts">{{ i18n.t('till.points', loyaltyBalance()) }}</label><input id="pts" class="modal-input" inputmode="numeric" [ngModel]="pointsText" (ngModelChange)="setPoints($event)" autocomplete="off"></div>
+            }
+          </div>
+          @if (voucherMessage()) { <p class="text-xs font-semibold text-slate-500 mt-1">{{ voucherMessage() }}</p> }
+        </div>
+      }
+
+      <!-- Payment -->
+      <div>
+        <p class="label-eyebrow">{{ i18n.t('till.step4') }}</p>
+        <div class="flex flex-wrap gap-2 mt-2">
+          @for (m of ['cash', 'partial', 'debt']; track m) {
+            <button type="button" class="pill-tab big-tab" [class.is-active]="till.mode() === m" (click)="setMode($any(m))" [attr.data-testid]="'mode-' + m">{{ i18n.t('till.mode.' + m) }}</button>
+          }
+        </div>
+        <p class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('till.mode.' + till.mode() + '.hint') }}</p>
+
+        @if (till.mode() === 'cash') {
+          <div class="mt-3 max-w-xs"><label class="modal-label" for="chan">{{ i18n.t('till.channel') }}</label>
+            <select id="chan" class="modal-input" [ngModel]="till.channel()" (ngModelChange)="till.channel.set($event)">@for (c of channels; track c) { <option [value]="c">{{ channelName(c) }}</option> }</select></div>
+        }
+        @if (till.mode() === 'partial') {
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+            <div><label class="modal-label" for="paid">{{ i18n.t('till.paidnow') }}</label><input id="paid" class="modal-input" inputmode="numeric" [ngModel]="paidText" (ngModelChange)="setPaid($event)" autocomplete="off" data-testid="till-paid"></div>
+            <div><label class="modal-label" for="pchan">{{ i18n.t('till.channel') }}</label>
+              <select id="pchan" class="modal-input" [ngModel]="till.partialChannel()" (ngModelChange)="till.partialChannel.set($event)">@for (c of channels; track c) { <option [value]="c">{{ channelName(c) }}</option> }</select></div>
+          </div>
+        }
+        @if (till.mode() !== 'cash') {
+          <div class="mt-3 max-w-xs"><label class="modal-label" for="due">{{ i18n.t('till.due') }}</label><input id="due" class="modal-input" type="number" min="1" [ngModel]="till.dueDays()" (ngModelChange)="till.dueDays.set($event || 7)"></div>
+          @if (!till.customer()) { <p class="form-error mt-2" data-testid="till-needcustomer">{{ i18n.t('till.err.customer_required') }}</p> }
+          @if (credit(); as c) {
+            @if (c.is_blocked) { <p class="form-error mt-2" role="alert">{{ i18n.t('till.err.blocked') }}</p> }
+            @else if (c.over_limit) { <p class="form-error mt-2" role="alert">{{ i18n.t('till.err.limit', tsh(c.credit_limit)) }}</p> }
+            @else if (c.near_limit) { <p class="text-xs font-bold text-amber-600 mt-2">{{ i18n.t('till.near', tsh(c.available ?? 0)) }}</p> }
+          }
+        }
+
+        @if (showCrates()) {
+          <div class="grid grid-cols-3 gap-3 mt-3">
+            <div class="col-span-3 sm:col-span-1"><label class="modal-label" for="cr">{{ i18n.t('till.crate') }}</label>
+              <select id="cr" class="modal-input" #ct (change)="setCrate(ct.value, cq.value, cd.value)"><option value="">{{ i18n.t('till.crate.none') }}</option>@for (c of crateTypes(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }</select></div>
+            <div><label class="modal-label" for="cq">{{ i18n.t('till.crate.qty') }}</label><input id="cq" class="modal-input" type="number" min="0" #cq value="0" (change)="setCrate(ct.value, cq.value, cd.value)"></div>
+            <div><label class="modal-label" for="cd">{{ i18n.t('till.crate.dir') }}</label>
+              <select id="cd" class="modal-input" #cd (change)="setCrate(ct.value, cq.value, cd.value)"><option value="issued">{{ i18n.t('till.crate.issued') }}</option><option value="returned">{{ i18n.t('till.crate.returned') }}</option></select></div>
+          </div>
+        }
+      </div>
+
+      <!-- Totals -->
+      <div class="totals">
+        <div class="row"><span>{{ i18n.t('till.sub') }}</span><span>{{ tsh(till.totals().subtotal) }}</span></div>
+        @if (till.totals().discount > 0) { <div class="row"><span>{{ i18n.t('till.discount') }}</span><span>− {{ tsh(till.totals().discount) }}</span></div> }
+        @if (till.totals().tax > 0) { <div class="row"><span>{{ i18n.t('till.vat') }}</span><span>{{ tsh(till.totals().tax) }}</span></div> }
+        <div class="row big"><span>{{ i18n.t('till.total') }}</span><span data-testid="till-total">{{ tsh(till.totals().total) }}</span></div>
+        @if (till.mode() !== 'cash') { <div class="row"><span>{{ i18n.t('till.owing') }}</span><span data-testid="till-owing">{{ tsh(balanceDue()) }}</span></div> }
+      </div>
+
+      @if (formError()) { <p class="form-error" role="alert" data-testid="till-error">{{ formError() }}</p> }
+      <button type="button" class="btn-primary w-full big-btn justify-center" [disabled]="saving() || !till.lines().length" (click)="charge()" data-testid="till-charge">
+        {{ saving() ? i18n.t('common.saving') : i18n.t('till.charge', tsh(till.totals().total)) }}
+      </button>
+    </section>
+  </div>
+</div>
+
+<!-- A product with several prices -->
+<app-modal-dialog [show]="!!optionFor()" [title]="optionFor()?.name ?? ''" [eyebrow]="i18n.t('till.option.eyebrow')" (close)="optionFor.set(null)">
+  <div slot="body" class="space-y-2">
+    <p class="text-sm text-slate-500">{{ i18n.t('till.option.hint') }}</p>
+    @for (o of optionFor()?.priceOptions ?? []; track o.label) {
+      <button type="button" class="good w-full" (click)="chooseOption(optionFor()!, o)"><span class="font-black">{{ o.label }}</span><span class="font-black" style="color:#1a2f6e;">{{ tsh(o.price) }}</span></button>
+    }
+  </div>
+  <div slot="footer" class="flex justify-end"><button type="button" class="modal-cancel-btn" (click)="optionFor.set(null)">{{ i18n.t('common.cancel') }}</button></div>
+</app-modal-dialog>
+
+<!-- Goods used for a service -->
+<app-modal-dialog [show]="!!goodsFor()" [title]="i18n.t('till.goods.title')" [eyebrow]="i18n.t('till.goods')" size="md" (close)="goodsFor.set(null)">
+  <div slot="body" class="space-y-3">
+    <p class="text-sm text-slate-500">{{ i18n.t('till.goods.hint') }}</p>
+    @for (g of goodsDraft(); track g.productId; let i = $index) {
+      <div class="flex items-center gap-3">
+        <span class="grow font-bold text-slate-800">{{ g.name }}</span>
+        <input class="modal-input" style="width: 90px;" type="number" min="0" [ngModel]="g.qty" (change)="draftQty(i, $any($event.target).value)" [attr.aria-label]="i18n.t('till.qty')">
+        <button type="button" class="link-btn danger" (click)="draftRemove(i)">{{ i18n.t('till.remove') }}</button>
+      </div>
+    } @empty {
+      <p class="text-sm text-slate-400">{{ i18n.t('till.goods.none') }}</p>
+    }
+    <div class="flex gap-2">
+      <select class="modal-input grow" [(ngModel)]="addGoodId" aria-label="goods"><option value="">{{ i18n.t('till.goods.add') }}</option>@for (p of goodsOnly(); track p.id) { <option [value]="p.id">{{ p.name }}</option> }</select>
+      <button type="button" class="modal-cancel-btn" (click)="draftAdd()">{{ i18n.t('till.goods.addbtn') }}</button>
+    </div>
+  </div>
+  <div slot="footer" class="flex gap-2 justify-end">
+    <button type="button" class="modal-cancel-btn" (click)="goodsFor.set(null)">{{ i18n.t('common.cancel') }}</button>
+    <button type="button" class="btn-primary" (click)="saveGoods()">{{ i18n.t('common.save') }}</button>
+  </div>
+</app-modal-dialog>
+
+<!-- Parked sales -->
+<app-modal-dialog [show]="parkedOpen()" [title]="i18n.t('till.parked.title')" [eyebrow]="i18n.t('till.title')" size="md" (close)="parkedOpen.set(false)">
+  <div slot="body" class="space-y-2">
+    <p class="text-sm text-slate-500">{{ i18n.t('till.parked.hint') }}</p>
+    @for (p of parked(); track p.id) {
+      <div class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg" [attr.data-testid]="'parked-' + p.id">
+        <div class="grow min-w-0"><p class="font-black text-slate-900">{{ p.reference }}</p><p class="text-xs font-semibold text-slate-400">{{ p.customer_name || i18n.t('sales.walkin') }} · {{ tsh(p.total) }}</p></div>
+        <button type="button" class="btn-primary" (click)="resume(p)">{{ i18n.t('till.resume') }}</button>
+        <button type="button" class="link-btn danger" (click)="discard(p)">{{ i18n.t('common.delete') }}</button>
+      </div>
+    } @empty {
+      <p class="text-sm text-slate-400 text-center py-4">{{ i18n.t('till.parked.none') }}</p>
+    }
+  </div>
+  <div slot="footer" class="flex justify-end"><button type="button" class="modal-cancel-btn" (click)="parkedOpen.set(false)">{{ i18n.t('common.close') }}</button></div>
+</app-modal-dialog>
+
+<!-- Done -->
+<app-modal-dialog [show]="!!done()" [title]="i18n.t('till.done.title')" [eyebrow]="done()?.number ?? ''" variant="teal" (close)="newSale()">
+  <div slot="body" class="space-y-2 text-center">
+    <p class="text-3xl font-black" style="color:#1a2f6e;" data-testid="till-done-total">{{ tsh(done()?.total ?? 0) }}</p>
+    <p class="text-sm text-slate-500">{{ i18n.t('till.done.hint', done()?.number ?? '') }}</p>
+    @if ((done()?.total ?? 0) > (done()?.paid_total ?? 0)) { <p class="text-sm font-bold text-red-600">{{ i18n.t('till.owing') }}: {{ tsh((done()?.total ?? 0) - (done()?.paid_total ?? 0)) }}</p> }
+  </div>
+  <div slot="footer" class="flex flex-wrap gap-2 justify-end">
+    <button type="button" class="modal-cancel-btn" (click)="seeSales()">{{ i18n.t('till.done.sales') }}</button>
+    <button type="button" class="modal-cancel-btn" (click)="print(done()!)" data-testid="till-print">{{ i18n.t('till.print') }}</button>
+    <button type="button" class="btn-primary" (click)="newSale()" data-testid="till-new">{{ i18n.t('till.done.new') }}</button>
+  </div>
+</app-modal-dialog>
+
+<style>
+  .big-tab { padding: 12px 22px; font-size: 14px; font-weight: 800; }
+  .big-btn { padding: 16px 22px; font-size: 16px; display: inline-flex; align-items: center; gap: 8px; }
+  .goods-list { display: flex; flex-direction: column; gap: 8px; max-height: 62vh; overflow-y: auto; }
+  .good { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid #dbe4ff; border-radius: 10px; background: #fff; cursor: pointer; }
+  .good:hover:not(:disabled) { background: #f3f5ff; }
+  .good.is-out { opacity: .5; cursor: not-allowed; }
+  .cart-line { padding: 12px 14px; border: 1px solid #e5eaf7; border-radius: 12px; background: #fbfcff; }
+  .qty-box { display: inline-flex; align-items: center; border: 1px solid #dbe4ff; border-radius: 8px; overflow: hidden; background: #fff; }
+  .qty-box button { width: 36px; height: 36px; font-size: 18px; font-weight: 900; color: #1a2f6e; cursor: pointer; }
+  .qty-box button:hover:not(:disabled) { background: #f3f5ff; }
+  .qty-box input { width: 56px; height: 36px; text-align: center; font-weight: 800; border: 0; outline: 0; }
+  .unit-pick { width: auto; min-width: 130px; padding-top: 6px; padding-bottom: 6px; }
+  .link-btn { font-size: 13px; font-weight: 800; color: #1a2f6e; cursor: pointer; }
+  .link-btn.danger { color: #dc2626; }
+  .hits { position: absolute; z-index: 20; left: 0; right: 0; top: 100%; margin-top: 4px; background: #fff; border: 1px solid #dbe4ff; border-radius: 10px; box-shadow: 0 8px 24px rgba(26,47,110,.12); overflow: hidden; }
+  .hits button { display: block; width: 100%; text-align: left; padding: 10px 14px; cursor: pointer; }
+  .hits button:hover { background: #f3f5ff; }
+  .hits small { color: #94a3b8; font-weight: 700; margin-left: 6px; }
+  .hits .add { color: #1a2f6e; font-weight: 800; border-top: 1px solid #eef2f7; }
+  .totals { background: #f8faff; border: 1px solid #e5eaf7; border-radius: 12px; padding: 14px 16px; }
+  .totals .row { display: flex; justify-content: space-between; padding: 3px 0; font-weight: 700; color: #475a8f; }
+  .totals .row.big { font-size: 22px; font-weight: 900; color: #1a2f6e; border-top: 1px dashed #c9d4f5; margin-top: 6px; padding-top: 10px; }
+</style>

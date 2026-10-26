@@ -4,7 +4,7 @@ services:
     build:
       context: .
       args:
-        # "/" on its own port; "/app/" when it shares a domain with the API
+        # "/" on its own port; "/web/" when it shares a domain with the API
         BASE_HREF: ${BASE_HREF:-/}
     image: 3inone/accountant-web
     ports:

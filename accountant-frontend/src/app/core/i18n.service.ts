@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, effect, signal } from '@angular/core';
 
 import { Lang, TRANSLATIONS } from './translations';
 
@@ -21,6 +21,13 @@ function saved(): Lang | null {
 @Injectable({ providedIn: 'root' })
 export class I18nService {
   readonly lang = signal<Lang>(saved() ?? 'sw');
+
+  constructor() {
+    // the page's own language, for screen readers and for the calendar and dropdown (plain DOM) that read it
+    effect(() => {
+      if (typeof document !== 'undefined') document.documentElement.lang = this.lang();
+    });
+  }
 
   setLang(lang: Lang): void {
     this.lang.set(lang);
