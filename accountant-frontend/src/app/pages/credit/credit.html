@@ -1,0 +1,293 @@
+<!-- Customers & credit -->
+@for (k of [motion.tick()]; track k) {
+<div class="space-y-5 animate-fade-in-up">
+
+  <div class="page-header-card">
+    <h1 class="text-slate-900 font-black text-xl tracking-tight">{{ i18n.t('cr.title') }}</h1>
+    <p class="text-slate-500 text-sm mt-0.5">{{ i18n.t('cr.sub') }}</p>
+  </div>
+
+  @if (loading() && !customers().length) {
+    <div class="skeleton-box" style="height: 130px; border-radius: 14px;"></div>
+  } @else if (error(); as message) {
+    <div class="section-card p-8 text-center space-y-3" role="alert">
+      <p class="text-slate-900 font-black text-base">{{ i18n.t('error.title') }}</p>
+      <p class="text-slate-500 text-sm">{{ message }}</p>
+      <button type="button" class="btn-primary" (click)="load()">{{ i18n.t('common.retry') }}</button>
+    </div>
+  } @else {
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="kpi-card">
+        <p class="label-eyebrow">{{ i18n.t('cr.kpi.owed') }}</p>
+        <h3 class="text-3xl font-black tracking-tight mt-2" style="color: #1a2f6e;" data-testid="cr-total">{{ tsh(totalOwed()) }}</h3>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('cr.kpi.owed.hint') }}</p>
+      </div>
+      <div class="kpi-card">
+        <p class="label-eyebrow">{{ i18n.t('cr.kpi.owing') }}</p>
+        <h3 class="text-2xl font-black tracking-tight mt-2 text-slate-800" data-testid="cr-owing">{{ owingCount() }}</h3>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('cr.kpi.owing.hint') }}</p>
+      </div>
+      <div class="kpi-card">
+        <p class="label-eyebrow">{{ i18n.t('cr.kpi.watch') }}</p>
+        <h3 class="text-2xl font-black tracking-tight mt-2" [style.color]="watchCount() ? '#dc2626' : '#059669'" data-testid="cr-watch">{{ watchCount() }}</h3>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('cr.kpi.watch.hint') }}</p>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-2" role="tablist">
+      <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="tab() === 'customers'" [attr.aria-selected]="tab() === 'customers'" (click)="tab.set('customers')" data-testid="cr-tab-customers">{{ i18n.t('cr.tab.customers') }}</button>
+      <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="tab() === 'ageing'" [attr.aria-selected]="tab() === 'ageing'" (click)="tab.set('ageing')" data-testid="cr-tab-ageing">{{ i18n.t('cr.tab.ageing') }}</button>
+    </div>
+
+    @if (tab() === 'customers') {
+      <section class="section-card overflow-hidden">
+        <app-table-toolbar [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('cr.search')" [count]="rows().length" [noun]="noun()">
+          <label class="filter-field">
+            <span>{{ i18n.t('cr.filter') }}</span>
+            <select class="filter-select" name="crOnly" [ngModel]="only()" (ngModelChange)="setOnly($event)" data-testid="cr-filter">
+              <option value="all">{{ i18n.t('cr.filter.all') }}</option>
+              <option value="owing">{{ i18n.t('cr.filter.owing') }}</option>
+              <option value="limit">{{ i18n.t('cr.filter.limit') }}</option>
+            </select>
+          </label>
+        </app-table-toolbar>
+
+        @if (rows().length) {
+          <div class="table-scroll-container">
+            <table class="premium-table">
+              <thead>
+                <tr>
+                  <th>{{ i18n.t('cr.col.customer') }}</th>
+                  <th class="text-right">{{ i18n.t('cr.col.owes') }}</th>
+                  <th>{{ i18n.t('cr.col.limit') }}</th>
+                  <th>{{ i18n.t('cr.col.status') }}</th>
+                  <th class="text-right"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (c of pageRows(); track c.id) {
+                  <tr [attr.data-testid]="'cr-row-' + c.id">
+                    <td>
+                      <div class="font-black text-slate-900">{{ c.name }}</div>
+                      <div class="text-xs font-semibold text-slate-400">{{ c.phone }}</div>
+                    </td>
+                    <td class="text-right">
+                      <div class="font-black" [class.text-slate-800]="c.balance > 0" [class.text-slate-400]="c.balance <= 0">{{ tsh(c.balance) }}</div>
+                      @if (c.old_balance > 0) { <div class="text-xs font-semibold text-slate-400">{{ i18n.t('cr.old', tsh(c.old_balance)) }}</div> }
+                    </td>
+                    <td>
+                      @if (c.credit_limit > 0) {
+                        <div class="text-sm font-bold text-slate-700">{{ tsh(c.credit_limit) }}</div>
+                        <div class="bar-track" style="max-width: 120px;"><div class="bar-fill" [style.width.%]="used(c)"></div></div>
+                      } @else {
+                        <span class="text-xs font-semibold text-slate-400">{{ i18n.t('cr.nolimit') }}</span>
+                      }
+                      <div class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('cr.terms', c.payment_terms_days) }}</div>
+                    </td>
+                    <td>
+                      <span [class]="state(c) === 'ok' ? 'status-ok' : (state(c) === 'near' ? 'pill-inactive' : 'pill-critical')" [attr.data-testid]="'cr-state-' + c.id">{{ i18n.t('cr.state.' + state(c)) }}</span>
+                      @if (c.is_blocked && c.block_reason) { <div class="text-xs font-semibold text-slate-400 mt-1">{{ c.block_reason }}</div> }
+                    </td>
+                    <td class="text-right whitespace-nowrap">
+                      <button type="button" class="btn-outline" (click)="openStatement(c)" [attr.data-testid]="'cr-statement-' + c.id">{{ i18n.t('cr.statement') }}</button>
+                      <button type="button" class="btn-outline" (click)="openSettings(c)" [attr.data-testid]="'cr-settings-' + c.id">{{ i18n.t('cr.settings') }}</button>
+                      @if (canReceive()) {
+                        <button type="button" class="btn-primary" (click)="openPay(c)" [disabled]="c.balance <= 0" [attr.data-testid]="'cr-pay-' + c.id">{{ i18n.t('cr.receive') }}</button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <app-table-pagination [totalItems]="rows().length" [page]="page()" [pageSize]="pageSize()" (pageChange)="page.set($event)" (pageSizeChange)="pageSize.set($event); page.set(1)" />
+        } @else {
+          <div class="empty-state" data-testid="cr-empty">
+            <p class="empty-title">{{ i18n.t(query() || only() !== 'all' ? 'cr.empty.search' : 'cr.empty') }}</p>
+            @if (!query() && only() === 'all') { <p class="empty-hint">{{ i18n.t('cr.empty.hint') }}</p> }
+          </div>
+        }
+      </section>
+    } @else {
+      @if (ageing(); as a) {
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="kpi-card"><p class="label-eyebrow">{{ i18n.t('cr.age.current') }}</p><h3 class="text-xl font-black mt-2 text-slate-800" data-testid="age-current">{{ tsh(a.totals.current) }}</h3></div>
+          <div class="kpi-card"><p class="label-eyebrow">{{ i18n.t('cr.age.31') }}</p><h3 class="text-xl font-black mt-2 text-slate-800">{{ tsh(a.totals.days_31_60) }}</h3></div>
+          <div class="kpi-card"><p class="label-eyebrow">{{ i18n.t('cr.age.61') }}</p><h3 class="text-xl font-black mt-2 text-slate-800">{{ tsh(a.totals.days_61_90) }}</h3></div>
+          <div class="kpi-card"><p class="label-eyebrow">{{ i18n.t('cr.age.90') }}</p><h3 class="text-xl font-black mt-2" style="color: #dc2626;" data-testid="age-90">{{ tsh(a.totals.days_90_plus) }}</h3></div>
+        </div>
+        <section class="section-card overflow-hidden">
+          @if (a.rows.length) {
+            <div class="table-scroll-container">
+              <table class="premium-table">
+                <thead>
+                  <tr>
+                    <th>{{ i18n.t('cr.col.customer') }}</th>
+                    <th class="text-right">{{ i18n.t('cr.age.current') }}</th>
+                    <th class="text-right">{{ i18n.t('cr.age.31') }}</th>
+                    <th class="text-right">{{ i18n.t('cr.age.61') }}</th>
+                    <th class="text-right">{{ i18n.t('cr.age.90') }}</th>
+                    <th class="text-right">{{ i18n.t('cr.age.total') }}</th>
+                    <th class="text-right">{{ i18n.t('cr.age.oldest') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (r of a.rows; track r.customer_id) {
+                    <tr [attr.data-testid]="'age-row-' + r.customer_id">
+                      <td>
+                        <div class="font-black text-slate-900">{{ r.customer_name }}</div>
+                        <div class="text-xs font-semibold text-slate-400">{{ r.customer_phone }}</div>
+                      </td>
+                      <td class="text-right">{{ tsh(r.current) }}</td>
+                      <td class="text-right">{{ tsh(r.days_31_60) }}</td>
+                      <td class="text-right">{{ tsh(r.days_61_90) }}</td>
+                      <td class="text-right font-bold" [style.color]="r.days_90_plus > 0 ? '#dc2626' : ''">{{ tsh(r.days_90_plus) }}</td>
+                      <td class="text-right font-black">{{ tsh(r.total) }}</td>
+                      <td class="text-right font-bold text-slate-600">{{ i18n.t('cr.days', r.oldest_days) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <div class="empty-state" data-testid="age-empty"><p class="empty-title">{{ i18n.t('cr.age.empty') }}</p></div>
+          }
+        </section>
+      }
+    }
+  }
+</div>
+}
+
+<!-- A customer's account -->
+<app-modal-dialog [show]="!!statementFor()" [eyebrow]="i18n.t('cr.statement')" [title]="statementFor()?.name ?? ''" size="lg" (close)="statementFor.set(null)">
+  <div slot="body" class="space-y-4">
+    <div class="flex flex-wrap items-end gap-3">
+      <div><label class="modal-label" for="stFrom">{{ i18n.t('cr.from') }}</label><input id="stFrom" name="stFrom" type="date" class="modal-input" [(ngModel)]="from" data-testid="st-from"></div>
+      <div><label class="modal-label" for="stTo">{{ i18n.t('cr.to') }}</label><input id="stTo" name="stTo" type="date" class="modal-input" [(ngModel)]="to" data-testid="st-to"></div>
+      <button type="button" class="btn-outline" (click)="loadStatement()" data-testid="st-show">{{ i18n.t('cr.show') }}</button>
+    </div>
+    @if (statementLoading()) {
+      <div class="skeleton-box" style="height: 90px; border-radius: 12px;"></div>
+    } @else if (statementError(); as e) {
+      <p class="form-error" role="alert">{{ e }}</p>
+    } @else if (statement(); as s) {
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" data-testid="st-summary">
+        <div class="rounded-xl bg-slate-50 p-3"><p class="label-eyebrow">{{ i18n.t('cr.st.opening') }}</p><p class="font-black text-slate-800" data-testid="st-opening">{{ tsh(s.opening_balance) }}</p>@if (s.old_debt > 0) { <p class="text-[11px] text-slate-400 font-semibold">{{ i18n.t('cr.old', tsh(s.old_debt)) }}</p> }</div>
+        <div class="rounded-xl bg-slate-50 p-3"><p class="label-eyebrow">{{ i18n.t('cr.st.charges') }}</p><p class="font-black text-slate-800">{{ tsh(s.period_charges) }}</p></div>
+        <div class="rounded-xl bg-slate-50 p-3"><p class="label-eyebrow">{{ i18n.t('cr.st.payments') }}</p><p class="font-black text-emerald-600">{{ tsh(s.period_payments) }}</p></div>
+        <div class="rounded-xl bg-indigo-50 p-3"><p class="label-eyebrow">{{ i18n.t('cr.st.closing') }}</p><p class="font-black text-indigo-700" data-testid="st-closing">{{ tsh(s.closing_balance) }}</p></div>
+      </div>
+      <div>
+        <p class="label-eyebrow mb-1">{{ i18n.t('cr.st.sales') }}</p>
+        @if (s.sales.length) {
+          @for (x of s.sales; track x.id) {
+            <div class="flex items-center justify-between gap-3 py-1.5 border-t border-slate-100 text-sm">
+              <div><span class="font-bold text-slate-800">{{ x.number }}</span> <span class="text-xs text-slate-400 font-semibold">{{ dayLabel(x.created_at) }}@if (x.due_date) { · {{ i18n.t('cr.st.due', dayLabel(x.due_date)) }} }</span></div>
+              <div class="text-right"><span class="font-black text-slate-800">{{ tsh(x.total) }}</span> <span class="text-xs text-slate-400 font-semibold">{{ i18n.t('cr.st.paid', tsh(x.paid_total)) }}</span></div>
+            </div>
+          }
+        } @else { <p class="text-sm text-slate-400 font-semibold">{{ i18n.t('cr.st.none') }}</p> }
+      </div>
+      <div>
+        <p class="label-eyebrow mb-1">{{ i18n.t('cr.st.pays') }}</p>
+        @if (s.payments.length) {
+          @for (p of s.payments; track p.id) {
+            <div class="flex items-center justify-between gap-3 py-1.5 border-t border-slate-100 text-sm">
+              <div><span class="font-bold text-slate-800">{{ dayLabel(p.paid_at) }}</span> <span class="text-xs text-slate-400 font-semibold">{{ p.sale_number }}@if (p.method) { · {{ p.method }} }@if (p.reference) { · {{ p.reference }} }</span></div>
+              <span class="font-black text-emerald-600">{{ tsh(p.amount) }}</span>
+            </div>
+          }
+        } @else { <p class="text-sm text-slate-400 font-semibold">{{ i18n.t('cr.st.nopays') }}</p> }
+      </div>
+    }
+  </div>
+  <div slot="footer" class="flex gap-2 justify-end">
+    <button type="button" class="modal-cancel-btn" (click)="statementFor.set(null)">{{ i18n.t('common.close') }}</button>
+  </div>
+</app-modal-dialog>
+
+<!-- Credit settings -->
+<app-modal-dialog [show]="!!settingsFor()" [eyebrow]="i18n.t('cr.settings')" [title]="settingsFor()?.name ?? ''" size="md" (close)="settingsFor.set(null)">
+  <div slot="body" class="space-y-4">
+    <p class="text-sm text-slate-500">{{ i18n.t('cr.settings.hint') }}</p>
+    <div>
+      <label class="modal-label" for="csLimit">{{ i18n.t('cr.settings.limit') }}</label>
+      <input id="csLimit" name="csLimit" class="modal-input" inputmode="numeric" [(ngModel)]="limitText" autocomplete="off" data-testid="cs-limit">
+      <p class="text-xs text-slate-400 font-semibold mt-1">{{ i18n.t('cr.settings.limit.hint') }}</p>
+    </div>
+    <div>
+      <label class="modal-label" for="csTerms">{{ i18n.t('cr.settings.terms') }}</label>
+      <input id="csTerms" name="csTerms" class="modal-input" inputmode="numeric" [(ngModel)]="termsText" autocomplete="off" data-testid="cs-terms">
+    </div>
+    <label class="flex items-center gap-3 text-sm font-bold text-slate-700 cursor-pointer">
+      <input type="checkbox" name="csBlocked" [(ngModel)]="blocked" data-testid="cs-blocked"> {{ i18n.t('cr.settings.block') }}
+    </label>
+    @if (blocked) {
+      <div>
+        <label class="modal-label" for="csReason">{{ i18n.t('cr.settings.reason') }}</label>
+        <input id="csReason" name="csReason" class="modal-input" [(ngModel)]="blockReason" maxlength="255" autocomplete="off" data-testid="cs-reason">
+      </div>
+      <p class="text-xs text-slate-400 font-semibold">{{ i18n.t('cr.settings.block.hint') }}</p>
+    }
+    @if (settingsError()) { <p class="form-error" role="alert">{{ settingsError() }}</p> }
+  </div>
+  <div slot="footer" class="flex gap-2 justify-end">
+    <button type="button" class="modal-cancel-btn" (click)="settingsFor.set(null)">{{ i18n.t('common.cancel') }}</button>
+    <button type="button" class="btn-primary" [disabled]="settingsSaving()" (click)="saveSettings()" data-testid="cs-save">{{ settingsSaving() ? i18n.t('common.saving') : i18n.t('common.save') }}</button>
+  </div>
+</app-modal-dialog>
+
+<!-- Receive a payment -->
+<app-modal-dialog [show]="!!payFor()" [eyebrow]="i18n.t('cr.receive')" [title]="payFor()?.name ?? ''" size="lg" (close)="payFor.set(null)">
+  <div slot="body" class="space-y-4">
+    @if (payLoading()) {
+      <div class="skeleton-box" style="height: 90px; border-radius: 12px;"></div>
+    } @else {
+      <p class="text-sm text-slate-500">{{ i18n.t('cr.pay.hint') }}</p>
+      @if (allocations().length) {
+        @for (a of allocations(); track a.sale.id; let i = $index) {
+          <div class="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-3">
+            <label class="flex items-center gap-3 flex-1 min-w-48 cursor-pointer">
+              <input type="checkbox" [attr.name]="'alloc' + i" [ngModel]="a.picked" (ngModelChange)="pick(i, $event)" [attr.data-testid]="'pay-pick-' + a.sale.id">
+              <span>
+                <span class="font-black text-slate-900">{{ a.sale.number }}</span>
+                <span class="block text-xs font-semibold text-slate-400">{{ dayLabel(a.sale.created_at) }} · {{ i18n.t('cr.pay.owing', tsh(a.owing)) }}</span>
+              </span>
+            </label>
+            @if (a.picked) {
+              <input class="modal-input w-40" inputmode="numeric" [attr.name]="'allocAmount' + i" [ngModel]="a.amount" (ngModelChange)="setAmount(i, $event)" autocomplete="off" [attr.data-testid]="'pay-amount-' + a.sale.id" [attr.aria-label]="i18n.t('cr.pay.amount')">
+            }
+          </div>
+        }
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="modal-label" for="payMethod">{{ i18n.t('cr.pay.method') }}</label>
+            <select id="payMethod" name="payMethod" class="modal-input" [(ngModel)]="method" data-testid="pay-method">
+              @for (m of methods; track m) { <option [value]="m">{{ i18n.t('cr.method.' + m) }}</option> }
+            </select>
+          </div>
+          <div>
+            <label class="modal-label" for="payRef">{{ i18n.t('cr.pay.reference') }}</label>
+            <input id="payRef" name="payRef" class="modal-input" [(ngModel)]="reference" maxlength="255" autocomplete="off" [placeholder]="i18n.t('cr.pay.reference.hint')" data-testid="pay-reference">
+          </div>
+        </div>
+        <p class="text-sm font-black text-slate-800" data-testid="pay-total">{{ i18n.t('cr.pay.total', tsh(payTotal())) }}</p>
+      } @else if (!payError()) {
+        <p class="text-sm text-slate-500 font-semibold" data-testid="pay-none">{{ i18n.t('cr.pay.none') }}</p>
+      }
+    }
+    @if (payError()) { <p class="form-error" role="alert" data-testid="pay-error">{{ payError() }}</p> }
+  </div>
+  <div slot="footer" class="flex gap-2 justify-end">
+    <button type="button" class="modal-cancel-btn" (click)="payFor.set(null)">{{ i18n.t('common.cancel') }}</button>
+    @if (allocations().length) {
+      <button type="button" class="btn-primary" [disabled]="paySaving()" (click)="savePayment()" data-testid="pay-save">{{ paySaving() ? i18n.t('common.saving') : i18n.t('cr.pay.save') }}</button>
+    }
+  </div>
+</app-modal-dialog>
+
+<style>
+  .big-tab { padding: 12px 22px; font-size: 14px; font-weight: 800; }
+</style>

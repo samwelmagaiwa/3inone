@@ -20,6 +20,7 @@ export const routes: Routes = [
       { path: 'products', canActivate: [canOpen('products')], loadComponent: () => import('./pages/products/products').then((m) => m.ProductsPage) },
       { path: 'sales', canActivate: [canOpen('sales')], loadComponent: () => import('./pages/sales/sales').then((m) => m.SalesPage) },
       { path: 'sales/new', canActivate: [canSell], loadComponent: () => import('./pages/till/till').then((m) => m.TillPage) },
+      { path: 'customers', canActivate: [canOpen('credit')], loadComponent: () => import('./pages/credit/credit').then((m) => m.CreditPage) },
       { path: 'debts', canActivate: [canOpen('debts')], loadComponent: () => import('./pages/debts/debts').then((m) => m.DebtsPage) },
       { path: 'expenses', canActivate: [canOpen('expenses')], loadComponent: () => import('./pages/expenses/expenses').then((m) => m.ExpensesPage) },
       { path: 'assistant', loadComponent: () => import('./pages/assistant/assistant').then((m) => m.AssistantPage) },

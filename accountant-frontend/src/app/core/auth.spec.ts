@@ -139,14 +139,14 @@ describe('pages by rights', () => {
 
   it('an accountant with the usual rights gets everything of the shop', () => {
     const { auth } = configure({});
-    expect(keys(auth)).toEqual(['dashboard', 'sales', 'debts', 'expenses']);
+    expect(keys(auth)).toEqual(['dashboard', 'sales', 'credit', 'debts', 'expenses']);
     expect(homePath(auth)).toBe('/dashboard');
   });
 
   it('only what the rights open: no reports means no dashboard, and the first page is the next one', () => {
     const { auth } = configure({ permissions: ['inv_view_credit', 'inv_view_expenses'] });
-    expect(keys(auth)).toEqual(['debts', 'expenses']);
-    expect(homePath(auth)).toBe('/debts');
+    expect(keys(auth)).toEqual(['credit', 'debts', 'expenses']);
+    expect(homePath(auth)).toBe('/customers');
   });
 
   it('shop-only pages are not offered while working in the salon', () => {
@@ -168,15 +168,15 @@ describe('pages by rights', () => {
   });
 
   // The rights each role gets by default on the server (User::$INV_ROLE_DEFAULTS) and what the mobile app's menu offers for them.
-  it('a sales officer gets the till side: products, sales and customers who owe; not the books', () => {
+  it('a sales officer gets the till side: products, sales, customers on credit and debts; not the books', () => {
     const { auth } = configure({ role: 'sales_officer', permissions: ['inv_view_products', 'inv_create_products', 'inv_create_sales', 'inv_view_reminders', 'inv_view_credit', 'inv_view_cash', 'inv_view_crates', 'inv_report_damage'] });
-    expect(keys(auth)).toEqual(['products', 'sales', 'debts']);
+    expect(keys(auth)).toEqual(['products', 'sales', 'credit', 'debts']);
     expect(homePath(auth)).toBe('/products');
   });
 
   it('an accountant gets the books: this month, products (to read), sales, debts and expenses', () => {
     const { auth } = configure({ role: 'accountant', permissions: ['inv_view_products', 'inv_create_sales', 'inv_manage_sales', 'inv_view_credit', 'inv_view_cash', 'inv_view_reports', 'inv_view_expenses', 'inv_manage_expenses', 'inv_view_reminders'] });
-    expect(keys(auth)).toEqual(['dashboard', 'products', 'sales', 'debts', 'expenses']);
+    expect(keys(auth)).toEqual(['dashboard', 'products', 'sales', 'credit', 'debts', 'expenses']);
     expect(homePath(auth)).toBe('/dashboard');
   });
 

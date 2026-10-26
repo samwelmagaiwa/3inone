@@ -22,7 +22,7 @@ const nav = (el: HTMLElement) => Array.from(el.querySelectorAll('.sidebar-nav a.
 describe('the frame', () => {
   it('shows only the pages this person\'s rights open, in the template\'s sidebar', async () => {
     const { el } = await open();
-    expect(nav(el)).toEqual(['This month', 'Sales', 'Debts', 'Expenses']);
+    expect(nav(el)).toEqual(['This month', 'Sales', 'Customers & credit', 'Debts', 'Expenses']);
     expect(el.querySelector('aside.sidebar')).not.toBeNull();
   });
 
@@ -90,7 +90,7 @@ describe('the frame', () => {
     await settle(fixture);
 
     expect(h.i18n.lang()).toBe('sw');
-    expect(nav(el)).toEqual(['Mwezi huu', 'Mauzo', 'Madeni', 'Matumizi']);
+    expect(nav(el)).toEqual(['Mwezi huu', 'Mauzo', 'Wateja na mikopo', 'Madeni', 'Matumizi']);
     expect(document.documentElement.lang).toBe('sw');
   });
 
