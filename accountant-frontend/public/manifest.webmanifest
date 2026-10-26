@@ -1,0 +1,9 @@
+{
+  "name": "3inone Accountant",
+  "short_name": "Accountant",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f0f3fc",
+  "theme_color": "#1a2f6e",
+  "icons": [{ "src": "logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

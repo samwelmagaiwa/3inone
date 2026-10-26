@@ -1,0 +1,19 @@
+# The accountant's web app. From this folder:  docker compose up --build   ->  http://localhost:8080
+services:
+  accountant-web:
+    build:
+      context: .
+      args:
+        # "/" on its own port; "/app/" when it shares a domain with the API
+        BASE_HREF: ${BASE_HREF:-/}
+    image: 3inone/accountant-web
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    environment:
+      # The backend the page talks to under /api. Default: the backend_mapato stack running on this computer (port 8000).
+      API_UPSTREAM: ${API_UPSTREAM:-http://host.docker.internal:8000}
+      # Only when API_UPSTREAM is another site (its domain name); otherwise leave it.
+      API_HOST: ${API_HOST:-$$http_host}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

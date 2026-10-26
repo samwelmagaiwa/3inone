@@ -1,0 +1,26 @@
+# Compiled output
+/dist
+/tmp
+/out-tsc
+
+# Dependencies
+/node_modules
+npm-debug.log
+yarn-error.log
+
+# Angular
+/.angular/cache
+/coverage
+__screenshots__/
+
+# Environment overrides (never commit real addresses or secrets)
+.env
+.env.local
+
+# Editors and system files
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db

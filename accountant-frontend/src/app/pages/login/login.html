@@ -1,0 +1,60 @@
+<main class="min-h-dvh grid place-items-center bg-gradient-to-br from-brand-900 to-brand-700 p-4">
+  <form
+    [formGroup]="form"
+    (ngSubmit)="submit()"
+    class="w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl"
+    novalidate
+  >
+    <h1 class="text-2xl font-extrabold text-brand-800">{{ appName }}</h1>
+    <p class="mt-1 mb-6 text-sm text-slate-500">Sign in with the account you use in the mobile app.</p>
+
+    <label class="block text-sm font-semibold text-slate-700" for="email">Email</label>
+    <input
+      id="email"
+      type="email"
+      formControlName="email"
+      autocomplete="username"
+      class="mt-1 mb-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+    />
+    @if (form.controls.email.touched && form.controls.email.invalid) {
+      <p class="mb-2 text-xs text-red-600">Enter a valid email.</p>
+    }
+
+    <label class="mt-3 block text-sm font-semibold text-slate-700" for="phone">Phone number</label>
+    <input
+      id="phone"
+      type="tel"
+      formControlName="phone"
+      placeholder="Phone number on your account"
+      autocomplete="tel"
+      class="mt-1 mb-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+    />
+    @if (form.controls.phone.touched && form.controls.phone.invalid) {
+      <p class="mb-2 text-xs text-red-600">Enter the phone number saved on your account.</p>
+    }
+
+    <label class="mt-3 block text-sm font-semibold text-slate-700" for="password">Password</label>
+    <input
+      id="password"
+      type="password"
+      formControlName="password"
+      autocomplete="current-password"
+      class="mt-1 mb-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+    />
+    @if (form.controls.password.touched && form.controls.password.invalid) {
+      <p class="mb-2 text-xs text-red-600">Enter your password.</p>
+    }
+
+    @if (error(); as message) {
+      <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{{ message }}</p>
+    }
+
+    <button
+      type="submit"
+      [disabled]="busy()"
+      class="mt-6 w-full rounded-lg bg-brand-800 px-4 py-2.5 font-bold text-white transition hover:bg-brand-700 disabled:opacity-60"
+    >
+      {{ busy() ? 'Signing in…' : 'Sign in' }}
+    </button>
+  </form>
+</main>

@@ -1,0 +1,58 @@
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Redirects stay relative, so they keep whatever address the browser used (also behind a reverse proxy).
+    absolute_redirect off;
+
+    # When the app is built for /app/ (sharing a domain with the API) the files are still kept at the root here, so
+    # /app/main.js is found whether or not the proxy in front strips the /app/ prefix.
+    location = /app { return 301 /app/; }
+    rewrite ^/app/(.*)$ /$1 last;
+
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 256;
+    gzip_types text/plain text/css text/xml application/json application/javascript image/svg+xml;
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # For the container's health check
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # The API: same address as the page, so the browser needs no CORS and the build holds no server address.
+    location /api/ {
+        proxy_pass ${API_UPSTREAM};
+        proxy_http_version 1.1;
+        # The Host the backend sees: by default the one the browser used; set API_HOST when /api goes to another site.
+        proxy_set_header Host ${API_HOST};
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_ssl_server_name on;
+        proxy_read_timeout 60s;
+        client_max_body_size 20m;
+    }
+
+    # Built files carry a hash in their name, so they can be kept for a year
+    location ~* \.(?:js|css|woff2?|ttf|png|jpe?g|gif|svg|ico)$ {
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    # The app's own pages (/login, /app/dashboard ...) are all index.html; never keep that one
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-store";
+    }
+}
