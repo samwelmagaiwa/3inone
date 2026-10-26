@@ -72,6 +72,26 @@ class GeminiFallbackTest extends TestCase
         $this->assertSame(['m-primary', 'm-second', 'gemini-2.0-flash'], $this->modelsTried());
     }
 
+    public function test_a_model_that_is_too_slow_to_answer_hands_over_and_is_not_asked_again_for_a_minute(): void
+    {
+        $slowAsked = 0;
+        Http::fake([
+            '*models/m-primary:*' => function () use (&$slowAsked) {
+                $slowAsked++;
+
+                throw new \Illuminate\Http\Client\ConnectionException('cURL error 28: Operation timed out');
+            },
+            '*models/m-second:*' => $this->ok('quick one'),
+        ]);
+
+        $r = GeminiClient::generate($this->body());
+        $this->assertSame('quick one', $r['candidates'][0]['content']['parts'][0]['text']);
+
+        GeminiClient::generate($this->body());
+        $this->assertSame(1, $slowAsked, 'the slow model is skipped for a while after it timed out');
+        $this->assertSame(['m-second', 'm-second'], $this->modelsTried(), 'both answers came from the next model');
+    }
+
     public function test_a_wrong_request_or_key_stops_at_once_instead_of_trying_every_model(): void
     {
         Http::fake(['*' => Http::response(['error' => 'API key not valid'], 400)]);

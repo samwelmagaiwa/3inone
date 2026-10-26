@@ -24,6 +24,12 @@ final class GeminiClient
      */
     public const DEFAULT_CHAIN = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.7-flash', 'gemini-3.6-flash'];
 
+    /** One model gets this long to answer; Gemini's speed varies from 2 to 40 seconds, and a slow one is not worth waiting for. */
+    private const SECONDS_PER_MODEL = 14;
+
+    /** All models together get this long, so a person gets an answer or a clear message BEFORE the web server's 60-second limit (a 504). */
+    private const SECONDS_IN_ALL = 42;
+
     /** @return array<int, string> */
     public static function chain(): array
     {
@@ -53,10 +59,16 @@ final class GeminiClient
         $order = $live === [] ? $models : $live;
 
         $last = 'no model configured';
+        $started = microtime(true);
         foreach ($order as $model) {
+            $left = self::SECONDS_IN_ALL - (microtime(true) - $started);
+            if ($left < 4) {
+                $last = 'AI is too slow now';
+                break;
+            }
             try {
                 $res = Http::withHeaders(['x-goog-api-key' => trim((string) config('services.gemini.key'))]) // a header, never the URL
-                    ->connectTimeout(8)->timeout(35)->acceptJson()
+                    ->connectTimeout(5)->timeout((int) max(4, min(self::SECONDS_PER_MODEL, $left)))->acceptJson()
                     ->post('https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent', self::forModel($body, $model));
             } catch (ConnectionException $e) {
                 self::down($model, 60, 'no connection');
