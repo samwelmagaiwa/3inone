@@ -3,6 +3,7 @@
 namespace App\Support\Inventory;
 
 use App\Models\Business;
+use App\Support\Ai\GeminiClient;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -246,23 +247,24 @@ final class BusinessAdvisor
         $prompt = "Facts:\n" . json_encode(['facts' => $facts, 'rule_based_notes' => $rules], JSON_UNESCAPED_UNICODE);
 
         if (self::provider() === 'gemini') {
-            // The key travels in a header, never in the URL, so it cannot end up in logs.
-            $model = (string) config('services.gemini.model', 'gemini-2.5-flash');
-            $res = Http::withHeaders(['x-goog-api-key' => self::aiKey()])
-                ->timeout(45)->acceptJson()
-                ->post('https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent', [
+            try {
+                // GeminiClient moves down its list of models by itself when one runs out of quota or is overloaded.
+                $reply = GeminiClient::generate([
                     'systemInstruction' => ['parts' => [['text' => $system]]],
                     'contents' => [['role' => 'user', 'parts' => [['text' => $prompt]]]],
                     'generationConfig' => ['temperature' => 0.4, 'maxOutputTokens' => 4096, 'responseMimeType' => 'application/json'],
                 ]);
-            if (!$res->successful()) {
-                throw new \RuntimeException('AI answered ' . $res->status());
-            }
 
-            return self::parse((string) data_get($res->json(), 'candidates.0.content.parts.0.text', ''));
+                return self::parse((string) data_get($reply, 'candidates.0.content.parts.0.text', ''));
+            } catch (\RuntimeException $e) {
+                // Every Gemini model failed: use Claude when a key for it is set, else let the rules answer.
+                if (trim((string) config('services.anthropic.key', '')) === '') {
+                    throw $e;
+                }
+            }
         }
 
-        $res = Http::withHeaders(['x-api-key' => self::aiKey(), 'anthropic-version' => '2023-06-01'])
+        $res = Http::withHeaders(['x-api-key' => trim((string) config('services.anthropic.key')), 'anthropic-version' => '2023-06-01'])
             ->timeout(45)->acceptJson()
             ->post('https://api.anthropic.com/v1/messages', [
                 'model' => (string) config('services.anthropic.model', 'claude-sonnet-5-5'),

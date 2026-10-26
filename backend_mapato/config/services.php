@@ -33,6 +33,8 @@ return [
     'gemini' => [
         'key' => env('GEMINI_API_KEY'),
         'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
+        // Tried in order when the model above runs out of quota or is overloaded (comma separated); unset = the built-in list.
+        'models' => env('GEMINI_MODELS'),
     ],
 
     'anthropic' => [
