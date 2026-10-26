@@ -39,6 +39,15 @@ describe('the frame', () => {
     expect(text(none.el.querySelector('[data-testid="header-ai"]') as HTMLElement)).toBe('AI assistant');
   });
 
+  it('asks for the plan only when the person belongs to a business (no business, no plan, no failed request)', async () => {
+    const withBusiness = await open();
+    withBusiness.h.http.expectOne(`${environment.apiUrl}/business/subscription`);
+
+    TestBed.resetTestingModule();
+    const without = await open({ business: '' });
+    without.h.http.expectNone(`${environment.apiUrl}/business/subscription`);
+  });
+
   it('fewer rights, fewer pages', async () => {
     const some = await open({ permissions: ['inv_view_expenses'] });
     expect(nav(some.el)).toEqual(['Expenses']);

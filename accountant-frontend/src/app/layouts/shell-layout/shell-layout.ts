@@ -114,6 +114,8 @@ export class ShellLayout implements OnDestroy {
   }
 
   protected async loadSubscription(): Promise<void> {
+    // An account with no business (the platform admin) has no plan: the server would only answer 404, which shows as a red line in the browser console.
+    if (!this.user().business) return;
     try {
       const s = await firstValueFrom(this.api.subscription());
       this.auth.subscription.set(s);
