@@ -70,7 +70,21 @@ final class BusinessAdvisor
 
     public static function aiKey(): string
     {
-        return trim((string) config('services.anthropic.key', ''));
+        $provider = self::provider();
+
+        return $provider === null ? '' : trim((string) config("services.{$provider}.key", ''));
+    }
+
+    /** Which AI answers: Gemini when its key is set, else Anthropic, else none (rules only). */
+    public static function provider(): ?string
+    {
+        foreach (['gemini', 'anthropic'] as $name) {
+            if (trim((string) config("services.{$name}.key", '')) !== '') {
+                return $name;
+            }
+        }
+
+        return null;
     }
 
     private static function cached(): ?array
@@ -229,20 +243,38 @@ final class BusinessAdvisor
             . "Each detail must name the specific product, customer, expense or amount it is about and say one concrete action the owner can take this week. "
             . "Mention what is going well too. Do not repeat the same point. No markdown, no text outside the JSON.";
 
+        $prompt = "Facts:\n" . json_encode(['facts' => $facts, 'rule_based_notes' => $rules], JSON_UNESCAPED_UNICODE);
+
+        if (self::provider() === 'gemini') {
+            // The key travels in a header, never in the URL, so it cannot end up in logs.
+            $model = (string) config('services.gemini.model', 'gemini-2.5-flash');
+            $res = Http::withHeaders(['x-goog-api-key' => self::aiKey()])
+                ->timeout(45)->acceptJson()
+                ->post('https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent', [
+                    'systemInstruction' => ['parts' => [['text' => $system]]],
+                    'contents' => [['role' => 'user', 'parts' => [['text' => $prompt]]]],
+                    'generationConfig' => ['temperature' => 0.4, 'maxOutputTokens' => 4096, 'responseMimeType' => 'application/json'],
+                ]);
+            if (!$res->successful()) {
+                throw new \RuntimeException('AI answered ' . $res->status());
+            }
+
+            return self::parse((string) data_get($res->json(), 'candidates.0.content.parts.0.text', ''));
+        }
+
         $res = Http::withHeaders(['x-api-key' => self::aiKey(), 'anthropic-version' => '2023-06-01'])
             ->timeout(45)->acceptJson()
             ->post('https://api.anthropic.com/v1/messages', [
                 'model' => (string) config('services.anthropic.model', 'claude-sonnet-5-5'),
                 'max_tokens' => 1500,
                 'system' => $system,
-                'messages' => [['role' => 'user', 'content' => "Facts:\n" . json_encode(['facts' => $facts, 'rule_based_notes' => $rules], JSON_UNESCAPED_UNICODE)]],
+                'messages' => [['role' => 'user', 'content' => $prompt]],
             ]);
         if (!$res->successful()) {
             throw new \RuntimeException('AI answered ' . $res->status());
         }
-        $text = (string) data_get($res->json(), 'content.0.text', '');
 
-        return self::parse($text);
+        return self::parse((string) data_get($res->json(), 'content.0.text', ''));
     }
 
     /**

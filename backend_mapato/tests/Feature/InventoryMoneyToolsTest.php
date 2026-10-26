@@ -331,7 +331,7 @@ class InventoryMoneyToolsTest extends TestCase
 
     public function test_without_an_ai_key_the_advice_is_written_by_rules_from_the_numbers(): void
     {
-        config(['services.anthropic.key' => '']);
+        config(['services.gemini.key' => '', 'services.anthropic.key' => '']);
         Http::fake();
         $owner = $this->seedAdviceShop();
 
@@ -354,7 +354,7 @@ class InventoryMoneyToolsTest extends TestCase
 
     public function test_with_a_key_claude_gets_the_full_facts_with_names_and_never_phone_numbers(): void
     {
-        config(['services.anthropic.key' => 'sk-test', 'services.anthropic.model' => 'claude-test']);
+        config(['services.gemini.key' => '', 'services.anthropic.key' => 'sk-test', 'services.anthropic.model' => 'claude-test']);
         Http::fake(['api.anthropic.com/*' => Http::response(['content' => [['type' => 'text', 'text' => "Here you go:\n" . json_encode([
             ['level' => 'warning', 'title' => 'Collect from Baba Juma', 'detail' => 'Baba Juma owes TSh 90,000 for 200+ days. Call him this week.'],
             ['level' => 'nonsense', 'title' => 'Move Dusty Dye', 'detail' => 'Dusty Dye has not sold: discount it.'],
@@ -385,9 +385,32 @@ class InventoryMoneyToolsTest extends TestCase
         Http::assertSentCount(1);
     }
 
+    public function test_with_a_gemini_key_gemini_answers_and_the_key_stays_out_of_the_url(): void
+    {
+        config(['services.gemini.key' => 'g-test', 'services.gemini.model' => 'gemini-test', 'services.anthropic.key' => 'sk-test']);
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response(['candidates' => [['content' => ['parts' => [['text' => json_encode([
+            ['level' => 'warning', 'title' => 'Collect from Baba Juma', 'detail' => 'Baba Juma owes TSh 90,000. Call him this week.'],
+        ])]]]]]], 200)]);
+        $owner = $this->seedAdviceShop();
+
+        $a = $this->api($owner, 'GET', '/api/inventory/advice?month=2026-11&lang=en')->assertOk()->json('data');
+
+        $this->assertSame(['ai', null], [$a['source'], $a['ai_error']]);
+        $this->assertSame('Collect from Baba Juma', $a['items'][0]['title']);
+        Http::assertSentCount(1);
+        Http::assertSent(function ($req) {
+            $body = json_encode($req->data(), JSON_UNESCAPED_UNICODE);
+
+            return $req->url() === 'https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent'
+                && $req->hasHeader('x-goog-api-key', 'g-test')
+                && !str_contains($req->url(), 'g-test')
+                && str_contains($body, 'Baba Juma') && !str_contains($body, '0755999888');
+        });
+    }
+
     public function test_when_the_ai_fails_the_owner_still_gets_rule_based_advice_and_refreshing_is_limited(): void
     {
-        config(['services.anthropic.key' => 'sk-test']);
+        config(['services.gemini.key' => '', 'services.anthropic.key' => 'sk-test']);
         Http::fake(['api.anthropic.com/*' => Http::sequence()->push(['error' => 'busy'], 529)->push(['content' => [['type' => 'text', 'text' => 'not json at all']]], 200)->whenEmpty(Http::response(['content' => [['type' => 'text', 'text' => 'still not json']]], 200))]);
         $owner = $this->seedAdviceShop();
 
@@ -409,7 +432,7 @@ class InventoryMoneyToolsTest extends TestCase
 
     public function test_a_month_with_no_sales_is_told_to_record_sales_and_the_advice_is_private_to_the_shop(): void
     {
-        config(['services.anthropic.key' => '']);
+        config(['services.gemini.key' => '', 'services.anthropic.key' => '']);
         $this->now();
         $a = $this->shop('A');
         $b = $this->shop('B');

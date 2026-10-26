@@ -29,6 +29,12 @@ return [
     ],
 
     // The business adviser (inventory > monthly report > Where to improve). Without a key the advice is written by plain rules.
+    // Gemini is used when its key is set, otherwise Anthropic.
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
+    ],
+
     'anthropic' => [
         'key' => env('ANTHROPIC_API_KEY'),
         'model' => env('ANTHROPIC_MODEL', 'claude-sonnet-5-5'),

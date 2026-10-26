@@ -22,7 +22,7 @@ What a shop owner asked for, and where it lives. All of it is per business and p
 
 ## The AI
 
-- Set `ANTHROPIC_API_KEY` (and optionally `ANTHROPIC_MODEL`, default `claude-sonnet-5-5`) in the server `.env`. **The owner of the server sets it; nothing in the repo does.** Without a key everything works with rule-based advice.
+- Set `GEMINI_API_KEY` (optionally `GEMINI_MODEL`, default `gemini-2.5-flash`) or `ANTHROPIC_API_KEY` (optionally `ANTHROPIC_MODEL`, default `claude-sonnet-5-5`) in the server `.env`; Gemini wins when both are set. **The owner of the server sets it; nothing in the repo does.** Without a key everything works with rule-based advice.
 - What is sent: the month's figures, the month before, expense changes, stock/debt/capital position, the profit target, best products, best **customers by name**, **customers who owe by name** with amount and days, sleeping stock, and who the business owes by name. **Phone numbers are never sent** (a test checks this). Customer names are personal data of the owner's customers: tell owners the advice feature shares their figures and names with the AI provider.
 - One answer is kept per business, month, language and day; the owner may ask for a fresh one `REFRESHES_PER_DAY` (5) times. If the AI fails or answers badly, the rule-based advice is shown and the page says the AI could not be reached.
 
