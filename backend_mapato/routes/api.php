@@ -59,6 +59,7 @@ use App\Http\Controllers\API\Inventory\SalonPublicBookingController;
 use App\Http\Controllers\API\Inventory\SalonMoneyController;
 use App\Http\Controllers\API\Inventory\SalonPerksController;
 use App\Http\Controllers\API\Inventory\SalonStaffController;
+use App\Http\Controllers\API\Inventory\AssistantController;
 use App\Http\Controllers\API\Inventory\SalesController as InventorySalesController;
 use App\Http\Controllers\API\Inventory\StockMovementController as InventoryStockMovementController;
 use App\Http\Controllers\API\Inventory\ReminderController as InventoryReminderController;
@@ -427,8 +428,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('inventory/opening-debts/{id}/payments',      [BusinessMoneyController::class, 'debtPayments']);
         Route::delete('inventory/opening-debts/{id}',            [BusinessMoneyController::class, 'deleteDebt']);
     });
+    // The AI assistant: open to anyone who can see at least something; every tool inside it checks the person's own rights.
+    Route::middleware(['inv_perm:inv_view_products,inv_create_sales,inv_view_credit,inv_view_reports,inv_view_expenses,inv_manage_products', 'throttle:15,1,assistant'])->group(function () {
+        Route::get('inventory/assistant',                        [AssistantController::class, 'status']);
+        Route::post('inventory/assistant',                       [AssistantController::class, 'ask']);
+    });
     Route::middleware('inv_perm:inv_view_reports')->group(function () {
-        Route::get('inventory/monthly-report',                   [BusinessMoneyController::class, 'report']);
+        Route::get('inventory/monthly-report',                  [BusinessMoneyController::class, 'report']);
         Route::get('inventory/advice',                           [BusinessMoneyController::class, 'advice']);
     });
     Route::middleware('inv_perm:inv_manage_settings')->group(function () {

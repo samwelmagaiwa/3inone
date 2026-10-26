@@ -767,12 +767,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     /** Roles that may see every sales officer's data, not just their own. */
     private function isPrivileged(Request $request): bool
     {
-        // (A salon's accountant works across everyone's sales; its stylists see only their own.)
-        if (\App\Support\Tenancy\TenantContext::service() === 'salon' && $request->user() !== null) {
-            return \App\Support\Salon\SalonAccess::isManager($request->user());
-        }
-
-        return in_array(optional($request->user())->role, ['admin', 'super_admin', 'manager', 'accountant']);
+        return \App\Support\Inventory\SalesVisibility::seesAll($request->user());
     }
 
     /**

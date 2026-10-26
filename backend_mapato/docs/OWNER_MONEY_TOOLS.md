@@ -37,3 +37,7 @@ Debts: `inv_view_credit` or `inv_manage_products`. Report and advice: `inv_view_
 ## Not covered
 
 The salon has its own reports and is not offered these screens. Transport and Rental are unchanged.
+
+## AI assistant (ask the business)
+
+`GET/POST /api/inventory/assistant` (Inventory and Salon). Needs `GEMINI_API_KEY`. The model reads data only through `App\Support\Ai\AssistantTools`; each tool is opened by the same `inv_*` right as the matching screen, and a user's assistant is offered only those tools (a refused tool answers "Not allowed"). Sales are limited to the user's own unless their role sees everyone's (`SalesVisibility`). Phone numbers never go to the AI; the app shows them from the records on `cards`. Off-topic questions are declined by the system prompt. Limits: 600-character question, 15 requests/minute, 60 questions/user/day. Transport and Rental are not covered yet.

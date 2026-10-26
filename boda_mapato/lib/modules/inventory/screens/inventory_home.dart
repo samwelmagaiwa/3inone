@@ -11,6 +11,7 @@ import '../../../services/localization_service.dart';
 import '../../../widgets/service_switcher_dialog.dart';
 import 'dashboard/inventory_dashboard_screen.dart';
 import 'credit/credit_screen.dart';
+import 'assistant/assistant_screen.dart';
 import 'money/debts_screen.dart';
 import 'money/monthly_report_screen.dart';
 import 'settings/depot_settings_screen.dart';
@@ -44,6 +45,15 @@ import '../providers/notifications_provider.dart';
 /// and drawer all read from the same list) so a role's visible sections stay
 /// consistent everywhere instead of three independently hand-computed index
 /// schemes drifting apart.
+/// The assistant is for anyone who can see something; what it may read is decided by the server, per right.
+bool _canAskAssistant(UserPermissions p) =>
+    p.has('inv_view_products') ||
+    p.has('inv_create_sales') ||
+    p.has('inv_view_credit') ||
+    p.has('inv_view_reports') ||
+    p.has('inv_view_expenses') ||
+    p.has('inv_manage_products');
+
 class _InvMenuEntry {
   const _InvMenuEntry({
     required this.key,
@@ -167,6 +177,15 @@ List<_InvMenuEntry> _invEntries(LocalizationService loc,
               pageBuilder: () => const MonthlyReportScreen(),
               visible: (UserPermissions p) => p.has('inv_view_reports'),
             ),
+            // 7d — Ask the business: AI answers from what this person's rights allow
+            _InvMenuEntry(
+              key: 'assistant',
+              staticTitle: loc.isSwahili ? 'Msaidizi wa AI' : 'AI assistant',
+              icon: Icons.auto_awesome,
+              color: ThemeConstants.invAccent,
+              pageBuilder: () => const AssistantScreen(),
+              visible: _canAskAssistant,
+            ),
             // 8 — Settings (standalone)
             _InvMenuEntry(
               key: 'settings',
@@ -242,6 +261,14 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
           p.has('inv_view_cash') ||
           p.has('inv_view_reports') ||
           p.has('inv_view_reminders'),
+    ),
+    _InvMenuEntry(
+      key: 'assistant',
+      staticTitle: sw ? 'Msaidizi wa AI' : 'AI assistant',
+      icon: Icons.auto_awesome,
+      color: ThemeConstants.invAccent,
+      pageBuilder: () => const AssistantScreen(),
+      visible: _canAskAssistant,
     ),
     _InvMenuEntry(
       key: 'finance',
