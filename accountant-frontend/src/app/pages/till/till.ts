@@ -416,6 +416,25 @@ export class TillPage implements OnInit, OnDestroy {
   }
 
   // ------------------------------------------------------------------ the sale
+  /** Sell at the retail or the wholesale price (for a business that has both): the cart is priced again at once. */
+  protected setTier(tier: 'retail' | 'wholesale'): void {
+    this.till.tierOverride.set(tier);
+    this.till.reprice(this.products());
+  }
+
+  /** Empty the cart, after asking: it cannot be undone. */
+  protected async clearCart(): Promise<void> {
+    if (!this.till.lines().length) return;
+    const yes = await this.confirm.ask({
+      title: this.i18n.t('till.clear.title'),
+      message: this.i18n.t('till.clear.message'),
+      confirmLabel: this.i18n.t('till.clear'),
+      cancelLabel: this.i18n.t('common.keep'),
+      danger: true,
+    });
+    if (yes) this.till.clear();
+  }
+
   protected async charge(): Promise<void> {
     const built = this.till.buildSale();
     if (built.error) {

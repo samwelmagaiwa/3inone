@@ -6,11 +6,11 @@ import { TillPage } from './till';
 const soda = { id: 1, name: 'Soda', selling_price: 1000, cost_price: 600, quantity: 10, status: 'active', is_service: 0 };
 const cut = { id: 9, name: 'Haircut', selling_price: 10000, cost_price: 0, quantity: 0, status: 'active', is_service: 1 };
 
-async function open(who = {}, goods: unknown[] = [soda], salon = false) {
+async function open(who = {}, goods: unknown[] = [soda], salon = false, settings: Record<string, string> = {}) {
   const h = configure(salon ? { services: ['salon'], ...who } : who);
   const fixture = TestBed.createComponent(TillPage);
   fixture.detectChanges();
-  h.http.match((r) => r.url.endsWith('/inventory/settings')).forEach((r) => r.flush({ data: { sale_tier: 'product', prices_include_vat: '1' } }));
+  h.http.match((r) => r.url.endsWith('/inventory/settings')).forEach((r) => r.flush({ data: { sale_tier: 'product', prices_include_vat: '1', ...settings } }));
   h.http.expectOne((r) => r.url.endsWith('/inventory/products')).flush({ data: goods, meta: { last_page: 1 } });
   h.http.match((r) => r.url.endsWith('/crate-types')).forEach((r) => r.flush({ data: [] }));
   if (salon) {
@@ -70,6 +70,58 @@ describe('the till', () => {
     byTestId(el, 'till-new')!.click();
     await settle(fixture);
     expect(byTestId(el, 'till-empty')).not.toBeNull();
+  });
+
+  describe('as on the mobile till', () => {
+    it('offers no price level when the business sells at one price', async () => {
+      const { el } = await open();
+      expect(byTestId(el, 'till-level')).toBeNull();
+    });
+
+    it('lets a business with retail and wholesale prices switch between them, starting on its usual one', async () => {
+      const { fixture, el } = await open({}, [soda], false, { sale_tier: 'wholesale' });
+      const retail = byTestId(el, 'till-level-retail') as HTMLButtonElement;
+      const wholesale = byTestId(el, 'till-level-wholesale') as HTMLButtonElement;
+      expect(wholesale.getAttribute('aria-pressed')).toBe('true');
+
+      retail.click();
+      await settle(fixture);
+
+      expect(retail.getAttribute('aria-pressed')).toBe('true');
+      expect(wholesale.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('clears the cart only after asking', async () => {
+      const { h, fixture, el } = await open();
+      byTestId(el, 'good-1')!.click();
+      await settle(fixture);
+
+      h.confirmAnswer.value = false;
+      byTestId(el, 'till-clear')!.click();
+      await settle(fixture);
+      expect(byTestId(el, 'line-1')).not.toBeNull();
+
+      h.confirmAnswer.value = true;
+      byTestId(el, 'till-clear')!.click();
+      await settle(fixture);
+      expect(byTestId(el, 'line-1')).toBeNull();
+      expect(byTestId(el, 'till-empty')).not.toBeNull();
+    });
+
+    it('sends the name and phone of a walk-in customer with the sale', async () => {
+      const { h, fixture, el } = await open();
+      byTestId(el, 'good-1')!.click();
+      await settle(fixture);
+      type(el, '[data-testid=till-walkin]', 'Mama Zawadi');
+      type(el, '[data-testid=till-walkin-phone]', '0712345678');
+      await settle(fixture);
+
+      byTestId(el, 'till-charge')!.click();
+      await settle(fixture);
+      const post = h.http.expectOne((r) => r.url.endsWith('/inventory/sales') && r.method === 'POST');
+
+      expect(post.request.body).toMatchObject({ customer_name_override: 'Mama Zawadi', customer_phone: '0712345678' });
+    });
   });
 
   it('does not send anything when the person answers No to the question', async () => {

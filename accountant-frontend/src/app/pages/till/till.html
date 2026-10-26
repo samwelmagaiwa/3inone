@@ -47,7 +47,21 @@
     <!-- 2. The cart, the customer and the payment -->
     <section class="section-card p-5 xl:col-span-3 space-y-5">
       <div>
-        <p class="label-eyebrow">{{ i18n.t('till.step2') }}</p>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <p class="label-eyebrow">{{ i18n.t('till.step2') }}</p>
+          <div class="flex flex-wrap items-center gap-2">
+            @if (caps.usesPriceLevels()) {
+              <div class="flex items-center gap-1" role="group" [attr.aria-label]="i18n.t('till.level')" data-testid="till-level">
+                <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wide mr-1">{{ i18n.t('till.level') }}</span>
+                <button type="button" class="pill-tab" [class.is-active]="till.tier() === 'retail'" [attr.aria-pressed]="till.tier() === 'retail'" (click)="setTier('retail')" data-testid="till-level-retail">{{ i18n.t('till.level.retail') }}</button>
+                <button type="button" class="pill-tab" [class.is-active]="till.tier() === 'wholesale'" [attr.aria-pressed]="till.tier() === 'wholesale'" (click)="setTier('wholesale')" data-testid="till-level-wholesale">{{ i18n.t('till.level.wholesale') }}</button>
+              </div>
+            }
+            @if (till.lines().length) {
+              <button type="button" class="link-btn danger" (click)="clearCart()" data-testid="till-clear">{{ i18n.t('till.clear') }}</button>
+            }
+          </div>
+        </div>
         @if (till.lines().length) {
           <div class="mt-2 space-y-2">
             @for (l of till.lines(); track l.key) {
@@ -116,6 +130,7 @@
               }
             </div>
             <input class="modal-input" [ngModel]="till.manualName()" (ngModelChange)="till.manualName.set($event)" [placeholder]="i18n.t('till.customer.walkin')" autocomplete="off" data-testid="till-walkin">
+            <input class="modal-input" inputmode="tel" [ngModel]="till.manualPhone()" (ngModelChange)="till.manualPhone.set($event)" [placeholder]="i18n.t('till.customer.walkin.phone')" autocomplete="off" data-testid="till-walkin-phone">
           </div>
           <p class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('till.customer.hint') }}</p>
         }
