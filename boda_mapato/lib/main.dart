@@ -1,3 +1,4 @@
+import 'modules/inventory/screens/assistant/assistant_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -357,6 +358,8 @@ class BodaMapatoApp extends StatelessWidget {
                   }
                   return const ComingSoonScreen();
                 },
+                "/ai_assistant": (final BuildContext context) =>
+                    const AssistantScreen(),
                 "/rental/helpdesk": (final BuildContext context) =>
                     const HelpdeskScreen(),
                 "/rental/lease-templates": (final BuildContext context) =>

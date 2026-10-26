@@ -21,53 +21,72 @@ final class AssistantTools
 {
     private const MAX_ROWS = 15;
 
-    /** @return array<string, array{description: string, params: array<string, array<string, mixed>>, any: array<int, string>}> */
+    /**
+     * Each tool names its service and what opens it: Inventory/Salon tools by the inv_* rights (`any`), Transport and Rental tools
+     * by the roles the matching routes admit (`roles`) or an explicit grant (`grants`), exactly as the route middleware decides.
+     *
+     * @return array<string, array<string, mixed>>
+     */
     public static function catalog(): array
     {
+        $month = ['month' => ['type' => 'STRING', 'description' => 'YYYY-MM; the current month when omitted']];
+        $limit = ['limit' => ['type' => 'INTEGER', 'description' => 'How many, at most 15']];
+
         return [
-            'business_report' => [
-                'description' => 'Sales, profit, expenses, money position and best products/customers for one month, compared with the month before.',
-                'params' => ['month' => ['type' => 'STRING', 'description' => 'YYYY-MM; the current month when omitted']],
-                'any' => ['inv_view_reports'],
-            ],
-            'customers_who_owe' => [
-                'description' => 'Customers who owe the business money (credit sales and old debts), biggest first, with how many days.',
-                'params' => ['limit' => ['type' => 'INTEGER', 'description' => 'How many, at most 15']],
-                'any' => ['inv_view_credit'],
-            ],
-            'find_customer' => [
-                'description' => 'Look a customer up by name: what they bought and, when allowed, what they owe.',
+            // ---- Shop / depot / salon (the sales engine)
+            'business_report' => ['service' => 'inventory', 'any' => ['inv_view_reports'], 'params' => $month,
+                'description' => 'Sales, profit, expenses, money position, what the business owes suppliers, and best products/customers for one month, compared with the month before.'],
+            'customers_who_owe' => ['service' => 'inventory', 'any' => ['inv_view_credit'], 'params' => $limit,
+                'description' => 'Customers who owe the business money (credit sales and old debts), biggest first, with how many days.'],
+            'find_customer' => ['service' => 'inventory', 'any' => ['inv_manage_products', 'inv_create_sales', 'inv_view_credit'],
                 'params' => ['name' => ['type' => 'STRING', 'description' => 'Part of the customer name']],
-                'any' => ['inv_manage_products', 'inv_create_sales', 'inv_view_credit'],
-            ],
-            'find_products' => [
-                'description' => 'Goods or services with stock and price; can list only what is low on stock.',
-                'params' => [
-                    'search' => ['type' => 'STRING', 'description' => 'Part of the product name'],
-                    'low_stock_only' => ['type' => 'BOOLEAN', 'description' => 'Only goods at or under their minimum stock'],
-                ],
-                'any' => ['inv_view_products'],
-            ],
-            'recent_sales' => [
-                'description' => 'Recent sales with customer, items, total, paid amount and status.',
-                'params' => [
-                    'days' => ['type' => 'INTEGER', 'description' => 'Look back this many days, at most 31'],
-                    'status' => ['type' => 'STRING', 'description' => 'paid, debt or partial'],
-                ],
-                'any' => ['inv_create_sales'],
-            ],
-            'expenses_summary' => [
-                'description' => 'Business spending by kind for one month.',
-                'params' => ['month' => ['type' => 'STRING', 'description' => 'YYYY-MM; the current month when omitted']],
-                'any' => ['inv_view_expenses'],
-            ],
+                'description' => 'Look a customer up by name: what they bought and, when allowed, what they owe.'],
+            'find_products' => ['service' => 'inventory', 'any' => ['inv_view_products'],
+                'params' => ['search' => ['type' => 'STRING', 'description' => 'Part of the product name'], 'low_stock_only' => ['type' => 'BOOLEAN', 'description' => 'Only goods at or under their minimum stock']],
+                'description' => 'Goods or services with stock and price; can list only what is low on stock.'],
+            'recent_sales' => ['service' => 'inventory', 'any' => ['inv_create_sales'],
+                'params' => ['days' => ['type' => 'INTEGER', 'description' => 'Look back this many days, at most 31'], 'status' => ['type' => 'STRING', 'description' => 'paid, debt or partial']],
+                'description' => 'Recent sales with customer, items, total, paid amount and status.'],
+            'expenses_summary' => ['service' => 'inventory', 'any' => ['inv_view_expenses'], 'params' => $month,
+                'description' => 'Business spending by kind for one month.'],
+            'staff_sales' => ['service' => 'inventory', 'any' => ['inv_view_reports'], 'params' => $month,
+                'description' => 'Sales by staff member for a month (for a salon: how much each stylist earned the business, with how many services).'],
+            // ---- Transport
+            'transport_overview' => ['service' => 'transport', 'roles' => ['admin'], 'grants' => ['view_reports_transport', 'manage_drivers_transport', 'manage_vehicles_transport', 'manage_payments_transport', 'manage_debts_transport'], 'params' => [],
+                'description' => 'Transport business at a glance: drivers, vehicles, money collected this month, unpaid driver debt.'],
+            'transport_drivers' => ['service' => 'transport', 'roles' => ['admin'], 'grants' => ['manage_drivers_transport', 'manage_vehicles_transport'],
+                'params' => ['search' => ['type' => 'STRING', 'description' => 'Part of the driver name']],
+                'description' => 'Drivers with their vehicles and licence expiry.'],
+            'transport_debts' => ['service' => 'transport', 'roles' => ['admin', 'driver'], 'grants' => ['manage_debts_transport'], 'params' => $limit,
+                'description' => 'Drivers who owe the business (unpaid daily targets), biggest first, with days overdue. A driver sees only their own.'],
+            'transport_payments' => ['service' => 'transport', 'roles' => ['admin', 'driver'], 'grants' => ['manage_payments_transport'],
+                'params' => ['days' => ['type' => 'INTEGER', 'description' => 'Look back this many days, at most 31']],
+                'description' => 'Recent driver payments with amount, date and channel. A driver sees only their own.'],
+            // ---- Rental
+            'rental_overview' => ['service' => 'rental', 'roles' => ['admin', 'landlord'], 'grants' => ['view_reports_rental', 'manage_properties_rental', 'manage_houses_rental', 'manage_billing_rental'], 'params' => [],
+                'description' => 'Rental business at a glance: properties, houses occupied/vacant, rent collected this month, rent owed, open maintenance.'],
+            'rental_arrears' => ['service' => 'rental', 'roles' => ['admin', 'landlord', 'tenant'], 'grants' => ['manage_billing_rental'], 'params' => $limit,
+                'description' => 'Tenants who owe rent, biggest first, with house and number of unpaid bills. A tenant sees only their own.'],
+            'rental_houses' => ['service' => 'rental', 'roles' => ['admin', 'landlord'], 'grants' => ['manage_houses_rental', 'manage_properties_rental'],
+                'params' => ['status' => ['type' => 'STRING', 'description' => 'vacant, occupied or maintenance'], 'search' => ['type' => 'STRING', 'description' => 'Part of the house number']],
+                'description' => 'Houses with property, status and monthly rent.'],
+            'rental_maintenance' => ['service' => 'rental', 'roles' => ['admin', 'landlord', 'caretaker', 'tenant', 'vendor'], 'grants' => ['manage_maintenance_rental'], 'params' => [],
+                'description' => 'Open maintenance requests with house, category and priority (each person sees only theirs).'],
         ];
     }
 
-    /** @return array<string, array<string, mixed>> the catalog entries this user's rights open */
-    public static function allowedFor(User $user): array
+    /** Whether one tool is open to this user: the business has the service, and the person holds the right the matching screen needs. */
+    private static function opens(array $tool, User $user): bool
     {
-        return array_filter(self::catalog(), function (array $tool) use ($user) {
+        // The platform owner runs businesses, they are not one: no business data through the assistant.
+        if ($user->seesAllAccounts()) {
+            return false;
+        }
+
+        if ($tool['service'] === 'inventory') {
+            if (!$user->canUseService('inventory') && !$user->canUseService('salon')) {
+                return false;
+            }
             foreach ($tool['any'] as $right) {
                 if ($user->hasInventoryPermission($right)) {
                     return true;
@@ -75,7 +94,27 @@ final class AssistantTools
             }
 
             return false;
-        });
+        }
+
+        if (!$user->canUseService($tool['service'])) {
+            return false;
+        }
+        if (in_array(strtolower((string) $user->role), $tool['roles'], true)) {
+            return true;
+        }
+        foreach ($tool['grants'] as $grant) {
+            if ($user->hasExplicitGrant($grant)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @return array<string, array<string, mixed>> the catalog entries this user's rights open */
+    public static function allowedFor(User $user): array
+    {
+        return array_filter(self::catalog(), fn (array $tool) => self::opens($tool, $user));
     }
 
     /**
@@ -97,7 +136,82 @@ final class AssistantTools
             'find_products' => self::findProducts($args, $user),
             'recent_sales' => self::recentSales($args, $user),
             'expenses_summary' => self::expensesSummary($args),
+            'staff_sales' => self::staffSales($args),
+            'transport_overview' => TransportTools::overview(),
+            'transport_drivers' => TransportTools::drivers($args),
+            'transport_debts' => TransportTools::debts($args),
+            'transport_payments' => TransportTools::payments($args),
+            'rental_overview' => RentalTools::overview(),
+            'rental_arrears' => RentalTools::arrears($args),
+            'rental_houses' => RentalTools::houses($args),
+            'rental_maintenance' => RentalTools::maintenance($args),
         };
+    }
+
+    private static function staffSales(array $args): array
+    {
+        $month = self::month($args);
+        [$first, $last] = MonthlyFigures::bounds($month);
+        $rows = DB::table('inventory_sale_items as si')->join('inventory_sales as s', 's.id', '=', 'si.sale_id')
+            ->whereNull('s.cancelled_at')->whereNotNull('si.staff_name')->where('si.staff_name', '!=', '')
+            ->whereBetween('s.created_at', [$first->copy()->startOfDay()->utc()->format('Y-m-d H:i:s'), $last->copy()->endOfDay()->utc()->format('Y-m-d H:i:s')])
+            ->groupBy('si.staff_name')->orderByRaw('SUM(si.total) DESC')->limit(self::MAX_ROWS)
+            ->get(['si.staff_name', DB::raw('COUNT(*) as services'), DB::raw('SUM(si.total) as sales')])
+            ->map(fn ($r) => ['staff' => $r->staff_name, 'items_sold' => (int) $r->services, 'sales' => round((float) $r->sales, 2)])->all();
+
+        return ['data' => ['month' => $month, 'currency' => 'TSh', 'staff' => $rows], 'card' => $rows === [] ? null : ['type' => 'rows', 'title' => 'Staff ' . $month, 'rows' => array_map(
+            fn ($r) => ['title' => $r['staff'], 'value' => self::tsh($r['sales']), 'note' => $r['items_sold'] . ' items'], $rows
+        )]];
+    }
+
+    /**
+     * One-tap questions for this person: each one the tools they hold can answer, plus "how do I..." questions for the services they have.
+     * A suggestion with a `tool` is answered in ONE AI call (the server reads the data first), which is what makes it fast.
+     *
+     * @return array<int, array{id: string, en: string, sw: string, tool: ?string, args: array<string, mixed>}>
+     */
+    public static function suggestionsFor(User $user): array
+    {
+        $tools = self::allowedFor($user);
+        $all = [
+            ['sg_owe', 'Who owes me?', 'Nani ananidai?', 'customers_who_owe', []],
+            ['sg_month', 'How is the business this month?', 'Biashara inaendeleaje mwezi huu?', 'business_report', []],
+            ['sg_low', 'Which goods are running low?', 'Bidhaa gani zinaisha?', 'find_products', ['low_stock_only' => true]],
+            ['sg_sales', 'Sales this week', 'Mauzo ya wiki hii', 'recent_sales', ['days' => 7]],
+            ['sg_spend', 'Spending this month', 'Matumizi ya mwezi huu', 'expenses_summary', []],
+            ['sg_staff', 'How did each staff member do this month?', 'Kila mhudumu amefanyaje mwezi huu?', 'staff_sales', []],
+            ['sg_t_over', 'How is my transport business?', 'Biashara yangu ya usafiri inaendeleaje?', 'transport_overview', []],
+            ['sg_t_debt', 'Which drivers owe me?', 'Madereva gani wananidai?', 'transport_debts', []],
+            ['sg_t_pay', 'Driver payments this week', 'Malipo ya madereva wiki hii', 'transport_payments', ['days' => 7]],
+            ['sg_r_over', 'How is my rental business?', 'Biashara yangu ya kupangisha inaendeleaje?', 'rental_overview', []],
+            ['sg_r_owe', 'Which tenants owe rent?', 'Wapangaji gani wanadaiwa kodi?', 'rental_arrears', []],
+            ['sg_r_vac', 'Which houses are vacant?', 'Nyumba gani ziko wazi?', 'rental_houses', ['status' => 'vacant']],
+            ['sg_r_fix', 'Open repair requests', 'Maombi ya matengenezo yaliyo wazi', 'rental_maintenance', []],
+        ];
+        $out = [];
+        foreach ($all as [$id, $en, $sw, $tool, $args]) {
+            if (isset($tools[$tool])) {
+                $out[] = ['id' => $id, 'en' => $en, 'sw' => $sw, 'tool' => $tool, 'args' => $args];
+            }
+        }
+        // How-to questions need no data, so every signed-in person gets them, for the services they have.
+        foreach (AppGuide::suggestionsFor($user) as $s) {
+            $out[] = $s + ['tool' => null, 'args' => []];
+        }
+
+        return $out;
+    }
+
+    /** Find one suggestion by id for this user, or null when it is not one of theirs. */
+    public static function suggestion(User $user, string $id): ?array
+    {
+        foreach (self::suggestionsFor($user) as $s) {
+            if ($s['id'] === $id) {
+                return $s;
+            }
+        }
+
+        return null;
     }
 
     // ------------------------------------------------------------------ the tools
@@ -111,6 +225,7 @@ final class AssistantTools
             'month' => $month, 'currency' => 'TSh', 'figures' => $r['figures'], 'compared_with' => $r['previous']['month'],
             'change' => collect($r['compare'])->map(fn ($c) => ['now' => $c['now'], 'before' => $c['before'], 'percent' => $c['percent']])->all(),
             'position' => $r['position'], 'profit_target' => $r['target'],
+            'business_owes' => array_map(fn ($d) => ['name' => $d['name'], 'left' => $d['left'], 'days_late' => $d['days_late']], $r['creditors']),
             'best_products_by_profit' => $r['top_products'], 'best_customers' => $r['top_customers'],
         ], 'card' => ['type' => 'rows', 'title' => $month, 'rows' => [
             ['title' => 'Sales', 'value' => self::tsh($r['figures']['sales'])],
@@ -223,30 +338,30 @@ final class AssistantTools
 
     // ------------------------------------------------------------------ small helpers
 
-    private static function month(array $args): string
+    public static function month(array $args): string
     {
         $m = (string) ($args['month'] ?? '');
 
         return MonthlyFigures::valid($m) ? $m : MonthlyFigures::currentMonth();
     }
 
-    private static function limit(array $args): int
+    public static function limit(array $args): int
     {
         return max(1, min(self::MAX_ROWS, (int) ($args['limit'] ?? 10)));
     }
 
-    private static function text(mixed $v, int $max): string
+    public static function text(mixed $v, int $max): string
     {
         return mb_substr(trim(is_scalar($v) ? (string) $v : ''), 0, $max);
     }
 
     /** Escape the LIKE wildcards so a name search cannot match everything. */
-    private static function like(string $s): string
+    public static function like(string $s): string
     {
         return addcslashes($s, '%_\\');
     }
 
-    private static function tsh(float|int|string $n): string
+    public static function tsh(float|int|string $n): string
     {
         return 'TSh ' . number_format(round((float) $n), 0, '.', ',');
     }

@@ -78,8 +78,8 @@ class AssistantTest extends TestCase
         Http::fake();
         $owner = $this->shop();
 
-        $this->api($owner, 'GET', '/api/inventory/assistant')->assertOk()->assertJsonPath('data.available', false);
-        $this->api($owner, 'POST', '/api/inventory/assistant', ['question' => 'Who owes me?'])->assertStatus(503)->assertJsonPath('code', 'assistant_off');
+        $this->api($owner, 'GET', '/api/assistant')->assertOk()->assertJsonPath('data.available', false);
+        $this->api($owner, 'POST', '/api/assistant', ['question' => 'Who owes me?'])->assertStatus(503)->assertJsonPath('code', 'assistant_off');
         Http::assertNothingSent();
     }
 
@@ -90,7 +90,7 @@ class AssistantTest extends TestCase
         $this->sell($owner, $this->product($owner, 'Soda'), $neema, 90000, 'debt');
         $this->geminiCalls('find_customer', ['name' => 'Neema'], 'Mama Neema Joseph owes TSh 90,000.');
 
-        $r = $this->api($owner, 'POST', '/api/inventory/assistant', ['question' => 'Tell me about Neema', 'lang' => 'en'])->assertOk();
+        $r = $this->api($owner, 'POST', '/api/assistant', ['question' => 'Tell me about Neema', 'lang' => 'en'])->assertOk();
 
         $this->assertSame('Mama Neema Joseph owes TSh 90,000.', $r->json('data.answer'));
         $card = $r->json('data.cards.0.rows.0');
@@ -116,14 +116,14 @@ class AssistantTest extends TestCase
         $this->sell($owner, $p, $this->customer($owner, 'Mama Neema', '0711000001'), 90000, 'debt');
         $this->geminiCalls('business_report', ['month' => now()->format('Y-m')]);
 
-        $topics = $this->api($officer, 'GET', '/api/inventory/assistant')->assertOk()->json('data.topics');
+        $topics = $this->api($officer, 'GET', '/api/assistant')->assertOk()->json('data.topics');
         $this->assertNotContains('business_report', $topics);
         $this->assertNotContains('expenses_summary', $topics);
         $this->assertContains('customers_who_owe', $topics, 'the officer role holds inv_view_credit, the right that opens the debtors screen');
         $this->assertContains('recent_sales', $topics);
 
         // Even if the model asks for a tool it was never offered, the person's rights decide: nothing is read.
-        $this->api($officer, 'POST', '/api/inventory/assistant', ['question' => 'Show the profit'])->assertOk();
+        $this->api($officer, 'POST', '/api/assistant', ['question' => 'Show the profit'])->assertOk();
         $bodies = $this->sent();
         $this->assertStringNotContainsString('business_report', json_encode($bodies[0]['tools']));
         $second = json_encode($bodies[1]['contents']);
@@ -141,7 +141,7 @@ class AssistantTest extends TestCase
         $this->sell($officer, $p, $this->customer($owner, 'Officer Customer', '0711000002'), 2000);
 
         $this->geminiCalls('recent_sales', ['days' => 7]);
-        $this->api($officer, 'POST', '/api/inventory/assistant', ['question' => 'My sales'])->assertOk();
+        $this->api($officer, 'POST', '/api/assistant', ['question' => 'My sales'])->assertOk();
         $second = json_encode($this->sent()[1]['contents']);
         $this->assertStringContainsString('Officer Customer', $second);
         $this->assertStringNotContainsString('Owner Customer', $second);
@@ -156,7 +156,7 @@ class AssistantTest extends TestCase
         $this->sell($officer, $p, $this->customer($owner, 'Officer Customer', '0711000002'), 2000);
 
         $this->geminiCalls('recent_sales', ['days' => 7]);
-        $this->api($owner, 'POST', '/api/inventory/assistant', ['question' => 'All sales'])->assertOk();
+        $this->api($owner, 'POST', '/api/assistant', ['question' => 'All sales'])->assertOk();
         $second = json_encode($this->sent()[1]['contents']);
         $this->assertStringContainsString('Officer Customer', $second);
         $this->assertStringContainsString('Owner Customer', $second);
@@ -169,7 +169,7 @@ class AssistantTest extends TestCase
         $this->customer($b, 'Secret Customer', '0755000009');
         $this->geminiCalls('find_customer', ['name' => 'Secret']);
 
-        $r = $this->api($a, 'POST', '/api/inventory/assistant', ['question' => 'Find Secret'])->assertOk();
+        $r = $this->api($a, 'POST', '/api/assistant', ['question' => 'Find Secret'])->assertOk();
 
         $this->assertSame([], $r->json('data.cards'));
         $this->assertStringNotContainsString('Secret Customer', json_encode($this->sent()[1]['contents']));
@@ -181,11 +181,11 @@ class AssistantTest extends TestCase
         Http::fake();
         $owner = $this->shop();
 
-        $this->api($owner, 'POST', '/api/inventory/assistant', ['question' => ''])->assertStatus(422);
-        $this->api($owner, 'POST', '/api/inventory/assistant', ['question' => str_repeat('x', 601)])->assertStatus(422);
+        $this->api($owner, 'POST', '/api/assistant', ['question' => ''])->assertStatus(422);
+        $this->api($owner, 'POST', '/api/assistant', ['question' => str_repeat('x', 601)])->assertStatus(422);
 
         Cache::put('assistant_questions:' . $owner->id . ':' . now()->toDateString(), 60, now()->endOfDay());
-        $this->api($owner, 'POST', '/api/inventory/assistant', ['question' => 'One more?'])->assertStatus(429)->assertJsonPath('code', 'assistant_daily_limit');
+        $this->api($owner, 'POST', '/api/assistant', ['question' => 'One more?'])->assertStatus(429)->assertJsonPath('code', 'assistant_daily_limit');
         Http::assertNothingSent();
     }
 
@@ -195,7 +195,7 @@ class AssistantTest extends TestCase
         Http::fake(['generativelanguage.googleapis.com/*' => Http::response(['error' => ['message' => 'quota for key g-test']], 429)]);
         $owner = $this->shop();
 
-        $r = $this->api($owner, 'POST', '/api/inventory/assistant', ['question' => 'Who owes me?'])->assertStatus(503);
+        $r = $this->api($owner, 'POST', '/api/assistant', ['question' => 'Who owes me?'])->assertStatus(503);
 
         $this->assertSame('assistant_failed', $r->json('code'));
         $this->assertStringNotContainsString('quota', $r->getContent());

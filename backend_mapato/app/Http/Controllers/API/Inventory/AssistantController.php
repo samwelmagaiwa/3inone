@@ -17,22 +17,25 @@ class AssistantController extends Controller
 {
     public const DAILY_QUESTIONS = 60;
 
-    #[OA\Get(path: '/inventory/assistant', summary: 'Is the assistant on, and what may this person ask it about', security: [['bearerAuth' => []]], tags: ['Inventory / Assistant'], responses: [new OA\Response(response: 200, description: 'Success')])]
+    #[OA\Get(path: '/assistant', summary: 'Is the assistant on, and what may this person ask it about', security: [['bearerAuth' => []]], tags: ['Inventory / Assistant'], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function status(Request $request): JsonResponse
     {
         return response()->json(['data' => [
             'available' => Assistant::available(),
             'topics' => array_keys(AssistantTools::allowedFor($request->user())),
+            'suggestions' => AssistantTools::suggestionsFor($request->user()),
+            'services' => $request->user()->seesAllAccounts() ? [] : $request->user()->effectiveServiceTypes(),
             'questions_left' => max(0, self::DAILY_QUESTIONS - $this->used($request)),
         ]]);
     }
 
-    #[OA\Post(path: '/inventory/assistant', summary: 'Ask the assistant a question about the business', security: [['bearerAuth' => []]], tags: ['Inventory / Assistant'], responses: [new OA\Response(response: 200, description: 'Success')])]
+    #[OA\Post(path: '/assistant', summary: 'Ask the assistant a question about the business', security: [['bearerAuth' => []]], tags: ['Inventory / Assistant'], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function ask(Request $request): JsonResponse
     {
         $data = $request->validate([
             'question' => 'required|string|min:2|max:' . Assistant::MAX_QUESTION,
             'lang' => 'sometimes|in:sw,en',
+            'topic' => 'sometimes|nullable|string|max:20',
             'history' => 'sometimes|array|max:12',
             'history.*.role' => 'required_with:history|in:user,model',
             'history.*.text' => 'required_with:history|string|max:1500',
@@ -46,7 +49,9 @@ class AssistantController extends Controller
         }
 
         try {
-            $result = Assistant::ask($request->user(), $data['question'], $data['history'] ?? [], $data['lang'] ?? 'en');
+            // A one-tap suggestion is answered in a single AI call; it only counts when it is one of THIS person's suggestions.
+            $preset = isset($data['topic']) ? AssistantTools::suggestion($request->user(), $data['topic']) : null;
+            $result = Assistant::ask($request->user(), $data['question'], $data['history'] ?? [], $data['lang'] ?? 'en', $preset);
         } catch (\Throwable $e) {
             // The reason goes to the log, never to the screen: it may name the provider or its limits.
             Log::warning('assistant failed', ['user' => $request->user()->id, 'error' => mb_substr($e->getMessage(), 0, 200)]);

@@ -325,6 +325,13 @@ Route::get('files/private/{path}', [\App\Http\Controllers\API\MediaController::c
 
 // Protected routes (authentication required)
 Route::middleware(['auth:sanctum'])->group(function () {
+    // The AI assistant: one for every service. Whoever is signed in may ask; what it can read is decided per person, tool by tool,
+    // by the same rights the matching screens use (see App\Support\Ai\AssistantTools).
+    Route::middleware('throttle:15,1,assistant')->group(function () {
+        Route::get('assistant',  [AssistantController::class, 'status']);
+        Route::post('assistant', [AssistantController::class, 'ask']);
+    });
+
 
     // The signed-in user's own business: anyone who works for it reads it; only its owner edits
     // the profile and logo. Billing (plan / valid_until) is read here, changed only by a super admin.
@@ -427,11 +434,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('inventory/opening-debts/{id}/payments',     [BusinessMoneyController::class, 'payDebt']);
         Route::get('inventory/opening-debts/{id}/payments',      [BusinessMoneyController::class, 'debtPayments']);
         Route::delete('inventory/opening-debts/{id}',            [BusinessMoneyController::class, 'deleteDebt']);
-    });
-    // The AI assistant: open to anyone who can see at least something; every tool inside it checks the person's own rights.
-    Route::middleware(['inv_perm:inv_view_products,inv_create_sales,inv_view_credit,inv_view_reports,inv_view_expenses,inv_manage_products', 'throttle:15,1,assistant'])->group(function () {
-        Route::get('inventory/assistant',                        [AssistantController::class, 'status']);
-        Route::post('inventory/assistant',                       [AssistantController::class, 'ask']);
     });
     Route::middleware('inv_perm:inv_view_reports')->group(function () {
         Route::get('inventory/monthly-report',                  [BusinessMoneyController::class, 'report']);

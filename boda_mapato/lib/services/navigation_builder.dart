@@ -483,6 +483,7 @@ class NavigationBuilder {
         'maintenance',
         'vendors',
         'switch_service',
+        'ai_assistant',
         'settings',
         'logout'
       ];

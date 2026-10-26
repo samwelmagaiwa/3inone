@@ -1201,6 +1201,7 @@ class AppLocalizations {
       'lease_agreements': 'Lease Agreements',
       'lease_templates': 'Lease Templates',
       'tenant_self_service': 'My Account',
+      'ai_assistant': 'AI Assistant',
       'helpdesk': 'Helpdesk',
       'helpdesk_subtitle': 'View guides and contact support',
 
@@ -3853,6 +3854,7 @@ class AppLocalizations {
       'lease_agreements': 'Mikataba ya Kukodi',
       'lease_templates': 'Sampuli za Mikataba',
       'tenant_self_service': 'Akaunti Yangu',
+      'ai_assistant': 'Msaidizi wa AI',
       'helpdesk': 'Helpdesk',
       'helpdesk_subtitle': 'Angalia miongozo na wasiliana nasi',
 

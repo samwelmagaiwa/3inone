@@ -117,6 +117,12 @@ class NavigationConfig {
       requiredPermissions: ['view_communications'],
     ),
     NavigationItem(
+      key: 'ai_assistant',
+      icon: Icons.auto_awesome,
+      route: '/ai_assistant',
+      isSystemItem: true, // For everyone: ask about the business, or how to use the app
+    ),
+    NavigationItem(
       key: 'switch_service',
       icon: Icons.sync_alt,
       route: '/switch_service', // Special route
@@ -203,6 +209,12 @@ class NavigationConfig {
       icon: Icons.help_outline,
       route: '/rental/helpdesk',
       isSystemItem: true, // Always visible for guidance
+    ),
+    NavigationItem(
+      key: 'ai_assistant',
+      icon: Icons.auto_awesome,
+      route: '/ai_assistant',
+      isSystemItem: true, // For everyone: ask about the business, or how to use the app
     ),
     NavigationItem(
       key: 'switch_service',

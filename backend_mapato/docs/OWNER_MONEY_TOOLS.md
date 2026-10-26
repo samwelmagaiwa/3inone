@@ -38,6 +38,11 @@ Debts: `inv_view_credit` or `inv_manage_products`. Report and advice: `inv_view_
 
 The salon has its own reports and is not offered these screens. Transport and Rental are unchanged.
 
-## AI assistant (ask the business)
+## AI assistant (ask the business, learn the app)
 
-`GET/POST /api/inventory/assistant` (Inventory and Salon). Needs `GEMINI_API_KEY`. The model reads data only through `App\Support\Ai\AssistantTools`; each tool is opened by the same `inv_*` right as the matching screen, and a user's assistant is offered only those tools (a refused tool answers "Not allowed"). Sales are limited to the user's own unless their role sees everyone's (`SalesVisibility`). Phone numbers never go to the AI; the app shows them from the records on `cards`. Off-topic questions are declined by the system prompt. Limits: 600-character question, 15 requests/minute, 60 questions/user/day. Transport and Rental are not covered yet.
+`GET/POST /api/assistant`, for every service (shop/depot, salon, transport, rental). Needs `GEMINI_API_KEY`.
+
+- **Data:** the model reads only through `App\Support\Ai\AssistantTools` (inventory/salon tools, `TransportTools`, `RentalTools`). Each tool names its service and what opens it: `inv_*` rights for shop/salon, the roles the routes admit or an explicit grant for transport/rental. A user's assistant is offered only the tools they hold (a refused tool answers "Not allowed"). Rows come through the tenant scopes, so a business only ever sees its own, a driver/tenant/caretaker only their slice, and sales are the user's own unless their role sees everyone's (`SalesVisibility`). The platform admin gets no business data.
+- **Knowing the app:** `AppGuide` is a how-to guide cut to the person's services and rights and placed in the system prompt, so "how do I..." needs no lookup. Keep its menu names equal to the app's menus.
+- **Speed:** one-tap suggestions (`topic` = suggestion id, offered by `GET /api/assistant`) are answered with ONE AI call: the server reads the data first. Flash models run with `thinkingBudget` 0 and a 1024-token cap.
+- **Privacy/limits:** phone numbers never go to the AI (the app shows them from `cards`); off-topic questions are declined; 600-character question, 15 requests/minute, 60 questions/user/day.

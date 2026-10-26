@@ -9,11 +9,13 @@ class AssistantApi {
 
   Map<String, dynamic> _data(final Map<String, dynamic> res) => res['data'] is Map ? Map<String, dynamic>.from(res['data'] as Map) : <String, dynamic>{};
 
-  /// `available` (the server has an AI key), `topics` (what this person may ask about) and `questions_left` today.
-  Future<Map<String, dynamic>> status() async => _data(await _api.get('/inventory/assistant'));
+  /// `available` (the server has an AI key), `topics`, `suggestions` (one-tap questions for this person: `id`, `en`, `sw`, `tool`),
+  /// `services` and `questions_left` today.
+  Future<Map<String, dynamic>> status() async => _data(await _api.get('/assistant'));
 
   /// [history] is the earlier turns, oldest first, each `{role: user|model, text: ...}`.
   /// Returns `answer`, `cards` (records shown as they are in the data) and `questions_left`.
-  Future<Map<String, dynamic>> ask(final String question, final String lang, final List<Map<String, String>> history) async =>
-      _data(await _api.post('/inventory/assistant', <String, dynamic>{'question': question, 'lang': lang, 'history': history}));
+  /// [topic] is the id of a one-tap suggestion: the server then reads the data first and needs just one AI call, so it is faster.
+  Future<Map<String, dynamic>> ask(final String question, final String lang, final List<Map<String, String>> history, {final String? topic}) async =>
+      _data(await _api.post('/assistant', <String, dynamic>{'question': question, 'lang': lang, 'history': history, if (topic != null) 'topic': topic}));
 }
