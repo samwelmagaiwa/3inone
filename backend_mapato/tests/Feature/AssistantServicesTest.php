@@ -177,6 +177,16 @@ class AssistantServicesTest extends TestCase
         $system = $this->sent()[0]['systemInstruction']['parts'][0]['text'];
         $this->assertStringContainsString('PLATFORM ADMIN', $system);
         $this->assertArrayNotHasKey('tools', $this->sent()[0], 'no tools to offer when nothing may be read');
+        $this->assertStringContainsString('Business Registrations', $system, 'the platform admin is taught the platform screens');
+    }
+
+    public function test_the_platform_admin_is_offered_platform_questions_and_never_the_shop_ones(): void
+    {
+        $super = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+
+        $ids = array_column($this->api($super, 'GET', '/api/assistant')->json('data.suggestions'), 'id');
+
+        $this->assertEqualsCanonicalizing(['hg_start', 'hg_s_reg', 'hg_s_pay', 'hg_s_plan'], $ids, 'no "record a sale", "add a debt" or other shop how-tos');
     }
 
     // ------------------------------------------------------------------ the guide

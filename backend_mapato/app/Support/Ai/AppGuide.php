@@ -80,7 +80,12 @@ final class AppGuide
     {
         $general = 'GENERAL: sign in with your phone number and password. The menu button opens your sections; "Switch service" changes between your services; Settings > Language switches Swahili/English; Settings > Logout signs out. If a section is missing from your menu, your account has not been given that right: ask the business owner/administrator.';
         if ($user->seesAllAccounts()) {
-            return $general . "\nPLATFORM ADMIN: you manage businesses (registrations, plans and prices, subscriptions, SMS sender names) and users. You do not see any business's own sales, stock or customers.";
+            return $general . "\nPLATFORM ADMIN: you run the platform, not a shop, so you do not see any business's own sales, stock, customers or drivers. Everything is under Settings:"
+                . "\n- \"Business Registrations\": new businesses that applied. Open one, check the details, then Approve (or Approve as requested) or Reject. Filter by Pending, Approved or Rejected. The applicant is told by text message."
+                . "\n- \"Businesses & Plans\": every business with its plan and the date it runs until. Filter by Ending soon or Expired. To record that a business paid, open it and tap Record payment."
+                . "\n- \"Plans & Prices\": set the price of each plan for 1, 3, 6 and 12 months; the prices show on the registration form."
+                . "\n- SMS sender names: approve each business's text-message sender name."
+                . "\nYou cannot answer questions about a business's own figures here; the owner sees those in their own app.";
         }
         $lines = [$general];
         foreach (self::entries() as $e) {
@@ -95,6 +100,16 @@ final class AppGuide
     /** @return array<int, array{id: string, en: string, sw: string}> how-to questions for the sections this person has */
     public static function suggestionsFor(User $user): array
     {
+        // The platform admin has no shop: offer questions about running the platform, never the shop how-tos.
+        if ($user->seesAllAccounts()) {
+            return [
+                ['id' => 'hg_start', 'en' => 'What can I do in this app?', 'sw' => 'Ninaweza kufanya nini kwenye programu hii?'],
+                ['id' => 'hg_s_reg', 'en' => 'How do I approve a new business?', 'sw' => 'Ninaidhinishaje biashara mpya?'],
+                ['id' => 'hg_s_pay', 'en' => 'How do I record a business payment?', 'sw' => 'Ninarekodije malipo ya biashara?'],
+                ['id' => 'hg_s_plan', 'en' => 'How do I set plan prices?', 'sw' => 'Ninaweka vipi bei za mipango?'],
+            ];
+        }
+
         $all = [
             ['hg_start', 'What can I do in this app?', 'Ninaweza kufanya nini kwenye programu hii?', null],
             ['hg_sale', 'How do I record a sale?', 'Ninarekodije mauzo?', fn () => $user->canUseService('inventory') && $user->hasInventoryPermission('inv_create_sales')],
