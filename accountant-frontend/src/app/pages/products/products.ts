@@ -6,7 +6,7 @@ import { AuthService } from '../../core/auth.service';
 import { offline, parseAmount, serverMessage, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
 import { ProductsApi } from '../../core/products-api.service';
-import { Named, NamedKind, PriceOption, Product, ProductBody, ProductFilters, ProductPage } from '../../core/products.models';
+import { Named, NamedKind, PriceOption, Product, ProductBody, ProductFilters, ProductPage, ServiceMaterial, StaffMember } from '../../core/products.models';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { MotionService } from '../../core/services/motion.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -89,7 +89,24 @@ export class ProductsPage implements OnInit {
   protected fDuration = '';
   protected fRebook = '';
   protected fCommission = '';
+  protected fCommissionFixed = '';
+  protected fCommissionOn = false;
   protected readonly fOptions = signal<OptionRow[]>([]);
+  protected readonly fStaff = signal<string[]>([]);
+  protected fIsPackage = false;
+  protected fPkgService = '';
+  protected fPkgSessions = '';
+  protected fPkgDays = '';
+  protected readonly staff = signal<StaffMember[]>([]);
+
+  // ---- the goods a service uses up
+  protected readonly matFor = signal<Product | null>(null);
+  protected readonly materials = signal<ServiceMaterial[]>([]);
+  protected readonly matLoading = signal(false);
+  protected readonly matSaving = signal(false);
+  protected readonly matError = signal('');
+  protected readonly matHits = signal<Product[]>([]);
+  protected matQuery = '';
 
   // ---- the category / brand form
   protected readonly namedOpen = signal(false);
@@ -100,6 +117,8 @@ export class ProductsPage implements OnInit {
   protected readonly namedError = signal('');
   protected readonly namedSaving = signal(false);
 
+  /** The services a package can be made of (not packages themselves, not this one). */
+  protected readonly packageTargets = computed(() => this.rows().filter((p) => p.is_service && !p.package_sessions && p.status === 'active' && p.id !== this.editing()?.id));
   protected readonly rows = computed(() => this.data()?.items ?? []);
   protected readonly total = computed(() => this.data()?.total ?? 0);
   protected readonly hasFilters = computed(() => !!(this.query() || this.status() || this.kind() || this.lowStock() || this.categoryId()));
@@ -111,6 +130,7 @@ export class ProductsPage implements OnInit {
     void this.load();
     void this.loadNamed('categories');
     void this.loadNamed('brands');
+    if (this.salon()) void this.loadStaff();
   }
 
   // ------------------------------------------------------------------ loading
@@ -123,6 +143,14 @@ export class ProductsPage implements OnInit {
       this.error.set(this.messageOf(err));
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  private async loadStaff(): Promise<void> {
+    try {
+      this.staff.set(await firstValueFrom(this.api.staff()));
+    } catch {
+      // "done by" is optional: without the list, anyone may do the service
     }
   }
 
@@ -189,6 +217,8 @@ export class ProductsPage implements OnInit {
   protected openAdd(): void {
     this.editing.set(null);
     this.fill(null);
+    // In a salon, a new thing is a service far more often than goods (the mobile app starts there too).
+    this.fIsService = this.salon();
     this.formOpen.set(true);
   }
 
@@ -217,7 +247,22 @@ export class ProductsPage implements OnInit {
     this.fDuration = p?.duration_minutes ? String(p.duration_minutes) : '';
     this.fRebook = p?.rebook_after_weeks ? String(p.rebook_after_weeks) : '';
     this.fCommission = p?.commission_percent === null || p?.commission_percent === undefined ? '' : String(p.commission_percent);
+    this.fCommissionFixed = p?.commission_fixed ? String(p.commission_fixed) : '';
+    this.fCommissionOn = !!(p?.commission_percent || p?.commission_fixed);
+    this.fStaff.set(p?.staff_ids ?? []);
+    this.fIsPackage = !!p?.package_sessions;
+    this.fPkgService = p?.package_service_id ? String(p.package_service_id) : '';
+    this.fPkgSessions = p?.package_sessions ? String(p.package_sessions) : '';
+    this.fPkgDays = p?.package_valid_days ? String(p.package_valid_days) : '';
     this.fOptions.set((p?.price_options ?? []).map((o) => ({ label: o.label, price: String(o.price) })));
+  }
+
+  protected isStaffPicked(id: string): boolean {
+    return this.fStaff().includes(id);
+  }
+
+  protected toggleStaff(id: string): void {
+    this.fStaff.update((all) => (all.includes(id) ? all.filter((x) => x !== id) : [...all, id]));
   }
 
   protected addOption(): void {
@@ -261,7 +306,8 @@ export class ProductsPage implements OnInit {
     const whole = (s: string): number => (s.trim() === '' ? 0 : /^\d+$/.test(s.trim()) ? Number(s.trim()) : NaN);
 
     if (!this.fName.trim()) return fail('prod.err.name');
-    const cost = money(this.fCost);
+    // A service has no buying price (it is not bought): the same as on the mobile app.
+    const cost = this.fIsService ? 0 : money(this.fCost);
     const price = money(this.fPrice);
     if (Number.isNaN(cost)) return fail('prod.err.cost');
     if (Number.isNaN(price) || (!this.fIsService && this.fPrice.trim() === '')) return fail('prod.err.price');
@@ -271,7 +317,7 @@ export class ProductsPage implements OnInit {
     if (Number.isNaN(min)) return fail('prod.err.min');
 
     let vat: number | null = null;
-    if (this.fVat.trim() !== '') {
+    if (!this.fIsService && this.fVat.trim() !== '') {
       vat = parseAmount(this.fVat);
       if (Number.isNaN(vat) || vat > 100) return fail('prod.err.vat');
     }
@@ -280,6 +326,10 @@ export class ProductsPage implements OnInit {
     let duration: number | null = null;
     let rebook: number | null = null;
     let commission: number | null = null;
+    let commissionFixed: number | null = null;
+    let pkgSessions: number | null = null;
+    let pkgService: number | null = null;
+    let pkgDays: number | null = null;
     if (this.fIsService) {
       for (const o of this.fOptions()) {
         const p = parseAmount(o.price);
@@ -294,9 +344,25 @@ export class ProductsPage implements OnInit {
         rebook = whole(this.fRebook);
         if (Number.isNaN(rebook) || rebook < 1 || rebook > 52) return fail('prod.err.rebook');
       }
-      if (this.fCommission.trim() !== '') {
-        commission = parseAmount(this.fCommission);
-        if (Number.isNaN(commission) || commission > 100) return fail('prod.err.commission');
+      if (this.fCommissionOn) {
+        if (this.fCommission.trim() !== '') {
+          commission = parseAmount(this.fCommission);
+          if (Number.isNaN(commission) || commission > 100) return fail('prod.err.commission');
+        }
+        if (this.fCommissionFixed.trim() !== '') {
+          commissionFixed = parseAmount(this.fCommissionFixed);
+          if (Number.isNaN(commissionFixed)) return fail('prod.err.commission.fixed');
+        }
+      }
+      if (this.fIsPackage) {
+        pkgService = this.fPkgService ? Number(this.fPkgService) : null;
+        pkgSessions = whole(this.fPkgSessions);
+        if (!pkgService) return fail('prod.err.pkg.service');
+        if (Number.isNaN(pkgSessions) || pkgSessions < 2 || pkgSessions > 100) return fail('prod.err.pkg.sessions');
+        if (this.fPkgDays.trim() !== '') {
+          pkgDays = whole(this.fPkgDays);
+          if (Number.isNaN(pkgDays) || pkgDays < 1 || pkgDays > 730) return fail('prod.err.pkg.days');
+        }
       }
     }
 
@@ -319,8 +385,72 @@ export class ProductsPage implements OnInit {
       duration_minutes: duration,
       rebook_after_weeks: rebook,
       commission_percent: commission,
+      commission_fixed: commissionFixed,
+      package_sessions: pkgSessions,
+      package_service_id: pkgService,
+      package_valid_days: pkgDays,
+      staff_ids: this.fIsService ? this.fStaff() : [],
       price_options: options,
     };
+  }
+
+  // ------------------------------------------------------------------ the goods a service uses up
+  protected async openMaterials(p: Product): Promise<void> {
+    this.matFor.set(p);
+    this.materials.set([]);
+    this.matHits.set([]);
+    this.matQuery = '';
+    this.matError.set('');
+    this.matLoading.set(true);
+    try {
+      this.materials.set(await firstValueFrom(this.api.materials(p.id)));
+    } catch (err) {
+      this.matError.set(this.messageOf(err));
+    } finally {
+      this.matLoading.set(false);
+    }
+  }
+
+  protected async searchGoods(q: string): Promise<void> {
+    this.matQuery = q;
+    if (q.trim().length < 2) return this.matHits.set([]);
+    try {
+      const have = new Set(this.materials().map((m) => m.material_product_id));
+      this.matHits.set((await firstValueFrom(this.api.findGoods(q.trim()))).filter((g) => !have.has(g.id)).slice(0, 8));
+    } catch {
+      this.matHits.set([]);
+    }
+  }
+
+  protected addMaterial(g: Product): void {
+    this.materials.update((all) => [...all, { material_product_id: g.id, name: g.name, quantity: 1, in_stock: g.quantity }]);
+    this.matHits.set([]);
+    this.matQuery = '';
+  }
+
+  protected setMaterialQty(i: number, value: string): void {
+    const q = Math.max(1, Math.min(1000, Math.floor(Number(value)) || 1));
+    this.materials.update((all) => all.map((m, k) => (k === i ? { ...m, quantity: q } : m)));
+  }
+
+  protected removeMaterial(i: number): void {
+    this.materials.update((all) => all.filter((_, k) => k !== i));
+  }
+
+  protected async saveMaterials(): Promise<void> {
+    const service = this.matFor();
+    if (!service) return;
+    this.matSaving.set(true);
+    this.matError.set('');
+    try {
+      await firstValueFrom(this.api.saveMaterials(service.id, this.materials().map((m) => ({ material_product_id: m.material_product_id, quantity: m.quantity }))));
+      this.toast.success(this.i18n.t('prod.mat.saved'), this.i18n.t('common.done'));
+      this.matFor.set(null);
+    } catch (err) {
+      this.matError.set(this.messageOf(err));
+    } finally {
+      this.matSaving.set(false);
+    }
   }
 
   // ------------------------------------------------------------------ deleting

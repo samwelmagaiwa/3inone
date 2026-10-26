@@ -13,7 +13,6 @@ import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal
 import { TablePaginationComponent } from '../../shared/components/table-pagination/table-pagination';
 import { TableToolbarComponent } from '../../shared/components/table-toolbar/table-toolbar';
 import { BsDateDirective } from '../../shared/ui/bs-date.directive';
-import { CountUpDirective } from '../../shared/ui/count-up.directive';
 
 type Tab = 'customers' | 'ageing';
 type Method = 'cash' | 'mobile_money' | 'bank_transfer' | 'cheque';
@@ -35,7 +34,7 @@ const METHODS: Method[] = ['cash', 'mobile_money', 'bank_transfer', 'cheque'];
  */
 @Component({
   selector: 'app-credit',
-  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, TablePaginationComponent, BsDateDirective, CountUpDirective],
+  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, TablePaginationComponent, BsDateDirective],
   templateUrl: './credit.html',
 })
 export class CreditPage implements OnInit {

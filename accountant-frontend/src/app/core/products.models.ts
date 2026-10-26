@@ -25,6 +25,12 @@ export interface Product {
   duration_minutes: number | null;
   rebook_after_weeks: number | null;
   commission_percent: number | null;
+  commission_fixed: number | null;
+  package_sessions: number | null;
+  package_service_id: number | null;
+  package_valid_days: number | null;
+  /** Account ids of the staff who may do this service; empty = anyone. */
+  staff_ids: string[];
   price_options: PriceOption[];
 }
 
@@ -63,6 +69,11 @@ export interface ProductBody {
   duration_minutes: number | null;
   rebook_after_weeks: number | null;
   commission_percent: number | null;
+  commission_fixed: number | null;
+  package_sessions: number | null;
+  package_service_id: number | null;
+  package_valid_days: number | null;
+  staff_ids: string[];
   price_options: PriceOption[];
 }
 
@@ -76,3 +87,18 @@ export interface Named {
 }
 
 export type NamedKind = 'categories' | 'brands';
+
+/** A member of the business's staff, for "done by". */
+export interface StaffMember {
+  id: string;
+  name: string;
+  role: string;
+}
+
+/** One kind of goods a service uses up each time it is done. */
+export interface ServiceMaterial {
+  material_product_id: number;
+  name: string;
+  quantity: number;
+  in_stock: number;
+}

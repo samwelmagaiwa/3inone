@@ -213,12 +213,14 @@
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      @if (!fIsService) {
+        <div>
+          <label class="modal-label" for="pCost">{{ i18n.t('prod.form.cost') }}</label>
+          <input id="pCost" name="pCost" class="modal-input" inputmode="numeric" [(ngModel)]="fCost" autocomplete="off" data-testid="prod-cost">
+        </div>
+      }
       <div>
-        <label class="modal-label" for="pCost">{{ i18n.t('prod.form.cost') }}</label>
-        <input id="pCost" name="pCost" class="modal-input" inputmode="numeric" [(ngModel)]="fCost" autocomplete="off" data-testid="prod-cost">
-      </div>
-      <div>
-        <label class="modal-label" for="pPrice">{{ i18n.t('prod.form.price') }}</label>
+        <label class="modal-label" for="pPrice">{{ i18n.t(fIsService ? 'prod.form.price.service' : 'prod.form.price') }}</label>
         <input id="pPrice" name="pPrice" class="modal-input" inputmode="numeric" [(ngModel)]="fPrice" autocomplete="off" data-testid="prod-price">
       </div>
     </div>
@@ -250,7 +252,7 @@
         </div>
       </div>
     } @else {
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="modal-label" for="pDuration">{{ i18n.t('prod.form.duration') }}</label>
           <input id="pDuration" name="pDuration" class="modal-input" inputmode="numeric" [(ngModel)]="fDuration" autocomplete="off" data-testid="prod-duration">
@@ -259,11 +261,22 @@
           <label class="modal-label" for="pRebook">{{ i18n.t('prod.form.rebook') }}</label>
           <input id="pRebook" name="pRebook" class="modal-input" inputmode="numeric" [(ngModel)]="fRebook" autocomplete="off">
         </div>
-        <div>
-          <label class="modal-label" for="pCommission">{{ i18n.t('prod.form.commission') }}</label>
-          <input id="pCommission" name="pCommission" class="modal-input" inputmode="decimal" [(ngModel)]="fCommission" autocomplete="off">
-        </div>
       </div>
+      <label class="flex items-center gap-3 text-sm font-bold text-slate-700 cursor-pointer">
+        <input type="checkbox" name="pCommissionOn" [(ngModel)]="fCommissionOn" data-testid="prod-commission-on"> {{ i18n.t('prod.form.commission.on') }}
+      </label>
+      @if (fCommissionOn) {
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="modal-label" for="pCommission">{{ i18n.t('prod.form.commission') }}</label>
+            <input id="pCommission" name="pCommission" class="modal-input" inputmode="decimal" [(ngModel)]="fCommission" autocomplete="off" data-testid="prod-commission">
+          </div>
+          <div>
+            <label class="modal-label" for="pCommissionFixed">{{ i18n.t('prod.form.commission.fixed') }}</label>
+            <input id="pCommissionFixed" name="pCommissionFixed" class="modal-input" inputmode="numeric" [(ngModel)]="fCommissionFixed" autocomplete="off" data-testid="prod-commission-fixed">
+          </div>
+        </div>
+      }
       <div>
         <p class="modal-label">{{ i18n.t('prod.form.options') }}</p>
         <p class="text-xs text-slate-400 font-semibold mb-2">{{ i18n.t('prod.form.options.hint') }}</p>
@@ -278,11 +291,57 @@
       </div>
     }
 
+    @if (fIsService) {
+      <div>
+        <p class="modal-label">{{ i18n.t('prod.form.staff') }}</p>
+        <p class="text-xs text-slate-400 font-semibold mb-2">{{ i18n.t('prod.form.staff.hint') }}</p>
+        <div class="flex flex-wrap gap-2">
+          @for (m of staff(); track m.id) {
+            <button type="button" class="pill-tab" [class.is-active]="isStaffPicked(m.id)" [attr.aria-pressed]="isStaffPicked(m.id)" (click)="toggleStaff(m.id)" [attr.data-testid]="'staff-' + m.id">{{ m.name }}</button>
+          }
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <label class="flex items-center gap-3 text-sm font-bold text-slate-700 cursor-pointer">
+          <input type="checkbox" name="pIsPackage" [(ngModel)]="fIsPackage" data-testid="prod-is-package">
+          <span>{{ i18n.t('prod.form.package') }}<span class="block text-xs font-semibold text-slate-400">{{ i18n.t('prod.form.package.hint') }}</span></span>
+        </label>
+        @if (fIsPackage) {
+          <div>
+            <label class="modal-label" for="pPkgService">{{ i18n.t('prod.form.package.service') }}</label>
+            <select id="pPkgService" name="pPkgService" class="modal-input" [(ngModel)]="fPkgService" data-testid="prod-pkg-service">
+              <option value="">{{ i18n.t('prod.form.none') }}</option>
+              @for (s of packageTargets(); track s.id) { <option [value]="'' + s.id">{{ s.name }}</option> }
+            </select>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="modal-label" for="pPkgSessions">{{ i18n.t('prod.form.package.sessions') }}</label>
+              <input id="pPkgSessions" name="pPkgSessions" class="modal-input" inputmode="numeric" [(ngModel)]="fPkgSessions" autocomplete="off" data-testid="prod-pkg-sessions">
+            </div>
+            <div>
+              <label class="modal-label" for="pPkgDays">{{ i18n.t('prod.form.package.days') }}</label>
+              <input id="pPkgDays" name="pPkgDays" class="modal-input" inputmode="numeric" [(ngModel)]="fPkgDays" autocomplete="off" data-testid="prod-pkg-days">
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (editing(); as svc) {
+        <button type="button" class="btn-outline" (click)="openMaterials(svc)" data-testid="prod-materials">{{ i18n.t('prod.mat.open') }}</button>
+      } @else {
+        <p class="text-xs text-slate-400 font-semibold">{{ i18n.t('prod.mat.after') }}</p>
+      }
+    }
+
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      @if (!fIsService) {
       <div>
         <label class="modal-label" for="pVat">{{ i18n.t('prod.form.vat') }}</label>
         <input id="pVat" name="pVat" class="modal-input" inputmode="decimal" [(ngModel)]="fVat" autocomplete="off" [placeholder]="i18n.t('prod.form.vat.hint')">
       </div>
+      }
       <div>
         <label class="modal-label" for="pStatus">{{ i18n.t('prod.form.status') }}</label>
         <select id="pStatus" name="pStatus" class="modal-input" [(ngModel)]="fStatus">
@@ -328,6 +387,45 @@
   <div slot="footer" class="flex gap-2 justify-end">
     <button type="button" class="modal-cancel-btn" (click)="namedOpen.set(false)">{{ i18n.t('common.cancel') }}</button>
     <button type="button" class="btn-primary" [disabled]="namedSaving()" (click)="saveNamed()" data-testid="named-save">{{ namedSaving() ? i18n.t('common.saving') : i18n.t('common.save') }}</button>
+  </div>
+</app-modal-dialog>
+
+<!-- The goods a service uses up each time -->
+<app-modal-dialog [show]="!!matFor()" [eyebrow]="i18n.t('prod.mat.title')" [title]="matFor()?.name ?? ''" size="md" (close)="matFor.set(null)">
+  <div slot="body" class="space-y-4">
+    <p class="text-sm text-slate-500">{{ i18n.t('prod.mat.hint') }}</p>
+    @if (matLoading()) {
+      <div class="skeleton-box" style="height: 70px; border-radius: 12px;"></div>
+    } @else {
+      @for (m of materials(); track m.material_product_id; let i = $index) {
+        <div class="flex items-center gap-3 rounded-xl border border-slate-200 p-3" [attr.data-testid]="'mat-row-' + m.material_product_id">
+          <div class="min-w-0 flex-1">
+            <p class="font-black text-slate-900 truncate">{{ m.name }}</p>
+            <p class="text-xs font-semibold text-slate-400">{{ i18n.t('prod.mat.stock', m.in_stock) }}</p>
+          </div>
+          <input class="modal-input w-24" inputmode="numeric" [ngModel]="m.quantity" (ngModelChange)="setMaterialQty(i, $event)" [attr.name]="'matQty' + i" [attr.aria-label]="i18n.t('prod.mat.qty')" [attr.data-testid]="'mat-qty-' + m.material_product_id">
+          <button type="button" class="icon-del" (click)="removeMaterial(i)" [attr.aria-label]="i18n.t('common.delete')">&times;</button>
+        </div>
+      } @empty {
+        <p class="text-sm text-slate-400 font-semibold" data-testid="mat-empty">{{ i18n.t('prod.mat.none') }}</p>
+      }
+      <div class="relative">
+        <label class="modal-label" for="matSearch">{{ i18n.t('prod.mat.add') }}</label>
+        <input id="matSearch" name="matSearch" class="modal-input" type="search" [ngModel]="matQuery" (ngModelChange)="searchGoods($event)" autocomplete="off" [placeholder]="i18n.t('prod.mat.search')" data-testid="mat-search">
+        @if (matHits().length) {
+          <div class="mt-1 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            @for (g of matHits(); track g.id) {
+              <button type="button" class="block w-full text-left px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50" (click)="addMaterial(g)" [attr.data-testid]="'mat-hit-' + g.id">{{ g.name }} <span class="text-xs text-slate-400 font-semibold">{{ g.quantity }} {{ g.unit }}</span></button>
+            }
+          </div>
+        }
+      </div>
+    }
+    @if (matError()) { <p class="form-error" role="alert" data-testid="mat-error">{{ matError() }}</p> }
+  </div>
+  <div slot="footer" class="flex gap-2 justify-end">
+    <button type="button" class="modal-cancel-btn" (click)="matFor.set(null)">{{ i18n.t('common.cancel') }}</button>
+    <button type="button" class="btn-primary" [disabled]="matSaving() || matLoading()" (click)="saveMaterials()" data-testid="mat-save">{{ matSaving() ? i18n.t('common.saving') : i18n.t('common.save') }}</button>
   </div>
 </app-modal-dialog>
 

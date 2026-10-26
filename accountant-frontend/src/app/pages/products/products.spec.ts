@@ -29,6 +29,7 @@ async function open(permissions: string[], over: { service?: 'inventory' | 'salo
   h.http.expectOne((r) => r.url === LIST && r.params.get('page') === '1').flush({ data: over.rows ?? ROWS, meta: over.meta ?? { current_page: 1, last_page: 1, total: (over.rows ?? ROWS).length } });
   h.http.expectOne(`${API}/inventory/categories`).flush({ data: [{ id: 1, name: 'Drinks', description: null, status: 'active', products_count: 2 }] });
   h.http.expectOne(`${API}/inventory/brands`).flush({ data: [{ id: 5, name: 'Coca', description: null, status: 'active', products_count: 1 }] });
+  if (over.service === 'salon') h.http.expectOne(`${API}/inventory/salon/staff`).flush({ data: [{ id: '4', name: 'Rehema', role: 'hair_stylist' }, { id: '5', name: 'Zawadi', role: 'hair_stylist' }] });
   await settle(fixture);
 
   return { h, fixture, el: fixture.nativeElement as HTMLElement };
@@ -236,19 +237,37 @@ describe('products and services', () => {
       expect(byTestId(shop.el, 'prod-is-service')).toBeNull();
     });
 
-    it('adds a service: no stock, a time, price options', async () => {
+    it('starts on a service, as the mobile app does, with no stock, no buying price and no VAT', async () => {
+      const { fixture, el } = await open(MANAGER, { service: 'salon' });
+
+      click(el, 'prod-add');
+      await settle(fixture);
+
+      expect((byTestId(el, 'prod-is-service') as HTMLInputElement).checked).toBe(true);
+      expect(byTestId(el, 'prod-qty')).toBeNull();
+      expect(byTestId(el, 'prod-cost')).toBeNull();
+      expect(byTestId(el, 'prod-duration')).not.toBeNull();
+      expect(text(el.querySelector('app-modal-dialog') as HTMLElement)).not.toContain('VAT');
+
+      (byTestId(el, 'prod-is-service') as HTMLInputElement).click();
+      await settle(fixture);
+      expect(byTestId(el, 'prod-qty')).not.toBeNull();
+      expect(byTestId(el, 'prod-cost')).not.toBeNull();
+    });
+
+    it('adds a service: a time, a commission, who does it and price options', async () => {
       const { h, fixture, el } = await open(MANAGER, { service: 'salon' });
 
       click(el, 'prod-add');
       await settle(fixture);
-      const toggle = byTestId(el, 'prod-is-service') as HTMLInputElement;
-      toggle.click();
-      await settle(fixture);
-      expect(byTestId(el, 'prod-qty')).toBeNull();
-
       type(el, '[data-testid="prod-name"]', 'Braids');
       type(el, '[data-testid="prod-price"]', '30000');
       type(el, '[data-testid="prod-duration"]', '120');
+      (byTestId(el, 'prod-commission-on') as HTMLInputElement).click();
+      await settle(fixture);
+      type(el, '[data-testid="prod-commission"]', '30');
+      type(el, '[data-testid="prod-commission-fixed"]', '2,000');
+      click(el, 'staff-4');
       click(el, 'prod-add-option');
       await settle(fixture);
       type(el, '[data-testid="opt-label-0"]', 'Short');
@@ -257,10 +276,102 @@ describe('products and services', () => {
       click(el, 'prod-save');
 
       const req = h.http.expectOne({ method: 'POST', url: LIST });
-      expect(req.request.body).toMatchObject({ name: 'Braids', is_service: true, selling_price: 30000, quantity: 0, min_stock: 0, duration_minutes: 120, price_options: [{ label: 'Short', price: 25000 }] });
+      expect(req.request.body).toMatchObject({
+        name: 'Braids', is_service: true, selling_price: 30000, cost_price: 0, quantity: 0, min_stock: 0, duration_minutes: 120,
+        commission_percent: 30, commission_fixed: 2000, staff_ids: ['4'], package_sessions: null, price_options: [{ label: 'Short', price: 25000 }],
+      });
       req.flush({ data: { id: 3 } });
       await settle(fixture);
       h.http.expectOne((r) => r.url === LIST && r.method === 'GET').flush({ data: ROWS, meta: { current_page: 1, last_page: 1, total: 2 } });
+    });
+
+    it('makes a package of another service: the visits, the days, and the checks the mobile app makes', async () => {
+      const { h, fixture, el } = await open(MANAGER, { service: 'salon' });
+
+      click(el, 'prod-add');
+      await settle(fixture);
+      type(el, '[data-testid="prod-name"]', 'Haircut x5');
+      type(el, '[data-testid="prod-price"]', '40000');
+      (byTestId(el, 'prod-is-package') as HTMLInputElement).click();
+      await settle(fixture);
+
+      click(el, 'prod-save');
+      await settle(fixture);
+      expect(text(byTestId(el, 'prod-error')!)).toContain('Choose the service the package is for');
+
+      const pick = byTestId(el, 'prod-pkg-service') as HTMLSelectElement;
+      pick.value = '2';
+      pick.dispatchEvent(new Event('change', { bubbles: true }));
+      type(el, '[data-testid="prod-pkg-sessions"]', '1');
+      await settle(fixture);
+      click(el, 'prod-save');
+      await settle(fixture);
+      expect(text(byTestId(el, 'prod-error')!)).toContain('from 2 to 100');
+
+      type(el, '[data-testid="prod-pkg-sessions"]', '5');
+      type(el, '[data-testid="prod-pkg-days"]', '90');
+      await settle(fixture);
+      click(el, 'prod-save');
+      const req = h.http.expectOne({ method: 'POST', url: LIST });
+      expect(req.request.body).toMatchObject({ package_sessions: 5, package_service_id: 2, package_valid_days: 90 });
+      req.flush({ data: { id: 4 } });
+      await settle(fixture);
+      h.http.expectOne((r) => r.url === LIST && r.method === 'GET').flush({ data: ROWS, meta: { current_page: 1, last_page: 1, total: 2 } });
+    });
+
+    it('changing a service shows who does it, its commission and its package', async () => {
+      const svc = product(7, { name: 'Braids', is_service: 1, duration_minutes: 90, commission_percent: '25', commission_fixed: null, staff_ids: ['5'], package_sessions: 3, package_service_id: 2, package_valid_days: 60 });
+      const { fixture, el } = await open(MANAGER, { service: 'salon', rows: [svc, ROWS[1]] });
+
+      click(el, 'prod-edit-7');
+      await settle(fixture);
+
+      expect(byTestId(el, 'staff-5')!.getAttribute('aria-pressed')).toBe('true');
+      expect(byTestId(el, 'staff-4')!.getAttribute('aria-pressed')).toBe('false');
+      expect((byTestId(el, 'prod-commission') as HTMLInputElement).value).toBe('25');
+      expect((byTestId(el, 'prod-pkg-sessions') as HTMLInputElement).value).toBe('3');
+      expect((byTestId(el, 'prod-pkg-days') as HTMLInputElement).value).toBe('60');
+    });
+
+    it('lists the goods a service uses up, finds more goods, and saves the list', async () => {
+      const svc = product(7, { name: 'Braids', is_service: 1 });
+      const { h, fixture, el } = await open(MANAGER, { service: 'salon', rows: [svc] });
+
+      click(el, 'prod-edit-7');
+      await settle(fixture);
+      click(el, 'prod-materials');
+      h.http.expectOne({ method: 'GET', url: `${API}/inventory/salon/services/7/materials` }).flush({ data: [{ material_product_id: 21, name: 'Hair oil', quantity: 2, in_stock: 14, cost: 1000 }] });
+      await settle(fixture);
+      expect(text(byTestId(el, 'mat-row-21')!)).toContain('Hair oil');
+      expect(text(byTestId(el, 'mat-row-21')!)).toContain('In stock: 14');
+
+      type(el, '[data-testid="mat-search"]', 'shamp');
+      await settle(fixture);
+      h.http.expectOne((r) => r.url === LIST && r.params.get('q') === 'shamp' && r.params.get('is_service') === '0').flush({ data: [product(22, { name: 'Shampoo', quantity: 8, unit: 'bottle' })] });
+      await settle(fixture);
+      click(el, 'mat-hit-22');
+      await settle(fixture);
+      type(el, '[data-testid="mat-qty-22"]', '3');
+      await settle(fixture);
+      click(el, 'mat-save');
+
+      const req = h.http.expectOne({ method: 'PUT', url: `${API}/inventory/salon/services/7/materials` });
+      expect(req.request.body).toEqual({ items: [{ material_product_id: 21, quantity: 2 }, { material_product_id: 22, quantity: 3 }] });
+      req.flush({ message: 'Saved' });
+      await settle(fixture);
+    });
+
+    it('says plainly when the server refuses the goods list (only the owner or accountant may keep it)', async () => {
+      const svc = product(7, { name: 'Braids', is_service: 1 });
+      const { h, fixture, el } = await open(MANAGER, { service: 'salon', rows: [svc] });
+
+      click(el, 'prod-edit-7');
+      await settle(fixture);
+      click(el, 'prod-materials');
+      h.http.expectOne({ method: 'GET', url: `${API}/inventory/salon/services/7/materials` }).flush({ message: 'Only the owner or the accountant.' }, { status: 403, statusText: 'x' });
+      await settle(fixture);
+
+      expect(text(byTestId(el, 'mat-error')!)).toContain('Only the owner or the accountant');
     });
   });
 

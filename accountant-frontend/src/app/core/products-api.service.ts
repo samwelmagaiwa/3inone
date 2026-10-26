@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { Named, NamedKind, Product, ProductBody, ProductFilters, ProductPage } from './products.models';
+import { Named, NamedKind, Product, ProductBody, ProductFilters, ProductPage, ServiceMaterial, StaffMember } from './products.models';
 
 const API = environment.apiUrl;
 
@@ -39,6 +39,11 @@ export function parseProduct(r: Record<string, unknown>): Product {
     duration_minutes: numOrNull(r['duration_minutes']),
     rebook_after_weeks: numOrNull(r['rebook_after_weeks']),
     commission_percent: numOrNull(r['commission_percent']),
+    commission_fixed: numOrNull(r['commission_fixed']),
+    package_sessions: numOrNull(r['package_sessions']),
+    package_service_id: numOrNull(r['package_service_id']),
+    package_valid_days: numOrNull(r['package_valid_days']),
+    staff_ids: Array.isArray(r['staff_ids']) ? (r['staff_ids'] as unknown[]).map(String) : [],
     price_options: options.map((o) => ({ label: String(o['label'] ?? ''), price: num(o['price']) })),
   };
 }
@@ -77,6 +82,29 @@ export class ProductsApi {
   /** `force` archives (deactivates) a product that has sales history instead of deleting it. */
   deleteProduct(id: number, force = false): Observable<void> {
     return this.http.delete(`${API}/inventory/products/${id}`, { params: force ? { force: '1' } : {} }).pipe(map(() => undefined));
+  }
+
+  /** The people who work in this business: who may be named as doing a service. */
+  staff(): Observable<StaffMember[]> {
+    return this.http.get<{ data: StaffMember[] }>(`${API}/inventory/salon/staff`).pipe(map((r) => (r.data ?? []).map((s) => ({ id: String(s.id), name: s.name, role: s.role }))));
+  }
+
+  /** The goods a service uses up each time (owner or accountant only: the server refuses anyone else). */
+  materials(serviceId: number): Observable<ServiceMaterial[]> {
+    return this.http.get<{ data: ServiceMaterial[] }>(`${API}/inventory/salon/services/${serviceId}/materials`).pipe(
+      map((r) => (r.data ?? []).map((m) => ({ material_product_id: num(m.material_product_id), name: String(m.name), quantity: num(m.quantity), in_stock: num(m.in_stock) }))),
+    );
+  }
+
+  saveMaterials(serviceId: number, items: { material_product_id: number; quantity: number }[]): Observable<void> {
+    return this.http.put(`${API}/inventory/salon/services/${serviceId}/materials`, { items }).pipe(map(() => undefined));
+  }
+
+  /** Goods (not services) by name, to pick what a service uses up. */
+  findGoods(q: string): Observable<Product[]> {
+    const params = new HttpParams().set('is_service', '0').set('status', 'active').set('q', q);
+
+    return this.http.get<{ data: Record<string, unknown>[] }>(`${API}/inventory/products`, { params }).pipe(map((r) => (r.data ?? []).map(parseProduct)));
   }
 
   named(kind: NamedKind): Observable<Named[]> {
