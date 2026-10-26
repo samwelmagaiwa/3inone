@@ -20,7 +20,6 @@ import 'hubs/stock_hub_screen.dart';
 import 'hubs/sales_hub_screen.dart';
 import 'hubs/supply_chain_hub_screen.dart';
 import 'hubs/finance_reports_hub_screen.dart';
-import 'barcode_scanner_screen.dart';
 import 'notifications/approval_notifications_screen.dart';
 import 'reports/profit_by_product_screen.dart';
 import 'hubs/salon_finance_hub_screen.dart';
@@ -740,11 +739,12 @@ class _InventoryHomeState extends State<InventoryHome> {
             ),
           ),
           IconButton(
-            icon: Icon(Icons.qr_code_scanner_rounded, size: 22.sp),
-            tooltip: loc.isSwahili ? 'Scan Barcode / QR' : 'Scan Barcode / QR',
+            key: const Key('header_ai_assistant'),
+            icon: Icon(Icons.auto_awesome, size: 22.sp),
+            tooltip: loc.isSwahili ? 'Msaidizi wa AI' : 'AI assistant',
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+              MaterialPageRoute(builder: (_) => const AssistantScreen()),
             ),
           ),
           Builder(
