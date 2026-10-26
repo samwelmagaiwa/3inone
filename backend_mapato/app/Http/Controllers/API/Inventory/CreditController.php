@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\Inventory;
 
 use App\Services\Inventory\AuditTrail;
+use App\Support\Inventory\OpeningDebts;
 use App\Support\GroupColumns;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -53,7 +54,17 @@ class CreditController extends Controller
                 ->where('c.credit_limit', '>', 0);
         }
 
-        return response()->json(['data' => $query->orderBy('c.name')->get()]);
+        $rows = $query->orderBy('c.name')->get();
+        // What a customer owed before the app is part of what they owe now.
+        $old = OpeningDebts::active()
+            ? DB::table('inventory_opening_debts')->where('kind', OpeningDebts::RECEIVABLE)->whereNotNull('customer_id')->groupBy('customer_id')->pluck(DB::raw('SUM(amount - paid_amount)'), 'customer_id')
+            : collect();
+        foreach ($rows as $row) {
+            $row->old_balance = round((float) ($old[$row->id] ?? 0), 2);
+            $row->balance = round((float) $row->balance + $row->old_balance, 2);
+        }
+
+        return response()->json(['data' => $rows]);
     }
 
     #[OA\Put(
@@ -139,6 +150,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             ->where('customer_id', $id)
             ->whereIn('payment_status', ['debt', 'partial'])
             ->sum(DB::raw('total - paid_total'));
+        $balance += OpeningDebts::customerOwes($id);
 
         $amount = (float) $request->query('amount', 0);
         $limit = (float) $customer->credit_limit;
@@ -214,13 +226,16 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         $periodCharges = (float) $sales->sum('total');
         $periodPaid = (float) $payments->sum('amount');
-        $opening = $openingCharges - $openingPaid;
+        // What was owed from before the app is where the statement starts.
+        $oldDebt = OpeningDebts::customerOwes($id);
+        $opening = $openingCharges - $openingPaid + $oldDebt;
 
         return response()->json(['data' => [
             'customer' => $customer,
             'from' => $from,
             'to' => $to,
             'opening_balance' => $opening,
+            'old_debt' => $oldDebt,
             'period_charges' => $periodCharges,
             'period_payments' => $periodPaid,
             'closing_balance' => $opening + $periodCharges - $periodPaid,
@@ -253,6 +268,15 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 's.created_at',
             )
             ->get();
+
+        // Old debts age like any other, from the date they are due (or began).
+        if (OpeningDebts::active()) {
+            $old = DB::table('inventory_opening_debts as d')
+                ->join('inventory_customers as c', 'c.id', '=', 'd.customer_id')
+                ->where('d.kind', OpeningDebts::RECEIVABLE)->whereRaw('d.amount - d.paid_amount > 0')
+                ->get(['c.id as customer_id', 'c.name as customer_name', 'c.phone as customer_phone', 'c.credit_limit', 'd.amount as total', 'd.paid_amount as paid_total', 'd.due_on as due_date', 'd.started_on as created_at']);
+            $rows = $rows->concat($old);
+        }
 
         $today = now()->startOfDay();
         $buckets = [];

@@ -11,6 +11,8 @@ import '../../../services/localization_service.dart';
 import '../../../widgets/service_switcher_dialog.dart';
 import 'dashboard/inventory_dashboard_screen.dart';
 import 'credit/credit_screen.dart';
+import 'money/debts_screen.dart';
+import 'money/monthly_report_screen.dart';
 import 'settings/depot_settings_screen.dart';
 import 'hubs/products_hub_screen.dart';
 import 'hubs/stock_hub_screen.dart';
@@ -146,6 +148,24 @@ List<_InvMenuEntry> _invEntries(LocalizationService loc,
               color: const Color(0xFF20B8CE),
               pageBuilder: () => const CreditScreen(),
               visible: (UserPermissions p) => p.has('inv_view_credit'),
+            ),
+            // 7b — Debts: what customers owe me and what I owe, with debts from before the app
+            _InvMenuEntry(
+              key: 'debts',
+              staticTitle: loc.isSwahili ? 'Madeni' : 'Debts',
+              icon: Icons.account_balance_wallet_outlined,
+              color: ThemeConstants.warningAmber,
+              pageBuilder: () => const DebtsScreen(),
+              visible: (UserPermissions p) => p.has('inv_view_credit'),
+            ),
+            // 7c — The month in full: profit, comparison, target, capital and advice
+            _InvMenuEntry(
+              key: 'monthly_report',
+              staticTitle: loc.isSwahili ? 'Ripoti ya mwezi' : 'Monthly report',
+              icon: Icons.insights_outlined,
+              color: const Color(0xFF8B5CF6),
+              pageBuilder: () => const MonthlyReportScreen(),
+              visible: (UserPermissions p) => p.has('inv_view_reports'),
             ),
             // 8 — Settings (standalone)
             _InvMenuEntry(

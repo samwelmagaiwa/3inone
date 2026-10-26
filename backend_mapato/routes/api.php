@@ -50,6 +50,7 @@ use App\Http\Controllers\API\Inventory\SalonQueueController;
 use App\Http\Controllers\API\Inventory\SalonReportsController;
 use App\Http\Controllers\API\Inventory\SalonSetupController;
 use App\Http\Controllers\API\Inventory\SalonClientController;
+use App\Http\Controllers\API\Inventory\BusinessMoneyController;
 use App\Http\Controllers\API\Inventory\SalonController;
 use App\Http\Controllers\API\Inventory\SalonEquipmentController;
 use App\Http\Controllers\API\Inventory\SalonExportController;
@@ -416,6 +417,22 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
     Route::middleware('inv_perm:inv_manage_products,inv_create_sales')->group(function () {
         Route::post('inventory/customers',         [InventoryCustomerController::class, 'store']);
+    });
+
+    // ── The owner's money tools: debts from before the app, the monthly report with its target, and advice.
+    Route::middleware('inv_perm:inv_view_credit,inv_manage_products')->group(function () {
+        Route::get('inventory/opening-debts',                    [BusinessMoneyController::class, 'debts']);
+        Route::post('inventory/opening-debts',                   [BusinessMoneyController::class, 'addDebt']);
+        Route::post('inventory/opening-debts/{id}/payments',     [BusinessMoneyController::class, 'payDebt']);
+        Route::get('inventory/opening-debts/{id}/payments',      [BusinessMoneyController::class, 'debtPayments']);
+        Route::delete('inventory/opening-debts/{id}',            [BusinessMoneyController::class, 'deleteDebt']);
+    });
+    Route::middleware('inv_perm:inv_view_reports')->group(function () {
+        Route::get('inventory/monthly-report',                   [BusinessMoneyController::class, 'report']);
+        Route::get('inventory/advice',                           [BusinessMoneyController::class, 'advice']);
+    });
+    Route::middleware('inv_perm:inv_manage_settings')->group(function () {
+        Route::put('inventory/monthly-target',                   [BusinessMoneyController::class, 'setTarget']);
     });
 
     // ── Salon: stylists, client history, "come back" reminders (see SalonController). It runs on the sales

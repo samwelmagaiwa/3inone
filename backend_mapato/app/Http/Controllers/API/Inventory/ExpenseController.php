@@ -11,8 +11,11 @@ class ExpenseController extends Controller
 {
     private const CATEGORIES = [
         'rent', 'salaries', 'transport', 'utilities',
-        'supplies', 'maintenance', 'marketing', 'licences', 'other',
+        'supplies', 'maintenance', 'marketing', 'licences', 'loan_repayment', 'drawings', 'family', 'other',
     ];
+
+    /** Spending that is the owner's own, not the business's: listed, never taken off the profit. */
+    private const PERSONAL_CATEGORIES = ['drawings', 'family'];
 
     /** Is the signed-in person the owner or a manager (who may approve, and whose own spending needs no approval)? */
     private function isManager(Request $request): bool
@@ -102,13 +105,16 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'expense_date' => 'required|date_format:Y-m-d',
             'supplier'     => 'nullable|string|max:120',
             'payment_method' => ['nullable', \Illuminate\Validation\Rule::in(\App\Support\PaymentChannels::all())],
+            'is_personal'  => 'sometimes|boolean',
         ]);
+        // Family and drawings are personal whatever the switch says; anything else is the business's unless marked personal.
+        $personal = in_array($data['category'], self::PERSONAL_CATEGORIES, true) || (bool) ($data['is_personal'] ?? false);
 
         $hasExtras = \Illuminate\Support\Facades\Schema::hasColumn('inventory_expenses', 'status');
         // In a salon, what the owner or a manager spends is approved at once; what anyone else records waits for them.
         $status = \App\Support\Tenancy\TenantContext::service() === 'salon' && !$this->isManager($request) ? 'pending' : 'approved';
 
-        $id = DB::table('inventory_expenses')->insertGetId((\Illuminate\Support\Facades\Schema::hasColumn('inventory_expenses', 'branch_id') ? ['branch_id' => \App\Support\Salon\SalonBranch::forNew($request)] : []) + [
+        $id = DB::table('inventory_expenses')->insertGetId((\Illuminate\Support\Facades\Schema::hasColumn('inventory_expenses', 'is_personal') ? ['is_personal' => $personal] : []) + (\Illuminate\Support\Facades\Schema::hasColumn('inventory_expenses', 'branch_id') ? ['branch_id' => \App\Support\Salon\SalonBranch::forNew($request)] : []) + [
             'category'     => $data['category'],
             'description'  => $data['description'],
             'amount'       => $data['amount'],
@@ -185,7 +191,11 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'expense_date' => 'sometimes|date_format:Y-m-d',
             'supplier'     => 'sometimes|nullable|string|max:120',
             'payment_method' => ['sometimes', 'nullable', \Illuminate\Validation\Rule::in(\App\Support\PaymentChannels::all())],
+            'is_personal'  => 'sometimes|boolean',
         ]);
+        if (isset($data['category']) && in_array($data['category'], self::PERSONAL_CATEGORIES, true)) {
+            $data['is_personal'] = true;
+        }
         if (!\Illuminate\Support\Facades\Schema::hasColumn('inventory_expenses', 'status')) {
             unset($data['supplier'], $data['payment_method']);
         }
@@ -255,6 +265,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         // Expenses by category
         $byCategory = $this->counted(DB::table('inventory_expenses')
             ->whereBetween('expense_date', [$from, $to])
+            ->when(\Illuminate\Support\Facades\Schema::hasColumn('inventory_expenses', 'is_personal'), fn ($q) => $q->where('is_personal', false))
             ->when(\App\Support\Salon\SalonBranch::selected($request) !== null, fn ($q) => $q->where('branch_id', \App\Support\Salon\SalonBranch::selected($request))))
             ->groupBy('category')
             ->orderByRaw('SUM(amount) DESC')
@@ -262,6 +273,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             ->get();
 
         $totalExpenses = $byCategory->sum('total');
+        $personalTotal = \Illuminate\Support\Facades\Schema::hasColumn('inventory_expenses', 'is_personal')
+            ? (float) $this->counted(DB::table('inventory_expenses')->whereBetween('expense_date', [$from, $to])->where('is_personal', true))->sum('amount')
+            : 0.0;
 
         // Revenue = sum of paid_total from sales in range
         $revenue = (float) DB::table('inventory_sales')
@@ -292,6 +306,8 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'net_profit'     => round($netProfit, 2),
                 'expense_ratio'  => $expenseRatio,   // % of revenue
                 'by_category'    => $byCategory,
+                // The owner's own spending in the period: shown, but not part of the business's expenses or profit.
+                'personal_total' => round($personalTotal, 2),
             ],
         ]);
     }

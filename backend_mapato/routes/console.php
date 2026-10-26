@@ -42,6 +42,11 @@ Schedule::command('salon:daily-summary')
     ->dailyAt('16:30')
     ->withoutOverlapping();
 
+// Every morning: remember each shop's position, and tell owners how the month ended (report ready, target reached or missed).
+Schedule::command('inventory:month-close')
+    ->dailyAt('04:30')
+    ->withoutOverlapping();
+
 // Every morning (08:30 in Tanzania): wish clients a happy birthday, for salons that switched it on.
 Schedule::command('salon:birthday-offers')
     ->dailyAt('05:30')

@@ -77,7 +77,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   String _catLabel(LocalizationService loc, String cat) {
-    const known = ['rent', 'salaries', 'transport', 'utilities', 'supplies', 'maintenance', 'marketing', 'other'];
+    const known = ['rent', 'salaries', 'transport', 'utilities', 'supplies', 'maintenance', 'marketing', 'licences', 'loan_repayment', 'drawings', 'family', 'other'];
     return known.contains(cat) ? loc.translate(cat) : cat;
   }
 
@@ -166,6 +166,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 ))
               else if (_summary != null) ...[
                 _SummarySection(summary: _summary!, fmt: _fmt, netColor: _netColor, ratio: _ratio),
+                if ((double.tryParse('${_summary!['personal_total'] ?? 0}') ?? 0) > 0)
+                  Padding(
+                    padding: EdgeInsets.only(top: 8.h),
+                    child: Text('${loc.translate('personal_spending_note')}: TZS ${_fmt(_summary!['personal_total'])}', key: const ValueKey<String>('personal_total'), style: TextStyle(color: Colors.white54, fontSize: 11.sp)),
+                  ),
                 SizedBox(height: 16.h),
               ],
 
@@ -249,7 +254,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
-                                _catLabel(loc, exp['category']?.toString() ?? ''),
+                                _catLabel(loc, exp['category']?.toString() ?? '') + (exp['is_personal'] == true || exp['is_personal'] == 1 ? '  ·  ${loc.translate('personal_tag')}' : ''),
                                 style: TextStyle(
                                     color: ThemeConstants.primaryOrange
                                         .withOpacity(0.85),
@@ -488,7 +493,7 @@ class _SummarySection extends StatelessWidget {
             ...byCategory.map((c) {
               final map = c as Map;
               final catKey = map['category']?.toString() ?? '';
-              const _known = ['rent', 'salaries', 'transport', 'utilities', 'supplies', 'maintenance', 'marketing', 'other'];
+              const _known = ['rent', 'salaries', 'transport', 'utilities', 'supplies', 'maintenance', 'marketing', 'licences', 'loan_repayment', 'drawings', 'family', 'other'];
               final catName = _known.contains(catKey) ? loc.translate(catKey) : catKey;
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -602,6 +607,13 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
   DateTime _date = DateTime.now();
   bool _saving = false;
 
+  /// The owner's own spending (family, drawings): kept in the list, never taken off the business's profit.
+  bool _personal = false;
+
+  static const List<String> _personalCategories = <String>['drawings', 'family'];
+
+  bool get _isPersonal => _personal || _personalCategories.contains(_category);
+
   // Formats digits with commas while keeping a clean numeric value for saving
   void _onAmountChanged(String value) {
     final digits = value.replaceAll(',', '').replaceAll(RegExp(r'[^0-9]'), '');
@@ -637,7 +649,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
   @override
   Widget build(BuildContext context) {
     final loc = context.watch<LocalizationService>();
-    const _known = ['rent', 'salaries', 'transport', 'utilities', 'supplies', 'maintenance', 'marketing', 'other'];
+    const _known = ['rent', 'salaries', 'transport', 'utilities', 'supplies', 'maintenance', 'marketing', 'licences', 'loan_repayment', 'drawings', 'family', 'other'];
     String catLabel(String c) => _known.contains(c) ? loc.translate(c) : c;
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -745,7 +757,19 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
                   ),
                 ),
               ),
-              SizedBox(height: 18.h),
+              SizedBox(height: 8.h),
+              SwitchListTile(
+                key: const ValueKey<String>('expense_personal'),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                activeColor: ThemeConstants.primaryOrange,
+                value: _isPersonal,
+                // family and drawings are always personal, so the switch cannot be turned off for them
+                onChanged: _personalCategories.contains(_category) ? null : (bool v) => setState(() => _personal = v),
+                title: Text(loc.translate('personal_expense'), style: const TextStyle(color: Colors.white)),
+                subtitle: Text(loc.translate('personal_expense_hint'), style: const TextStyle(color: Colors.white54, fontSize: 11)),
+              ),
+              SizedBox(height: 10.h),
 
               InvPrimaryButton(
                 busy: _saving,
@@ -795,6 +819,7 @@ class _AddExpenseSheetState extends State<_AddExpenseSheet> {
         'description': _descCtrl.text.trim(),
         'amount': _parsedAmount,
         'expense_date': DateFormat('yyyy-MM-dd').format(_date),
+        'is_personal': _isPersonal,
       });
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
