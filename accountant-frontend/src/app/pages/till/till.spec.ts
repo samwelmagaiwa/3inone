@@ -78,6 +78,11 @@ describe('the till', () => {
       expect(byTestId(el, 'till-level')).toBeNull();
     });
 
+    it('does not offer a price level in a salon, whose services have one price (or price options)', async () => {
+      const { el } = await open({}, [cut], true, { sale_tier: 'retail' });
+      expect(byTestId(el, 'till-level')).toBeNull();
+    });
+
     it('lets a business with retail and wholesale prices switch between them, starting on its usual one', async () => {
       const { fixture, el } = await open({}, [soda], false, { sale_tier: 'wholesale' });
       const retail = byTestId(el, 'till-level-retail') as HTMLButtonElement;

@@ -50,7 +50,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
           <p class="label-eyebrow">{{ i18n.t('till.step2') }}</p>
           <div class="flex flex-wrap items-center gap-2">
-            @if (caps.usesPriceLevels()) {
+            @if (caps.usesPriceLevels() && !till.salon()) {
               <div class="flex items-center gap-1" role="group" [attr.aria-label]="i18n.t('till.level')" data-testid="till-level">
                 <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wide mr-1">{{ i18n.t('till.level') }}</span>
                 <button type="button" class="pill-tab" [class.is-active]="till.tier() === 'retail'" [attr.aria-pressed]="till.tier() === 'retail'" (click)="setTier('retail')" data-testid="till-level-retail">{{ i18n.t('till.level.retail') }}</button>
