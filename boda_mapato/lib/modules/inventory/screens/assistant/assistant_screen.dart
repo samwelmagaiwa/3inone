@@ -6,6 +6,7 @@ import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/assistant_api.dart';
 import '../money/money_style.dart';
+import '../salon/salon_input.dart';
 
 /// Ask the business a question, or ask how to do something in the app. Made for people new to apps: a short welcome, tap-to-ask
 /// questions (split into "about my business" and "how do I...?"), plain answers, and the records behind an answer (full names,
@@ -290,7 +291,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
                 maxLines: 3,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _send(),
-                decoration: InputDecoration(hintText: sw ? 'Andika swali lako hapa...' : 'Type your question here...', counterText: ''),
+                style: salonInputStyle,
+                cursorColor: ThemeConstants.invAccent,
+                decoration: salonInput(labelText: sw ? 'Swali lako' : 'Your question', hintText: sw ? 'Andika swali lako hapa...' : 'Type your question here...', counterText: ''),
               ),
             ),
             IconButton(key: const Key('assistant_send'), icon: const Icon(Icons.send_rounded), color: ThemeConstants.invAccent, onPressed: _sending || left <= 0 ? null : () => _send()),

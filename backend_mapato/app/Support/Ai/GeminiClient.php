@@ -17,8 +17,12 @@ use Illuminate\Support\Facades\Log;
  */
 final class GeminiClient
 {
-    /** Models tried in order after the primary one; cheapest-to-run last. Override with GEMINI_MODELS. */
-    public const DEFAULT_CHAIN = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-pro'];
+    /**
+     * Models tried in order after the primary one: the fast Flash-Lite models first (they answer in 1-2 seconds), then the full Flash ones.
+     * Google retires models for new keys without warning (the 2.x models already answer 404), so check this list against
+     * GET /v1beta/models now and then. Override with GEMINI_MODELS.
+     */
+    public const DEFAULT_CHAIN = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.7-flash', 'gemini-3.6-flash'];
 
     /** @return array<int, string> */
     public static function chain(): array

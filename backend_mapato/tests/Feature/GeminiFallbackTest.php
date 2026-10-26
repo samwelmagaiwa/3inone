@@ -40,7 +40,7 @@ class GeminiFallbackTest extends TestCase
 
         config(['services.gemini.models' => '']);
         $this->assertSame('m-primary', GeminiClient::chain()[0]);
-        $this->assertContains('gemini-2.5-flash-lite', GeminiClient::chain(), 'blank means the built-in list');
+        $this->assertContains('gemini-3.5-flash-lite', GeminiClient::chain(), 'blank means the built-in list');
     }
 
     public function test_when_the_quota_is_used_up_the_next_model_answers_and_the_spent_one_is_skipped_afterwards(): void

@@ -62,7 +62,7 @@ services:
       # The AI assistant and the advice card. The key lives in the .env next to this file on the server, never in git.
       # Empty = the assistant says it is switched off. GEMINI_MODELS (comma separated) overrides the built-in fallback list.
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
       GEMINI_MODELS: ${GEMINI_MODELS:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     volumes:
