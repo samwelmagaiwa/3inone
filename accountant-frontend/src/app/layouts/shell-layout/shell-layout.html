@@ -20,7 +20,7 @@
         @for (item of overview(); track item.key) {
           <a [routerLink]="item.path" routerLinkActive="nav-active" class="nav-item" [title]="i18n.t(item.hintKey)">
             <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" [attr.d]="item.icon"/></svg>
-            <span class="nav-label">{{ i18n.t(item.labelKey) }}</span>
+            <span class="nav-label">{{ label(item) }}</span>
           </a>
         }
       }
@@ -29,7 +29,7 @@
         @for (item of money(); track item.key) {
           <a [routerLink]="item.path" routerLinkActive="nav-active" class="nav-item" [title]="i18n.t(item.hintKey)">
             <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" [attr.d]="item.icon"/></svg>
-            <span class="nav-label">{{ i18n.t(item.labelKey) }}</span>
+            <span class="nav-label">{{ label(item) }}</span>
           </a>
         }
       }
@@ -41,7 +41,7 @@
       @for (item of helpPages(); track item.key) {
         <a [routerLink]="item.path" routerLinkActive="nav-active" class="nav-item" [title]="i18n.t(item.hintKey)">
           <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" [attr.d]="item.icon"/></svg>
-          <span class="nav-label">{{ i18n.t(item.labelKey) }}</span>
+          <span class="nav-label">{{ label(item) }}</span>
         </a>
       }
       <button type="button" class="nav-item w-full text-left cursor-pointer" (click)="openHelp()" [title]="i18n.t('help.title')">
@@ -87,7 +87,7 @@
           <div class="topbar-search-panel">
             @for (r of searchResults(); track r.key) {
               <button type="button" (click)="openSearchResult(r)" class="topbar-search-item">
-                <span class="font-black text-slate-800">{{ i18n.t(r.labelKey) }}</span>
+                <span class="font-black text-slate-800">{{ label(r) }}</span>
                 <span class="text-[11px] font-semibold text-slate-400">{{ i18n.t(r.hintKey) }}</span>
               </button>
             } @empty {

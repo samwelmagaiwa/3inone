@@ -41,6 +41,11 @@ export class ShellLayout implements OnDestroy {
   protected readonly money = computed(() => this.pages().filter((p) => p.group === 'money'));
   protected readonly helpPages = computed(() => this.pages().filter((p) => p.group === 'help'));
 
+  /** A page's name in the menu: a salon sees "Services & goods" where a shop sees "Products". */
+  protected label(item: NavItem): string {
+    return this.i18n.t(this.auth.service() === 'salon' && item.salonLabelKey ? item.salonLabelKey : item.labelKey);
+  }
+
   protected readonly sidebarOpen = signal(false); // phone drawer
   protected readonly sidebarCollapsed = signal(false); // icons only
   protected readonly profileOpen = signal(false);

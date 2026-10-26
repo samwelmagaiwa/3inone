@@ -167,6 +167,24 @@ describe('pages by rights', () => {
     expect(homePath(full)).toBe('/dashboard');
   });
 
+  // The rights each role gets by default on the server (User::$INV_ROLE_DEFAULTS) and what the mobile app's menu offers for them.
+  it('a sales officer gets the till side: products, sales and customers who owe; not the books', () => {
+    const { auth } = configure({ role: 'sales_officer', permissions: ['inv_view_products', 'inv_create_products', 'inv_create_sales', 'inv_view_reminders', 'inv_view_credit', 'inv_view_cash', 'inv_view_crates', 'inv_report_damage'] });
+    expect(keys(auth)).toEqual(['products', 'sales', 'debts']);
+    expect(homePath(auth)).toBe('/products');
+  });
+
+  it('an accountant gets the books: this month, products (to read), sales, debts and expenses', () => {
+    const { auth } = configure({ role: 'accountant', permissions: ['inv_view_products', 'inv_create_sales', 'inv_manage_sales', 'inv_view_credit', 'inv_view_cash', 'inv_view_reports', 'inv_view_expenses', 'inv_manage_expenses', 'inv_view_reminders'] });
+    expect(keys(auth)).toEqual(['dashboard', 'products', 'sales', 'debts', 'expenses']);
+    expect(homePath(auth)).toBe('/dashboard');
+  });
+
+  it('seeing reports or managing sales without the right to sell does not open the sales page (the server would refuse it)', () => {
+    const { auth } = configure({ permissions: ['inv_view_reports', 'inv_manage_sales'] });
+    expect(keys(auth)).toEqual(['dashboard']);
+  });
+
   it('no rights at all lands on the welcome page', () => {
     const { auth } = configure({ permissions: [] });
     expect(keys(auth)).toEqual([]);

@@ -6,10 +6,12 @@ import { AuthService } from './auth.service';
  * The server enforces the same rights; this keeps the screens honest.
  */
 export interface NavItem {
-  key: 'dashboard' | 'sales' | 'debts' | 'expenses' | 'assistant';
+  key: 'dashboard' | 'products' | 'sales' | 'debts' | 'expenses' | 'assistant';
   path: string;
   labelKey: string;
   hintKey: string;
+  /** The label to use while working in the salon, when it differs ("Services & goods"). */
+  salonLabelKey?: string;
   group: 'overview' | 'money' | 'help';
   /** An SVG path (24x24, stroke icon). */
   icon: string;
@@ -27,13 +29,25 @@ export const NAV: NavItem[] = [
     allowed: (a) => a.service() === 'inventory' && a.can('inv_view_reports'),
   },
   {
+    key: 'products',
+    path: '/products',
+    labelKey: 'nav.products',
+    salonLabelKey: 'nav.products.salon',
+    hintKey: 'nav.products.hint',
+    group: 'overview',
+    icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+    // The same as the mobile app's Products section: whoever may see products (a sales officer, an accountant, ...).
+    allowed: (a) => a.can('inv_view_products'),
+  },
+  {
     key: 'sales',
     path: '/sales',
     labelKey: 'nav.sales',
     hintKey: 'nav.sales.hint',
     group: 'money',
     icon: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z',
-    allowed: (a) => a.canAny('inv_create_sales', 'inv_manage_sales', 'inv_view_reports'),
+    // The server opens the sales list only to inv_create_sales (and so does the mobile app's Sales section): offering it to anyone else would only show an error.
+    allowed: (a) => a.can('inv_create_sales'),
   },
   {
     key: 'debts',

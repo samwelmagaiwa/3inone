@@ -1,0 +1,337 @@
+<!-- Products (and, for a salon, services & goods) -->
+@for (k of [motion.tick()]; track k) {
+<div class="space-y-5 animate-fade-in-up">
+
+  <div class="page-header-card flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="min-w-0">
+      <h1 class="text-slate-900 font-black text-xl tracking-tight">{{ i18n.t(salon() ? 'prod.title.salon' : 'prod.title') }}</h1>
+      <p class="text-slate-500 text-sm mt-0.5">{{ i18n.t(canManage() ? 'prod.sub.manage' : 'prod.sub') }}</p>
+    </div>
+    @if (tab() === 'products' && canAdd()) {
+      <button type="button" class="btn-primary big-btn shrink-0" (click)="openAdd()" data-testid="prod-add">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        {{ i18n.t(salon() ? 'prod.add.salon' : 'prod.add') }}
+      </button>
+    } @else if (tab() !== 'products' && canManage()) {
+      <button type="button" class="btn-primary big-btn shrink-0" (click)="openNamed(null)" data-testid="named-add">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        {{ i18n.t(tab() === 'brands' ? 'brand.add' : 'cat.add') }}
+      </button>
+    }
+  </div>
+
+  <!-- Categories and brands are for those who manage the catalogue -->
+  @if (canManage()) {
+    <div class="flex flex-wrap gap-2" role="tablist">
+      <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="tab() === 'products'" [attr.aria-selected]="tab() === 'products'" (click)="setTab('products')" data-testid="tab-products">{{ i18n.t(salon() ? 'prod.tab.salon' : 'prod.tab.products') }}</button>
+      <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="tab() === 'categories'" [attr.aria-selected]="tab() === 'categories'" (click)="setTab('categories')" data-testid="tab-categories">{{ i18n.t('prod.tab.categories') }}</button>
+      <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="tab() === 'brands'" [attr.aria-selected]="tab() === 'brands'" (click)="setTab('brands')" data-testid="tab-brands">{{ i18n.t('prod.tab.brands') }}</button>
+    </div>
+  }
+
+  @if (tab() === 'products') {
+    <section class="section-card overflow-hidden">
+      <app-table-toolbar [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('prod.search')" [count]="loading() ? null : total()" [noun]="noun()" [showClear]="hasFilters()" (cleared)="clearFilters()">
+        <label class="filter-field">
+          <span>{{ i18n.t('prod.filter.status') }}</span>
+          <select class="filter-select" name="fStatusFilter" [ngModel]="status()" (ngModelChange)="status.set($event); refilter()" data-testid="filter-status">
+            <option value="">{{ i18n.t('prod.filter.all') }}</option>
+            <option value="active">{{ i18n.t('prod.active') }}</option>
+            <option value="inactive">{{ i18n.t('prod.inactive') }}</option>
+          </select>
+        </label>
+        @if (salon()) {
+          <label class="filter-field">
+            <span>{{ i18n.t('prod.filter.kind') }}</span>
+            <select class="filter-select" name="fKindFilter" [ngModel]="kind()" (ngModelChange)="kind.set($event); refilter()" data-testid="filter-kind">
+              <option value="">{{ i18n.t('prod.filter.all') }}</option>
+              <option value="services">{{ i18n.t('prod.kind.services') }}</option>
+              <option value="goods">{{ i18n.t('prod.kind.goods') }}</option>
+            </select>
+          </label>
+        }
+        @if (categories().length) {
+          <label class="filter-field">
+            <span>{{ i18n.t('prod.form.category') }}</span>
+            <select class="filter-select" name="fCategoryFilter" [ngModel]="categoryId()" (ngModelChange)="categoryId.set($event ? +$event : null); refilter()" data-testid="filter-category">
+              <option [ngValue]="null">{{ i18n.t('prod.filter.all') }}</option>
+              @for (c of categories(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
+            </select>
+          </label>
+        }
+        <label class="filter-field">
+          <span>{{ i18n.t('prod.filter.stock') }}</span>
+          <select class="filter-select" name="fLowFilter" [ngModel]="lowStock()" (ngModelChange)="lowStock.set($event); refilter()" data-testid="filter-low">
+            <option [ngValue]="false">{{ i18n.t('prod.filter.all') }}</option>
+            <option [ngValue]="true">{{ i18n.t('prod.low') }}</option>
+          </select>
+        </label>
+      </app-table-toolbar>
+
+      @if (loading() && !data()) {
+        <div class="skeleton-box m-5" style="height: 160px; border-radius: 14px;"></div>
+      } @else if (error(); as message) {
+        <div class="p-8 text-center space-y-3" role="alert">
+          <p class="text-slate-900 font-black text-base">{{ i18n.t('error.title') }}</p>
+          <p class="text-slate-500 text-sm">{{ message }}</p>
+          <button type="button" class="btn-primary" (click)="load()">{{ i18n.t('common.retry') }}</button>
+        </div>
+      } @else if (rows().length) {
+        <div class="table-scroll-container">
+          <table class="premium-table">
+            <thead>
+              <tr>
+                <th>{{ i18n.t('prod.col.name') }}</th>
+                <th class="text-right">{{ i18n.t('prod.col.stock') }}</th>
+                <th class="text-right">{{ i18n.t('prod.col.price') }}</th>
+                <th>{{ i18n.t('prod.col.status') }}</th>
+                <th class="text-right"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of rows(); track p.id) {
+                <tr [attr.data-testid]="'prod-row-' + p.id">
+                  <td>
+                    <div class="font-black text-slate-900">{{ p.name }}</div>
+                    <div class="text-xs font-semibold text-slate-400">{{ subline(p) }}</div>
+                  </td>
+                  <td class="text-right font-bold text-slate-700">
+                    @if (p.is_service) { <span class="text-slate-400">—</span> } @else {
+                      {{ p.quantity }} <span class="text-xs text-slate-400 font-semibold">{{ p.unit }}</span>
+                      @if (isLow(p)) { <span class="pill-critical ml-2" [attr.data-testid]="'prod-low-' + p.id">{{ i18n.t('prod.low') }}</span> }
+                    }
+                  </td>
+                  <td class="text-right font-black text-slate-800">{{ tsh(p.selling_price) }}</td>
+                  <td><span [class]="p.status === 'active' ? 'status-ok' : 'pill-inactive'">{{ i18n.t(activeKey(p.status)) }}</span></td>
+                  <td class="text-right">
+                    @if (canManage()) {
+                      <button type="button" class="icon-del" (click)="openEdit(p)" [title]="i18n.t('prod.edit')" [attr.aria-label]="i18n.t('prod.edit')" [attr.data-testid]="'prod-edit-' + p.id">&#9998;</button>
+                      <button type="button" class="icon-del" (click)="remove(p)" [title]="i18n.t('common.delete')" [attr.aria-label]="i18n.t('common.delete')" [attr.data-testid]="'prod-del-' + p.id">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if ((data()?.lastPage ?? 1) > 1) {
+          <div class="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-100">
+            <button type="button" class="btn-outline" [disabled]="page() <= 1 || loading()" (click)="goTo(page() - 1)" data-testid="prod-prev">{{ i18n.t('prod.prev') }}</button>
+            <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wide" data-testid="prod-page">{{ i18n.t('prod.page', page(), data()!.lastPage) }}</span>
+            <button type="button" class="btn-outline" [disabled]="page() >= data()!.lastPage || loading()" (click)="goTo(page() + 1)" data-testid="prod-next">{{ i18n.t('prod.next') }}</button>
+          </div>
+        }
+      } @else {
+        <div class="empty-state" data-testid="prod-empty">
+          <span class="empty-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg></span>
+          <p class="empty-title">{{ i18n.t(hasFilters() ? 'prod.empty.search' : 'prod.empty') }}</p>
+          @if (!hasFilters()) {
+            <p class="empty-hint">{{ i18n.t('prod.empty.hint') }}</p>
+            @if (canAdd()) { <button type="button" class="btn-primary mt-3" (click)="openAdd()">{{ i18n.t(salon() ? 'prod.add.salon' : 'prod.add') }}</button> }
+          }
+        </div>
+      }
+    </section>
+  } @else {
+    <section class="section-card overflow-hidden">
+      @if (namedList().length) {
+        <div class="table-scroll-container">
+          <table class="premium-table">
+            <thead>
+              <tr>
+                <th>{{ i18n.t('prod.col.name') }}</th>
+                <th class="text-right">{{ i18n.t('prod.noun.many') }}</th>
+                <th>{{ i18n.t('prod.col.status') }}</th>
+                <th class="text-right"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (n of namedList(); track n.id) {
+                <tr [attr.data-testid]="'named-row-' + n.id">
+                  <td>
+                    <div class="font-black text-slate-900">{{ n.name }}</div>
+                    @if (n.description) { <div class="text-xs font-semibold text-slate-400">{{ n.description }}</div> }
+                  </td>
+                  <td class="text-right font-bold text-slate-700">{{ n.products_count }}</td>
+                  <td><span [class]="n.status === 'active' ? 'status-ok' : 'pill-inactive'">{{ i18n.t(activeKey(n.status)) }}</span></td>
+                  <td class="text-right">
+                    <button type="button" class="icon-del" (click)="openNamed(n)" [title]="i18n.t('prod.edit')" [attr.aria-label]="i18n.t('prod.edit')" [attr.data-testid]="'named-edit-' + n.id">&#9998;</button>
+                    <button type="button" class="icon-del" (click)="removeNamed(n)" [title]="i18n.t('common.delete')" [attr.aria-label]="i18n.t('common.delete')" [attr.data-testid]="'named-del-' + n.id">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <div class="empty-state" data-testid="named-empty">
+          <p class="empty-title">{{ i18n.t(tab() === 'brands' ? 'brand.empty' : 'cat.empty') }}</p>
+          <button type="button" class="btn-primary mt-3" (click)="openNamed(null)">{{ i18n.t(tab() === 'brands' ? 'brand.add' : 'cat.add') }}</button>
+        </div>
+      }
+    </section>
+  }
+</div>
+}
+
+<!-- Add or change a product or service -->
+<app-modal-dialog [show]="formOpen()" [eyebrow]="i18n.t(salon() ? 'prod.title.salon' : 'prod.title')" [title]="i18n.t(editing() ? 'prod.edit' : (salon() ? 'prod.add.salon' : 'prod.add'))" size="lg" (close)="formOpen.set(false)">
+  <div slot="body" class="space-y-4">
+    <p class="text-sm text-slate-500">{{ i18n.t('prod.form.hint') }}</p>
+
+    @if (salon()) {
+      <label class="flex items-center gap-3 text-sm font-bold text-slate-700 cursor-pointer">
+        <input type="checkbox" name="fIsService" [(ngModel)]="fIsService" [disabled]="!!editing()" data-testid="prod-is-service">
+        {{ i18n.t('prod.form.isservice') }}
+      </label>
+    }
+
+    <div>
+      <label class="modal-label" for="pName">{{ i18n.t('prod.form.name') }}</label>
+      <input id="pName" name="pName" class="modal-input" [(ngModel)]="fName" autocomplete="off" data-testid="prod-name">
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="modal-label" for="pCategory">{{ i18n.t('prod.form.category') }}</label>
+        <select id="pCategory" name="pCategory" class="modal-input" [(ngModel)]="fCategory">
+          <option value="">{{ i18n.t('prod.form.none') }}</option>
+          @for (c of categories(); track c.id) { <option [value]="'' + c.id">{{ c.name }}</option> }
+        </select>
+      </div>
+      <div>
+        <label class="modal-label" for="pBrand">{{ i18n.t('prod.form.brand') }}</label>
+        <select id="pBrand" name="pBrand" class="modal-input" [(ngModel)]="fBrand">
+          <option value="">{{ i18n.t('prod.form.none') }}</option>
+          @for (b of brands(); track b.id) { <option [value]="'' + b.id">{{ b.name }}</option> }
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="modal-label" for="pCost">{{ i18n.t('prod.form.cost') }}</label>
+        <input id="pCost" name="pCost" class="modal-input" inputmode="numeric" [(ngModel)]="fCost" autocomplete="off" data-testid="prod-cost">
+      </div>
+      <div>
+        <label class="modal-label" for="pPrice">{{ i18n.t('prod.form.price') }}</label>
+        <input id="pPrice" name="pPrice" class="modal-input" inputmode="numeric" [(ngModel)]="fPrice" autocomplete="off" data-testid="prod-price">
+      </div>
+    </div>
+
+    @if (!fIsService) {
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label class="modal-label" for="pUnit">{{ i18n.t('prod.form.unit') }}</label>
+          <input id="pUnit" name="pUnit" class="modal-input" list="pUnits" [(ngModel)]="fUnit" autocomplete="off" data-testid="prod-unit">
+          <datalist id="pUnits">@for (u of units; track u) { <option [value]="u"></option> }</datalist>
+        </div>
+        <div>
+          <label class="modal-label" for="pQty">{{ i18n.t('prod.form.qty') }}</label>
+          <input id="pQty" name="pQty" class="modal-input" inputmode="numeric" [(ngModel)]="fQty" autocomplete="off" data-testid="prod-qty">
+        </div>
+        <div>
+          <label class="modal-label" for="pMin">{{ i18n.t('prod.form.min') }}</label>
+          <input id="pMin" name="pMin" class="modal-input" inputmode="numeric" [(ngModel)]="fMin" autocomplete="off" data-testid="prod-min">
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="modal-label" for="pBarcode">{{ i18n.t('prod.form.barcode') }}</label>
+          <input id="pBarcode" name="pBarcode" class="modal-input" [(ngModel)]="fBarcode" autocomplete="off">
+        </div>
+        <div>
+          <label class="modal-label" for="pSku">{{ i18n.t('prod.form.sku') }}</label>
+          <input id="pSku" name="pSku" class="modal-input" [(ngModel)]="fSku" autocomplete="off" [placeholder]="i18n.t('prod.form.sku.hint')">
+        </div>
+      </div>
+    } @else {
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label class="modal-label" for="pDuration">{{ i18n.t('prod.form.duration') }}</label>
+          <input id="pDuration" name="pDuration" class="modal-input" inputmode="numeric" [(ngModel)]="fDuration" autocomplete="off" data-testid="prod-duration">
+        </div>
+        <div>
+          <label class="modal-label" for="pRebook">{{ i18n.t('prod.form.rebook') }}</label>
+          <input id="pRebook" name="pRebook" class="modal-input" inputmode="numeric" [(ngModel)]="fRebook" autocomplete="off">
+        </div>
+        <div>
+          <label class="modal-label" for="pCommission">{{ i18n.t('prod.form.commission') }}</label>
+          <input id="pCommission" name="pCommission" class="modal-input" inputmode="decimal" [(ngModel)]="fCommission" autocomplete="off">
+        </div>
+      </div>
+      <div>
+        <p class="modal-label">{{ i18n.t('prod.form.options') }}</p>
+        <p class="text-xs text-slate-400 font-semibold mb-2">{{ i18n.t('prod.form.options.hint') }}</p>
+        @for (o of fOptions(); track $index) {
+          <div class="flex gap-2 mb-2">
+            <input class="modal-input flex-1" [attr.data-testid]="'opt-label-' + $index" [ngModel]="o.label" (ngModelChange)="setOption($index, 'label', $event)" [placeholder]="i18n.t('prod.form.options.label')" autocomplete="off">
+            <input class="modal-input w-36" [attr.data-testid]="'opt-price-' + $index" inputmode="numeric" [ngModel]="o.price" (ngModelChange)="setOption($index, 'price', $event)" [placeholder]="i18n.t('prod.form.options.price')" autocomplete="off">
+            <button type="button" class="icon-del" (click)="removeOption($index)" [attr.aria-label]="i18n.t('common.delete')">&times;</button>
+          </div>
+        }
+        @if (fOptions().length < 10) { <button type="button" class="btn-outline" (click)="addOption()" data-testid="prod-add-option">{{ i18n.t('prod.form.options.add') }}</button> }
+      </div>
+    }
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="modal-label" for="pVat">{{ i18n.t('prod.form.vat') }}</label>
+        <input id="pVat" name="pVat" class="modal-input" inputmode="decimal" [(ngModel)]="fVat" autocomplete="off" [placeholder]="i18n.t('prod.form.vat.hint')">
+      </div>
+      <div>
+        <label class="modal-label" for="pStatus">{{ i18n.t('prod.form.status') }}</label>
+        <select id="pStatus" name="pStatus" class="modal-input" [(ngModel)]="fStatus">
+          <option value="active">{{ i18n.t('prod.active') }}</option>
+          <option value="inactive">{{ i18n.t('prod.inactive') }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <label class="modal-label" for="pDesc">{{ i18n.t('prod.form.desc') }}</label>
+      <textarea id="pDesc" name="pDesc" rows="2" class="modal-input" [(ngModel)]="fDesc" maxlength="1000"></textarea>
+    </div>
+
+    @if (formError()) { <p class="form-error" role="alert" data-testid="prod-error">{{ formError() }}</p> }
+  </div>
+  <div slot="footer" class="flex gap-2 justify-end">
+    <button type="button" class="modal-cancel-btn" (click)="formOpen.set(false)">{{ i18n.t('common.cancel') }}</button>
+    <button type="button" class="btn-primary" [disabled]="saving()" (click)="save()" data-testid="prod-save">{{ saving() ? i18n.t('common.saving') : i18n.t('common.save') }}</button>
+  </div>
+</app-modal-dialog>
+
+<!-- Add or change a category or a brand -->
+<app-modal-dialog [show]="namedOpen()" [eyebrow]="i18n.t(tab() === 'brands' ? 'prod.tab.brands' : 'prod.tab.categories')" [title]="i18n.t(namedEditing() ? 'prod.edit' : (tab() === 'brands' ? 'brand.add' : 'cat.add'))" size="md" (close)="namedOpen.set(false)">
+  <div slot="body" class="space-y-4">
+    <div>
+      <label class="modal-label" for="nName">{{ i18n.t('prod.form.name') }}</label>
+      <input id="nName" name="nName" class="modal-input" [(ngModel)]="namedName" autocomplete="off" data-testid="named-name">
+    </div>
+    <div>
+      <label class="modal-label" for="nDesc">{{ i18n.t('prod.form.desc') }}</label>
+      <textarea id="nDesc" name="nDesc" rows="2" class="modal-input" [(ngModel)]="namedDesc" maxlength="500"></textarea>
+    </div>
+    <div>
+      <label class="modal-label" for="nStatus">{{ i18n.t('prod.form.status') }}</label>
+      <select id="nStatus" name="nStatus" class="modal-input" [(ngModel)]="namedStatus">
+        <option value="active">{{ i18n.t('prod.active') }}</option>
+        <option value="inactive">{{ i18n.t('prod.inactive') }}</option>
+      </select>
+    </div>
+    @if (namedError()) { <p class="form-error" role="alert">{{ namedError() }}</p> }
+  </div>
+  <div slot="footer" class="flex gap-2 justify-end">
+    <button type="button" class="modal-cancel-btn" (click)="namedOpen.set(false)">{{ i18n.t('common.cancel') }}</button>
+    <button type="button" class="btn-primary" [disabled]="namedSaving()" (click)="saveNamed()" data-testid="named-save">{{ namedSaving() ? i18n.t('common.saving') : i18n.t('common.save') }}</button>
+  </div>
+</app-modal-dialog>
+
+<style>
+  .big-btn { padding: 12px 22px; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+  .big-tab { padding: 12px 22px; font-size: 14px; font-weight: 800; }
+</style>
