@@ -204,13 +204,14 @@
         </select>
       </div>
       <div>
-        <label class="modal-label" for="pBrand">{{ i18n.t('prod.form.brand') }}</label>
+        <label class="modal-label" for="pBrand">{{ i18n.t(fIsService ? 'prod.form.brand.service' : 'prod.form.brand') }}</label>
         <select id="pBrand" name="pBrand" class="modal-input" [(ngModel)]="fBrand">
           <option value="">{{ i18n.t('prod.form.none') }}</option>
           @for (b of brands(); track b.id) { <option [value]="'' + b.id">{{ b.name }}</option> }
         </select>
       </div>
     </div>
+    @if (fIsService) { <p class="text-xs font-semibold text-slate-500 -mt-2" data-testid="service-brand-hint">{{ i18n.t('prod.form.brand.service.hint') }}</p> }
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       @if (!fIsService) {

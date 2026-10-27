@@ -519,8 +519,21 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                         children: [
                           _twoCol(
                             left: _categoryPicker(loc),
-                            right: _brandPicker(loc),
+                            right: _brandPicker(loc, service: salonService),
                           ),
+                          // A service is named by what it is (Knotless braids, Eyebrow shaping): that goes in the name. The brand
+                          // is only the make of a product the service uses, and many services use none.
+                          if (salonService)
+                            Padding(
+                              padding: EdgeInsets.only(top: 6.h),
+                              child: Text(
+                                sw
+                                    ? 'Kundi: chagua aina ya huduma (mmiliki huyaongeza kwenye Makundi). Chapa: si lazima, chagua tu kama huduma inatumia bidhaa ya chapa fulani; huduma nyingi (kama kutengeneza nyusi) hazihitaji. Jina la mtindo, kama Knotless Braids, liandikwe kwenye jina la huduma.'
+                                    : 'Category: the kind of service (the owner adds categories under Categories). Brand: optional, only if the service uses a product of a particular brand; many services (like eyebrow shaping) need none. A style name such as Knotless Braids belongs in the service name.',
+                                key: const Key('service_brand_hint'),
+                                style: ThemeConstants.bodyStyle.copyWith(fontSize: 11.sp, color: Colors.white70),
+                              ),
+                            ),
                           SizedBox(height: 8.h),
                           ..._unitPriceStock(loc, caps),
                           if (_int(_qty.text) < _int(_minStock.text))
@@ -1304,7 +1317,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
   bool get _canManageCatalog =>
       context.read<AuthProvider>().permissions.has('inv_manage_products');
 
-  Widget _brandPicker(LocalizationService loc) {
+  Widget _brandPicker(LocalizationService loc, {bool service = false}) {
     final InventoryProvider inv = context.watch<InventoryProvider>();
     final bool validBrand = _brandId == null ||
         _brandId == -1 ||
@@ -1317,7 +1330,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       isExpanded: true,
       dropdownColor: ThemeConstants.primaryBlue,
       style: ThemeConstants.bodyStyle,
-      decoration: _decoration(loc.translate('brand')),
+      decoration: _decoration(service ? (loc.isSwahili ? 'Chapa ya bidhaa (si lazima)' : 'Product brand (optional)') : loc.translate('brand')),
       items: <DropdownMenuItem<int?>>[
         DropdownMenuItem<int?>(
           child:
