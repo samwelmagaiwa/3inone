@@ -33,6 +33,33 @@ describe('the till', () => {
     expect(text(byTestId(el, 'till-total')!)).toBe('TSH 1,000');
   });
 
+  it('goods can be narrowed by category and brand, and in a salon by services or goods', async () => {
+    const { h, fixture, el } = await open({}, [soda], true);
+    byTestId(el, 'till-filters-toggle')!.click();
+    await settle(fixture);
+    h.http.expectOne((r) => r.url.endsWith('/inventory/categories')).flush({ data: [{ id: 3, name: 'Kusuka / Braiding', description: null, status: 'active' }] });
+    h.http.expectOne((r) => r.url.endsWith('/inventory/brands')).flush({ data: [{ id: 5, name: 'Darling', description: null, status: 'active' }] });
+    await settle(fixture);
+    const category = byTestId(el, 'till-filter-category') as HTMLSelectElement;
+    expect(Array.from(category.options).map((o) => o.text.trim())).toContain('Braiding');
+
+    category.value = '3';
+    category.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle(fixture);
+    const asked = h.http.expectOne((r) => r.url.endsWith('/inventory/products'));
+    expect(asked.request.params.get('category_id')).toBe('3');
+    asked.flush({ data: [], meta: { last_page: 1 } });
+    await settle(fixture);
+
+    const kind = byTestId(el, 'till-filter-kind') as HTMLSelectElement;
+    kind.value = 'service';
+    kind.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle(fixture);
+    const next = h.http.expectOne((r) => r.url.endsWith('/inventory/products'));
+    expect(next.request.params.get('is_service')).toBe('1');
+    next.flush({ data: [], meta: { last_page: 1 } });
+  });
+
   it('will not sell more than is in stock', async () => {
     const { fixture, el } = await open();
     for (let i = 0; i < 11; i++) byTestId(el, 'good-1')!.click();

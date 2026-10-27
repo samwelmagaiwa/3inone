@@ -5,8 +5,10 @@ import { firstValueFrom } from 'rxjs';
 
 import { AuthService } from '../../core/auth.service';
 import { CapabilitiesService } from '../../core/capabilities.service';
-import { offline, parseAmount, serverMessage, tsh } from '../../core/format';
+import { localizedName, offline, parseAmount, serverMessage, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
+import { Named } from '../../core/products.models';
+import { ProductsApi } from '../../core/products-api.service';
 import { printReceipt } from '../../core/receipt';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -44,6 +46,15 @@ export class TillPage implements OnInit, OnDestroy {
   protected readonly loadingProducts = signal(true);
   protected readonly productError = signal<string | null>(null);
   private timer: ReturnType<typeof setTimeout> | null = null;
+
+  // ---- narrowing the goods (opened on demand, so a till that never uses it asks for nothing more)
+  private readonly catalogue = inject(ProductsApi);
+  protected readonly filtersOpen = signal(false);
+  protected readonly categories = signal<Named[]>([]);
+  protected readonly brands = signal<Named[]>([]);
+  protected fCategory = '';
+  protected fBrand = '';
+  protected fKind = '';
 
   // ---- customer
   protected readonly customerQuery = signal('');
@@ -104,7 +115,7 @@ export class TillPage implements OnInit, OnDestroy {
     this.loadingProducts.set(true);
     this.productError.set(null);
     try {
-      const r = await firstValueFrom(this.api.products(this.query()));
+      const r = await firstValueFrom(this.api.products(this.query(), 1, { category: this.fCategory, brand: this.fBrand, kind: this.fKind }));
       this.products.set(r.items);
       this.till.reprice(r.items);
     } catch (err) {
@@ -112,6 +123,38 @@ export class TillPage implements OnInit, OnDestroy {
     } finally {
       this.loadingProducts.set(false);
     }
+  }
+
+  protected async toggleFilters(): Promise<void> {
+    this.filtersOpen.update((o) => !o);
+    if (this.filtersOpen() && !this.categories().length && !this.brands().length) {
+      try {
+        const [c, b] = await Promise.all([firstValueFrom(this.catalogue.named('categories')), firstValueFrom(this.catalogue.named('brands'))]);
+        this.categories.set(c.filter((n) => n.status === 'active'));
+        this.brands.set(b.filter((n) => n.status === 'active'));
+      } catch {
+        // the filters are a convenience: the search box still works
+      }
+    }
+  }
+
+  protected setFilters(): void {
+    void this.loadProducts();
+  }
+
+  protected clearFilters(): void {
+    this.fCategory = '';
+    this.fBrand = '';
+    this.fKind = '';
+    void this.loadProducts();
+  }
+
+  protected get filtered(): boolean {
+    return !!(this.fCategory || this.fBrand || this.fKind);
+  }
+
+  protected named(name: string): string {
+    return localizedName(name, this.i18n.lang());
   }
 
   protected setQuery(q: string): void {

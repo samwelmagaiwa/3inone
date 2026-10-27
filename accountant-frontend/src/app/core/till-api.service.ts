@@ -112,9 +112,14 @@ export interface ClientPackage {
 export class TillApi {
   private readonly http = inject(HttpClient);
 
-  products(q: string, page = 1): Observable<{ items: Product[]; lastPage: number }> {
+  /** `filters`: narrow the goods to one category, one brand, or (in a salon) only services or only goods. */
+  products(q: string, page = 1, filters: { category?: string; brand?: string; kind?: string } = {}): Observable<{ items: Product[]; lastPage: number }> {
     let p = new HttpParams().set('page', page).set('with_units', '1').set('status', 'active');
     if (q.trim()) p = p.set('q', q.trim());
+    if (filters.category) p = p.set('category_id', filters.category);
+    if (filters.brand) p = p.set('brand_id', filters.brand);
+    if (filters.kind === 'service') p = p.set('is_service', '1');
+    if (filters.kind === 'goods') p = p.set('is_service', '0');
     return this.http
       .get<{ data: Record<string, unknown>[]; meta?: { last_page?: number } }>(`${API}/inventory/products`, { params: p })
       .pipe(map((r) => ({ items: (r.data ?? []).map(parseProduct), lastPage: r.meta?.last_page ?? 1 })));

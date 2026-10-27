@@ -20,6 +20,27 @@
         <p class="label-eyebrow">{{ i18n.t('till.step1') }}</p>
         <input class="modal-input mt-2" type="search" [ngModel]="query()" (ngModelChange)="setQuery($event)" (keydown.enter)="onEnter()" [placeholder]="i18n.t('till.search')" autocomplete="off" data-testid="till-search">
         <p class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('till.search.hint') }}</p>
+        <button type="button" class="text-xs font-extrabold text-indigo-600 uppercase tracking-wide mt-2" (click)="toggleFilters()" [attr.aria-expanded]="filtersOpen()" data-testid="till-filters-toggle">{{ i18n.t('till.filters') }}@if (filtered) { · {{ i18n.t('till.filters.on') }} }</button>
+        @if (filtersOpen()) {
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2" data-testid="till-filters">
+            <select class="modal-input" [(ngModel)]="fCategory" name="fCategory" (ngModelChange)="setFilters()" [attr.aria-label]="i18n.t('prod.form.category')" data-testid="till-filter-category">
+              <option value="">{{ i18n.t('prod.form.category') }}: {{ i18n.t('till.filter.any') }}</option>
+              @for (c of categories(); track c.id) { <option [value]="'' + c.id">{{ named(c.name) }}</option> }
+            </select>
+            <select class="modal-input" [(ngModel)]="fBrand" name="fBrand" (ngModelChange)="setFilters()" [attr.aria-label]="i18n.t('prod.form.brand.short')" data-testid="till-filter-brand">
+              <option value="">{{ i18n.t('prod.form.brand.short') }}: {{ i18n.t('till.filter.any') }}</option>
+              @for (b of brands(); track b.id) { <option [value]="'' + b.id">{{ b.name }}</option> }
+            </select>
+            @if (till.salon()) {
+              <select class="modal-input" [(ngModel)]="fKind" name="fKind" (ngModelChange)="setFilters()" [attr.aria-label]="i18n.t('till.filter.kind')" data-testid="till-filter-kind">
+                <option value="">{{ i18n.t('till.filter.kind') }}: {{ i18n.t('till.filter.any') }}</option>
+                <option value="service">{{ i18n.t('till.filter.service') }}</option>
+                <option value="goods">{{ i18n.t('till.filter.goods') }}</option>
+              </select>
+            }
+          </div>
+          @if (filtered) { <button type="button" class="text-xs font-bold text-slate-500 mt-2 underline" (click)="clearFilters()" data-testid="till-filters-clear">{{ i18n.t('till.filters.clear') }}</button> }
+        }
       </div>
       @if (productError(); as message) {
         <div class="text-center space-y-2" role="alert"><p class="text-sm text-slate-500">{{ message }}</p><button type="button" class="btn-primary" (click)="loadProducts()">{{ i18n.t('common.retry') }}</button></div>
