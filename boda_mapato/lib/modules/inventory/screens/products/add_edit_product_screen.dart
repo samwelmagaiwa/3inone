@@ -1331,7 +1331,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       isExpanded: true,
       dropdownColor: ThemeConstants.primaryBlue,
       style: ThemeConstants.bodyStyle,
-      decoration: _decoration(service ? (loc.isSwahili ? 'Chapa ya bidhaa (si lazima)' : 'Product brand (optional)') : loc.translate('brand')),
+      decoration: _decoration(service ? (loc.isSwahili ? 'Chapa ya bidhaa (si lazima)' : 'Product brand (optional)') : '${loc.translate('brand')} ${loc.isSwahili ? '(si lazima)' : '(optional)'}'),
       items: <DropdownMenuItem<int?>>[
         DropdownMenuItem<int?>(
           child:

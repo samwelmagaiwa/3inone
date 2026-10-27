@@ -266,3 +266,27 @@ describe('the till in a salon', () => {
     expect(text(el)).toContain('Gel');
   });
 });
+
+describe('the till and crates', () => {
+  async function crateRequests(who: object, salon = false): Promise<number> {
+    const h = configure(salon ? { services: ['salon'], ...who } : who);
+    const fixture = TestBed.createComponent(TillPage);
+    fixture.detectChanges();
+    await settle(fixture);
+    const asked = h.http.match((r) => r.url.endsWith('/crate-types'));
+    asked.forEach((r) => r.flush({ data: [] }));
+    h.http.match(() => true).forEach((r) => r.flush({ data: [], meta: { last_page: 1 } }));
+    return asked.length;
+  }
+
+  it('does not ask for crates when the person may not see them (the server would answer 403)', async () => {
+    expect(await crateRequests({})).toBe(0);
+  });
+
+  it('asks for crates when the person has the right, but never in a salon', async () => {
+    const rights = ['inv_create_sales', 'inv_view_crates'];
+    expect(await crateRequests({ permissions: rights })).toBe(1);
+    TestBed.resetTestingModule();
+    expect(await crateRequests({ permissions: rights }, true)).toBe(0);
+  });
+});

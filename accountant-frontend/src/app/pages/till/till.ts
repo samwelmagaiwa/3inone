@@ -404,6 +404,8 @@ export class TillPage implements OnInit, OnDestroy {
 
   // ------------------------------------------------------------------ crates
   private async loadCrates(): Promise<void> {
+    // Crates are listed only for people who may see them (the server answers 403 to the rest) and never in a salon.
+    if (this.till.salon() || !this.auth.can('inv_view_crates')) return;
     try {
       this.crateTypes.set((await firstValueFrom(this.api.crateTypes())).filter((c) => c.active !== false));
     } catch {

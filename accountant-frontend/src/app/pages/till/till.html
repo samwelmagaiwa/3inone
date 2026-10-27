@@ -38,7 +38,7 @@
               <span class="font-black text-sm shrink-0" style="color:#1a2f6e;">{{ p.priceOptions.length ? i18n.t('till.choose') : tsh(p.sellingPrice) }}</span>
             </button>
           } @empty {
-            <p class="text-sm text-slate-400 text-center py-6" data-testid="till-nogoods">{{ i18n.t('till.nogoods') }}</p>
+            <p class="text-sm text-slate-400 text-center py-6" data-testid="till-nogoods">{{ i18n.t(query().trim() ? 'till.nogoods' : 'till.nogoods.empty') }}</p>
           }
         </div>
       }
