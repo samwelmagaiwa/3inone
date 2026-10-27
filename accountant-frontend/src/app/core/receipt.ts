@@ -1,4 +1,4 @@
-import { tsh } from './format';
+import { eatDateTime, tsh } from './format';
 import { SaleDetail } from './till-api.service';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
@@ -13,7 +13,7 @@ export function receiptHtml(sale: SaleDetail, business: string, t: (key: string)
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(sale.number)}</title>
 <style>body{font:13px/1.4 Arial,sans-serif;width:300px;margin:0 auto;padding:12px;color:#000}h1{font-size:16px;text-align:center;margin:0}p{text-align:center;margin:2px 0}
 table{width:100%;border-collapse:collapse;margin-top:8px}td{padding:3px 0;vertical-align:top}.r{text-align:right}.b td{font-weight:700;border-top:1px dashed #000;padding-top:5px}small{color:#555}</style></head>
-<body><h1>${esc(business)}</h1><p>${esc(sale.number)}</p><p>${esc(new Date(sale.created_at).toLocaleString())}</p>
+<body><h1>${esc(business)}</h1><p>${esc(sale.number)}</p><p>${esc(eatDateTime(sale.created_at))}</p>
 ${sale.customer_name ? `<p>${esc(sale.customer_name)}</p>` : ''}
 <table>${rows}</table><table>${line(t('till.sub'), tsh(sale.subtotal))}${sale.discount > 0 ? line(t('till.discount'), '-' + tsh(sale.discount)) : ''}${sale.tax > 0 ? line(t('till.vat'), tsh(sale.tax)) : ''}${line(t('till.total'), tsh(sale.total), true)}${line(t('till.paid'), tsh(sale.paid_total))}${owing > 0 ? line(t('till.owing'), tsh(owing), true) : ''}</table>
 <p style="margin-top:12px">${esc(t('till.thanks'))}</p><script>window.onload=function(){window.print()}</script></body></html>`;

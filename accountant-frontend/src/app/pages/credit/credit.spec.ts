@@ -200,7 +200,7 @@ describe('customers & credit', () => {
 
       (byTestId(el, 'pay-pick-12') as HTMLInputElement).click();
       await settle(fixture);
-      expect((byTestId(el, 'pay-amount-12') as HTMLInputElement).value).toBe('60000');
+      expect((byTestId(el, 'pay-amount-12') as HTMLInputElement).value).toBe('60,000');
       type(el, '[data-testid="pay-amount-12"]', '25000');
       type(el, '[data-testid="pay-reference"]', 'MP123');
       const method = byTestId(el, 'pay-method') as HTMLSelectElement;

@@ -1,4 +1,4 @@
-import { dayLabel, dayOf, monthKey, monthName, offline, parseAmount, serverMessage, shiftMonth, shortMoney, tsh } from './format';
+import { eatDay, eatDateTime, serverDate, dayLabel, dayOf, monthKey, monthName, offline, parseAmount, serverMessage, shiftMonth, shortMoney, tsh } from './format';
 
 describe('format', () => {
   it('writes money with thousands separators and keeps the sign', () => {
@@ -43,5 +43,33 @@ describe('format', () => {
     expect(serverMessage({ status: 500 })).toBeNull();
     expect(offline({ status: 0 })).toBe(true);
     expect(offline({ status: 500 })).toBe(false);
+  });
+});
+
+describe('server times (UTC) shown as Tanzania time', () => {
+  it('a plain server time is UTC and is shown three hours later, as the clock in Tanzania', () => {
+    expect(eatDateTime('2026-10-27 06:30:00')).toBe('27/10/2026 09:30');
+    expect(eatDateTime('2026-10-27T06:30:00')).toBe('27/10/2026 09:30');
+  });
+
+  it('a time with a Z (Laravel JSON) is the same', () => {
+    expect(eatDateTime('2026-10-27T06:30:00.000000Z')).toBe('27/10/2026 09:30');
+  });
+
+  it('the date moves with the hours', () => {
+    expect(eatDateTime('2026-10-27 21:30:00')).toBe('28/10/2026 00:30');
+    expect(eatDay('2026-10-27 21:30:00')).toBe('28/10/2026');
+  });
+
+  it('a time that says its zone is respected', () => {
+    expect(eatDateTime('2026-10-27T09:30:00+03:00')).toBe('27/10/2026 09:30');
+    expect(eatDateTime('2026-10-27T05:00:00-01:00')).toBe('27/10/2026 09:00');
+  });
+
+  it('nothing, or text that is not a time, gives nothing (never a wrong time)', () => {
+    expect(eatDateTime(null)).toBe('');
+    expect(eatDateTime('')).toBe('');
+    expect(eatDateTime('yesterday')).toBe('');
+    expect(serverDate('yesterday')).toBeNull();
   });
 });

@@ -113,6 +113,58 @@ describe('the till', () => {
       expect(byTestId(el, 'till-empty')).not.toBeNull();
     });
 
+    it('the cashier can write the price instead of the list price, and the sale uses it', async () => {
+      const { h, fixture, el } = await open();
+      byTestId(el, 'good-1')!.click();
+      await settle(fixture);
+      expect((byTestId(el, 'price-1') as HTMLInputElement).value).toBe('1,000');
+      expect(byTestId(el, 'price-changed-1')).toBeNull();
+
+      const box = byTestId(el, 'price-1') as HTMLInputElement;
+      box.value = '850';
+      box.dispatchEvent(new Event('change', { bubbles: true }));
+      await settle(fixture);
+
+      expect(text(byTestId(el, 'till-total')!)).toBe('TSH 850');
+      expect(byTestId(el, 'price-changed-1')).not.toBeNull();
+
+      byTestId(el, 'till-charge')!.click();
+      await settle(fixture);
+      const post = h.http.expectOne((r) => r.url.endsWith('/inventory/sales') && r.method === 'POST');
+      expect(post.request.body).toMatchObject({ total: 850, items: [{ product_id: 1, quantity: 1, unit_price: 850 }] });
+    });
+
+    it('a written price is kept when the price level changes, and the usual price can be taken back', async () => {
+      const { fixture, el } = await open({}, [soda], false, { sale_tier: 'retail' });
+      byTestId(el, 'good-1')!.click();
+      await settle(fixture);
+      const box = byTestId(el, 'price-1') as HTMLInputElement;
+      box.value = '700';
+      box.dispatchEvent(new Event('change', { bubbles: true }));
+      await settle(fixture);
+
+      byTestId(el, 'till-level-wholesale')!.click();
+      await settle(fixture);
+      expect(text(byTestId(el, 'till-total')!)).toBe('TSH 700');
+
+      byTestId(el, 'price-usual-1')!.click();
+      await settle(fixture);
+      expect(text(byTestId(el, 'till-total')!)).toBe('TSH 1,000');
+      expect(byTestId(el, 'price-changed-1')).toBeNull();
+    });
+
+    it('a price that is not a number leaves the price as it was', async () => {
+      const { fixture, el } = await open();
+      byTestId(el, 'good-1')!.click();
+      await settle(fixture);
+      const box = byTestId(el, 'price-1') as HTMLInputElement;
+      box.value = 'abc';
+      box.dispatchEvent(new Event('change', { bubbles: true }));
+      await settle(fixture);
+
+      expect(text(byTestId(el, 'till-total')!)).toBe('TSH 1,000');
+    });
+
     it('sends the name and phone of a walk-in customer with the sale', async () => {
       const { h, fixture, el } = await open();
       byTestId(el, 'good-1')!.click();

@@ -6,7 +6,7 @@ import { AuthService } from './auth.service';
  * The server enforces the same rights; this keeps the screens honest.
  */
 export interface NavItem {
-  key: 'dashboard' | 'products' | 'sales' | 'credit' | 'debts' | 'expenses' | 'assistant';
+  key: 'dashboard' | 'products' | 'sales' | 'credit' | 'debts' | 'expenses' | 'branch_stock' | 'branches' | 'assistant';
   path: string;
   labelKey: string;
   hintKey: string;
@@ -76,6 +76,25 @@ export const NAV: NavItem[] = [
     group: 'money',
     icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z',
     allowed: (a) => a.canAny('inv_view_expenses', 'inv_manage_expenses'),
+  },
+  {
+    key: 'branch_stock',
+    path: '/branch-stock',
+    labelKey: 'nav.branch_stock',
+    hintKey: 'nav.branch_stock.hint',
+    group: 'overview',
+    icon: 'M3 7l9-4 9 4M4 7v10l8 4 8-4V7M12 11v10',
+    // As on the mobile app: whoever runs the settings or reads the reports sees (and moves) the goods held by each branch.
+    allowed: (a) => a.canAny('inv_manage_settings', 'inv_view_reports'),
+  },
+  {
+    key: 'branches',
+    path: '/branches',
+    labelKey: 'nav.branches',
+    hintKey: 'nav.branches.hint',
+    group: 'overview',
+    icon: 'M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6',
+    allowed: (a) => a.can('inv_manage_settings'),
   },
   {
     key: 'assistant',

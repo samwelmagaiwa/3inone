@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { AgeingListing, AgeingRow, CreditCustomer, CreditSettingsBody, ReceivePaymentBody, Statement, StatementPayment, StatementSale } from './credit.models';
+import { AgeingListing, AgeingRow, CreditCustomer, CreditSettingsBody, CustomerReport, ReceivePaymentBody, Statement, StatementPayment, StatementSale } from './credit.models';
 
 const API = environment.apiUrl;
 
@@ -96,6 +96,13 @@ export class CreditApi {
         };
       }),
     );
+  }
+
+  /** One customer's story between two days (YYYY-MM-DD), grouped by day, week or month. Days are Tanzania days. */
+  report(customerId: number, from: string, to: string, group: 'day' | 'week' | 'month'): Observable<CustomerReport> {
+    const params = new HttpParams().set('from', from).set('to', to).set('group', group);
+
+    return this.http.get<{ data: CustomerReport }>(`${API}/inventory/credit/customers/${customerId}/report`, { params }).pipe(map((r) => r.data));
   }
 
   saveSettings(customerId: number, body: CreditSettingsBody): Observable<void> {

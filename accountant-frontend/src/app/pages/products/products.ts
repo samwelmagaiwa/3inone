@@ -12,6 +12,7 @@ import { MotionService } from '../../core/services/motion.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
 import { TableToolbarComponent } from '../../shared/components/table-toolbar/table-toolbar';
+import { MoneyDirective } from '../../shared/ui/money.directive';
 
 type Tab = 'products' | 'categories' | 'brands';
 
@@ -30,7 +31,7 @@ const UNITS = ['pcs', 'kg', 'g', 'litre', 'ml', 'bottle', 'crate', 'carton', 'ba
  */
 @Component({
   selector: 'app-products',
-  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent],
+  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, MoneyDirective],
   templateUrl: './products.html',
 })
 export class ProductsPage implements OnInit {

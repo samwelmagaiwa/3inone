@@ -1,0 +1,88 @@
+<!-- Branches -->
+@for (k of [motion.tick()]; track k) {
+<div class="space-y-5 animate-fade-in-up">
+
+  <div class="page-header-card flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="min-w-0">
+      <h1 class="text-slate-900 font-black text-xl tracking-tight">{{ i18n.t('br.title') }}</h1>
+      <p class="text-slate-500 text-sm mt-0.5">{{ i18n.t('br.sub') }}</p>
+    </div>
+    @if (canManage()) {
+      <button type="button" class="btn-primary big-btn shrink-0" (click)="openForm(null)" data-testid="br-add">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        {{ i18n.t('br.add') }}
+      </button>
+    }
+  </div>
+
+  @if (loading() && !rows().length) {
+    <div class="skeleton-box" style="height: 120px; border-radius: 14px;"></div>
+  } @else if (error(); as message) {
+    <div class="section-card p-8 text-center space-y-3" role="alert">
+      <p class="text-slate-500 text-sm">{{ message }}</p>
+      <button type="button" class="btn-primary" (click)="load()">{{ i18n.t('common.retry') }}</button>
+    </div>
+  } @else {
+    <section class="section-card overflow-hidden">
+      <!-- The whole business is always a choice -->
+      <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-100">
+        <div>
+          <p class="font-black text-slate-900">{{ i18n.t('br.all') }}</p>
+          <p class="text-xs font-semibold text-slate-400">{{ i18n.t('br.all.hint') }}</p>
+        </div>
+        @if (branches.selected() === null) { <span class="status-ok" data-testid="br-all-on">{{ i18n.t('br.looking') }}</span> } @else { <button type="button" class="btn-outline" (click)="look(null)" data-testid="br-look-all">{{ i18n.t('br.look') }}</button> }
+      </div>
+
+      @for (b of rows(); track b.id) {
+        <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-100 last:border-b-0" [attr.data-testid]="'br-row-' + b.id">
+          <div class="min-w-0">
+            <p class="font-black text-slate-900">{{ b.name }}@if (!b.active) { <span class="pill-inactive ml-2">{{ i18n.t('br.off') }}</span> }</p>
+            <p class="text-xs font-semibold text-slate-400">{{ b.address }}@if (b.address && b.phone) { · }{{ b.phone }}</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            @if (b.active) {
+              @if (branches.selected() === b.id) { <span class="status-ok" [attr.data-testid]="'br-on-' + b.id">{{ i18n.t('br.looking') }}</span> } @else { <button type="button" class="btn-outline" (click)="look(b.id)" [attr.data-testid]="'br-look-' + b.id">{{ i18n.t('br.look') }}</button> }
+            }
+            @if (canManage()) {
+              <button type="button" class="btn-outline" (click)="openForm(b)" [attr.data-testid]="'br-edit-' + b.id">{{ i18n.t('prod.edit') }}</button>
+              <button type="button" class="btn-outline" (click)="setActive(b, !b.active)" [attr.data-testid]="'br-toggle-' + b.id">{{ i18n.t(b.active ? 'br.switchoff' : 'br.switchon') }}</button>
+              <button type="button" class="icon-del" (click)="remove(b)" [attr.aria-label]="i18n.t('common.delete')" [attr.data-testid]="'br-del-' + b.id">&times;</button>
+            }
+          </div>
+        </div>
+      } @empty {
+        <div class="empty-state" data-testid="br-empty">
+          <p class="empty-title">{{ i18n.t('br.empty') }}</p>
+          <p class="empty-hint">{{ i18n.t('br.empty.hint') }}</p>
+        </div>
+      }
+    </section>
+  }
+</div>
+}
+
+<app-modal-dialog [show]="formOpen()" [eyebrow]="i18n.t('br.title')" [title]="i18n.t(editing() ? 'prod.edit' : 'br.add')" size="md" (close)="formOpen.set(false)">
+  <div slot="body" class="space-y-4">
+    <div>
+      <label class="modal-label" for="brName">{{ i18n.t('br.name') }}</label>
+      <input id="brName" name="brName" class="modal-input" [(ngModel)]="name" autocomplete="off" data-testid="br-name">
+    </div>
+    <div>
+      <label class="modal-label" for="brAddress">{{ i18n.t('br.address') }}</label>
+      <input id="brAddress" name="brAddress" class="modal-input" [(ngModel)]="address" autocomplete="off" data-testid="br-address">
+    </div>
+    <div>
+      <label class="modal-label" for="brPhone">{{ i18n.t('br.phone') }}</label>
+      <input id="brPhone" name="brPhone" class="modal-input" inputmode="tel" [(ngModel)]="phone" autocomplete="off" data-testid="br-phone">
+    </div>
+    @if (formError()) { <p class="form-error" role="alert" data-testid="br-error">{{ formError() }}</p> }
+  </div>
+  <div slot="footer" class="flex gap-2 justify-end">
+    <button type="button" class="modal-cancel-btn" (click)="formOpen.set(false)">{{ i18n.t('common.cancel') }}</button>
+    <button type="button" class="btn-primary" [disabled]="saving()" (click)="save()" data-testid="br-save">{{ saving() ? i18n.t('common.saving') : i18n.t('common.save') }}</button>
+  </div>
+</app-modal-dialog>
+
+<style>
+  .big-btn { padding: 12px 22px; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+</style>

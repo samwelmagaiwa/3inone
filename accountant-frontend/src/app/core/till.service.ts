@@ -126,6 +126,30 @@ export class TillService {
     return line;
   }
 
+  /** Write the price of one unit of this line (business prices are not always fixed). A free package visit keeps its price. */
+  setPrice(key: string, price: number): void {
+    this.replace(key, (l) => (l.packageId !== null ? l : this.retax({ ...l, unitPrice: Math.max(0, price), priceWritten: true })));
+  }
+
+  /** What the catalogue says one unit of this line costs now, or null when the goods are not in the list any more. */
+  listPriceOf(l: CartLine, products: Product[]): number | null {
+    const p = products.find((x) => x.id === l.productId);
+    if (!p) return null;
+    const option = l.optionLabel ? p.priceOptions.find((o) => o.label === l.optionLabel) : null;
+    if (option) return option.price;
+    const unit = p.units.find((u) => u.id === l.unitId) ?? null;
+
+    return unitPriceFor(p, unit, this.priceCtx());
+  }
+
+  /** Take the catalogue price back for a line whose price was written. */
+  useListPrice(key: string, products: Product[]): void {
+    const l = this.lines().find((x) => x.key === key);
+    const list = l ? this.listPriceOf(l, products) : null;
+    if (list === null) return;
+    this.replace(key, (x) => this.retax({ ...x, unitPrice: list, priceWritten: false }));
+  }
+
   setQty(key: string, qty: number): void {
     this.replace(key, (l) => this.retax({ ...l, qty: Math.max(1, Math.floor(qty) || 1) }));
   }
@@ -159,7 +183,7 @@ export class TillService {
     if (!old) return;
     const newKey = lineKey(old.productId, target?.id ?? null, old.optionLabel);
     if (newKey === key) return;
-    const moved = this.retax({ ...old, key: newKey, unitId: target?.id ?? null, unitName: target?.name ?? null, unitFactor: target?.factor ?? 1, unitPrice: unitPriceFor(product, target, this.priceCtx()) });
+    const moved = this.retax({ ...old, key: newKey, unitId: target?.id ?? null, unitName: target?.name ?? null, unitFactor: target?.factor ?? 1, unitPrice: unitPriceFor(product, target, this.priceCtx()), priceWritten: false });
     const twin = this.lines().find((l) => l.key === newKey);
     this.lines.update((ls) => {
       const rest = ls.filter((l) => l.key !== key && l.key !== newKey);
@@ -171,7 +195,7 @@ export class TillService {
   reprice(products: Product[]): void {
     this.lines.update((ls) =>
       ls.map((l) => {
-        if (l.optionLabel || l.packageId !== null) return l;
+        if (l.optionLabel || l.packageId !== null || l.priceWritten) return l;
         const p = products.find((x) => x.id === l.productId);
         if (!p) return l;
         const unit = p.units.find((u) => u.id === l.unitId) ?? null;

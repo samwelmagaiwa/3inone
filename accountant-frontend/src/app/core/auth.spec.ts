@@ -6,6 +6,7 @@ import { environment } from '../../environments/environment';
 import { configure, user } from '../testing';
 import { authGuard, canOpen, noAuthGuard, startPage } from './auth.guard';
 import { AuthService, toSessionUser } from './auth.service';
+import { BranchesService } from './branches.service';
 import { NAV, allowedPages, homePath } from './nav';
 
 const accountantPayload = {
@@ -108,6 +109,28 @@ describe('the interceptor', () => {
     req.flush({});
   });
 
+  it('tells the server which branch is being looked at, and says nothing when it is the whole business', () => {
+    localStorage.clear();
+    const { http: ctrl } = configure({});
+    const http = TestBed.inject(HttpClient);
+    const branches = TestBed.inject(BranchesService);
+
+    http.get(`${environment.apiUrl}/inventory/sales`).subscribe();
+    let req = ctrl.expectOne(`${environment.apiUrl}/inventory/sales`);
+    expect(req.request.headers.has('X-Branch')).toBe(false);
+    req.flush({});
+
+    branches.select(3);
+    http.get(`${environment.apiUrl}/inventory/sales`).subscribe();
+    req = ctrl.expectOne(`${environment.apiUrl}/inventory/sales`);
+    expect(req.request.headers.get('X-Branch')).toBe('3');
+    req.flush({});
+
+    branches.select(null);
+    http.get(`${environment.apiUrl}/inventory/sales`).subscribe();
+    expect(ctrl.expectOne(`${environment.apiUrl}/inventory/sales`).request.headers.has('X-Branch')).toBe(false);
+  });
+
   it('never sends the token anywhere else', () => {
     const { http: ctrl } = configure({});
     TestBed.inject(HttpClient).get('https://example.com/data').subscribe();
@@ -139,7 +162,7 @@ describe('pages by rights', () => {
 
   it('an accountant with the usual rights gets everything of the shop', () => {
     const { auth } = configure({});
-    expect(keys(auth)).toEqual(['dashboard', 'sales', 'credit', 'debts', 'expenses']);
+    expect(keys(auth)).toEqual(['dashboard', 'sales', 'credit', 'debts', 'expenses', 'branch_stock']);
     expect(homePath(auth)).toBe('/dashboard');
   });
 
@@ -152,7 +175,7 @@ describe('pages by rights', () => {
   it('shop-only pages are not offered while working in the salon', () => {
     const { auth } = configure({ services: ['inventory', 'salon'] });
     auth.switchService('salon');
-    expect(keys(auth)).toEqual(['sales', 'expenses']);
+    expect(keys(auth)).toEqual(['sales', 'expenses', 'branch_stock']);
   });
 
   it('the AI assistant is open to everyone signed in, even with no rights, but it is never where they land', () => {
@@ -176,13 +199,13 @@ describe('pages by rights', () => {
 
   it('an accountant gets the books: this month, products (to read), sales, debts and expenses', () => {
     const { auth } = configure({ role: 'accountant', permissions: ['inv_view_products', 'inv_create_sales', 'inv_manage_sales', 'inv_view_credit', 'inv_view_cash', 'inv_view_reports', 'inv_view_expenses', 'inv_manage_expenses', 'inv_view_reminders'] });
-    expect(keys(auth)).toEqual(['dashboard', 'products', 'sales', 'credit', 'debts', 'expenses']);
+    expect(keys(auth)).toEqual(['dashboard', 'products', 'sales', 'credit', 'debts', 'expenses', 'branch_stock']);
     expect(homePath(auth)).toBe('/dashboard');
   });
 
   it('seeing reports or managing sales without the right to sell does not open the sales page (the server would refuse it)', () => {
     const { auth } = configure({ permissions: ['inv_view_reports', 'inv_manage_sales'] });
-    expect(keys(auth)).toEqual(['dashboard']);
+    expect(keys(auth)).toEqual(['dashboard', 'branch_stock']);
   });
 
   it('no rights at all lands on the welcome page', () => {

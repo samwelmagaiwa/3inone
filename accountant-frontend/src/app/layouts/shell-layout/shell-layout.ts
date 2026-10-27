@@ -6,6 +6,8 @@ import { filter, firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AccountantApi } from '../../core/accountant-api.service';
 import { AuthService } from '../../core/auth.service';
+import { BranchesService } from '../../core/branches.service';
+import { serverDate } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -28,6 +30,7 @@ export class ShellLayout implements OnDestroy {
   protected readonly toastService = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly api = inject(AccountantApi);
+  protected readonly branches = inject(BranchesService);
   private readonly router = inject(Router);
 
   protected readonly appName = environment.appName;
@@ -105,6 +108,7 @@ export class ShellLayout implements OnDestroy {
     if (typeof window !== 'undefined') {
       void this.loadNotifications();
       void this.loadSubscription();
+      void this.loadBranches();
       this.bellTimer = setInterval(() => void this.loadNotifications(), 60_000);
       // while the business is held back for an unpaid plan, ask again now and then: the cover goes by itself once a payment is recorded
       this.payTimer = setInterval(() => {
@@ -116,6 +120,25 @@ export class ShellLayout implements OnDestroy {
   ngOnDestroy(): void {
     if (this.bellTimer) clearInterval(this.bellTimer);
     if (this.payTimer) clearInterval(this.payTimer);
+  }
+
+  /** The branches this business has, for the choice in the top bar. A person who may not see them (or a business with none) simply gets no choice. */
+  protected async loadBranches(): Promise<void> {
+    try {
+      const all = (await firstValueFrom(this.branches.branches())).filter((b) => b.active);
+      this.branches.list.set(all);
+      const chosen = this.branches.selected();
+      if (chosen !== null && !all.some((b) => b.id === chosen)) this.branches.select(null);
+    } catch {
+      this.branches.list.set([]);
+    }
+  }
+
+  /** Look at one branch (or all): every page is drawn again from the server, in that branch. */
+  protected chooseBranch(value: string): void {
+    this.branches.select(value === '' ? null : Number(value));
+    const url = this.router.url;
+    void this.router.navigateByUrl('/welcome', { skipLocationChange: true }).then(() => this.router.navigateByUrl(url));
   }
 
   protected async loadSubscription(): Promise<void> {
@@ -213,7 +236,7 @@ export class ShellLayout implements OnDestroy {
   }
 
   protected timeAgo(iso: string): string {
-    const seconds = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+    const seconds = Math.max(0, Math.round((Date.now() - (serverDate(iso)?.getTime() ?? Date.now())) / 1000));
     if (seconds < 60) return this.i18n.t('time.now');
     if (seconds < 3600) return this.i18n.t('time.min', Math.floor(seconds / 60));
     if (seconds < 86400) return this.i18n.t('time.hour', Math.floor(seconds / 3600));

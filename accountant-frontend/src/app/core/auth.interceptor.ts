@@ -5,6 +5,7 @@ import { catchError, throwError } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
+import { BranchesService } from './branches.service';
 import { I18nService } from './i18n.service';
 import { ToastService } from './services/toast.service';
 
@@ -20,10 +21,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const toast = inject(ToastService);
   const i18n = inject(I18nService);
   const token = auth.token();
+  const branch = inject(BranchesService).selected();
   const authed = req.clone({
     setHeaders: {
       Accept: 'application/json',
       'X-Service': auth.service(),
+      // The branch being looked at: every list and figure follows it, and a new sale is recorded in it (none = the whole business).
+      ...(branch !== null ? { 'X-Branch': String(branch) } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });

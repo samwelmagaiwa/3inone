@@ -17,6 +17,7 @@ import { TableToolbarComponent } from '../../shared/components/table-toolbar/tab
 import { BsDateDirective } from '../../shared/ui/bs-date.directive';
 import { BsSelectDirective } from '../../shared/ui/bs-select.directive';
 import { CountUpDirective } from '../../shared/ui/count-up.directive';
+import { MoneyDirective } from '../../shared/ui/money.directive';
 
 type Period = 'today' | 'week' | 'month' | 'year';
 
@@ -29,7 +30,7 @@ const PERSONAL_CATEGORIES = ['drawings', 'family'];
  */
 @Component({
   selector: 'app-expenses',
-  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, TablePaginationComponent, BsDateDirective, BsSelectDirective, CountUpDirective],
+  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, TablePaginationComponent, BsDateDirective, BsSelectDirective, CountUpDirective, MoneyDirective],
   templateUrl: './expenses.html',
 })
 export class ExpensesPage implements OnInit {

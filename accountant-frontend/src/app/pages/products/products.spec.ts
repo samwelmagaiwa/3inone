@@ -177,7 +177,7 @@ describe('products and services', () => {
     click(el, 'prod-edit-1');
     await settle(fixture);
     expect((byTestId(el, 'prod-name') as HTMLInputElement).value).toBe('Soda');
-    expect((byTestId(el, 'prod-price') as HTMLInputElement).value).toBe('1500');
+    expect((byTestId(el, 'prod-price') as HTMLInputElement).value).toBe('1,500');
     type(el, '[data-testid="prod-price"]', '1800');
     await settle(fixture);
     click(el, 'prod-save');

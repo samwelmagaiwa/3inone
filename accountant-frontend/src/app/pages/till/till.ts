@@ -10,10 +10,11 @@ import { I18nService } from '../../core/i18n.service';
 import { printReceipt } from '../../core/receipt';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { ToastService } from '../../core/services/toast.service';
-import { activeUnits, Customer, PriceOption, Product, SellingUnit } from '../../core/till.models';
+import { activeUnits, CartLine, Customer, PriceOption, Product, SellingUnit } from '../../core/till.models';
 import { ClientPackage, CrateType, CreditCheck, ParkedSale, SaleDetail, StaffMember, TillApi } from '../../core/till-api.service';
 import { PAYMENT_CHANNELS, PayMode, TillService } from '../../core/till.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { MoneyDirective } from '../../shared/ui/money.directive';
 
 /**
  * The till: find goods, build the cart, say who is buying and how they pay, then save the sale. The same sale, with the same prices and
@@ -21,7 +22,7 @@ import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal
  */
 @Component({
   selector: 'app-till',
-  imports: [FormsModule, ModalDialogComponent],
+  imports: [FormsModule, ModalDialogComponent, MoneyDirective],
   templateUrl: './till.html',
 })
 export class TillPage implements OnInit, OnDestroy {
@@ -416,6 +417,21 @@ export class TillPage implements OnInit, OnDestroy {
   }
 
   // ------------------------------------------------------------------ the sale
+  /** The cashier writes the price of one unit; empty or not a number leaves it as it was. */
+  protected writePrice(key: string, text: string): void {
+    const price = parseAmount(text);
+    if (Number.isNaN(price)) return;
+    this.till.setPrice(key, price);
+  }
+
+  protected listPriceOf(l: CartLine): number | null {
+    return this.till.listPriceOf(l, this.products());
+  }
+
+  protected useUsualPrice(key: string): void {
+    this.till.useListPrice(key, this.products());
+  }
+
   /** Sell at the retail or the wholesale price (for a business that has both): the cart is priced again at once. */
   protected setTier(tier: 'retail' | 'wholesale'): void {
     this.till.tierOverride.set(tier);

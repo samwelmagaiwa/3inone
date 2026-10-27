@@ -100,6 +100,17 @@
       <!-- Right cluster -->
       <div class="topbar-right">
 
+        <!-- Which branch: only for a business that has branches -->
+        @if (branches.list().length) {
+          <label class="top-chip" [title]="i18n.t('br.choose')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>
+            <select class="bg-transparent font-extrabold text-xs outline-none cursor-pointer" [attr.aria-label]="i18n.t('br.choose')" [ngModel]="branches.selected() === null ? '' : '' + branches.selected()" (ngModelChange)="chooseBranch($event)" data-testid="header-branch">
+              <option value="">{{ i18n.t('br.all') }}</option>
+              @for (b of branches.list(); track b.id) { <option [value]="'' + b.id">{{ b.name }}</option> }
+            </select>
+          </label>
+        }
+
         <!-- Shop / salon: only for people who work in both -->
         @if (user().services.length > 1) {
           <div class="svc-switch" role="group" [attr.aria-label]="i18n.t('service.label')">

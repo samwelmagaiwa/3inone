@@ -5,7 +5,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { AccountantApi } from '../../core/accountant-api.service';
 import { AuthService } from '../../core/auth.service';
-import { dayOf, offline, parseAmount, serverMessage, tsh } from '../../core/format';
+import { dayOf, eatDateTime, offline, parseAmount, serverMessage, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
 import { SaleRow } from '../../core/models';
 import { printReceipt } from '../../core/receipt';
@@ -17,6 +17,7 @@ import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal
 import { TablePaginationComponent } from '../../shared/components/table-pagination/table-pagination';
 import { TableToolbarComponent } from '../../shared/components/table-toolbar/table-toolbar';
 import { CountUpDirective } from '../../shared/ui/count-up.directive';
+import { MoneyDirective } from '../../shared/ui/money.directive';
 
 type Period = 'today' | 'week' | 'month' | 'year';
 type Status = '' | 'paid' | 'partial' | 'debt';
@@ -27,7 +28,7 @@ type Status = '' | 'paid' | 'partial' | 'debt';
  */
 @Component({
   selector: 'app-sales',
-  imports: [FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, TablePaginationComponent, CountUpDirective],
+  imports: [FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, TablePaginationComponent, CountUpDirective, MoneyDirective],
   templateUrl: './sales.html',
 })
 export class SalesPage implements OnInit, OnDestroy {
@@ -142,9 +143,9 @@ export class SalesPage implements OnInit, OnDestroy {
     this.open.update((o) => (o === id ? null : id));
   }
 
+  /** When a sale was made, as the clock in Tanzania showed it. */
   protected whenText(iso: string): string {
-    const d = new Date(iso.includes('T') || iso.endsWith('Z') ? iso : iso.replace(' ', 'T') + 'Z');
-    return d.toLocaleString(this.i18n.locale(), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return eatDateTime(iso);
   }
 
   protected itemsText(s: SaleRow): string {

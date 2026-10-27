@@ -145,7 +145,7 @@
 <app-modal-dialog [show]="!!payFor()" [title]="i18n.t('sales.pay')" [eyebrow]="payFor()?.number ?? ''" (close)="payFor.set(null)">
   <div slot="body" class="space-y-4">
     <p class="text-sm text-slate-500">{{ i18n.t('sales.pay.hint') }}</p>
-    <div><label class="modal-label" for="pamt">{{ i18n.t('sales.pay.amount') }}</label><input id="pamt" class="modal-input" inputmode="numeric" [(ngModel)]="payText" autocomplete="off" data-testid="pay-amount"></div>
+    <div><label class="modal-label" for="pamt">{{ i18n.t('sales.pay.amount') }}</label><input appMoney id="pamt" class="modal-input" inputmode="numeric" [(ngModel)]="payText" autocomplete="off" data-testid="pay-amount"></div>
     <div><label class="modal-label" for="pmeth">{{ i18n.t('till.channel') }}</label><select id="pmeth" class="modal-input" [(ngModel)]="payMethod">@for (c of channels; track c) { <option [value]="c">{{ channelName(c) }}</option> }</select></div>
     @if (actionError()) { <p class="form-error" role="alert">{{ actionError() }}</p> }
   </div>

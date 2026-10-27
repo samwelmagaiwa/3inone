@@ -14,6 +14,7 @@ import { TablePaginationComponent } from '../../shared/components/table-paginati
 import { TableToolbarComponent } from '../../shared/components/table-toolbar/table-toolbar';
 import { BsDateDirective } from '../../shared/ui/bs-date.directive';
 import { CountUpDirective } from '../../shared/ui/count-up.directive';
+import { MoneyDirective } from '../../shared/ui/money.directive';
 
 /**
  * Every debt in one place, in two tabs: what customers owe me and what I owe. Debts from before the app are written here; they
@@ -22,7 +23,7 @@ import { CountUpDirective } from '../../shared/ui/count-up.directive';
  */
 @Component({
   selector: 'app-debts',
-  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, TablePaginationComponent, BsDateDirective, CountUpDirective],
+  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, TablePaginationComponent, BsDateDirective, CountUpDirective, MoneyDirective],
   templateUrl: './debts.html',
 })
 export class DebtsPage implements OnInit {

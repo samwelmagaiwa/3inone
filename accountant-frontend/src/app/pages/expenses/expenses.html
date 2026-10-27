@@ -145,7 +145,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label class="modal-label" for="expAmount">{{ i18n.t('exp.form.amount') }}</label>
-        <input id="expAmount" name="expAmount" class="modal-input" inputmode="numeric" [(ngModel)]="amountText" autocomplete="off" data-testid="exp-amount">
+        <input appMoney id="expAmount" name="expAmount" class="modal-input" inputmode="numeric" [(ngModel)]="amountText" autocomplete="off" data-testid="exp-amount">
       </div>
       <div>
         <label class="modal-label" for="expDate">{{ i18n.t('exp.form.date') }}</label>

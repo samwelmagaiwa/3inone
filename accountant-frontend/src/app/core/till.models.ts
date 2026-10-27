@@ -72,6 +72,8 @@ export interface CartLine {
   /** Salon: the client's package this line is taken from (the line is then free), and the price it had. */
   packageId: number | null;
   priceBeforePackage: number | null;
+  /** True when the cashier wrote the price instead of taking the list price: the price level and the customer then leave it alone. */
+  priceWritten?: boolean;
 }
 
 const num = (v: unknown, fallback = 0): number => {

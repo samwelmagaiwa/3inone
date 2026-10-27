@@ -90,6 +90,7 @@
                       @if (c.is_blocked && c.block_reason) { <div class="text-xs font-semibold text-slate-400 mt-1">{{ c.block_reason }}</div> }
                     </td>
                     <td class="text-right whitespace-nowrap">
+                      <a class="btn-outline" [routerLink]="['/customers', c.id, 'report']" [attr.data-testid]="'cr-report-' + c.id">{{ i18n.t('cr.report') }}</a>
                       <button type="button" class="btn-outline" (click)="openStatement(c)" [attr.data-testid]="'cr-statement-' + c.id">{{ i18n.t('cr.statement') }}</button>
                       <button type="button" class="btn-outline" (click)="openSettings(c)" [attr.data-testid]="'cr-settings-' + c.id">{{ i18n.t('cr.settings') }}</button>
                       @if (canReceive()) {
@@ -184,7 +185,7 @@
         @if (s.sales.length) {
           @for (x of s.sales; track x.id) {
             <div class="flex items-center justify-between gap-3 py-1.5 border-t border-slate-100 text-sm">
-              <div><span class="font-bold text-slate-800">{{ x.number }}</span> <span class="text-xs text-slate-400 font-semibold">{{ dayLabel(x.created_at) }}@if (x.due_date) { · {{ i18n.t('cr.st.due', dayLabel(x.due_date)) }} }</span></div>
+              <div><span class="font-bold text-slate-800">{{ x.number }}</span> <span class="text-xs text-slate-400 font-semibold">{{ eatDay(x.created_at) }}@if (x.due_date) { · {{ i18n.t('cr.st.due', dayLabel(x.due_date)) }} }</span></div>
               <div class="text-right"><span class="font-black text-slate-800">{{ tsh(x.total) }}</span> <span class="text-xs text-slate-400 font-semibold">{{ i18n.t('cr.st.paid', tsh(x.paid_total)) }}</span></div>
             </div>
           }
@@ -195,7 +196,7 @@
         @if (s.payments.length) {
           @for (p of s.payments; track p.id) {
             <div class="flex items-center justify-between gap-3 py-1.5 border-t border-slate-100 text-sm">
-              <div><span class="font-bold text-slate-800">{{ dayLabel(p.paid_at) }}</span> <span class="text-xs text-slate-400 font-semibold">{{ p.sale_number }}@if (p.method) { · {{ p.method }} }@if (p.reference) { · {{ p.reference }} }</span></div>
+              <div><span class="font-bold text-slate-800">{{ eatDay(p.paid_at) }}</span> <span class="text-xs text-slate-400 font-semibold">{{ p.sale_number }}@if (p.method) { · {{ p.method }} }@if (p.reference) { · {{ p.reference }} }</span></div>
               <span class="font-black text-emerald-600">{{ tsh(p.amount) }}</span>
             </div>
           }
@@ -214,7 +215,7 @@
     <p class="text-sm text-slate-500">{{ i18n.t('cr.settings.hint') }}</p>
     <div>
       <label class="modal-label" for="csLimit">{{ i18n.t('cr.settings.limit') }}</label>
-      <input id="csLimit" name="csLimit" class="modal-input" inputmode="numeric" [(ngModel)]="limitText" autocomplete="off" data-testid="cs-limit">
+      <input appMoney id="csLimit" name="csLimit" class="modal-input" inputmode="numeric" [(ngModel)]="limitText" autocomplete="off" data-testid="cs-limit">
       <p class="text-xs text-slate-400 font-semibold mt-1">{{ i18n.t('cr.settings.limit.hint') }}</p>
     </div>
     <div>
@@ -253,11 +254,11 @@
               <input type="checkbox" [attr.name]="'alloc' + i" [ngModel]="a.picked" (ngModelChange)="pick(i, $event)" [attr.data-testid]="'pay-pick-' + a.sale.id">
               <span>
                 <span class="font-black text-slate-900">{{ a.sale.number }}</span>
-                <span class="block text-xs font-semibold text-slate-400">{{ dayLabel(a.sale.created_at) }} · {{ i18n.t('cr.pay.owing', tsh(a.owing)) }}</span>
+                <span class="block text-xs font-semibold text-slate-400">{{ eatDay(a.sale.created_at) }} · {{ i18n.t('cr.pay.owing', tsh(a.owing)) }}</span>
               </span>
             </label>
             @if (a.picked) {
-              <input class="modal-input w-40" inputmode="numeric" [attr.name]="'allocAmount' + i" [ngModel]="a.amount" (ngModelChange)="setAmount(i, $event)" autocomplete="off" [attr.data-testid]="'pay-amount-' + a.sale.id" [attr.aria-label]="i18n.t('cr.pay.amount')">
+              <input appMoney class="modal-input w-40" inputmode="numeric" [attr.name]="'allocAmount' + i" [ngModel]="a.amount" (ngModelChange)="setAmount(i, $event)" autocomplete="off" [attr.data-testid]="'pay-amount-' + a.sale.id" [attr.aria-label]="i18n.t('cr.pay.amount')">
             }
           </div>
         }

@@ -94,3 +94,27 @@ export function creditState(c: Pick<CreditCustomer, 'balance' | 'credit_limit' |
   if (c.credit_limit > 0 && c.balance >= c.credit_limit * 0.9) return 'near';
   return 'ok';
 }
+
+/** One customer's story for a period (GET /inventory/credit/customers/{id}/report). Cost and profit are null for people who may not see profit. */
+export interface CustomerReport {
+  customer: { id: number; name: string; phone: string; address: string | null; credit_limit: number };
+  from: string;
+  to: string;
+  group: 'day' | 'week' | 'month';
+  profit_visible: boolean;
+  totals: {
+    purchases: number;
+    sales: number;
+    paid: number;
+    unpaid_in_period: number;
+    cost: number | null;
+    profit: number | null;
+    margin_percent: number | null;
+    average_purchase: number;
+  };
+  debt: { owes_now: number; from_sales: number; from_before_app: number };
+  lifetime: { purchases: number; sales: number; profit: number | null; first_purchase: string | null; last_purchase: string | null };
+  by_period: { period: string; purchases: number; sales: number; paid: number; profit: number | null }[];
+  top_products: { name: string; qty: number; sales: number; profit: number | null }[];
+  recent_sales: { id: number; number: string; at: string; total: number; paid: number; status: string }[];
+}

@@ -1,0 +1,147 @@
+<!-- One customer's story -->
+@for (k of [motion.tick()]; track k) {
+<div class="space-y-5 animate-fade-in-up">
+
+  <div class="page-header-card flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="min-w-0">
+      <a routerLink="/customers" class="text-xs font-extrabold text-indigo-600 uppercase tracking-wide" data-testid="crr-back">&larr; {{ i18n.t('crr.back') }}</a>
+      <h1 class="text-slate-900 font-black text-xl tracking-tight mt-1" data-testid="crr-name">{{ report()?.customer?.name ?? i18n.t('crr.title') }}</h1>
+      @if (report(); as r) {
+        <p class="text-slate-500 text-sm mt-0.5">{{ r.customer.phone }}@if (r.customer.address) { · {{ r.customer.address }} }</p>
+      }
+    </div>
+  </div>
+
+  <div class="flex flex-wrap items-end gap-3">
+    <div class="flex flex-wrap gap-2" role="tablist">
+      @for (p of periods; track p) {
+        <button type="button" role="tab" class="pill-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="choose(p)" [attr.data-testid]="'crr-period-' + p">{{ i18n.t('crr.period.' + p) }}</button>
+      }
+    </div>
+    @if (period() === 'custom') {
+      <div><label class="modal-label" for="crrFrom">{{ i18n.t('cr.from') }}</label><input id="crrFrom" name="crrFrom" type="date" class="modal-input" [(ngModel)]="from" (change)="load()" data-testid="crr-from"></div>
+      <div><label class="modal-label" for="crrTo">{{ i18n.t('cr.to') }}</label><input id="crrTo" name="crrTo" type="date" class="modal-input" [(ngModel)]="to" (change)="load()" data-testid="crr-to"></div>
+    }
+  </div>
+
+  @if (loading() && !report()) {
+    <div class="skeleton-box" style="height: 130px; border-radius: 14px;"></div>
+  } @else if (error(); as message) {
+    <div class="section-card p-8 text-center space-y-3" role="alert">
+      <p class="text-slate-900 font-black text-base">{{ i18n.t('error.title') }}</p>
+      <p class="text-slate-500 text-sm">{{ message }}</p>
+      <button type="button" class="btn-primary" (click)="load()">{{ i18n.t('common.retry') }}</button>
+    </div>
+  } @else if (report(); as r) {
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="kpi-card">
+        <p class="label-eyebrow">{{ i18n.t('crr.kpi.bought') }}</p>
+        <h3 class="text-2xl font-black tracking-tight mt-2" style="color: #1a2f6e;" data-testid="crr-sales">{{ tsh(r.totals.sales) }}</h3>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100" data-testid="crr-count">{{ i18n.t('crr.kpi.purchases', r.totals.purchases) }}</p>
+      </div>
+      <div class="kpi-card">
+        <p class="label-eyebrow">{{ i18n.t('crr.kpi.paid') }}</p>
+        <h3 class="text-2xl font-black tracking-tight mt-2 text-emerald-600" data-testid="crr-paid">{{ tsh(r.totals.paid) }}</h3>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('crr.kpi.average', tsh(r.totals.average_purchase)) }}</p>
+      </div>
+      @if (profit()) {
+        <div class="kpi-card">
+          <p class="label-eyebrow">{{ i18n.t('crr.kpi.profit') }}</p>
+          <h3 class="text-2xl font-black tracking-tight mt-2" [style.color]="(r.totals.profit ?? 0) < 0 ? '#dc2626' : '#059669'" data-testid="crr-profit">{{ tsh(r.totals.profit ?? 0) }}</h3>
+          @if (r.totals.margin_percent !== null) { <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('crr.kpi.margin', r.totals.margin_percent) }}</p> }
+        </div>
+      }
+      <div class="kpi-card">
+        <p class="label-eyebrow">{{ i18n.t('crr.kpi.owes') }}</p>
+        <h3 class="text-2xl font-black tracking-tight mt-2" [style.color]="r.debt.owes_now > 0 ? '#d97706' : '#1e293b'" data-testid="crr-owes">{{ tsh(r.debt.owes_now) }}</h3>
+        @if (r.debt.from_before_app > 0) { <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('cr.old', tsh(r.debt.from_before_app)) }}</p> }
+      </div>
+    </div>
+
+    <section class="section-card overflow-hidden">
+      <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-100">
+        <div>
+          <p class="label-eyebrow">{{ i18n.t('crr.by.eyebrow') }}</p>
+          <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.by.' + r.group) }}</h3>
+        </div>
+        <div class="flex gap-2" role="group">
+          @for (g of groups; track g) {
+            <button type="button" class="pill-tab" [class.is-active]="group() === g" [attr.aria-pressed]="group() === g" (click)="setGroup(g)" [attr.data-testid]="'crr-group-' + g">{{ i18n.t('crr.group.' + g) }}</button>
+          }
+        </div>
+      </div>
+      @if (r.by_period.length) {
+        <div class="table-scroll-container">
+          <table class="premium-table">
+            <thead>
+              <tr>
+                <th>{{ i18n.t('crr.col.period') }}</th>
+                <th class="text-right">{{ i18n.t('crr.col.count') }}</th>
+                <th class="text-right">{{ i18n.t('crr.col.sales') }}</th>
+                <th class="text-right">{{ i18n.t('crr.col.paid') }}</th>
+                @if (profit()) { <th class="text-right">{{ i18n.t('crr.col.profit') }}</th> }
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of r.by_period; track p.period) {
+                <tr [attr.data-testid]="'crr-row-' + p.period">
+                  <td>
+                    <div class="font-black text-slate-900">{{ periodName(p.period) }}</div>
+                    <div class="bar-track" style="max-width: 140px; margin-top: 4px;"><div class="bar-fill" [style.width.%]="barWidth(p.sales)"></div></div>
+                  </td>
+                  <td class="text-right font-bold text-slate-600">{{ p.purchases }}</td>
+                  <td class="text-right font-black">{{ tsh(p.sales) }}</td>
+                  <td class="text-right font-bold text-emerald-600">{{ tsh(p.paid) }}</td>
+                  @if (profit()) { <td class="text-right font-black">{{ tsh(p.profit ?? 0) }}</td> }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <div class="empty-state" data-testid="crr-none"><p class="empty-title">{{ i18n.t('crr.none') }}</p></div>
+      }
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <section class="section-card p-5">
+        <p class="label-eyebrow">{{ i18n.t('crr.top.eyebrow') }}</p>
+        <h3 class="text-slate-900 font-black text-base mb-2">{{ i18n.t('crr.top.title') }}</h3>
+        @for (p of r.top_products; track p.name) {
+          <div class="flex items-start justify-between gap-3 py-2 border-t border-slate-100 first:border-t-0" data-testid="crr-product">
+            <div class="min-w-0"><p class="font-bold text-slate-800">{{ p.name }}</p><p class="text-xs font-semibold text-slate-400">{{ p.qty }}</p></div>
+            <div class="text-right"><p class="font-black text-slate-800">{{ tsh(p.sales) }}</p>@if (profit() && p.profit !== null) { <p class="text-xs font-semibold text-emerald-600">{{ i18n.t('crr.profit.of', tsh(p.profit)) }}</p> }</div>
+          </div>
+        } @empty {
+          <p class="text-sm text-slate-400 font-semibold">{{ i18n.t('crr.none') }}</p>
+        }
+      </section>
+
+      <section class="section-card p-5">
+        <p class="label-eyebrow">{{ i18n.t('crr.recent.eyebrow') }}</p>
+        <h3 class="text-slate-900 font-black text-base mb-2">{{ i18n.t('crr.recent.title') }}</h3>
+        @for (s of r.recent_sales; track s.id) {
+          <div class="flex items-start justify-between gap-3 py-2 border-t border-slate-100 first:border-t-0">
+            <div class="min-w-0"><p class="font-bold text-slate-800">{{ s.number }}</p><p class="text-xs font-semibold text-slate-400">{{ s.at }} · {{ s.status }}</p></div>
+            <div class="text-right"><p class="font-black text-slate-800">{{ tsh(s.total) }}</p><p class="text-xs font-semibold text-slate-400">{{ i18n.t('cr.st.paid', tsh(s.paid)) }}</p></div>
+          </div>
+        } @empty {
+          <p class="text-sm text-slate-400 font-semibold">{{ i18n.t('crr.none') }}</p>
+        }
+      </section>
+    </div>
+
+    <section class="section-card p-5" data-testid="crr-life">
+      <p class="label-eyebrow">{{ i18n.t('crr.life.eyebrow') }}</p>
+      <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.life.title') }}</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3 text-sm">
+        <div><p class="label-eyebrow">{{ i18n.t('crr.life.sales') }}</p><p class="font-black text-slate-800" data-testid="crr-life-sales">{{ tsh(r.lifetime.sales) }}</p><p class="text-xs text-slate-400 font-semibold">{{ i18n.t('crr.kpi.purchases', r.lifetime.purchases) }}</p></div>
+        @if (profit() && r.lifetime.profit !== null) { <div><p class="label-eyebrow">{{ i18n.t('crr.life.profit') }}</p><p class="font-black text-emerald-600">{{ tsh(r.lifetime.profit) }}</p></div> }
+        @if (r.lifetime.first_purchase) { <div><p class="label-eyebrow">{{ i18n.t('crr.life.first') }}</p><p class="font-bold text-slate-700">{{ r.lifetime.first_purchase }}</p></div> }
+        @if (r.lifetime.last_purchase) { <div><p class="label-eyebrow">{{ i18n.t('crr.life.last') }}</p><p class="font-bold text-slate-700">{{ r.lifetime.last_purchase }}</p></div> }
+      </div>
+    </section>
+  }
+</div>
+}

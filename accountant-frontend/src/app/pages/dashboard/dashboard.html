@@ -268,7 +268,7 @@
   <div slot="body" class="space-y-3">
     <p class="text-sm text-slate-600">{{ i18n.t('target.explain') }}</p>
     <label class="modal-label" for="targetAmount">{{ i18n.t('target.amount') }}</label>
-    <input id="targetAmount" name="targetAmount" class="modal-input" inputmode="numeric" [(ngModel)]="targetText" (keydown.enter)="saveTarget()" autocomplete="off" [placeholder]="i18n.t('target.placeholder')">
+    <input appMoney id="targetAmount" name="targetAmount" class="modal-input" inputmode="numeric" [(ngModel)]="targetText" (keydown.enter)="saveTarget()" autocomplete="off" [placeholder]="i18n.t('target.placeholder')">
     <p class="text-xs text-slate-400 font-semibold">{{ i18n.t('target.clear.hint') }}</p>
     @if (targetError()) { <p class="form-error" role="alert">{{ targetError() }}</p> }
   </div>

@@ -140,7 +140,7 @@ describe('debts', () => {
     it('shows what is left and the payments made so far; the amount starts at what is left', async () => {
       const { el } = await openPay(2);
       expect(text(byTestId(el, 'pay-left')!)).toBe('TSH 10,000');
-      expect((el.querySelector('#payAmount') as HTMLInputElement).value).toBe('10000');
+      expect((el.querySelector('#payAmount') as HTMLInputElement).value).toBe('10,000');
       expect(text(el)).toContain('15/10/2026');
     });
 

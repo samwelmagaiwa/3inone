@@ -1,11 +1,12 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { AuthService } from '../../core/auth.service';
 import { CreditApi } from '../../core/credit-api.service';
 import { AgeingListing, CreditCustomer, CreditSettingsBody, CreditState, Statement, StatementSale, creditState } from '../../core/credit.models';
-import { dayLabel, dayOf, offline, parseAmount, serverMessage, tsh } from '../../core/format';
+import { dayLabel, dayOf, eatDay, offline, parseAmount, serverMessage, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
 import { MotionService } from '../../core/services/motion.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -13,6 +14,7 @@ import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal
 import { TablePaginationComponent } from '../../shared/components/table-pagination/table-pagination';
 import { TableToolbarComponent } from '../../shared/components/table-toolbar/table-toolbar';
 import { BsDateDirective } from '../../shared/ui/bs-date.directive';
+import { MoneyDirective } from '../../shared/ui/money.directive';
 
 type Tab = 'customers' | 'ageing';
 type Method = 'cash' | 'mobile_money' | 'bank_transfer' | 'cheque';
@@ -34,7 +36,7 @@ const METHODS: Method[] = ['cash', 'mobile_money', 'bank_transfer', 'cheque'];
  */
 @Component({
   selector: 'app-credit',
-  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, TablePaginationComponent, BsDateDirective],
+  imports: [FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, TablePaginationComponent, BsDateDirective, MoneyDirective],
   templateUrl: './credit.html',
 })
 export class CreditPage implements OnInit {
@@ -46,6 +48,7 @@ export class CreditPage implements OnInit {
 
   protected readonly tsh = tsh;
   protected readonly dayLabel = dayLabel;
+  protected readonly eatDay = eatDay;
   protected readonly methods = METHODS;
 
   protected readonly canReceive = computed(() => this.auth.can('inv_view_cash'));

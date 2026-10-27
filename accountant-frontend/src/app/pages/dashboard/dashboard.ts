@@ -12,6 +12,7 @@ import { MotionService } from '../../core/services/motion.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
 import { CountUpDirective } from '../../shared/ui/count-up.directive';
+import { MoneyDirective } from '../../shared/ui/money.directive';
 
 /**
  * The month on one page, from the same report the mobile app shows: is it better or worse than last month, how close the profit
@@ -20,7 +21,7 @@ import { CountUpDirective } from '../../shared/ui/count-up.directive';
  */
 @Component({
   selector: 'app-dashboard',
-  imports: [FormsModule, RouterLink, ModalDialogComponent, CountUpDirective],
+  imports: [FormsModule, RouterLink, ModalDialogComponent, CountUpDirective, MoneyDirective],
   templateUrl: './dashboard.html',
 })
 export class DashboardPage implements OnInit {

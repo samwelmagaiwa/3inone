@@ -21,8 +21,11 @@ export const routes: Routes = [
       { path: 'sales', canActivate: [canOpen('sales')], loadComponent: () => import('./pages/sales/sales').then((m) => m.SalesPage) },
       { path: 'sales/new', canActivate: [canSell], loadComponent: () => import('./pages/till/till').then((m) => m.TillPage) },
       { path: 'customers', canActivate: [canOpen('credit')], loadComponent: () => import('./pages/credit/credit').then((m) => m.CreditPage) },
+      { path: 'customers/:id/report', canActivate: [canOpen('credit')], loadComponent: () => import('./pages/customer-report/customer-report').then((m) => m.CustomerReportPage) },
       { path: 'debts', canActivate: [canOpen('debts')], loadComponent: () => import('./pages/debts/debts').then((m) => m.DebtsPage) },
       { path: 'expenses', canActivate: [canOpen('expenses')], loadComponent: () => import('./pages/expenses/expenses').then((m) => m.ExpensesPage) },
+      { path: 'branch-stock', canActivate: [canOpen('branch_stock')], loadComponent: () => import('./pages/branch-stock/branch-stock').then((m) => m.BranchStockPage) },
+      { path: 'branches', canActivate: [canOpen('branches')], loadComponent: () => import('./pages/branches/branches').then((m) => m.BranchesPage) },
       { path: 'assistant', loadComponent: () => import('./pages/assistant/assistant').then((m) => m.AssistantPage) },
       // New modules are added here as children of the shell, and in core/nav.ts.
     ],

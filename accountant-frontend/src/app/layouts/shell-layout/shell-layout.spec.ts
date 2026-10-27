@@ -22,7 +22,7 @@ const nav = (el: HTMLElement) => Array.from(el.querySelectorAll('.sidebar-nav a.
 describe('the frame', () => {
   it('shows only the pages this person\'s rights open, in the template\'s sidebar', async () => {
     const { el } = await open();
-    expect(nav(el)).toEqual(['This month', 'Sales', 'Customers & credit', 'Debts', 'Expenses']);
+    expect(nav(el)).toEqual(['This month', 'Goods by branch', 'Sales', 'Customers & credit', 'Debts', 'Expenses']);
     expect(el.querySelector('aside.sidebar')).not.toBeNull();
   });
 
@@ -46,6 +46,29 @@ describe('the frame', () => {
     TestBed.resetTestingModule();
     const without = await open({ business: '' });
     without.h.http.expectNone(`${environment.apiUrl}/business/subscription`);
+  });
+
+  it('offers a choice of branch in the top bar only when the business has branches, and choosing one is remembered and sent to the server', async () => {
+    localStorage.clear();
+    const none = await open();
+    none.h.http.expectOne(`${environment.apiUrl}/inventory/branches`).flush({ data: [] });
+    await settle(none.fixture);
+    expect(none.el.querySelector('[data-testid="header-branch"]')).toBeNull();
+
+    TestBed.resetTestingModule();
+    localStorage.clear();
+    const some = await open();
+    some.h.http.expectOne(`${environment.apiUrl}/inventory/branches`).flush({ data: [{ id: 4, name: 'Kariakoo', address: null, phone: null, active: true }, { id: 5, name: 'Off', address: null, phone: null, active: false }] });
+    await settle(some.fixture);
+    const select = some.el.querySelector('[data-testid="header-branch"]') as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => text(o as HTMLElement))).toEqual(['All branches', 'Kariakoo']);
+
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    select.value = '4';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle(some.fixture);
+    expect(localStorage.getItem('accountant_branch')).toBe('4');
+    expect(navigate).toHaveBeenCalled();
   });
 
   it('fewer rights, fewer pages', async () => {
@@ -80,7 +103,7 @@ describe('the frame', () => {
     both.h.http.expectOne(`${environment.apiUrl}/inventory/notifications`).flush({ data: [], meta: { unread_count: 0 } });
     await settle(both.fixture);
     expect(both.h.auth.service()).toBe('salon');
-    expect(nav(both.el)).toEqual(['Sales', 'Expenses']);
+    expect(nav(both.el)).toEqual(['Goods by branch', 'Sales', 'Expenses']);
     expect(both.navigate).toHaveBeenCalledWith(['/sales']);
   });
 
@@ -90,7 +113,7 @@ describe('the frame', () => {
     await settle(fixture);
 
     expect(h.i18n.lang()).toBe('sw');
-    expect(nav(el)).toEqual(['Mwezi huu', 'Mauzo', 'Wateja na mikopo', 'Madeni', 'Matumizi']);
+    expect(nav(el)).toEqual(['Mwezi huu', 'Bidhaa kwa tawi', 'Mauzo', 'Wateja na mikopo', 'Madeni', 'Matumizi']);
     expect(document.documentElement.lang).toBe('sw');
   });
 

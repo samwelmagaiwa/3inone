@@ -216,12 +216,12 @@
       @if (!fIsService) {
         <div>
           <label class="modal-label" for="pCost">{{ i18n.t('prod.form.cost') }}</label>
-          <input id="pCost" name="pCost" class="modal-input" inputmode="numeric" [(ngModel)]="fCost" autocomplete="off" data-testid="prod-cost">
+          <input appMoney id="pCost" name="pCost" class="modal-input" inputmode="numeric" [(ngModel)]="fCost" autocomplete="off" data-testid="prod-cost">
         </div>
       }
       <div>
         <label class="modal-label" for="pPrice">{{ i18n.t(fIsService ? 'prod.form.price.service' : 'prod.form.price') }}</label>
-        <input id="pPrice" name="pPrice" class="modal-input" inputmode="numeric" [(ngModel)]="fPrice" autocomplete="off" data-testid="prod-price">
+        <input appMoney id="pPrice" name="pPrice" class="modal-input" inputmode="numeric" [(ngModel)]="fPrice" autocomplete="off" data-testid="prod-price">
       </div>
     </div>
 
@@ -273,7 +273,7 @@
           </div>
           <div>
             <label class="modal-label" for="pCommissionFixed">{{ i18n.t('prod.form.commission.fixed') }}</label>
-            <input id="pCommissionFixed" name="pCommissionFixed" class="modal-input" inputmode="numeric" [(ngModel)]="fCommissionFixed" autocomplete="off" data-testid="prod-commission-fixed">
+            <input appMoney id="pCommissionFixed" name="pCommissionFixed" class="modal-input" inputmode="numeric" [(ngModel)]="fCommissionFixed" autocomplete="off" data-testid="prod-commission-fixed">
           </div>
         </div>
       }
@@ -283,7 +283,7 @@
         @for (o of fOptions(); track $index) {
           <div class="flex gap-2 mb-2">
             <input class="modal-input flex-1" [attr.data-testid]="'opt-label-' + $index" [ngModel]="o.label" (ngModelChange)="setOption($index, 'label', $event)" [placeholder]="i18n.t('prod.form.options.label')" autocomplete="off">
-            <input class="modal-input w-36" [attr.data-testid]="'opt-price-' + $index" inputmode="numeric" [ngModel]="o.price" (ngModelChange)="setOption($index, 'price', $event)" [placeholder]="i18n.t('prod.form.options.price')" autocomplete="off">
+            <input appMoney class="modal-input w-36" [attr.data-testid]="'opt-price-' + $index" inputmode="numeric" [ngModel]="o.price" (ngModelChange)="setOption($index, 'price', $event)" [placeholder]="i18n.t('prod.form.options.price')" autocomplete="off">
             <button type="button" class="icon-del" (click)="removeOption($index)" [attr.aria-label]="i18n.t('common.delete')">&times;</button>
           </div>
         }
