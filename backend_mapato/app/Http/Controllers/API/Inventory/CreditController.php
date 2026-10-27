@@ -244,6 +244,33 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         ]]);
     }
 
+    /**
+     * One customer's story for a period: purchases, profit, what they paid, what they owe, what they buy, week by week or month by month.
+     */
+    #[OA\Get(
+        path: '/inventory/credit/customers/{id}/report',
+        summary: 'One customer: purchases, profit and debt for a period',
+        security: [['bearerAuth' => []]],
+        tags: ['Inventory / Credit'],
+        responses: [new OA\Response(response: 200, description: 'Success')],
+    )]
+    public function report(Request $request, int $id)
+    {
+        if (! DB::table('inventory_customers')->where('id', $id)->exists()) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+        $data = $request->validate([
+            'from' => 'nullable|date_format:Y-m-d',
+            'to' => 'nullable|date_format:Y-m-d|after_or_equal:from',
+            'group' => 'nullable|in:day,week,month',
+        ]);
+        $tz = \App\Support\Inventory\MonthlyFigures::TIMEZONE;
+        $to = $data['to'] ?? now($tz)->toDateString();
+        $from = $data['from'] ?? now($tz)->startOfMonth()->toDateString();
+
+        return response()->json(['data' => \App\Support\Inventory\CustomerReport::build($id, $from, $to, $data['group'] ?? 'month', $request->user())]);
+    }
+
     /** Who owes what, bucketed by how long it has been outstanding. */
     #[OA\Get(
         path: '/inventory/credit/debtors-ageing',

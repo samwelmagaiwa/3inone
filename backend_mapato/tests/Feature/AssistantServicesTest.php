@@ -224,6 +224,66 @@ class AssistantServicesTest extends TestCase
         $this->assertContains('hg_start', $ids($landlord));
     }
 
+    // ------------------------------------------------------------------ a customer's story
+
+    private function shopWithNeema(): array
+    {
+        $owner = $this->make('admin', ['inventory']);
+        $soda = $this->api($owner, 'POST', '/api/inventory/products', ['name' => 'Soda', 'sku' => 'SODA1', 'quantity' => 100, 'min_stock' => 0, 'status' => 'active', 'cost_price' => 600, 'selling_price' => 1000])->assertCreated()->json('data.id');
+        $neema = $this->api($owner, 'POST', '/api/inventory/customers', ['name' => 'Mama Neema Joseph', 'phone' => '0711000001'])->assertCreated()->json('data.id');
+        $this->api($owner, 'POST', '/api/inventory/sales', [
+            'customer_id' => $neema, 'payment_status' => 'debt', 'subtotal' => 3000, 'discount' => 0, 'tax' => 0, 'total' => 3000, 'paid_total' => 0, 'due_date' => now()->addDays(7)->toDateString(),
+            'items' => [['product_id' => $soda, 'quantity' => 3, 'unit_price' => 1000, 'unit_cost_snapshot' => 600]],
+        ])->assertCreated();
+
+        return [$owner, $neema];
+    }
+
+    public function test_the_assistant_can_tell_a_customers_story_and_the_card_carries_the_profit_only_for_those_who_may_see_it(): void
+    {
+        [$owner] = $this->shopWithNeema();
+        $this->gemini('customer_report', ['name' => 'Neema', 'period' => 'month']);
+
+        $r = $this->api($owner, 'POST', '/api/assistant', ['question' => 'How is Neema doing this month?'])->assertOk();
+
+        $rows = array_column($r->json('data.cards.0.rows'), 'value', 'title');
+        $this->assertSame('TSh 3,000', $rows['Bought']);
+        $this->assertSame('TSh 1,200', $rows['Profit brought']);
+        $this->assertSame('TSh 3,000', $rows['Owes now']);
+        $this->assertStringContainsString('Mama Neema Joseph', json_encode($this->sent()[1]['contents']));
+        $this->assertStringNotContainsString('0711000001', json_encode($this->sent()[1]['contents']), 'the phone never goes to the AI');
+    }
+
+    public function test_a_sales_officer_gets_the_customers_story_without_any_profit(): void
+    {
+        [$owner] = $this->shopWithNeema();
+        $officer = $this->make('sales_officer', ['inventory'], $owner);
+        $this->gemini('customer_report', ['name' => 'Neema']);
+
+        $r = $this->api($officer, 'POST', '/api/assistant', ['question' => 'Tell me about Neema'])->assertOk();
+
+        $titles = array_column($r->json('data.cards.0.rows'), 'title');
+        $this->assertNotContains('Profit brought', $titles);
+        $this->assertDoesNotMatchRegularExpression('/"(cost|profit|margin_percent)":-?[0-9]/', json_encode($this->sent()[1]['contents']) ?: '');
+    }
+
+    public function test_the_guide_teaches_the_new_things_to_those_who_can_use_them(): void
+    {
+        [$owner] = $this->shopWithNeema();
+        $till = $this->make('hair_stylist', ['salon']);
+        $this->gemini();
+
+        $this->api($owner, 'POST', '/api/assistant', ['question' => 'How do I change a price?'])->assertOk();
+        $this->api($till, 'POST', '/api/assistant', ['question' => 'How do I see a customer?'])->assertOk();
+        [$forOwner, $forStylist] = array_map(fn ($b) => $b['systemInstruction']['parts'][0]['text'], $this->sent());
+
+        $this->assertStringContainsString('CUSTOMER REPORT', $forOwner);
+        $this->assertStringContainsString('PRICE AT THE TILL', $forOwner);
+        $this->assertStringContainsString('BRANCHES:', $forOwner);
+        $this->assertStringNotContainsString('CUSTOMER REPORT', $forStylist, 'a stylist has no credit right');
+        $this->assertStringNotContainsString('BRANCHES:', $forStylist);
+    }
+
     // ------------------------------------------------------------------ speed
 
     public function test_a_one_tap_suggestion_is_answered_with_one_ai_call_and_the_data_already_in_it(): void

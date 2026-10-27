@@ -41,6 +41,12 @@ final class AssistantTools
             'find_customer' => ['service' => 'inventory', 'any' => ['inv_manage_products', 'inv_create_sales', 'inv_view_credit'],
                 'params' => ['name' => ['type' => 'STRING', 'description' => 'Part of the customer name']],
                 'description' => 'Look a customer up by name: what they bought and, when allowed, what they owe.'],
+            'customer_report' => ['service' => 'inventory', 'any' => ['inv_view_credit'],
+                'params' => [
+                    'name' => ['type' => 'STRING', 'description' => 'Part of the customer name'],
+                    'period' => ['type' => 'STRING', 'description' => 'week, month (default) or year'],
+                ],
+                'description' => 'One customer: for a week, month or year, how much they bought and paid, the profit they brought (only for people who may see profit), what they buy most and what they owe now.'],
             'find_products' => ['service' => 'inventory', 'any' => ['inv_view_products'],
                 'params' => ['search' => ['type' => 'STRING', 'description' => 'Part of the product name'], 'low_stock_only' => ['type' => 'BOOLEAN', 'description' => 'Only goods at or under their minimum stock']],
                 'description' => 'Goods or services with stock and price; can list only what is low on stock.'],
@@ -133,6 +139,7 @@ final class AssistantTools
             'business_report' => self::businessReport($args),
             'customers_who_owe' => self::customersWhoOwe($args),
             'find_customer' => self::findCustomer($args, $user),
+            'customer_report' => self::customerReport($args, $user),
             'find_products' => self::findProducts($args, $user),
             'recent_sales' => self::recentSales($args, $user),
             'expenses_summary' => self::expensesSummary($args),
@@ -273,6 +280,38 @@ final class AssistantTools
         }
 
         return ['data' => ['currency' => 'TSh', 'customers' => $data, 'found' => count($data)], 'card' => $cards === [] ? null : ['type' => 'rows', 'title' => 'Customers', 'rows' => $cards]];
+    }
+
+    private static function customerReport(array $args, User $user): array
+    {
+        $needle = self::text($args['name'] ?? '', 60);
+        if ($needle === '') {
+            return ['data' => ['error' => 'Give a customer name.'], 'card' => null];
+        }
+        $customer = DB::table('inventory_customers')->where('name', 'like', '%' . self::like($needle) . '%')->orderBy('name')->first(['id', 'name']);
+        if ($customer === null) {
+            return ['data' => ['error' => 'No customer with that name.'], 'card' => null];
+        }
+        $today = now(MonthlyFigures::TIMEZONE);
+        $period = in_array($args['period'] ?? '', ['week', 'year'], true) ? $args['period'] : 'month';
+        $from = match ($period) {
+            'week' => $today->copy()->startOfWeek(\Carbon\Carbon::MONDAY),
+            'year' => $today->copy()->startOfYear(),
+            default => $today->copy()->startOfMonth(),
+        };
+        $r = \App\Support\Inventory\CustomerReport::build((int) $customer->id, $from->toDateString(), $today->toDateString(), $period === 'year' ? 'month' : ($period === 'week' ? 'day' : 'week'), $user);
+        // The AI reads names and numbers only; the phone is shown on the card, from the record.
+        $data = ['currency' => 'TSh', 'customer' => $r['customer']['name'], 'period' => $period, 'from' => $r['from'], 'to' => $r['to'], 'totals' => $r['totals'], 'owes_now' => $r['debt'], 'lifetime' => $r['lifetime'], 'top_products' => $r['top_products']];
+        $rows = [
+            ['title' => 'Bought', 'value' => self::tsh($r['totals']['sales']), 'note' => $r['totals']['purchases'] . ' purchases'],
+            ['title' => 'Paid', 'value' => self::tsh($r['totals']['paid'])],
+        ];
+        if ($r['profit_visible']) {
+            $rows[] = ['title' => 'Profit brought', 'value' => self::tsh((float) $r['totals']['profit'])];
+        }
+        $rows[] = ['title' => 'Owes now', 'value' => self::tsh($r['debt']['owes_now'])];
+
+        return ['data' => $data, 'card' => ['type' => 'rows', 'title' => $customer->name . ' (' . $period . ')', 'rows' => $rows]];
     }
 
     private static function findProducts(array $args, User $user): array

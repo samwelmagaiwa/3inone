@@ -467,6 +467,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('inventory/salon/campaigns',            [SalonClientController::class, 'campaigns']);
         // Equipment and its upkeep (the owner, managers and the stock manager: checked in the controller).
         // The owner's books and the walk-in queue, ready-made categories and the goods a service uses up.
+        // Branches and the goods held in each work for a shop or depot too (the same controllers, without "salon" in the address).
+        Route::get('inventory/branch-stock',               [SalonBranchStockController::class, 'index']);
+        Route::post('inventory/branch-stock/transfer',     [SalonBranchStockController::class, 'transfer']);
+        Route::put('inventory/branch-stock/level',         [SalonBranchStockController::class, 'level']);
+        Route::get('inventory/branch-stock/transfers',     [SalonBranchStockController::class, 'transfers']);
         Route::get('inventory/salon/branch-stock',         [SalonBranchStockController::class, 'index']);
         Route::post('inventory/salon/branch-stock/transfer', [SalonBranchStockController::class, 'transfer']);
         Route::put('inventory/salon/branch-stock/level',   [SalonBranchStockController::class, 'level']);
@@ -485,6 +490,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('inventory/salon/services/{id}/materials', [SalonSetupController::class, 'saveMaterials']);
         Route::get('inventory/salon/materials-usage',      [SalonSetupController::class, 'usage']);
         // Branches: everyone sees the list; the owner and managers change it (checked in the controller).
+        Route::get('inventory/branches',                   [SalonBranchController::class, 'index']);
+        Route::post('inventory/branches',                  [SalonBranchController::class, 'store']);
+        Route::match(['put', 'patch'], 'inventory/branches/{id}', [SalonBranchController::class, 'update']);
+        Route::delete('inventory/branches/{id}',           [SalonBranchController::class, 'destroy']);
         Route::get('inventory/salon/branches',             [SalonBranchController::class, 'index']);
         Route::post('inventory/salon/branches',            [SalonBranchController::class, 'store']);
         Route::match(['put', 'patch'], 'inventory/salon/branches/{id}', [SalonBranchController::class, 'update']);
@@ -655,6 +664,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('inventory/credit/customers/{id}',       [InventoryCreditController::class, 'updateCredit']);
         Route::get('inventory/credit/customers/{id}/check', [InventoryCreditController::class, 'creditCheck']);
         Route::get('inventory/credit/customers/{id}/statement', [InventoryCreditController::class, 'statement']);
+        Route::get('inventory/credit/customers/{id}/report', [InventoryCreditController::class, 'report']);
         Route::get('inventory/credit/debtors-ageing',       [InventoryCreditController::class, 'debtorsAgeing']);
     });
 

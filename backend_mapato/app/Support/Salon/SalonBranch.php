@@ -12,13 +12,14 @@ use Illuminate\Support\Facades\Schema;
  * at; with no header it is "all branches" for a report, and for a new record it is the person's home branch (if they have
  * one). A header that names a branch of another salon, or one that is switched off, is ignored.
  *
- * A salon with a single branch never sets any of this: every branch_id stays empty and nothing changes for it.
+ * A business with a single branch never sets any of this: every branch_id stays empty and nothing changes for it.
  */
 final class SalonBranch
 {
     public static function available(): bool
     {
-        return TenantContext::service() === 'salon' && Schema::hasTable('inventory_branches') && Schema::hasColumn('inventory_sales', 'branch_id');
+        // A salon, and a shop or depot with more than one place to sell from (the same branches, the same stock by branch).
+        return in_array(TenantContext::service(), ['salon', 'inventory'], true) && Schema::hasTable('inventory_branches') && Schema::hasColumn('inventory_sales', 'branch_id');
     }
 
     /** The branch looked at or worked in, or null for "all". */
