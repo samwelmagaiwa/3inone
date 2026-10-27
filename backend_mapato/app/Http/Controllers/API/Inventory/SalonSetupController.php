@@ -18,19 +18,26 @@ use OpenApi\Attributes as OA;
 #[OA\Tag(name: 'Inventory / Salon', description: 'Categories and materials')]
 class SalonSetupController extends Controller
 {
-    /** Standard categories for a salon (Swahili first, as the app shows them). */
+    /**
+     * Standard categories for a salon. Each name is "Kiswahili / English" (what the apps show), and each description gives example
+     * services in both languages. A category is a KIND of service: the make of a product (a brand) is a separate, optional choice.
+     */
     public const PRESETS = [
-        ['Nywele / Hair', 'Cuts, styling, washing, treatments'],
-        ['Kusuka / Braiding', 'Braids, twists, weaves, cornrows'],
-        ['Rangi / Colour', 'Colouring, highlights, relaxers'],
-        ['Kucha / Nails', 'Manicure, pedicure, gel, acrylic'],
-        ['Make-up / Makeup', 'Day, evening and bridal makeup'],
-        ['Kope / Lashes & Brows', 'Lash extensions, brows, tint'],
-        ['Ngozi / Skin', 'Facials, waxing, scrubs'],
-        ['Masaji / Massage', 'Body and head massage'],
-        ['Kinyozi / Barber', 'Men\'s cuts, shave, beard'],
-        ['Bidhaa / Products', 'Shampoo, oils, hair pieces and other goods'],
-        ['Vifurushi / Packages', 'Several visits sold together'],
+        ['Nywele / Hair', 'Huduma za nywele: kukata, kuosha, kuset, matibabu. / Hair services: cutting, washing, styling, treatments.'],
+        ['Kusuka / Braiding', 'Kusuka: box braids, knotless braids, cornrows (kubana mistari), twists. / Braiding: box braids, knotless braids, cornrows, twists.'],
+        ['Rangi / Colour', 'Kupaka rangi: rangi ya nywele, highlights, relaxer. / Colouring: hair colour, highlights, relaxers.'],
+        ['Kucha / Nails', 'Huduma za kucha: manicure, pedicure, gel polish, acrylic, kucha za kuongeza. / Nail services: manicure, pedicure, gel polish, acrylic, nail extensions.'],
+        ['Make-up / Makeup', 'Urembo wa uso: make-up ya kawaida, ya sherehe, ya harusi na ya picha. / Makeup: natural, party, bridal and photoshoot makeup.'],
+        ['Kope / Lashes & Brows', 'Kope na nyusi: kuweka kope bandia, kunyanyua kope, kutengeneza nyusi, kupaka nyusi rangi. / Lashes and brows: eyelash extensions, eyelash lifting, eyebrow shaping, eyebrow tinting.'],
+        ['Ngozi / Skin', 'Huduma za ngozi: facial, kusugua ngozi, kuondoa nywele kwa nta. / Skincare: facials, scrubs, waxing.'],
+        ['Masaji / Massage', 'Masaji ya mwili na ya kichwa, utunzaji wa mwili. / Body and head massage, body care.'],
+        ['Kinyozi / Barber', 'Huduma za wanaume: kukata nywele, kunyoa, kutengeneza ndevu. / Men\'s grooming: haircuts, shaving, beard trimming.'],
+        ['Bidhaa / Products', 'Bidhaa zinazouzwa: shampoo, mafuta, nywele za kuongeza. / Goods for sale: shampoo, oils, hair pieces.'],
+        ['Vifurushi / Packages', 'Ziara kadhaa zinazouzwa pamoja kwa malipo moja. / Several visits sold together and paid once.'],
+        ['Wigi / Wig Services', 'Huduma za wigi: kuvaa wigi, kuosha na kutunza wigi, kutengeneza wigi. / Wig services: wig installation, washing and care, wig making.'],
+        ['Harusi / Bridal Packages', 'Vifurushi vya harusi: make-up ya bibi harusi, nywele, kucha na majaribio. / Bridal packages: bridal makeup, hair, nails and trial sessions.'],
+        ['Watoto / Kids', 'Huduma za watoto: kusuka, kukata nywele, kupamba. / Services for children: braiding, haircuts, styling.'],
+        ['Matibabu ya Nywele / Hair Treatment', 'Matibabu: steam, protini, kuimarisha nywele, kutibu ngozi ya kichwa. / Treatments: steaming, protein, strengthening, scalp care.'],
     ];
 
     private function requireKeeper(Request $request): void

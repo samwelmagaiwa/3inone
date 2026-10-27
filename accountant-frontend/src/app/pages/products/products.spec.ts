@@ -395,6 +395,24 @@ describe('products and services', () => {
       h.http.expectOne({ method: 'GET', url: `${API}/inventory/categories` }).flush({ data: [] });
     });
 
+    it('a shop is not offered ready-made salon categories', async () => {
+      const shop = await open(MANAGER);
+      click(shop.el, 'tab-categories');
+      await settle(shop.fixture);
+      expect(byTestId(shop.el, 'cat-presets')).toBeNull();
+    });
+
+    it('a salon can add its ready-made categories', async () => {
+      const { h, fixture, el } = await open(MANAGER, { service: 'salon' });
+      click(el, 'tab-categories');
+      await settle(fixture);
+      click(el, 'cat-presets');
+      h.http.expectOne({ method: 'POST', url: `${API}/inventory/salon/category-presets` }).flush({ data: { added: ['Wigi / Wig Services', 'Harusi / Bridal Packages'], already: 13 } });
+      await settle(fixture);
+      h.http.expectOne({ method: 'GET', url: `${API}/inventory/categories` }).flush({ data: [] });
+      await settle(fixture);
+    });
+
     it('brands are managed the same way', async () => {
       const { h, fixture, el } = await open(MANAGER);
 

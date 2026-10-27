@@ -191,11 +191,11 @@ class SalonBooksTest extends TestCase
     {
         $owner = $this->salon();
         $first = $this->api($owner, 'POST', '/api/inventory/salon/category-presets')->assertOk()->json('data');
-        $this->assertCount(11, $first['added']);
+        $this->assertCount(15, $first['added']);
         $second = $this->api($owner, 'POST', '/api/inventory/salon/category-presets')->assertOk()->json('data');
         $this->assertSame([], $second['added']);
-        $this->assertSame(11, $second['already']);
-        $this->assertSame(11, DB::table('inventory_categories')->count());
+        $this->assertSame(15, $second['already']);
+        $this->assertSame(15, DB::table('inventory_categories')->count());
         $this->api($this->stylist($owner), 'POST', '/api/inventory/salon/category-presets')->assertForbidden();
     }
 

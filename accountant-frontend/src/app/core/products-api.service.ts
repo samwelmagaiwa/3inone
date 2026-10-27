@@ -125,6 +125,11 @@ export class ProductsApi {
     return call.pipe(map(() => undefined));
   }
 
+  /** A salon's ready-made categories (each named in Swahili and English); the ones already there are left alone. */
+  categoryPresets(): Observable<{ added: string[]; already: number }> {
+    return this.http.post<{ data: { added: string[]; already: number } }>(`${API}/inventory/salon/category-presets`, {}).pipe(map((r) => ({ added: r.data?.added ?? [], already: r.data?.already ?? 0 })));
+  }
+
   deleteNamed(kind: NamedKind, id: number): Observable<void> {
     return this.http.delete(`${API}/inventory/${kind}/${id}`).pipe(map(() => undefined));
   }

@@ -522,6 +522,17 @@ export class ProductsPage implements OnInit {
     }
   }
 
+  /** A salon's ready-made categories, named in Swahili and English; the ones already there are not added twice. */
+  protected async addPresets(): Promise<void> {
+    try {
+      const r = await firstValueFrom(this.api.categoryPresets());
+      this.toast.success(this.i18n.t(r.added.length ? 'cat.presets.added' : 'cat.presets.none', r.added.length), this.i18n.t('common.done'));
+      await this.loadNamed('categories');
+    } catch (err) {
+      this.toast.error(this.messageOf(err), this.i18n.t('error.title'));
+    }
+  }
+
   protected async removeNamed(n: Named): Promise<void> {
     const kind = this.namedKind();
     const yes = await this.confirm.ask({
