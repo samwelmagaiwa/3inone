@@ -706,6 +706,98 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         ]);
     }
 
+    // Put a staff member under a business owner (super admin only).
+    #[OA\Put(
+        path: '/admin/users/{id}/assign-admin',
+        summary: 'Place a staff member under a business admin',
+        description: 'The person joins that admin\'s business: they see its data and none of their old business. The target must be an '
+            . 'admin/landlord (a business owner), and must run the service the person works in. Done by a super admin only; logged.',
+        security: [['bearerAuth' => []]],
+        tags: ['Admin / Users'],
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))],
+        requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['admin_id'], properties: [
+            new OA\Property(property: 'admin_id', type: 'string'),
+            new OA\Property(property: 'service', type: 'string', enum: ['rental', 'transport', 'inventory', 'salon'], nullable: true),
+        ])),
+        responses: [new OA\Response(response: 200, description: 'Success')],
+    )]
+    public function assignToAdmin(Request $request, string $id)
+    {
+        $auth = $request->user();
+        if (!$auth->isSuperAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Only a super admin can place a person under an admin.'], 403);
+        }
+
+        $data = $request->validate([
+            'admin_id' => 'required|string',
+            'service' => 'nullable|string|in:rental,transport,inventory,salon',
+        ]);
+
+        $target = User::where('id', $id)->firstOrFail();
+        $admin = User::where('id', $data['admin_id'])->first();
+        $role = strtolower((string) $target->role);
+        $fail = fn (string $field, string $message) => response()->json(['success' => false, 'message' => $message, 'errors' => [$field => [$message]]], 422);
+
+        if ($admin === null || !in_array(strtolower((string) $admin->role), User::ACCOUNT_HEAD_ROLES, true)) {
+            return $fail('admin_id', 'Chagua admin wa biashara (admin au landlord). / Choose a business admin (admin or landlord).');
+        }
+        if (!$admin->is_active) {
+            return $fail('admin_id', 'Admin huyo amezimwa. / That admin is switched off.');
+        }
+        if ($role === 'super_admin' || in_array($role, User::ACCOUNT_HEAD_ROLES, true) || in_array($role, User::PORTAL_ROLES, true)) {
+            return $fail('id', 'Mtu huyu ni mmiliki wa biashara, super admin au mteja wa nje (dereva, mpangaji, muuzaji): hawawekwi chini ya admin kwa njia hii. / This person is a business owner, a super admin or an outside party (driver, tenant, vendor): they cannot be placed under an admin this way.');
+        }
+        if ((string) $target->created_by === (string) $admin->id) {
+            return response()->json(['success' => true, 'message' => 'Tayari yuko chini ya admin huyo. / Already under that admin.', 'data' => ['user' => $this->userPayload($target), 'changed' => false]]);
+        }
+
+        // The services this person works in must be ones the admin's business runs.
+        $service = $data['service'] ?? null;
+        $needed = $service !== null ? [$service] : $target->services()->pluck('service_type')->all();
+        $missing = array_values(array_filter($needed, fn ($s) => !$admin->canUseService($s)));
+        if ($missing !== []) {
+            return $fail('admin_id', 'Admin huyo hana huduma ya ' . implode(', ', $missing) . '. / That admin does not run: ' . implode(', ', $missing) . '.');
+        }
+
+        $oldHead = $target->created_by ? User::query()->find($target->created_by, ['id', 'name', 'email']) : null;
+        $before = ['created_by' => $target->created_by, 'service_types' => $target->services()->pluck('service_type')->all()];
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($target, $admin, $service, $auth) {
+            $target->created_by = $admin->id;
+            if ($service !== null) {
+                $this->syncServiceTypes($target, [$service]);
+                $target->service_type = $service;
+            }
+            $target->save();
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('tenancy_reparent_log')) {
+                \Illuminate\Support\Facades\DB::table('tenancy_reparent_log')->insert([
+                    'user_id' => $target->id,
+                    'old_created_by' => $before['created_by'] ?? null,
+                    'new_created_by' => $admin->id,
+                    'reason' => 'placed under an admin by super admin ' . $auth->email,
+                    'created_at' => now(),
+                ]);
+            }
+            // They sign in again, so the app loads the new business.
+            $target->tokens()->delete();
+        });
+
+        $target->refresh();
+        $after = ['created_by' => $target->created_by, 'service_types' => $target->services()->pluck('service_type')->all()];
+        $this->audit->record(
+            $request, 'user', null, 'assigned_to_admin', $before, $after,
+            "{$auth->name} placed \"{$target->name}\" ({$target->email}) under admin \"{$admin->name}\" ({$admin->email})"
+            . ($oldHead ? ", from \"{$oldHead->name}\"" : '') . '.',
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Amewekwa chini ya admin. Ataingia tena ili kuona biashara mpya. / Placed under the admin. They sign in again to see the new business.',
+            'data' => ['user' => $this->userPayload($target), 'changed' => true, 'admin' => ['id' => $admin->id, 'name' => $admin->name, 'email' => $admin->email]],
+        ]);
+    }
+
     // Reset password to provided value
     #[OA\Post(
         path: '/admin/users/{id}/reset-password',

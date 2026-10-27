@@ -151,6 +151,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
         Route::post('', [\App\Http\Controllers\API\UserManagementController::class, 'store']);
         Route::put('{id}', [\App\Http\Controllers\API\UserManagementController::class, 'update']);
         Route::put('{id}/services', [\App\Http\Controllers\API\UserManagementController::class, 'bindServices']); // super_admin only
+        Route::put('{id}/assign-admin', [\App\Http\Controllers\API\UserManagementController::class, 'assignToAdmin']); // super_admin only
         Route::delete('{id}', [\App\Http\Controllers\API\UserManagementController::class, 'destroy']);
         Route::post('{id}/reset-password', [\App\Http\Controllers\API\UserManagementController::class, 'resetPassword']);
     });

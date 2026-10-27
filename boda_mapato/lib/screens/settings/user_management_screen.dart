@@ -11,7 +11,10 @@ import '../../utils/server_message.dart';
 
 // ignore_for_file: use_string_buffers, use_if_null_to_convert_nulls_to_bools, avoid_catches_without_on_clauses, control_flow_in_finally
 class UserManagementScreen extends StatefulWidget {
-  const UserManagementScreen({super.key});
+  const UserManagementScreen({super.key, this.api});
+
+  /// For tests: the server calls come from here instead of the network.
+  final ApiService? api;
 
   @override
   State<UserManagementScreen> createState() => _UserManagementScreenState();
@@ -19,7 +22,7 @@ class UserManagementScreen extends StatefulWidget {
 
 class _UserManagementScreenState extends State<UserManagementScreen> {
   final LocalizationService _loc = LocalizationService.instance;
-  final ApiService _api = ApiService();
+  late final ApiService _api = widget.api ?? ApiService();
 
   bool _loading = true;
   bool _creating = false;
@@ -585,6 +588,26 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   await _editServiceBindings(user);
                 },
               ),
+              // Super admin only: put a staff member under the admin of a business (they then work in that business).
+              if (isSuperAdmin && _canBePlaced(user)) ...<Widget>[
+                const Divider(height: 1, color: Colors.white24),
+                ListTile(
+                  key: const Key('assign_admin_action'),
+                  leading: const Icon(Icons.supervisor_account_outlined, color: Colors.amberAccent),
+                  title: Text(
+                    _loc.isSwahili ? 'Weka chini ya admin' : 'Place under an admin',
+                    style: const TextStyle(color: Colors.amberAccent),
+                  ),
+                  subtitle: Text(
+                    _loc.isSwahili ? 'Ajiunge na biashara ya admin huyo' : "They join that admin's business",
+                    style: const TextStyle(color: ThemeConstants.textSecondary, fontSize: 11),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _assignToAdmin(user);
+                  },
+                ),
+              ],
               const Divider(height: 1, color: Colors.white24),
               ListTile(
                 leading: const Icon(Icons.security, color: Colors.green),
@@ -841,6 +864,98 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       if (mounted) {
         ThemeConstants.showSuccessSnackBar(
             context, _loc.isSwahili ? 'Jukumu limesasishwa' : 'Role updated successfully');
+      }
+    } catch (e) {
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
+    }
+  }
+
+  static const List<String> _adminRoles = <String>['admin', 'administrator', 'landlord'];
+
+  /// Staff can be placed under an admin; owners, super admins and outside parties (driver, tenant, vendor) cannot.
+  bool _canBePlaced(final Map<String, dynamic> user) {
+    final String role = (user['role'] ?? '').toString().toLowerCase();
+
+    return role != 'super_admin' && !_adminRoles.contains(role) && !const <String>['driver', 'tenant', 'vendor'].contains(role);
+  }
+
+  /// Super admin: choose the business admin a staff member joins (and, if wanted, the one service they work in).
+  Future<void> _assignToAdmin(final Map<String, dynamic> user) async {
+    final String userId = (user['id'] ?? user['user_id'] ?? '').toString();
+    final List<Map<String, dynamic>> admins = _users
+        .where((Map<String, dynamic> u) => _adminRoles.contains((u['role'] ?? '').toString().toLowerCase()) && (u['is_active'] == true || u['is_active'] == 1))
+        .toList();
+    if (admins.isEmpty) {
+      ThemeConstants.showErrorSnackBar(context, _loc.isSwahili ? 'Hakuna admin wa biashara.' : 'There is no business admin.');
+      return;
+    }
+    String? adminId;
+    String? service;
+    final bool sw = _loc.isSwahili;
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => StatefulBuilder(
+        builder: (BuildContext context, void Function(void Function()) setDialogState) => AlertDialog(
+          backgroundColor: ThemeConstants.primaryBlue,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(sw ? 'Weka ${user['name']} chini ya admin' : 'Place ${user['name']} under an admin', style: const TextStyle(color: ThemeConstants.textPrimary, fontSize: 16)),
+          content: SizedBox(
+            width: 320,
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+                Text(
+                  sw
+                      ? 'Atafanya kazi kwenye biashara ya admin utakayemchagua na ataona data zake tu, si za biashara yake ya sasa. Ataingia tena ili kuona mabadiliko.'
+                      : "They will work in the chosen admin's business and see only its data, not their current business. They sign in again to see the change.",
+                  style: const TextStyle(color: ThemeConstants.textSecondary, fontSize: 12),
+                ),
+                const SizedBox(height: 10),
+                for (final Map<String, dynamic> a in admins)
+                  RadioListTile<String>(
+                    key: Key('admin_${a['id']}'),
+                    dense: true,
+                    value: a['id'].toString(),
+                    groupValue: adminId,
+                    activeColor: ThemeConstants.primaryOrange,
+                    title: Text('${a['name']}', style: const TextStyle(color: Colors.white)),
+                    subtitle: Text('${a['email'] ?? ''}', style: const TextStyle(color: ThemeConstants.textSecondary, fontSize: 11)),
+                    onChanged: (String? v) => setDialogState(() => adminId = v),
+                  ),
+                const SizedBox(height: 6),
+                Text(sw ? 'Huduma atakayofanyia kazi (si lazima)' : 'The service they work in (optional)', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                Wrap(spacing: 8, children: <Widget>[
+                  for (final String s in const <String>['salon', 'inventory', 'transport', 'rental'])
+                    ChoiceChip(
+                      key: Key('service_$s'),
+                      label: Text(s),
+                      selected: service == s,
+                      onSelected: (bool on) => setDialogState(() => service = on ? s : null),
+                    ),
+                ]),
+              ]),
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(_loc.translate('no'), style: const TextStyle(color: ThemeConstants.textSecondary))),
+            TextButton(
+              key: const Key('assign_admin_confirm'),
+              onPressed: adminId == null ? null : () => Navigator.pop(ctx, true),
+              child: Text(sw ? 'Weka' : 'Place', style: const TextStyle(color: ThemeConstants.primaryOrange)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || adminId == null) return;
+
+    try {
+      final Map<String, dynamic> res = await _api.assignUserToAdmin(userId: userId, adminId: adminId!, service: service);
+      await _loadMyUsers();
+      if (mounted) {
+        // The server answers "Kiswahili / English": show the half of the language in use.
+        final String msg = '${res['message'] ?? ''}';
+        final List<String> halves = msg.split(' / ');
+        ThemeConstants.showSuccessSnackBar(context, msg.isEmpty ? (sw ? 'Amewekwa chini ya admin' : 'Placed under the admin') : (halves.length == 2 ? (sw ? halves.first : halves.last) : msg));
       }
     } catch (e) {
       if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));

@@ -1156,6 +1156,17 @@ class ApiService {
     int perPage = 15,
   }) async {
     final queryParams = {
+  /// Super admin: place a staff member under a business admin (they join that business). [service] limits them to one service.
+  Future<Map<String, dynamic>> assignUserToAdmin({
+    required final String userId,
+    required final String adminId,
+    final String? service,
+  }) async =>
+      _put('/admin/users/$userId/assign-admin', <String, dynamic>{
+        'admin_id': adminId,
+        if (service != null) 'service': service,
+      });
+
       'page': page.toString(),
       'per_page': perPage.toString(),
       if (search != null && search.isNotEmpty) 'search': search,
