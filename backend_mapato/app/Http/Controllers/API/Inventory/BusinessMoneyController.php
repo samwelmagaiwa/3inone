@@ -105,7 +105,7 @@ class BusinessMoneyController extends Controller
     #[OA\Get(path: '/inventory/monthly-report', summary: 'A month in full: profit, stock, debts, capital, spending, comparison and target', security: [['bearerAuth' => []]], tags: ['Inventory / Money'], parameters: [new OA\Parameter(name: 'month', in: 'query', schema: new OA\Schema(type: 'string'))], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function report(Request $request): JsonResponse
     {
-        return response()->json(['data' => MonthlyReport::build($this->month($request))]);
+        return response()->json(['data' => MonthlyReport::build($this->month($request), \App\Support\Salon\SalonBranch::selected($request))]);
     }
 
     #[OA\Put(path: '/inventory/monthly-target', summary: 'Set (or clear, with 0) the profit target of a month', security: [['bearerAuth' => []]], tags: ['Inventory / Money'], responses: [new OA\Response(response: 200, description: 'Success')])]

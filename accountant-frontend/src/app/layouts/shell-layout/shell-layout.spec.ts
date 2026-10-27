@@ -22,7 +22,7 @@ const nav = (el: HTMLElement) => Array.from(el.querySelectorAll('.sidebar-nav a.
 describe('the frame', () => {
   it('shows only the pages this person\'s rights open, in the template\'s sidebar', async () => {
     const { el } = await open();
-    expect(nav(el)).toEqual(['This month', 'Goods by branch', 'Sales', 'Customers & credit', 'Debts', 'Expenses']);
+    expect(nav(el)).toEqual(['This month', 'Goods by branch', 'Sales by branch', 'Sales', 'Customers & credit', 'Debts', 'Expenses']);
     expect(el.querySelector('aside.sidebar')).not.toBeNull();
   });
 
@@ -103,7 +103,7 @@ describe('the frame', () => {
     both.h.http.expectOne(`${environment.apiUrl}/inventory/notifications`).flush({ data: [], meta: { unread_count: 0 } });
     await settle(both.fixture);
     expect(both.h.auth.service()).toBe('salon');
-    expect(nav(both.el)).toEqual(['Goods by branch', 'Sales', 'Expenses']);
+    expect(nav(both.el)).toEqual(['Goods by branch', 'Sales by branch', 'Sales', 'Expenses']);
     expect(both.navigate).toHaveBeenCalledWith(['/sales']);
   });
 
@@ -113,7 +113,7 @@ describe('the frame', () => {
     await settle(fixture);
 
     expect(h.i18n.lang()).toBe('sw');
-    expect(nav(el)).toEqual(['Mwezi huu', 'Bidhaa kwa tawi', 'Mauzo', 'Wateja na mikopo', 'Madeni', 'Matumizi']);
+    expect(nav(el)).toEqual(['Mwezi huu', 'Bidhaa kwa tawi', 'Mauzo kwa tawi', 'Mauzo', 'Wateja na mikopo', 'Madeni', 'Matumizi']);
     expect(document.documentElement.lang).toBe('sw');
   });
 

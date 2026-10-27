@@ -1,0 +1,35 @@
+<!-- Staff by branch -->
+@for (k of [motion.tick()]; track k) {
+<div class="space-y-5 animate-fade-in-up">
+
+  <div class="page-header-card">
+    <h1 class="text-slate-900 font-black text-xl tracking-tight">{{ i18n.t('bt.title') }}</h1>
+    <p class="text-slate-500 text-sm mt-0.5">{{ i18n.t('bt.sub') }}</p>
+  </div>
+
+  @if (loading() && !rows().length) {
+    <div class="skeleton-box" style="height: 120px; border-radius: 14px;"></div>
+  } @else if (error(); as message) {
+    <div class="section-card p-8 text-center space-y-3" role="alert">
+      <p class="text-slate-500 text-sm">{{ message }}</p>
+      <button type="button" class="btn-primary" (click)="load()">{{ i18n.t('common.retry') }}</button>
+    </div>
+  } @else {
+    <section class="section-card overflow-hidden">
+      @if (!branches().length) { <p class="px-5 py-3 text-sm font-semibold text-amber-600" data-testid="bt-nobranches">{{ i18n.t('bt.nobranches') }}</p> }
+      @for (m of rows(); track m.staff_id) {
+        <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-100 last:border-b-0" [attr.data-testid]="'bt-row-' + m.staff_id">
+          <div class="min-w-0">
+            <p class="font-black text-slate-900">{{ m.name }}</p>
+            <p class="text-xs font-semibold text-slate-400">{{ m.role }}</p>
+          </div>
+          <select class="modal-input w-auto" [attr.aria-label]="m.name" (change)="place(m, $any($event.target).value)" [attr.data-testid]="'bt-select-' + m.staff_id">
+            <option value="" [selected]="m.branch_id === null">{{ i18n.t('bt.none') }}</option>
+            @for (b of branches(); track b.id) { <option [value]="b.id" [selected]="m.branch_id === b.id">{{ b.name }}</option> }
+          </select>
+        </div>
+      }
+    </section>
+  }
+</div>
+}

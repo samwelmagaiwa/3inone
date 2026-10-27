@@ -24,6 +24,7 @@ import 'notifications/approval_notifications_screen.dart';
 import 'reports/profit_by_product_screen.dart';
 import 'hubs/salon_finance_hub_screen.dart';
 import 'salon/branch_stock_screen.dart';
+import 'salon/branch_sales_screen.dart';
 import 'salon/branches_screen.dart';
 import 'salon/salon_input.dart';
 import 'salon/equipment_screen.dart';
@@ -194,6 +195,14 @@ List<_InvMenuEntry> _invEntries(LocalizationService loc,
               color: const Color(0xFF0EA5E9),
               pageBuilder: () => const BranchesScreen(),
               visible: (UserPermissions p) => p.has('inv_manage_settings'),
+            ),
+            _InvMenuEntry(
+              key: 'branch_sales',
+              staticTitle: loc.isSwahili ? 'Mauzo kwa tawi na mtu' : 'Sales by branch and person',
+              icon: Icons.leaderboard_outlined,
+              color: const Color(0xFF22C55E),
+              pageBuilder: () => const BranchSalesScreen(),
+              visible: (UserPermissions p) => p.has('inv_view_reports'),
             ),
             // 7d — Ask the business: AI answers from what this person's rights allow
             _InvMenuEntry(

@@ -53,7 +53,7 @@ final class MonthlyFigures
      *
      * @return array<string, mixed>
      */
-    public static function for(string $month, ?int $throughDay = null): array
+    public static function for(string $month, ?int $throughDay = null, ?int $branch = null): array
     {
         [$first, $last] = self::bounds($month);
         $end = $throughDay === null ? $last->copy() : $first->copy()->addDays(max(1, min($throughDay, $first->daysInMonth)) - 1);
@@ -62,17 +62,20 @@ final class MonthlyFigures
 
         $sales = fn () => DB::table('inventory_sales as s')
             ->whereNull('s.cancelled_at')->where('s.payment_status', '!=', 'cancelled')
-            ->whereBetween('s.created_at', [$fromUtc, $toUtc]);
+            ->whereBetween('s.created_at', [$fromUtc, $toUtc])
+            ->when($branch !== null, fn ($q) => $q->where('s.branch_id', $branch));
 
         $revenue = (float) $sales()->sum('s.total');
         $count = (int) $sales()->count();
         $cogs = (float) DB::table('inventory_sale_items as si')->join('inventory_sales as s', 's.id', '=', 'si.sale_id')
             ->whereNull('s.cancelled_at')->where('s.payment_status', '!=', 'cancelled')
             ->whereBetween('s.created_at', [$fromUtc, $toUtc])
+            ->when($branch !== null, fn ($q) => $q->where('s.branch_id', $branch))
             ->sum(DB::raw('si.unit_cost_snapshot * si.quantity'));
 
         $expenseQuery = fn () => DB::table('inventory_expenses')->whereBetween('expense_date', [$first->toDateString(), $end->toDateString()])
-            ->when(Schema::hasColumn('inventory_expenses', 'status'), fn ($q) => $q->where('status', 'approved'));
+            ->when(Schema::hasColumn('inventory_expenses', 'status'), fn ($q) => $q->where('status', 'approved'))
+            ->when($branch !== null, fn ($q) => $q->where('branch_id', $branch));
         $hasPersonal = Schema::hasColumn('inventory_expenses', 'is_personal');
         $business = $expenseQuery()->when($hasPersonal, fn ($q) => $q->where('is_personal', false));
         $byCategory = (clone $business)->groupBy('category')->orderByRaw('SUM(amount) DESC')
@@ -80,7 +83,8 @@ final class MonthlyFigures
         $expenses = round((float) (clone $business)->sum('amount'), 2);
         $personal = $hasPersonal ? round((float) $expenseQuery()->where('is_personal', true)->sum('amount'), 2) : 0.0;
 
-        $writeOffs = Schema::hasTable('inventory_write_offs')
+        // A write-off belongs to the whole business, not to one branch.
+        $writeOffs = $branch === null && Schema::hasTable('inventory_write_offs')
             ? round((float) DB::table('inventory_write_offs')->where('status', 'approved')->whereBetween('approved_at', [$fromUtc, $toUtc])->sum('cost_value'), 2)
             : 0.0;
 

@@ -118,9 +118,16 @@ class ReportController extends Controller
         ]);
     }
 
+    /** The branch being looked at (X-Branch), or null for the whole business. */
+    private function branch(): ?int
+    {
+        return \App\Support\Salon\SalonBranch::selected();
+    }
+
     private function dailySales(string $from, string $to): array
     {
         $rows = DB::table('inventory_sales')
+            ->when($this->branch() !== null, fn ($q) => $q->where('branch_id', $this->branch()))
             ->where('created_at', '>=', $from . ' 00:00:00')
             ->where('created_at', '<=', $to   . ' 23:59:59')
             ->groupBy(DB::raw('DATE(created_at)'))
@@ -147,6 +154,7 @@ class ReportController extends Controller
         $rows = DB::table('inventory_sale_items as i')
             ->join('inventory_sales as s', 's.id', '=', 'i.sale_id')
             ->join('inventory_products as p', 'p.id', '=', 'i.product_id')
+            ->when($this->branch() !== null, fn ($q) => $q->where('s.branch_id', $this->branch()))
             ->leftJoin('inventory_customers as c', 'c.id', '=', 's.customer_id')
             ->where('s.created_at', '>=', $from . ' 00:00:00')
             ->where('s.created_at', '<=', $to   . ' 23:59:59')
@@ -171,6 +179,7 @@ class ReportController extends Controller
     {
         $rows = DB::table('inventory_sale_items as i')
             ->join('inventory_sales as s', 's.id', '=', 'i.sale_id')
+            ->when($this->branch() !== null, fn ($q) => $q->where('s.branch_id', $this->branch()))
             ->join('inventory_products as p', 'p.id', '=', 'i.product_id')
             ->where('s.created_at', '>=', $from . ' 00:00:00')
             ->where('s.created_at', '<=', $to   . ' 23:59:59')
@@ -299,6 +308,7 @@ class ReportController extends Controller
     {
         $rows = DB::table('inventory_sale_payments as p')
             ->join('inventory_sales as s', 's.id', '=', 'p.sale_id')
+            ->when($this->branch() !== null, fn ($q) => $q->where('s.branch_id', $this->branch()))
             ->leftJoin('inventory_customers as c', 'c.id', '=', 's.customer_id')
             ->where('p.paid_at', '>=', $from . ' 00:00:00')
             ->where('p.paid_at', '<=', $to   . ' 23:59:59')

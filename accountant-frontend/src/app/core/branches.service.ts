@@ -49,6 +49,30 @@ export interface BranchTransfer {
   at: string;
 }
 
+export interface BranchTeamMember {
+  staff_id: string;
+  name: string;
+  role: string;
+  branch_id: number | null;
+  branch: string | null;
+}
+
+export interface SalesCell {
+  sales_count: number;
+  sales: number;
+  paid: number;
+  /** null when the server does not let this person see profit. */
+  profit: number | null;
+}
+
+export interface BranchSales {
+  from: string;
+  to: string;
+  by_branch: (SalesCell & { branch_id: number | null; name: string | null; staff: (SalesCell & { staff_id: string; name: string })[] })[];
+  by_staff: (SalesCell & { staff_id: string; name: string; branches: (SalesCell & { branch_id: number | null; name: string | null })[] })[];
+  total: { sales_count: number; sales: number; paid: number };
+}
+
 function read(): number | null {
   try {
     const v = localStorage.getItem(KEY);
@@ -101,6 +125,18 @@ export class BranchesService {
 
   remove(id: number): Observable<void> {
     return this.http.delete(`${API}/inventory/branches/${id}`).pipe(map(() => undefined));
+  }
+
+  team(): Observable<BranchTeamMember[]> {
+    return this.http.get<{ data: BranchTeamMember[] }>(`${API}/inventory/branch-team`).pipe(map((r) => r.data ?? []));
+  }
+
+  assign(staffId: string, branchId: number | null): Observable<void> {
+    return this.http.put(`${API}/inventory/branch-team/${staffId}`, { branch_id: branchId }).pipe(map(() => undefined));
+  }
+
+  branchSales(from: string, to: string): Observable<BranchSales> {
+    return this.http.get<{ data: BranchSales }>(`${API}/inventory/branch-sales`, { params: { from, to } }).pipe(map((r) => r.data));
   }
 
   stock(): Observable<BranchStock> {

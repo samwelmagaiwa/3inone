@@ -162,7 +162,7 @@ describe('pages by rights', () => {
 
   it('an accountant with the usual rights gets everything of the shop', () => {
     const { auth } = configure({});
-    expect(keys(auth)).toEqual(['dashboard', 'sales', 'credit', 'debts', 'expenses', 'branch_stock']);
+    expect(keys(auth)).toEqual(['dashboard', 'sales', 'credit', 'debts', 'expenses', 'branch_stock', 'branch_sales']);
     expect(homePath(auth)).toBe('/dashboard');
   });
 
@@ -175,7 +175,7 @@ describe('pages by rights', () => {
   it('shop-only pages are not offered while working in the salon', () => {
     const { auth } = configure({ services: ['inventory', 'salon'] });
     auth.switchService('salon');
-    expect(keys(auth)).toEqual(['sales', 'expenses', 'branch_stock']);
+    expect(keys(auth)).toEqual(['sales', 'expenses', 'branch_stock', 'branch_sales']);
   });
 
   it('the AI assistant is open to everyone signed in, even with no rights, but it is never where they land', () => {
@@ -199,13 +199,13 @@ describe('pages by rights', () => {
 
   it('an accountant gets the books: this month, products (to read), sales, debts and expenses', () => {
     const { auth } = configure({ role: 'accountant', permissions: ['inv_view_products', 'inv_create_sales', 'inv_manage_sales', 'inv_view_credit', 'inv_view_cash', 'inv_view_reports', 'inv_view_expenses', 'inv_manage_expenses', 'inv_view_reminders'] });
-    expect(keys(auth)).toEqual(['dashboard', 'products', 'sales', 'credit', 'debts', 'expenses', 'branch_stock']);
+    expect(keys(auth)).toEqual(['dashboard', 'products', 'sales', 'credit', 'debts', 'expenses', 'branch_stock', 'branch_sales']);
     expect(homePath(auth)).toBe('/dashboard');
   });
 
   it('seeing reports or managing sales without the right to sell does not open the sales page (the server would refuse it)', () => {
     const { auth } = configure({ permissions: ['inv_view_reports', 'inv_manage_sales'] });
-    expect(keys(auth)).toEqual(['dashboard', 'branch_stock']);
+    expect(keys(auth)).toEqual(['dashboard', 'branch_stock', 'branch_sales']);
   });
 
   it('no rights at all lands on the welcome page', () => {

@@ -332,4 +332,85 @@ class ShopGrowthTest extends TestCase
             'items' => [['product_id' => $soda, 'quantity' => 1, 'unit_price' => -5]],
         ])->assertStatus(422);
     }
+
+    // ------------------------------------------------------------------ branches in the reports, staff by branch
+
+    private function twoBranches(User $owner): array
+    {
+        return [
+            (int) $this->api($owner, 'POST', '/api/inventory/branches', ['name' => 'Kariakoo'])->json('data.id'),
+            (int) $this->api($owner, 'POST', '/api/inventory/branches', ['name' => 'Mbagala'])->json('data.id'),
+        ];
+    }
+
+    public function test_the_monthly_report_and_detailed_reports_follow_the_chosen_branch(): void
+    {
+        $owner = $this->shop();
+        $soda = $this->product($owner, 'Soda');
+        [$k, $m] = $this->twoBranches($owner);
+        $this->sell($owner, $soda, 1, null, 'paid', null, null, ['X-Branch' => (string) $k]);
+        $this->sell($owner, $soda, 3, null, 'paid', null, null, ['X-Branch' => (string) $m]);
+
+        $sales = fn (array $h) => $this->api($owner, 'GET', '/api/inventory/monthly-report?month=2026-11', [], $h)->assertOk()->json('data.figures.sales');
+        $this->assertEquals(4000, $sales([]), 'no branch chosen = the whole business');
+        $this->assertEquals(1000, $sales(['X-Branch' => (string) $k]));
+        $this->assertEquals(3000, $sales(['X-Branch' => (string) $m]));
+
+        $daily = fn (array $h) => $this->api($owner, 'GET', '/api/inventory/reports/daily_sales?from=2026-11-01&to=2026-11-30', [], $h)->assertOk()->json('data.meta.total');
+        $this->assertEquals(4000, $daily([]));
+        $this->assertEquals(3000, $daily(['X-Branch' => (string) $m]));
+    }
+
+    public function test_the_owner_places_a_person_in_a_branch_and_their_sales_follow_it(): void
+    {
+        $owner = $this->shop();
+        $officer = $this->officer($owner);
+        $soda = $this->product($owner, 'Soda');
+        [$k, $m] = $this->twoBranches($owner);
+
+        $this->api($owner, 'PUT', "/api/inventory/branch-team/{$officer->id}", ['branch_id' => $m])->assertOk();
+        $row = collect($this->api($owner, 'GET', '/api/inventory/branch-team')->assertOk()->json('data'))->firstWhere('staff_id', (string) $officer->id);
+        $this->assertSame($m, $row['branch_id']);
+        $this->assertSame('Mbagala', $row['branch']);
+
+        $id = $this->sell($officer, $soda, 1);
+        $this->assertSame($m, (int) TenantContext::runAs($owner, fn () => DB::table('inventory_sales')->where('id', $id)->value('branch_id')), 'no branch chosen: the home branch is stamped');
+
+        $this->api($owner, 'PUT', "/api/inventory/branch-team/{$officer->id}", ['branch_id' => null])->assertOk();
+        $this->assertNull(collect($this->api($owner, 'GET', '/api/inventory/branch-team')->json('data'))->firstWhere('staff_id', (string) $officer->id)['branch_id']);
+
+        $this->api($owner, 'PUT', "/api/inventory/branch-team/{$officer->id}", ['branch_id' => 99999])->assertStatus(422);
+        $this->api($officer, 'PUT', "/api/inventory/branch-team/{$officer->id}", ['branch_id' => $k])->assertForbidden();
+        $this->api($officer, 'GET', '/api/inventory/branch-team')->assertForbidden();
+
+        $other = $this->shop('Other Shop');
+        $this->api($other, 'PUT', "/api/inventory/branch-team/{$officer->id}", ['branch_id' => null])->assertStatus(422);
+    }
+
+    public function test_sales_are_shown_per_branch_and_per_person_with_profit_only_for_those_who_may_see_it(): void
+    {
+        $owner = $this->shop();
+        $officer = $this->officer($owner);
+        $soda = $this->product($owner, 'Soda');
+        [$k, $m] = $this->twoBranches($owner);
+        $this->sell($owner, $soda, 2, null, 'paid', null, null, ['X-Branch' => (string) $k]);     // 2,000 owner, Kariakoo
+        $this->sell($officer, $soda, 3, null, 'paid', null, null, ['X-Branch' => (string) $m]);   // 3,000 officer, Mbagala
+        $this->sell($officer, $soda, 1, $this->customer($owner, 'Debtor', '0711000009'), 'debt', null, null, ['X-Branch' => (string) $k]);   // 1,000 officer, Kariakoo, unpaid
+
+        $r = $this->api($owner, 'GET', '/api/inventory/branch-sales?from=2026-11-01&to=2026-11-30')->assertOk()->json('data');
+
+        $this->assertEquals(6000, $r['total']['sales']);
+        $byBranch = collect($r['by_branch'])->keyBy('name');
+        $this->assertEquals(3000, $byBranch['Kariakoo']['sales']);
+        $this->assertEquals(2, $byBranch['Kariakoo']['sales_count']);
+        $this->assertEquals(1200, $byBranch['Kariakoo']['profit'], '3000 sold, 3 sodas at 600 cost');
+        $this->assertEquals(3000, $byBranch['Mbagala']['sales']);
+        $byStaff = collect($r['by_staff'])->keyBy('staff_id');
+        $this->assertEquals(2000, $byStaff[(string) $owner->id]['sales']);
+        $this->assertEquals(4000, $byStaff[(string) $officer->id]['sales']);
+        $this->assertEquals(3000, $byStaff[(string) $officer->id]['paid']);
+        $this->assertCount(2, $byStaff[(string) $officer->id]['branches']);
+
+        $this->api($owner, 'GET', '/api/inventory/branch-sales?from=2026-12-01&to=2026-12-31')->assertOk()->assertJsonPath('data.by_branch', []);
+    }
 }

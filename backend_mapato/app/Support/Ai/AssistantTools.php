@@ -226,7 +226,7 @@ final class AssistantTools
     private static function businessReport(array $args): array
     {
         $month = self::month($args);
-        $r = MonthlyReport::build($month);
+        $r = MonthlyReport::build($month, \App\Support\Salon\SalonBranch::selected());
 
         return ['data' => [
             'month' => $month, 'currency' => 'TSh', 'figures' => $r['figures'], 'compared_with' => $r['previous']['month'],
@@ -368,7 +368,7 @@ final class AssistantTools
     private static function expensesSummary(array $args): array
     {
         $month = self::month($args);
-        $f = MonthlyFigures::for($month);
+        $f = MonthlyFigures::for($month, null, \App\Support\Salon\SalonBranch::selected());
 
         return ['data' => ['month' => $month, 'currency' => 'TSh', 'total' => $f['expenses'], 'by_kind' => $f['expenses_by_category']], 'card' => ['type' => 'rows', 'title' => 'Expenses ' . $month, 'rows' => array_map(
             fn ($c) => ['title' => (string) $c['category'], 'value' => self::tsh((float) $c['total'])], $f['expenses_by_category']

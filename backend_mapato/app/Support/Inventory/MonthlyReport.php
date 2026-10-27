@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Schema;
 final class MonthlyReport
 {
     /** @return array<string, mixed> */
-    public static function build(string $month): array
+    public static function build(string $month, ?int $branch = null): array
     {
         $current = MonthlyFigures::currentMonth();
         $isCurrent = $month === $current;
@@ -22,12 +22,12 @@ final class MonthlyReport
         [$first, $last] = MonthlyFigures::bounds($month);
         $today = Carbon::now(MonthlyFigures::TIMEZONE);
 
-        $figures = MonthlyFigures::for($month);
+        $figures = MonthlyFigures::for($month, null, $branch);
         $prevMonth = MonthlyFigures::previousMonth($month);
-        $prevFull = MonthlyFigures::for($prevMonth);
+        $prevFull = MonthlyFigures::for($prevMonth, null, $branch);
         // A month in progress is compared with the same days of the month before, so it is not "down" only because it is young.
         $elapsed = $isCurrent ? $today->day : null;
-        $prevSame = $isCurrent ? MonthlyFigures::for($prevMonth, $elapsed) : $prevFull;
+        $prevSame = $isCurrent ? MonthlyFigures::for($prevMonth, $elapsed, $branch) : $prevFull;
 
         $compare = [
             'sales' => MonthlyFigures::compare($figures['sales'], $prevSame['sales']),
@@ -53,6 +53,7 @@ final class MonthlyReport
 
         return [
             'month' => $month,
+            'branch_id' => $branch,
             'is_current' => $isCurrent,
             'is_future' => $isFuture,
             'days_elapsed' => $isCurrent ? $today->day : ($isFuture ? 0 : $first->daysInMonth),
@@ -65,8 +66,8 @@ final class MonthlyReport
             'opening_position' => $opening,
             'capital_change' => $capital,
             'target' => self::target($month, (float) $figures['net_profit'], $isCurrent, $isFuture, $first->daysInMonth, $isCurrent ? $today->day : null),
-            'top_products' => self::topProducts($first, $last),
-            'top_customers' => self::topCustomers($first, $last),
+            'top_products' => self::topProducts($first, $last, 5, $branch),
+            'top_customers' => self::topCustomers($first, $last, 5, $branch),
             'slow_stock' => self::slowStock(),
             'debtors' => self::debtors(),
             'creditors' => OpeningDebts::list(OpeningDebts::PAYABLE)->take(8)->all(),
@@ -113,7 +114,7 @@ final class MonthlyReport
     }
 
     /** @return array<int, array<string, mixed>> */
-    public static function topProducts(Carbon $first, Carbon $last, int $limit = 5): array
+    public static function topProducts(Carbon $first, Carbon $last, int $limit = 5, ?int $branch = null): array
     {
         $from = $first->copy()->startOfDay()->utc()->format('Y-m-d H:i:s');
         $to = $last->copy()->endOfDay()->utc()->format('Y-m-d H:i:s');
@@ -123,6 +124,7 @@ final class MonthlyReport
             ->join('inventory_products as p', 'p.id', '=', 'si.product_id')
             ->whereNull('s.cancelled_at')->where('s.payment_status', '!=', 'cancelled')
             ->whereBetween('s.created_at', [$from, $to])
+            ->when($branch !== null, fn ($q) => $q->where('s.branch_id', $branch))
             ->groupBy('p.id', 'p.name')
             ->orderByRaw('SUM(si.total - si.unit_cost_snapshot * si.quantity) DESC')
             ->limit($limit)
@@ -131,7 +133,7 @@ final class MonthlyReport
     }
 
     /** @return array<int, array<string, mixed>> */
-    public static function topCustomers(Carbon $first, Carbon $last, int $limit = 5): array
+    public static function topCustomers(Carbon $first, Carbon $last, int $limit = 5, ?int $branch = null): array
     {
         $from = $first->copy()->startOfDay()->utc()->format('Y-m-d H:i:s');
         $to = $last->copy()->endOfDay()->utc()->format('Y-m-d H:i:s');
@@ -140,6 +142,7 @@ final class MonthlyReport
             ->join('inventory_customers as c', 'c.id', '=', 's.customer_id')
             ->whereNull('s.cancelled_at')->where('s.payment_status', '!=', 'cancelled')
             ->whereBetween('s.created_at', [$from, $to])
+            ->when($branch !== null, fn ($q) => $q->where('s.branch_id', $branch))
             ->groupBy('c.id', 'c.name')
             ->orderByRaw('SUM(s.total) DESC')
             ->limit($limit)

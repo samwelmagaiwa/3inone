@@ -33,7 +33,8 @@ final class BusinessAdvisor
         $lang = $lang === 'sw' ? 'sw' : 'en';
         $today = now(MonthlyFigures::TIMEZONE)->toDateString();
         $cached = self::cached();
-        $same = $cached !== null && ($cached['date'] ?? null) === $today && ($cached['month'] ?? null) === $month && ($cached['lang'] ?? null) === $lang;
+        $branch = \App\Support\Salon\SalonBranch::selected();
+        $same = $cached !== null && ($cached['branch'] ?? null) === $branch && ($cached['date'] ?? null) === $today && ($cached['month'] ?? null) === $month && ($cached['lang'] ?? null) === $lang;
         $used = $cached !== null && ($cached['date'] ?? null) === $today ? (int) ($cached['count'] ?? 1) : 0;
 
         if ($same && !$refresh) {
@@ -63,7 +64,7 @@ final class BusinessAdvisor
             }
         }
 
-        $entry = ['date' => $today, 'month' => $month, 'lang' => $lang, 'count' => $used + 1, 'items' => $items, 'source' => $source, 'ai_error' => $error, 'created' => now()->toIso8601String(), 'facts' => $facts];
+        $entry = ['branch' => $branch, 'date' => $today, 'month' => $month, 'lang' => $lang, 'count' => $used + 1, 'items' => $items, 'source' => $source, 'ai_error' => $error, 'created' => now()->toIso8601String(), 'facts' => $facts];
         DB::table('inventory_settings')->updateOrInsert(['key' => self::CACHE_KEY], ['value' => json_encode($entry, JSON_UNESCAPED_UNICODE), 'updated_at' => now()]);
 
         return self::present($entry, $used + 1);
@@ -109,7 +110,8 @@ final class BusinessAdvisor
     /** @return array<string, mixed> everything the advice is based on; no phone numbers */
     public static function facts(string $month): array
     {
-        $r = MonthlyReport::build($month);
+        $branch = \App\Support\Salon\SalonBranch::selected();
+        $r = MonthlyReport::build($month, $branch);
         $viewer = TenantContext::viewer();
         $business = $viewer === null ? null : Business::forUser($viewer);
         $prev = $r['previous']['figures'];
@@ -122,6 +124,7 @@ final class BusinessAdvisor
 
         return [
             'business' => $business?->name,
+            'branch' => $branch === null ? null : DB::table('inventory_branches')->where('id', $branch)->value('name'),
             'kind' => $business?->inventory_type,
             'month' => $month,
             'month_in_progress' => $r['is_current'],

@@ -502,6 +502,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('inventory/salon/equipment',           [SalonEquipmentController::class, 'store']);
         Route::match(['put', 'patch'], 'inventory/salon/equipment/{id}', [SalonEquipmentController::class, 'update']);
         Route::delete('inventory/salon/equipment/{id}',    [SalonEquipmentController::class, 'destroy']);
+        Route::get('inventory/branch-team',                [\App\Http\Controllers\API\Inventory\BranchTeamController::class, 'index']);
+        Route::put('inventory/branch-team/{staffId}',      [\App\Http\Controllers\API\Inventory\BranchTeamController::class, 'assign']);
+        Route::get('inventory/branch-sales',               [\App\Http\Controllers\API\Inventory\BranchTeamController::class, 'sales']);
         Route::get('inventory/salon/equipment/{id}/logs',  [SalonEquipmentController::class, 'logs']);
         Route::post('inventory/salon/equipment/{id}/logs', [SalonEquipmentController::class, 'addLog']);
         // Reports as a PDF or a CSV (the owner, managers and accountants: checked in the controller).
