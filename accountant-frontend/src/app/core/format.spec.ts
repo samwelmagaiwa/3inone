@@ -1,4 +1,4 @@
-import { eatDay, eatDateTime, serverDate, dayLabel, dayOf, monthKey, monthName, offline, parseAmount, serverMessage, shiftMonth, shortMoney, tsh } from './format';
+import { eatDay, eatDateTime, serverDate, dayLabel, dayOf, monthKey, monthName, offline, parseAmount, serverMessage, shiftMonth, shortMoney, tsh , localizedName } from './format';
 
 describe('format', () => {
   it('writes money with thousands separators and keeps the sign', () => {
@@ -71,5 +71,15 @@ describe('server times (UTC) shown as Tanzania time', () => {
     expect(eatDateTime('')).toBe('');
     expect(eatDateTime('yesterday')).toBe('');
     expect(serverDate('yesterday')).toBeNull();
+  });
+});
+
+describe('names written "Kiswahili / English"', () => {
+  it('show the half of the language chosen, and any other name as typed', () => {
+    expect(localizedName('Kusuka / Braiding', 'sw')).toBe('Kusuka');
+    expect(localizedName('Kusuka / Braiding', 'en')).toBe('Braiding');
+    expect(localizedName('Soda', 'sw')).toBe('Soda');
+    expect(localizedName('A / B / C', 'en')).toBe('A / B / C');
+    expect(localizedName(null, 'en')).toBe('');
   });
 });

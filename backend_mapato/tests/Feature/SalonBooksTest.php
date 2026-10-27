@@ -187,6 +187,22 @@ class SalonBooksTest extends TestCase
         $this->assertSame([], $this->api($two, 'GET', '/api/inventory/salon/queue')->json('data.queue'));
     }
 
+    public function test_a_salon_starts_with_its_categories_and_brands_once_and_the_owner_may_change_them(): void
+    {
+        $owner = $this->salon();
+        $cats = collect($this->api($owner, 'GET', '/api/inventory/categories')->assertOk()->json('data'))->pluck('name');
+        $this->assertCount(15, $cats);
+        $this->assertTrue($cats->contains('Kusuka / Braiding'));
+        $brands = collect($this->api($owner, 'GET', '/api/inventory/brands')->assertOk()->json('data'))->pluck('name');
+        $this->assertTrue($brands->contains('Darling') && $brands->contains('X-pression'));
+
+        // Deleted by the owner, they do not come back.
+        foreach ($this->api($owner, 'GET', '/api/inventory/categories')->json('data') as $c) {
+            $this->api($owner, 'DELETE', '/api/inventory/categories/' . $c['id'])->assertOk();
+        }
+        $this->assertSame([], $this->api($owner, 'GET', '/api/inventory/categories')->json('data'));
+    }
+
     public function test_ready_made_categories_are_added_once(): void
     {
         $owner = $this->salon();

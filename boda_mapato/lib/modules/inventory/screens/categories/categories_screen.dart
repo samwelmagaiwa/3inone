@@ -10,6 +10,7 @@ import '../../models/inv_category.dart';
 import '../../providers/inventory_provider.dart';
 import '../../../../models/user_permissions.dart';
 import 'category_form_screen.dart';
+import '../../../../utils/localized_name.dart';
 
 class InventoryCategoriesScreen extends StatefulWidget {
   const InventoryCategoriesScreen({super.key});
@@ -51,7 +52,7 @@ class _InventoryCategoriesScreenState extends State<InventoryCategoriesScreen> {
             style: ThemeConstants.bodyStyle
                 .copyWith(fontWeight: FontWeight.bold)),
         content: Text(
-          '${loc.translate('delete')} "${c.name}"?\n${c.totalProducts > 0 ? loc.translate('category_has_products_warning') : ""}',
+          '${loc.translate('delete')} "${localizedName(c.name)}"?\n${c.totalProducts > 0 ? loc.translate('category_has_products_warning') : ""}',
           style: ThemeConstants.captionStyle,
         ),
         actions: [
@@ -221,7 +222,7 @@ class _InventoryCategoriesScreenState extends State<InventoryCategoriesScreen> {
         // Name
         SizedBox(
           width: 110.w,
-          child: AutoSizeText(c.name,
+          child: AutoSizeText(localizedName(c.name),
               maxLines: 1,
               style: ThemeConstants.bodyStyle,
               overflow: TextOverflow.ellipsis),

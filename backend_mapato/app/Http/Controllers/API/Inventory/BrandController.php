@@ -38,6 +38,9 @@ class BrandController extends Controller
 
     public function index(Request $request)
     {
+        // A salon starts with its ready-made categories and brands (once; after that they are the owner's to change).
+        \App\Support\Salon\SalonCatalog::ensureSeeded(optional($request->user())->id);
+
         $query = DB::table('inventory_brands as b')
             ->leftJoin('inventory_products as p', 'p.brand_id', '=', 'b.id')
             ->select('b.*', DB::raw('COUNT(p.id) as products_count'))

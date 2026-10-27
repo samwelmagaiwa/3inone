@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 
 import { AuthService } from '../../core/auth.service';
-import { offline, parseAmount, serverMessage, tsh } from '../../core/format';
+import { localizedName, offline, parseAmount, serverMessage, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
 import { ProductsApi } from '../../core/products-api.service';
 import { Named, NamedKind, PriceOption, Product, ProductBody, ProductFilters, ProductPage, ServiceMaterial, StaffMember } from '../../core/products.models';
@@ -211,7 +211,7 @@ export class ProductsPage implements OnInit {
       return [this.i18n.t('prod.service'), p.duration_minutes ? this.i18n.t('prod.minutes', p.duration_minutes) : ''].filter(Boolean).join(' · ');
     }
 
-    return [p.sku, p.category_name, p.brand_name].filter(Boolean).join(' · ');
+    return [p.sku, p.category_name ? this.localized(p.category_name) : null, p.brand_name].filter(Boolean).join(' · ');
   }
 
   // ------------------------------------------------------------------ the product form
@@ -523,6 +523,11 @@ export class ProductsPage implements OnInit {
   }
 
   /** A salon's ready-made categories, named in Swahili and English; the ones already there are not added twice. */
+  /** A category written "Kiswahili / English" shows in the language chosen. */
+  protected localized(name: string): string {
+    return localizedName(name, this.i18n.lang());
+  }
+
   protected async addPresets(): Promise<void> {
     try {
       const r = await firstValueFrom(this.api.categoryPresets());

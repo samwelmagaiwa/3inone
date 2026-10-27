@@ -1,4 +1,16 @@
 /** 45000 -> "TSH 45,000"; negative amounts keep their sign. */
+/**
+ * A name written "Kiswahili / English" shows the half of the language the person uses; any other name shows as typed. The ready-made
+ * salon categories are named this way, and so can any a user adds.
+ */
+export function localizedName(name: string | null | undefined, lang: string): string {
+  const text = name ?? '';
+  const parts = text.split(' / ');
+  if (parts.length !== 2 || !parts[0].trim() || !parts[1].trim()) return text;
+
+  return (lang === 'sw' ? parts[0] : parts[1]).trim();
+}
+
 export function tsh(amount: number): string {
   const digits = Math.abs(Math.round(amount)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return `TSH ${amount < 0 ? '-' : ''}${digits}`;

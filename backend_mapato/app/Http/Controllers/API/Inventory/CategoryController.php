@@ -48,6 +48,9 @@ class CategoryController extends Controller
     )]
     public function index(Request $request)
     {
+        // A salon starts with its ready-made categories and brands (once; after that they are the owner's to change).
+        \App\Support\Salon\SalonCatalog::ensureSeeded(optional($request->user())->id);
+
         $query = DB::table('inventory_categories as c')
             ->leftJoin('inventory_products as p', 'p.category_id', '=', 'c.id')
             ->select('c.*', DB::raw('COUNT(p.id) as products_count'))

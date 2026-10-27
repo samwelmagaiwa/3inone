@@ -23,6 +23,7 @@ import '../widgets/joined_sections.dart';
 import 'product_form_logic.dart';
 import 'product_form_sections.dart';
 import 'product_units_screen.dart';
+import '../../../../utils/localized_name.dart';
 
 class AddEditProductScreen extends StatefulWidget {
   const AddEditProductScreen({super.key, this.product, this.goodsOnly = false});
@@ -1284,7 +1285,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         ...inv.categories.map(
           (InvCategory c) => DropdownMenuItem<int?>(
             value: c.id,
-            child: Text(c.name,
+            child: Text(localizedName(c.name),
                 overflow: TextOverflow.ellipsis,
                 style: ThemeConstants.bodyStyle),
           ),

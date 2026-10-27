@@ -10,6 +10,7 @@ import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../models/inv_category.dart';
 import '../../providers/inventory_provider.dart';
+import '../../../../utils/localized_name.dart';
 
 class CategoryFormScreen extends StatefulWidget {
   const CategoryFormScreen({super.key, this.existing, this.providerOverride});
@@ -131,7 +132,11 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
                           ThemeConstants.invInputDecoration(loc.translate('category_name'))
                               .copyWith(
                         labelText: loc.translate('category_name'),
-                        hintText: 'e.g. Soft Drinks & Sodas',
+                        hintText: loc.isSwahili ? 'mf. Vinywaji baridi / Soft Drinks' : 'e.g. Vinywaji baridi / Soft Drinks',
+                        helperText: loc.isSwahili
+                            ? 'Andika "Kiswahili / English" ili jina lionekane kwa lugha ya mtumiaji.'
+                            : 'Write "Kiswahili / English" so the name shows in each user\'s language.',
+                        helperMaxLines: 2,
                       ),
                       validator: (v) {
                         final val = v?.trim() ?? '';
@@ -150,9 +155,9 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
                           ThemeConstants.invInputDecoration(loc.translate('description'))
                               .copyWith(
                         labelText: '${loc.translate('description')} (${loc.translate('optional')})',
-                        hintText: inv.capabilities.isDepot
-                            ? 'e.g. Carbonated beverages sold in crates or bottles'
-                            : 'e.g. Shirts and trousers in different sizes',
+                        hintText: loc.isSwahili
+                            ? 'mf. Maelezo mafupi ya kundi hili la bidhaa au huduma'
+                            : 'e.g. A short note about this group of goods or services',
                       ),
                       maxLines: 3,
                     ),
@@ -177,7 +182,7 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
                                     c.id != widget.existing!.id)
                                 .map((c) => DropdownMenuItem<int?>(
                                       value: c.id,
-                                      child: AutoSizeText(c.name,
+                                      child: AutoSizeText(localizedName(c.name),
                                           maxLines: 1,
                                           style: const TextStyle(
                                               color: Colors.white)),
