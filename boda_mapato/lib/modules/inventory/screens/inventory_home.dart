@@ -14,6 +14,7 @@ import 'credit/credit_screen.dart';
 import 'assistant/assistant_screen.dart';
 import 'money/debts_screen.dart';
 import 'money/monthly_report_screen.dart';
+import '../../../screens/settings/settings_screen.dart';
 import 'settings/depot_settings_screen.dart';
 import 'hubs/products_hub_screen.dart';
 import 'hubs/stock_hub_screen.dart';
@@ -38,7 +39,6 @@ import 'hubs/salon_team_hub_screen.dart';
 import 'salon/appointments_screen.dart';
 import 'salon/rebook_screen.dart';
 import 'salon/stylists_screen.dart';
-import '../providers/depot_provider.dart';
 import '../providers/depot_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/notifications_provider.dart';
@@ -219,8 +219,8 @@ List<_InvMenuEntry> _invEntries(LocalizationService loc,
               titleKey: 'settings',
               icon: Icons.settings_outlined,
               color: const Color(0xFF64748B),
-              pageBuilder: () => const DepotSettingsScreen(),
-              visible: (UserPermissions p) => p.has('inv_manage_settings'),
+              pageBuilder: () => const _SettingsGate(),
+              visible: null,
             ),
           ];
 
@@ -403,10 +403,24 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       titleKey: 'settings',
       icon: Icons.settings_outlined,
       color: const Color(0xFF64748B),
-      pageBuilder: () => const DepotSettingsScreen(),
-      visible: (UserPermissions p) => p.has('inv_manage_settings'),
+      pageBuilder: () => const _SettingsGate(),
+      visible: null,
     ),
   ];
+}
+
+/// What the Settings button opens: the business settings for whoever may change them, and for everyone else (a sales
+/// officer, say) their own account page (language, password, sign out). The button is always there, so it never lands
+/// on another section.
+class _SettingsGate extends StatelessWidget {
+  const _SettingsGate();
+
+  @override
+  Widget build(BuildContext context) {
+    final bool manage = context.select<AuthProvider, bool>((AuthProvider a) => a.permissions.has('inv_manage_settings'));
+
+    return manage ? const DepotSettingsScreen() : const SettingsScreen();
+  }
 }
 
 /// The five buttons of the inventory footer, left to right.
@@ -523,9 +537,39 @@ class _InventoryHomeState extends State<InventoryHome> {
       // The screens opened on top of this home (the product form) also need to know whether it is a salon's.
       inv.setSalonMode(widget.salon);
       context.read<DepotProvider>().resetForNewContext();
-      inv.fetchCapabilities();
+      inv.fetchCapabilities().then((_) => _askKindIfUnset());
       if (widget.salon) inv.fetchSalonStaff();
     });
+  }
+
+  static bool _kindAsked = false;
+
+  /// A business that never said what kind it is (retail, wholesale, mixed or depot) still works, but is spoken to in general
+  /// words and shows everything a depot would. Its owner is asked once per session to choose, so the app can show only what suits.
+  Future<void> _askKindIfUnset() async {
+    if (!mounted || widget.salon || _kindAsked) return;
+    final InventoryProvider inv = context.read<InventoryProvider>();
+    if (inv.capabilities.kindChosen) return;
+    if (!(context.read<AuthProvider>().user?.isBusinessOwner ?? false)) return;
+    _kindAsked = true;
+    final bool sw = LocalizationService.instance.isSwahili;
+    final bool? choose = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext d) => AlertDialog(
+        title: Text(sw ? 'Biashara yako ni ya aina gani?' : 'What kind of business is this?'),
+        content: Text(sw
+            ? 'Chagua aina (rejareja, jumla, mchanganyiko au depo) ili programu ionyeshe vitu vinavyokufaa tu.'
+            : 'Choose a kind (retail, wholesale, mixed or depot) so the app shows only what suits your business.'),
+        actions: <Widget>[
+          TextButton(onPressed: () => Navigator.pop(d, false), child: Text(sw ? 'Baadaye' : 'Later')),
+          FilledButton(key: const Key('choose_kind_now'), onPressed: () => Navigator.pop(d, true), child: Text(sw ? 'Chagua sasa' : 'Choose now')),
+        ],
+      ),
+    );
+    if (choose == true && mounted) {
+      await Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: (BuildContext _) => const DepotSettingsScreen()));
+      if (mounted) await context.read<InventoryProvider>().fetchCapabilities();
+    }
   }
 
   /// Returns effective permissions for this user.

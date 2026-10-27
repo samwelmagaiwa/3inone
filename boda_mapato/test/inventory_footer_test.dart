@@ -8,6 +8,7 @@ import 'package:boda_mapato/modules/inventory/screens/hubs/products_hub_screen.d
 import 'package:boda_mapato/modules/inventory/screens/inventory_home.dart';
 import 'package:boda_mapato/modules/inventory/screens/products/add_edit_product_screen.dart';
 import 'package:boda_mapato/modules/inventory/screens/settings/depot_settings_screen.dart';
+import 'package:boda_mapato/screens/settings/settings_screen.dart';
 import 'package:boda_mapato/providers/auth_provider.dart';
 import 'package:boda_mapato/services/api_service.dart';
 import 'package:boda_mapato/services/localization_service.dart';
@@ -21,11 +22,15 @@ import 'package:provider/provider.dart';
 /// inventory home, put the form on top of it, and press the footer.
 
 class _Auth extends AuthProvider {
-  @override
-  UserData? get user => UserData(id: 'o1', name: 'Owner', email: 'o@example.test', role: 'admin', isActive: true);
+  _Auth([this.role = 'admin']);
+
+  final String role;
 
   @override
-  UserPermissions get permissions => UserPermissions.fromRole('admin');
+  UserData? get user => UserData(id: 'o1', name: 'Owner', email: 'o@example.test', role: role, isActive: true);
+
+  @override
+  UserPermissions get permissions => UserPermissions.fromRole(role);
 }
 
 class _Server extends ApiService {
@@ -56,7 +61,7 @@ final LocalizationService _loc = LocalizationService.instance;
 /// The title in the app bar of the inventory home.
 Finder _title(String text) => find.descendant(of: find.byType(AppBar).first, matching: find.text(text));
 
-Future<NavigatorState> _openHome(WidgetTester t) async {
+Future<NavigatorState> _openHome(WidgetTester t, {String role = 'admin'}) async {
   _ignoreTestFontOverflow();
   t.view.physicalSize = const Size(411, 900);
   t.view.devicePixelRatio = 1.0;
@@ -68,7 +73,7 @@ Future<NavigatorState> _openHome(WidgetTester t) async {
         ChangeNotifierProvider<InventoryProvider>(create: (_) => InventoryProvider(api: server)),
         ChangeNotifierProvider<DepotProvider>(create: (_) => DepotProvider(api: server)),
         ChangeNotifierProvider<NotificationsProvider>(create: (_) => NotificationsProvider(api: server)),
-        ChangeNotifierProvider<AuthProvider>(create: (_) => _Auth()),
+        ChangeNotifierProvider<AuthProvider>(create: (_) => _Auth(role)),
         ChangeNotifierProvider<LocalizationService>.value(value: _loc),
       ],
       child: ScreenUtilInit(
@@ -134,6 +139,17 @@ void main() {
       expect(find.byType(DepotSettingsScreen), findsOneWidget, reason: 'the inventory Settings is showing');
       expect(_title(_loc.translate('settings')), findsOneWidget);
       expect(t.takeException(), isNull, reason: 'no unknown "/settings" route was pushed');
+    });
+
+    testWidgets('for a sales officer the gear opens their account page, not another section', (t) async {
+      await _openHome(t, role: 'sales_officer');
+
+      await t.tap(_footerIcon(Icons.settings_rounded));
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 500));
+
+      expect(find.byType(SettingsScreen), findsOneWidget);
+      expect(find.byType(DepotSettingsScreen), findsNothing, reason: 'the business settings are for whoever may change them');
     });
 
     testWidgets('Products brings the Products section back', (t) async {
