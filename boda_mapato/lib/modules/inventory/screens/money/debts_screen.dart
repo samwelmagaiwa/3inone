@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -8,6 +9,7 @@ import '../../services/money_api.dart';
 import 'money_style.dart';
 import '../salon/salon_input.dart';
 import '../salon/salon_text.dart';
+import '../widgets/inventory_widgets.dart';
 
 /// Every debt in one place, in two tabs: what customers owe me and what I owe. Debts from before the app are written here
 /// (name, amount, when it began, when it is due) and join the debtors ageing, the customer's credit balance and the monthly
@@ -325,7 +327,7 @@ class _AddDebtSheetState extends State<_AddDebtSheet> {
         const SizedBox(height: 10),
         TextField(key: const Key('debt_phone'), controller: _phone, style: salonInputStyle, keyboardType: TextInputType.phone, decoration: salonInput(labelText: sw ? 'Simu (si lazima)' : 'Phone (optional)')),
         const SizedBox(height: 10),
-        TextField(key: const Key('debt_amount'), controller: _amount, style: salonInputStyle, keyboardType: const TextInputType.numberWithOptions(decimal: false), decoration: salonInput(labelText: sw ? 'Kiasi (TSh)' : 'Amount (TSh)')),
+        TextField(key: const Key('debt_amount'), controller: _amount, style: salonInputStyle, keyboardType: const TextInputType.numberWithOptions(decimal: false), inputFormatters: <TextInputFormatter>[ThousandsFormatter()], decoration: salonInput(labelText: sw ? 'Kiasi (TSh)' : 'Amount (TSh)')),
         const SizedBox(height: 10),
         Row(children: <Widget>[
           Expanded(
@@ -384,7 +386,7 @@ class _DebtSheetState extends State<_DebtSheet> {
   @override
   void initState() {
     super.initState();
-    _amount.text = _left.round().toString();
+    _amount.text = formatAmount(_left.round());
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         final List<Map<String, dynamic>> p = await widget.api.debtPayments((widget.debt['id'] as num).toInt());
@@ -462,7 +464,7 @@ class _DebtSheetState extends State<_DebtSheet> {
             ]),
           ),
         const SizedBox(height: 14),
-        TextField(key: const Key('pay_amount'), controller: _amount, style: salonInputStyle, keyboardType: TextInputType.number, decoration: salonInput(labelText: receivable ? (sw ? 'Kiasi kilicholipwa (TSh)' : 'Amount received (TSh)') : (sw ? 'Kiasi ninacholipa (TSh)' : 'Amount I pay (TSh)'))),
+        TextField(key: const Key('pay_amount'), controller: _amount, style: salonInputStyle, keyboardType: TextInputType.number, inputFormatters: <TextInputFormatter>[ThousandsFormatter()], decoration: salonInput(labelText: receivable ? (sw ? 'Kiasi kilicholipwa (TSh)' : 'Amount received (TSh)') : (sw ? 'Kiasi ninacholipa (TSh)' : 'Amount I pay (TSh)'))),
         if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_error!, key: const Key('pay_error'), style: const TextStyle(color: ThemeConstants.errorRed))),
         const SizedBox(height: 12),
         SizedBox(width: double.infinity, child: FilledButton(key: const Key('pay_save'), onPressed: _busy ? null : _pay, child: Text(receivable ? (sw ? 'Pokea malipo' : 'Receive payment') : (sw ? 'Lipa' : 'Pay')))),

@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,6 +8,7 @@ import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
 import 'salon_input.dart';
 import 'salon_text.dart';
+import '../widgets/inventory_widgets.dart';
 
 /// The owner's cashbook: for cash, mobile money and bank, what was held at the start, what came in, what went out and
 /// what should be held now, day by day. The owner puts money in or takes it out here (and sets the opening balance once),
@@ -247,7 +249,7 @@ class _MoveDialogState extends State<_MoveDialog> {
             for (final String p in _CashbookScreenState.places)
               ChoiceChip(key: Key('mv_place_$p'), label: Text(_CashbookScreenState.placeLabel(p, sw)), selected: _method == p, onSelected: (_) => setState(() => _method = p)),
           ]),
-          TextField(style: salonInputStyle, key: const Key('mv_amount'), controller: _amount, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'Kiasi (TSh)' : 'Amount (TSh)')),
+          TextField(style: salonInputStyle, key: const Key('mv_amount'), controller: _amount, keyboardType: TextInputType.number, inputFormatters: <TextInputFormatter>[ThousandsFormatter()], decoration: salonInput(labelText: sw ? 'Kiasi (TSh)' : 'Amount (TSh)')),
           const SizedBox(height: 8),
           TextField(style: salonInputStyle, key: const Key('mv_note'), controller: _note, decoration: salonInput(labelText: sw ? 'Maelezo (si lazima)' : 'Note (optional)')),
           if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
@@ -301,7 +303,7 @@ class _CountDialogState extends State<_CountDialog> {
             for (final String p in _CashbookScreenState.places)
               ChoiceChip(key: Key('ct_place_$p'), label: Text(_CashbookScreenState.placeLabel(p, sw)), selected: _method == p, onSelected: (_) => setState(() => _method = p)),
           ]),
-          TextField(style: salonInputStyle, key: const Key('ct_counted'), controller: _counted, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'Kiasi ulichohesabu (TSh)' : 'Amount counted (TSh)')),
+          TextField(style: salonInputStyle, key: const Key('ct_counted'), controller: _counted, keyboardType: TextInputType.number, inputFormatters: <TextInputFormatter>[ThousandsFormatter()], decoration: salonInput(labelText: sw ? 'Kiasi ulichohesabu (TSh)' : 'Amount counted (TSh)')),
           const SizedBox(height: 8),
           TextField(style: salonInputStyle, key: const Key('ct_note'), controller: _note, decoration: salonInput(labelText: sw ? 'Maelezo (si lazima)' : 'Note (optional)')),
           if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),

@@ -388,7 +388,7 @@ class _PaySupplierSheetState extends State<_PaySupplierSheet> {
 
     final bool ok = await context.read<DepotProvider>().paySupplier(
           supplierId: widget.supplier.id,
-          amount: double.parse(_amount.text.trim()),
+          amount: double.parse(_amount.text.replaceAll(',', '').trim()),
           method: _method,
           invoiceId: _invoiceId,
           reference: _reference.text.trim(),
@@ -465,6 +465,7 @@ class _PaySupplierSheetState extends State<_PaySupplierSheet> {
                 hint: 'e.g. 500,000',
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
                 validator: (String? v) {
                   final double? n = double.tryParse((v ?? '').trim());
                   return (n == null || n <= 0)
@@ -713,7 +714,7 @@ class _ReceiveGoodsSheetState extends State<ReceiveGoodsSheet> {
         <String, dynamic>{
           'product_id': _productId,
           'quantity': int.parse(_quantity.text.trim()),
-          'unit_cost': double.tryParse(_cost.text.trim()) ?? 0,
+          'unit_cost': double.tryParse(_cost.text.replaceAll(',', '').trim()) ?? 0,
           if (_batch.text.trim().isNotEmpty) 'batch_number': _batch.text.trim(),
           if (_expiry != null)
             'expiry_date': _expiry!.toIso8601String().split('T').first,
@@ -847,6 +848,7 @@ class _ReceiveGoodsSheetState extends State<ReceiveGoodsSheet> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
                       isOptional: true,
                     ),
                   ),

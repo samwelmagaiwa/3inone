@@ -122,7 +122,7 @@ void main() {
 
       expect(inv.cart.single.unitName, 'crate');
       expect(inv.cart.single.unitPrice, 22000);
-      expect(find.textContaining('@ TZS 22000 / crate'), findsOneWidget);
+      expect(find.textContaining('@ TZS 22,000 / crate'), findsOneWidget);
     });
 
     testWidgets('a product with one way to be sold shows no chips', (t) async {

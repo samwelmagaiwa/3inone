@@ -9,9 +9,9 @@ import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
 import 'salon_input.dart';
 
-/// The salon's branches. Choosing one makes every figure, list and new record on the phone that branch's; "All branches"
-/// goes back to the whole salon. The owner and managers add, rename and switch branches off. A salon with one branch
-/// never needs this page.
+/// The business's branches (a salon's, a shop's or a depot's). Choosing one makes every figure, list and new record on the phone
+/// that branch's; "All branches" goes back to the whole business. The owner and managers add, rename and switch branches off.
+/// A business with one branch never needs this page.
 class BranchesScreen extends StatefulWidget {
   const BranchesScreen({super.key, this.api, this.manage = true});
 
@@ -107,7 +107,7 @@ class _BranchesScreenState extends State<BranchesScreen> {
                       groupValue: chosen,
                       onChanged: _choose,
                       title: Text(sw ? 'Matawi yote' : 'All branches'),
-                      subtitle: Text(sw ? 'Hesabu za saluni nzima' : 'The whole salon\'s figures'),
+                      subtitle: Text(sw ? 'Hesabu za biashara nzima' : 'The whole business\'s figures'),
                     ),
                     for (final SalonBranchInfo b in _rows)
                       ListTile(
@@ -135,7 +135,7 @@ class _BranchesScreenState extends State<BranchesScreen> {
                     if (_rows.isEmpty)
                       Padding(
                         padding: const EdgeInsets.all(24),
-                        child: Text(sw ? 'Hakuna tawi bado. Saluni yenye tawi moja haihitaji kuongeza.' : 'No branches yet. A salon with one branch does not need any.', textAlign: TextAlign.center),
+                        child: Text(sw ? 'Hakuna tawi bado. Biashara yenye tawi moja haihitaji kuongeza.' : 'No branches yet. A business with one branch does not need any.', textAlign: TextAlign.center),
                       ),
                   ]),
                 ),

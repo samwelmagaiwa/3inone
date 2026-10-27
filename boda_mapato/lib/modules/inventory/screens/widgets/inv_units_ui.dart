@@ -6,6 +6,7 @@ import '../../../../constants/theme_constants.dart';
 import '../../models/inv_capabilities.dart';
 import '../../models/inv_product.dart';
 import '../../models/inv_product_unit.dart';
+import 'inventory_widgets.dart' show ThousandsFormatter;
 
 /// Stock as a person says it, in whole units: "12 kg 500 g", "4 crate 4 bottle".
 ///
@@ -74,6 +75,78 @@ Future<int?> askWholeNumber(
         TextButton(
           key: const ValueKey<String>('whole_number_ok'),
           onPressed: () => Navigator.pop(ctx, int.tryParse(draft)),
+          child: Text(okLabel),
+        ),
+      ],
+    ),
+  );
+}
+
+/// What a person did in [askPrice]: wrote a price, or asked for the usual one back.
+class PriceAnswer {
+  const PriceAnswer.write(this.price) : useList = false;
+  const PriceAnswer.list()
+      : price = null,
+        useList = true;
+
+  final double? price;
+  final bool useList;
+}
+
+/// Ask for the price of one unit, written with thousands commas as it is typed (1,000,000). Returns null if cancelled.
+/// [listPrice] is the usual price; with [offerList] a button takes it back.
+Future<PriceAnswer?> askPrice(
+  BuildContext context, {
+  required String title,
+  required double initial,
+  required double? listPrice,
+  required bool offerList,
+  required String okLabel,
+  required String cancelLabel,
+  required String listLabel,
+}) async {
+  final String start = initial == initial.roundToDouble() ? initial.toStringAsFixed(0) : initial.toString();
+  String draft = ThousandsFormatter().formatEditUpdate(TextEditingValue.empty, TextEditingValue(text: start)).text;
+
+  return showDialog<PriceAnswer>(
+    context: context,
+    builder: (BuildContext ctx) => AlertDialog(
+      backgroundColor: ThemeConstants.primaryBlue,
+      title: Text(title, style: ThemeConstants.headingStyle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          TextFormField(
+            key: const ValueKey<String>('price_field'),
+            initialValue: draft,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
+            style: ThemeConstants.bodyStyle,
+            decoration: ThemeConstants.invInputDecoration('TZS'),
+            onChanged: (String v) => draft = v,
+            onFieldSubmitted: (String v) {
+              final double? p = double.tryParse(v.replaceAll(',', ''));
+              if (p != null && p >= 0) Navigator.pop(ctx, PriceAnswer.write(p));
+            },
+          ),
+          if (listPrice != null && offerList)
+            TextButton(
+              key: const ValueKey<String>('price_use_list'),
+              onPressed: () => Navigator.pop(ctx, const PriceAnswer.list()),
+              child: Text('$listLabel (${ThousandsFormatter().formatEditUpdate(TextEditingValue.empty, TextEditingValue(text: listPrice.toStringAsFixed(0))).text})'),
+            ),
+        ],
+      ),
+      actions: <Widget>[
+        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(cancelLabel)),
+        TextButton(
+          key: const ValueKey<String>('price_ok'),
+          onPressed: () {
+            final double? p = double.tryParse(draft.replaceAll(',', ''));
+            if (p != null && p >= 0) Navigator.pop(ctx, PriceAnswer.write(p));
+          },
           child: Text(okLabel),
         ),
       ],

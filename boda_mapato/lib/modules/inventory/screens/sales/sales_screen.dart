@@ -2052,20 +2052,49 @@ class _CartRow extends StatelessWidget {
                 ),
               ),
 
-              // Automatic Selling Price Badge
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                decoration: BoxDecoration(
-                  color: ThemeConstants.invFill,
-                  borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(color: ThemeConstants.invBorder),
-                ),
-                child: Text(
-                  '@ TZS ${item.unitPrice.toStringAsFixed(item.unitPrice == item.unitPrice.roundToDouble() ? 0 : 2)} / $per',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w600,
+              // The selling price: filled in from the catalogue, and tap it to write another (prices are not always fixed).
+              InkWell(
+                key: ValueKey<String>('cart_price_${item.key}'),
+                borderRadius: BorderRadius.circular(8.r),
+                onTap: () async {
+                  final PriceAnswer? answer = await askPrice(
+                    context,
+                    title: loc.isSwahili ? 'Andika bei ya $per' : 'Write the price per $per',
+                    initial: item.unitPrice,
+                    listPrice: inv.listPriceOf(item),
+                    offerList: item.priceWritten,
+                    okLabel: loc.translate('save'),
+                    cancelLabel: loc.translate('cancel'),
+                    listLabel: loc.isSwahili ? 'Rudisha bei ya kawaida' : 'Use the usual price',
+                  );
+                  if (answer == null) return;
+                  if (answer.useList) {
+                    inv.useListPrice(item);
+                  } else if (answer.price != null) {
+                    inv.setCartUnitPrice(item, answer.price!);
+                  }
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: item.priceWritten ? ThemeConstants.invAccent.withValues(alpha: 0.18) : ThemeConstants.invFill,
+                    borderRadius: BorderRadius.circular(8.r),
+                    border: Border.all(color: item.priceWritten ? ThemeConstants.invAccent : ThemeConstants.invBorder),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text(
+                        '@ TZS ${formatAmount(item.unitPrice)} / $per',
+                        style: TextStyle(
+                          color: item.priceWritten ? Colors.white : Colors.white70,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(width: 4.w),
+                      Icon(Icons.edit_outlined, size: 13.sp, color: item.priceWritten ? ThemeConstants.invAccent : Colors.white54),
+                    ],
                   ),
                 ),
               ),

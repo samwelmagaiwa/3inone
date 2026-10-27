@@ -396,7 +396,7 @@ class _ReceiveStockSheetState extends State<_ReceiveStockSheet> {
               : _batchNumber.text.trim(),
           quantity: int.parse(_quantity.text.trim()),
           expiryDate: _expiry,
-          costPrice: double.tryParse(_cost.text.trim()),
+          costPrice: double.tryParse(_cost.text.replaceAll(',', '').trim()),
           reference: _reference.text.trim(),
         );
 
@@ -485,6 +485,7 @@ class _ReceiveStockSheetState extends State<_ReceiveStockSheet> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
                       isOptional: true,
                     ),
                   ),

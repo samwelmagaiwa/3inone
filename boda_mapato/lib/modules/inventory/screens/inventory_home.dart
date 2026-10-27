@@ -37,6 +37,8 @@ import 'hubs/salon_team_hub_screen.dart';
 import 'salon/appointments_screen.dart';
 import 'salon/rebook_screen.dart';
 import 'salon/stylists_screen.dart';
+import '../providers/depot_provider.dart';
+import '../providers/depot_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/notifications_provider.dart';
 
@@ -175,6 +177,23 @@ List<_InvMenuEntry> _invEntries(LocalizationService loc,
               color: const Color(0xFF8B5CF6),
               pageBuilder: () => const MonthlyReportScreen(),
               visible: (UserPermissions p) => p.has('inv_view_reports'),
+            ),
+            // 7e — More than one place to sell from: the branches, and the goods each one holds (the same screens as a salon's)
+            _InvMenuEntry(
+              key: 'branch_stock',
+              staticTitle: loc.isSwahili ? 'Bidhaa kwa tawi' : 'Goods by branch',
+              icon: Icons.warehouse_outlined,
+              color: const Color(0xFFF97316),
+              pageBuilder: () => const BranchStockScreen(),
+              visible: (UserPermissions p) => p.has('inv_manage_settings') || p.has('inv_view_reports'),
+            ),
+            _InvMenuEntry(
+              key: 'branches',
+              staticTitle: loc.isSwahili ? 'Matawi' : 'Branches',
+              icon: Icons.store_mall_directory_outlined,
+              color: const Color(0xFF0EA5E9),
+              pageBuilder: () => const BranchesScreen(),
+              visible: (UserPermissions p) => p.has('inv_manage_settings'),
             ),
             // 7d — Ask the business: AI answers from what this person's rights allow
             _InvMenuEntry(
@@ -490,9 +509,12 @@ class _InventoryHomeState extends State<InventoryHome> {
       context.read<NotificationsProvider>().refreshUnreadCount();
       // What this business's inventory is set up to do (crates or not, which price the till uses ...).
       final InventoryProvider inv = context.read<InventoryProvider>();
-      inv.fetchCapabilities();
-      // The screens opened on top of this home (the product form) need to know whether it is a salon's.
+      // Which service's books every request below is about: say it FIRST, so the settings come from this service,
+      // and forget what the depot provider holds from another service or account (settings, crates, debts ...).
+      // The screens opened on top of this home (the product form) also need to know whether it is a salon's.
       inv.setSalonMode(widget.salon);
+      context.read<DepotProvider>().resetForNewContext();
+      inv.fetchCapabilities();
       if (widget.salon) inv.fetchSalonStaff();
     });
   }

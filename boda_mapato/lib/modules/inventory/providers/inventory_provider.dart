@@ -1,4 +1,5 @@
 ﻿// ignore_for_file: cascade_invocations
+import '../../../utils/server_time.dart';
 import 'dart:async';
 import 'dart:math';
 
@@ -1213,6 +1214,8 @@ class InventoryProvider extends ChangeNotifier {
       item.unitName = u?.name;
       item.unitFactor = u?.factor ?? 1;
       item.unitPrice = unitPriceFor(product, u, customerId: _selectedCustomerId);
+      // Another unit is another price: a price written for the old unit does not carry over.
+      item.priceWritten = false;
       _retax(item);
     }
     notifyListeners();
@@ -1273,8 +1276,30 @@ class InventoryProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Write the price of one unit of this line (business prices are not always fixed). It is kept when the price level or the
+  /// customer changes; [useListPrice] takes the catalogue price back.
   void setCartUnitPrice(InvSaleItem item, double price) {
     item.unitPrice = price < 0 ? 0 : price;
+    item.priceWritten = true;
+    _retax(item);
+    notifyListeners();
+  }
+
+  /// What the catalogue says one unit of this line costs now (for the price level and customer chosen), or null if the product is gone.
+  double? listPriceOf(InvSaleItem item) {
+    final InvProduct? p = _productOf(item.productId);
+    if (p == null) return null;
+    final InvProductUnit? u = item.unitId == null ? null : unitsOf(item.productId).where((x) => x.id == item.unitId).firstOrNull;
+
+    return unitPriceFor(p, u, customerId: _selectedCustomerId);
+  }
+
+  /// Take the catalogue price back for a line whose price was written.
+  void useListPrice(InvSaleItem item) {
+    final double? list = listPriceOf(item);
+    if (list == null) return;
+    item.unitPrice = list;
+    item.priceWritten = false;
     _retax(item);
     notifyListeners();
   }
@@ -1285,10 +1310,11 @@ class InventoryProvider extends ChangeNotifier {
   }
 
   /// Switch the whole cart between retail and wholesale prices. Every line is priced again from the catalogue,
-  /// so a price typed by hand on a line is replaced.
+  /// except a line whose price the cashier wrote: that one keeps it.
   void setCartTier(String tier) {
     _tierOverride = tier == 'wholesale' ? 'wholesale' : 'retail';
     for (final InvSaleItem it in _cart) {
+      if (it.priceWritten) continue;
       final InvProduct? p = _productOf(it.productId);
       if (p == null) continue;
       final InvProductUnit? u = it.unitId == null ? null : unitsOf(it.productId).where((x) => x.id == it.unitId).firstOrNull;
@@ -2342,9 +2368,8 @@ InvSale _fromSaleJson(Map<String, dynamic> j) {
   final double tax = _n(j['tax']);
   final double paidTotal = _n(j['paid_total']);
   final createdAtStr = j['created_at']?.toString();
-  final createdAt = createdAtStr != null
-      ? DateTime.tryParse(createdAtStr) ?? DateTime.now()
-      : DateTime.now();
+  // The server's times are UTC; a sale and its receipt show Tanzania time.
+  final createdAt = parseServerTime(createdAtStr) ?? DateTime.now();
   final cancelledAtStr = j['cancelled_at']?.toString();
   return InvSale(
     id: int.tryParse((j['id'] ?? 0).toString()) ?? 0,
@@ -2373,9 +2398,7 @@ InvSale _fromSaleJson(Map<String, dynamic> j) {
               amount: _n(p['amount']),
               method: (p['method'] ?? 'cash').toString(),
               reference: (p['reference'] ?? '').toString(),
-              paidAt: paidAtStr != null
-                  ? DateTime.tryParse(paidAtStr) ?? DateTime.now()
-                  : DateTime.now(),
+              paidAt: parseServerTime(paidAtStr) ?? DateTime.now(),
             );
           }).toList()
         : [],
@@ -2472,10 +2495,7 @@ class InvStockMovement {
 }
 
 InvStockMovement _fromStockMovementJson(Map<String, dynamic> j) {
-  final createdAtStr = j['created_at']?.toString();
-  final DateTime createdAt = createdAtStr != null
-      ? (DateTime.tryParse(createdAtStr) ?? DateTime.now())
-      : DateTime.now();
+  final DateTime createdAt = parseServerTime(j['created_at']) ?? DateTime.now();
 
   return InvStockMovement(
     id: int.tryParse((j['id'] ?? 0).toString()) ?? 0,

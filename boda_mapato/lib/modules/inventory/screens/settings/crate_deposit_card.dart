@@ -1,3 +1,5 @@
+import 'package:flutter/services.dart';
+import '../widgets/inventory_widgets.dart' show ThousandsFormatter;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -206,7 +208,7 @@ class _CrateTypeDialogState extends State<_CrateTypeDialog> {
     });
 
     final String name = _name.text.trim();
-    final double deposit = double.parse(_deposit.text.trim());
+    final double deposit = double.parse(_deposit.text.replaceAll(',', '').trim());
     final String? problem = _isNew
         ? await widget.onCreate(name, deposit)
         : await widget.onUpdate(widget.type!, name, deposit, _active);
@@ -270,7 +272,7 @@ class _CrateTypeDialogState extends State<_CrateTypeDialog> {
   }
 
   String? _validateDeposit(String? v) {
-    final double? n = double.tryParse((v ?? '').trim());
+    final double? n = double.tryParse((v ?? '').replaceAll(',', '').trim());
     if (n == null || n < 0) {
       return _sw ? 'Ingiza kiasi sahihi' : 'Enter a valid amount';
     }
@@ -312,6 +314,7 @@ class _CrateTypeDialogState extends State<_CrateTypeDialog> {
                 enabled: !_busy,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
                 style: ThemeConstants.bodyStyle,
                 decoration: ThemeConstants.invInputDecoration(_sw
                     ? 'Dhamana kwa kila kreti (TZS)'

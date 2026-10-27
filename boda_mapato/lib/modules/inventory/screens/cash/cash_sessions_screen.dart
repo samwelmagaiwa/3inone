@@ -1,4 +1,5 @@
-﻿import 'package:auto_size_text/auto_size_text.dart';
+﻿import 'package:flutter/services.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
@@ -111,6 +112,7 @@ class _CashSessionsScreenState extends State<CashSessionsScreen> {
           label: loc.translate('opening_float'),
           hint: 'e.g. 50,000',
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
         ),
         actions: <Widget>[
           TextButton(
@@ -131,7 +133,7 @@ class _CashSessionsScreenState extends State<CashSessionsScreen> {
     }
 
     final int? id = await context.read<DepotProvider>().openCashSession(
-          openingFloat: double.tryParse(floatCtrl.text.trim()) ?? 0,
+          openingFloat: double.tryParse(floatCtrl.text.replaceAll(',', '').trim()) ?? 0,
         );
     floatCtrl.dispose();
 
@@ -453,6 +455,7 @@ class _CashSessionDetailScreenState extends State<CashSessionDetailScreen> {
               hint: 'e.g. 20,000',
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
             ),
           ],
         ),
@@ -470,7 +473,7 @@ class _CashSessionDetailScreenState extends State<CashSessionDetailScreen> {
     );
 
     final String description = desc.text.trim();
-    final double? value = double.tryParse(amount.text.trim());
+    final double? value = double.tryParse(amount.text.replaceAll(',', '').trim());
     desc.dispose();
     amount.dispose();
 
@@ -504,7 +507,7 @@ class _CashSessionDetailScreenState extends State<CashSessionDetailScreen> {
       context: context,
       builder: (BuildContext ctx) => StatefulBuilder(
         builder: (BuildContext ctx, StateSetter setInner) {
-          final double? typed = double.tryParse(counted.text.trim());
+          final double? typed = double.tryParse(counted.text.replaceAll(',', '').trim());
           final double diff = typed == null ? 0 : typed - s.expectedCash;
 
           return AlertDialog(
@@ -531,6 +534,7 @@ class _CashSessionDetailScreenState extends State<CashSessionDetailScreen> {
                     hint: 'e.g. 480,000',
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
                   ),
                   if (typed != null && diff.abs() > 0.009) ...<Widget>[
                     SizedBox(height: 8.h),
@@ -572,7 +576,7 @@ class _CashSessionDetailScreenState extends State<CashSessionDetailScreen> {
       ),
     );
 
-    final double? countedValue = double.tryParse(counted.text.trim());
+    final double? countedValue = double.tryParse(counted.text.replaceAll(',', '').trim());
     final String reasonText = reason.text.trim();
     counted.dispose();
     reason.dispose();

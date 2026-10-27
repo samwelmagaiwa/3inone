@@ -131,7 +131,12 @@ void main() {
     expect(calls.log, isEmpty);
 
     await t.enterText(_key('crate_type_name'), 'Big crate');
+    // An amount is typed with its commas and cannot be negative: a minus sign is simply not accepted.
     await t.enterText(_key('crate_type_deposit'), '-5');
+    await t.pump();
+    expect(find.text('5'), findsOneWidget);
+    expect(find.text('-5'), findsNothing);
+    await t.enterText(_key('crate_type_deposit'), '');
     await t.tap(_key('crate_type_save'));
     await t.pump();
     expect(find.text('Enter a valid amount'), findsOneWidget);

@@ -205,13 +205,45 @@ void main() {
       expect(inv.cart.single.unitPrice, 22000);
     });
 
-    test('a price typed by hand is replaced when the level is switched', () async {
+    test('a price the cashier wrote is kept when the level is switched, and the usual price can be taken back', () async {
       final InventoryProvider inv = await _load(<String, dynamic>{..._retailSettings, 'inventory_type': 'mixed'}, <Map<String, dynamic>>[_cola()]);
       inv.addProductToCart(_product(inv, 1), unit: _unitOf(inv, 1, 'crate'));
+      expect(inv.cart.single.priceWritten, isFalse);
+
       inv.setCartUnitPrice(inv.cart.single, 21000);
       expect(inv.cart.single.unitPrice, 21000);
+      expect(inv.cart.single.priceWritten, isTrue);
+
       inv.setCartTier('wholesale');
+      expect(inv.cart.single.unitPrice, 21000, reason: 'a written price is not replaced by the price of the level');
+
+      expect(inv.listPriceOf(inv.cart.single), 20000, reason: 'the usual price now is the wholesale one');
+      inv.useListPrice(inv.cart.single);
       expect(inv.cart.single.unitPrice, 20000);
+      expect(inv.cart.single.priceWritten, isFalse);
+    });
+
+    test('a written price is for that unit only: another unit takes its own price', () async {
+      final InventoryProvider inv = await _load(_retailSettings, <Map<String, dynamic>>[_cola()]);
+      inv.addProductToCart(_product(inv, 1), unit: _unitOf(inv, 1, 'crate'));
+      inv.setCartUnitPrice(inv.cart.single, 21000);
+
+      inv.changeCartUnit(inv.cart.single, null);
+
+      expect(inv.cart.single.unitPrice, 1000);
+      expect(inv.cart.single.priceWritten, isFalse);
+    });
+
+    test('a line whose price was not written is priced again as before', () async {
+      final InventoryProvider inv = await _load(<String, dynamic>{..._retailSettings, 'inventory_type': 'mixed'}, <Map<String, dynamic>>[_cola()]);
+      inv.addProductToCart(_product(inv, 1), unit: _unitOf(inv, 1, 'crate'));
+      inv.addProductToCart(_product(inv, 1));
+      inv.setCartUnitPrice(inv.cart.firstWhere((InvSaleItem i) => i.unitId == null), 900);
+
+      inv.setCartTier('wholesale');
+
+      expect(inv.cart.firstWhere((InvSaleItem i) => i.unitId != null).unitPrice, 20000);
+      expect(inv.cart.firstWhere((InvSaleItem i) => i.unitId == null).unitPrice, 900);
     });
 
     test('a customer\'s special price beats both levels', () async {

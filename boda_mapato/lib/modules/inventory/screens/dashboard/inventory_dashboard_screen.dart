@@ -649,9 +649,9 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
   int _filteredSalesCount(InventoryProvider inv) => _filteredSales(inv).length;
 
   Future<void> _showFilterSheet() async {
-    // A salon with branches can also look at one branch (everything on this page then follows it).
+    // A business with branches (a salon, a shop or a depot) can also look at one branch (everything on this page then follows it).
     List<Map<String, dynamic>> branches = <Map<String, dynamic>>[];
-    if (context.read<InventoryProvider>().salonMode) {
+    {
       try {
         branches = <Map<String, dynamic>>[
           for (final SalonBranchInfo b in await (widget.salonApi ?? SalonApi()).branches())

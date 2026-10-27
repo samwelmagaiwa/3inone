@@ -7,6 +7,7 @@ import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
 import 'salon_input.dart';
+import '../widgets/inventory_widgets.dart';
 
 /// The salon's switches in one place: texts to clients (reminders, birthday offer, feedback link, come-back), the
 /// evening summary to the owner, the cancel/deposit window, the online booking page and the loyalty points. Each
@@ -54,8 +55,8 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
     _birthdayText.text = '${_s['birthday_text'] ?? ''}';
     _slug.text = '${_s['booking_slug'] ?? ''}';
     _cancel.text = '${_s['cancel_hours'] ?? 0}';
-    _per.text = '${_loyalty['per'] ?? ''}';
-    _value.text = '${_loyalty['value'] ?? ''}';
+    _per.text = formatAmount(num.tryParse('${_loyalty['per'] ?? ''}'));
+    _value.text = formatAmount(num.tryParse('${_loyalty['value'] ?? ''}'));
     _referral.text = '${_loyalty['referral'] ?? ''}';
   }
 
@@ -209,16 +210,16 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(children: <Widget>[
-                      TextField(style: salonInputStyle, key: const Key('set_per'), controller: _per, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'TSh ngapi kwa pointi 1' : 'TSh spent for 1 point')),
-                      TextField(style: salonInputStyle, key: const Key('set_value'), controller: _value, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'TSh inayopunguzwa kwa pointi 1' : 'TSh off for 1 point used')),
+                      TextField(style: salonInputStyle, key: const Key('set_per'), controller: _per, keyboardType: TextInputType.number, inputFormatters: <TextInputFormatter>[ThousandsFormatter()], decoration: salonInput(labelText: sw ? 'TSh ngapi kwa pointi 1' : 'TSh spent for 1 point')),
+                      TextField(style: salonInputStyle, key: const Key('set_value'), controller: _value, keyboardType: TextInputType.number, inputFormatters: <TextInputFormatter>[ThousandsFormatter()], decoration: salonInput(labelText: sw ? 'TSh inayopunguzwa kwa pointi 1' : 'TSh off for 1 point used')),
                       TextField(style: salonInputStyle, key: const Key('set_referral'), controller: _referral, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'Pointi za anayemleta mteja' : 'Points for bringing a client')),
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
                           key: const Key('set_loyalty_save'),
                           onPressed: () => _save(<String, dynamic>{
-                            'per': int.tryParse(_per.text.trim()) ?? 1,
-                            'value': int.tryParse(_value.text.trim()) ?? 0,
+                            'per': int.tryParse(_per.text.replaceAll(',', '').trim()) ?? 1,
+                            'value': int.tryParse(_value.text.replaceAll(',', '').trim()) ?? 0,
                             'referral': int.tryParse(_referral.text.trim()) ?? 0,
                           }, loyalty: true),
                           child: Text(sw ? 'Hifadhi pointi' : 'Save points'),

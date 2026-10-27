@@ -154,8 +154,15 @@ void main() {
     expect(find.byKey(const Key('filter_branch_all')), findsNothing);
   });
 
-  testWidgets('the shop never asks for a branch', (t) async {
+  testWidgets('a shop with branches can look at one branch too', (t) async {
     await _open(t, _Salon(two), salonMode: false);
+    await _openSheet(t);
+    expect(find.text('Choose Period'), findsOneWidget);
+    expect(find.byKey(const Key('filter_branch_all')), findsOneWidget);
+  });
+
+  testWidgets('a shop with no branches is not asked to choose one', (t) async {
+    await _open(t, _Salon(const <SalonBranchInfo>[]), salonMode: false);
     await _openSheet(t);
     expect(find.text('Choose Period'), findsOneWidget);
     expect(find.byKey(const Key('filter_branch_all')), findsNothing);

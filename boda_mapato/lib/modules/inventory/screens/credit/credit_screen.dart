@@ -1,4 +1,5 @@
-﻿import 'package:auto_size_text/auto_size_text.dart';
+﻿import 'customer_report_screen.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -237,6 +238,24 @@ class _CreditCustomerCard extends StatelessWidget {
               ),
             ],
             SizedBox(height: 8.h),
+            // Everything about this customer for any week, month or year: bought, paid, profit brought, what they owe.
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: ValueKey<String>('customer_report_${customer.id}'),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white24),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                ),
+                onPressed: () => Navigator.push<void>(
+                  context,
+                  MaterialPageRoute<void>(builder: (_) => CustomerReportScreen(customerId: customer.id, name: customer.name)),
+                ),
+                icon: Icon(Icons.insights_outlined, size: 16.sp, color: Colors.white70),
+                label: Text(loc.isSwahili ? 'Ripoti ya mteja' : 'Customer report', style: ThemeConstants.captionStyle),
+              ),
+            ),
+            SizedBox(height: 8.h),
             Row(
               children: <Widget>[
                 Expanded(
@@ -324,7 +343,7 @@ class _CreditSettingsSheetState extends State<_CreditSettingsSheet> {
     setState(() => _saving = true);
     final bool ok = await context.read<DepotProvider>().updateCredit(
           widget.customer.id,
-          creditLimit: double.tryParse(_limit.text.trim()) ?? 0,
+          creditLimit: double.tryParse(_limit.text.replaceAll(',', '').trim()) ?? 0,
           paymentTermsDays: int.tryParse(_terms.text.trim()) ?? 0,
           isBlocked: _blocked,
           blockReason: _reason.text.trim(),
@@ -356,6 +375,7 @@ class _CreditSettingsSheetState extends State<_CreditSettingsSheet> {
           label: '${loc.translate('credit_limit')} (TSH)',
           hint: 'e.g. 500,000',
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
         ),
         SizedBox(height: 10.h),
         InvTextField(
@@ -455,7 +475,7 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
     double total = 0;
     for (int i = 0; i < _sales.length; i++) {
       if (_selected[i]) {
-        total += double.tryParse(_amountCtrls[i].text.trim()) ?? 0;
+        total += double.tryParse(_amountCtrls[i].text.replaceAll(',', '').trim()) ?? 0;
       }
     }
     return total;
@@ -465,7 +485,7 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
     final allocations = <Map<String, dynamic>>[];
     for (int i = 0; i < _sales.length; i++) {
       if (!_selected[i]) continue;
-      final amount = double.tryParse(_amountCtrls[i].text.trim()) ?? 0;
+      final amount = double.tryParse(_amountCtrls[i].text.replaceAll(',', '').trim()) ?? 0;
       if (amount <= 0) continue;
       allocations.add({'sale_id': _sales[i]['id'], 'amount': amount});
     }
@@ -596,7 +616,7 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
                       _selected[i] = !_selected[i];
                       if (_selected[i] && _amountCtrls[i].text.isEmpty) {
                         // Pre-fill with full outstanding amount
-                        _amountCtrls[i].text = outstanding.toStringAsFixed(0);
+                        _amountCtrls[i].text = formatAmount(outstanding.round());
                       }
                     }),
                     child: Padding(
@@ -679,6 +699,7 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
                       child: TextField(
                         controller: _amountCtrls[i],
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
                         onChanged: (_) => setState(() {}),
                         decoration: ThemeConstants.invInputDecoration(
                           'Amount to pay (TSH)',

@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,6 +8,7 @@ import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
 import 'salon_input.dart';
 import 'salon_text.dart';
+import '../widgets/inventory_widgets.dart';
 
 /// The salon's equipment: what it owns and cost, whether it works, when it is next due for a service, and each service or
 /// repair with what it cost (that cost goes into the expenses once). Overdue and soon-due things stand out.
@@ -234,7 +236,7 @@ class _EquipmentDialogState extends State<_EquipmentDialog> {
     Navigator.pop(context, <String, dynamic>{
       'name': _name.text.trim(),
       'kind': _kind.text.trim(),
-      'cost': double.tryParse(_cost.text.trim()) ?? 0,
+      'cost': double.tryParse(_cost.text.replaceAll(',', '').trim()) ?? 0,
       'next_service_on': next.isEmpty ? null : next,
     });
   }
@@ -249,7 +251,7 @@ class _EquipmentDialogState extends State<_EquipmentDialog> {
         child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
           TextField(style: salonInputStyle, key: const Key('eq_name'), controller: _name, decoration: salonInput(labelText: sw ? 'Jina' : 'Name')),
           TextField(style: salonInputStyle, controller: _kind, decoration: salonInput(labelText: sw ? 'Aina (kiyoyozi, dryer…)' : 'Kind (dryer, chair…)')),
-          TextField(style: salonInputStyle, key: const Key('eq_cost'), controller: _cost, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'Gharama' : 'Cost')),
+          TextField(style: salonInputStyle, key: const Key('eq_cost'), controller: _cost, keyboardType: TextInputType.number, inputFormatters: <TextInputFormatter>[ThousandsFormatter()], decoration: salonInput(labelText: sw ? 'Gharama' : 'Cost')),
           TextField(style: salonInputStyle, key: const Key('eq_next'), controller: _next, decoration: salonInput(labelText: sw ? 'Huduma ijayo (YYYY-MM-DD)' : 'Next service (YYYY-MM-DD)')),
           if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
         ]),
@@ -299,7 +301,7 @@ class _LogDialogState extends State<_LogDialog> {
             onSelectionChanged: (Set<String> s) => setState(() => _kind = s.first),
           ),
           TextField(style: salonInputStyle, key: const Key('log_what'), controller: _what, decoration: salonInput(labelText: sw ? 'Ilifanyika nini' : 'What was done')),
-          TextField(style: salonInputStyle, key: const Key('log_cost'), controller: _cost, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'Gharama (huingia kwenye matumizi)' : 'Cost (goes into expenses)')),
+          TextField(style: salonInputStyle, key: const Key('log_cost'), controller: _cost, keyboardType: TextInputType.number, inputFormatters: <TextInputFormatter>[ThousandsFormatter()], decoration: salonInput(labelText: sw ? 'Gharama (huingia kwenye matumizi)' : 'Cost (goes into expenses)')),
           if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
         ]),
       ),
@@ -312,7 +314,7 @@ class _LogDialogState extends State<_LogDialog> {
             Navigator.pop(context, <String, dynamic>{
               'kind': _kind,
               'description': _what.text.trim(),
-              'cost': double.tryParse(_cost.text.trim()) ?? 0,
+              'cost': double.tryParse(_cost.text.replaceAll(',', '').trim()) ?? 0,
               // After a repair it works again.
               'status': 'working',
             });

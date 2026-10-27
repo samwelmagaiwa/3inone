@@ -42,6 +42,10 @@ class InvSaleItem {
   /// The price of ONE selling unit.
   double unitPrice;
 
+  /// True when the cashier wrote this price instead of taking the list price: switching the price level or the customer
+  /// then leaves it alone, and the line says so.
+  bool priceWritten = false;
+
   /// The cost of one BASE unit (a bottle, a gram).
   double unitCostSnapshot;
 

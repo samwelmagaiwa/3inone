@@ -247,7 +247,7 @@ class _LoadVehicleSheetState extends State<_LoadVehicleSheet> {
         <String, dynamic>{
           'product_id': _productId,
           'quantity': int.parse(_quantity.text.trim()),
-          'unit_price': double.tryParse(_price.text.trim()) ?? 0,
+          'unit_price': double.tryParse(_price.text.replaceAll(',', '').trim()) ?? 0,
         },
       ],
     );
@@ -365,6 +365,7 @@ class _LoadVehicleSheetState extends State<_LoadVehicleSheet> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
                       isOptional: true,
                     ),
                   ),
@@ -527,6 +528,7 @@ class _DispatchDetailScreenState extends State<DispatchDetailScreen> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
+                          inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
                         ),
                         SizedBox(height: 8.h),
                         Text(
@@ -551,7 +553,7 @@ class _DispatchDetailScreenState extends State<DispatchDetailScreen> {
         .read<DepotProvider>()
         .reconcileDispatch(
           widget.dispatchId,
-          cashReturned: double.tryParse(_cash.text.trim()) ?? 0,
+          cashReturned: double.tryParse(_cash.text.replaceAll(',', '').trim()) ?? 0,
           lines: d.lines
               .map((InvDispatchLine l) => <String, dynamic>{
                     'line_id': l.id,

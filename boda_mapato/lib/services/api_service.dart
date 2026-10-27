@@ -39,7 +39,7 @@ class ApiService {
   /// Sent with every request so the server keeps the salon's books apart from the shop's.
   static String? activeService;
 
-  /// The salon branch being looked at / worked in (its id), or null for all branches. Sent as `X-Branch`.
+  /// The branch (of a salon, a shop or a depot) being looked at / worked in (its id), or null for all branches. Sent as `X-Branch`.
   static int? activeBranch;
 
   /// The chosen branch's name, for showing where figures come from.
@@ -51,7 +51,7 @@ class ApiService {
       ..._headers,
       if (token != null) "Authorization": "Bearer $token",
       if (activeService != null) "X-Service": activeService!,
-      if (activeBranch != null && activeService == 'salon') "X-Branch": '$activeBranch',
+      if (activeBranch != null) "X-Branch": '$activeBranch',
     };
   }
 

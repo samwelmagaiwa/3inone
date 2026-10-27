@@ -61,7 +61,7 @@ class _AppointmentFormScreenState extends State<AppointmentFormScreen> {
       _phone.text = a.clientPhone ?? '';
       _notes.text = a.notes ?? '';
       if (a.depositAmount > 0) {
-        _deposit.text = '${a.depositAmount.round()}';
+        _deposit.text = formatAmount(a.depositAmount.round());
         _depositMethod = a.depositMethod ?? 'cash';
       }
       _date = DateTime(a.startsAt.year, a.startsAt.month, a.startsAt.day);
@@ -418,7 +418,7 @@ class _AppointmentFormScreenState extends State<AppointmentFormScreen> {
               style: ThemeConstants.captionStyle,
             )
           else ...<Widget>[
-            InvTextField(key: const ValueKey<String>('appt_deposit'), controller: _deposit, label: sw ? 'Amana iliyolipwa (TSh)' : 'Deposit paid (TSh)', isOptional: true, keyboardType: TextInputType.number),
+            InvTextField(key: const ValueKey<String>('appt_deposit'), controller: _deposit, label: sw ? 'Amana iliyolipwa (TSh)' : 'Deposit paid (TSh)', isOptional: true, keyboardType: TextInputType.number, inputFormatters: <TextInputFormatter>[ThousandsFormatter()]),
             if ((double.tryParse(_deposit.text.replaceAll(',', '').trim()) ?? 0) > 0)
               Wrap(
                 spacing: 8.w,
