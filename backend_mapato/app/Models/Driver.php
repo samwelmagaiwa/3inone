@@ -14,6 +14,12 @@ use Illuminate\Database\Eloquent\Builder;
 class Driver extends Model
 {
     use HasFactory, HasUuid, ScopedToAccount, HasBusinessOwner;
+    use \App\Models\Concerns\BelongsToBranch;
+
+    protected function branchService(): string
+    {
+        return 'transport';
+    }
 
     /**
      * The business a new driver belongs to: the business of the login they were given (the
@@ -40,6 +46,11 @@ class Driver extends Model
             return;
         }
 
+        // Looking at one branch: only its drivers (and everything built on drivers follows).
+        if (($branch = \App\Support\Tenancy\ServiceBranch::selected('transport', $user)) !== null) {
+            $query->where("{$table}.branch_id", $branch);
+        }
+
         $query->where(function (Builder $scope) use ($table, $user) {
             $scope->where("{$table}.user_id", $user->id)
                 ->orWhereIn(
@@ -53,6 +64,7 @@ class Driver extends Model
      * The attributes that are mass assignable.
      */
     protected $fillable = [
+        'branch_id',
         'user_id',
         'license_number',
         'license_expiry',

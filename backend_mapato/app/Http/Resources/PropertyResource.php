@@ -40,6 +40,7 @@ class PropertyResource extends JsonResource
             'default_rent_amount' => $this->default_rent_amount,
             'default_deposit_amount' => $this->default_deposit_amount,
             'utility_billing_enabled' => $this->utility_billing_enabled ?? false,
+            'branch_id' => $this->branch_id,
             'revenue_summary' => [
                 'total_collected' => $this->total_revenue,
             ],

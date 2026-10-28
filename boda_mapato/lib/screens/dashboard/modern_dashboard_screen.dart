@@ -24,6 +24,7 @@ import "../admin/debts_management_screen.dart";
 import "../admin/drivers_management_screen.dart";
 import "../../main.dart";
 import "../../widgets/month_selector.dart";
+import "../../widgets/branch_filter_button.dart";
 
 class ModernDashboardScreen extends StatefulWidget {
   const ModernDashboardScreen({super.key});
@@ -796,6 +797,9 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
+                      // The owner can look at one branch (yard, garage): every figure below then follows it.
+                      if (Provider.of<AuthProvider>(context, listen: false).user?.isBusinessOwner ?? false)
+                        BranchFilterButton(service: 'transport', onChanged: _loadDashboardData),
                       _buildBalanceCard(),
                       ResponsiveHelper.verticalSpace(2),
                       _buildStatsCards(),
@@ -1364,7 +1368,7 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: <Widget>[
                 // Left side: Payments, Debts
-                Row(
+                Flexible(child: Row(mainAxisSize: MainAxisSize.min, 
                   children: <Widget>[
                     _FooterIcon(
                       icon: Icons.account_balance_wallet_rounded,
@@ -1386,7 +1390,7 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
                       ),
                     ),
                   ],
-                ),
+                )),
                 // Center: Menu
                 _FooterIcon(
                   icon: Icons.apps_rounded,
@@ -1394,7 +1398,7 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
                   onTap: () => NavigationBuilder.showGridMenu(context),
                 ),
                 // Right side: Drivers, Receipts
-                Row(
+                Flexible(child: Row(mainAxisSize: MainAxisSize.min, 
                   children: <Widget>[
                     _FooterIcon(
                       icon: Icons.people_alt_rounded,
@@ -1412,7 +1416,7 @@ class _ModernDashboardScreenState extends State<ModernDashboardScreen>
                       onTap: () => _navigateToReceiptsList(filter: 'generated'),
                     ),
                   ],
-                ),
+                )),
               ],
             ),
           ),

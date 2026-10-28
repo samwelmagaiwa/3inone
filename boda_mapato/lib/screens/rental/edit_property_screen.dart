@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../constants/theme_constants.dart';
+import '../../widgets/branch_picker_field.dart';
 import '../../providers/rental_provider.dart';
 import '../../services/localization_service.dart';
 import '../../widgets/location_selector.dart';
@@ -20,6 +21,7 @@ class EditPropertyScreen extends StatefulWidget {
 }
 
 class _EditPropertyScreenState extends State<EditPropertyScreen> {
+  int? _branchId;
   final _formKey = GlobalKey<FormState>();
   final _loc = LocalizationService.instance;
 
@@ -105,6 +107,8 @@ class _EditPropertyScreenState extends State<EditPropertyScreen> {
 
       'address': _addressController.text.trim(),
       'status': _status,
+      // '' clears it: null fields are left out of a form upload
+      'branch_id': _branchId ?? '',
     };
 
     final error = await context
@@ -194,6 +198,7 @@ class _EditPropertyScreenState extends State<EditPropertyScreen> {
                         maxLines: 2,
                       ),
                       SizedBox(height: 14.h),
+                      BranchPickerField(service: 'rental', initialId: (widget.property['branch_id'] as num?)?.toInt(), onChanged: (int? id) => _branchId = id),
                     ],
                   ),
                   SizedBox(height: 20.h),

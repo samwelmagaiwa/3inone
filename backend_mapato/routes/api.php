@@ -201,6 +201,14 @@ Route::middleware(['auth:sanctum', 'role:admin', 'service:transport'])->prefix('
     Route::get('dashboard-stats', [DashboardController::class, 'getStats']);
 
     // Individual Dashboard Card Endpoints
+    // Branches of the transport business (yards, garages): vehicles and drivers belong to one, and every figure can be looked at per branch.
+    Route::prefix('branches')->group(function () {
+        Route::get('', [\App\Http\Controllers\API\BusinessBranchController::class, 'index'])->defaults('service', 'transport');
+        Route::post('', [\App\Http\Controllers\API\BusinessBranchController::class, 'store'])->defaults('service', 'transport');
+        Route::put('{id}', [\App\Http\Controllers\API\BusinessBranchController::class, 'update'])->defaults('service', 'transport')->whereNumber('id');
+        Route::delete('{id}', [\App\Http\Controllers\API\BusinessBranchController::class, 'destroy'])->defaults('service', 'transport')->whereNumber('id');
+    });
+
     Route::prefix('dashboard')->group(function () {
         Route::get('active-drivers-count', [DashboardController::class, 'getActiveDriversCount']);
         Route::get('active-devices-count', [DashboardController::class, 'getActiveDevicesCount']);
@@ -495,6 +503,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('inventory/branches',                  [SalonBranchController::class, 'store']);
         Route::match(['put', 'patch'], 'inventory/branches/{id}', [SalonBranchController::class, 'update']);
         Route::delete('inventory/branches/{id}',           [SalonBranchController::class, 'destroy']);
+        Route::get('inventory/branch-team',                [\App\Http\Controllers\API\Inventory\BranchTeamController::class, 'index']);
+        Route::put('inventory/branch-team/{staffId}',      [\App\Http\Controllers\API\Inventory\BranchTeamController::class, 'assign']);
+        Route::get('inventory/branch-sales',               [\App\Http\Controllers\API\Inventory\BranchTeamController::class, 'sales']);
         Route::get('inventory/salon/branches',             [SalonBranchController::class, 'index']);
         Route::post('inventory/salon/branches',            [SalonBranchController::class, 'store']);
         Route::match(['put', 'patch'], 'inventory/salon/branches/{id}', [SalonBranchController::class, 'update']);
@@ -503,9 +514,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('inventory/salon/equipment',           [SalonEquipmentController::class, 'store']);
         Route::match(['put', 'patch'], 'inventory/salon/equipment/{id}', [SalonEquipmentController::class, 'update']);
         Route::delete('inventory/salon/equipment/{id}',    [SalonEquipmentController::class, 'destroy']);
-        Route::get('inventory/branch-team',                [\App\Http\Controllers\API\Inventory\BranchTeamController::class, 'index']);
-        Route::put('inventory/branch-team/{staffId}',      [\App\Http\Controllers\API\Inventory\BranchTeamController::class, 'assign']);
-        Route::get('inventory/branch-sales',               [\App\Http\Controllers\API\Inventory\BranchTeamController::class, 'sales']);
         Route::get('inventory/salon/equipment/{id}/logs',  [SalonEquipmentController::class, 'logs']);
         Route::post('inventory/salon/equipment/{id}/logs', [SalonEquipmentController::class, 'addLog']);
         // Reports as a PDF or a CSV (the owner, managers and accountants: checked in the controller).
@@ -542,6 +550,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::middleware('inv_perm:inv_view_reports,inv_create_sales')->group(function () {
         Route::get('inventory/salon/stylists',             [SalonController::class, 'stylists']);
         Route::get('inventory/salon/stylists/{staffId}/transactions', [SalonController::class, 'stylistTransactions']);
+        Route::get('inventory/salon/services',             [SalonController::class, 'serviceSales']);
         // Profit and loss, the dashboard figures and payroll: the owner and managers only (checked in the controller too).
         Route::get('inventory/salon/profit-loss',          [SalonMoneyController::class, 'profitLoss']);
         Route::get('inventory/salon/overview',             [SalonMoneyController::class, 'overview']);
@@ -804,6 +813,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::prefix('rental')->middleware('service:rental')->group(function () {
         // Landlord & Admin routes
         Route::middleware(['role:admin,landlord'])->group(function () {
+            // Branches of the rental business (offices, areas): properties belong to one, and everything on them follows.
+            Route::prefix('branches')->group(function () {
+                Route::get('', [\App\Http\Controllers\API\BusinessBranchController::class, 'index'])->defaults('service', 'rental');
+                Route::post('', [\App\Http\Controllers\API\BusinessBranchController::class, 'store'])->defaults('service', 'rental');
+                Route::put('{id}', [\App\Http\Controllers\API\BusinessBranchController::class, 'update'])->defaults('service', 'rental')->whereNumber('id');
+                Route::delete('{id}', [\App\Http\Controllers\API\BusinessBranchController::class, 'destroy'])->defaults('service', 'rental')->whereNumber('id');
+            });
+
             // Properties
             Route::prefix('properties')->group(function () {
                 Route::get('', [PropertyController::class, 'index']);

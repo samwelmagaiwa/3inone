@@ -71,6 +71,30 @@ class DepotProvider extends ChangeNotifier {
   Map<String, String> _settings = <String, String>{};
   bool _loading = false;
 
+  /// Forget everything held for the previous service or account: another business's name, settings and figures
+  /// must never be drawn while this one's are still on their way.
+  void resetForNewContext() {
+    _suppliers.clear();
+    _purchaseOrders.clear();
+    _supplierInvoices.clear();
+    _creditCustomers.clear();
+    _debtors.clear();
+    _debtorTotals = const <String, double>{};
+    _cashSessions.clear();
+    _activeSession = null;
+    _crateTypes.clear();
+    _crateBalances.clear();
+    _cratePosition.clear();
+    _parkedSales.clear();
+    _returns.clear();
+    _dispatches.clear();
+    _reports.clear();
+    _alerts.clear();
+    _auditLog.clear();
+    _settings = <String, String>{};
+    notifyListeners();
+  }
+
   // ---- reads -------------------------------------------------------------
   List<InvSupplier> get suppliers => List.unmodifiable(_suppliers);
   List<InvPurchaseOrder> get purchaseOrders =>

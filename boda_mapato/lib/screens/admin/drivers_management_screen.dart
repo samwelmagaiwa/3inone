@@ -10,6 +10,7 @@ import "package:path_provider/path_provider.dart";
 import "package:provider/provider.dart";
 import "../../constants/theme_constants.dart";
 import "../../models/driver.dart";
+import "../../widgets/branch_picker_field.dart";
 import "../../services/api_service.dart";
 import "../../services/localization_service.dart";
 import "../../utils/responsive_helper.dart";
@@ -1784,6 +1785,7 @@ class _EditDriverDialogState extends State<_EditDriverDialog> {
   bool _isSaving = false;
   late String _selectedVehicleType;
   late String _selectedStatus;
+  int? _branchId;
 
   final Map<String, String> _vehicleTypes = <String, String>{
     "bajaji": LocalizationService.instance.translate('vehicle_type_bajaji'),
@@ -1861,6 +1863,7 @@ class _EditDriverDialogState extends State<_EditDriverDialog> {
             : null,
         "vehicle_type": _selectedVehicleType,
         "status": _selectedStatus,
+        "branch_id": _branchId,
       };
 
       await _apiService.updateDriver(widget.driver.id, payload);
@@ -1943,6 +1946,7 @@ class _EditDriverDialogState extends State<_EditDriverDialog> {
                       icon: Icons.directions_car),
                 ),
                 const SizedBox(height: 12),
+                BranchPickerField(service: 'transport', initialId: widget.driver.branchId, decoration: _inputDecoration(''), onChanged: (int? id) => _branchId = id),
                 Row(
                   children: [
                     Expanded(
@@ -2045,6 +2049,7 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
   bool _isLoading = false;
   String _selectedVehicleType = "bajaji";
   String _selectedStatus = "active";
+  int? _branchId;
 
   // Location state
   String? _locationRegion;
@@ -2154,6 +2159,7 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
             : null,
         "vehicle_type": _selectedVehicleType,
         "status": _selectedStatus,
+        "branch_id": _branchId == null ? null : '$_branchId',
       };
 
       final response = await _apiService.createDriver(driverData);
@@ -2622,6 +2628,8 @@ class _AddDriverDialogState extends State<_AddDriverDialog> {
                         ),
 
                         const SizedBox(height: 16),
+
+                        BranchPickerField(service: 'transport', decoration: _getBlueInputDecoration('', icon: Icons.store_mall_directory_outlined), onChanged: (int? id) => _branchId = id),
 
                         // Status dropdown
                         DropdownButtonFormField<String>(

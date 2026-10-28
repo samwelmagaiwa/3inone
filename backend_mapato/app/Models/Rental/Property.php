@@ -13,6 +13,12 @@ class Property extends Model
     use HasFactory, HasUuid, SoftDeletes;
 
     use \App\Models\Concerns\ScopedToAccount;
+    use \App\Models\Concerns\BelongsToBranch;
+
+    protected function branchService(): string
+    {
+        return 'rental';
+    }
 
     /** Fail-closed account scope: the properties the viewer may see (see App\Support\Tenancy\RentalAccess). */
     public function constrainToAccount(\Illuminate\Database\Eloquent\Builder $query, \App\Models\User $user): void
@@ -23,6 +29,7 @@ class Property extends Model
     protected $table = 'rental_properties';
 
     protected $fillable = [
+        'branch_id',
         'owner_id',
         'caretaker_id',
         'name',

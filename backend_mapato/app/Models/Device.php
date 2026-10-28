@@ -14,6 +14,12 @@ use Illuminate\Database\Eloquent\Builder;
 class Device extends Model
 {
     use HasFactory, HasUuid, ScopedToAccount, HasBusinessOwner;
+    use \App\Models\Concerns\BelongsToBranch;
+
+    protected function branchService(): string
+    {
+        return 'transport';
+    }
 
     /**
      * The business a new vehicle belongs to: its creator's, else its driver's, else the
@@ -56,6 +62,11 @@ class Device extends Model
             return;
         }
 
+        // Looking at one branch: only its vehicles.
+        if (($branch = \App\Support\Tenancy\ServiceBranch::selected('transport', $user)) !== null) {
+            $query->where("{$table}.branch_id", $branch);
+        }
+
         $query->where(function (Builder $scope) use ($table, $user, $drivers) {
             $scope->whereIn("{$table}.created_by", $user->accountMemberIds())
                 ->orWhereIn("{$table}.driver_id", $drivers);
@@ -66,6 +77,7 @@ class Device extends Model
      * The attributes that are mass assignable.
      */
     protected $fillable = [
+        'branch_id',
         'driver_id',
         'created_by',
         'name',

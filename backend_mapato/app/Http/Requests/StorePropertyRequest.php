@@ -66,6 +66,7 @@ class StorePropertyRequest extends FormRequest
             'total_units' => ['nullable', 'integer', 'min:0'],
             'number_of_blocks' => ['nullable', 'integer', 'min:1'],
             'caretaker_id' => ['nullable', new UserInAccount($this->user())],
+            'branch_id' => ['nullable', 'integer'],
             'default_rent_amount' => ['nullable', 'numeric', 'min:0'],
             'default_deposit_amount' => ['nullable', 'numeric', 'min:0'],
             'utility_billing_enabled' => ['sometimes', 'boolean'],

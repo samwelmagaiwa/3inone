@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/theme_constants.dart';
 import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 import '../services/localization_service.dart';
 import '../widgets/pending_registrations_count.dart';
 import 'admin/registrations_screen.dart';
@@ -49,6 +50,8 @@ class ServiceSelectionScreen extends StatelessWidget {
   Future<void> _selectService(BuildContext context, String service) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_serviceKey, service);
+    // A branch chosen in one service is not a branch of the next.
+    ApiService.clearBranch();
 
     // Navigate to service home
     switch (service) {

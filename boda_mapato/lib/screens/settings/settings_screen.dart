@@ -12,17 +12,11 @@ import "notifications_screen.dart";
 import "security_screen.dart";
 import "backup_screen.dart";
 import "help_screen.dart";
-import "../admin/businesses_screen.dart";
-import "../admin/registrations_screen.dart";
 import "../../widgets/subscription_banner.dart";
 import "business_profile_screen.dart";
 import "user_management_screen.dart";
-import "permissions_management_screen.dart";
-import '../../widgets/pending_registrations_count.dart';
 import 'subscription_screen.dart';
-import "../admin/sms_senders_screen.dart";
-import '../../widgets/pending_sms_senders_count.dart';
-import "../admin/plan_prices_screen.dart";
+import "super_admin_tiles.dart";
 
 // ignore_for_file: directives_ordering
 class SettingsScreen extends StatefulWidget {
@@ -34,8 +28,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final LocalizationService _localizationService = LocalizationService.instance;
-  final GlobalKey<PendingRegistrationsCountState> _pendingRegistrations = GlobalKey<PendingRegistrationsCountState>();
-  final GlobalKey<PendingSmsSendersCountState> _pendingSmsSenders = GlobalKey<PendingSmsSendersCountState>();
 
   @override
   void initState() {
@@ -284,95 +276,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: Icons.verified_user_rounded,
                 ),
                 const SizedBox(height: 8),
-                ThemeConstants.buildGlassCard(
-                  child: Column(
-                    children: [
-                      _buildSettingsTile(
-                        Icons.people_alt_outlined,
-                        loc.translate('users'),
-                        loc.isSwahili
-                            ? 'Dhibiti watumiaji wote kwenye huduma zote'
-                            : 'Manage all users across every service',
-                        () => _navigateToScreen(const UserManagementScreen()),
-                      ),
-                      const Divider(color: Colors.white24, height: 1),
-                      PendingRegistrationsCount(
-                        key: _pendingRegistrations,
-                        builder: (BuildContext context, int? pending) => _buildSettingsTile(
-                          Icons.how_to_reg_outlined,
-                          loc.isSwahili ? 'Usajili wa Biashara' : 'Business Registrations',
-                          loc.isSwahili
-                              ? 'Kagua biashara zilizojisajili na uzipe huduma'
-                              : 'Review registered businesses and assign their services',
-                          () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute<void>(builder: (BuildContext _) => const RegistrationsScreen()),
-                            );
-                            // approving or rejecting changed the number
-                            await _pendingRegistrations.currentState?.refresh();
-                          },
-                          badge: (pending ?? 0) > 0 ? CountBadge(count: pending) : null,
-                        ),
-                      ),
-                      const Divider(color: Colors.white24, height: 1),
-                      _buildSettingsTile(
-                        Icons.storefront_outlined,
-                        loc.isSwahili ? 'Biashara na Mipango' : 'Businesses & Plans',
-                        loc.isSwahili
-                            ? 'Mipango, tarehe za malipo na taarifa za kila biashara'
-                            : 'Plan, paid-until date and details of every business',
-                        () => _navigateToScreen(const BusinessesScreen()),
-                      ),
-                      const Divider(color: Colors.white24, height: 1),
-                      _buildSettingsTile(
-                        Icons.sell_outlined,
-                        loc.isSwahili ? 'Mipango na Bei' : 'Plans & Prices',
-                        loc.isSwahili
-                            ? 'Basic = huduma 1, Standard = huduma 2, Premium = hadi 3: weka bei, zinaonekana kwenye usajili'
-                            : 'Basic = 1 service, Standard = 2, Premium = up to 3: set the prices, the registration form shows them',
-                        () => _navigateToScreen(const PlanPricesScreen()),
-                      ),
-                      const Divider(color: Colors.white24, height: 1),
-                      PendingSmsSendersCount(
-                        key: _pendingSmsSenders,
-                        builder: (BuildContext context, int? pending) => _buildSettingsTile(
-                          Icons.sms_outlined,
-                          loc.isSwahili ? 'Majina ya SMS (Sender ID)' : 'SMS Sender Names',
-                          loc.isSwahili
-                              ? 'Weka jina na API key ya kila biashara; ujumbe wake utatoka kwa jina hilo'
-                              : "Set each business's sender name and API key; its texts then go out under it",
-                          () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute<void>(builder: (BuildContext _) => const SmsSendersScreen()),
-                            );
-                            await _pendingSmsSenders.currentState?.refresh();
-                          },
-                          badge: (pending ?? 0) > 0 ? CountBadge(count: pending) : null,
-                        ),
-                      ),
-                      const Divider(color: Colors.white24, height: 1),
-                      _buildSettingsTile(
-                        Icons.admin_panel_settings_outlined,
-                        loc.isSwahili ? 'Ruhusa' : 'Permissions',
-                        loc.isSwahili
-                            ? 'Dhibiti ruhusa za moduli za huduma'
-                            : 'Manage service module permissions',
-                        () => _navigateToScreen(const PermissionsScreen()),
-                      ),
-                      const Divider(color: Colors.white24, height: 1),
-                      _buildSettingsTile(
-                        Icons.cloud_sync_outlined,
-                        loc.translate('backup'),
-                        loc.isSwahili
-                            ? 'Hifadhi na rejesha data ya mfumo wote'
-                            : 'Backup and restore entire system data',
-                        () => _navigateToScreen(const BackupScreen()),
-                      ),
-                    ],
-                  ),
-                ),
+                ThemeConstants.buildGlassCard(child: const SuperAdminTiles()),
               ],
 
               // ── Admin Tools ────────────────────────────────────────────

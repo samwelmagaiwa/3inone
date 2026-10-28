@@ -1051,3 +1051,70 @@ class SalonBranchInfo {
   final String phone;
   final bool active;
 }
+
+// ------------------------------------------------------------------ what each service brought in
+
+/// One time a service was done: when, for which client, by which stylist, and what it was worth after its share of the discount.
+class ServiceSaleLine {
+  const ServiceSaleLine({required this.saleId, required this.number, required this.date, required this.qty, required this.net, this.client, this.stylist});
+
+  factory ServiceSaleLine.fromJson(final Map<String, dynamic> j) => ServiceSaleLine(
+        saleId: _int(j['sale_id']),
+        number: _text(j['number']),
+        date: _date(j['date']) ?? DateTime.now(),
+        client: j['client'] == null || _text(j['client']).isEmpty ? null : _text(j['client']),
+        stylist: j['stylist'] == null || _text(j['stylist']).isEmpty ? null : _text(j['stylist']),
+        qty: _int(j['qty']),
+        net: _num(j['net']),
+      );
+
+  final int saleId;
+  final String number;
+  final DateTime date;
+  final String? client;
+  final String? stylist;
+  final int qty;
+  final double net;
+}
+
+/// A service with how often it was done, what it brought in, for how many different clients, and every time it was done.
+class ServiceRow {
+  const ServiceRow({required this.productId, required this.name, required this.times, required this.revenue, required this.clients, required this.sales});
+
+  factory ServiceRow.fromJson(final Map<String, dynamic> j) => ServiceRow(
+        productId: _int(j['product_id']),
+        name: _text(j['name']),
+        times: _int(j['times']),
+        revenue: _num(j['revenue']),
+        clients: _int(j['clients']),
+        sales: _rows(j['sales']).map(ServiceSaleLine.fromJson).toList(),
+      );
+
+  final int productId;
+  final String name;
+  final int times;
+  final double revenue;
+  final int clients;
+  final List<ServiceSaleLine> sales;
+}
+
+class ServiceReport {
+  const ServiceReport({required this.from, required this.to, required this.times, required this.revenue, required this.services});
+
+  factory ServiceReport.fromJson(final Map<String, dynamic> j) {
+    final Map<String, dynamic> totals = j['totals'] is Map ? Map<String, dynamic>.from(j['totals'] as Map) : <String, dynamic>{};
+    return ServiceReport(
+      from: _date(j['from']) ?? DateTime.now(),
+      to: _date(j['to']) ?? DateTime.now(),
+      times: _int(totals['times']),
+      revenue: _num(totals['revenue']),
+      services: _rows(j['services']).map(ServiceRow.fromJson).toList(),
+    );
+  }
+
+  final DateTime from;
+  final DateTime to;
+  final int times;
+  final double revenue;
+  final List<ServiceRow> services;
+}

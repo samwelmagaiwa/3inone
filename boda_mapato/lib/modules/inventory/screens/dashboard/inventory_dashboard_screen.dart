@@ -651,12 +651,15 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
   Future<void> _showFilterSheet() async {
     // A business with branches (a salon, a shop or a depot) can also look at one branch (everything on this page then follows it).
     List<Map<String, dynamic>> branches = <Map<String, dynamic>>[];
+    // Only when the list really came back empty is the person told there are none (a failed list says nothing).
+    bool listed = false;
     {
       try {
         branches = <Map<String, dynamic>>[
           for (final SalonBranchInfo b in await (widget.salonApi ?? SalonApi()).branches())
             if (b.active) <String, dynamic>{'id': b.id, 'name': b.name},
         ];
+        listed = true;
       } on Exception {
         branches = <Map<String, dynamic>>[];
       }
@@ -671,11 +674,11 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
         customStart: _customStart,
         customEnd: _customEnd,
         branches: branches,
+        branchesListed: listed,
         branchId: ApiService.activeBranch,
         onBranch: (int? id, String? name) {
           if (id == ApiService.activeBranch) return;
-          ApiService.activeBranch = id;
-          ApiService.activeBranchName = name;
+          ApiService.chooseBranch(id, name, service: ApiService.activeService ?? 'inventory');
           _refresh();
         },
         onSelect: (f, start, end) {
@@ -1950,6 +1953,7 @@ class _FilterSheet extends StatefulWidget {
     this.customStart,
     this.customEnd,
     this.branches = const <Map<String, dynamic>>[],
+    this.branchesListed = false,
     this.branchId,
     this.onBranch,
   });
@@ -1960,6 +1964,9 @@ class _FilterSheet extends StatefulWidget {
 
   /// The salon's branches to choose from (empty = no branch choice), the one chosen now, and what to do when it changes.
   final List<Map<String, dynamic>> branches;
+
+  /// True when the list of branches was fetched (so an empty one means the business has none).
+  final bool branchesListed;
   final int? branchId;
   final void Function(int? id, String? name)? onBranch;
 
@@ -2123,6 +2130,18 @@ class _FilterSheetState extends State<_FilterSheet> {
             const SizedBox(height: 8),
             _branchTile(LocalizationService.instance.isSwahili ? 'Matawi yote' : 'All branches', null, 'filter_branch_all'),
             for (final Map<String, dynamic> br in widget.branches) _branchTile('${br['name']}', (br['id'] as num).toInt(), 'filter_branch_${br['id']}'),
+          ] else if (widget.branchesListed) ...<Widget>[
+            // A business that has not made any branch yet still sees where the choice will be, and how to make one.
+            const SizedBox(height: 8),
+            Text(LocalizationService.instance.isSwahili ? 'Tawi' : 'Branch', style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Text(
+              LocalizationService.instance.isSwahili
+                  ? 'Hakuna tawi bado. Ongeza matawi kupitia Menyu > Matawi, kisha uchague hapa kuona ripoti ya tawi moja.'
+                  : 'No branches yet. Add branches from Menu > Branches, then pick one here to see the figures of one branch only.',
+              key: const Key('filter_no_branches'),
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+            ),
           ],
           const SizedBox(height: 8),
           // Apply button

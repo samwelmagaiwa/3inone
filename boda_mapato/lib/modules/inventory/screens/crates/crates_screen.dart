@@ -45,7 +45,7 @@ class _CratesScreenState extends State<CratesScreen> {
   @override
   Widget build(BuildContext context) {
     final LocalizationService loc = context.watch<LocalizationService>();
-    final bool isDepot = context.select<DepotProvider, bool>((DepotProvider d) => d.capabilities.isDepot);
+    final bool isDepot = context.select<DepotProvider, bool>((DepotProvider d) => d.capabilities.depotWording);
 
     if (_loading) {
       return const Scaffold(

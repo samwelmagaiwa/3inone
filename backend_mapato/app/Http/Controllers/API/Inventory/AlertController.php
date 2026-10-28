@@ -352,6 +352,9 @@ class AlertController extends Controller
                 // depot: it is shown the plain retail setup, never another business's.
                 // (A salon's books are always a retail business's.)
                 ['inventory_type' => \App\Support\Tenancy\TenantContext::service() === 'salon' ? 'retail' : (($business = \App\Models\Business::forUser($viewer)) === null ? 'retail' : ($business->inventory_type ?: 'depot'))],
+                // Did the owner actually say what kind of business this is? An unset kind still BEHAVES as a depot (crates and all),
+                // but the app then speaks in general words instead of a depot's, and asks the owner to choose.
+                ['inventory_type_chosen' => \App\Support\Tenancy\TenantContext::service() === 'salon' || ($business = \App\Models\Business::forUser($viewer)) === null || filled($business->inventory_type) ? '1' : '0'],
             ),
         ]);
     }

@@ -20,7 +20,7 @@ on:
 
 jobs:
   # Gate: the image is only built if the backend test suite passes. Same PHP minor as the image
-  # (php:8.2-fpm-alpine); tests run on an in-memory SQLite database (.env.testing / phpunit.xml),
+  # (php:8.5-fpm-alpine); tests run on an in-memory SQLite database (.env.testing / phpunit.xml),
   # never a real one.
   test:
     if: ${{ endsWith(github.repository, '/3inone') }}
@@ -34,12 +34,12 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.2"
+          php-version: "8.5"
           extensions: mbstring, dom, fileinfo, pdo_sqlite, sqlite3, bcmath, intl, zip
           coverage: none
 
       - name: Install dependencies
-        run: composer install --no-interaction --no-progress --prefer-dist
+        run: composer install --no-interaction --no-progress --prefer-dist --ignore-platform-req=php
 
       - name: Run tests
         run: php artisan test

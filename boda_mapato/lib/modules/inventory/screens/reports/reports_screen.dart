@@ -1,12 +1,15 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../constants/theme_constants.dart';
+import '../../../../providers/auth_provider.dart';
+import '../../../../services/api_service.dart';
 import '../../../../services/localization_service.dart';
 import '../../models/inv_depot_models.dart';
 import '../../providers/depot_provider.dart';
@@ -47,6 +50,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
     // Draw whatever is already cached; only show a spinner on a cold start.
     _loading = context.read<DepotProvider>().reports.isEmpty;
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    _readLocal();
+  }
+
+  /// What this phone remembers when the server could not keep the choice (an older server): one list per person and service.
+  Set<String> _local = <String>{};
+  String get _localKey =>
+      'hidden_reports_${context.read<AuthProvider>().user?.id ?? ''}_${ApiService.activeService ?? 'inventory'}';
+
+  Future<void> _readLocal() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(
+        () => _local = (prefs.getStringList(_localKey) ?? <String>[]).toSet());
   }
 
   Future<void> _load() async {
@@ -56,17 +72,141 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
   }
 
+  /// The business's own choice when the server keeps it (it then holds for every phone); else this phone's.
+  Set<String> _hiddenKeys(Map<String, String> settings) =>
+      settings.containsKey('hidden_reports')
+          ? (settings['hidden_reports'] ?? '')
+              .split(',')
+              .map((String k) => k.trim())
+              .where((String k) => k.isNotEmpty)
+              .toSet()
+          : _local;
+
+  /// The owner picks which reports this business sees; the choice is saved with the business's settings.
+  Future<void> _customize(
+      List<InvReportMeta> applicable, Set<String> hidden) async {
+    final DepotProvider depot = context.read<DepotProvider>();
+    final Set<String> picked = <String>{...hidden};
+    final bool? save = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: ThemeConstants.primaryBlue,
+      builder: (BuildContext sheet) => StatefulBuilder(
+        builder: (BuildContext _, StateSetter set) {
+          final LocalizationService loc = LocalizationService.instance;
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Padding(
+                  padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 4.h),
+                  child: Text(
+                      loc.isSwahili
+                          ? 'Chagua ripoti zinazoonekana'
+                          : 'Choose the reports you see',
+                      style: ThemeConstants.bodyStyle
+                          .copyWith(fontWeight: FontWeight.w700)),
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  child: Text(
+                      loc.isSwahili
+                          ? 'Zilizozimwa hazitaonekana kwa wafanyakazi wote wa biashara hii.'
+                          : 'Switched-off reports are hidden for everyone in this business.',
+                      style: ThemeConstants.bodyStyle
+                          .copyWith(fontSize: 12.sp, color: Colors.white70)),
+                ),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: <Widget>[
+                      for (final InvReportMeta r in applicable)
+                        SwitchListTile(
+                          value: !picked.contains(r.key),
+                          onChanged: (bool on) => set(() =>
+                              on ? picked.remove(r.key) : picked.add(r.key)),
+                          title: Text(
+                            loc.translate('report_${r.key}') ==
+                                    'report_${r.key}'
+                                ? r.title
+                                : loc.translate('report_${r.key}'),
+                            style: ThemeConstants.bodyStyle,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.all(16.w),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                        onPressed: () => Navigator.pop(sheet, true),
+                        child: Text(loc.translate('save'))),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    if (save != true) return;
+    final List<String> chosen = picked.toList()..sort();
+    final String localKey = _localKey; // read now: the screen may be gone after the server answers
+    final bool ok = await depot
+        .saveSettings(<String, String>{'hidden_reports': chosen.join(',')});
+    final bool sw = LocalizationService.instance.isSwahili;
+    if (ok && depot.settings.containsKey('hidden_reports')) {
+      // kept by the server: every phone of the business has it
+      if (mounted)
+        ThemeConstants.showInfoSnackBar(
+            context,
+            sw
+                ? 'Imehifadhiwa kwa biashara nzima.'
+                : 'Saved for the whole business.');
+      return;
+    }
+    // The server could not keep it (an older server does not know this setting): keep it on this phone so the choice is not lost.
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(localKey, chosen);
+    if (!mounted) return;
+    setState(() => _local = chosen.toSet());
+    ThemeConstants.showInfoSnackBar(
+        context,
+        sw
+            ? 'Imehifadhiwa kwenye simu hii tu. Seva ikisasishwa, itahifadhiwa kwa biashara nzima.'
+            : 'Saved on this phone only. Once the server is updated it can be saved for the whole business.');
+  }
+
   @override
   Widget build(BuildContext context) {
     final LocalizationService loc = context.watch<LocalizationService>();
     final DepotProvider depot = context.watch<DepotProvider>();
     final bool crates = depot.capabilities.useCrates;
     // A salon reports on sales, clients' debts, cash and what its services and goods earn: not on stock, purchases or crates.
-    const Set<String> shopOnly = <String>{'stock_valuation', 'stock_movements', 'stock_count_variance', 'damages', 'purchases', 'crates_position'};
+    const Set<String> shopOnly = <String>{
+      'stock_valuation',
+      'stock_movements',
+      'stock_count_variance',
+      'damages',
+      'purchases',
+      'crates_position'
+    };
     final bool salon = isSalonMode(context);
-    final List<InvReportMeta> rows = depot.reports
-        .where((InvReportMeta r) => salon ? !shopOnly.contains(r.key) : (crates || r.key != 'crates_position'))
+    // What applies to this kind of business, then what its owner chose to hide (a business setting, so every
+    // phone of the business shows the same list).
+    final List<InvReportMeta> applicable = depot.reports
+        .where((InvReportMeta r) => salon
+            ? !shopOnly.contains(r.key)
+            : (crates || r.key != 'crates_position'))
         .toList(growable: false);
+    final Set<String> hidden = _hiddenKeys(depot.settings);
+    final List<InvReportMeta> rows = applicable
+        .where((InvReportMeta r) => !hidden.contains(r.key))
+        .toList(growable: false);
+    final bool canConfigure = context.select<AuthProvider, bool>(
+        (AuthProvider a) => a.permissions.has('inv_manage_settings'));
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -75,51 +215,87 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ? const Center(
                 child: CircularProgressIndicator(color: Colors.white70),
               )
-            : RefreshIndicator(
-                onRefresh: _load,
-                backgroundColor: Colors.white,
-                color: ThemeConstants.primaryBlue,
-                child: rows.isEmpty
-                    ? ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        children: <Widget>[
-                          SizedBox(height: 70.h),
-                          InvEmptyState(
-                            icon: Icons.bar_chart_outlined,
-                            message: loc.translate('no_reports'),
-                          ),
-                        ],
-                      )
-                    : GridView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
-                        ),
-                        padding: EdgeInsets.all(12.w),
-                        // A fixed aspect ratio makes tiles too short on a
-                        // narrow screen; pin the height instead so the tile
-                        // always has room for its two-line title.
-                        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 220.w,
-                          mainAxisSpacing: 8.h,
-                          crossAxisSpacing: 8.w,
-                          mainAxisExtent: 80.h,
-                        ),
-                        itemCount: rows.length,
-                        itemBuilder: (_, int i) => _ReportTile(
-                          report: rows[i],
-                          icon:
-                              _icons[rows[i].key] ?? Icons.description_outlined,
-                          onTap: () => Navigator.push<void>(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) => ReportViewerScreen(
-                                reportKey: rows[i].key,
-                                title: rows[i].title,
-                              ),
+            : Column(
+                children: <Widget>[
+                  if (canConfigure && applicable.isNotEmpty)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: EdgeInsets.only(right: 12.w, top: 8.h),
+                        child: ElevatedButton.icon(
+                          key: const Key('choose_reports_button'),
+                          onPressed: () => _customize(applicable, hidden),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: ThemeConstants.primaryBlue,
+                            foregroundColor: Colors.white,
+                            elevation: 2,
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 16.w, vertical: 10.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24.r),
+                              side: const BorderSide(color: Colors.white38),
                             ),
                           ),
+                          icon: const Icon(Icons.tune_rounded, size: 18),
+                          label: Text(
+                              loc.isSwahili
+                                  ? 'Chagua ripoti'
+                                  : 'Choose reports',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w700)),
                         ),
                       ),
+                    ),
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: _load,
+                      backgroundColor: Colors.white,
+                      color: ThemeConstants.primaryBlue,
+                      child: rows.isEmpty
+                          ? ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: <Widget>[
+                                SizedBox(height: 70.h),
+                                InvEmptyState(
+                                  icon: Icons.bar_chart_outlined,
+                                  message: loc.translate('no_reports'),
+                                ),
+                              ],
+                            )
+                          : GridView.builder(
+                              physics: const AlwaysScrollableScrollPhysics(
+                                parent: BouncingScrollPhysics(),
+                              ),
+                              padding: EdgeInsets.all(12.w),
+                              // A fixed aspect ratio makes tiles too short on a
+                              // narrow screen; pin the height instead so the tile
+                              // always has room for its two-line title.
+                              gridDelegate:
+                                  SliverGridDelegateWithMaxCrossAxisExtent(
+                                maxCrossAxisExtent: 220.w,
+                                mainAxisSpacing: 8.h,
+                                crossAxisSpacing: 8.w,
+                                mainAxisExtent: 80.h,
+                              ),
+                              itemCount: rows.length,
+                              itemBuilder: (_, int i) => _ReportTile(
+                                report: rows[i],
+                                icon: _icons[rows[i].key] ??
+                                    Icons.description_outlined,
+                                onTap: () => Navigator.push<void>(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => ReportViewerScreen(
+                                      reportKey: rows[i].key,
+                                      title: rows[i].title,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
               ),
       ),
     );

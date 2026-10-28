@@ -13,9 +13,12 @@ import 'salon_input.dart';
 /// that branch's; "All branches" goes back to the whole business. The owner and managers add, rename and switch branches off.
 /// A business with one branch never needs this page.
 class BranchesScreen extends StatefulWidget {
-  const BranchesScreen({super.key, this.api, this.manage = true});
+  const BranchesScreen({super.key, this.api, this.manage = true, this.service});
 
   final SalonApi? api;
+
+  /// Which service's branches these are ('inventory', 'salon', 'transport', 'rental'); null = the shop or salon now open.
+  final String? service;
 
   /// The owner and managers change the list; everyone else only chooses.
   final bool manage;
@@ -26,6 +29,7 @@ class BranchesScreen extends StatefulWidget {
 
 class _BranchesScreenState extends State<BranchesScreen> {
   late final SalonApi _api = widget.api ?? SalonApi();
+  String get _service => widget.service ?? ApiService.activeService ?? 'inventory';
   List<SalonBranchInfo> _rows = <SalonBranchInfo>[];
   String? _error;
   bool _loading = true;
@@ -46,8 +50,7 @@ class _BranchesScreenState extends State<BranchesScreen> {
       if (!mounted) return;
       // A branch switched off since it was chosen no longer filters anything.
       if (ApiService.activeBranch != null && !rows.any((SalonBranchInfo b) => b.id == ApiService.activeBranch && b.active)) {
-        ApiService.activeBranch = null;
-        ApiService.activeBranchName = null;
+        ApiService.clearBranch();
       }
       setState(() {
         _rows = rows;
@@ -79,8 +82,7 @@ class _BranchesScreenState extends State<BranchesScreen> {
 
   void _choose(final int? id) {
     setState(() {
-      ApiService.activeBranch = id;
-      ApiService.activeBranchName = id == null ? null : _rows.where((SalonBranchInfo b) => b.id == id).map((SalonBranchInfo b) => b.name).firstOrNull;
+      ApiService.chooseBranch(id, id == null ? null : _rows.where((SalonBranchInfo b) => b.id == id).map((SalonBranchInfo b) => b.name).firstOrNull, service: _service);
     });
   }
 

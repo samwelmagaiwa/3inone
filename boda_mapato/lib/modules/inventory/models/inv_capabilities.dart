@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../services/api_service.dart';
+
 /// The kinds of stock business an owner can say they run, in the order they are offered.
 /// (The same keys as config/inventory_types.php on the server.)
 const List<String> kInventoryTypes = <String>['retail', 'wholesale', 'mixed', 'depot'];
@@ -33,11 +35,20 @@ class InvCapabilities {
     this.saleTier = 'product',
     this.pricesIncludeVat = true,
     this.defaultTaxPercent = 0,
+    this.kindChosen = true,
   });
 
-  factory InvCapabilities.fromSettings(Map<String, String> s) => InvCapabilities(
-        inventoryType: kInventoryTypes.contains(s['inventory_type']) ? s['inventory_type']! : 'depot',
-        useCrates: (s['use_crates'] ?? '1') != '0',
+  factory InvCapabilities.fromSettings(Map<String, String> s) {
+    // A salon never chooses a stock kind and has no crates: with none set it reads as a retail business,
+    // not as the depot an unset shop falls back to.
+    final bool salon = ApiService.activeService == 'salon';
+    return InvCapabilities._read(s, salon: salon);
+  }
+
+  factory InvCapabilities._read(Map<String, String> s, {required bool salon}) => InvCapabilities(
+        kindChosen: (s['inventory_type_chosen'] ?? '1') != '0',
+        inventoryType: kInventoryTypes.contains(s['inventory_type']) ? s['inventory_type']! : (salon ? 'retail' : 'depot'),
+        useCrates: (s['use_crates'] ?? (salon ? '0' : '1')) != '0',
         saleTier: const <String>['retail', 'wholesale'].contains(s['sale_tier']) ? s['sale_tier']! : 'product',
         pricesIncludeVat: (s['prices_include_vat'] ?? '1') != '0',
         defaultTaxPercent: double.tryParse(s['tax_percent'] ?? '') ?? 0,
@@ -59,6 +70,13 @@ class InvCapabilities {
   final double defaultTaxPercent;
 
   bool get isDepot => inventoryType == 'depot';
+
+  /// Did the owner say what kind of business this is? (An older server never says, which counts as yes.)
+  final bool kindChosen;
+
+  /// Speak in a depot's words (depot, warehouse, crates ...) only for a business that chose to be a depot. One that never chose
+  /// still behaves as a depot, but is addressed in words that suit any business.
+  bool get depotWording => isDepot && kindChosen;
   bool get isRetail => inventoryType == 'retail';
   bool get isWholesale => inventoryType == 'wholesale';
   bool get isMixed => inventoryType == 'mixed';
@@ -79,8 +97,9 @@ class InvCapabilities {
       other.useCrates == useCrates &&
       other.saleTier == saleTier &&
       other.pricesIncludeVat == pricesIncludeVat &&
-      other.defaultTaxPercent == defaultTaxPercent;
+      other.defaultTaxPercent == defaultTaxPercent &&
+      other.kindChosen == kindChosen;
 
   @override
-  int get hashCode => Object.hash(inventoryType, useCrates, saleTier, pricesIncludeVat, defaultTaxPercent);
+  int get hashCode => Object.hash(inventoryType, useCrates, saleTier, pricesIncludeVat, defaultTaxPercent, kindChosen);
 }

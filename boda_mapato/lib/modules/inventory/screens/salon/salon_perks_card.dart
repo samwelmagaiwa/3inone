@@ -126,8 +126,8 @@ class _SalonPerksCardState extends State<SalonPerksCard> {
 
     return Container(
       key: const ValueKey<String>('salon_perks_card'),
-      decoration: ThemeConstants.invCardDecoration,
-      padding: const EdgeInsets.all(12),
+      decoration: const BoxDecoration(),
+      padding: EdgeInsets.zero,
       // Material so the package switches can paint their ink on the card's coloured background.
       child: Material(
         color: Colors.transparent,

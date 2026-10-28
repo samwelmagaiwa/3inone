@@ -41,6 +41,7 @@ class UpdatePropertyRequest extends FormRequest
             'status' => ['sometimes', Rule::in(['active', 'inactive', 'under_maintenance', 'archived'])],
             'total_units' => ['sometimes', 'integer', 'min:0'],
             'number_of_blocks' => ['sometimes', 'integer', 'min:1'],
+            'branch_id' => ['sometimes', 'nullable', 'integer'],
             'caretaker_id' => ['nullable', new UserInAccount(
                 $this->user(),
                 \App\Models\Rental\Property::withTrashed()->whereKey($this->route('id'))->value('caretaker_id')

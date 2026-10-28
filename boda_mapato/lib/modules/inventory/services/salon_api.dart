@@ -29,6 +29,13 @@ class SalonApi {
     return StylistPage.fromJson(_data(res));
   }
 
+  /// What each service brought in for the period, with every time it was done and for which client.
+  Future<ServiceReport> serviceSales({final DateTime? from, final DateTime? to}) async {
+    final List<String> q = <String>[if (from != null) 'from=${_day(from)}', if (to != null) 'to=${_day(to)}'];
+    final Map<String, dynamic> res = await _api.get('/inventory/salon/services${q.isEmpty ? '' : '?${q.join('&')}'}');
+    return ServiceReport.fromJson(_data(res));
+  }
+
   // ---------------------------------------------------------------- expenses
 
   Future<List<SalonExpense>> expenses(final DateTime from, final DateTime to) async {

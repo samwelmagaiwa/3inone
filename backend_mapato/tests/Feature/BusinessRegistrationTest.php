@@ -690,7 +690,7 @@ class BusinessRegistrationTest extends TestCase
         $this->assertSame(count(\App\Support\InventoryDefaults::SETTINGS), $own['settings']);
         $this->assertSame(['Crate', 'Empty bottle'], $own['crates']);
         // ...carrying ITS OWN name (from the registration form), not the first depot's edited
-        // settings and not the platform's "Beverage Depot" placeholder.
+        // settings and not a made-up placeholder name.
         $this->assertSame('Asha Rentals', $own['depot_name']);
 
         // ...and the first business's own rows are untouched and still its own.

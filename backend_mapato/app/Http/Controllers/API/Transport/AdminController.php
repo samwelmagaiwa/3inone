@@ -304,6 +304,11 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 $query->whereIn('created_by', $admin->accountMemberIds());
             }
 
+            // Looking at one branch: only the drivers whose profile is in it (Driver carries the branch scope).
+            if (\App\Support\Tenancy\ServiceBranch::selected('transport', $admin) !== null) {
+                $query->whereHas('driver');
+            }
+
             // Get total count for pagination
             $total = $query->count();
 
@@ -370,6 +375,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'trips_completed' => $tripsCompleted,
                     'has_completed_agreement' => $hasCompletedAgreement,
                     'agreement_status' => $agreementStatus,
+                    'branch_id' => $driver?->branch_id,
                 ];
             });
 
@@ -460,7 +466,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'date_of_birth' => $request->date_of_birth,
                 'national_id' => $request->national_id,
                 'is_active' => $isActive,
-            ]);
+            ] + ($request->has('branch_id') ? ['branch_id' => \App\Support\Tenancy\ServiceBranch::valid($request->input('branch_id'), 'transport', $admin)] : []));
 
             // Create or assign vehicle if vehicle information is provided
             $device = null;
@@ -612,6 +618,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 if ($request->has('license_number')) $driverData['license_number'] = $request->license_number;
                 if ($request->has('address')) $driverData['address'] = $request->address;
                 if ($request->has('emergency_contact')) $driverData['emergency_contact'] = $request->emergency_contact;
+                if ($request->has('branch_id')) $driverData['branch_id'] = \App\Support\Tenancy\ServiceBranch::valid($request->input('branch_id'), 'transport', $admin);
                 
                 if (!empty($driverData)) {
                     $user->driver->update($driverData);
@@ -789,6 +796,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'plate_number' => $vehicle->plate_number,
                     'description' => $vehicle->description,
                     'is_active' => $vehicle->is_active,
+                    'branch_id' => $vehicle->branch_id,
                     'driver' => $vehicle->driver ? [
                         'id' => $vehicle->driver->id,
                         'user_id' => $vehicle->driver->user_id,
@@ -872,6 +880,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             $vehicle = Device::findOrFail($id);
 
             $update = $request->only(['name', 'type', 'plate_number', 'description', 'is_active']);
+            if ($request->has('branch_id')) {
+                $update['branch_id'] = \App\Support\Tenancy\ServiceBranch::valid($request->input('branch_id'), 'transport', $request->user());
+            }
             if (!empty($update)) {
                 $vehicle->update($update);
             }
@@ -1011,7 +1022,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 'plate_number' => $request->getPlateNumber(),
                 'description' => $request->description,
                 'is_active' => true,
-            ]);
+            ] + ($request->has('branch_id') ? ['branch_id' => \App\Support\Tenancy\ServiceBranch::valid($request->input('branch_id'), 'transport', $admin)] : []));
 
             // Update user's assigned device if driver specified
             if ($driver) {

@@ -441,6 +441,44 @@ class SalonTest extends TestCase
         $this->assertSame(['services' => 5, 'revenue' => 95000, 'commission' => 0, 'discount' => 0, 'visits' => 4], $data['totals'], 'no rate set: no commission');
     }
 
+    public function test_each_service_lists_every_time_it_was_done_with_the_client_and_the_stylist(): void
+    {
+        $owner = $this->salon();
+        $asha = $this->stylist($owner, 'Asha');
+        $bahati = $this->stylist($owner, 'Bahati');
+        $this->monthOfWork($owner, $asha, $bahati);
+
+        $data = $this->api($owner, 'GET', '/api/inventory/salon/services')->assertOk()->json('data');
+
+        $this->assertSame('2026-10-01', $data['from'], 'this month by default');
+        $services = collect($data['services'])->keyBy('name');
+        $this->assertSame(['Braids', 'Wash'], collect($data['services'])->pluck('name')->all(), 'best first, goods and the cancelled sale left out');
+
+        $braids = $services['Braids'];
+        $this->assertSame(['times' => 2, 'revenue' => 80000, 'clients' => 2], collect($braids)->only(['times', 'revenue', 'clients'])->all());
+        $this->assertEqualsCanonicalizing(['Neema', 'Rehema'], collect($braids['sales'])->pluck('client')->all(), 'who each one was done for');
+        $this->assertEqualsCanonicalizing(['Asha', 'Bahati'], collect($braids['sales'])->pluck('stylist')->all());
+
+        $wash = $services['Wash'];
+        $this->assertSame(['times' => 3, 'revenue' => 15000, 'clients' => 1], collect($wash)->only(['times', 'revenue', 'clients'])->all());
+        $this->assertContains(null, collect($wash['sales'])->pluck('client')->all(), 'a walk-in has no name but is still listed');
+        $this->assertSame(['times' => 5, 'revenue' => 95000], $data['totals']);
+    }
+
+    public function test_a_stylist_sees_only_the_services_they_did_themselves(): void
+    {
+        $owner = $this->salon();
+        $asha = $this->stylist($owner, 'Asha');
+        $bahati = $this->stylist($owner, 'Bahati');
+        $this->monthOfWork($owner, $asha, $bahati);
+
+        $mine = $this->api($bahati, 'GET', '/api/inventory/salon/services')->assertOk()->json('data');
+
+        $this->assertSame(['Braids'], collect($mine['services'])->pluck('name')->all());
+        $this->assertSame(['Bahati'], collect($mine['services'][0]['sales'])->pluck('stylist')->all());
+        $this->assertSame(40000, $mine['totals']['revenue']);
+    }
+
     public function test_a_stylist_earns_the_service_rate_fixed_when_it_was_sold(): void
     {
         $owner = $this->salon();

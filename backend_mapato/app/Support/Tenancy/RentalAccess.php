@@ -43,6 +43,11 @@ final class RentalAccess
     {
         $query = DB::table('rental_properties')->select('rental_properties.id');
 
+        // Looking at one branch: only its properties (houses, bills, tenants, payments and repairs all hang off these).
+        if (self::managesProperties($user) && ($branch = ServiceBranch::selected('rental', $user)) !== null) {
+            $query->where('rental_properties.branch_id', $branch);
+        }
+
         return match (self::role($user)) {
             'tenant' => $query->whereIn('rental_properties.id', self::leasedHouses($user)->select('h.property_id')),
             'vendor' => $query->whereIn('rental_properties.id', self::assignedRequests($user)->select('m.property_id')),

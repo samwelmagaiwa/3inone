@@ -178,7 +178,7 @@ final class InventoryDefaults
      * Settings that came after the 2026_10_08 restore migration. They are never seeded by a migration: a
      * business that has no row reads the default here, and seedFor() writes them for a new business.
      */
-    public const READ_TIME_DEFAULTS = ['use_crates', 'sale_tier', 'prices_include_vat'];
+    public const READ_TIME_DEFAULTS = ['use_crates', 'sale_tier', 'prices_include_vat', 'hidden_reports'];
 
     /** Depot setting => the business field it mirrors. */
     private const BUSINESS_FIELDS = [
@@ -197,7 +197,10 @@ final class InventoryDefaults
         'sale_tier' => 'product',
         // Do the prices already include VAT? (Only matters for products that carry a VAT rate.)
         'prices_include_vat' => '1',
-        'depot_name' => 'Beverage Depot',
+        // Reports this business does not want in its Reports list (comma-separated report keys, e.g. "stock_valuation,purchases").
+        'hidden_reports' => '',
+        // No made-up name: a business shows its own (BUSINESS_FIELDS fills it from the business record).
+        'depot_name' => '',
         'depot_phone' => '',
         'depot_address' => '',
         'invoice_prefix' => 'INV',

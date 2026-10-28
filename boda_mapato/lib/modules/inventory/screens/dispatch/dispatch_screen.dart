@@ -373,7 +373,7 @@ class _LoadVehicleSheetState extends State<_LoadVehicleSheet> {
               ),
               SizedBox(height: 8.h),
               Text(
-                loc.translateForKind('load_removes_stock_note', isDepot: context.watch<DepotProvider>().capabilities.isDepot),
+                loc.translateForKind('load_removes_stock_note', isDepot: context.watch<DepotProvider>().capabilities.depotWording),
                 style: ThemeConstants.captionStyle,
               ),
               SizedBox(height: 16.h),
@@ -532,7 +532,7 @@ class _DispatchDetailScreenState extends State<DispatchDetailScreen> {
                         ),
                         SizedBox(height: 8.h),
                         Text(
-                          loc.translateForKind('reconcile_note', isDepot: context.watch<DepotProvider>().capabilities.isDepot),
+                          loc.translateForKind('reconcile_note', isDepot: context.watch<DepotProvider>().capabilities.depotWording),
                           style: ThemeConstants.captionStyle,
                         ),
                       ],

@@ -116,9 +116,9 @@ void main() {
   });
 
   testWidgets('"All branches" puts it back, and applying the same choice does not reload for nothing', (t) async {
-    ApiService.activeBranch = 1;
-    ApiService.activeBranchName = 'Kariakoo';
     final _Inv inv = await _open(t, _Salon(two));
+    // chosen once the salon is open (opening a service forgets any branch of the one before)
+    ApiService.chooseBranch(1, 'Kariakoo', service: 'salon');
     final int before = inv.salesFetches;
 
     await _openSheet(t);
@@ -142,8 +142,8 @@ void main() {
   testWidgets('a salon with no branches, a failed list, or a shop has no branch choice', (t) async {
     await _open(t, _Salon(<SalonBranchInfo>[]));
     await _openSheet(t);
-    expect(find.text('Branch'), findsNothing);
     expect(find.byKey(const Key('filter_branch_all')), findsNothing);
+    expect(find.byKey(const Key('filter_no_branches')), findsOneWidget, reason: 'told there are none and where to add them');
     expect(find.text('Choose Period'), findsOneWidget, reason: 'the period choice is as it was');
   });
 
@@ -152,6 +152,7 @@ void main() {
     await _openSheet(t);
     expect(find.text('Choose Period'), findsOneWidget);
     expect(find.byKey(const Key('filter_branch_all')), findsNothing);
+    expect(find.byKey(const Key('filter_no_branches')), findsNothing, reason: 'a failed list does not claim there are none');
   });
 
   testWidgets('a shop with branches can look at one branch too', (t) async {
@@ -166,5 +167,6 @@ void main() {
     await _openSheet(t);
     expect(find.text('Choose Period'), findsOneWidget);
     expect(find.byKey(const Key('filter_branch_all')), findsNothing);
+    expect(find.byKey(const Key('filter_no_branches')), findsOneWidget);
   });
 }

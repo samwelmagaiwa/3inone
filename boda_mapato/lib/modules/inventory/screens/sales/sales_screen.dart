@@ -21,6 +21,7 @@ import '../scanning/barcode_scanner_screen.dart';
 import '../widgets/crates_owed_note.dart';
 import '../widgets/inv_units_ui.dart';
 import '../widgets/inventory_widgets.dart';
+import '../widgets/joined_sections.dart';
 import 'crate_checkout_rules.dart';
 import 'sale_confirmation_dialog.dart';
 import 'sale_receipt_screen.dart';
@@ -119,8 +120,8 @@ class _SalesScreenState extends State<SalesScreen>
 
     return Container(
       key: const ValueKey<String>('salon_money_card'),
-      decoration: ThemeConstants.invCardDecoration,
-      padding: EdgeInsets.all(12.w),
+      decoration: const BoxDecoration(),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -176,8 +177,8 @@ class _SalesScreenState extends State<SalesScreen>
     final depot = context.watch<DepotProvider>();
 
     return Container(
-      decoration: ThemeConstants.invCardDecoration,
-      padding: EdgeInsets.all(12.w),
+      decoration: const BoxDecoration(),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -353,10 +354,13 @@ class _SalesScreenState extends State<SalesScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Every section of the sale is one joined card, told apart by the glowing lines of the inventory dashboard
+          // (no gaps between separate cards).
+          JoinedSectionsCard(sections: <Widget>[
           // Action Toolbar: Add Products + Scan + Clear Cart
           Container(
-            padding: EdgeInsets.all(12.w),
-            decoration: ThemeConstants.invCardDecoration,
+            padding: EdgeInsets.zero,
+            decoration: const BoxDecoration(),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -386,6 +390,8 @@ class _SalesScreenState extends State<SalesScreen>
                         ),
                       ),
                     ),
+                    SizedBox(width: 8.w),
+                    SizedBox(width: SectionGlowVerticalDivider.lineWidth, height: 44.h, child: const SectionGlowVerticalDivider()),
                     SizedBox(width: 8.w),
                     Expanded(
                       child: OutlinedButton.icon(
@@ -419,14 +425,13 @@ class _SalesScreenState extends State<SalesScreen>
               ],
             ),
           ),
-          SizedBox(height: 12.h),
 
           // Cart Items List / Empty Placeholder
           if (inv.cart.isEmpty)
             Container(
               width: double.infinity,
-              padding: EdgeInsets.symmetric(vertical: 24.h, horizontal: 16.w),
-              decoration: ThemeConstants.invCardDecoration,
+              padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 4.w),
+              decoration: const BoxDecoration(),
               child: Column(
                 children: [
                   Icon(Icons.shopping_bag_outlined,
@@ -443,8 +448,8 @@ class _SalesScreenState extends State<SalesScreen>
             )
           else
             Container(
-              decoration: ThemeConstants.invCardDecoration,
-              padding: EdgeInsets.all(12.w),
+              decoration: const BoxDecoration(),
+              padding: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -477,12 +482,11 @@ class _SalesScreenState extends State<SalesScreen>
                 ],
               ),
             ),
-          SizedBox(height: 12.h),
 
           // Payment & Customer Configuration
           Container(
-            decoration: ThemeConstants.invCardDecoration,
-            padding: EdgeInsets.all(12.w),
+            decoration: const BoxDecoration(),
+            padding: EdgeInsets.zero,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -504,9 +508,13 @@ class _SalesScreenState extends State<SalesScreen>
                       child: Row(
                         children: [
                           _buildModeChip(inv, 'cash', loc.translate('cash')),
-                          SizedBox(width: 6.w),
+                          SizedBox(width: 5.w),
+                          SizedBox(width: SectionGlowVerticalDivider.lineWidth, height: 30.h, child: const SectionGlowVerticalDivider()),
+                          SizedBox(width: 5.w),
                           _buildModeChip(inv, 'debt', loc.translate('debt')),
-                          SizedBox(width: 6.w),
+                          SizedBox(width: 5.w),
+                          SizedBox(width: SectionGlowVerticalDivider.lineWidth, height: 30.h, child: const SectionGlowVerticalDivider()),
+                          SizedBox(width: 5.w),
                           _buildModeChip(
                               inv, 'partial', loc.translate('partial')),
                         ],
@@ -673,30 +681,21 @@ class _SalesScreenState extends State<SalesScreen>
               ],
             ),
           ),
-          SizedBox(height: 10.h),
           if (isSalonMode(context)) ...[
             _salonMoneyCard(inv, loc.isSwahili),
-            SizedBox(height: 10.h),
             const SalonPerksCard(),
-            SizedBox(height: 10.h),
           ],
           // Crates and empties: only for businesses that deal in returnable packaging (a depot).
           // (Never in a salon, whatever the settings say: it has no returnable packaging.)
           if (!isSalonMode(context) && context.watch<DepotProvider>().capabilities.useCrates) _crateExchangeCard(context, inv),
-          SizedBox(height: 16.h),
 
           // Retail or wholesale prices: for businesses that sell at both (a depot prices by product).
-          if (inv.capabilities.usesPriceLevels) ...[
-            _priceLevelRow(inv, loc),
-            SizedBox(height: 10.h),
-          ],
+          if (inv.capabilities.usesPriceLevels) _priceLevelRow(inv, loc),
 
           // Grand Total Breakdown & Checkout Button
           Container(
-            decoration: ThemeConstants.invCardDecoration.copyWith(
-              border: Border.all(color: ThemeConstants.invAccent, width: 1.2),
-            ),
-            padding: EdgeInsets.all(14.w),
+            decoration: const BoxDecoration(),
+            padding: EdgeInsets.zero,
             child: Column(
               children: [
                 Row(
@@ -915,6 +914,7 @@ class _SalesScreenState extends State<SalesScreen>
               ],
             ),
           ),
+          ]),
           SizedBox(height: 16.h),
         ],
       ),

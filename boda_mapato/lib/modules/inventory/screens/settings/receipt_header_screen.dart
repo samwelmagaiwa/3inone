@@ -163,7 +163,7 @@ class _ReceiptHeaderScreenState extends State<ReceiptHeaderScreen>
             icon: Icons.store_rounded,
             title: loc.translate('shop_identity'),
             children: [
-              _field(_cName,    loc.translate('shop_name_required'), hint: context.watch<DepotProvider>().capabilities.isDepot ? 'e.g. DEPOT DODOMA' : 'e.g. MAMA ASHA SHOP', required: true),
+              _field(_cName,    loc.translate('shop_name_required'), hint: context.watch<DepotProvider>().capabilities.depotWording ? 'e.g. DEPOT DODOMA' : 'e.g. MAMA ASHA SHOP', required: true),
               _field(_cTagline, loc.translate('tagline'), hint: 'e.g. Karibu Kununua!'),
             ],
           ),

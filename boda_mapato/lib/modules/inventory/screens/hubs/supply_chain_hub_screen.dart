@@ -18,7 +18,7 @@ class SupplyChainHubScreen extends StatelessWidget {
     // Crates and empties are for businesses that sell returnable packaging (a depot); a shop or a wholesaler
     // of dry goods never sees them.
     final bool crates = context.select<InventoryProvider, bool>((InventoryProvider p) => p.capabilities.useCrates);
-    final bool isDepot = context.select<InventoryProvider, bool>((InventoryProvider p) => p.capabilities.isDepot);
+    final bool isDepot = context.select<InventoryProvider, bool>((InventoryProvider p) => p.capabilities.depotWording);
     return InvTabScaffold(
       title: '',
       tabs: [

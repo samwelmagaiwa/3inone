@@ -45,6 +45,20 @@ class ApiService {
   /// The chosen branch's name, for showing where figures come from.
   static String? activeBranchName;
 
+  /// Which service the chosen branch belongs to ('inventory', 'salon', 'transport', 'rental'). Each service has its own
+  /// list of branches, so the server ignores a branch chosen in another one; null = the service now open.
+  static String? activeBranchService;
+
+  /// Look at one branch of [service] (or all of them when [id] is null).
+  static void chooseBranch(final int? id, final String? name, {final String? service}) {
+    activeBranch = id;
+    activeBranchName = id == null ? null : name;
+    activeBranchService = id == null ? null : service;
+  }
+
+  /// Back to "all branches": a branch of one service must never follow the person into another.
+  static void clearBranch() => chooseBranch(null, null);
+
   Future<Map<String, String>> get _authHeaders async {
     final String? token = await _getStoredToken();
     return <String, String>{
@@ -52,6 +66,7 @@ class ApiService {
       if (token != null) "Authorization": "Bearer $token",
       if (activeService != null) "X-Service": activeService!,
       if (activeBranch != null) "X-Branch": '$activeBranch',
+      if (activeBranch != null) "X-Branch-Service": activeBranchService ?? activeService ?? 'inventory',
     };
   }
 
@@ -1141,6 +1156,17 @@ class ApiService {
         "/admin/user-management/users/$userId"
       ], userData);
 
+  /// Super admin: place a staff member under a business admin (they join that business). [service] limits them to one service.
+  Future<Map<String, dynamic>> assignUserToAdmin({
+    required final String userId,
+    required final String adminId,
+    final String? service,
+  }) async =>
+      _put('/admin/users/$userId/assign-admin', <String, dynamic>{
+        'admin_id': adminId,
+        if (service != null) 'service': service,
+      });
+
   Future<Map<String, dynamic>> updateUserPermissions(
           String userId, List<String> permissions) async =>
       updateUser(userId, {'permissions': permissions});
@@ -1156,17 +1182,6 @@ class ApiService {
     int perPage = 15,
   }) async {
     final queryParams = {
-  /// Super admin: place a staff member under a business admin (they join that business). [service] limits them to one service.
-  Future<Map<String, dynamic>> assignUserToAdmin({
-    required final String userId,
-    required final String adminId,
-    final String? service,
-  }) async =>
-      _put('/admin/users/$userId/assign-admin', <String, dynamic>{
-        'admin_id': adminId,
-        if (service != null) 'service': service,
-      });
-
       'page': page.toString(),
       'per_page': perPage.toString(),
       if (search != null && search.isNotEmpty) 'search': search,

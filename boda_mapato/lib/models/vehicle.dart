@@ -15,6 +15,7 @@ class Vehicle {
     this.driverName,
     this.driverEmail,
     this.driverPhone,
+    this.branchId,
   });
 
   factory Vehicle.fromJson(final Map<String, dynamic> json) => Vehicle(
@@ -24,6 +25,7 @@ class Vehicle {
         plateNumber: json["plate_number"] as String,
         description: json["description"] as String?,
         isActive: json["is_active"] as bool? ?? true,
+        branchId: (json["branch_id"] as num?)?.toInt(),
         driverId: (json["driver"] as Map<String, dynamic>?)?["id"] as String?,
         driverName:
             (json["driver"] as Map<String, dynamic>?)?["name"] as String?,
@@ -44,6 +46,9 @@ class Vehicle {
   final String? driverName;
   final String? driverEmail;
   final String? driverPhone;
+
+  /// The branch (yard, garage) this vehicle belongs to, or null.
+  final int? branchId;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -58,6 +63,7 @@ class Vehicle {
         "driver_name": driverName,
         "driver_email": driverEmail,
         "driver_phone": driverPhone,
+        "branch_id": branchId,
         "created_at": createdAt.toIso8601String(),
         "updated_at": updatedAt.toIso8601String(),
       };
@@ -73,6 +79,7 @@ class Vehicle {
     final String? driverName,
     final String? driverEmail,
     final String? driverPhone,
+    final int? branchId,
     final DateTime? createdAt,
     final DateTime? updatedAt,
   }) =>
@@ -87,6 +94,7 @@ class Vehicle {
         driverName: driverName ?? this.driverName,
         driverEmail: driverEmail ?? this.driverEmail,
         driverPhone: driverPhone ?? this.driverPhone,
+        branchId: branchId ?? this.branchId,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );

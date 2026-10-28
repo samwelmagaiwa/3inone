@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../constants/theme_constants.dart';
+import '../../widgets/branch_picker_field.dart';
 import '../../providers/rental_provider.dart';
 import '../../services/localization_service.dart';
 import '../../widgets/location_selector.dart';
@@ -20,6 +21,7 @@ class CreatePropertyScreen extends StatefulWidget {
 }
 
 class _CreatePropertyScreenState extends State<CreatePropertyScreen> {
+  int? _branchId;
   final _formKey = GlobalKey<FormState>();
   final _loc = LocalizationService.instance;
 
@@ -89,6 +91,7 @@ class _CreatePropertyScreenState extends State<CreatePropertyScreen> {
       'place': _place,
       'address': _addressController.text.trim(),
       'billing_cycle': _billingCycle,
+      'branch_id': _branchId,
     };
 
     final propertyId = await context.read<RentalProvider>().addProperty(data, image: _coverImage);
@@ -231,7 +234,7 @@ class _CreatePropertyScreenState extends State<CreatePropertyScreen> {
                       maxLines: 2,
                     ),
                     SizedBox(height: 16.h),
-
+                    BranchPickerField(service: 'rental', onChanged: (int? id) => _branchId = id),
                   ],
                 ),
               ),

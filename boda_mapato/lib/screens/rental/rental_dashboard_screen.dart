@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/rental_provider.dart';
 import '../../services/localization_service.dart';
 import '../../utils/rental_flow_validator.dart';
+import '../../widgets/branch_filter_button.dart';
 
 class RentalDashboardScreen extends StatefulWidget {
   const RentalDashboardScreen({super.key, this.isSubView = false});
@@ -40,6 +41,15 @@ class _RentalDashboardScreenState extends State<RentalDashboardScreen> {
         provider.fetchCurrentTenantHouse();
       }
     });
+  }
+
+  /// Read everything again, as it is for the branch now chosen.
+  void _reload() {
+    final user = context.read<AuthProvider>().user;
+    final provider = context.read<RentalProvider>();
+    provider.fetchDashboard();
+    if (user?.hasPermission('manage_properties_rental') ?? false) provider.fetchProperties();
+    if (user?.hasPermission('manage_billing_rental') ?? false) provider.fetchBills();
   }
 
   @override
@@ -141,6 +151,9 @@ class _RentalDashboardScreenState extends State<RentalDashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(height: 6.h),
+          // The owner can look at one branch (office, area): every figure and list below then follows it.
+          if (context.read<AuthProvider>().user?.isBusinessOwner ?? false)
+            BranchFilterButton(service: 'rental', onChanged: _reload),
           _buildPremiumWelcome(),
           SizedBox(height: 16.h),
           _buildBentoStats(),

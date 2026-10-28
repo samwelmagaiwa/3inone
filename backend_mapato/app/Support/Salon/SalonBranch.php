@@ -31,6 +31,12 @@ final class SalonBranch
             return null;
         }
 
+        // A branch chosen in another service (ids of different services are different lists) is not this service's.
+        $sent = $request->header('X-Branch-Service');
+        if ($sent !== null && $sent !== TenantContext::service()) {
+            return null;
+        }
+
         return DB::table('inventory_branches')->where('id', (int) $asked)->where('active', true)->exists() ? (int) $asked : null;
     }
 

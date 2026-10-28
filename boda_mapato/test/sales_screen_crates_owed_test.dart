@@ -102,6 +102,9 @@ Future<InventoryProvider> _pump(WidgetTester t) async {
 }
 
 void main() {
+  // Salon mode is a global switch on the API service: do not let one test leave it on for the next.
+  tearDown(() => ApiService.activeService = null);
+
   const String note = 'Makreti anayodaiwa: 10 × Crate (dhamana TZS 20000)';
 
   testWidgets('picking a customer who holds crates shows the note', (t) async {

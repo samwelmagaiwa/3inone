@@ -2,18 +2,18 @@
 @for (k of [motion.tick()]; track k) {
 <div class="space-y-5 animate-fade-in-up">
 
-  <div class="page-header-card flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+  <div class="topbar">
     <div class="min-w-0">
-      <h1 class="text-slate-900 font-black text-xl tracking-tight">{{ i18n.t('sales.title') }}</h1>
-      <p class="text-slate-500 text-sm mt-0.5">{{ i18n.t('sales.sub') }}</p>
+      <h1 class="topbar-title">{{ i18n.t('sales.title') }}</h1>
+      <p class="topbar-sub">{{ i18n.t('sales.sub') }}</p>
     </div>
-    @if (canSell()) { <a routerLink="/sales/new" class="btn-primary big-btn" data-testid="sales-new">+ {{ i18n.t('sales.new') }}</a> }
+    @if (canSell()) { <a routerLink="/sales/new" class="bar-cta" data-testid="sales-new">+ {{ i18n.t('sales.new') }}</a> }
   </div>
 
   <!-- Period -->
-  <div class="flex flex-wrap gap-2" role="tablist">
+  <div class="seg-bar" role="tablist">
     @for (p of periods; track p) {
-      <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="setPeriod(p)" [attr.data-testid]="'period-' + p">{{ i18n.t('period.' + p) }}</button>
+      <button type="button" role="tab" class="pill-tab seg-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="setPeriod(p)" [attr.data-testid]="'period-' + p">{{ i18n.t('period.' + p) }}</button>
     }
   </div>
 
@@ -27,16 +27,16 @@
 
     <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
       @if (summary(); as s) {
-        <div class="kpi-card"><p class="label-eyebrow">{{ i18n.t('sales.kpi.count') }}</p><h3 class="text-3xl font-black tracking-tight mt-2" style="color:#1a2f6e;" [appCountUp]="'' + s.count" data-testid="sales-count">{{ s.count }}</h3></div>
-        <div class="kpi-card"><p class="label-eyebrow">{{ i18n.t('sales.kpi.billed') }}</p><h3 class="text-2xl font-black tracking-tight mt-2" style="color:#1a2f6e;" [appCountUp]="tsh(s.total)" data-testid="sales-total">{{ tsh(s.total) }}</h3></div>
-        <div class="kpi-card"><p class="label-eyebrow">{{ i18n.t('sales.kpi.paid') }}</p><h3 class="text-2xl font-black tracking-tight mt-2 text-emerald-600" data-testid="sales-paid">{{ tsh(s.paid) }}</h3></div>
-        <div class="kpi-card"><p class="label-eyebrow">{{ i18n.t('sales.kpi.debt') }}</p><h3 class="text-2xl font-black tracking-tight mt-2" [class.text-red-600]="s.debt > 0" [class.text-slate-800]="s.debt === 0" data-testid="sales-debt">{{ tsh(s.debt) }}</h3></div>
+        <div class="stat" style="--accent:#3b61e2"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10M9 12h10M9 19h10M4 5h.01M4 12h.01M4 19h.01"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.count') }}</p><h3 class="stat-value" [appCountUp]="'' + s.count" data-testid="sales-count">{{ s.count }}</h3></div>
+        <div class="stat" style="--accent:#1a2f6e"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l3 4v14H4V7l3-4zM4 7h16M9 12h6M9 16h4"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.billed') }}</p><h3 class="stat-value" [appCountUp]="tsh(s.total)" data-testid="sales-total">{{ tsh(s.total) }}</h3></div>
+        <div class="stat" style="--accent:#16a34a"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.paid') }}</p><h3 class="stat-value" style="color:#15803d" data-testid="sales-paid">{{ tsh(s.paid) }}</h3></div>
+        <div class="stat" [style.--accent]="s.debt > 0 ? '#dc2626' : '#94a3b8'"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.debt') }}</p><h3 class="stat-value" [class.text-red-600]="s.debt > 0" [class.text-slate-800]="s.debt === 0" data-testid="sales-debt">{{ tsh(s.debt) }}</h3></div>
       } @else {
         @for (i of [1,2,3,4]; track i) { <div class="skeleton-box" style="height: 110px; border-radius: 14px;"></div> }
       }
     </div>
 
-    <section class="section-card overflow-hidden">
+    <section class="panel overflow-hidden" style="padding:0">
       <app-table-toolbar [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('sales.search')" [count]="total()" [noun]="noun()">
         <label class="filter-field">
           <span>{{ i18n.t('sales.filter.status') }}</span>
@@ -52,7 +52,7 @@
         <div class="p-5"><div class="skeleton-box" style="height: 120px; border-radius: 12px;"></div></div>
       } @else if (rows().length) {
         <div class="table-scroll-container">
-          <table class="premium-table">
+          <table class="premium-table sales-table">
             <thead>
               <tr>
                 <th>{{ i18n.t('sales.col.number') }}</th>
@@ -66,9 +66,9 @@
             <tbody>
               @for (s of rows(); track s.id) {
                 <tr class="cursor-pointer" [class.opacity-50]="cancelled(s)" (click)="toggle(s.id)" [attr.data-testid]="'sale-row-' + s.id">
-                  <td><div class="font-black text-slate-900">{{ s.number }}</div><div class="text-xs text-slate-400 font-semibold">{{ itemsText(s) }}</div></td>
+                  <td><div class="font-black text-slate-900 flex items-center gap-2"><span class="dot" [class.is-paid]="s.payment_status === 'paid' && !cancelled(s)" [class.is-debt]="s.payment_status !== 'paid' && !cancelled(s)"></span>{{ s.number }}</div><div class="text-xs text-slate-400 font-semibold">{{ itemsText(s) }}</div></td>
                   <td class="text-slate-600 font-semibold">{{ whenText(s.created_at) }}</td>
-                  <td class="font-bold">{{ s.customer_name || i18n.t('sales.walkin') }}</td>
+                  <td class="font-bold"><span class="who"><span class="avatar round sm">{{ (s.customer_name || i18n.t('sales.walkin')).charAt(0) }}</span>{{ s.customer_name || i18n.t('sales.walkin') }}</span></td>
                   <td class="text-right font-black">{{ tsh(s.total) }}</td>
                   <td class="text-right font-bold">{{ tsh(s.paid_total) }}</td>
                   <td>
@@ -124,7 +124,7 @@
     </section>
 
     @if (returns().length) {
-      <section class="section-card p-5" data-testid="returns">
+      <section class="panel" data-testid="returns">
         <p class="label-eyebrow mb-2">{{ i18n.t('sales.returns.title') }}</p>
         @for (r of returns(); track r.id) {
           <div class="flex flex-wrap items-center gap-3 py-2 border-b border-slate-100">
@@ -189,11 +189,40 @@
 </app-modal-dialog>
 
 <style>
-  .big-btn { padding: 12px 22px; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+  :host { display: block; }
+  .topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 0 2px; }
+  .topbar-title { font-size: 20px; font-weight: 900; letter-spacing: -.01em; color: #1a2f6e; }
+  .topbar-sub { margin-top: 1px; font-size: 13px; font-weight: 600; color: #7d8fc4; }
+  .bar-btn { padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 800; color: #1a2f6e; background: #fff; border: 1px solid #dbe4ff; cursor: pointer; transition: all .2s; }
+  .bar-btn:hover:not(:disabled) { background: #f3f5ff; border-color: #93b0fb; }
+  .bar-btn:disabled { opacity: .45; cursor: not-allowed; }
+  .bar-cta { display: inline-flex; align-items: center; gap: 6px; padding: 11px 18px; border-radius: 12px; font-size: 13px; font-weight: 900; color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); box-shadow: 0 10px 20px -12px rgba(26,47,110,.8); }
+
+  .panel { background: #fff; border: 1px solid #e6ecfb; border-radius: 22px; padding: 22px; box-shadow: 0 1px 2px rgba(26,47,110,.04), 0 18px 40px -26px rgba(26,47,110,.35); }
+  .seg-bar { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 5px; border-radius: 16px; background: #fff; border: 1px solid #e6ecfb; box-shadow: 0 10px 24px -20px rgba(26,47,110,.5); }
+  .seg-tab { border: 0; background: transparent; padding: 10px 20px; font-size: 13px; font-weight: 800; border-radius: 12px; }
+  .seg-tab:hover { transform: none; background: #f1f5ff; }
+
+  .stat { position: relative; overflow: hidden; padding: 18px 18px 18px 20px; border-radius: 20px; background: #fff; border: 1px solid #e6ecfb; box-shadow: 0 18px 36px -28px rgba(26,47,110,.5); transition: transform .2s, box-shadow .2s; }
+  .stat:hover { transform: translateY(-3px); box-shadow: 0 22px 40px -24px rgba(26,47,110,.55); }
+  .stat::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--accent, #3b61e2); }
+  .stat-ic { display: inline-flex; width: 38px; height: 38px; align-items: center; justify-content: center; border-radius: 12px; color: var(--accent, #3b61e2); background: color-mix(in srgb, var(--accent, #3b61e2) 12%, #fff); }
+  .stat-ic svg { width: 20px; height: 20px; }
+  .stat-label { margin-top: 12px; font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: #7d8fc4; }
+  .stat-value { margin-top: 4px; font-size: 24px; font-weight: 900; letter-spacing: -.02em; color: #1a2f6e; }
+
+  .sales-table tbody tr:not(.sale-detail) { transition: background .15s; }
+  .sales-table tbody tr:not(.sale-detail):hover { background: #f5f8ff; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; flex: none; }
+  .dot.is-paid { background: #22c55e; box-shadow: 0 0 0 3px #dcfce7; }
+  .dot.is-debt { background: #ef4444; box-shadow: 0 0 0 3px #fee2e2; }
+  .who { display: inline-flex; align-items: center; gap: 10px; }
+  .avatar { display: inline-flex; flex: none; align-items: center; justify-content: center; font-weight: 900; text-transform: uppercase; color: #2e4dbd; background: linear-gradient(145deg, #eaf0ff, #d6e2ff); }
+  .avatar.round { border-radius: 50%; }
+  .avatar.sm { width: 30px; height: 30px; font-size: 12px; }
   .danger-btn { color: #dc2626; border-color: #fecaca; }
-  .big-tab { padding: 12px 22px; font-size: 14px; font-weight: 800; }
-  .status-btn { padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 800; color: #475a8f; background: #fff; border: 1px solid #dbe4ff; cursor: pointer; }
+  .status-btn { padding: 8px 14px; border-radius: 10px; font-size: 12px; font-weight: 800; color: #475a8f; background: #fff; border: 1px solid #dbe4ff; cursor: pointer; transition: all .2s; }
   .status-btn:hover { background: #f3f5ff; }
-  .status-btn.is-on { background: #1a2f6e; color: #fff; border-color: #1a2f6e; }
-  .sale-detail td { background: #f8faff; }
+  .status-btn.is-on { background: linear-gradient(135deg, #1a2f6e, #3b61e2); color: #fff; border-color: transparent; box-shadow: 0 8px 16px -8px rgba(26,47,110,.7); }
+  .sale-detail td { background: linear-gradient(180deg, #f5f8ff, #fff); border-top: 0; }
 </style>

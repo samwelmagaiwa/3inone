@@ -11,6 +11,8 @@ import '../../../../screens/settings/language_screen.dart';
 import '../../../../screens/settings/notifications_screen.dart';
 import '../../../../screens/settings/permissions_management_screen.dart';
 import '../../../../screens/settings/security_screen.dart';
+import '../../../../screens/settings/settings_screen.dart';
+import '../../../../screens/settings/super_admin_tiles.dart';
 import '../../../../screens/settings/user_management_screen.dart';
 import '../../models/inv_depot_models.dart';
 import '../../providers/depot_provider.dart';
@@ -99,7 +101,7 @@ class _SettingsTabState extends State<_SettingsTab> {
     'depot_details': <_Field>[
       _Field('depot_name', 'depot_name',
           hint: LocalizationService.instance.translate('e_g_beverage_depot_dodoma')),
-      const _Field('depot_phone', 'phone', hint: 'e.g. +255 700 000 000', phone: true),
+      const _Field('depot_phone', 'phone_number', hint: 'e.g. +255 700 000 000', phone: true),
       _Field('depot_address', 'address',
           hint: LocalizationService.instance.translate('e_g_main_street_block_b')),
     ],
@@ -191,7 +193,8 @@ class _SettingsTabState extends State<_SettingsTab> {
   }
 
   /// The grey example in a box. Only the name has a depot-flavoured one.
-  String? _hintFor(_Field f, {required bool isDepot, required bool sw}) {
+  String? _hintFor(_Field f, {required bool isDepot, required bool sw, bool salon = false}) {
+    if (f.key == 'depot_name' && !isDepot && salon) return sw ? 'mf. Saluni ya Neema' : 'e.g. Neema Beauty Salon';
     if (f.key == 'depot_name' && !isDepot) return sw ? 'mf. Duka la Mama Asha' : 'e.g. Mama Asha Shop';
     return f.hint;
   }
@@ -201,7 +204,9 @@ class _SettingsTabState extends State<_SettingsTab> {
     final LocalizationService loc = context.watch<LocalizationService>();
     final DepotProvider depot = context.watch<DepotProvider>();
     // "Depot details" / "Depot name" are for a depot; any other kind of business reads "Business ...".
-    final bool isDepot = depot.capabilities.isDepot;
+    // A salon is never a depot, whatever the stock kind says (a business that has not chosen a kind reads as a depot).
+    final bool salon = isSalonMode(context);
+    final bool isDepot = depot.capabilities.depotWording && !salon;
     final user = context.watch<AuthProvider>().user;
     final bool canManageSettings = context.select<AuthProvider, bool>(
         (AuthProvider a) => a.permissions.has('inv_manage_settings'));
@@ -239,7 +244,7 @@ class _SettingsTabState extends State<_SettingsTab> {
               InvTextField(
                 controller: _controllers[group.value[i].key]!,
                 label: loc.translateForKind(group.value[i].labelKey, isDepot: isDepot),
-                hint: _hintFor(group.value[i], isDepot: isDepot, sw: loc.isSwahili),
+                hint: _hintFor(group.value[i], isDepot: isDepot, sw: loc.isSwahili, salon: salon),
                 validator: (String? v) => _validateField(group.value[i], v, isDepot: isDepot),
                 keyboardType: group.value[i].numeric
                     ? const TextInputType.numberWithOptions(decimal: true)
@@ -263,6 +268,33 @@ class _SettingsTabState extends State<_SettingsTab> {
               depot.updateCrateType(t.id, name: name, deposit: deposit, active: active),
           onDelete: (InvCrateType t) => depot.deleteCrateType(t.id),
         ),
+      // -- The account-wide settings (profile, business, plan, security, and for a super admin the platform controls:
+      // registrations, businesses and plans, prices, SMS sender names, permissions, backup). Transport and Rental open
+      // these directly; here they sit one tap away so no service is missing them.
+      if (user?.isSuperAdmin == true)
+        FlushSection(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              AutoSizeText(
+                loc.isSwahili ? 'Udhibiti wa Super Admin' : 'Super Admin Controls',
+                maxLines: 1,
+                style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700, color: const Color(0xFFFFD700)),
+              ),
+              const SuperAdminTiles(),
+            ],
+          ),
+        ),
+      FlushSection(
+        child: _SettingsLinkRow(
+          icon: Icons.manage_accounts_rounded,
+          title: loc.isSwahili ? 'Akaunti yangu' : 'My account',
+          subtitle: loc.isSwahili ? 'Wasifu, biashara, mpango, usalama na kutoka' : 'Profile, business, plan, security and sign out',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+          ),
+        ),
+      ),
       // -- Quick-link to user management (admin / super_admin only) --
       // Lets an admin create staff for their own bound service, and a
       // super_admin manage every account across every service.

@@ -21,6 +21,7 @@ class Driver {
     this.dueDates = const <String>[],
     this.hasCompletedAgreement = false,
     this.agreementStatus,
+    this.branchId,
   });
 
   factory Driver.fromJson(final Map<String, dynamic> json) {
@@ -197,6 +198,7 @@ class Driver {
           json["agreement_status"] == "completed" ||
           json["agreement_status"] == "active",
       agreementStatus: json["agreement_status"]?.toString(),
+      branchId: (json["branch_id"] as num?)?.toInt(),
     );
   }
   final String id;
@@ -221,6 +223,9 @@ class Driver {
   final String?
       agreementStatus; // null, 'pending', 'completed', 'active', 'terminated'
 
+  /// The branch (yard, garage) this driver belongs to, or null.
+  final int? branchId;
+
   Map<String, dynamic> toJson() => <String, dynamic>{
         "id": id,
         "name": name,
@@ -240,6 +245,7 @@ class Driver {
         "due_dates": dueDates,
         "has_completed_agreement": hasCompletedAgreement,
         "agreement_status": agreementStatus,
+        "branch_id": branchId,
       };
 
   Driver copyWith({
@@ -261,6 +267,7 @@ class Driver {
     final List<String>? dueDates,
     final bool? hasCompletedAgreement,
     final String? agreementStatus,
+    final int? branchId,
   }) =>
       Driver(
         id: id ?? this.id,
@@ -282,6 +289,7 @@ class Driver {
         hasCompletedAgreement:
             hasCompletedAgreement ?? this.hasCompletedAgreement,
         agreementStatus: agreementStatus ?? this.agreementStatus,
+        branchId: branchId ?? this.branchId,
       );
 
   @override

@@ -140,9 +140,14 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     public function store(StorePropertyRequest $request)
     {
         try {
+            $data = $request->validated();
+            // A branch the person typed is kept only if it is one of their business's rental branches.
+            if (array_key_exists('branch_id', $data)) {
+                $data['branch_id'] = \App\Support\Tenancy\ServiceBranch::valid($data['branch_id'], 'rental', $request->user());
+            }
             $property = $this->propertyService
                 ->forUser($request->user())
-                ->create($request->validated());
+                ->create($data);
 
             return ResponseHelper::success(
                 new PropertyResource($property->load(['blocks', 'houses', 'caretaker'])),
@@ -196,9 +201,13 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     public function update(UpdatePropertyRequest $request, string $id)
     {
         try {
+            $data = $request->validated();
+            if (array_key_exists('branch_id', $data)) {
+                $data['branch_id'] = \App\Support\Tenancy\ServiceBranch::valid($data['branch_id'], 'rental', $request->user());
+            }
             $property = $this->propertyService
                 ->forUser($request->user())
-                ->update($id, $request->validated());
+                ->update($id, $data);
 
             return ResponseHelper::success(
                 new PropertyResource($property),

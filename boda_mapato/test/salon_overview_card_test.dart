@@ -139,8 +139,8 @@ void main() {
 
     expect(find.text('Muhtasari wa biashara'), findsOneWidget);
     expect(find.descendant(of: _key('ov_bookings_today'), matching: find.text('2')), findsOneWidget);
-    expect(find.text('Wahudumu bora mwezi huu'), findsOneWidget);
-    expect(find.text('Huduma zinazouza zaidi'), findsOneWidget);
+    expect(find.text('Wahudumu 3 bora mwezi huu'), findsOneWidget);
+    expect(find.text('Huduma 3 zinazouza zaidi'), findsOneWidget);
     expect(find.text('Pesa zilizopokelewa mwezi huu'), findsOneWidget);
     expect(find.descendant(of: _key('ov_outstanding'), matching: find.text('TSH 20,000')), findsOneWidget);
   });

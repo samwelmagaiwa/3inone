@@ -8,6 +8,7 @@ import "../../models/vehicle.dart";
 import "../../services/api_service.dart";
 import "../../services/localization_service.dart";
 import "../../utils/responsive_helper.dart";
+import "../../widgets/branch_picker_field.dart";
 
 class VehiclesManagementScreen extends StatefulWidget {
   const VehiclesManagementScreen({super.key});
@@ -1206,6 +1207,7 @@ class _EditVehicleDialogState extends State<_EditVehicleDialog> {
   late final TextEditingController _descController;
   late String _vehicleType;
   late bool _isActive;
+  int? _branchId;
   bool _saving = false;
 
   final Map<String, String> _vehicleTypes = {
@@ -1266,6 +1268,7 @@ class _EditVehicleDialogState extends State<_EditVehicleDialog> {
             ? null
             : _descController.text.trim(),
         'is_active': _isActive,
+        'branch_id': _branchId,
       };
       await _apiService.updateVehicle(widget.vehicle.id, payload);
       final updated = widget.vehicle.copyWith(
@@ -1273,6 +1276,7 @@ class _EditVehicleDialogState extends State<_EditVehicleDialog> {
         plateNumber: payload['plate_number'] as String?,
         type: payload['type'] as String?,
         description: payload['description'] as String?,
+        branchId: _branchId,
         isActive: payload['is_active'] as bool?,
       );
       if (!mounted) return;
@@ -1333,6 +1337,7 @@ class _EditVehicleDialogState extends State<_EditVehicleDialog> {
                     _inputDecoration(LocalizationService.instance.translate('vehicle_type'), icon: Icons.category),
               ),
               const SizedBox(height: 8),
+              BranchPickerField(service: 'transport', initialId: widget.vehicle.branchId, decoration: _inputDecoration(''), onChanged: (int? id) => _branchId = id),
               TextFormField(
                 controller: _descController,
                 style: const TextStyle(color: ThemeConstants.textPrimary),
@@ -1527,6 +1532,7 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
   bool _isLoading = false;
   String _selectedVehicleType = "bajaji";
   bool _isActive = true;
+  int? _branchId;
 
   // Vehicle types
   final Map<String, String> _vehicleTypes = <String, String>{
@@ -1592,6 +1598,7 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
             ? _descriptionController.text.trim()
             : null,
         "is_active": _isActive,
+        "branch_id": _branchId,
       };
 
       await _apiService.createVehicle(vehicleData);
@@ -1722,6 +1729,10 @@ class _AddVehicleDialogState extends State<_AddVehicleDialog> {
                             });
                           },
                         ),
+
+                        const SizedBox(height: 16),
+
+                        BranchPickerField(service: 'transport', decoration: _inputDecoration(''), onChanged: (int? id) => _branchId = id),
 
                         const SizedBox(height: 16),
 

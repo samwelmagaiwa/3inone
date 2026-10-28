@@ -157,6 +157,15 @@ class InventoryTypeTest extends TestCase
         $this->assertSame('depot', $settings['inventory_type']);
         $this->assertSame('1', $settings['use_crates']);
         $this->assertSame('product', $settings['sale_tier']);
+        // ...but the app is told the kind was never chosen, so it speaks in general words and asks the owner to choose
+        $this->assertSame('0', $settings['inventory_type_chosen']);
+    }
+
+    public function test_a_chosen_kind_a_salon_and_a_super_admin_count_as_chosen(): void
+    {
+        $this->assertSame('1', $this->api($this->owner('depot'), 'GET', '/api/inventory/settings')->json('data.inventory_type_chosen'), 'a depot that said so');
+        $this->assertSame('1', $this->api($this->owner('retail'), 'GET', '/api/inventory/settings')->json('data.inventory_type_chosen'));
+        $this->assertSame('1', $this->api($this->superAdmin(), 'GET', '/api/inventory/settings')->json('data.inventory_type_chosen'));
     }
 
     public function test_the_kind_is_part_of_the_business_and_a_super_admin_has_none(): void

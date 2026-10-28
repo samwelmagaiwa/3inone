@@ -8,6 +8,8 @@ import '../../../../services/localization_service.dart';
 import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
 import 'salon_text.dart';
+import 'services_report_screen.dart';
+import 'stylists_screen.dart';
 
 /// The salon's dashboard at a glance, for the owner and managers: what came in today, this week, this month and this
 /// year (with the profit under each), today's and coming bookings, who earned the most, what sells best, how the money
@@ -112,15 +114,20 @@ class _SalonOverviewCardState extends State<SalonOverviewCard> {
             ),
           ]),
           if (d.topStaff.isNotEmpty) ...<Widget>[
-            _heading(Icons.emoji_events_outlined, sw ? 'Wahudumu bora mwezi huu' : 'Top stylists this month'),
-            for (int i = 0; i < d.topStaff.length; i++)
+            _heading(Icons.emoji_events_outlined, sw ? 'Wahudumu 3 bora mwezi huu' : 'Top 3 stylists this month'),
+            // The best three; the rest, with every service and client behind each total, is one tap away.
+            for (int i = 0; i < _top && i < d.topStaff.length; i++)
               _ranked('ov_staff_$i', i + 1, d.topStaff[i].name.trim().isEmpty ? (sw ? 'Hakutajwa' : 'No stylist named') : d.topStaff[i].name, d.topStaff[i].revenue, d.topStaff.first.revenue,
                   muted: d.topStaff[i].name.trim().isEmpty),
+            if (d.topStaff.length > _top)
+              _more('ov_staff_more', sw ? 'Zaidi' : 'More', () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => ThemeConstants.buildScaffold(title: sw ? 'Wahudumu' : 'Stylists', body: StylistsScreen(api: _api))))),
           ],
           if (d.topServices.isNotEmpty) ...<Widget>[
-            _heading(Icons.content_cut_rounded, sw ? 'Huduma zinazouza zaidi' : 'Best-selling services'),
-            for (int i = 0; i < d.topServices.length; i++)
+            _heading(Icons.content_cut_rounded, sw ? 'Huduma 3 zinazouza zaidi' : 'Best 3 selling services'),
+            for (int i = 0; i < _top && i < d.topServices.length; i++)
               _ranked('ov_service_$i', i + 1, d.topServices[i].name, d.topServices[i].revenue, d.topServices.first.revenue, times: d.topServices[i].times),
+            if (d.topServices.length > _top)
+              _more('ov_service_more', sw ? 'Zaidi' : 'More', () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => ServicesReportScreen(api: _api)))),
           ],
           if (d.collections.isNotEmpty) ...<Widget>[
             _heading(Icons.account_balance_wallet_outlined, sw ? 'Pesa zilizopokelewa mwezi huu' : 'Money received this month'),
@@ -137,6 +144,26 @@ class _SalonOverviewCardState extends State<SalonOverviewCard> {
       ),
     );
   }
+
+  /// How many of a league table the dashboard shows; the rest is behind the More button.
+  static const int _top = 3;
+
+  /// "More >" under a league table: opens the page with everything.
+  Widget _more(final String key, final String label, final VoidCallback onTap) => Align(
+        alignment: Alignment.centerRight,
+        child: TextButton.icon(
+          key: ValueKey<String>(key),
+          onPressed: onTap,
+          icon: const Icon(Icons.chevron_right_rounded, size: 18, color: Colors.white),
+          iconAlignment: IconAlignment.end,
+          label: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          style: TextButton.styleFrom(
+            backgroundColor: Colors.white.withValues(alpha: 0.10),
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r), side: const BorderSide(color: Colors.white24)),
+          ),
+        ),
+      );
 
   Widget _tile(final String key, final String label, final PeriodFigures f, final bool sw) {
     final bool profit = f.netProfit >= 0;

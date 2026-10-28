@@ -103,7 +103,8 @@ class _RentalMainScreenState extends State<RentalMainScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: <Widget>[
                 // Left side: Rent Payments, Arrears
-                Row(
+                Flexible(child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     _FooterIcon(
                       icon: Icons.payments_rounded,
@@ -120,7 +121,7 @@ class _RentalMainScreenState extends State<RentalMainScreen> {
                       onTap: () => _onItemTapped(2),
                     ),
                   ],
-                ),
+                )),
                 // Center: Menu
                 _FooterIcon(
                   icon: Icons.apps_rounded,
@@ -133,7 +134,8 @@ class _RentalMainScreenState extends State<RentalMainScreen> {
                   ]),
                 ),
                 // Right side: Tenants, Receipts
-                Row(
+                Flexible(child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     _FooterIcon(
                       icon: Icons.people_alt_rounded,
@@ -149,7 +151,7 @@ class _RentalMainScreenState extends State<RentalMainScreen> {
                       onTap: () => _onItemTapped(4),
                     ),
                   ],
-                ),
+                )),
               ],
             ),
           ),

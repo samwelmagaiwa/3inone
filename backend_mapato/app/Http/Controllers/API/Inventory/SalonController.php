@@ -202,6 +202,83 @@ class SalonController extends Controller
         ]]);
     }
 
+    /**
+     * What each service brought in during a period, with every time it was done: when, for which client, by which stylist,
+     * and what it was worth after its share of the sale's discount. The owner and managers see everything; a stylist only
+     * the services they did themselves.
+     */
+    #[OA\Get(
+        path: '/inventory/salon/services',
+        summary: 'Each service sold in a period (default: this month) with the clients it was done for',
+        security: [['bearerAuth' => []]],
+        tags: ['Inventory / Salon'],
+        parameters: [
+            new OA\Parameter(name: 'from', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'to', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
+        ],
+        responses: [new OA\Response(response: 200, description: 'Success')],
+    )]
+    public function serviceSales(Request $request): JsonResponse
+    {
+        $data = $request->validate(['from' => 'nullable|date', 'to' => 'nullable|date|after_or_equal:from']);
+        $from = isset($data['from']) ? Carbon::parse($data['from'])->toDateString() : now()->startOfMonth()->toDateString();
+        $to = isset($data['to']) ? Carbon::parse($data['to'])->toDateString() : now()->toDateString();
+
+        $viewer = $request->user();
+        $sees = \App\Support\Salon\SalonAccess::isManager($viewer);
+        $branch = \App\Support\Salon\SalonBranch::selected($request);
+
+        $query = DB::table('inventory_sale_items as si')
+            ->join('inventory_sales as s', 's.id', '=', 'si.sale_id')
+            ->leftJoin('inventory_products as p', 'p.id', '=', 'si.product_id')
+            ->leftJoin('inventory_customers as c', 'c.id', '=', 's.customer_id')
+            ->whereNull('s.cancelled_at')
+            ->where('si.is_service', true)
+            ->whereDate('s.created_at', '>=', $from)
+            ->whereDate('s.created_at', '<=', $to)
+            ->when($branch !== null, fn ($q) => $q->where('s.branch_id', $branch));
+        if (!$sees) {
+            $query->where('si.staff_id', (string) $viewer->id);
+        }
+
+        $lines = $query->orderByDesc('s.created_at')->orderByDesc('si.id')->get([
+            'si.id', 'si.sale_id', 'si.product_id', 'p.name as service', 'si.staff_name', 'si.quantity', 'si.unit_qty', 'si.total',
+            's.number', 's.created_at', 's.subtotal', 's.discount', 's.customer_name_override', 'c.name as customer_name',
+        ]);
+
+        $services = $lines->groupBy(fn ($l) => (string) $l->product_id)->map(function ($group) {
+            $rows = $group->map(function ($l) {
+                $discount = (float) $l->subtotal > 0 ? (float) $l->discount * (float) $l->total / (float) $l->subtotal : 0.0;
+
+                return [
+                    'sale_id' => (int) $l->sale_id,
+                    'number' => $l->number,
+                    'date' => Carbon::parse($l->created_at)->format('Y-m-d H:i'),
+                    'client' => $l->customer_name ?: ($l->customer_name_override ?: null),
+                    'stylist' => $l->staff_name ?: null,
+                    'qty' => (int) ($l->unit_qty ?? $l->quantity),
+                    'net' => self::money((float) $l->total - $discount),
+                ];
+            })->values();
+
+            return [
+                'product_id' => (int) $group->first()->product_id,
+                'name' => (string) ($group->first()->service ?? ''),
+                'times' => $rows->sum('qty'),
+                'revenue' => self::money($rows->sum('net')),
+                'clients' => $rows->pluck('client')->filter()->unique()->count(),
+                'sales' => $rows,
+            ];
+        })->sortByDesc('revenue')->values();
+
+        return response()->json(['data' => [
+            'from' => $from,
+            'to' => $to,
+            'totals' => ['times' => $services->sum('times'), 'revenue' => self::money($services->sum('revenue'))],
+            'services' => $services,
+        ]]);
+    }
+
     /** A money amount as the app reads it: a whole number when it is one, else two decimals. */
     private static function money(mixed $v): int|float
     {
