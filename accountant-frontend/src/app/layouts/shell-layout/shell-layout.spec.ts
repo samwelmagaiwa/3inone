@@ -67,7 +67,7 @@ describe('the frame', () => {
     select.value = '4';
     select.dispatchEvent(new Event('change', { bubbles: true }));
     await settle(some.fixture);
-    expect(localStorage.getItem('accountant_branch')).toBe('4');
+    expect(localStorage.getItem('accountant_branch_1_inventory')).toBe('4');
     expect(navigate).toHaveBeenCalled();
   });
 

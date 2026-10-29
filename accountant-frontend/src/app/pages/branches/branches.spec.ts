@@ -53,14 +53,14 @@ describe('branches', () => {
     click(el, 'br-look-1');
     await settle(fixture);
     expect(branches.selected()).toBe(1);
-    expect(localStorage.getItem('accountant_branch')).toBe('1');
+    expect(localStorage.getItem('accountant_branch_1_inventory')).toBe('1');
     expect(byTestId(el, 'br-on-1')).not.toBeNull();
     expect(h.http).toBeTruthy();
 
     click(el, 'br-look-all');
     await settle(fixture);
     expect(branches.selected()).toBeNull();
-    expect(localStorage.getItem('accountant_branch')).toBeNull();
+    expect(localStorage.getItem('accountant_branch_1_inventory')).toBeNull();
   });
 
   it('adds a branch, and the server\'s refusal of a repeated name is shown', async () => {
@@ -102,7 +102,7 @@ describe('branches', () => {
   });
 
   it('a branch chosen earlier that has been switched off is no longer chosen', async () => {
-    localStorage.setItem('accountant_branch', '2');
+    localStorage.setItem('accountant_branch_1_inventory', '2');
     const h = configure({ permissions: ['inv_manage_settings'] });
     const branches = TestBed.inject(BranchesService);
     branches.select(2);

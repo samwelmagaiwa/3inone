@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
@@ -12,6 +13,7 @@ import '../providers/device_provider.dart';
 import '../providers/maintenance_provider.dart';
 import '../providers/rental_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../services/api_service.dart';
 
 /// Everything in the app that holds one business's data (products, sales, customers, drivers,
 /// properties, ...), created for ONE signed-in person and thrown away when that person changes.
@@ -28,6 +30,14 @@ class BusinessStateScope extends StatelessWidget {
   const BusinessStateScope({super.key, required this.child});
 
   final Widget child;
+
+  /// Who the scope was last built for (null before the first build). What the app remembers outside the providers (the branch being
+  /// looked at, the service open) belongs to that person and is forgotten when another one signs in or this one signs out.
+  static String? _lastWho = '#none';
+
+  /// For tests: the next build is the first one again.
+  @visibleForTesting
+  static void forgetWhoForTest() => _lastWho = '#none';
 
   /// The providers that hold business data. Anything new that caches a business's records
   /// belongs here, not above it.
@@ -71,6 +81,14 @@ class BusinessStateScope extends StatelessWidget {
     // A business that was held back for an unpaid plan and is open again starts from fresh providers: whatever
     // they asked for while it was held back came back refused.
     final int reopened = context.select<AuthProvider, int>((final AuthProvider auth) => auth.subscriptionReopened);
+
+    // Another person (or nobody): the branch and the service the previous one had open are not theirs. The first build after the
+    // app starts keeps whatever the restored session chose.
+    if (_lastWho != '#none' && _lastWho != who) {
+      ApiService.clearBranch();
+      ApiService.activeService = null;
+    }
+    _lastWho = who;
 
     return KeyedSubtree(
       key: ValueKey<String>('${who ?? 'signed-out'}#$reopened'),

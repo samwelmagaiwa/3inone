@@ -20,6 +20,9 @@ export class CapabilitiesService {
 
   readonly settings = signal<Record<string, string>>({});
   readonly loaded = signal(false);
+  /** Which asking is the latest: an answer for a business that was signed in a moment ago must never be kept. */
+  private generation = 0;
+  private who: string | null = null;
 
   readonly inventoryType = computed(() => (KINDS.includes(this.settings()['inventory_type']) ? this.settings()['inventory_type'] : 'depot'));
   readonly useCrates = computed(() => (this.settings()['use_crates'] ?? '1') !== '0');
@@ -34,16 +37,30 @@ export class CapabilitiesService {
   readonly maxDiscountPercent = computed(() => Number.parseFloat(this.settings()['max_discount_percent'] ?? '') || 0);
 
   constructor() {
-    // a different service has different settings
+    // a different service, or a different person (another business signing in on this browser), has different settings: the old ones
+    // are dropped at once, never shown to the new business, and the new ones are read
     effect(() => {
+      this.auth.user();
       this.auth.service();
-      if (untracked(() => this.auth.isLoggedIn())) untracked(() => void this.load());
+      untracked(() => {
+        const now = `${this.auth.user()?.id ?? ''}|${this.auth.service()}`;
+        // the first time round nothing belonged to anybody yet: only a real change of person or service drops what is held
+        if (this.who !== null && this.who !== now) {
+          this.generation++;
+          this.settings.set({});
+          this.loaded.set(false);
+        }
+        this.who = now;
+        if (this.auth.isLoggedIn()) void this.load();
+      });
     });
   }
 
   async load(): Promise<void> {
+    const mine = ++this.generation;
     try {
       const res = await firstValueFrom(this.http.get<{ data: Record<string, unknown> }>(`${environment.apiUrl}/inventory/settings`));
+      if (mine !== this.generation) return; // someone else is signed in by now
       const out: Record<string, string> = {};
       for (const [k, v] of Object.entries(res.data ?? {})) out[k] = v == null ? '' : String(v);
       this.settings.set(out);

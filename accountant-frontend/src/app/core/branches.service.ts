@@ -1,11 +1,12 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, effect, inject, signal, untracked } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
+import { AuthService } from './auth.service';
 
 const API = environment.apiUrl;
-const KEY = 'accountant_branch';
+const KEY_PREFIX = 'accountant_branch';
 
 /** A branch (a place the business sells from). */
 export interface Branch {
@@ -73,9 +74,15 @@ export interface BranchSales {
   total: { sales_count: number; sales: number; paid: number };
 }
 
-function read(): number | null {
+/** The branch is remembered for ONE person in ONE service: another business signing in on this browser never inherits it. */
+function keyFor(userId: string | undefined, service: string): string | null {
+  return userId ? `${KEY_PREFIX}_${userId}_${service}` : null;
+}
+
+function read(key: string | null): number | null {
+  if (!key) return null;
   try {
-    const v = localStorage.getItem(KEY);
+    const v = localStorage.getItem(key);
     return v && /^\d+$/.test(v) ? Number(v) : null;
   } catch {
     return null;
@@ -89,16 +96,36 @@ function read(): number | null {
 @Injectable({ providedIn: 'root' })
 export class BranchesService {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
 
-  /** The branch looked at now (its id), or null for all. Kept for the next visit. */
-  readonly selected = signal<number | null>(read());
+  /** The branch looked at now (its id), or null for all. Kept for this person's next visit, in this service only. */
+  readonly selected = signal<number | null>(read(keyFor(this.auth.user()?.id, this.auth.service())));
   readonly list = signal<Branch[]>([]);
+  private who = `${this.auth.user()?.id ?? ''}|${this.auth.service()}`;
+
+  constructor() {
+    // Someone else signed in, or the same person went to another service: their branches are not these ones. The old choice and the
+    // old list are dropped at once, and this person's own choice (if they made one before) comes back.
+    effect(() => {
+      const user = this.auth.user();
+      const service = this.auth.service();
+      untracked(() => {
+        const now = `${user?.id ?? ''}|${service}`;
+        if (now === this.who) return;
+        this.who = now;
+        this.selected.set(read(keyFor(user?.id, service)));
+        this.list.set([]);
+      });
+    });
+  }
 
   select(id: number | null): void {
     this.selected.set(id);
+    const key = keyFor(this.auth.user()?.id, this.auth.service());
+    if (!key) return;
     try {
-      if (id === null) localStorage.removeItem(KEY);
-      else localStorage.setItem(KEY, String(id));
+      if (id === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, String(id));
     } catch {
       // private mode: the choice lasts until the page is closed
     }

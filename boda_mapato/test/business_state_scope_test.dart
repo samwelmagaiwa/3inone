@@ -7,6 +7,7 @@ import 'package:boda_mapato/providers/auth_provider.dart';
 import 'package:boda_mapato/providers/dashboard_provider.dart';
 import 'package:boda_mapato/providers/debts_provider.dart';
 import 'package:boda_mapato/providers/device_provider.dart';
+import 'package:boda_mapato/services/api_service.dart';
 import 'package:boda_mapato/providers/maintenance_provider.dart';
 import 'package:boda_mapato/providers/rental_provider.dart';
 import 'package:boda_mapato/providers/transaction_provider.dart';
@@ -66,7 +67,16 @@ void main() {
         ),
       );
 
-  setUp(() => auth = _Auth());
+  setUp(() {
+    auth = _Auth();
+    BusinessStateScope.forgetWhoForTest();
+    ApiService.clearBranch();
+    ApiService.activeService = null;
+  });
+  tearDown(() {
+    ApiService.clearBranch();
+    ApiService.activeService = null;
+  });
 
   testWidgets('every business provider is available inside the scope', (t) async {
     await t.pumpWidget(host());
@@ -130,5 +140,56 @@ void main() {
     await t.pump();
 
     expect((seen['depot']! as DepotProvider).suppliers, isEmpty, reason: 'Juma must not see Asha\'s suppliers, even for a moment');
+  });
+
+  testWidgets('the branch and the service one business had open are not the next business', (t) async {
+    auth.signInAs('asha');
+    await t.pumpWidget(host());
+    ApiService.activeService = 'salon';
+    ApiService.chooseBranch(7, 'Asha Kariakoo', service: 'salon');
+
+    auth.signInAs('juma');
+    await t.pump();
+
+    expect(ApiService.activeBranch, isNull, reason: 'Juma looks at his whole business');
+    expect(ApiService.activeBranchName, isNull);
+    expect(ApiService.activeService, isNull, reason: 'Juma chooses his own service');
+  });
+
+  testWidgets('signing out forgets them too', (t) async {
+    auth.signInAs('asha');
+    await t.pumpWidget(host());
+    ApiService.activeService = 'inventory';
+    ApiService.chooseBranch(3, 'Main', service: 'inventory');
+
+    auth.signInAs(null);
+    await t.pump();
+
+    expect(ApiService.activeBranch, isNull);
+    expect(ApiService.activeService, isNull);
+  });
+
+  testWidgets('the same person keeps them, whatever else changes', (t) async {
+    auth.signInAs('asha');
+    await t.pumpWidget(host());
+    ApiService.activeService = 'salon';
+    ApiService.chooseBranch(7, 'Asha Kariakoo', service: 'salon');
+
+    auth.unrelatedChange();
+    await t.pump();
+
+    expect(ApiService.activeBranch, 7);
+    expect(ApiService.activeService, 'salon');
+  });
+
+  testWidgets('an app that starts with a session already restored keeps what that session chose', (t) async {
+    ApiService.activeService = 'inventory';
+    ApiService.chooseBranch(4, 'Restored', service: 'inventory');
+    auth.signInAs('asha');
+
+    await t.pumpWidget(host());
+
+    expect(ApiService.activeBranch, 4);
+    expect(ApiService.activeService, 'inventory');
   });
 }

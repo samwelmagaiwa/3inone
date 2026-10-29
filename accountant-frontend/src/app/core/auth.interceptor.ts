@@ -27,7 +27,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       Accept: 'application/json',
       'X-Service': auth.service(),
       // The branch being looked at: every list and figure follows it, and a new sale is recorded in it (none = the whole business).
-      ...(branch !== null ? { 'X-Branch': String(branch) } : {}),
+      ...(branch !== null ? { 'X-Branch': String(branch), 'X-Branch-Service': auth.service() } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
