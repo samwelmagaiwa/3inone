@@ -110,7 +110,7 @@ describe('the sale the server is sent', () => {
     till.paid.set(2000);
     const { payload } = till.buildSale();
     expect(payload).toMatchObject({ customer_id: 7, payment_status: 'partial', paid_total: 2000, total: 5000 });
-    expect(payload!['due_date']).not.toBeNull();
+    expect(payload!['due_date']).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it('part paid with nothing paid is a debt; paying everything is paid; more than the total is capped', () => {

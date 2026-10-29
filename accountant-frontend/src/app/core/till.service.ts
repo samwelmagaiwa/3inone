@@ -280,7 +280,8 @@ export class TillService {
       tax: t.tax,
       total: t.total,
       paid_total: paidTotal,
-      due_date: status === 'paid' ? null : new Date(Date.now() + this.dueDays() * 86_400_000).toISOString(),
+      // the day only: the server keeps a date, not a moment
+      due_date: status === 'paid' ? null : new Date(Date.now() + this.dueDays() * 86_400_000).toISOString().slice(0, 10),
       items: lines.map((l) => ({
         product_id: l.productId,
         quantity: l.qty,
