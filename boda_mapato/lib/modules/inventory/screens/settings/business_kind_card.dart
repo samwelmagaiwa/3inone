@@ -157,7 +157,7 @@ class _BusinessKindCardState extends State<BusinessKindCard> {
               Text(
                 _error!,
                 key: const ValueKey<String>('business_kind_error'),
-                style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorRed, fontSize: 12.sp),
+                style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorText, fontSize: 12.sp),
               ),
             ],
             if (widget.canChange && changed) ...<Widget>[

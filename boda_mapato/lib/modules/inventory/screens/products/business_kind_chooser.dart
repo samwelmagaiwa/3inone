@@ -143,7 +143,7 @@ class _BusinessKindChooserState extends State<BusinessKindChooser> {
                   Text(
                     _error!,
                     key: const ValueKey<String>('chooser_error'),
-                    style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorRed, fontSize: 12.sp),
+                    style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorText, fontSize: 12.sp),
                   ),
                   SizedBox(height: 6.h),
                 ],

@@ -359,7 +359,7 @@ class _CrateTypeDialogState extends State<_CrateTypeDialog> {
             key: const ValueKey<String>('crate_type_delete'),
             onPressed: _busy ? null : _delete,
             child: Text(_sw ? 'Futa' : 'Delete',
-                style: const TextStyle(color: ThemeConstants.errorRed)),
+                style: const TextStyle(color: ThemeConstants.errorText)),
           ),
         TextButton(
           onPressed: _busy ? null : () => Navigator.pop(context),

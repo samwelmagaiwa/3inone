@@ -192,7 +192,7 @@ class _ReturnCard extends StatelessWidget {
                       loc.translate('reject'),
                       maxLines: 1,
                       minFontSize: 9,
-                      style: const TextStyle(color: ThemeConstants.errorRed),
+                      style: const TextStyle(color: ThemeConstants.errorText),
                     ),
                   ),
                 ),

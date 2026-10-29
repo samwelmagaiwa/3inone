@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// A salon's receipt never carries the shop's "goods sold cannot be returned" line; a shop's does.
+const String shopReturnLine = 'Bidhaa zilizouzwa haziruhusiwi kurudishwa bila risiti.';
+
 void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
@@ -29,6 +31,12 @@ void main() {
     await LocalizationService.instance.changeLanguage('sw');
     addTearDown(() => LocalizationService.instance.changeLanguage('en'));
     expect(receiptFooterText(<String, String>{}), 'Karibu tena!');
+  });
+
+  test('the shop line is known in both languages', () {
+    expect(isShopReturnLine(shopReturnLine), isTrue);
+    expect(isShopReturnLine('Sold goods cannot be returned without a receipt.'), isTrue);
+    expect(isShopReturnLine('Thank you for choosing Glow'), isFalse);
   });
 
   test('a shop keeps its own note, and the usual line when it wrote none', () {

@@ -222,7 +222,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
       );
 
   Widget _bubble(final _Turn t, final int i, final bool sw) {
-    final Color tint = t.mine ? ThemeConstants.invAccent : (t.failed ? ThemeConstants.errorRed : Colors.white);
+    final Color tint = t.mine ? ThemeConstants.invAccent : (t.failed ? ThemeConstants.errorText : Colors.white);
 
     return Align(
       alignment: t.mine ? Alignment.centerRight : Alignment.centerLeft,

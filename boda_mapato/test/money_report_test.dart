@@ -148,7 +148,7 @@ void main() {
     expect(find.descendant(of: _k('fig_gross'), matching: find.text('Margin 50.0%')), findsOneWidget);
     final Icon up = t.widget<Icon>(find.descendant(of: _k('fig_expenses'), matching: find.byType(Icon)));
     expect(up.icon, Icons.arrow_upward_rounded);
-    expect(up.color, const Color(0xFFEF4444), reason: 'spending that grew is bad news');
+    expect(up.color, const Color(0xFFFF9B9B), reason: 'spending that grew is bad news, in the red that can be read on the dark card');
     final Icon sales = t.widget<Icon>(find.descendant(of: _k('fig_sales'), matching: find.byType(Icon)));
     expect(sales.color, const Color(0xFF10B981));
   });

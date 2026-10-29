@@ -374,7 +374,7 @@ class _StockCountDetailScreenState extends State<StockCountDetailScreen> {
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(
               loc.translate('delete'),
-              style: const TextStyle(color: ThemeConstants.errorRed),
+              style: const TextStyle(color: ThemeConstants.errorText),
             ),
           ),
         ],

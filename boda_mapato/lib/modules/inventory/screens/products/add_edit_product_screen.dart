@@ -577,7 +577,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
                           padding: EdgeInsets.fromLTRB(10.w, 10.h, 10.w, 0),
                           child: Text(_saveError!,
                               key: const ValueKey<String>('product_save_error'),
-                              style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorRed, fontSize: 12.sp)),
+                              style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorText, fontSize: 12.sp)),
                         ),
                       // (Who created the product is not shown here: the server records it from the signed-in user.)
                       _sectionDivider('barcode'),

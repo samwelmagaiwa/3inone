@@ -114,7 +114,8 @@ class InvStatTile extends StatelessWidget {
                 maxLines: 1,
                 style: ThemeConstants.bodyStyle.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: accent ?? ThemeConstants.textPrimary,
+                  // the plain red is too dim to read as a number on the dark card
+                  color: accent == ThemeConstants.errorRed ? ThemeConstants.errorText : (accent ?? ThemeConstants.textPrimary),
                 ),
               ),
             ),

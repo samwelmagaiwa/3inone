@@ -200,7 +200,7 @@ class _WriteOffsScreenState extends State<WriteOffsScreen> {
               style: TextStyle(
                 color: approve
                     ? ThemeConstants.successGreen
-                    : ThemeConstants.errorRed,
+                    : ThemeConstants.errorText,
               ),
             ),
           ),
@@ -321,7 +321,7 @@ class _WriteOffCard extends StatelessWidget {
                     onPressed: () => onDecide(false),
                     child: Text(
                       loc.translate('reject'),
-                      style: const TextStyle(color: ThemeConstants.errorRed),
+                      style: const TextStyle(color: ThemeConstants.errorText),
                     ),
                   ),
                 ),

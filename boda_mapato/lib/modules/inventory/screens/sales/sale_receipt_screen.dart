@@ -23,8 +23,14 @@ import '../../providers/depot_provider.dart';
 import '../salon/salon_sale_breakdown_card.dart';
 import '../settings/receipt_header_screen.dart';
 
-/// The shop's line (goods sold cannot be returned): it does not belong on a salon's receipt.
-const String shopReturnLine = 'Bidhaa zilizouzwa haziruhusiwi kurudishwa bila risiti.';
+/// Is this the shop's line (goods sold cannot be returned), in either language? It does not belong on a salon's receipt.
+bool isShopReturnLine(String text) {
+  for (final String language in <String>['en', 'sw']) {
+    final String? line = AppLocalizations.valueIn(language, 'sold_goods_cannot_be_returned_without');
+    if (line != null && text.contains(line)) return true;
+  }
+  return false;
+}
 
 /// What the receipt says at the foot. A shop says its own note (or the usual line); a salon says its own note, or only
 /// "Welcome again" (never the shop's line about goods, even when that line was saved in its settings long ago).
@@ -32,8 +38,8 @@ String receiptFooterText(Map<String, String> s, {bool lines = false}) {
   final String raw = s['receipt_footer_note']?.trim() ?? '';
   final String stored = raw == 'null' ? '' : raw;
   if (ApiService.activeService == 'salon') {
-    if (stored.isEmpty || stored.contains(shopReturnLine)) {
-      return LocalizationService.instance.isSwahili ? 'Karibu tena!' : 'Welcome again!';
+    if (stored.isEmpty || isShopReturnLine(stored)) {
+      return LocalizationService.instance.translate('receipt_welcome_again');
     }
     return stored;
   }

@@ -423,14 +423,14 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
           Text(label, style: kMoneyCaption),
           const SizedBox(height: 4),
-          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(tsh(value), style: TextStyle(fontSize: big ? 24 : 16, fontWeight: FontWeight.w800, color: value < 0 ? ThemeConstants.errorRed : Colors.white))),
+          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(tsh(value), style: TextStyle(fontSize: big ? 24 : 16, fontWeight: FontWeight.w800, color: value < 0 ? ThemeConstants.errorText : Colors.white))),
           if (note != null) Text('${LocalizationService.instance.isSwahili ? 'Kiwango' : 'Margin'} $note', style: kMoneyCaption),
           if (hasChip && dir != 'same') ...<Widget>[
             const SizedBox(height: 6),
             Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
-              Icon(dir == 'up' ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 14, color: good ? ThemeConstants.successGreen : ThemeConstants.errorRed),
+              Icon(dir == 'up' ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, size: 14, color: good ? ThemeConstants.successGreen : ThemeConstants.errorText),
               const SizedBox(width: 2),
-              Text(pct == null ? (LocalizationService.instance.isSwahili ? 'mpya' : 'new') : '${pct.abs().toStringAsFixed(pct.abs() >= 10 ? 0 : 1)}%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: good ? ThemeConstants.successGreen : ThemeConstants.errorRed)),
+              Text(pct == null ? (LocalizationService.instance.isSwahili ? 'mpya' : 'new') : '${pct.abs().toStringAsFixed(pct.abs() >= 10 ? 0 : 1)}%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: good ? ThemeConstants.successGreen : ThemeConstants.errorText)),
             ]),
           ],
         ]),
@@ -480,7 +480,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
         ]),
       ),
       if (_adviceLoading) const Padding(padding: EdgeInsets.all(12), child: Center(child: CircularProgressIndicator())),
-      if (_adviceError != null && !_adviceLoading) Text(_adviceError!, style: const TextStyle(color: ThemeConstants.errorRed)),
+      if (_adviceError != null && !_adviceLoading) Text(_adviceError!, style: const TextStyle(color: ThemeConstants.errorText)),
       if (!_adviceLoading)
         for (int i = 0; i < items.length; i++) _adviceItem(items[i], i),
       if (!_adviceLoading && _advice != null && ai == false && _advice!['ai_available'] == true)

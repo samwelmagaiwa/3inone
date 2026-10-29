@@ -1473,7 +1473,7 @@ class _SalesScreenState extends State<SalesScreen>
               Text('${loc.translate('cancel_sale')} — #${sale.number}',
                   style: ThemeConstants.bodyStyle.copyWith(
                       fontWeight: FontWeight.bold, fontSize: 15.sp,
-                      color: ThemeConstants.errorRed)),
+                      color: ThemeConstants.errorText)),
               SizedBox(height: 4.h),
               Text(loc.translate('stock_auto_restored'),
                   style: ThemeConstants.captionStyle),

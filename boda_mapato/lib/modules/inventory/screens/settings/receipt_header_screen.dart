@@ -589,7 +589,7 @@ class _ReceiptPreview extends StatelessWidget {
                 footer.isNotEmpty
                     ? footer
                     : (ApiService.activeService == 'salon'
-                        ? (LocalizationService.instance.isSwahili ? 'Karibu tena!' : 'Welcome again!')
+                        ? LocalizationService.instance.translate('receipt_welcome_again')
                         : LocalizationService.instance.translate('sold_goods_cannot_be_returned_without')),
                 style: _sub.copyWith(fontSize: 10, height: 1.4),
                 textAlign: TextAlign.center,

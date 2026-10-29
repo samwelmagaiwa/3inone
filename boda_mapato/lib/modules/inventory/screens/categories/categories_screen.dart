@@ -286,7 +286,7 @@ class _InventoryCategoriesScreenState extends State<InventoryCategoriesScreen> {
                   SizedBox(width: 8.w),
                   Text(loc.translate('delete'),
                       style: ThemeConstants.captionStyle
-                          .copyWith(color: ThemeConstants.errorRed)),
+                          .copyWith(color: ThemeConstants.errorText)),
                 ]),
               ),
             ],

@@ -90,7 +90,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   Color _netColor(dynamic net) {
     final n = double.tryParse(net?.toString() ?? '') ?? 0;
-    return n >= 0 ? Colors.greenAccent.shade400 : Colors.redAccent.shade200;
+    return n >= 0 ? Colors.greenAccent.shade400 : ThemeConstants.errorText;
   }
 
   @override
@@ -278,7 +278,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                             'TZS ${_fmt(exp['amount'])}',
                             textAlign: TextAlign.end,
                             style: TextStyle(
-                                color: Colors.redAccent.shade200,
+                                color: ThemeConstants.errorText,
                                 fontSize: 12.sp,
                                 fontWeight: FontWeight.w600),
                           ),
@@ -342,7 +342,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           TextButton(
               onPressed: () => Navigator.pop(ctx, true),
               child: Text(loc.translate('delete'),
-                  style: TextStyle(color: Colors.redAccent.shade200))),
+                  style: TextStyle(color: ThemeConstants.errorText))),
         ],
       ),
     );
@@ -402,7 +402,7 @@ class _SummarySection extends StatelessWidget {
                 _KpiCell(
                   label: loc.translate('expenses'),
                   value: 'TZS ${fmt(summary['total_expenses'])}',
-                  color: Colors.redAccent.shade200,
+                  color: ThemeConstants.errorText,
                 ),
                 _vDivider(),
                 _KpiCell(
@@ -440,7 +440,7 @@ class _SummarySection extends StatelessWidget {
                     }(),
                     backgroundColor: Colors.white12,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.redAccent.shade200),
+                        ThemeConstants.errorText),
                     minHeight: 6,
                   ),
                 ),
@@ -528,7 +528,7 @@ class _SummarySection extends StatelessWidget {
                         'TZS ${fmt(map['total'])}',
                         textAlign: TextAlign.end,
                         style: TextStyle(
-                            color: Colors.redAccent.shade200,
+                            color: ThemeConstants.errorText,
                             fontSize: 11.sp,
                             fontWeight: FontWeight.w600),
                       ),

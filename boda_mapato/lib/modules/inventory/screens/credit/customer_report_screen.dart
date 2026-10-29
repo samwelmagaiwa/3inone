@@ -203,7 +203,7 @@ class _CustomerReportScreenState extends State<CustomerReportScreen> {
       const SizedBox(height: 10),
       Row(children: <Widget>[
         if (profit) ...<Widget>[
-          Expanded(child: _card(sw ? 'Faida aliyoleta' : 'Profit they brought', _tsh(_n(totals['profit'])), key: const Key('cr_profit'), color: _n(totals['profit']) < 0 ? ThemeConstants.errorRed : ThemeConstants.successGreen, note: totals['margin_percent'] == null ? null : '${totals['margin_percent']}%')),
+          Expanded(child: _card(sw ? 'Faida aliyoleta' : 'Profit they brought', _tsh(_n(totals['profit'])), key: const Key('cr_profit'), color: _n(totals['profit']) < 0 ? ThemeConstants.errorText : ThemeConstants.successGreen, note: totals['margin_percent'] == null ? null : '${totals['margin_percent']}%')),
           const SizedBox(width: 10),
         ],
         Expanded(child: _card(sw ? 'Deni analodaiwa sasa' : 'Owes now', _tsh(owes), key: const Key('cr_owes'), color: owes > 0 ? ThemeConstants.warningAmber : Colors.white, note: _n(debt['from_before_app']) > 0 ? (sw ? 'pamoja na ${_tsh(_n(debt['from_before_app']))} za kabla ya programu' : 'incl. ${_tsh(_n(debt['from_before_app']))} from before the app') : null)),

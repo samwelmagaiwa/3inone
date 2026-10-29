@@ -1151,7 +1151,7 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color:
-                      isPositive ? Colors.green.shade300 : Colors.red.shade300,
+                      isPositive ? Colors.green.shade300 : ThemeConstants.errorText,
                   fontSize: ResponsiveHelper.bodyS,
                   fontWeight: FontWeight.w500,
                 ),

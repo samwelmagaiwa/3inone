@@ -543,7 +543,7 @@ class _CashSessionDetailScreenState extends State<CashSessionDetailScreen> {
                       'TSH ${diff.abs().toStringAsFixed(0)}',
                       style: TextStyle(
                         color: diff < 0
-                            ? ThemeConstants.errorRed
+                            ? ThemeConstants.errorText
                             : ThemeConstants.warningAmber,
                         fontWeight: FontWeight.w700,
                       ),

@@ -101,6 +101,9 @@ class AppLocalizations {
     return _instance!;
   }
 
+  /// A word in a language of its own choosing ('en' or 'sw'), whatever language the app is in now; null when there is none.
+  static String? valueIn(String language, String key) => _localizedValues[language]?[key];
+
   static const Map<String, Map<String, String>> _localizedValues = {
     'en': {
       'camera_permission_denied': 'Camera access is turned off for this app. Enable it in your phone settings.',
@@ -2630,6 +2633,7 @@ class AppLocalizations {
       'fully_paid': '✓  Fully paid',
       'thank_you_4': '★  Thank you!  ★',
       'sold_goods_cannot_be_returned_without': 'Sold goods cannot be returned without a receipt.',
+      'receipt_welcome_again': 'Welcome again!',
       // Text that used to be written into the screens (translated by the language setting now).
       'stock_history_audit_log': 'Stock History (Audit Log)',
       'current_stock': '📦 Current stock:',
@@ -5259,6 +5263,7 @@ class AppLocalizations {
       'fully_paid': '✓  malipo kamili',
       'thank_you_4': '★  asante sana!  ★',
       'sold_goods_cannot_be_returned_without': 'Bidhaa zilizouzwa haziruhusiwi kurudishwa bila risiti.',
+      'receipt_welcome_again': 'Karibu tena!',
       // Text that used to be written into the screens (translated by the language setting now).
       'stock_history_audit_log': 'Historia ya Mzigo (Audit Log)',
       'current_stock': '📦 Mzigo uliopo sasa:',

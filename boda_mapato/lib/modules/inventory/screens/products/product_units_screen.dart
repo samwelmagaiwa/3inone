@@ -207,7 +207,7 @@ class _ProductUnitsScreenState extends State<ProductUnitsScreen> {
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(
               loc.translate('delete'),
-              style: const TextStyle(color: ThemeConstants.errorRed),
+              style: const TextStyle(color: ThemeConstants.errorText),
             ),
           ),
         ],
@@ -392,7 +392,7 @@ class _UnitCard extends StatelessWidget {
                         child: Text(
                           loc.translate('delete'),
                           style:
-                              const TextStyle(color: ThemeConstants.errorRed),
+                              const TextStyle(color: ThemeConstants.errorText),
                         ),
                       ),
                   ],
@@ -1047,7 +1047,7 @@ class _HistoryRow extends StatelessWidget {
               '${up ? '+' : ''}${percent.toStringAsFixed(1)}%',
               style: TextStyle(
                 color:
-                    up ? ThemeConstants.successGreen : ThemeConstants.errorRed,
+                    up ? ThemeConstants.successGreen : ThemeConstants.errorText,
                 fontWeight: FontWeight.w700,
                 fontSize: 12.sp,
               ),

@@ -356,7 +356,7 @@ class _AddDebtSheetState extends State<_AddDebtSheet> {
         ]),
         const SizedBox(height: 10),
         TextField(key: const Key('debt_note'), controller: _note, style: salonInputStyle, decoration: salonInput(labelText: sw ? 'Maelezo (si lazima)' : 'Note (optional)')),
-        if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, key: const Key('debt_error'), style: const TextStyle(color: ThemeConstants.errorRed))),
+        if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, key: const Key('debt_error'), style: const TextStyle(color: ThemeConstants.errorText))),
         const SizedBox(height: 14),
         SizedBox(width: double.infinity, child: FilledButton(key: const Key('debt_save'), onPressed: _saving ? null : _save, child: Text(sw ? 'Hifadhi' : 'Save'))),
       ],
@@ -465,11 +465,11 @@ class _DebtSheetState extends State<_DebtSheet> {
           ),
         const SizedBox(height: 14),
         TextField(key: const Key('pay_amount'), controller: _amount, style: salonInputStyle, keyboardType: TextInputType.number, inputFormatters: <TextInputFormatter>[ThousandsFormatter()], decoration: salonInput(labelText: receivable ? (sw ? 'Kiasi kilicholipwa (TSh)' : 'Amount received (TSh)') : (sw ? 'Kiasi ninacholipa (TSh)' : 'Amount I pay (TSh)'))),
-        if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_error!, key: const Key('pay_error'), style: const TextStyle(color: ThemeConstants.errorRed))),
+        if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_error!, key: const Key('pay_error'), style: const TextStyle(color: ThemeConstants.errorText))),
         const SizedBox(height: 12),
         SizedBox(width: double.infinity, child: FilledButton(key: const Key('pay_save'), onPressed: _busy ? null : _pay, child: Text(receivable ? (sw ? 'Pokea malipo' : 'Receive payment') : (sw ? 'Lipa' : 'Pay')))),
         if (!hasPayments)
-          Align(alignment: Alignment.centerRight, child: TextButton.icon(key: const Key('debt_delete'), onPressed: _busy ? null : _delete, icon: const Icon(Icons.delete_outline, color: ThemeConstants.errorRed), label: Text(sw ? 'Futa (liliandikwa kimakosa)' : 'Delete (entered by mistake)', style: const TextStyle(color: ThemeConstants.errorRed)))),
+          Align(alignment: Alignment.centerRight, child: TextButton.icon(key: const Key('debt_delete'), onPressed: _busy ? null : _delete, icon: const Icon(Icons.delete_outline, color: ThemeConstants.errorRed), label: Text(sw ? 'Futa (liliandikwa kimakosa)' : 'Delete (entered by mistake)', style: const TextStyle(color: ThemeConstants.errorText)))),
       ],
     );
   }

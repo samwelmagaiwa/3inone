@@ -975,7 +975,7 @@ class _StockHistoryTabState extends State<_StockHistoryTab> {
                                     style: ThemeConstants.captionStyle.copyWith(
                                       color: isStockIn
                                           ? ThemeConstants.successGreen
-                                          : ThemeConstants.errorRed,
+                                          : ThemeConstants.errorText,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),

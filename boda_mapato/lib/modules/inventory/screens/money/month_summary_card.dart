@@ -71,7 +71,7 @@ class _MonthSummaryCardState extends State<MonthSummaryCard> {
             ]),
             const SizedBox(height: 4),
             Row(children: <Widget>[
-              Expanded(child: Text(tsh(_n(f['net_profit'])), key: const Key('month_profit'), style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: _n(f['net_profit']) < 0 ? ThemeConstants.errorRed : Colors.white))),
+              Expanded(child: Text(tsh(_n(f['net_profit'])), key: const Key('month_profit'), style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: _n(f['net_profit']) < 0 ? ThemeConstants.errorText : Colors.white))),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(color: color.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(14)),

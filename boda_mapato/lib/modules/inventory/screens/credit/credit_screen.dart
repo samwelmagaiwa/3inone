@@ -657,7 +657,7 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
                                         LocalizationService.instance.translateWith('due_2', <Object?>[due.day, due.month, due.year]),
                                         style: ThemeConstants.captionStyle.copyWith(
                                           color: overdue
-                                              ? ThemeConstants.errorRed
+                                              ? ThemeConstants.errorText
                                               : Colors.white54,
                                         ),
                                       ),
@@ -674,7 +674,7 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
                                 'TSH ${outstanding.toStringAsFixed(0)}',
                                 style: ThemeConstants.bodyStyle.copyWith(
                                   color: overdue
-                                      ? ThemeConstants.errorRed
+                                      ? ThemeConstants.errorText
                                       : ThemeConstants.warningAmber,
                                   fontWeight: FontWeight.w700,
                                 ),
