@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
+import { ReceiptHeader, receiptHeaderFrom } from './receipt';
 
 const KINDS = ['retail', 'wholesale', 'mixed', 'depot'];
 
@@ -28,6 +29,8 @@ export class CapabilitiesService {
   readonly defaultTaxPercent = computed(() => Number.parseFloat(this.settings()['tax_percent'] ?? '') || 0);
   /** The price level the till starts on: the business's own, or retail for a depot (which prices by product). */
   readonly startingTier = computed<'retail' | 'wholesale'>(() => (this.saleTier() === 'wholesale' ? 'wholesale' : 'retail'));
+  /** What the top and bottom of a printed receipt say (the business's name, address, phone, TIN and footer note). */
+  readonly receiptHeader = computed<ReceiptHeader>(() => receiptHeaderFrom(this.settings(), this.auth.user()?.business ?? ''));
   readonly maxDiscountPercent = computed(() => Number.parseFloat(this.settings()['max_discount_percent'] ?? '') || 0);
 
   constructor() {

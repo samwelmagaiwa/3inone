@@ -612,7 +612,7 @@ export class TillPage implements OnInit, OnDestroy {
   }
 
   protected print(sale: SaleDetail): void {
-    printReceipt(sale, this.auth.user()?.business ?? '', (k) => this.i18n.t(k));
+    printReceipt(sale, this.caps.receiptHeader(), (k) => this.i18n.t(k));
   }
 
   protected newSale(): void {

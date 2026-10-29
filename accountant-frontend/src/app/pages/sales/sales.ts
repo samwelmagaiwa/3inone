@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { AccountantApi } from '../../core/accountant-api.service';
 import { AuthService } from '../../core/auth.service';
+import { CapabilitiesService } from '../../core/capabilities.service';
 import { dayOf, eatDateTime, offline, parseAmount, serverMessage, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
 import { SaleRow } from '../../core/models';
@@ -36,6 +37,7 @@ export class SalesPage implements OnInit, OnDestroy {
   private readonly till = inject(TillApi);
   private readonly toast = inject(ToastService);
   protected readonly auth = inject(AuthService);
+  private readonly caps = inject(CapabilitiesService);
   protected readonly i18n = inject(I18nService);
   protected readonly motion = inject(MotionService);
 
@@ -232,7 +234,7 @@ export class SalesPage implements OnInit, OnDestroy {
 
   protected async receipt(s: SaleRow): Promise<void> {
     try {
-      printReceipt(await firstValueFrom(this.till.sale(s.id)), this.auth.user()?.business ?? '', (k) => this.i18n.t(k));
+      printReceipt(await firstValueFrom(this.till.sale(s.id)), this.caps.receiptHeader(), (k) => this.i18n.t(k));
     } catch (err) {
       this.toast.error(this.fail(err), this.i18n.t('error.title'));
     }
