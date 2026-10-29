@@ -244,15 +244,17 @@ class _CreditCustomerCard extends StatelessWidget {
               child: OutlinedButton.icon(
                 key: ValueKey<String>('customer_report_${customer.id}'),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.white24),
+                  backgroundColor: ThemeConstants.invAccent.withValues(alpha: 0.14),
+                  side: BorderSide(color: ThemeConstants.invAccent.withValues(alpha: 0.7)),
+                  padding: EdgeInsets.symmetric(vertical: 10.h),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                 ),
                 onPressed: () => Navigator.push<void>(
                   context,
                   MaterialPageRoute<void>(builder: (_) => CustomerReportScreen(customerId: customer.id, name: customer.name)),
                 ),
-                icon: Icon(Icons.insights_outlined, size: 16.sp, color: Colors.white70),
-                label: Text(loc.isSwahili ? 'Ripoti ya mteja' : 'Customer report', style: ThemeConstants.captionStyle),
+                icon: Icon(Icons.insights_outlined, size: 18.sp, color: ThemeConstants.invAccent),
+                label: Text(loc.isSwahili ? 'Ripoti ya mteja (wiki, mwezi, mwaka)' : 'Customer report (week, month, year)', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700, fontSize: 13.sp)),
               ),
             ),
             SizedBox(height: 8.h),

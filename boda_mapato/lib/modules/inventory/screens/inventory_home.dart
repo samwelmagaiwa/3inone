@@ -12,8 +12,7 @@ import '../../../widgets/service_switcher_dialog.dart';
 import 'dashboard/inventory_dashboard_screen.dart';
 import 'credit/credit_screen.dart';
 import 'assistant/assistant_screen.dart';
-import 'money/debts_screen.dart';
-import 'money/monthly_report_screen.dart';
+import 'money/money_menu_screen.dart';
 import '../../../screens/settings/settings_screen.dart';
 import 'settings/depot_settings_screen.dart';
 import 'hubs/products_hub_screen.dart';
@@ -152,32 +151,14 @@ List<_InvMenuEntry> _invEntries(LocalizationService loc,
                   p.has('inv_view_reports') ||
                   p.has('inv_view_reminders'),
             ),
-            // 7 — Customers & Credit (standalone)
+            // 7 — Money: customers & credit, debts and the monthly report, each told in a sentence (one tile, not three)
             _InvMenuEntry(
-              key: 'credit',
-              titleKey: 'customers_and_credit',
-              icon: Icons.credit_card_outlined,
-              color: const Color(0xFF20B8CE),
-              pageBuilder: () => const CreditScreen(),
-              visible: (UserPermissions p) => p.has('inv_view_credit'),
-            ),
-            // 7b — Debts: what customers owe me and what I owe, with debts from before the app
-            _InvMenuEntry(
-              key: 'debts',
-              staticTitle: loc.isSwahili ? 'Madeni' : 'Debts',
+              key: 'money_menu',
+              staticTitle: loc.isSwahili ? 'Fedha na madeni' : 'Money & debts',
               icon: Icons.account_balance_wallet_outlined,
               color: ThemeConstants.warningAmber,
-              pageBuilder: () => const DebtsScreen(),
-              visible: (UserPermissions p) => p.has('inv_view_credit'),
-            ),
-            // 7c — The month in full: profit, comparison, target, capital and advice
-            _InvMenuEntry(
-              key: 'monthly_report',
-              staticTitle: loc.isSwahili ? 'Ripoti ya mwezi' : 'Monthly report',
-              icon: Icons.insights_outlined,
-              color: const Color(0xFF8B5CF6),
-              pageBuilder: () => const MonthlyReportScreen(),
-              visible: (UserPermissions p) => p.has('inv_view_reports'),
+              pageBuilder: () => const MoneyMenuScreen(),
+              visible: (UserPermissions p) => p.has('inv_view_credit') || p.has('inv_view_reports'),
             ),
             // 7e — More than one place to sell from: the branches, and the goods each one holds (the same screens as a salon's)
             _InvMenuEntry(
