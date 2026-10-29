@@ -365,6 +365,37 @@ class SalonTest extends TestCase
         $this->assertTrue($line['is_service']);
     }
 
+    public function test_the_owner_can_be_named_as_the_stylist_by_a_member_of_staff_and_by_themself(): void
+    {
+        $owner = $this->salon();
+        $cashier = $this->stylist($owner, 'Cashier');
+        $braids = $this->service($owner, 'Braids', 40000);
+
+        // the stylist list offers everyone in the account, the owner too: choosing the owner must work for staff
+        $listed = array_column($this->api($cashier, 'GET', '/api/inventory/salon/staff')->assertOk()->json('data'), 'id');
+        $this->assertContains((string) $owner->id, $listed);
+
+        $this->sell($cashier, [[$braids, 1, 40000, (string) $owner->id]])->assertCreated();
+        $this->sell($owner, [[$braids, 1, 40000, (string) $owner->id]])->assertCreated();
+        $this->sell($owner, [[$braids, 1, 40000, (string) $cashier->id]])->assertCreated();
+    }
+
+    public function test_every_stylist_the_list_offers_can_be_chosen_by_everyone_in_the_account(): void
+    {
+        $owner = $this->salon();
+        $asha = $this->stylist($owner, 'Asha');
+        $bahati = $this->stylist($owner, 'Bahati');
+        $braids = $this->service($owner, 'Braids', 40000);
+
+        foreach ([$owner, $asha, $bahati] as $seller) {
+            $offered = array_column($this->api($seller, 'GET', '/api/inventory/salon/staff')->assertOk()->json('data'), 'id');
+            $this->assertCount(3, $offered);
+            foreach ($offered as $id) {
+                $this->sell($seller, [[$braids, 1, 40000, $id]])->assertCreated();
+            }
+        }
+    }
+
     public function test_a_stylist_from_another_salon_is_refused(): void
     {
         $alpha = $this->salon('Alpha Salon');

@@ -30,6 +30,12 @@ class UserInAccount implements ValidationRule
             return;
         }
 
+        // Everyone the account lists as its member is in it, the person at the head of the account included (the head
+        // created nobody who created them, so the "created by" test below alone would refuse the owner).
+        if ($this->viewer && is_scalar($value) && in_array((string) $value, $this->viewer->accountMemberIds(), true)) {
+            return;
+        }
+
         if (!$this->viewer
             || !is_scalar($value)
             || !User::query()->inAccountOf($this->viewer)->whereKey($value)->exists()) {
