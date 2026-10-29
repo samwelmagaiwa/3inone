@@ -153,6 +153,14 @@ void main() {
     expect(sales.color, const Color(0xFF10B981));
   });
 
+  testWidgets('says in plain words how the net profit and the capital are worked out', (t) async {
+    await _open(t, _FakeMoney());
+
+    expect(find.byKey(const Key('hint_net'), skipOffstage: false), findsOneWidget);
+    expect(find.text('Net profit = Sales − Cost of goods − Business expenses. Personal spending is not taken off the profit.', skipOffstage: false), findsOneWidget);
+    expect(find.text('Capital = Stock on hand + Owed to me − I owe.', skipOffstage: false), findsOneWidget);
+  });
+
   testWidgets('where the business stands, with the change in capital; debts open the debts page', (t) async {
     await _open(t, _FakeMoney());
 

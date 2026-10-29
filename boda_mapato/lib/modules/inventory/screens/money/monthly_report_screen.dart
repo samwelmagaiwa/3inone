@@ -205,6 +205,15 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
         ]),
         const SizedBox(height: 8),
         _figure('fig_net', sw ? 'Faida halisi' : 'Net profit', _n(f['net_profit']), cmp['net_profit'] is Map ? _m(cmp['net_profit']) : null, big: true),
+        // In plain words, for someone who does not keep books: how the profit is worked out.
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text(
+            sw ? 'Faida halisi = Mauzo − Gharama ya bidhaa − Matumizi ya biashara. Matumizi binafsi hayaondolewi kwenye faida.' : 'Net profit = Sales − Cost of goods − Business expenses. Personal spending is not taken off the profit.',
+            key: const Key('hint_net'),
+            style: kMoneyCaption,
+          ),
+        ),
         _section(sw ? 'Biashara ilipo' : 'Where the business stands'),
         if (!hasPos)
           Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Text(sw ? 'Hesabu za mali, madeni na mtaji zinaanza kuhifadhiwa tangu unapofungua ripoti hii kwa mara ya kwanza.' : 'Stock, debts and capital are recorded from the day you first open this report; this month was not recorded.', key: const Key('no_position'), style: kMoneyCaption))
@@ -219,6 +228,14 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                 const Divider(),
                 _line(sw ? 'Mtaji' : 'Capital', tsh(_n(pos['capital'])), key: 'pos_capital', bold: true),
                 if (_r['capital_change'] is Map) _capitalChange(sw),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    sw ? 'Mtaji = Bidhaa dukani + Ninayodai − Ninayodaiwa.' : 'Capital = Stock on hand + Owed to me − I owe.',
+                    key: const Key('hint_capital'),
+                    style: kMoneyCaption,
+                  ),
+                ),
               ]),
             ),
           ),
