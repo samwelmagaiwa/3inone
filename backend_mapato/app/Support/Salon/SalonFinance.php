@@ -48,6 +48,8 @@ final class SalonFinance
         $discounts = (float) ($lines['service']->discount ?? 0) + (float) ($lines['goods']->discount ?? 0);
         // Only goods cost something to give: a service takes no stock (its cost snapshot is zero anyway).
         $costOfGoods = (float) ($lines['goods']->cost ?? 0);
+        // What the goods that were SOLD cost (before the goods the services used up are added below): the goods' own profit.
+        $goodsCost = $costOfGoods;
         // ...and what the services used up (shampoo, dye, towels) once they are set up to use goods.
         $materialsCost = SalonMaterials::cost($f, $t, $b ? $branch : null);
         $costOfGoods += $materialsCost;
@@ -151,6 +153,12 @@ final class SalonFinance
             'revenue' => self::money($serviceRevenue + $goodsRevenue),
             'discounts' => self::money($discounts),
             'cost_of_goods' => self::money($costOfGoods),
+            // Where the profit comes from, before the running costs (rent, salaries...): goods sold (rasta, shampoo) against services
+            // (braiding). The goods' profit is what they sold for less what they cost; a service's is what it brought in less the goods
+            // it used up and the stylists' commission on it. Together they are the gross profit less the commissions.
+            'goods_cost' => self::money($goodsCost),
+            'goods_profit' => self::money($goodsRevenue - $goodsCost),
+            'services_profit' => self::money($serviceRevenue - $materialsCost - $commissions),
             'materials_cost' => self::money($materialsCost),
             'gross_profit' => self::money($gross),
             'expenses' => self::money($expenses['total']),

@@ -355,6 +355,9 @@ class SalonFinanceTest extends TestCase
         $this->assertSame([110000, 16000, 126000, 10000], [$d['service_revenue'], $d['goods_revenue'], $d['revenue'], $d['discounts']]);
         $this->assertSame(8000, $d['cost_of_goods'], 'two bottles at 4,000');
         $this->assertSame(118000, $d['gross_profit']);
+        // the profit by kind: the shampoo sold made 16,000 - 8,000; the services 110,000 less the 12,000 commission on them
+        $this->assertSame([8000, 8000, 98000], [$d['goods_cost'], $d['goods_profit'], $d['services_profit']]);
+        $this->assertSame($d['gross_profit'] - $d['commissions'], $d['goods_profit'] + $d['services_profit'], 'together they are the gross profit less the commissions');
         $this->assertSame(30000, $d['expenses'], 'the 5,000 still waiting is not a cost');
         $this->assertSame([['category' => 'rent', 'total' => 30000, 'count' => 1]], $d['expenses_by_category']);
         $this->assertSame(12000, $d['commissions'], '8,000 on the braids, 2,000 on each of the two washes');

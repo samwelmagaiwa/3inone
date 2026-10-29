@@ -16,11 +16,30 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../../models/user_permissions.dart';
 import '../../../../providers/auth_provider.dart';
+import '../../../../services/api_service.dart';
 import '../../../../services/localization_service.dart';
 import '../../models/inv_sale.dart';
 import '../../providers/depot_provider.dart';
 import '../salon/salon_sale_breakdown_card.dart';
 import '../settings/receipt_header_screen.dart';
+
+/// The shop's line (goods sold cannot be returned): it does not belong on a salon's receipt.
+const String shopReturnLine = 'Bidhaa zilizouzwa haziruhusiwi kurudishwa bila risiti.';
+
+/// What the receipt says at the foot. A shop says its own note (or the usual line); a salon says its own note, or only
+/// "Welcome again" (never the shop's line about goods, even when that line was saved in its settings long ago).
+String receiptFooterText(Map<String, String> s, {bool lines = false}) {
+  final String raw = s['receipt_footer_note']?.trim() ?? '';
+  final String stored = raw == 'null' ? '' : raw;
+  if (ApiService.activeService == 'salon') {
+    if (stored.isEmpty || stored.contains(shopReturnLine)) {
+      return LocalizationService.instance.isSwahili ? 'Karibu tena!' : 'Welcome again!';
+    }
+    return stored;
+  }
+  if (stored.isNotEmpty) return stored;
+  return LocalizationService.instance.translate(lines ? 'receipt_footer_default_lines' : 'receipt_footer_default');
+}
 
 /// Full-screen thermal receipt viewer.
 /// Settings are read live from [DepotProvider] so the receipt always reflects
@@ -54,14 +73,15 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
 
   String _fmt(double v) => NumberFormat('#,##0').format(v);
 
+  static String _footerText(Map<String, String> s, {bool lines = false}) => receiptFooterText(s, lines: lines);
+
   // ── Thermal 80mm plain text (48 chars wide) ─────────────────────────────────
   String _buildThermalText(Map<String, String> s) {
     final shopName = _s(s, 'depot_name', LocalizationService.instance.translate('your_shop'));
     final address  = _s(s, 'depot_address');
     final phone    = _s(s, 'depot_phone');
     final tin      = _s(s, 'receipt_tin');
-    final footer   = _s(s, 'receipt_footer_note',
-        LocalizationService.instance.translate('receipt_footer_default'));
+    final footer   = _footerText(s);
 
     const w = 48;
     String c(String t) {
@@ -162,8 +182,7 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
     final address   = _s(s, 'depot_address');
     final phone     = _s(s, 'depot_phone');
     final tin       = _s(s, 'receipt_tin');
-    final footer    = _s(s, 'receipt_footer_note',
-        LocalizationService.instance.translate('receipt_footer_default'));
+    final footer    = _footerText(s);
     final showTin   = (s['receipt_show_tin'] ?? '1') == '1';
 
     final doc       = pw.Document();
@@ -581,7 +600,7 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
     final email      = _s(s, 'receipt_email');
     final website    = _s(s, 'receipt_website');
     final tin        = _s(s, 'receipt_tin');
-    final footer     = _s(s, 'receipt_footer_note');
+    final footer     = _footerText(s, lines: true);
     final showBarcode= (s['receipt_show_barcode'] ?? '1') == '1';
     final showTin    = (s['receipt_show_tin']     ?? '1') == '1';
 
@@ -1180,9 +1199,7 @@ class _ReceiptPaper extends StatelessWidget {
                     )),
                 const SizedBox(height: 4),
                 Text(
-                  footerNote.isNotEmpty
-                      ? footerNote
-                      : LocalizationService.instance.translate('receipt_footer_default_lines'),
+                  footerNote,
                   style: _label.copyWith(fontSize: 10, height: 1.4, color: const Color(0xFF2A2A2A)),
                   textAlign: TextAlign.center,
                 ),

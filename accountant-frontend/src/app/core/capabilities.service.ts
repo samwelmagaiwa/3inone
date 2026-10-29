@@ -30,7 +30,7 @@ export class CapabilitiesService {
   /** The price level the till starts on: the business's own, or retail for a depot (which prices by product). */
   readonly startingTier = computed<'retail' | 'wholesale'>(() => (this.saleTier() === 'wholesale' ? 'wholesale' : 'retail'));
   /** What the top and bottom of a printed receipt say (the business's name, address, phone, TIN and footer note). */
-  readonly receiptHeader = computed<ReceiptHeader>(() => receiptHeaderFrom(this.settings(), this.auth.user()?.business ?? ''));
+  readonly receiptHeader = computed<ReceiptHeader>(() => receiptHeaderFrom(this.settings(), this.auth.user()?.business ?? '', this.auth.service() === 'salon'));
   readonly maxDiscountPercent = computed(() => Number.parseFloat(this.settings()['max_discount_percent'] ?? '') || 0);
 
   constructor() {

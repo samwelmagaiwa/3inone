@@ -102,6 +102,14 @@ describe('the printed receipt', () => {
     expect(html).not.toContain('<b>Mama</b>');
   });
 
+  it("a salon's receipt drops the shop's goods-cannot-be-returned line, a shop's keeps it, and a salon keeps a note it wrote", () => {
+    const line = 'Bidhaa zilizouzwa haziruhusiwi kurudishwa bila risiti.';
+    expect(receiptHeaderFrom({ receipt_footer_note: line }, 'x', true).footer).toBe('');
+    expect(receiptHeaderFrom({ receipt_footer_note: line }, 'x', false).footer).toBe(line);
+    expect(receiptHeaderFrom({ receipt_footer_note: 'Karibu tena Glow!' }, 'x', true).footer).toBe('Karibu tena Glow!');
+    expect(receiptHtml(sale(), receiptHeaderFrom({ receipt_footer_note: line }, 'Glow', true), t)).not.toContain('haziruhusiwi');
+  });
+
   it('keeps working when only the business name is known (old callers), and hides the TIN when the business asked not to show it', () => {
     expect(receiptHtml(sale(), 'Mama Shop', t)).toContain('Mama Shop');
     const hidden = receiptHeaderFrom({ receipt_tin: '999', receipt_show_tin: '0' }, 'Shop');

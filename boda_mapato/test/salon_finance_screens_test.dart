@@ -501,6 +501,9 @@ void main() {
           revenue: 126000,
           discounts: discounts,
           costOfGoods: 8000,
+          goodsCost: 8000,
+          goodsProfit: 8000,
+          servicesProfit: 98000,
           grossProfit: 118000,
           expenses: 30000,
           expensesByCategory: const <ExpenseGroup>[ExpenseGroup(category: 'rent', total: 30000, count: 1)],
@@ -516,6 +519,36 @@ void main() {
           sales: 3,
           clients: 1,
         );
+
+    testWidgets('says where the profit comes from: the goods sold against the services (braiding)', (t) async {
+      final _FakeSalon api = _FakeSalon()..pl = data();
+      await _host(t, ProfitLossScreen(api: api, today: _today));
+
+      expect(find.text('Where does the profit come from?'), findsOneWidget);
+      expect(find.descendant(of: _key('pl_kind_goods_revenue'), matching: find.text('TSH 16,000')), findsOneWidget);
+      expect(find.descendant(of: _key('pl_kind_goods_cost'), matching: find.text('− TSH 8,000')), findsOneWidget);
+      expect(find.descendant(of: _key('pl_goods_profit'), matching: find.text('TSH 8,000')), findsOneWidget);
+      expect(find.descendant(of: _key('pl_kind_service_revenue'), matching: find.text('TSH 110,000')), findsOneWidget);
+      expect(find.descendant(of: _key('pl_kind_service_costs'), matching: find.text('− TSH 12,000')), findsOneWidget, reason: 'the commission on the services');
+      expect(find.descendant(of: _key('pl_services_profit'), matching: find.text('TSH 98,000')), findsOneWidget);
+      expect(find.text('Profit on goods'), findsOneWidget);
+      expect(find.text('Profit on services'), findsOneWidget);
+    });
+
+    testWidgets('a salon that sold no goods shows no profit on goods, and the services line has no costs line when nothing was taken off', (t) async {
+      final ProfitLoss base = data();
+      final _FakeSalon api = _FakeSalon()
+        ..pl = ProfitLoss(
+          from: base.from, to: base.to, serviceRevenue: 50000, goodsRevenue: 0, revenue: 50000, discounts: 0, costOfGoods: 0, goodsCost: 0, goodsProfit: 0, servicesProfit: 50000, grossProfit: 50000,
+          expenses: 0, expensesByCategory: const <ExpenseGroup>[], commissions: 0, salaries: 0, operatingCosts: 0, netProfit: 50000, collections: const <Collection>[], collected: 50000,
+          outstanding: 0, cancelledCount: 0, cancelledTotal: 0, sales: 1, clients: 1,
+        );
+      await _host(t, ProfitLossScreen(api: api, today: _today));
+
+      expect(find.descendant(of: _key('pl_goods_profit'), matching: find.text('TSH 0')), findsOneWidget);
+      expect(_key('pl_kind_service_costs'), findsNothing);
+      expect(find.descendant(of: _key('pl_services_profit'), matching: find.text('TSH 50,000')), findsOneWidget);
+    });
 
     testWidgets('lays the month out line by line down to the net profit', (t) async {
       final _FakeSalon api = _FakeSalon()..pl = data();
@@ -629,6 +662,9 @@ void main() {
       await _settle(t);
       expect(find.text('Mapato'), findsOneWidget);
       expect(find.text('Faida halisi'), findsOneWidget);
+      expect(find.text('Faida inatoka wapi?'), findsOneWidget);
+      expect(find.text('Faida ya bidhaa'), findsOneWidget);
+      expect(find.text('Faida ya huduma'), findsOneWidget);
       expect(find.text('Pesa zilizopokelewa'), findsOneWidget);
       expect(find.text('Madeni ya wateja'), findsOneWidget);
     });

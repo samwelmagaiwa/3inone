@@ -88,7 +88,13 @@ final class InventoryDefaults
             }
         }
 
-        return array_merge(self::SETTINGS, $fromBusiness);
+        $merged = array_merge(self::SETTINGS, $fromBusiness);
+        // A salon's receipt does not carry a shop's "goods sold cannot be returned" line (the owner may still write a note of their own).
+        if (TenantContext::service() === 'salon') {
+            $merged['receipt_footer_note'] = '';
+        }
+
+        return $merged;
     }
 
     /**

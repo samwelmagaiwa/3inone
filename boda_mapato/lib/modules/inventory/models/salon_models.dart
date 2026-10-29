@@ -597,6 +597,9 @@ class ProfitLoss {
     this.vatByRate = const <VatRate>[],
     this.otherIncome = 0,
     this.depositsHeld = 0,
+    this.goodsCost = 0,
+    this.goodsProfit = 0,
+    this.servicesProfit = 0,
   });
 
   factory ProfitLoss.fromJson(final Map<String, dynamic> j) {
@@ -609,6 +612,9 @@ class ProfitLoss {
       revenue: _num(j['revenue']),
       discounts: _num(j['discounts']),
       costOfGoods: _num(j['cost_of_goods']),
+      goodsCost: _num(j['goods_cost']),
+      goodsProfit: _num(j['goods_profit']),
+      servicesProfit: _num(j['services_profit']),
       grossProfit: _num(j['gross_profit']),
       expenses: _num(j['expenses']),
       expensesByCategory: _rows(j['expenses_by_category']).map(ExpenseGroup.fromJson).toList(),
@@ -646,6 +652,12 @@ class ProfitLoss {
   final double revenue;
   final double discounts;
   final double costOfGoods;
+
+  /// Where the profit comes from, before the running costs: what the goods that were SOLD cost and made (rasta, shampoo), and what the
+  /// services made after the goods they used up and the stylists' commission on them.
+  final double goodsCost;
+  final double goodsProfit;
+  final double servicesProfit;
   final double grossProfit;
   final double expenses;
   final List<ExpenseGroup> expensesByCategory;

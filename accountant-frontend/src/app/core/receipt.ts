@@ -3,6 +3,9 @@ import { SaleDetail } from './till-api.service';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
 
+/** The line every shop's receipt carries by default: it does not belong on a salon's. */
+export const SHOP_RETURN_LINE = 'Bidhaa zilizouzwa haziruhusiwi kurudishwa bila risiti.';
+
 /** What the top and the bottom of a receipt say about the business: all set once in the business's settings. */
 export interface ReceiptHeader {
   business: string;
@@ -17,7 +20,7 @@ export interface ReceiptHeader {
 }
 
 /** The receipt header from the business's settings (the same ones the mobile app prints), the business's name when none is set. */
-export function receiptHeaderFrom(settings: Record<string, string>, business: string): ReceiptHeader {
+export function receiptHeaderFrom(settings: Record<string, string>, business: string, salon = false): ReceiptHeader {
   const text = (k: string) => (settings[k] ?? '').trim();
   return {
     business: text('depot_name') || business,
@@ -27,7 +30,8 @@ export function receiptHeaderFrom(settings: Record<string, string>, business: st
     email: text('receipt_email'),
     website: text('receipt_website'),
     tin: (settings['receipt_show_tin'] ?? '1') !== '0' ? text('receipt_tin') : '',
-    footer: text('receipt_footer_note'),
+    // a salon's receipt never carries the shop's "goods sold cannot be returned" line (the owner's own note stays)
+    footer: salon && text('receipt_footer_note').includes(SHOP_RETURN_LINE) ? '' : text('receipt_footer_note'),
   };
 }
 

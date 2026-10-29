@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../constants/theme_constants.dart';
+import '../../../../services/api_service.dart';
 import '../../../../services/localization_service.dart';
 import '../../providers/depot_provider.dart';
 import '../widgets/inventory_widgets.dart';
@@ -585,7 +586,11 @@ class _ReceiptPreview extends StatelessWidget {
                       fontWeight: FontWeight.w900, letterSpacing: 3, color: Color(0xFF0D0D0D))),
               const SizedBox(height: 3),
               Text(
-                footer.isNotEmpty ? footer : LocalizationService.instance.translate('sold_goods_cannot_be_returned_without'),
+                footer.isNotEmpty
+                    ? footer
+                    : (ApiService.activeService == 'salon'
+                        ? (LocalizationService.instance.isSwahili ? 'Karibu tena!' : 'Welcome again!')
+                        : LocalizationService.instance.translate('sold_goods_cannot_be_returned_without')),
                 style: _sub.copyWith(fontSize: 10, height: 1.4),
                 textAlign: TextAlign.center,
               ),

@@ -396,6 +396,35 @@ class SalonTest extends TestCase
         }
     }
 
+    public function test_a_salons_receipt_has_no_goods_cannot_be_returned_line_but_a_shops_still_does(): void
+    {
+        $note = 'Bidhaa zilizouzwa haziruhusiwi kurudishwa bila risiti.';
+        $owner = $this->salon('Glow Salon', ['salon', 'inventory']);
+
+        $salon = $this->api($owner, 'GET', '/api/inventory/settings')->assertOk()->json('data.receipt_footer_note');
+        $this->assertSame('', $salon, 'no shop wording on a salon receipt');
+
+        $token = $owner->createToken('shop')->plainTextToken;
+        $this->app['auth']->forgetGuards();
+        $shop = $this->withHeader('Authorization', "Bearer {$token}")->withHeader('X-Service', 'inventory')->json('GET', '/api/inventory/settings')->assertOk()->json('data.receipt_footer_note');
+        $this->assertSame($note, $shop, 'the shop keeps its line');
+    }
+
+    public function test_a_note_the_owner_wrote_is_kept_and_the_old_shop_line_is_cleared_from_a_salon(): void
+    {
+        $note = 'Bidhaa zilizouzwa haziruhusiwi kurudishwa bila risiti.';
+        $owner = $this->salon();
+        $this->rows($owner, fn () => DB::table('inventory_settings')->updateOrInsert(['key' => 'receipt_footer_note'], ['value' => $note, 'updated_at' => now()]));
+        $this->assertSame($note, $this->api($owner, 'GET', '/api/inventory/settings')->json('data.receipt_footer_note'));
+
+        (require base_path('database/migrations/2026_11_08_000100_clear_salon_receipt_return_note.php'))->up();
+        $this->assertSame('', $this->api($owner, 'GET', '/api/inventory/settings')->json('data.receipt_footer_note'));
+
+        $this->api($owner, 'PUT', '/api/inventory/settings', ['receipt_footer_note' => 'Karibu tena Glow!'])->assertOk();
+        (require base_path('database/migrations/2026_11_08_000100_clear_salon_receipt_return_note.php'))->up();
+        $this->assertSame('Karibu tena Glow!', $this->api($owner, 'GET', '/api/inventory/settings')->json('data.receipt_footer_note'));
+    }
+
     public function test_a_stylist_from_another_salon_is_refused(): void
     {
         $alpha = $this->salon('Alpha Salon');
