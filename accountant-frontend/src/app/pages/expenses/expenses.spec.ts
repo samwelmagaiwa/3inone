@@ -189,3 +189,40 @@ describe('expenses', () => {
     expect(all).toContain('Andika matumizi');
   });
 });
+
+describe('the expense form: required fields', () => {
+  it('shows a red asterisk on what must be filled, placeholders, and outlines the empty ones once Save is pressed', async () => {
+    const { fixture, el } = await open();
+    byTestId(el, 'exp-add')!.click();
+    await settle(fixture);
+
+    for (const id of ['expDesc', 'expAmount', 'expDate', 'expCategory']) {
+      expect(el.querySelector(`label[for=${id}]`)!.classList.contains('req')).toBe(true);
+      expect((el.querySelector(`#${id}`) as HTMLInputElement).required).toBe(true);
+    }
+    expect(el.querySelector('label[for=expSupplier]')!.classList.contains('req')).toBe(false); // optional
+    expect((el.querySelector('#expAmount') as HTMLInputElement).placeholder).toBe('e.g. 15,000');
+    expect((el.querySelector('#expSupplier') as HTMLInputElement).placeholder).toContain('optional');
+    expect(el.querySelector('.modal-panel.attempted')).toBeNull();
+
+    byTestId(el, 'exp-save')!.click();
+    await settle(fixture);
+    expect(el.querySelector('.modal-panel.attempted')).not.toBeNull();
+    expect(text(byTestId(el, 'exp-error')!)).not.toBe('');
+  });
+
+  it('the outline is forgotten when the form is opened again', async () => {
+    const { fixture, el } = await open();
+    byTestId(el, 'exp-add')!.click();
+    await settle(fixture);
+    byTestId(el, 'exp-save')!.click();
+    await settle(fixture);
+    expect(el.querySelector('.modal-panel.attempted')).not.toBeNull();
+
+    (el.querySelector('.modal-close-btn') as HTMLElement).click();
+    await settle(fixture);
+    byTestId(el, 'exp-add')!.click();
+    await settle(fixture);
+    expect(el.querySelector('.modal-panel.attempted')).toBeNull();
+  });
+});

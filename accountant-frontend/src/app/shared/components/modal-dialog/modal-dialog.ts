@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, inject, signal } from '@angular/core';
 
 import { I18nService } from '../../../core/i18n.service';
 
@@ -8,7 +8,7 @@ import { I18nService } from '../../../core/i18n.service';
   template: `
     @if (show) {
       <div class="modal-backdrop" (click)="onClose()">
-        <div class="modal-panel" [class]="panelSizeClass" (click)="$event.stopPropagation()">
+        <div class="modal-panel" [class]="panelSizeClass" [class.attempted]="attempted()" (click)="$event.stopPropagation()">
           
           <div class="modal-header" [class]="headerVariantClass">
             <div>
@@ -26,7 +26,7 @@ import { I18nService } from '../../../core/i18n.service';
             <ng-content select="[slot=body]"></ng-content>
           </div>
 
-          <div class="modal-footer">
+          <div class="modal-footer" (click)="attempted.set(true)">
             <ng-content select="[slot=footer]"></ng-content>
           </div>
 
@@ -35,7 +35,7 @@ import { I18nService } from '../../../core/i18n.service';
     }
   `,
 })
-export class ModalDialogComponent {
+export class ModalDialogComponent implements OnChanges {
   protected readonly i18n = inject(I18nService);
 
   @Input() show: boolean = false;
@@ -45,6 +45,13 @@ export class ModalDialogComponent {
   @Input() variant: 'primary' | 'indigo' | 'danger' | 'teal' = 'primary';
 
   @Output() close = new EventEmitter<void>();
+
+  /** True once a button at the foot was pressed: the fields still empty are then outlined in red (see .attempted in styles.css). */
+  protected readonly attempted = signal(false);
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['show']) this.attempted.set(false);
+  }
 
   onClose() {
     this.close.emit();

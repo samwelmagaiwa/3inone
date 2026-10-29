@@ -194,8 +194,8 @@
     }
 
     <div>
-      <label class="modal-label" for="pName">{{ i18n.t('prod.form.name') }}</label>
-      <input id="pName" name="pName" class="modal-input" [(ngModel)]="fName" autocomplete="off" data-testid="prod-name">
+      <label class="modal-label req" for="pName">{{ i18n.t('prod.form.name') }}</label>
+      <input id="pName" name="pName" class="modal-input" [(ngModel)]="fName" autocomplete="off" data-testid="prod-name" required [placeholder]="i18n.t('ph.prod.name')">
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -220,12 +220,12 @@
       @if (!fIsService) {
         <div>
           <label class="modal-label" for="pCost">{{ i18n.t('prod.form.cost') }}</label>
-          <input appMoney id="pCost" name="pCost" class="modal-input" inputmode="numeric" [(ngModel)]="fCost" autocomplete="off" data-testid="prod-cost">
+          <input appMoney id="pCost" name="pCost" class="modal-input" inputmode="numeric" [(ngModel)]="fCost" autocomplete="off" data-testid="prod-cost" [placeholder]="i18n.t('ph.amount')">
         </div>
       }
       <div>
-        <label class="modal-label" for="pPrice">{{ i18n.t(fIsService ? 'prod.form.price.service' : 'prod.form.price') }}</label>
-        <input appMoney id="pPrice" name="pPrice" class="modal-input" inputmode="numeric" [(ngModel)]="fPrice" autocomplete="off" data-testid="prod-price">
+        <label class="modal-label" [class.req]="!fIsService" for="pPrice">{{ i18n.t(fIsService ? 'prod.form.price.service' : 'prod.form.price') }}</label>
+        <input appMoney id="pPrice" name="pPrice" class="modal-input" inputmode="numeric" [(ngModel)]="fPrice" autocomplete="off" data-testid="prod-price" [required]="!fIsService" [placeholder]="i18n.t('ph.amount')">
       </div>
     </div>
 
@@ -233,22 +233,22 @@
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label class="modal-label" for="pUnit">{{ i18n.t('prod.form.unit') }}</label>
-          <input id="pUnit" name="pUnit" class="modal-input" list="pUnits" [(ngModel)]="fUnit" autocomplete="off" data-testid="prod-unit">
+          <input id="pUnit" name="pUnit" class="modal-input" list="pUnits" [(ngModel)]="fUnit" autocomplete="off" data-testid="prod-unit" [placeholder]="i18n.t('ph.unit')">
           <datalist id="pUnits">@for (u of units; track u) { <option [value]="u"></option> }</datalist>
         </div>
         <div>
           <label class="modal-label" for="pQty">{{ i18n.t('prod.form.qty') }}</label>
-          <input id="pQty" name="pQty" class="modal-input" inputmode="numeric" [(ngModel)]="fQty" autocomplete="off" data-testid="prod-qty">
+          <input id="pQty" name="pQty" class="modal-input" inputmode="numeric" [(ngModel)]="fQty" autocomplete="off" data-testid="prod-qty" [placeholder]="i18n.t('ph.qty')">
         </div>
         <div>
           <label class="modal-label" for="pMin">{{ i18n.t('prod.form.min') }}</label>
-          <input id="pMin" name="pMin" class="modal-input" inputmode="numeric" [(ngModel)]="fMin" autocomplete="off" data-testid="prod-min">
+          <input id="pMin" name="pMin" class="modal-input" inputmode="numeric" [(ngModel)]="fMin" autocomplete="off" data-testid="prod-min" [placeholder]="i18n.t('ph.qty')">
         </div>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="modal-label" for="pBarcode">{{ i18n.t('prod.form.barcode') }}</label>
-          <input id="pBarcode" name="pBarcode" class="modal-input" [(ngModel)]="fBarcode" autocomplete="off">
+          <input id="pBarcode" name="pBarcode" class="modal-input" [(ngModel)]="fBarcode" autocomplete="off" [placeholder]="i18n.t('ph.barcode')">
         </div>
         <div>
           <label class="modal-label" for="pSku">{{ i18n.t('prod.form.sku') }}</label>
@@ -259,11 +259,11 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="modal-label" for="pDuration">{{ i18n.t('prod.form.duration') }}</label>
-          <input id="pDuration" name="pDuration" class="modal-input" inputmode="numeric" [(ngModel)]="fDuration" autocomplete="off" data-testid="prod-duration">
+          <input id="pDuration" name="pDuration" class="modal-input" inputmode="numeric" [(ngModel)]="fDuration" autocomplete="off" data-testid="prod-duration" [placeholder]="i18n.t('ph.minutes')">
         </div>
         <div>
           <label class="modal-label" for="pRebook">{{ i18n.t('prod.form.rebook') }}</label>
-          <input id="pRebook" name="pRebook" class="modal-input" inputmode="numeric" [(ngModel)]="fRebook" autocomplete="off">
+          <input id="pRebook" name="pRebook" class="modal-input" inputmode="numeric" [(ngModel)]="fRebook" autocomplete="off" [placeholder]="i18n.t('ph.days')">
         </div>
       </div>
       <label class="flex items-center gap-3 text-sm font-bold text-slate-700 cursor-pointer">
@@ -273,11 +273,11 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="modal-label" for="pCommission">{{ i18n.t('prod.form.commission') }}</label>
-            <input id="pCommission" name="pCommission" class="modal-input" inputmode="decimal" [(ngModel)]="fCommission" autocomplete="off" data-testid="prod-commission">
+            <input id="pCommission" name="pCommission" class="modal-input" inputmode="decimal" [(ngModel)]="fCommission" autocomplete="off" data-testid="prod-commission" [placeholder]="i18n.t('ph.percent')">
           </div>
           <div>
             <label class="modal-label" for="pCommissionFixed">{{ i18n.t('prod.form.commission.fixed') }}</label>
-            <input appMoney id="pCommissionFixed" name="pCommissionFixed" class="modal-input" inputmode="numeric" [(ngModel)]="fCommissionFixed" autocomplete="off" data-testid="prod-commission-fixed">
+            <input appMoney id="pCommissionFixed" name="pCommissionFixed" class="modal-input" inputmode="numeric" [(ngModel)]="fCommissionFixed" autocomplete="off" data-testid="prod-commission-fixed" [placeholder]="i18n.t('ph.amount')">
           </div>
         </div>
       }
@@ -322,11 +322,11 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="modal-label" for="pPkgSessions">{{ i18n.t('prod.form.package.sessions') }}</label>
-              <input id="pPkgSessions" name="pPkgSessions" class="modal-input" inputmode="numeric" [(ngModel)]="fPkgSessions" autocomplete="off" data-testid="prod-pkg-sessions">
+              <input id="pPkgSessions" name="pPkgSessions" class="modal-input" inputmode="numeric" [(ngModel)]="fPkgSessions" autocomplete="off" data-testid="prod-pkg-sessions" [placeholder]="i18n.t('ph.sessions')">
             </div>
             <div>
               <label class="modal-label" for="pPkgDays">{{ i18n.t('prod.form.package.days') }}</label>
-              <input id="pPkgDays" name="pPkgDays" class="modal-input" inputmode="numeric" [(ngModel)]="fPkgDays" autocomplete="off" data-testid="prod-pkg-days">
+              <input id="pPkgDays" name="pPkgDays" class="modal-input" inputmode="numeric" [(ngModel)]="fPkgDays" autocomplete="off" data-testid="prod-pkg-days" [placeholder]="i18n.t('ph.days')">
             </div>
           </div>
         }
@@ -357,7 +357,7 @@
 
     <div>
       <label class="modal-label" for="pDesc">{{ i18n.t('prod.form.desc') }}</label>
-      <textarea id="pDesc" name="pDesc" rows="2" class="modal-input" [(ngModel)]="fDesc" maxlength="1000"></textarea>
+      <textarea id="pDesc" name="pDesc" rows="2" class="modal-input" [(ngModel)]="fDesc" maxlength="1000" [placeholder]="i18n.t('ph.desc')"></textarea>
     </div>
 
     @if (formError()) { <p class="form-error" role="alert" data-testid="prod-error">{{ formError() }}</p> }
@@ -372,13 +372,13 @@
 <app-modal-dialog [show]="namedOpen()" [eyebrow]="i18n.t(tab() === 'brands' ? 'prod.tab.brands' : 'prod.tab.categories')" [title]="i18n.t(namedEditing() ? 'prod.edit' : (tab() === 'brands' ? 'brand.add' : 'cat.add'))" size="md" (close)="namedOpen.set(false)">
   <div slot="body" class="space-y-4">
     <div>
-      <label class="modal-label" for="nName">{{ i18n.t('prod.form.name') }}</label>
-      <input id="nName" name="nName" class="modal-input" [(ngModel)]="namedName" autocomplete="off" data-testid="named-name">
+      <label class="modal-label req" for="nName">{{ i18n.t('prod.form.name') }}</label>
+      <input id="nName" name="nName" class="modal-input" [(ngModel)]="namedName" autocomplete="off" data-testid="named-name" required [placeholder]="i18n.t('ph.name')">
       @if (tab() === 'categories') { <p class="text-xs font-semibold text-slate-500 mt-1" data-testid="named-hint">{{ i18n.t('cat.name.hint') }}</p> }
     </div>
     <div>
       <label class="modal-label" for="nDesc">{{ i18n.t('prod.form.desc') }}</label>
-      <textarea id="nDesc" name="nDesc" rows="2" class="modal-input" [(ngModel)]="namedDesc" maxlength="500"></textarea>
+      <textarea id="nDesc" name="nDesc" rows="2" class="modal-input" [(ngModel)]="namedDesc" maxlength="500" [placeholder]="i18n.t('ph.desc')"></textarea>
     </div>
     <div>
       <label class="modal-label" for="nStatus">{{ i18n.t('prod.form.status') }}</label>

@@ -57,7 +57,7 @@
     </section>
 
     <!-- 2. The cart, the customer and the payment -->
-    <section class="panel right xl:col-span-8 space-y-3">
+    <section class="panel right xl:col-span-8 space-y-3" [class.attempted]="tried()">
       <div>
         <div class="flex flex-wrap items-center justify-between gap-3">
           <p class="step"><b>2</b>{{ i18n.t('till.step2') }}@if (till.lines().length) { <span class="count-chip">{{ till.lines().length }}</span> }</p>
@@ -114,11 +114,29 @@
                   }
                   @if (till.salon() && l.isService) {
                     <div class="basis-full h-0"></div>
-                    <div class="stylists" role="group" [attr.aria-label]="i18n.t('till.stylist')" [class.is-missing]="!l.staffId" [attr.data-testid]="'stylist-' + l.productId">
-                      <span class="stylists-label">{{ i18n.t('till.stylist') }}@if (!l.staffId) { <b>*</b> }</span>
-                      @for (s of staff(); track s.id) {
-                        <button type="button" class="chip" [class.is-on]="l.staffId === s.id" [attr.aria-pressed]="l.staffId === s.id" (click)="toggleStaff(l.key, s.id)" [attr.data-testid]="'stylist-' + l.productId + '-' + s.id"><span class="chip-ic">{{ initials(s.name) }}</span>{{ s.name }}</button>
-                      }
+                    <div class="stylists" [class.is-missing]="!l.staffId" [attr.data-testid]="'stylist-' + l.productId">
+                      <span class="stylists-label req-star">{{ i18n.t('till.stylist') }}</span>
+                      <div class="relative">
+                        <button type="button" class="stylist-btn" [class.is-missing]="!l.staffId" aria-haspopup="listbox" [attr.aria-expanded]="staffOpen() === l.key" (click)="openStaff(l.key)" [attr.data-testid]="'stylist-btn-' + l.productId">
+                          @if (l.staffId) { <span class="chip-ic">{{ initials(l.staffName ?? '') }}</span><span class="stylist-name">{{ l.staffName }}</span> } @else { <span class="stylist-name text-slate-400">{{ i18n.t('till.stylist.pick') }}</span> }
+                          <svg class="chev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
+                        </button>
+                        @if (staffOpen() === l.key) {
+                          <div class="staff-backdrop" (click)="closeStaff()"></div>
+                          <div class="staff-menu" role="listbox" [attr.data-testid]="'stylist-menu-' + l.productId">
+                            @if (staff().length > 5) {
+                              <input class="modal-input staff-search" type="search" [ngModel]="staffQuery()" (ngModelChange)="staffQuery.set($event)" [placeholder]="i18n.t('ph.staff.search')" autocomplete="off" data-testid="stylist-search">
+                            }
+                            <div class="staff-list">
+                              @for (s of staffShown(); track s.id) {
+                                <button type="button" role="option" class="staff-opt" [class.is-on]="l.staffId === s.id" [attr.aria-selected]="l.staffId === s.id" (click)="toggleStaff(l.key, s.id)" [attr.data-testid]="'stylist-' + l.productId + '-' + s.id"><span class="chip-ic">{{ initials(s.name) }}</span><span class="grow text-left">{{ s.name }}</span>@if (l.staffId === s.id) { <span class="tick">&#10003;</span> }</button>
+                              } @empty {
+                                <p class="staff-none">{{ i18n.t('till.stylist.none') }}</p>
+                              }
+                            </div>
+                          </div>
+                        }
+                      </div>
                     </div>
                     <button type="button" class="link-btn" (click)="openGoods(l.key)" [attr.data-testid]="'goods-' + l.productId">{{ i18n.t('till.goods') }}</button>
                     @if (packagesFor(l.productId).length) {
@@ -170,8 +188,8 @@
             </div>
           } @else if (custTab() === 'new') {
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-              <input class="modal-input" [(ngModel)]="newName" name="newName" [placeholder]="i18n.t('till.cust.name')" autocomplete="off" data-testid="till-newcustomer-name">
-              <input class="modal-input" inputmode="tel" [(ngModel)]="newPhone" name="newPhone" [placeholder]="i18n.t('till.cust.phone')" autocomplete="off" data-testid="till-newcustomer-phone">
+              <div><label class="modal-label req" for="newName">{{ i18n.t('till.cust.name') }}</label><input id="newName" class="modal-input" required [(ngModel)]="newName" name="newName" [placeholder]="i18n.t('ph.person')" autocomplete="off" data-testid="till-newcustomer-name"></div>
+              <div><label class="modal-label" for="newPhone">{{ i18n.t('till.cust.phone') }}</label><input id="newPhone" class="modal-input" inputmode="tel" [(ngModel)]="newPhone" name="newPhone" [placeholder]="i18n.t('ph.phone')" autocomplete="off" data-testid="till-newcustomer-phone"></div>
             </div>
             @if (newError()) { <p class="form-error mt-2" role="alert" data-testid="till-newcustomer-error">{{ newError() }}</p> }
             <button type="button" class="btn-primary mt-2" (click)="saveNewCustomer()" data-testid="till-newcustomer-save">{{ i18n.t('till.cust.save') }}</button>
@@ -190,10 +208,10 @@
         <div>
           <p class="step"><b>★</b>{{ i18n.t('till.perks') }}</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-            <div><label class="modal-label" for="disc">{{ i18n.t('till.discount') }}</label><input appMoney id="disc" class="modal-input" inputmode="numeric" [ngModel]="discountText" (ngModelChange)="setDiscount($event)" autocomplete="off" data-testid="till-discount"></div>
-            <div><label class="modal-label" for="why">{{ i18n.t('till.discount.reason') }}</label><input id="why" class="modal-input" [ngModel]="till.discountReason()" (ngModelChange)="till.discountReason.set($event)" autocomplete="off" data-testid="till-reason"></div>
+            <div><label class="modal-label" for="disc">{{ i18n.t('till.discount') }}</label><input appMoney id="disc" class="modal-input" [placeholder]="i18n.t('ph.amount')" inputmode="numeric" [ngModel]="discountText" (ngModelChange)="setDiscount($event)" autocomplete="off" data-testid="till-discount"></div>
+            <div><label class="modal-label" [class.req]="reasonNeeded()" for="why">{{ i18n.t('till.discount.reason') }}</label><input id="why" class="modal-input" [required]="reasonNeeded()" [placeholder]="i18n.t('ph.discount.reason')" [ngModel]="till.discountReason()" (ngModelChange)="till.discountReason.set($event)" autocomplete="off" data-testid="till-reason"></div>
             <div class="flex gap-2 items-end">
-              <div class="grow"><label class="modal-label" for="vch">{{ i18n.t('till.voucher') }}</label><input id="vch" class="modal-input" [(ngModel)]="voucherCode" autocomplete="off"></div>
+              <div class="grow"><label class="modal-label" for="vch">{{ i18n.t('till.voucher') }}</label><input id="vch" class="modal-input" [placeholder]="i18n.t('ph.voucher')" [(ngModel)]="voucherCode" autocomplete="off"></div>
               <button type="button" class="modal-cancel-btn" (click)="applyVoucher()">{{ i18n.t('till.voucher.apply') }}</button>
             </div>
             @if (loyaltyBalance() > 0) {
@@ -218,26 +236,26 @@
           <div class="mt-2 max-w-xs"><label class="modal-label" for="chan">{{ i18n.t('till.channel') }}</label>
             <select id="chan" class="modal-input" [ngModel]="till.channel()" (ngModelChange)="till.channel.set($event)">@for (c of channels; track c) { <option [value]="c">{{ channelName(c) }}</option> }</select></div>
           @if (till.channel() !== 'cash') {
-            <div class="mt-2 max-w-xs"><label class="modal-label" for="ref">{{ i18n.t('till.ref') }} *</label>
-              <input id="ref" class="modal-input" [class.is-bad]="!!formError() && !till.reference().trim()" [ngModel]="till.reference()" (ngModelChange)="till.reference.set($event)" [placeholder]="i18n.t('till.ref.ph')" autocomplete="off" data-testid="till-ref">
+            <div class="mt-2 max-w-xs"><label class="modal-label req" for="ref">{{ i18n.t('till.ref') }}</label>
+              <input id="ref" class="modal-input" required [class.is-bad]="!!formError() && !till.reference().trim()" [ngModel]="till.reference()" (ngModelChange)="till.reference.set($event)" [placeholder]="i18n.t('till.ref.ph')" autocomplete="off" data-testid="till-ref">
               <p class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('till.ref.hint') }}</p></div>
           }
         }
         @if (till.mode() === 'partial') {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-            <div><label class="modal-label" for="paid">{{ i18n.t('till.paidnow') }}</label><input appMoney id="paid" class="modal-input" inputmode="numeric" [ngModel]="paidText" (ngModelChange)="setPaid($event)" autocomplete="off" data-testid="till-paid"></div>
+            <div><label class="modal-label req" for="paid">{{ i18n.t('till.paidnow') }}</label><input appMoney id="paid" class="modal-input" required [placeholder]="i18n.t('ph.amount')" inputmode="numeric" [ngModel]="paidText" (ngModelChange)="setPaid($event)" autocomplete="off" data-testid="till-paid"></div>
             <div><label class="modal-label" for="pchan">{{ i18n.t('till.channel') }}</label>
               <select id="pchan" class="modal-input" [ngModel]="till.partialChannel()" (ngModelChange)="till.partialChannel.set($event)">@for (c of channels; track c) { <option [value]="c">{{ channelName(c) }}</option> }</select></div>
             @if (till.partialChannel() !== 'cash') {
-              <div class="sm:col-span-2"><label class="modal-label" for="pref">{{ i18n.t('till.ref') }} *</label>
-                <input id="pref" class="modal-input" [class.is-bad]="!!formError() && !till.partialReference().trim()" [ngModel]="till.partialReference()" (ngModelChange)="till.partialReference.set($event)" [placeholder]="i18n.t('till.ref.ph')" autocomplete="off" data-testid="till-partial-ref">
+              <div class="sm:col-span-2"><label class="modal-label req" for="pref">{{ i18n.t('till.ref') }}</label>
+                <input id="pref" class="modal-input" required [class.is-bad]="!!formError() && !till.partialReference().trim()" [ngModel]="till.partialReference()" (ngModelChange)="till.partialReference.set($event)" [placeholder]="i18n.t('till.ref.ph')" autocomplete="off" data-testid="till-partial-ref">
                 <p class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('till.ref.hint') }}</p></div>
             }
           </div>
         }
         @if (till.mode() !== 'cash') {
-          <div class="mt-2 max-w-xs"><label class="modal-label" for="due">{{ i18n.t('till.due') }}</label><input id="due" class="modal-input" type="number" min="1" [ngModel]="till.dueDays()" (ngModelChange)="till.dueDays.set($event || 7)"></div>
-          @if (!till.customer()) { <p class="form-error mt-2" data-testid="till-needcustomer">{{ i18n.t('till.err.customer_required') }}</p> }
+          <div class="mt-2 max-w-xs"><label class="modal-label" for="due">{{ i18n.t('till.due') }}</label><input id="due" class="modal-input" [placeholder]="i18n.t('ph.due')" type="number" min="1" [ngModel]="till.dueDays()" (ngModelChange)="till.dueDays.set($event || 7)"></div>
+          @if (!till.customer()) { <p class="form-error mt-2" data-testid="till-needcustomer">{{ i18n.t('till.err.customer_required') }} <button type="button" class="link-btn" (click)="goToCustomer()" data-testid="till-goto-customer">{{ i18n.t('till.cust.goto') }}</button></p> }
           @if (credit(); as c) {
             @if (c.is_blocked) { <p class="form-error mt-2" role="alert">{{ i18n.t('till.err.blocked') }}</p> }
             @else if (c.over_limit) { <p class="form-error mt-2" role="alert">{{ i18n.t('till.err.limit', tsh(c.credit_limit)) }}</p> }
@@ -403,12 +421,25 @@
   .link-btn.danger { color: #dc2626; }
   .cust.is-needed { padding: 10px 12px; border: 1px solid #fecaca; border-radius: 16px; background: #fff7f7; }
   .req-chip { padding: 2px 9px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 10px; letter-spacing: .04em; }
-  .stylists { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; padding: 8px 10px; border-radius: 12px; background: #f5f8ff; border: 1px solid #e0e8fb; }
+  .stylists { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border-radius: 12px; background: #f5f8ff; border: 1px solid #e0e8fb; }
   .stylists.is-missing { background: #fff7f7; border-color: #fecaca; }
   .stylists-label { margin-right: 4px; font-size: 11px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; color: #475a8f; }
-  .stylists-label b { color: #dc2626; }
   .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px 4px 4px; border-radius: 999px; font-size: 13px; font-weight: 800; color: #1a2f6e; background: #fff; border: 1px solid #dbe4ff; cursor: pointer; transition: all .15s; }
   .chip:hover { border-color: #93b0fb; }
+  .stylist-btn { display: inline-flex; align-items: center; gap: 8px; min-width: 220px; max-width: 100%; padding: 4px 10px 4px 5px; border-radius: 999px; font-size: 13px; font-weight: 800; color: #1a2f6e; background: #fff; border: 1px solid #dbe4ff; cursor: pointer; }
+  .stylist-btn:hover { border-color: #93b0fb; }
+  .stylist-btn.is-missing { border-color: #f87171; }
+  .stylist-btn .chev { width: 18px; height: 18px; margin-left: auto; color: #7d8fc4; flex: none; }
+  .stylist-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .staff-backdrop { position: fixed; inset: 0; z-index: 40; }
+  .staff-menu { position: absolute; z-index: 41; top: calc(100% + 6px); left: 0; width: 280px; max-width: 80vw; padding: 6px; border-radius: 14px; background: #fff; border: 1px solid #dbe4ff; box-shadow: 0 18px 36px rgba(26,47,110,.2); }
+  .staff-search { margin-bottom: 6px; padding-top: 7px; padding-bottom: 7px; }
+  .staff-list { max-height: 210px; overflow-y: auto; }
+  .staff-opt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border-radius: 10px; font-size: 13px; font-weight: 700; color: #1e293b; cursor: pointer; }
+  .staff-opt:hover { background: #f3f5ff; }
+  .staff-opt.is-on { background: #eaf0ff; color: #1a2f6e; }
+  .staff-opt .tick { color: #2e4dbd; font-weight: 900; }
+  .staff-none { padding: 10px; font-size: 13px; color: #94a3b8; }
   .chip-ic { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; border-radius: 50%; font-size: 10px; font-weight: 900; color: #2e4dbd; background: #eaf0ff; }
   .chip.is-on { color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); border-color: transparent; }
   .chip.is-on .chip-ic { color: #1a2f6e; background: #fff; }

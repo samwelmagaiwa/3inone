@@ -78,15 +78,15 @@
       <p class="text-sm text-slate-500">{{ i18n.t('bs.move.hint') }}</p>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label class="modal-label" for="bsFrom">{{ i18n.t('bs.from') }}</label>
-          <select id="bsFrom" name="bsFrom" class="modal-input" [(ngModel)]="from" data-testid="bs-from">
+          <label class="modal-label req" for="bsFrom">{{ i18n.t('bs.from') }}</label>
+          <select id="bsFrom" name="bsFrom" class="modal-input" [(ngModel)]="from" data-testid="bs-from" required>
             <option value="main">{{ i18n.t('bs.main') }} ({{ p.unallocated }})</option>
             @for (s of p.branches; track s.branch_id) { <option [value]="'' + s.branch_id">{{ s.name }} ({{ s.quantity }})</option> }
           </select>
         </div>
         <div>
-          <label class="modal-label" for="bsTo">{{ i18n.t('bs.to') }}</label>
-          <select id="bsTo" name="bsTo" class="modal-input" [(ngModel)]="to" data-testid="bs-to">
+          <label class="modal-label req" for="bsTo">{{ i18n.t('bs.to') }}</label>
+          <select id="bsTo" name="bsTo" class="modal-input" [(ngModel)]="to" data-testid="bs-to" required>
             <option value="">{{ i18n.t('prod.form.none') }}</option>
             <option value="main">{{ i18n.t('bs.main') }}</option>
             @for (s of p.branches; track s.branch_id) { <option [value]="'' + s.branch_id">{{ s.name }}</option> }
@@ -94,8 +94,8 @@
         </div>
       </div>
       <div>
-        <label class="modal-label" for="bsQty">{{ i18n.t('bs.qty') }}</label>
-        <input id="bsQty" name="bsQty" class="modal-input" inputmode="numeric" [(ngModel)]="qtyText" autocomplete="off" data-testid="bs-qty">
+        <label class="modal-label req" for="bsQty">{{ i18n.t('bs.qty') }}</label>
+        <input id="bsQty" name="bsQty" class="modal-input" inputmode="numeric" [(ngModel)]="qtyText" autocomplete="off" data-testid="bs-qty" required [placeholder]="i18n.t('ph.qty')">
         <p class="text-xs text-slate-400 font-semibold mt-1">{{ i18n.t('bs.available', available(p, from)) }}</p>
       </div>
     }

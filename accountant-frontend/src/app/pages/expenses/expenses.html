@@ -133,29 +133,29 @@
   <div slot="body" class="space-y-4">
     <p class="text-sm text-slate-500">{{ i18n.t('exp.form.hint') }}</p>
     <div>
-      <label class="modal-label" for="expCategory">{{ i18n.t('exp.form.category') }}</label>
-      <select id="expCategory" name="expCategory" class="modal-input" [(ngModel)]="category">
+      <label class="modal-label req" for="expCategory">{{ i18n.t('exp.form.category') }}</label>
+      <select id="expCategory" name="expCategory" class="modal-input" [(ngModel)]="category" required>
         @for (c of categories(); track c) { <option [value]="c">{{ categoryName(c) }}</option> }
       </select>
     </div>
     <div>
-      <label class="modal-label" for="expDesc">{{ i18n.t('exp.form.what') }}</label>
-      <input id="expDesc" name="expDesc" class="modal-input" [(ngModel)]="description" autocomplete="off" [placeholder]="i18n.t('exp.form.what.example')" data-testid="exp-desc">
+      <label class="modal-label req" for="expDesc">{{ i18n.t('exp.form.what') }}</label>
+      <input id="expDesc" name="expDesc" class="modal-input" [(ngModel)]="description" autocomplete="off" [placeholder]="i18n.t('exp.form.what.example')" data-testid="exp-desc" required>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
-        <label class="modal-label" for="expAmount">{{ i18n.t('exp.form.amount') }}</label>
-        <input appMoney id="expAmount" name="expAmount" class="modal-input" inputmode="numeric" [(ngModel)]="amountText" autocomplete="off" data-testid="exp-amount">
+        <label class="modal-label req" for="expAmount">{{ i18n.t('exp.form.amount') }}</label>
+        <input appMoney id="expAmount" name="expAmount" class="modal-input" inputmode="numeric" [(ngModel)]="amountText" autocomplete="off" data-testid="exp-amount" required [placeholder]="i18n.t('ph.amount')">
       </div>
       <div>
-        <label class="modal-label" for="expDate">{{ i18n.t('exp.form.date') }}</label>
+        <label class="modal-label req" for="expDate">{{ i18n.t('exp.form.date') }}</label>
         <input id="expDate" name="expDate" class="modal-input" type="date" [(ngModel)]="date" [max]="today()" required>
       </div>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label class="modal-label" for="expSupplier">{{ i18n.t('exp.form.supplier') }}</label>
-        <input id="expSupplier" name="expSupplier" class="modal-input" [(ngModel)]="supplier" autocomplete="off">
+        <input id="expSupplier" name="expSupplier" class="modal-input" [(ngModel)]="supplier" autocomplete="off" [placeholder]="i18n.t('ph.exp.supplier')">
       </div>
       <div>
         <label class="modal-label" for="expMethod">{{ i18n.t('exp.form.method') }}</label>

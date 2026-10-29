@@ -251,6 +251,8 @@ export class CreditPage implements OnInit {
       allocations.push({ sale_id: a.sale.id, amount });
     }
 
+    if (this.method !== 'cash' && !this.reference.trim()) return this.payError.set(this.i18n.t('till.err.reference_required'));
+
     this.paySaving.set(true);
     this.payError.set('');
     try {

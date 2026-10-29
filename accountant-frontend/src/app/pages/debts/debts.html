@@ -120,20 +120,20 @@
   <div slot="body" class="space-y-4">
     <p class="text-sm text-slate-500">{{ i18n.t(kind() === 'receivable' ? 'debts.form.hint.owed' : 'debts.form.hint.owe') }}</p>
     <div>
-      <label class="modal-label" for="debtName">{{ i18n.t(kind() === 'receivable' ? 'debts.form.name.owed' : 'debts.form.name.owe') }}</label>
-      <input id="debtName" name="debtName" class="modal-input" [(ngModel)]="name" autocomplete="off" data-testid="debt-name">
+      <label class="modal-label req" for="debtName">{{ i18n.t(kind() === 'receivable' ? 'debts.form.name.owed' : 'debts.form.name.owe') }}</label>
+      <input id="debtName" name="debtName" class="modal-input" [(ngModel)]="name" autocomplete="off" data-testid="debt-name" required [placeholder]="i18n.t('ph.person')">
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label class="modal-label" for="debtPhone">{{ i18n.t('debts.form.phone') }}</label>
-        <input id="debtPhone" name="debtPhone" class="modal-input" type="tel" [(ngModel)]="phone" autocomplete="off">
+        <input id="debtPhone" name="debtPhone" class="modal-input" type="tel" [(ngModel)]="phone" autocomplete="off" [placeholder]="i18n.t('ph.phone')">
       </div>
       <div>
-        <label class="modal-label" for="debtAmount">{{ i18n.t('debts.form.amount') }}</label>
-        <input appMoney id="debtAmount" name="debtAmount" class="modal-input" inputmode="numeric" [(ngModel)]="amountText" autocomplete="off" data-testid="debt-amount">
+        <label class="modal-label req" for="debtAmount">{{ i18n.t('debts.form.amount') }}</label>
+        <input appMoney id="debtAmount" name="debtAmount" class="modal-input" inputmode="numeric" [(ngModel)]="amountText" autocomplete="off" data-testid="debt-amount" required [placeholder]="i18n.t('ph.amount')">
       </div>
       <div>
-        <label class="modal-label" for="debtStarted">{{ i18n.t('debts.form.started') }}</label>
+        <label class="modal-label req" for="debtStarted">{{ i18n.t('debts.form.started') }}</label>
         <input id="debtStarted" name="debtStarted" class="modal-input" type="date" [(ngModel)]="startedOn" required>
       </div>
       <div>
@@ -143,7 +143,7 @@
     </div>
     <div>
       <label class="modal-label" for="debtNote">{{ i18n.t('debts.form.note') }}</label>
-      <input id="debtNote" name="debtNote" class="modal-input" [(ngModel)]="note" autocomplete="off">
+      <input id="debtNote" name="debtNote" class="modal-input" [(ngModel)]="note" autocomplete="off" [placeholder]="i18n.t('ph.note')">
     </div>
     @if (addError()) { <p class="form-error" role="alert" data-testid="debt-error">{{ addError() }}</p> }
   </div>
@@ -162,8 +162,8 @@
         <div class="p-3 bg-blue-50 border border-blue-100 rounded-lg"><p class="label-eyebrow">{{ i18n.t('debts.col.left') }}</p><p class="font-black text-[#1a2f6e] mt-1" data-testid="pay-left">{{ tsh(d.left) }}</p></div>
       </div>
       <div>
-        <label class="modal-label" for="payAmount">{{ i18n.t(kind() === 'receivable' ? 'debts.pay.amount.received' : 'debts.pay.amount.paid') }}</label>
-        <input appMoney id="payAmount" name="payAmount" class="modal-input" inputmode="numeric" [(ngModel)]="payText" (keydown.enter)="savePayment()" autocomplete="off" data-testid="pay-amount">
+        <label class="modal-label req" for="payAmount">{{ i18n.t(kind() === 'receivable' ? 'debts.pay.amount.received' : 'debts.pay.amount.paid') }}</label>
+        <input appMoney id="payAmount" name="payAmount" class="modal-input" inputmode="numeric" [(ngModel)]="payText" (keydown.enter)="savePayment()" autocomplete="off" data-testid="pay-amount" required [placeholder]="i18n.t('ph.amount')">
         <p class="text-xs text-slate-400 font-semibold mt-1">{{ i18n.t('debts.pay.hint') }}</p>
       </div>
       @if (payError()) { <p class="form-error" role="alert" data-testid="pay-error">{{ payError() }}</p> }

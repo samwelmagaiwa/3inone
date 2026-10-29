@@ -275,9 +275,13 @@ describe('the till in a salon', () => {
     await settle(fixture);
     expect(text(byTestId(el, 'till-error')!)).toContain('Choose who served the client for "Haircut"');
 
+    expect(byTestId(el, 'stylist-menu-9')).toBeNull(); // the list stays closed until asked for
+    byTestId(el, 'stylist-btn-9')!.click();
+    await settle(fixture);
     byTestId(el, 'stylist-9-5')!.click();
     await settle(fixture);
-    expect(byTestId(el, 'stylist-9-5')!.getAttribute('aria-pressed')).toBe('true');
+    expect(byTestId(el, 'stylist-menu-9')).toBeNull(); // and closes once one is chosen
+    expect(text(byTestId(el, 'stylist-btn-9')!)).toContain('Zawadi');
     byTestId(el, 'till-charge')!.click();
     await settle(fixture);
     const post = h.http.expectOne((r) => r.url.endsWith('/inventory/sales') && r.method === 'POST');
@@ -434,5 +438,103 @@ describe('the till: other prices, payment codes and customers', () => {
     byTestId(el, 'till-customer-new')!.click();
     await settle(fixture);
     expect((byTestId(el, 'till-newcustomer-name') as HTMLInputElement).value).toBe('Rehema');
+  });
+});
+
+describe('the till: required fields', () => {
+  it('stylists are in a menu, so many of them never stretch the line, and a long list can be searched', async () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({ id: String(20 + i), name: i === 7 ? 'Zuhura Omari' : `Stylist ${i}`, role: 'stylist' }));
+    const h = configure({ services: ['salon'] });
+    const fixture = TestBed.createComponent(TillPage);
+    fixture.detectChanges();
+    h.http.match((r) => r.url.endsWith('/inventory/settings')).forEach((r) => r.flush({ data: { sale_tier: 'product', prices_include_vat: '1' } }));
+    h.http.expectOne((r) => r.url.endsWith('/inventory/products')).flush({ data: [cut], meta: { last_page: 1 } });
+    h.http.match((r) => r.url.endsWith('/salon/staff')).forEach((r) => r.flush({ data: many }));
+    h.http.match((r) => r.url.endsWith('/loyalty/settings')).forEach((r) => r.flush({ data: { on: false, per: 0, value: 0 } }));
+    await settle(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+
+    byTestId(el, 'good-9')!.click();
+    await settle(fixture);
+    expect(el.querySelectorAll('[data-testid^="stylist-9-"]').length).toBe(0); // nobody is listed until the menu is opened
+    byTestId(el, 'stylist-btn-9')!.click();
+    await settle(fixture);
+    expect(el.querySelectorAll('[data-testid^="stylist-9-"]').length).toBe(12);
+    expect(byTestId(el, 'stylist-search')).not.toBeNull();
+
+    type(el, '[data-testid=stylist-search]', 'zuhu');
+    await settle(fixture);
+    expect(el.querySelectorAll('[data-testid^="stylist-9-"]').length).toBe(1);
+    byTestId(el, 'stylist-9-27')!.click();
+    await settle(fixture);
+    expect(text(byTestId(el, 'stylist-btn-9')!)).toContain('Zuhura Omari');
+  });
+
+  it('a short list of stylists needs no search box', async () => {
+    const { fixture, el } = await open({}, [cut], true);
+    byTestId(el, 'good-9')!.click();
+    await settle(fixture);
+    byTestId(el, 'stylist-btn-9')!.click();
+    await settle(fixture);
+    expect(byTestId(el, 'stylist-search')).toBeNull();
+  });
+
+  it('marks what must be filled with a red asterisk, and outlines the empty ones after a failed save', async () => {
+    const { fixture, el } = await open();
+    byTestId(el, 'good-1')!.click();
+    const chan = () => el.querySelector('#chan') as HTMLSelectElement;
+    await settle(fixture);
+    chan().value = 'mpesa';
+    chan().dispatchEvent(new Event('change', { bubbles: true }));
+    await settle(fixture);
+    const label = el.querySelector('label[for=ref]') as HTMLElement;
+    expect(label.classList.contains('req')).toBe(true);
+    expect((el.querySelector('#ref') as HTMLInputElement).required).toBe(true);
+    expect((el.querySelector('#ref') as HTMLInputElement).placeholder).toBe('e.g. 8K3J2L9X');
+    expect(el.querySelector('section.attempted')).toBeNull();
+
+    byTestId(el, 'till-charge')!.click();
+    await settle(fixture);
+    expect(el.querySelector('section.attempted')).not.toBeNull();
+  });
+
+  it('the new customer form marks the name as required and has placeholders', async () => {
+    const { fixture, el } = await open();
+    byTestId(el, 'good-1')!.click();
+    byTestId(el, 'mode-debt')!.click();
+    byTestId(el, 'till-tab-new')!.click();
+    await settle(fixture);
+    expect((el.querySelector('label[for=newName]') as HTMLElement).classList.contains('req')).toBe(true);
+    expect((el.querySelector('#newName') as HTMLInputElement).required).toBe(true);
+    expect((el.querySelector('#newName') as HTMLInputElement).placeholder).toBe('Full name');
+    expect((el.querySelector('#newPhone') as HTMLInputElement).placeholder).toContain('0712');
+  });
+
+  it('the reason for a discount is required while there is a discount with no voucher', async () => {
+    const { fixture, el } = await open({}, [cut], true);
+    byTestId(el, 'good-9')!.click();
+    await settle(fixture);
+    const why = () => el.querySelector('#why') as HTMLInputElement;
+    expect(why().required).toBe(false);
+    type(el, '[data-testid=till-discount]', '1000');
+    await settle(fixture);
+    expect(why().required).toBe(true);
+    expect((el.querySelector('label[for=why]') as HTMLElement).classList.contains('req')).toBe(true);
+  });
+});
+
+describe('the till: where to choose the customer', () => {
+  it('the message about the customer has a button that takes the person to the customer step', async () => {
+    const { fixture, el } = await open();
+    byTestId(el, 'good-1')!.click();
+    byTestId(el, 'mode-debt')!.click();
+    byTestId(el, 'till-tab-new')!.click();
+    await settle(fixture);
+
+    byTestId(el, 'till-goto-customer')!.click();
+    await settle(fixture);
+    // it opens the search box of step 3
+    expect(byTestId(el, 'till-customer-search')).not.toBeNull();
+    expect(el.querySelector('#till-customer-section')).not.toBeNull();
   });
 });

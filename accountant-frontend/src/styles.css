@@ -1553,3 +1553,24 @@ app-book-ward-table, app-book-summaries, app-table-toolbar, app-table-pagination
   font-weight: 700;
   line-height: 1.35;
 }
+
+/* A required field: a red asterisk after its label, and a red outline once the person has tried to save (or left it empty).
+   Put "req" on the label, "required" on the control; a dialog marks its fields as tried when any button at its foot is pressed. */
+.modal-label.req::after,
+.req-star::after {
+  content: ' *';
+  color: #dc2626;
+  font-weight: 900;
+}
+.modal-input.is-bad,
+.modal-input.ng-invalid.ng-touched,
+.attempted .modal-input.ng-invalid,
+.attempted .modal-input:invalid {
+  border-color: #f87171;
+  background-color: #fff7f7;
+}
+.modal-input.is-bad:focus,
+.modal-input.ng-invalid.ng-touched:focus,
+.attempted .modal-input.ng-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.25);
+}

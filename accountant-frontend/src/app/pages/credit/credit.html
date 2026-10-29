@@ -215,12 +215,12 @@
     <p class="text-sm text-slate-500">{{ i18n.t('cr.settings.hint') }}</p>
     <div>
       <label class="modal-label" for="csLimit">{{ i18n.t('cr.settings.limit') }}</label>
-      <input appMoney id="csLimit" name="csLimit" class="modal-input" inputmode="numeric" [(ngModel)]="limitText" autocomplete="off" data-testid="cs-limit">
+      <input appMoney id="csLimit" name="csLimit" class="modal-input" inputmode="numeric" [(ngModel)]="limitText" autocomplete="off" data-testid="cs-limit" [placeholder]="i18n.t('ph.limit')">
       <p class="text-xs text-slate-400 font-semibold mt-1">{{ i18n.t('cr.settings.limit.hint') }}</p>
     </div>
     <div>
       <label class="modal-label" for="csTerms">{{ i18n.t('cr.settings.terms') }}</label>
-      <input id="csTerms" name="csTerms" class="modal-input" inputmode="numeric" [(ngModel)]="termsText" autocomplete="off" data-testid="cs-terms">
+      <input id="csTerms" name="csTerms" class="modal-input" inputmode="numeric" [(ngModel)]="termsText" autocomplete="off" data-testid="cs-terms" [placeholder]="i18n.t('ph.terms')">
     </div>
     <label class="flex items-center gap-3 text-sm font-bold text-slate-700 cursor-pointer">
       <input type="checkbox" name="csBlocked" [(ngModel)]="blocked" data-testid="cs-blocked"> {{ i18n.t('cr.settings.block') }}
@@ -228,7 +228,7 @@
     @if (blocked) {
       <div>
         <label class="modal-label" for="csReason">{{ i18n.t('cr.settings.reason') }}</label>
-        <input id="csReason" name="csReason" class="modal-input" [(ngModel)]="blockReason" maxlength="255" autocomplete="off" data-testid="cs-reason">
+        <input id="csReason" name="csReason" class="modal-input" [(ngModel)]="blockReason" maxlength="255" autocomplete="off" data-testid="cs-reason" [placeholder]="i18n.t('ph.block.reason')">
       </div>
       <p class="text-xs text-slate-400 font-semibold">{{ i18n.t('cr.settings.block.hint') }}</p>
     }
@@ -264,14 +264,14 @@
         }
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="modal-label" for="payMethod">{{ i18n.t('cr.pay.method') }}</label>
-            <select id="payMethod" name="payMethod" class="modal-input" [(ngModel)]="method" data-testid="pay-method">
+            <label class="modal-label req" for="payMethod">{{ i18n.t('cr.pay.method') }}</label>
+            <select id="payMethod" name="payMethod" class="modal-input" [(ngModel)]="method" data-testid="pay-method" required>
               @for (m of methods; track m) { <option [value]="m">{{ i18n.t('cr.method.' + m) }}</option> }
             </select>
           </div>
           <div>
-            <label class="modal-label" for="payRef">{{ i18n.t('cr.pay.reference') }}</label>
-            <input id="payRef" name="payRef" class="modal-input" [(ngModel)]="reference" maxlength="255" autocomplete="off" [placeholder]="i18n.t('cr.pay.reference.hint')" data-testid="pay-reference">
+            <label class="modal-label" [class.req]="method !== 'cash'" for="payRef">{{ i18n.t('cr.pay.reference') }}</label>
+            <input id="payRef" name="payRef" class="modal-input" [(ngModel)]="reference" maxlength="255" autocomplete="off" [placeholder]="i18n.t('cr.pay.reference.hint')" data-testid="pay-reference" [required]="method !== 'cash'">
           </div>
         </div>
         <p class="text-sm font-black text-slate-800" data-testid="pay-total">{{ i18n.t('cr.pay.total', tsh(payTotal())) }}</p>

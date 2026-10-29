@@ -65,6 +65,8 @@ export class TillPage implements OnInit, OnDestroy {
   protected newName = '';
   protected newPhone = '';
   protected readonly newError = signal('');
+  /** True once Save was pressed and something was missing: the empty required fields are then outlined in red. */
+  protected readonly tried = signal(false);
 
   // ---- salon
   protected readonly staff = signal<StaffMember[]>([]);
@@ -93,6 +95,8 @@ export class TillPage implements OnInit, OnDestroy {
   protected readonly parked = signal<ParkedSale[]>([]);
 
   /** A sale paid later (or in part) must be for a saved customer. */
+  /** The reason for a typed discount is needed unless a voucher or points explain it. */
+  protected readonly reasonNeeded = computed(() => this.till.salon() && this.till.totalDiscount() > 0 && !this.till.voucher().code && this.till.pointsOff() <= 0);
   protected readonly needsCustomer = computed(() => this.till.mode() !== 'cash' && !this.till.customer());
   protected readonly showCrates = computed(() => this.crateTypes().length > 0 && this.caps.useCrates() && this.caps.inventoryType() !== 'retail');
   protected readonly goodsOnly = computed(() => this.products().filter((p) => !p.isService && p.active));
@@ -347,10 +351,28 @@ export class TillPage implements OnInit, OnDestroy {
     }
   }
 
-  /** Tap a stylist to choose; tap the chosen one again to clear. */
+  /** The list of stylists is a menu that opens under the line it is for (so many stylists never stretch the line). */
+  protected readonly staffOpen = signal<string | null>(null);
+  protected readonly staffQuery = signal('');
+  protected readonly staffShown = computed(() => {
+    const q = this.staffQuery().trim().toLowerCase();
+    return q ? this.staff().filter((s) => s.name.toLowerCase().includes(q)) : this.staff();
+  });
+
+  protected openStaff(key: string): void {
+    this.staffQuery.set('');
+    this.staffOpen.set(this.staffOpen() === key ? null : key);
+  }
+
+  protected closeStaff(): void {
+    this.staffOpen.set(null);
+  }
+
+  /** Choose a stylist from the menu (the chosen one again clears the choice) and close it. */
   protected toggleStaff(key: string, id: string): void {
     const l = this.till.lines().find((x) => x.key === key);
     this.staffChosen(key, l?.staffId === id ? '' : id);
+    this.closeStaff();
   }
 
   protected initials(name: string): string {
@@ -535,6 +557,7 @@ export class TillPage implements OnInit, OnDestroy {
   protected async charge(): Promise<void> {
     const built = this.till.buildSale();
     if (built.error) {
+      this.tried.set(true);
       const stylist = this.till.missingStylist();
       this.formError.set(this.i18n.t(`till.err.${built.error}`, stylist?.name ?? ''));
       this.reveal(built.error === 'customer_required' ? 'till-customer-section' : built.error === 'reference_required' ? 'till-pay-section' : built.error === 'stylist_required' && stylist ? `line-${stylist.productId}` : null);
@@ -559,6 +582,7 @@ export class TillPage implements OnInit, OnDestroy {
       const made = await firstValueFrom(this.api.createSale(built.payload!));
       const sale = await firstValueFrom(this.api.sale(made.id));
       this.done.set(sale);
+      this.tried.set(false);
       this.till.clear();
       this.paidText = '';
       this.discountText = '';
@@ -571,6 +595,13 @@ export class TillPage implements OnInit, OnDestroy {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  /** "Choose the customer": go to step 3 and put the cursor in the search box. */
+  protected goToCustomer(): void {
+    this.custTab.set('find');
+    this.reveal('till-customer-section');
+    setTimeout(() => (document.querySelector('[data-testid=till-customer-search]') as HTMLInputElement | null)?.focus(), 150);
   }
 
   /** Bring the part of the till that needs attention into view (the till is long, and a message at the bottom is easy to miss). */

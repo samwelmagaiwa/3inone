@@ -64,16 +64,16 @@
 <app-modal-dialog [show]="formOpen()" [eyebrow]="i18n.t('br.title')" [title]="i18n.t(editing() ? 'prod.edit' : 'br.add')" size="md" (close)="formOpen.set(false)">
   <div slot="body" class="space-y-4">
     <div>
-      <label class="modal-label" for="brName">{{ i18n.t('br.name') }}</label>
-      <input id="brName" name="brName" class="modal-input" [(ngModel)]="name" autocomplete="off" data-testid="br-name">
+      <label class="modal-label req" for="brName">{{ i18n.t('br.name') }}</label>
+      <input id="brName" name="brName" class="modal-input" [(ngModel)]="name" autocomplete="off" data-testid="br-name" required [placeholder]="i18n.t('ph.br.name')">
     </div>
     <div>
       <label class="modal-label" for="brAddress">{{ i18n.t('br.address') }}</label>
-      <input id="brAddress" name="brAddress" class="modal-input" [(ngModel)]="address" autocomplete="off" data-testid="br-address">
+      <input id="brAddress" name="brAddress" class="modal-input" [(ngModel)]="address" autocomplete="off" data-testid="br-address" [placeholder]="i18n.t('ph.br.address')">
     </div>
     <div>
       <label class="modal-label" for="brPhone">{{ i18n.t('br.phone') }}</label>
-      <input id="brPhone" name="brPhone" class="modal-input" inputmode="tel" [(ngModel)]="phone" autocomplete="off" data-testid="br-phone">
+      <input id="brPhone" name="brPhone" class="modal-input" inputmode="tel" [(ngModel)]="phone" autocomplete="off" data-testid="br-phone" [placeholder]="i18n.t('ph.phone')">
     </div>
     @if (formError()) { <p class="form-error" role="alert" data-testid="br-error">{{ formError() }}</p> }
   </div>

@@ -145,10 +145,10 @@
 <app-modal-dialog [show]="!!payFor()" [title]="i18n.t('sales.pay')" [eyebrow]="payFor()?.number ?? ''" (close)="payFor.set(null)">
   <div slot="body" class="space-y-4">
     <p class="text-sm text-slate-500">{{ i18n.t('sales.pay.hint') }}</p>
-    <div><label class="modal-label" for="pamt">{{ i18n.t('sales.pay.amount') }}</label><input appMoney id="pamt" class="modal-input" inputmode="numeric" [(ngModel)]="payText" autocomplete="off" data-testid="pay-amount"></div>
+    <div><label class="modal-label req" for="pamt">{{ i18n.t('sales.pay.amount') }}</label><input appMoney id="pamt" class="modal-input" inputmode="numeric" [(ngModel)]="payText" autocomplete="off" data-testid="pay-amount" required [placeholder]="i18n.t('ph.amount')"></div>
     <div><label class="modal-label" for="pmeth">{{ i18n.t('till.channel') }}</label><select id="pmeth" class="modal-input" [(ngModel)]="payMethod">@for (c of channels; track c) { <option [value]="c">{{ channelName(c) }}</option> }</select></div>
     @if (payMethod !== 'cash') {
-      <div><label class="modal-label" for="pref">{{ i18n.t('till.ref') }} *</label><input id="pref" class="modal-input" [(ngModel)]="payReference" [placeholder]="i18n.t('till.ref.ph')" autocomplete="off" data-testid="pay-ref"><p class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('till.ref.hint') }}</p></div>
+      <div><label class="modal-label req" for="pref">{{ i18n.t('till.ref') }}</label><input id="pref" class="modal-input" [(ngModel)]="payReference" [placeholder]="i18n.t('till.ref.ph')" autocomplete="off" data-testid="pay-ref" required><p class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('till.ref.hint') }}</p></div>
     }
     @if (actionError()) { <p class="form-error" role="alert">{{ actionError() }}</p> }
   </div>
@@ -162,7 +162,7 @@
 <app-modal-dialog [show]="!!cancelFor()" [title]="i18n.t('sales.cancel')" [eyebrow]="cancelFor()?.number ?? ''" variant="danger" (close)="cancelFor.set(null)">
   <div slot="body" class="space-y-4">
     <p class="text-sm text-slate-500">{{ i18n.t('sales.cancel.hint') }}</p>
-    <div><label class="modal-label" for="creason">{{ i18n.t('sales.cancel.reason') }}</label><input id="creason" class="modal-input" [(ngModel)]="cancelReason" autocomplete="off" data-testid="cancel-reason"></div>
+    <div><label class="modal-label req" for="creason">{{ i18n.t('sales.cancel.reason') }}</label><input id="creason" class="modal-input" [(ngModel)]="cancelReason" autocomplete="off" data-testid="cancel-reason" required [placeholder]="i18n.t('ph.reason')"></div>
     @if (actionError()) { <p class="form-error" role="alert">{{ actionError() }}</p> }
   </div>
   <div slot="footer" class="flex gap-2 justify-end">
@@ -181,7 +181,7 @@
         <input class="modal-input" style="width: 90px;" type="number" min="0" [max]="it.qty" [ngModel]="returnQty()[it.product_id]" (change)="setReturnQty(it.product_id, it.qty, $any($event.target).value)" [attr.data-testid]="'ret-qty-' + it.product_id">
       </div>
     }
-    <div><label class="modal-label" for="rreason">{{ i18n.t('sales.cancel.reason') }}</label><input id="rreason" class="modal-input" [(ngModel)]="returnReason" autocomplete="off"></div>
+    <div><label class="modal-label" for="rreason">{{ i18n.t('sales.cancel.reason') }}</label><input id="rreason" class="modal-input" [(ngModel)]="returnReason" autocomplete="off" [placeholder]="i18n.t('ph.reason.optional')"></div>
     <label class="flex items-center gap-2 text-sm font-bold text-slate-700"><input type="checkbox" [(ngModel)]="returnRestock"> {{ i18n.t('sales.return.restock') }}</label>
     @if (actionError()) { <p class="form-error" role="alert">{{ actionError() }}</p> }
   </div>
