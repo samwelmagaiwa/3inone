@@ -173,7 +173,7 @@ class _VoucherDialogState extends State<_VoucherDialog> {
           ),
           TextField(style: salonInputStyle, key: const Key('voucher_value'), controller: _value, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'Thamani' : 'Value')),
           TextField(style: salonInputStyle, key: const Key('voucher_uses'), controller: _uses, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'Mara za kutumika (si lazima)' : 'Times it can be used (optional)')),
-          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
+          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: TextStyle(color: ThemeConstants.errorText))),
         ]),
       ),
       actions: <Widget>[

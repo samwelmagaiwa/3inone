@@ -295,7 +295,7 @@ class _ExpenseCard extends StatelessWidget {
             SizedBox(height: 8.h),
             Row(
               children: <Widget>[
-                Expanded(child: OutlinedButton(key: ValueKey<String>('expense_reject_${e.id}'), onPressed: onReject, child: Text(sw ? 'Kataa' : 'Reject', style: const TextStyle(color: ThemeConstants.errorRed)))),
+                Expanded(child: OutlinedButton(key: ValueKey<String>('expense_reject_${e.id}'), onPressed: onReject, child: Text(sw ? 'Kataa' : 'Reject', style: const TextStyle(color: ThemeConstants.errorText, fontWeight: FontWeight.w800)))),
                 SizedBox(width: 8.w),
                 Expanded(child: ElevatedButton(key: ValueKey<String>('expense_approve_${e.id}'), onPressed: onApprove, style: ElevatedButton.styleFrom(backgroundColor: ThemeConstants.successGreen), child: Text(sw ? 'Idhinisha' : 'Approve', style: const TextStyle(color: Colors.white)))),
               ],
@@ -438,7 +438,7 @@ class _ExpenseSheetState extends State<_ExpenseSheet> {
           ],
         ),
         if (_error != null)
-          Padding(padding: EdgeInsets.only(top: 10.h), child: Text(_error!, key: const ValueKey<String>('expense_error'), style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorRed, fontSize: 12.sp))),
+          Padding(padding: EdgeInsets.only(top: 10.h), child: Text(_error!, key: const ValueKey<String>('expense_error'), style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorText, fontSize: 12.sp))),
         SizedBox(height: 14.h),
         InvPrimaryButton(key: const ValueKey<String>('expense_save'), busy: _saving, label: sw ? 'Hifadhi' : 'Save', onPressed: _save),
       ],

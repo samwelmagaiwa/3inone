@@ -163,7 +163,7 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
         _line(sw ? 'Kamisheni za wahudumu' : 'Stylists commission', -d.commissions, key: 'pl_commissions'),
         _line(sw ? 'Mishahara iliyolipwa' : 'Salaries paid', -d.salaries, key: 'pl_salaries'),
         const Divider(color: Colors.white24),
-        _line(profit ? (sw ? 'Faida halisi' : 'Net profit') : (sw ? 'Hasara halisi' : 'Net loss'), d.netProfit, bold: true, color: profit ? ThemeConstants.successGreen : ThemeConstants.errorRed, key: 'pl_net'),
+        _line(profit ? (sw ? 'Faida halisi' : 'Net profit') : (sw ? 'Hasara halisi' : 'Net loss'), d.netProfit, bold: true, color: profit ? ThemeConstants.successGreen : ThemeConstants.errorText, key: 'pl_net'),
       ]),
       SizedBox(height: 10.h),
       _card(<Widget>[

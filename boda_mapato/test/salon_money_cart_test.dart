@@ -93,6 +93,53 @@ Future<void> _confirmYes(WidgetTester t) async {
 }
 
 void main() {
+  group('the reference number of a payment', () {
+    test('is missing only for money that did not come as cash, and never for a sale paid later', () {
+      final InventoryProvider inv = InventoryProvider(api: _FakeApi());
+      addTearDown(inv.dispose);
+      addTearDown(() => ApiService.activeService = null);
+      inv.setSalonMode(true);
+      expect(inv.missingReference, isFalse, reason: 'cash');
+
+      inv.setCashChannel('mpesa');
+      expect(inv.missingReference, isTrue);
+      inv.setPaymentReference('   ');
+      expect(inv.missingReference, isTrue, reason: 'spaces are not a reference');
+      inv.setPaymentReference('QWE123');
+      expect(inv.missingReference, isFalse);
+      inv.setCashChannel('cash');
+      inv.setPaymentReference('');
+      expect(inv.missingReference, isFalse);
+
+      inv.setPaymentMode('partial');
+      inv.setPartialPaymentMethod('bank_transfer');
+      expect(inv.missingReference, isFalse, reason: 'nothing was paid now');
+      inv.setPaidAmount(5000);
+      expect(inv.missingReference, isTrue);
+      inv.setPartialReference('B-1');
+      expect(inv.missingReference, isFalse);
+
+      inv.setPaymentMode('debt');
+      inv.setPartialReference('');
+      expect(inv.missingReference, isFalse, reason: 'a debt has no payment');
+    });
+
+    test('is forgotten when the cart is emptied', () {
+      final InventoryProvider inv = InventoryProvider(api: _FakeApi());
+      addTearDown(inv.dispose);
+      addTearDown(() => ApiService.activeService = null);
+      inv.setSalonMode(true);
+      inv.addProductToCart(_braids());
+      inv.setCashChannel('mpesa');
+      inv.setPaymentReference('OLD1');
+
+      inv.clearCart();
+
+      expect(inv.paymentReference, '');
+      expect(inv.partialReference, '');
+    });
+  });
+
   group('the cart', () {
     test('only a salon can give a discount; it never goes below nothing or above the sale', () {
       final InventoryProvider inv = InventoryProvider(api: _FakeApi());
@@ -171,6 +218,8 @@ void main() {
       await t.enterText(_key('salon_discount_reason'), 'Regular client');
       await t.tap(_key('channel_mpesa'));
       await t.pumpAndSettle();
+      await t.enterText(_key('payment_reference_mpesa'), 'QWE123');
+      await t.pumpAndSettle();
 
       await _checkout(t);
       await _confirmYes(t);
@@ -181,6 +230,38 @@ void main() {
       expect(sale['total'], 36000);
       expect((sale['payments'] as List<dynamic>).single, containsPair('method', 'mpesa'));
       expect((sale['payments'] as List<dynamic>).single, containsPair('amount', 36000));
+      expect((sale['payments'] as List<dynamic>).single, containsPair('reference', 'QWE123'));
+    });
+
+    testWidgets('a payment by mobile money cannot be saved without its reference number', (t) async {
+      await _pump(t, salon: true);
+      expect(_key('payment_reference_cash'), findsNothing, reason: 'cash needs no code');
+      await t.tap(_key('channel_mpesa'));
+      await t.pumpAndSettle();
+      expect(_key('payment_reference_mpesa'), findsOneWidget);
+
+      await _checkout(t);
+      expect(find.text('Write the reference number of the payment'), findsOneWidget);
+      expect(_api.sales, isEmpty);
+      await t.pump(const Duration(seconds: 4));
+
+      await t.enterText(_key('payment_reference_mpesa'), '   ');
+      await _checkout(t);
+      expect(_api.sales, isEmpty, reason: 'spaces are not a reference');
+      await t.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('cash sends no reference at all', (t) async {
+      await _pump(t, salon: true);
+      await t.tap(_key('channel_mpesa'));
+      await t.pumpAndSettle();
+      await t.tap(_key('channel_cash'));
+      await t.pumpAndSettle();
+
+      await _checkout(t);
+      await _confirmYes(t);
+
+      expect((_api.sales.single['payments'] as List<dynamic>).single, containsPair('reference', null));
     });
 
     testWidgets('with no discount and no choice the client paid cash, as before', (t) async {
@@ -217,6 +298,24 @@ void main() {
 
       expect(inv.partialPaymentMethod, 'halopesa');
       expect(find.byType(DropdownButtonFormField<String>), findsNothing, reason: 'the chips replace the shop\'s list');
+    });
+
+    testWidgets('a part payment in a shop by mobile money asks for its reference too', (t) async {
+      final InventoryProvider inv = await _pump(t, salon: false);
+      inv.setPaymentMode('partial');
+      inv.setPaidAmount(10000);
+      await t.pumpAndSettle();
+      expect(_key('payment_reference_cash'), findsNothing);
+
+      inv.setPartialPaymentMethod('mobile_money');
+      await t.pumpAndSettle();
+      expect(_key('payment_reference_mobile_money'), findsOneWidget);
+      expect(inv.missingReference, isTrue);
+
+      await t.enterText(_key('payment_reference_mobile_money'), 'MM-77');
+      await t.pumpAndSettle();
+      expect(inv.partialReference, 'MM-77');
+      expect(inv.missingReference, isFalse);
     });
 
     testWidgets('a shop sale still says cash, whatever a salon chose before', (t) async {

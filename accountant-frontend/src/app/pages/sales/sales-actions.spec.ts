@@ -54,6 +54,33 @@ describe('what can be done to a sale', () => {
     reload(h);
   });
 
+  it('a payment by mobile money needs its reference number and sends it', async () => {
+    const { h, fixture, el } = await open();
+    byTestId(el, 'sale-row-2')!.click();
+    await settle(fixture);
+    byTestId(el, 'pay-2')!.click();
+    await settle(fixture);
+    expect(byTestId(el, 'pay-ref')).toBeNull();
+
+    const method = el.querySelector('#pmeth') as HTMLSelectElement;
+    method.value = 'mpesa';
+    method.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle(fixture);
+    type(el, '[data-testid=pay-amount]', '6000');
+    byTestId(el, 'pay-save')!.click();
+    await settle(fixture);
+    expect(text(el)).toContain('Write the reference number');
+    h.http.expectNone((r) => r.url.endsWith('/inventory/sales/2/payments'));
+
+    type(el, '[data-testid=pay-ref]', 'QWE123');
+    byTestId(el, 'pay-save')!.click();
+    const post = h.http.expectOne((r) => r.url.endsWith('/inventory/sales/2/payments'));
+    expect(post.request.body).toEqual({ amount: 6000, method: 'mpesa', reference: 'QWE123' });
+    post.flush({ data: { balance: 0, payment_status: 'paid' } });
+    await settle(fixture);
+    reload(h);
+  });
+
   it('cancelling needs a reason', async () => {
     const { h, fixture, el } = await open();
     byTestId(el, 'sale-row-2')!.click();

@@ -97,6 +97,21 @@ class _SalesScreenState extends State<SalesScreen>
     super.dispose();
   }
 
+  /// "Reference number" for a payment that was not cash: required, the owner reads them in Money > References.
+  Widget _referenceField(String chosen, String value, ValueChanged<String> onChanged, bool sw, {required String keyName}) {
+    return Padding(
+      padding: EdgeInsets.only(top: 8.h),
+      child: TextFormField(
+        key: ValueKey<String>('${keyName}_$chosen'),
+        initialValue: value,
+        onChanged: onChanged,
+        textCapitalization: TextCapitalization.characters,
+        decoration: ThemeConstants.invInputDecoration(sw ? 'Namba ya muamala (lazima)' : 'Reference number (required)'),
+        style: ThemeConstants.bodyStyle,
+      ),
+    );
+  }
+
   /// Salon: a discount (with why) and how the client paid. Only a salon sees this; the shop's sale screen is as it was.
   Widget _salonMoneyCard(InventoryProvider inv, bool sw) {
     final bool pays = inv.paymentMode != 'debt';
@@ -161,6 +176,10 @@ class _SalesScreenState extends State<SalesScreen>
                   ),
               ],
             ),
+            if (chosen != 'cash')
+              inv.paymentMode == 'partial'
+                  ? _referenceField(chosen, inv.partialReference, inv.setPartialReference, sw, keyName: 'payment_reference')
+                  : _referenceField(chosen, inv.paymentReference, inv.setPaymentReference, sw, keyName: 'payment_reference'),
           ],
         ],
       ),
@@ -676,6 +695,8 @@ class _SalesScreenState extends State<SalesScreen>
                     onChanged: (v) =>
                         inv.setPartialPaymentMethod(v ?? 'cash'),
                   ),
+                  if (inv.partialPaymentMethod != 'cash')
+                    _referenceField(inv.partialPaymentMethod, inv.partialReference, inv.setPartialReference, loc.isSwahili, keyName: 'payment_reference'),
                   ],
                 ],
               ],
@@ -781,6 +802,11 @@ class _SalesScreenState extends State<SalesScreen>
                             // A salon says why a discount was given.
                             if (isSalonMode(context, listen: false) && inv.cartDiscount > 0 && inv.discountReason.trim().isEmpty) {
                               ThemeConstants.showErrorSnackBar(context, loc.isSwahili ? 'Andika sababu ya punguzo.' : 'Write the reason for the discount.');
+                              return;
+                            }
+                            // Money that did not come as cash needs its reference number.
+                            if (inv.missingReference) {
+                              ThemeConstants.showErrorSnackBar(context, loc.translate('reference_required'));
                               return;
                             }
                             // A salon names who served the client on every service: a complaint then says who it is about.
@@ -1338,6 +1364,7 @@ class _SalesScreenState extends State<SalesScreen>
     final balance = (sale.total - sale.paidTotal).clamp(0.0, sale.total);
     final amountCtrl = TextEditingController(text: balance.toStringAsFixed(0));
     String method = 'cash';
+    final TextEditingController refCtrl = TextEditingController();
     bool busy = false;
 
     showModalBottomSheet(
@@ -1386,6 +1413,14 @@ class _SalesScreenState extends State<SalesScreen>
                 ],
                 onChanged: (v) => setBS(() => method = v ?? 'cash'),
               ),
+              if (method != 'cash') ...<Widget>[
+                SizedBox(height: 10.h),
+                InvTextField(
+                  key: const ValueKey<String>('pay_reference'),
+                  controller: refCtrl,
+                  label: loc.isSwahili ? 'Namba ya muamala (lazima)' : 'Reference number (required)',
+                ),
+              ],
               SizedBox(height: 16.h),
               InvPrimaryButton(
                 busy: busy,
@@ -1393,9 +1428,13 @@ class _SalesScreenState extends State<SalesScreen>
                 onPressed: () async {
                   final amt = double.tryParse(amountCtrl.text.trim()) ?? 0;
                   if (amt <= 0) return;
+                  if (method != 'cash' && refCtrl.text.trim().isEmpty) {
+                    ThemeConstants.showErrorSnackBar(context, loc.translate('reference_required'));
+                    return;
+                  }
                   setBS(() => busy = true);
                   final inv = context.read<InventoryProvider>();
-                  final (ok, _) = await inv.recordSalePayment(sale.id, amt, method);
+                  final (ok, _) = await inv.recordSalePayment(sale.id, amt, method, reference: method == 'cash' ? null : refCtrl.text);
                   if (ctx.mounted) Navigator.pop(ctx);
                   if (context.mounted) {
                     ok

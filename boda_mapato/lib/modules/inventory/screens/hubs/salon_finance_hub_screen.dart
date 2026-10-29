@@ -5,6 +5,7 @@ import '../../../../models/user_permissions.dart';
 import '../../../../services/localization_service.dart';
 import '../salon/cashbook_screen.dart';
 import '../salon/export_screen.dart';
+import '../salon/payment_references_screen.dart';
 import '../salon/payroll_screen.dart';
 import '../salon/profit_loss_screen.dart';
 import '../salon/salon_expenses_screen.dart';
@@ -24,6 +25,7 @@ class SalonFinanceHubScreen extends StatelessWidget {
       tabs: <String>[
         sw ? 'Faida na hasara' : 'Profit & loss',
         sw ? 'Matumizi' : 'Expenses',
+        sw ? 'Miamala' : 'References',
         sw ? 'Mishahara' : 'Payroll',
         sw ? 'Kitabu cha pesa' : 'Cashbook',
         sw ? 'Hamisha' : 'Export',
@@ -31,6 +33,7 @@ class SalonFinanceHubScreen extends StatelessWidget {
       views: const <Widget>[
         ProfitLossScreen(),
         SalonExpensesScreen(),
+        PaymentReferencesScreen(),
         PayrollScreen(),
         CashbookScreen(),
         ExportScreen(),
@@ -38,6 +41,7 @@ class SalonFinanceHubScreen extends StatelessWidget {
       tabPermissions: <bool Function(UserPermissions)?>[
         (UserPermissions p) => p.has('inv_view_reports'),
         (UserPermissions p) => p.has('inv_view_expenses'),
+        (UserPermissions p) => p.has('inv_view_reports'),
         (UserPermissions p) => p.has('inv_view_reports'),
         (UserPermissions p) => p.has('inv_view_reports'),
         (UserPermissions p) => p.has('inv_view_reports'),

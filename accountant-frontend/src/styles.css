@@ -1541,3 +1541,15 @@ app-book-ward-table, app-book-summaries, app-table-toolbar, app-table-pagination
 .ward-tile:hover { transform: translateY(-3px); box-shadow: 0 10px 22px -10px rgba(26, 47, 110, 0.35); }
 .ring-fill { animation: ringIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
 @keyframes ringIn { from { stroke-dasharray: 0 100; } }
+
+/* A message about what is wrong with a form (the sign-in page has its own look). Without this every error across the app was plain dark text. */
+.form-error {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}

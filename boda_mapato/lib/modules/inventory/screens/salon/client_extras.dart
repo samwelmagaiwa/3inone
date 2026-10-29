@@ -248,7 +248,7 @@ class _PointsDialogState extends State<_PointsDialog> {
             TextField(style: salonInputStyle, key: const Key('points_adjust'), controller: _points, keyboardType: const TextInputType.numberWithOptions(signed: true), decoration: salonInput(labelText: sw ? 'Ongeza au toa pointi (mf. -10)' : 'Add or take points (e.g. -10)')),
             const SizedBox(height: 8),
             TextField(style: salonInputStyle, key: const Key('points_note'), controller: _note, decoration: salonInput(labelText: sw ? 'Sababu' : 'Reason')),
-            if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
+            if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: TextStyle(color: ThemeConstants.errorText))),
           ],
         ]),
       ),

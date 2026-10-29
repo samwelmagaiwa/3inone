@@ -4,6 +4,7 @@ import 'package:boda_mapato/modules/inventory/models/inv_product.dart';
 import 'package:boda_mapato/modules/inventory/providers/depot_provider.dart';
 import 'package:boda_mapato/modules/inventory/providers/inventory_provider.dart';
 import 'package:boda_mapato/modules/inventory/screens/sales/sales_screen.dart';
+import 'package:boda_mapato/modules/inventory/screens/widgets/inventory_widgets.dart';
 import 'package:boda_mapato/providers/auth_provider.dart';
 import 'package:boda_mapato/services/api_service.dart';
 import 'package:boda_mapato/services/localization_service.dart';
@@ -15,11 +16,13 @@ import 'package:provider/provider.dart';
 /// Canned answers instead of a server. Remembers every save the app attempts.
 class _FakeApi extends ApiService {
   final List<String> posts = <String>[];
+  final List<Map<String, dynamic>> bodies = <Map<String, dynamic>>[];
 
   @override
   Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> data,
       {bool requireAuth = true}) async {
     posts.add(endpoint);
+    bodies.add(data);
     return <String, dynamic>{
       'data': <String, dynamic>{'id': 1, 'number': 'S-TEST-1'}
     };
@@ -147,5 +150,37 @@ void main() {
         reason: 'a white box with white text is unreadable');
     expect(shown.fillColor, ThemeConstants.invFill);
     expect(shown.labelText, loc.translate('payment_method'));
+  });
+
+  testWidgets('a debt paid by mobile money needs the reference number, and sends it', (t) async {
+    await _pump(t);
+    final LocalizationService loc = LocalizationService.instance;
+    await t.tap(find.text(loc.translate('sales_history')));
+    await t.pumpAndSettle();
+    await t.tap(find.byTooltip(loc.translate('pay_debt')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey<String>('pay_reference')), findsNothing, reason: 'cash needs no code');
+
+    await t.tap(find.byType(DropdownButtonFormField<String>));
+    await t.pumpAndSettle();
+    await t.tap(find.text(loc.translate('mobile_money')).last);
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey<String>('pay_reference')), findsOneWidget);
+
+    await t.enterText(find.byType(InvTextField).first, '5000');
+    await t.tap(find.text(loc.translate('record_payment')));
+    await t.pumpAndSettle();
+    expect(find.text(loc.translate('reference_required')), findsOneWidget);
+    expect(_api.posts.where((String e) => e.endsWith('/payments')), isEmpty);
+    await t.pump(const Duration(seconds: 4));
+
+    await t.enterText(find.byKey(const ValueKey<String>('pay_reference')), 'MP9988');
+    await t.tap(find.text(loc.translate('record_payment')));
+    await t.pumpAndSettle();
+    final Map<String, dynamic> sent = _api.bodies.last;
+    expect(_api.posts.last, '/inventory/sales/2/payments');
+    expect(sent['method'], 'mobile_money');
+    expect(sent['reference'], 'MP9988');
+    await t.pump(const Duration(seconds: 4));
   });
 }

@@ -180,7 +180,7 @@ class _MoveDialogState extends State<_MoveDialog> {
           DropdownButtonFormField<int>(key: const Key('bs_to'), initialValue: _to, items: _items(sw), onChanged: (int? v) => setState(() => _to = v ?? 0), decoration: salonInput(labelText: sw ? 'Kwenda' : 'To')),
           const SizedBox(height: 8),
           TextField(style: salonInputStyle, key: const Key('bs_qty'), controller: _qty, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'Idadi' : 'Quantity')),
-          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
+          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: TextStyle(color: ThemeConstants.errorText))),
         ]),
       ),
       actions: <Widget>[
@@ -251,7 +251,7 @@ class _LevelDialogState extends State<_LevelDialog> {
           ),
           const SizedBox(height: 8),
           TextField(style: salonInputStyle, key: const Key('lv_min'), controller: _min, keyboardType: TextInputType.number, decoration: salonInput(labelText: sw ? 'Niambie ikibaki (acha wazi = bila tahadhari)' : 'Tell me when this many are left (empty = no alert)')),
-          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
+          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: TextStyle(color: ThemeConstants.errorText))),
         ]),
       ),
       actions: <Widget>[

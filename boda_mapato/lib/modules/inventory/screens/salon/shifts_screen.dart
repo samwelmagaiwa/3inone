@@ -364,7 +364,7 @@ class _CloseSheetState extends State<_CloseSheet> {
         ),
         SizedBox(height: 10.h),
         InvTextField(key: const ValueKey<String>('shift_note'), controller: _note, label: sw ? 'Maelezo' : 'Note', isOptional: true),
-        if (_error != null) Padding(padding: EdgeInsets.only(top: 10.h), child: Text(_error!, key: const ValueKey<String>('shift_error'), style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorRed, fontSize: 12.sp))),
+        if (_error != null) Padding(padding: EdgeInsets.only(top: 10.h), child: Text(_error!, key: const ValueKey<String>('shift_error'), style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorText, fontSize: 12.sp))),
         SizedBox(height: 14.h),
         InvPrimaryButton(key: const ValueKey<String>('shift_save'), busy: _saving, label: sw ? 'Funga zamu' : 'Close shift', onPressed: _save),
       ],

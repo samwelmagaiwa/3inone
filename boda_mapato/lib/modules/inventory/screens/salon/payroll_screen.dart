@@ -352,7 +352,7 @@ class _PayoutSheetState extends State<_PayoutSheet> {
         SizedBox(height: 10.h),
         InvTextField(key: const ValueKey<String>('payout_note'), controller: _note, label: sw ? 'Maelezo' : 'Note', isOptional: true),
         if (_error != null)
-          Padding(padding: EdgeInsets.only(top: 10.h), child: Text(_error!, key: const ValueKey<String>('payout_error'), style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorRed, fontSize: 12.sp))),
+          Padding(padding: EdgeInsets.only(top: 10.h), child: Text(_error!, key: const ValueKey<String>('payout_error'), style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorText, fontSize: 12.sp))),
         SizedBox(height: 14.h),
         InvPrimaryButton(key: const ValueKey<String>('payout_save'), busy: _saving, label: sw ? 'Hifadhi malipo' : 'Save payment', onPressed: _save),
       ],
@@ -458,7 +458,7 @@ class _ProfileSheetState extends State<_ProfileSheet> {
           child: Text(sw ? 'Hutumika kwa huduma isiyo na kiwango chake.' : 'Used for a service that has no rate of its own.', style: ThemeConstants.captionStyle),
         ),
         if (_error != null)
-          Padding(padding: EdgeInsets.only(top: 10.h), child: Text(_error!, key: const ValueKey<String>('profile_error'), style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorRed, fontSize: 12.sp))),
+          Padding(padding: EdgeInsets.only(top: 10.h), child: Text(_error!, key: const ValueKey<String>('profile_error'), style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorText, fontSize: 12.sp))),
         SizedBox(height: 14.h),
         InvPrimaryButton(key: const ValueKey<String>('profile_save'), busy: _saving || !_loaded, label: sw ? 'Hifadhi' : 'Save', onPressed: _save),
       ],

@@ -24,6 +24,8 @@ class ThemeConstants {
   static const Color successGreen = Color(0xFF10B981);
   static const Color warningAmber = Color(0xFFF59E0B);
   static const Color errorRed = Color(0xFFEF4444);
+  /// Red for TEXT on the dark cards: errorRed is too dim to read there.
+  static const Color errorText = Color(0xFFFF9B9B);
   static const Color primaryCyan = Color(0xFF00E5FF); // Premium Cyber-Cyan
 
   // Inventory teal-cyan palette (for consistent design across inventory pages)

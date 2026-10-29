@@ -36,6 +36,25 @@ class SalonApi {
     return ServiceReport.fromJson(_data(res));
   }
 
+  // ---------------------------------------------------------------- payment references
+
+  /// Every payment that came with a reference number, oldest first (Money > References).
+  Future<PaymentReferencePage> paymentReferences({final DateTime? from, final DateTime? to, final String? query, final String? channel, final int page = 1}) async {
+    final List<String> q = <String>[
+      if (from != null) 'from=${_day(from)}',
+      if (to != null) 'to=${_day(to)}',
+      if (query != null && query.trim().isNotEmpty) 'q=${Uri.encodeQueryComponent(query.trim())}',
+      if (channel != null && channel.isNotEmpty) 'channel=$channel',
+      if (page > 1) 'page=$page',
+    ];
+    final Map<String, dynamic> res = await _api.get('/inventory/payment-references${q.isEmpty ? '' : '?${q.join('&')}'}');
+
+    return PaymentReferencePage.fromJson(res);
+  }
+
+  /// One sale in full: its items, totals and every payment with its reference.
+  Future<Map<String, dynamic>> saleDetail(final int id) async => _data(await _api.get('/inventory/sales/$id'));
+
   // ---------------------------------------------------------------- expenses
 
   Future<List<SalonExpense>> expenses(final DateTime from, final DateTime to) async {

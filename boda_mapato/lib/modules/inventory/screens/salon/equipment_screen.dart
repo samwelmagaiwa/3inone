@@ -253,7 +253,7 @@ class _EquipmentDialogState extends State<_EquipmentDialog> {
           TextField(style: salonInputStyle, controller: _kind, decoration: salonInput(labelText: sw ? 'Aina (kiyoyozi, dryer…)' : 'Kind (dryer, chair…)')),
           TextField(style: salonInputStyle, key: const Key('eq_cost'), controller: _cost, keyboardType: TextInputType.number, inputFormatters: <TextInputFormatter>[ThousandsFormatter()], decoration: salonInput(labelText: sw ? 'Gharama' : 'Cost')),
           TextField(style: salonInputStyle, key: const Key('eq_next'), controller: _next, decoration: salonInput(labelText: sw ? 'Huduma ijayo (YYYY-MM-DD)' : 'Next service (YYYY-MM-DD)')),
-          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
+          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: TextStyle(color: ThemeConstants.errorText))),
         ]),
       ),
       actions: <Widget>[
@@ -302,7 +302,7 @@ class _LogDialogState extends State<_LogDialog> {
           ),
           TextField(style: salonInputStyle, key: const Key('log_what'), controller: _what, decoration: salonInput(labelText: sw ? 'Ilifanyika nini' : 'What was done')),
           TextField(style: salonInputStyle, key: const Key('log_cost'), controller: _cost, keyboardType: TextInputType.number, inputFormatters: <TextInputFormatter>[ThousandsFormatter()], decoration: salonInput(labelText: sw ? 'Gharama (huingia kwenye matumizi)' : 'Cost (goes into expenses)')),
-          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
+          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: TextStyle(color: ThemeConstants.errorText))),
         ]),
       ),
       actions: <Widget>[

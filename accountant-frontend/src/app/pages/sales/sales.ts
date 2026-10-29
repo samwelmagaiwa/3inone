@@ -63,6 +63,7 @@ export class SalesPage implements OnInit, OnDestroy {
   protected readonly payFor = signal<SaleRow | null>(null);
   protected payText = '';
   protected payMethod = 'cash';
+  protected payReference = '';
   protected readonly cancelFor = signal<SaleRow | null>(null);
   protected cancelReason = '';
   protected readonly returnFor = signal<SaleDetail | null>(null);
@@ -181,6 +182,7 @@ export class SalesPage implements OnInit, OnDestroy {
   protected openPay(s: SaleRow): void {
     this.payText = String(this.owing(s));
     this.payMethod = 'cash';
+    this.payReference = '';
     this.actionError.set('');
     this.payFor.set(s);
   }
@@ -191,9 +193,10 @@ export class SalesPage implements OnInit, OnDestroy {
     if (!s) return;
     if (Number.isNaN(amount) || amount <= 0) return this.actionError.set(this.i18n.t('sales.pay.err'));
     if (amount > this.owing(s)) return this.actionError.set(this.i18n.t('sales.pay.toomuch', tsh(this.owing(s))));
+    if (this.payMethod !== 'cash' && !this.payReference.trim()) return this.actionError.set(this.i18n.t('till.err.reference_required'));
     this.busy.set(true);
     try {
-      await firstValueFrom(this.till.recordPayment(s.id, amount, this.payMethod));
+      await firstValueFrom(this.till.recordPayment(s.id, amount, this.payMethod, this.payMethod === 'cash' ? undefined : this.payReference.trim()));
       this.payFor.set(null);
       this.toast.success(this.i18n.t('sales.pay.saved', tsh(amount)), this.i18n.t('common.done'));
       await this.load();

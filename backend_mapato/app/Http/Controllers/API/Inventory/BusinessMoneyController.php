@@ -131,6 +131,72 @@ class BusinessMoneyController extends Controller
         return response()->json(['message' => 'Saved', 'data' => MonthlyReport::build($data['month'])['target']]);
     }
 
+    // ------------------------------------------------------------------ payment references
+
+    #[OA\Get(path: '/inventory/payment-references', summary: 'Every payment that came with a reference number (mobile money, bank), oldest first', security: [['bearerAuth' => []]], tags: ['Inventory / Money'], parameters: [new OA\Parameter(name: 'from', in: 'query', schema: new OA\Schema(type: 'string')), new OA\Parameter(name: 'to', in: 'query', schema: new OA\Schema(type: 'string')), new OA\Parameter(name: 'q', in: 'query', schema: new OA\Schema(type: 'string')), new OA\Parameter(name: 'channel', in: 'query', schema: new OA\Schema(type: 'string'))], responses: [new OA\Response(response: 200, description: 'Success')])]
+    public function paymentReferences(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'from' => 'nullable|date_format:Y-m-d',
+            'to' => 'nullable|date_format:Y-m-d|after_or_equal:from',
+            'q' => 'nullable|string|max:100',
+            'channel' => ['nullable', Rule::in(\App\Support\PaymentChannels::all())],
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:200',
+        ]);
+
+        $base = DB::table('inventory_sale_payments as p')
+            ->join('inventory_sales as s', 's.id', '=', 'p.sale_id')
+            ->leftJoin('inventory_customers as c', 'c.id', '=', 's.customer_id')
+            ->whereNotNull('p.reference')->where('p.reference', '!=', '');
+
+        // A salon looking at one branch sees that branch's payments only.
+        $branch = \App\Support\Salon\SalonBranch::selected($request);
+        if ($branch !== null) {
+            $base->where('s.branch_id', $branch);
+        }
+        if (!empty($data['from'])) {
+            $base->where('p.paid_at', '>=', $data['from'] . ' 00:00:00');
+        }
+        if (!empty($data['to'])) {
+            $base->where('p.paid_at', '<=', $data['to'] . ' 23:59:59');
+        }
+        if (!empty($data['channel'])) {
+            [$method, $channel] = \App\Support\PaymentChannels::split($data['channel']);
+            $channel !== null ? $base->where('p.method_extended', $channel) : $base->where('p.method', $method);
+        }
+        if (($needle = trim((string) ($data['q'] ?? ''))) !== '') {
+            $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $needle) . '%';
+            $base->where(fn ($w) => $w->where('p.reference', 'like', $like)->orWhere('s.number', 'like', $like)
+                ->orWhere('c.name', 'like', $like)->orWhere('s.customer_name_override', 'like', $like));
+        }
+
+        $totals = (clone $base)->selectRaw('COUNT(*) as n, COALESCE(SUM(p.amount), 0) as amount')->first();
+        $page = $base->select(
+            'p.id', 'p.sale_id', 'p.amount', 'p.method', 'p.method_extended', 'p.reference', 'p.paid_at',
+            's.number as sale_number', 's.total as sale_total', 's.payment_status', 's.cancelled_at',
+            DB::raw('COALESCE(c.name, s.customer_name_override) as customer_name'),
+        )->orderBy('p.paid_at')->orderBy('p.id')->paginate((int) ($data['per_page'] ?? 50));
+
+        return response()->json([
+            'data' => collect($page->items())->map(fn ($r) => [
+                'id' => (int) $r->id,
+                'sale_id' => (int) $r->sale_id,
+                'sale_number' => $r->sale_number,
+                'reference' => (string) $r->reference,
+                'channel' => $r->method_extended ?? $r->method,
+                'amount' => (float) $r->amount,
+                'paid_at' => $r->paid_at,
+                'customer_name' => $r->customer_name,
+                'sale_total' => (float) $r->sale_total,
+                'payment_status' => $r->payment_status,
+                'cancelled' => !empty($r->cancelled_at),
+            ])->values(),
+            'summary' => ['count' => (int) $totals->n, 'amount' => (float) $totals->amount],
+            'meta' => ['current_page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'per_page' => $page->perPage(), 'total' => $page->total()],
+        ]);
+    }
+
     // ------------------------------------------------------------------ advice
 
     #[OA\Get(path: '/inventory/advice', summary: 'Where to do better: advice written from the month\'s numbers (by AI when it is switched on)', security: [['bearerAuth' => []]], tags: ['Inventory / Money'], responses: [new OA\Response(response: 200, description: 'Success')])]

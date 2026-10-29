@@ -1118,3 +1118,68 @@ class ServiceReport {
   final double revenue;
   final List<ServiceRow> services;
 }
+
+
+/// A payment that came with a reference number (mobile money or the bank), with the sale it belongs to.
+class PaymentReference {
+  const PaymentReference({
+    required this.id,
+    required this.saleId,
+    required this.saleNumber,
+    required this.reference,
+    required this.channel,
+    required this.amount,
+    required this.saleTotal,
+    required this.cancelled,
+    this.paidAt,
+    this.customerName,
+  });
+
+  factory PaymentReference.fromJson(final Map<String, dynamic> j) => PaymentReference(
+        id: _int(j['id']),
+        saleId: _int(j['sale_id']),
+        saleNumber: _text(j['sale_number']),
+        reference: _text(j['reference']),
+        channel: _text(j['channel']),
+        amount: _num(j['amount']),
+        saleTotal: _num(j['sale_total']),
+        cancelled: j['cancelled'] == true,
+        paidAt: _date(j['paid_at']),
+        customerName: j['customer_name'] == null || _text(j['customer_name']).isEmpty ? null : _text(j['customer_name']),
+      );
+
+  final int id;
+  final int saleId;
+  final String saleNumber;
+  final String reference;
+  final String channel;
+  final double amount;
+  final double saleTotal;
+  final bool cancelled;
+  final DateTime? paidAt;
+  final String? customerName;
+}
+
+/// One page of the references, oldest first, with what the whole list comes to.
+class PaymentReferencePage {
+  const PaymentReferencePage({required this.rows, required this.count, required this.amount, required this.page, required this.lastPage});
+
+  factory PaymentReferencePage.fromJson(final Map<String, dynamic> j) {
+    final Map<String, dynamic> summary = j['summary'] is Map ? Map<String, dynamic>.from(j['summary'] as Map) : <String, dynamic>{};
+    final Map<String, dynamic> meta = j['meta'] is Map ? Map<String, dynamic>.from(j['meta'] as Map) : <String, dynamic>{};
+
+    return PaymentReferencePage(
+      rows: _rows(j['data']).map(PaymentReference.fromJson).toList(),
+      count: _int(summary['count']),
+      amount: _num(summary['amount']),
+      page: _int(meta['current_page']) == 0 ? 1 : _int(meta['current_page']),
+      lastPage: _int(meta['last_page']) == 0 ? 1 : _int(meta['last_page']),
+    );
+  }
+
+  final List<PaymentReference> rows;
+  final int count;
+  final double amount;
+  final int page;
+  final int lastPage;
+}

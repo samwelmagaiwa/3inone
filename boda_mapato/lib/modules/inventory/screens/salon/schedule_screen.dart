@@ -329,7 +329,7 @@ class _DayOffSheetState extends State<_DayOffSheet> {
         InvDateField(label: sw ? 'Tarehe' : 'Date', value: _date, onChanged: (DateTime? d) => setState(() => _date = d ?? _date)),
         SizedBox(height: 10.h),
         InvTextField(key: const ValueKey<String>('dayoff_reason'), controller: _reason, label: sw ? 'Sababu' : 'Reason', isOptional: true),
-        if (_error != null) Padding(padding: EdgeInsets.only(top: 10.h), child: Text(_error!, key: const ValueKey<String>('dayoff_error'), style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorRed, fontSize: 12.sp))),
+        if (_error != null) Padding(padding: EdgeInsets.only(top: 10.h), child: Text(_error!, key: const ValueKey<String>('dayoff_error'), style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorText, fontSize: 12.sp))),
         SizedBox(height: 14.h),
         InvPrimaryButton(key: const ValueKey<String>('dayoff_save'), busy: _saving, label: sw ? 'Hifadhi' : 'Save', onPressed: _save),
       ],

@@ -60,6 +60,11 @@ export class TillPage implements OnInit, OnDestroy {
   protected readonly customerQuery = signal('');
   protected readonly customerHits = signal<Customer[]>([]);
   protected readonly credit = signal<CreditCheck | null>(null);
+  /** Which way of naming the customer is open: find one who is saved, write a new one, or no name at all. */
+  protected readonly custTab = signal<'find' | 'new' | 'walkin'>('find');
+  protected newName = '';
+  protected newPhone = '';
+  protected readonly newError = signal('');
 
   // ---- salon
   protected readonly staff = signal<StaffMember[]>([]);
@@ -87,6 +92,8 @@ export class TillPage implements OnInit, OnDestroy {
   protected readonly parkedOpen = signal(false);
   protected readonly parked = signal<ParkedSale[]>([]);
 
+  /** A sale paid later (or in part) must be for a saved customer. */
+  protected readonly needsCustomer = computed(() => this.till.mode() !== 'cash' && !this.till.customer());
   protected readonly showCrates = computed(() => this.crateTypes().length > 0 && this.caps.useCrates() && this.caps.inventoryType() !== 'retail');
   protected readonly goodsOnly = computed(() => this.products().filter((p) => !p.isService && p.active));
   protected readonly balanceDue = computed(() => {
@@ -193,7 +200,8 @@ export class TillPage implements OnInit, OnDestroy {
     this.addLine(p, null, null);
   }
 
-  protected chooseOption(p: Product, option: PriceOption): void {
+  /** [option] is null for the product's usual price (a product with other prices still has its own). */
+  protected chooseOption(p: Product, option: PriceOption | null): void {
     this.optionFor.set(null);
     this.addLine(p, null, option);
   }
@@ -270,15 +278,31 @@ export class TillPage implements OnInit, OnDestroy {
     await this.checkCredit();
   }
 
-  protected async addNewCustomer(): Promise<void> {
-    const name = this.customerQuery().trim();
-    if (!name) return;
+  /** "+ Add" under the search hits: open the new-customer form with what was typed already in the name box. */
+  protected addNewCustomer(): void {
+    this.newName = this.customerQuery().trim();
+    this.newPhone = '';
+    this.newError.set('');
+    this.custTab.set('new');
+  }
+
+  protected openCustTab(tab: 'find' | 'new' | 'walkin'): void {
+    this.newError.set('');
+    this.custTab.set(tab);
+  }
+
+  protected async saveNewCustomer(): Promise<void> {
+    const name = this.newName.trim();
+    if (!name) return this.newError.set(this.i18n.t('till.cust.needname'));
     try {
-      const c = await firstValueFrom(this.api.createCustomer(name, this.till.manualPhone().trim()));
+      const c = await firstValueFrom(this.api.createCustomer(name, this.newPhone.trim()));
+      this.newName = '';
+      this.newPhone = '';
+      this.custTab.set('find');
       await this.chooseCustomer(c);
       this.toast.success(this.i18n.t('till.customer.added', c.name), this.i18n.t('common.done'));
     } catch (err) {
-      this.toast.error(this.fail(err), this.i18n.t('error.title'));
+      this.newError.set(this.fail(err));
     }
   }
 
@@ -296,6 +320,8 @@ export class TillPage implements OnInit, OnDestroy {
   protected setMode(m: PayMode): void {
     this.till.mode.set(m);
     this.formError.set('');
+    // no name at all is only for a client who pays everything now
+    if (m !== 'cash' && this.custTab() === 'walkin') this.custTab.set('find');
     void this.checkCredit();
   }
 
@@ -319,6 +345,16 @@ export class TillPage implements OnInit, OnDestroy {
     } catch {
       // no loyalty
     }
+  }
+
+  /** Tap a stylist to choose; tap the chosen one again to clear. */
+  protected toggleStaff(key: string, id: string): void {
+    const l = this.till.lines().find((x) => x.key === key);
+    this.staffChosen(key, l?.staffId === id ? '' : id);
+  }
+
+  protected initials(name: string): string {
+    return name.trim().split(/\s+/).slice(0, 2).map((w) => w.charAt(0)).join('').toUpperCase();
   }
 
   protected staffChosen(key: string, id: string): void {
@@ -501,6 +537,7 @@ export class TillPage implements OnInit, OnDestroy {
     if (built.error) {
       const stylist = this.till.missingStylist();
       this.formError.set(this.i18n.t(`till.err.${built.error}`, stylist?.name ?? ''));
+      this.reveal(built.error === 'customer_required' ? 'till-customer-section' : built.error === 'reference_required' ? 'till-pay-section' : built.error === 'stylist_required' && stylist ? `line-${stylist.productId}` : null);
       return;
     }
     const c = this.credit();
@@ -534,6 +571,13 @@ export class TillPage implements OnInit, OnDestroy {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  /** Bring the part of the till that needs attention into view (the till is long, and a message at the bottom is easy to miss). */
+  private reveal(testidOrId: string | null): void {
+    if (!testidOrId) return;
+    const el = document.getElementById(testidOrId) ?? document.querySelector(`[data-testid="${testidOrId}"]`);
+    el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
   }
 
   protected print(sale: SaleDetail): void {

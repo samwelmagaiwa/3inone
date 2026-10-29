@@ -113,10 +113,13 @@
                     </select>
                   }
                   @if (till.salon() && l.isService) {
-                    <select class="modal-input unit-pick" [ngModel]="l.staffId ?? ''" (ngModelChange)="staffChosen(l.key, $event)" [attr.aria-label]="i18n.t('till.stylist')" [attr.data-testid]="'stylist-' + l.productId">
-                      <option value="">{{ i18n.t('till.stylist.pick') }}</option>
-                      @for (s of staff(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
-                    </select>
+                    <div class="basis-full h-0"></div>
+                    <div class="stylists" role="group" [attr.aria-label]="i18n.t('till.stylist')" [class.is-missing]="!l.staffId" [attr.data-testid]="'stylist-' + l.productId">
+                      <span class="stylists-label">{{ i18n.t('till.stylist') }}@if (!l.staffId) { <b>*</b> }</span>
+                      @for (s of staff(); track s.id) {
+                        <button type="button" class="chip" [class.is-on]="l.staffId === s.id" [attr.aria-pressed]="l.staffId === s.id" (click)="toggleStaff(l.key, s.id)" [attr.data-testid]="'stylist-' + l.productId + '-' + s.id"><span class="chip-ic">{{ initials(s.name) }}</span>{{ s.name }}</button>
+                      }
+                    </div>
                     <button type="button" class="link-btn" (click)="openGoods(l.key)" [attr.data-testid]="'goods-' + l.productId">{{ i18n.t('till.goods') }}</button>
                     @if (packagesFor(l.productId).length) {
                       <select class="modal-input unit-pick" [ngModel]="l.packageId ?? ''" (ngModelChange)="usePackage(l.key, $event)" [attr.aria-label]="i18n.t('till.package')">
@@ -140,8 +143,8 @@
       </div>
 
       <!-- Customer -->
-      <div>
-        <p class="step"><b>3</b>{{ i18n.t('till.step3') }}</p>
+      <div id="till-customer-section" class="cust" [class.is-needed]="needsCustomer()">
+        <p class="step"><b>3</b>{{ i18n.t('till.step3') }}@if (needsCustomer()) { <span class="req-chip" data-testid="till-customer-required">{{ i18n.t('till.customer.required') }}</span> }</p>
         @if (till.customer(); as c) {
           <div class="customer-chip mt-2" data-testid="till-customer">
             <span class="avatar round">{{ c.name.charAt(0) }}</span>
@@ -149,8 +152,14 @@
             <button type="button" class="link-btn" (click)="chooseCustomer(null)">{{ i18n.t('common.change') }}</button>
           </div>
         } @else {
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-            <div class="relative">
+          <div class="seg mt-2" role="tablist">
+            <button type="button" class="pill-tab" [class.is-active]="custTab() === 'find'" (click)="openCustTab('find')" data-testid="till-tab-find">{{ i18n.t('till.cust.find') }}</button>
+            <button type="button" class="pill-tab" [class.is-active]="custTab() === 'new'" (click)="openCustTab('new')" data-testid="till-tab-new">+ {{ i18n.t('till.cust.new') }}</button>
+            @if (!needsCustomer()) { <button type="button" class="pill-tab" [class.is-active]="custTab() === 'walkin'" (click)="openCustTab('walkin')" data-testid="till-tab-walkin">{{ i18n.t('till.cust.walkin') }}</button> }
+          </div>
+
+          @if (custTab() === 'find') {
+            <div class="relative mt-2">
               <input class="modal-input" type="search" [ngModel]="customerQuery()" (ngModelChange)="searchCustomers($event)" [placeholder]="i18n.t('till.customer.search')" autocomplete="off" data-testid="till-customer-search">
               @if (customerHits().length || customerQuery().trim().length >= 2) {
                 <div class="hits">
@@ -159,10 +168,20 @@
                 </div>
               }
             </div>
-            <input class="modal-input" [ngModel]="till.manualName()" (ngModelChange)="till.manualName.set($event)" [placeholder]="i18n.t('till.customer.walkin')" autocomplete="off" data-testid="till-walkin">
-            <input class="modal-input" inputmode="tel" [ngModel]="till.manualPhone()" (ngModelChange)="till.manualPhone.set($event)" [placeholder]="i18n.t('till.customer.walkin.phone')" autocomplete="off" data-testid="till-walkin-phone">
-          </div>
-          <p class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('till.customer.hint') }}</p>
+          } @else if (custTab() === 'new') {
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+              <input class="modal-input" [(ngModel)]="newName" name="newName" [placeholder]="i18n.t('till.cust.name')" autocomplete="off" data-testid="till-newcustomer-name">
+              <input class="modal-input" inputmode="tel" [(ngModel)]="newPhone" name="newPhone" [placeholder]="i18n.t('till.cust.phone')" autocomplete="off" data-testid="till-newcustomer-phone">
+            </div>
+            @if (newError()) { <p class="form-error mt-2" role="alert" data-testid="till-newcustomer-error">{{ newError() }}</p> }
+            <button type="button" class="btn-primary mt-2" (click)="saveNewCustomer()" data-testid="till-newcustomer-save">{{ i18n.t('till.cust.save') }}</button>
+          } @else {
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+              <input class="modal-input" [ngModel]="till.manualName()" (ngModelChange)="till.manualName.set($event)" [placeholder]="i18n.t('till.customer.walkin')" autocomplete="off" data-testid="till-walkin">
+              <input class="modal-input" inputmode="tel" [ngModel]="till.manualPhone()" (ngModelChange)="till.manualPhone.set($event)" [placeholder]="i18n.t('till.customer.walkin.phone')" autocomplete="off" data-testid="till-walkin-phone">
+            </div>
+            <p class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('till.cust.walkin.hint') }}</p>
+          }
         }
       </div>
 
@@ -186,7 +205,7 @@
       }
 
       <!-- Payment -->
-      <div>
+      <div id="till-pay-section">
         <p class="step"><b>4</b>{{ i18n.t('till.step4') }}</p>
         <div class="mode-grid mt-2">
           @for (m of ['cash', 'partial', 'debt']; track m) {
@@ -198,12 +217,22 @@
         @if (till.mode() === 'cash') {
           <div class="mt-2 max-w-xs"><label class="modal-label" for="chan">{{ i18n.t('till.channel') }}</label>
             <select id="chan" class="modal-input" [ngModel]="till.channel()" (ngModelChange)="till.channel.set($event)">@for (c of channels; track c) { <option [value]="c">{{ channelName(c) }}</option> }</select></div>
+          @if (till.channel() !== 'cash') {
+            <div class="mt-2 max-w-xs"><label class="modal-label" for="ref">{{ i18n.t('till.ref') }} *</label>
+              <input id="ref" class="modal-input" [class.is-bad]="!!formError() && !till.reference().trim()" [ngModel]="till.reference()" (ngModelChange)="till.reference.set($event)" [placeholder]="i18n.t('till.ref.ph')" autocomplete="off" data-testid="till-ref">
+              <p class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('till.ref.hint') }}</p></div>
+          }
         }
         @if (till.mode() === 'partial') {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
             <div><label class="modal-label" for="paid">{{ i18n.t('till.paidnow') }}</label><input appMoney id="paid" class="modal-input" inputmode="numeric" [ngModel]="paidText" (ngModelChange)="setPaid($event)" autocomplete="off" data-testid="till-paid"></div>
             <div><label class="modal-label" for="pchan">{{ i18n.t('till.channel') }}</label>
               <select id="pchan" class="modal-input" [ngModel]="till.partialChannel()" (ngModelChange)="till.partialChannel.set($event)">@for (c of channels; track c) { <option [value]="c">{{ channelName(c) }}</option> }</select></div>
+            @if (till.partialChannel() !== 'cash') {
+              <div class="sm:col-span-2"><label class="modal-label" for="pref">{{ i18n.t('till.ref') }} *</label>
+                <input id="pref" class="modal-input" [class.is-bad]="!!formError() && !till.partialReference().trim()" [ngModel]="till.partialReference()" (ngModelChange)="till.partialReference.set($event)" [placeholder]="i18n.t('till.ref.ph')" autocomplete="off" data-testid="till-partial-ref">
+                <p class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('till.ref.hint') }}</p></div>
+            }
           </div>
         }
         @if (till.mode() !== 'cash') {
@@ -227,7 +256,8 @@
         }
       </div>
 
-      <!-- Totals -->
+      <!-- Totals, the message and the button: always in view at the bottom -->
+      <div class="checkout space-y-2">
       <div class="totals">
         <div class="row"><span>{{ i18n.t('till.sub') }}</span><span>{{ tsh(till.totals().subtotal) }}</span></div>
         @if (till.totals().discount > 0) { <div class="row"><span>{{ i18n.t('till.discount') }}</span><span>− {{ tsh(till.totals().discount) }}</span></div> }
@@ -240,6 +270,7 @@
       <button type="button" class="btn-primary charge-btn w-full big-btn justify-center" [disabled]="saving() || !till.lines().length" (click)="charge()" data-testid="till-charge">
         {{ saving() ? i18n.t('common.saving') : i18n.t('till.charge', tsh(till.totals().total)) }}
       </button>
+      </div>
     </section>
   </div>
 </div>
@@ -248,6 +279,9 @@
 <app-modal-dialog [show]="!!optionFor()" [title]="optionFor()?.name ?? ''" [eyebrow]="i18n.t('till.option.eyebrow')" (close)="optionFor.set(null)">
   <div slot="body" class="space-y-2">
     <p class="text-sm text-slate-500">{{ i18n.t('till.option.hint') }}</p>
+    @if ((optionFor()?.sellingPrice ?? 0) > 0) {
+      <button type="button" class="good w-full" (click)="chooseOption(optionFor()!, null)" data-testid="option-usual"><span class="font-black">{{ i18n.t('till.option.usual') }}</span><span class="font-black" style="color:#1a2f6e;">{{ tsh(optionFor()!.sellingPrice) }}</span></button>
+    }
     @for (o of optionFor()?.priceOptions ?? []; track o.label) {
       <button type="button" class="good w-full" (click)="chooseOption(optionFor()!, o)"><span class="font-black">{{ o.label }}</span><span class="font-black" style="color:#1a2f6e;">{{ tsh(o.price) }}</span></button>
     }
@@ -318,7 +352,7 @@
 
   .cols { margin-top: -6px; }
   @media (min-width: 1280px) {
-    .cols { height: calc(100vh - 9.5rem); grid-template-rows: minmax(0, 1fr); }
+    .cols { height: calc(100vh - 14rem); min-height: 420px; grid-template-rows: minmax(0, 1fr); }
     .panel.left, .panel.right { height: 100%; overflow-y: auto; overscroll-behavior: contain; }
     .panel.left { display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
     .panel.left .goods-list { flex: 1 1 auto; min-height: 0; max-height: none; }
@@ -345,7 +379,7 @@
   .seg .pill-tab.is-active { background: #1a2f6e; color: #fff; }
 
   .goods-list { display: grid; align-content: start; grid-auto-rows: min-content; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; max-height: 60vh; overflow-y: auto; padding: 2px 4px 4px 2px; }
-  .good { display: flex; align-items: center; gap: 12px; padding: 10px; border: 1px solid #e6ecfb; border-radius: 14px; background: #fff; cursor: pointer; transition: all .2s; }
+  .good { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; border: 1px solid #e6ecfb; border-radius: 14px; background: #fff; cursor: pointer; transition: all .2s; }
   .good:hover:not(:disabled) { border-color: #93b0fb; transform: translateY(-2px); box-shadow: 0 14px 26px -16px rgba(59,97,226,.6); }
   .good:active:not(:disabled) { transform: translateY(0); }
   .good.is-out { opacity: .45; cursor: not-allowed; filter: grayscale(.6); }
@@ -367,6 +401,19 @@
   .link-btn { font-size: 13px; font-weight: 800; color: #2e4dbd; cursor: pointer; }
   .link-btn:hover { text-decoration: underline; }
   .link-btn.danger { color: #dc2626; }
+  .cust.is-needed { padding: 10px 12px; border: 1px solid #fecaca; border-radius: 16px; background: #fff7f7; }
+  .req-chip { padding: 2px 9px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 10px; letter-spacing: .04em; }
+  .stylists { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; padding: 8px 10px; border-radius: 12px; background: #f5f8ff; border: 1px solid #e0e8fb; }
+  .stylists.is-missing { background: #fff7f7; border-color: #fecaca; }
+  .stylists-label { margin-right: 4px; font-size: 11px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; color: #475a8f; }
+  .stylists-label b { color: #dc2626; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px 4px 4px; border-radius: 999px; font-size: 13px; font-weight: 800; color: #1a2f6e; background: #fff; border: 1px solid #dbe4ff; cursor: pointer; transition: all .15s; }
+  .chip:hover { border-color: #93b0fb; }
+  .chip-ic { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; border-radius: 50%; font-size: 10px; font-weight: 900; color: #2e4dbd; background: #eaf0ff; }
+  .chip.is-on { color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); border-color: transparent; }
+  .chip.is-on .chip-ic { color: #1a2f6e; background: #fff; }
+  .modal-input.is-bad { border-color: #f87171; background: #fff7f7; }
+  .checkout { position: sticky; bottom: -16px; z-index: 5; margin: 0 -16px -16px; padding: 12px 16px 16px; background: linear-gradient(180deg, rgba(255,255,255,0), #fff 18px); }
   .customer-chip { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: #f5f8ff; border: 1px solid #e0e8fb; }
   .hits { position: absolute; z-index: 20; left: 0; right: 0; top: 100%; margin-top: 6px; background: #fff; border: 1px solid #dbe4ff; border-radius: 14px; box-shadow: 0 18px 36px rgba(26,47,110,.18); overflow: hidden; }
   .hits button { display: block; width: 100%; text-align: left; padding: 11px 14px; cursor: pointer; }
@@ -374,12 +421,13 @@
   .hits small { color: #94a3b8; font-weight: 700; margin-left: 6px; }
   .hits .add { color: #1a2f6e; font-weight: 800; border-top: 1px solid #eef2f7; }
 
-  .totals { position: relative; border-radius: 16px; padding: 12px 16px; color: #111827; background: #fff; border: 1px solid #e2e8f0; }
-  .totals .row { display: flex; justify-content: space-between; padding: 3px 0; font-weight: 700; color: #111827; }
-  .totals .row.big { font-size: 24px; font-weight: 900; color: #000; border-top: 1px dashed #cbd5e1; margin-top: 6px; padding-top: 8px; }
+  .totals { position: relative; border-radius: 14px; padding: 8px 14px; color: #111827; background: #fff; border: 1px solid #e2e8f0; }
+  .totals .row { display: flex; justify-content: space-between; padding: 1px 0; font-size: 13px; font-weight: 700; color: #111827; }
+  .totals .row.big { font-size: 20px; font-weight: 900; color: #000; border-top: 1px dashed #cbd5e1; margin-top: 4px; padding-top: 6px; }
+  .checkout .form-error { padding: 8px 12px; border-radius: 10px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c; font-size: 13px; font-weight: 800; }
   .charge-btn { border-radius: 16px; background: linear-gradient(135deg, #3b61e2, #1a2f6e); box-shadow: 0 18px 30px -16px rgba(26,47,110,.9); font-weight: 900; }
   .charge-btn:disabled { opacity: .5; box-shadow: none; }
-  .big-btn { padding: 17px 22px; font-size: 16px; display: inline-flex; align-items: center; gap: 8px; }
+  .big-btn { padding: 13px 22px; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; }
   .bar-btn { padding: 8px 14px; border-radius: 10px; font-size: 12px; font-weight: 800; color: #1a2f6e; background: #fff; border: 1px solid #dbe4ff; cursor: pointer; transition: all .2s; }
   .right .modal-input, .left .modal-input { padding-top: 8px; padding-bottom: 8px; }
   .right .modal-label { margin-bottom: 2px; }

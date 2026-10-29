@@ -199,7 +199,7 @@ class _AddDialogState extends State<_AddDialog> {
               decoration: salonInput(labelText: sw ? 'Mhudumu (si lazima)' : 'Stylist (optional)'),
             ),
           ],
-          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
+          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: TextStyle(color: ThemeConstants.errorText))),
         ]),
       ),
       actions: <Widget>[

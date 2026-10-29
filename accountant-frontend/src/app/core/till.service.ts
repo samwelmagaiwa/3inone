@@ -13,7 +13,7 @@ export const PAYMENT_CHANNELS = ['cash', 'mpesa', 'mixx', 'airtel_money', 'halop
 export interface SalePayloadResult {
   payload?: Record<string, unknown>;
   /** What is missing, as a key the screen turns into words. */
-  error?: 'empty' | 'customer_required' | 'stylist_required' | 'reason_required';
+  error?: 'empty' | 'customer_required' | 'stylist_required' | 'reason_required' | 'reference_required';
 }
 
 /**
@@ -32,6 +32,9 @@ export class TillService {
   readonly mode = signal<PayMode>('cash');
   readonly channel = signal<string>('cash'); // how a full payment is made
   readonly partialChannel = signal<string>('cash');
+  /** The code of a payment made by mobile money or the bank: asked for, and required, whenever the money did not come as cash. */
+  readonly reference = signal('');
+  readonly partialReference = signal('');
   readonly paid = signal(0); // a part payment
   readonly dueDays = signal(7);
   readonly tierOverride = signal<'retail' | 'wholesale' | null>(null);
@@ -212,6 +215,8 @@ export class TillService {
     this.mode.set('cash');
     this.channel.set('cash');
     this.partialChannel.set('cash');
+    this.reference.set('');
+    this.partialReference.set('');
     this.paid.set(0);
     this.dueDays.set(7);
     this.discount.set(0);
@@ -227,6 +232,13 @@ export class TillService {
     return this.salon() ? (this.lines().find((l) => l.isService && !l.staffId) ?? null) : null;
   }
 
+  /** Is a payment code still missing? Cash needs none; mobile money and the bank always do. */
+  missingReference(): 'full' | 'partial' | null {
+    if (this.mode() === 'cash') return this.channel() !== 'cash' && !this.reference().trim() ? 'full' : null;
+    if (this.mode() === 'partial' && this.paid() > 0 && this.partialChannel() !== 'cash' && !this.partialReference().trim()) return 'partial';
+    return null;
+  }
+
   /** The sale as the server takes it (the same fields as the mobile app sends), or what is missing. */
   buildSale(): SalePayloadResult {
     const lines = this.lines();
@@ -234,20 +246,21 @@ export class TillService {
     const customer = this.customer();
     if ((this.mode() === 'debt' || this.mode() === 'partial') && !customer) return { error: 'customer_required' };
     if (this.missingStylist()) return { error: 'stylist_required' };
+    if (this.missingReference()) return { error: 'reference_required' };
     const t = this.totals();
     if (this.salon() && t.discount > 0 && !this.discountReason().trim() && !this.voucher().code && this.pointsOff() <= 0) return { error: 'reason_required' };
 
     const now = new Date().toISOString();
     let paidTotal = 0;
     let status: 'paid' | 'partial' | 'debt' = 'paid';
-    let payments: { amount: number; method: string; reference: null; paid_at: string }[] = [];
+    let payments: { amount: number; method: string; reference: string | null; paid_at: string }[] = [];
     if (this.mode() === 'cash') {
       paidTotal = t.total;
-      payments = [{ amount: t.total, method: this.salon() ? this.channel() : this.channel(), reference: null, paid_at: now }];
+      payments = [{ amount: t.total, method: this.channel(), reference: this.channel() === 'cash' ? null : this.reference().trim(), paid_at: now }];
     } else if (this.mode() === 'partial') {
       paidTotal = Math.min(Math.max(this.paid(), 0), t.total);
       status = paidTotal <= 0 ? 'debt' : paidTotal < t.total ? 'partial' : 'paid';
-      if (paidTotal > 0) payments = [{ amount: paidTotal, method: this.partialChannel(), reference: null, paid_at: now }];
+      if (paidTotal > 0) payments = [{ amount: paidTotal, method: this.partialChannel(), reference: this.partialChannel() === 'cash' ? null : this.partialReference().trim(), paid_at: now }];
     } else {
       status = 'debt';
     }

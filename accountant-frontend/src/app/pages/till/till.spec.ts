@@ -196,6 +196,8 @@ describe('the till', () => {
       const { h, fixture, el } = await open();
       byTestId(el, 'good-1')!.click();
       await settle(fixture);
+      byTestId(el, 'till-tab-walkin')!.click();
+      await settle(fixture);
       type(el, '[data-testid=till-walkin]', 'Mama Zawadi');
       type(el, '[data-testid=till-walkin-phone]', '0712345678');
       await settle(fixture);
@@ -273,10 +275,9 @@ describe('the till in a salon', () => {
     await settle(fixture);
     expect(text(byTestId(el, 'till-error')!)).toContain('Choose who served the client for "Haircut"');
 
-    const pick = byTestId(el, 'stylist-9') as HTMLSelectElement;
-    pick.value = pick.querySelector('option[value="5"]') ? '5' : pick.value;
-    pick.dispatchEvent(new Event('change', { bubbles: true }));
+    byTestId(el, 'stylist-9-5')!.click();
     await settle(fixture);
+    expect(byTestId(el, 'stylist-9-5')!.getAttribute('aria-pressed')).toBe('true');
     byTestId(el, 'till-charge')!.click();
     await settle(fixture);
     const post = h.http.expectOne((r) => r.url.endsWith('/inventory/sales') && r.method === 'POST');
@@ -315,5 +316,123 @@ describe('the till and crates', () => {
     expect(await crateRequests({ permissions: rights })).toBe(1);
     TestBed.resetTestingModule();
     expect(await crateRequests({ permissions: rights }, true)).toBe(0);
+  });
+});
+
+describe('the till: other prices, payment codes and customers', () => {
+  const conrow = { id: 3, name: 'conrow', selling_price: 55000, cost_price: 0, quantity: 0, status: 'active', is_service: 1, price_options: [{ label: 'small size', price: 40000 }] };
+
+  it('a product with other prices still offers its usual price, first', async () => {
+    const { fixture, el } = await open({}, [conrow]);
+    byTestId(el, 'good-3')!.click();
+    await settle(fixture);
+    expect(byTestId(el, 'option-usual')).not.toBeNull();
+    expect(text(byTestId(el, 'option-usual')!)).toContain('55,000');
+
+    byTestId(el, 'option-usual')!.click();
+    await settle(fixture);
+    expect(text(byTestId(el, 'till-total')!)).toBe('TSH 55,000');
+    expect(text(byTestId(el, 'line-3')!)).toContain('conrow');
+    expect(text(byTestId(el, 'line-3')!)).not.toContain('small size');
+  });
+
+  it('the other price is still there to choose', async () => {
+    const { fixture, el } = await open({}, [conrow]);
+    byTestId(el, 'good-3')!.click();
+    await settle(fixture);
+    const small = Array.from(el.ownerDocument.querySelectorAll('button')).find((b) => (b.textContent ?? '').includes('small size')) as HTMLButtonElement;
+    small.click();
+    await settle(fixture);
+    expect(text(byTestId(el, 'till-total')!)).toBe('TSH 40,000');
+  });
+
+  it('a payment by mobile money needs its reference number, and sends it', async () => {
+    const { h, fixture, el } = await open();
+    byTestId(el, 'good-1')!.click();
+    await settle(fixture);
+    expect(byTestId(el, 'till-ref')).toBeNull(); // cash: no code
+
+    const chan = el.querySelector('#chan') as HTMLSelectElement;
+    chan.value = 'mpesa';
+    chan.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle(fixture);
+    expect(byTestId(el, 'till-ref')).not.toBeNull();
+
+    byTestId(el, 'till-charge')!.click();
+    await settle(fixture);
+    expect(text(byTestId(el, 'till-error')!)).toContain('Write the reference number');
+    h.http.expectNone((r) => r.url.endsWith('/inventory/sales') && r.method === 'POST');
+
+    type(el, '[data-testid=till-ref]', '  8K3J2L9X ');
+    await settle(fixture);
+    byTestId(el, 'till-charge')!.click();
+    await settle(fixture);
+    const post = h.http.expectOne((r) => r.url.endsWith('/inventory/sales') && r.method === 'POST');
+    expect((post.request.body as { payments: Record<string, unknown>[] }).payments[0]).toMatchObject({ method: 'mpesa', reference: '8K3J2L9X' });
+  });
+
+  it('cash sends no reference at all', async () => {
+    const { h, fixture, el } = await open();
+    byTestId(el, 'good-1')!.click();
+    await settle(fixture);
+    byTestId(el, 'till-charge')!.click();
+    await settle(fixture);
+    const post = h.http.expectOne((r) => r.url.endsWith('/inventory/sales') && r.method === 'POST');
+    expect((post.request.body as { payments: Record<string, unknown>[] }).payments[0]).toMatchObject({ method: 'cash', reference: null });
+  });
+
+  it('a part payment by bank also needs the reference of what was paid now', async () => {
+    const { fixture, el } = await open();
+    byTestId(el, 'good-1')!.click();
+    byTestId(el, 'mode-partial')!.click();
+    await settle(fixture);
+    expect(byTestId(el, 'till-partial-ref')).toBeNull();
+    const chan = el.querySelector('#pchan') as HTMLSelectElement;
+    chan.value = 'bank_transfer';
+    chan.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle(fixture);
+    expect(byTestId(el, 'till-partial-ref')).not.toBeNull();
+  });
+
+  it('a sale paid later says the customer is required and offers the way to add one', async () => {
+    const { h, fixture, el } = await open();
+    byTestId(el, 'good-1')!.click();
+    byTestId(el, 'mode-partial')!.click();
+    await settle(fixture);
+    expect(byTestId(el, 'till-customer-required')).not.toBeNull();
+    expect(byTestId(el, 'till-tab-walkin')).toBeNull(); // no name at all is only for a sale paid now
+    expect(byTestId(el, 'till-customer-search')).not.toBeNull();
+
+    byTestId(el, 'till-tab-new')!.click();
+    await settle(fixture);
+    byTestId(el, 'till-newcustomer-save')!.click();
+    await settle(fixture);
+    expect(text(byTestId(el, 'till-newcustomer-error')!)).toContain("Write the customer's name");
+
+    type(el, '[data-testid=till-newcustomer-name]', 'Neema Joseph');
+    type(el, '[data-testid=till-newcustomer-phone]', '0712000111');
+    await settle(fixture);
+    byTestId(el, 'till-newcustomer-save')!.click();
+    const post = h.http.expectOne((r) => r.url.endsWith('/inventory/customers') && r.method === 'POST');
+    expect(post.request.body).toEqual({ name: 'Neema Joseph', phone: '0712000111' });
+    post.flush({ data: { id: 12, name: 'Neema Joseph', phone: '0712000111' } });
+    await settle(fixture);
+    h.http.match((r) => r.url.includes('/credit/customers/12/check')).forEach((r) => r.flush({ data: { customer_id: 12, balance: 0, credit_limit: 0, available: null, is_blocked: false, over_limit: false, near_limit: false } }));
+    await settle(fixture);
+
+    expect(byTestId(el, 'till-customer')).not.toBeNull();
+    expect(byTestId(el, 'till-customer-required')).toBeNull();
+  });
+
+  it('the + Add link under the search hits opens the new-customer form with the typed name', async () => {
+    const { h, fixture, el } = await open();
+    byTestId(el, 'good-1')!.click();
+    type(el, '[data-testid=till-customer-search]', 'Rehema');
+    await settle(fixture);
+    h.http.expectOne((r) => r.url.endsWith('/inventory/customers') && r.method === 'GET').flush({ data: [] });
+    await settle(fixture);
+    byTestId(el, 'till-customer-new')!.click();
+    await settle(fixture);
+    expect((byTestId(el, 'till-newcustomer-name') as HTMLInputElement).value).toBe('Rehema');
   });
 });

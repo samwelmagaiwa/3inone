@@ -443,7 +443,7 @@ class _AppointmentFormScreenState extends State<AppointmentFormScreen> {
           if (_error != null)
             Padding(
               padding: EdgeInsets.only(top: 10.h),
-              child: Text(_error!, key: const ValueKey<String>('appt_error'), style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorRed, fontSize: 12.sp)),
+              child: Text(_error!, key: const ValueKey<String>('appt_error'), style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorText, fontSize: 12.sp)),
             ),
           SizedBox(height: 14.h),
           InvPrimaryButton(key: const ValueKey<String>('appt_save'), busy: _saving, label: sw ? 'Hifadhi miadi' : 'Save appointment', onPressed: _save),

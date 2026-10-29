@@ -154,7 +154,7 @@ export interface SaleRow {
   created_at: string;
   cancelled_at?: string | null;
   items?: { product_name?: string; qty?: number; unit_name?: string | null; total?: number; staff_name?: string | null }[];
-  payments?: { amount: number; method: string | null; paid_at: string }[];
+  payments?: { amount: number; method: string | null; reference?: string | null; paid_at: string }[];
 }
 
 export interface Paged<T> {

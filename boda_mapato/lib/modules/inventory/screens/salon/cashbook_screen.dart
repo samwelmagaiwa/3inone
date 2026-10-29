@@ -201,7 +201,7 @@ class _CashbookScreenState extends State<CashbookScreen> {
               trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: <Widget>[
                 Text(tsh((r['closing'] as num?) ?? 0)),
                 if (r['count'] != null && ((r['count']['difference'] as num?) ?? 0) != 0)
-                  Text('${((r['count']['difference'] as num) < 0) ? '−' : '+'} ${tsh((r['count']['difference'] as num).abs())}', style: TextStyle(color: (r['count']['difference'] as num) < 0 ? Colors.red : Colors.orange, fontSize: 12)),
+                  Text('${((r['count']['difference'] as num) < 0) ? '−' : '+'} ${tsh((r['count']['difference'] as num).abs())}', style: TextStyle(color: (r['count']['difference'] as num) < 0 ? ThemeConstants.errorText : Colors.orange, fontSize: 12)),
               ]),
             ),
         ],
@@ -252,7 +252,7 @@ class _MoveDialogState extends State<_MoveDialog> {
           TextField(style: salonInputStyle, key: const Key('mv_amount'), controller: _amount, keyboardType: TextInputType.number, inputFormatters: <TextInputFormatter>[ThousandsFormatter()], decoration: salonInput(labelText: sw ? 'Kiasi (TSh)' : 'Amount (TSh)')),
           const SizedBox(height: 8),
           TextField(style: salonInputStyle, key: const Key('mv_note'), controller: _note, decoration: salonInput(labelText: sw ? 'Maelezo (si lazima)' : 'Note (optional)')),
-          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
+          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: TextStyle(color: ThemeConstants.errorText))),
         ]),
       ),
       actions: <Widget>[
@@ -306,7 +306,7 @@ class _CountDialogState extends State<_CountDialog> {
           TextField(style: salonInputStyle, key: const Key('ct_counted'), controller: _counted, keyboardType: TextInputType.number, inputFormatters: <TextInputFormatter>[ThousandsFormatter()], decoration: salonInput(labelText: sw ? 'Kiasi ulichohesabu (TSh)' : 'Amount counted (TSh)')),
           const SizedBox(height: 8),
           TextField(style: salonInputStyle, key: const Key('ct_note'), controller: _note, decoration: salonInput(labelText: sw ? 'Maelezo (si lazima)' : 'Note (optional)')),
-          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: const TextStyle(color: Colors.red))),
+          if (_problem != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_problem!, style: TextStyle(color: ThemeConstants.errorText))),
         ]),
       ),
       actions: <Widget>[

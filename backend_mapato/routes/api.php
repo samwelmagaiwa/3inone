@@ -447,6 +447,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::middleware('inv_perm:inv_view_reports')->group(function () {
         Route::get('inventory/monthly-report',                  [BusinessMoneyController::class, 'report']);
         Route::get('inventory/advice',                           [BusinessMoneyController::class, 'advice']);
+        Route::get('inventory/payment-references',               [BusinessMoneyController::class, 'paymentReferences']);
     });
     Route::middleware('inv_perm:inv_manage_settings')->group(function () {
         Route::put('inventory/monthly-target',                   [BusinessMoneyController::class, 'setTarget']);

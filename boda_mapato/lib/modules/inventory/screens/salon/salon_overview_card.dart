@@ -181,7 +181,7 @@ class _SalonOverviewCardState extends State<SalonOverviewCard> {
           SizedBox(height: 2.h),
           Text(
             '${profit ? (sw ? 'Faida' : 'Profit') : (sw ? 'Hasara' : 'Loss')} ${tsh(f.netProfit)}',
-            style: ThemeConstants.captionStyle.copyWith(color: profit ? ThemeConstants.successGreen : ThemeConstants.errorRed),
+            style: ThemeConstants.captionStyle.copyWith(color: profit ? ThemeConstants.successGreen : ThemeConstants.errorText),
           ),
         ],
       ),

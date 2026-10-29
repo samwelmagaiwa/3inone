@@ -228,6 +228,10 @@ class InventoryProvider extends ChangeNotifier {
   String _discountReason = '';
   String _cashChannel = 'cash';
 
+  /// The code of a payment made by mobile money or the bank (asked for, and required, whenever it was not cash).
+  String _paymentReference = '';
+  String _partialReference = '';
+
   /// The ways a salon client may pay: cash, the mobile money networks, the bank.
   static const List<String> paymentChannels = <String>['cash', 'mpesa', 'mixx', 'airtel_money', 'halopesa', 'bank_transfer'];
 
@@ -307,6 +311,13 @@ class InventoryProvider extends ChangeNotifier {
   }
   String get discountReason => _discountReason;
   String get cashChannel => _cashChannel;
+  String get paymentReference => _paymentReference;
+
+  /// Money that did not come as cash is traced by its reference number: the sale cannot be saved without it.
+  bool get missingReference =>
+      (_paymentMode == 'cash' && _salonMode && _cashChannel != 'cash' && _paymentReference.trim().isEmpty) ||
+      (_paymentMode == 'partial' && _paidAmount > 0 && _partialPaymentMethod != 'cash' && _partialReference.trim().isEmpty);
+  String get partialReference => _partialReference;
 
   void setCartDiscount(double amount) {
     _salonDiscount = amount < 0 ? 0 : amount;
@@ -320,6 +331,16 @@ class InventoryProvider extends ChangeNotifier {
 
   void setCashChannel(String channel) {
     _cashChannel = channel;
+    notifyListeners();
+  }
+
+  void setPaymentReference(String reference) {
+    _paymentReference = reference;
+    notifyListeners();
+  }
+
+  void setPartialReference(String reference) {
+    _partialReference = reference;
     notifyListeners();
   }
 
@@ -1044,11 +1065,12 @@ class InventoryProvider extends ChangeNotifier {
   }
 
   Future<(bool, String)> recordSalePayment(
-      int id, double amount, String method) async {
+      int id, double amount, String method, {String? reference}) async {
     try {
       await _api.post('/inventory/sales/$id/payments', {
         'amount': amount,
         'method': method,
+        if (reference != null && reference.trim().isNotEmpty) 'reference': reference.trim(),
       });
       await fetchSales();
       InvEventBus.instance.emit({InvDomain.credit});
@@ -1329,6 +1351,8 @@ class InventoryProvider extends ChangeNotifier {
     _tierOverride = null;
     _salonDiscount = 0;
     _discountReason = '';
+    _paymentReference = '';
+    _partialReference = '';
     _clearPerks();
     notifyListeners();
   }
@@ -1383,6 +1407,9 @@ class InventoryProvider extends ChangeNotifier {
       return (false, 'customer_required');
     }
 
+    // Money that did not come as cash is traced by its reference number: the owner reads them in Money > References.
+    if (missingReference) return (false, 'reference_required');
+
     final subtotal = cartSubtotal;
     final total = cartTotal;
     double paidTotal = 0;
@@ -1395,7 +1422,7 @@ class InventoryProvider extends ChangeNotifier {
         {
           'amount': total,
           'method': _salonMode ? _cashChannel : 'cash',
-          'reference': null,
+          'reference': _salonMode && _cashChannel != 'cash' ? _paymentReference.trim() : null,
           'paid_at': DateTime.now().toIso8601String(),
         }
       ];
@@ -1409,7 +1436,7 @@ class InventoryProvider extends ChangeNotifier {
           {
             'amount': paidTotal,
             'method': _partialPaymentMethod,
-            'reference': null,
+            'reference': _partialPaymentMethod == 'cash' ? null : _partialReference.trim(),
             'paid_at': DateTime.now().toIso8601String(),
           }
         ];
@@ -1483,6 +1510,8 @@ class InventoryProvider extends ChangeNotifier {
       _paidAmount = 0;
       _partialPaymentMethod = 'cash';
       _cashChannel = 'cash';
+      _paymentReference = '';
+      _partialReference = '';
       _salonDiscount = 0;
       _discountReason = '';
       _voucherCode = '';

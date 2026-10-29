@@ -93,7 +93,7 @@
                       <div>
                         <p class="label-eyebrow mb-2">{{ i18n.t('sales.detail.payments') }}</p>
                         @for (p of s.payments; track $index) {
-                          <div class="flex justify-between text-sm py-1 border-b border-slate-100"><span class="font-semibold text-slate-700">{{ paymentMethod(p.method) }}</span><span class="font-black">{{ tsh(p.amount) }}</span></div>
+                          <div class="flex justify-between text-sm py-1 border-b border-slate-100"><span class="font-semibold text-slate-700">{{ paymentMethod(p.method) }}@if (p.reference) { <span class="text-slate-400"> · {{ i18n.t('sales.ref', p.reference) }}</span> }</span><span class="font-black">{{ tsh(p.amount) }}</span></div>
                         } @empty {
                           <p class="text-sm text-slate-400">{{ i18n.t('sales.detail.nopay') }}</p>
                         }
@@ -147,6 +147,9 @@
     <p class="text-sm text-slate-500">{{ i18n.t('sales.pay.hint') }}</p>
     <div><label class="modal-label" for="pamt">{{ i18n.t('sales.pay.amount') }}</label><input appMoney id="pamt" class="modal-input" inputmode="numeric" [(ngModel)]="payText" autocomplete="off" data-testid="pay-amount"></div>
     <div><label class="modal-label" for="pmeth">{{ i18n.t('till.channel') }}</label><select id="pmeth" class="modal-input" [(ngModel)]="payMethod">@for (c of channels; track c) { <option [value]="c">{{ channelName(c) }}</option> }</select></div>
+    @if (payMethod !== 'cash') {
+      <div><label class="modal-label" for="pref">{{ i18n.t('till.ref') }} *</label><input id="pref" class="modal-input" [(ngModel)]="payReference" [placeholder]="i18n.t('till.ref.ph')" autocomplete="off" data-testid="pay-ref"><p class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('till.ref.hint') }}</p></div>
+    }
     @if (actionError()) { <p class="form-error" role="alert">{{ actionError() }}</p> }
   </div>
   <div slot="footer" class="flex gap-2 justify-end">
