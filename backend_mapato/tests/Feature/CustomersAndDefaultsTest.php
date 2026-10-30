@@ -109,7 +109,7 @@ class CustomersAndDefaultsTest extends TestCase
 
         $this->api('DELETE', "/api/inventory/customers/{$id}")
             ->assertStatus(422)
-            ->assertJsonPath('message', fn ($m) => str_contains($m, 'outstanding debt'));
+            ->assertJsonPath('message', fn ($m) => str_contains($m, 'still owes'));
 
         $this->assertDatabaseHas('inventory_customers', ['id' => $id]);
     }

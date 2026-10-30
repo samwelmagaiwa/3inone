@@ -70,7 +70,11 @@ export function parseAmount(text: string): number {
 export function serverMessage(err: unknown): string | null {
   const e = err as { status?: number; error?: { message?: string; errors?: Record<string, string[]> } };
   const firstError = e?.error?.errors ? Object.values(e.error.errors)[0]?.[0] : undefined;
-  return firstError || e?.error?.message || null;
+  const text = firstError || e?.error?.message || null;
+  if (!text) return null;
+  // The server writes "Swahili sentence. / English sentence."; the person reads the half of the language of the page.
+  const lang = typeof document !== 'undefined' && document.documentElement.lang === 'en' ? 'en' : 'sw';
+  return localizedName(text, lang);
 }
 
 /** True when the browser could not reach the server at all. */

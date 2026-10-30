@@ -167,7 +167,7 @@ class SalesUnitsAndVatTest extends TestCase
 
         // Another product's unit.
         $this->sell([['product_id' => $cola['id'], 'unit_id' => $sugar['kg'], 'quantity' => 1, 'unit_price' => 1]])
-            ->assertStatus(422)->assertJsonPath('message', 'That unit is not available for this product');
+            ->assertStatus(422)->assertJsonPath('message', fn ($m) => str_contains($m, 'This unit is not available for this product'));
 
         // A unit switched off.
         $this->rows(fn () => DB::table('inventory_product_units')->where('id', $cola['crate'])->update(['status' => 'inactive']));

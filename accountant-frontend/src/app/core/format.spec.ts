@@ -83,3 +83,13 @@ describe('names written "Kiswahili / English"', () => {
     expect(localizedName(null, 'en')).toBe('');
   });
 });
+
+describe('serverMessage in two languages', () => {
+  it('shows the half of the page language', () => {
+    const err = { error: { message: 'Andika jina. / Enter the name.' } };
+    document.documentElement.lang = 'en';
+    expect(serverMessage(err)).toBe('Enter the name.');
+    document.documentElement.lang = 'sw';
+    expect(serverMessage(err)).toBe('Andika jina.');
+  });
+});

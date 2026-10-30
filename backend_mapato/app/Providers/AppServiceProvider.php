@@ -38,6 +38,9 @@ class AppServiceProvider extends ServiceProvider
         // TIN, logo, plan) from the moment its owner's login exists.
         User::observe(UserObserver::class);
 
+        // What is wrong with something typed or chosen is said in plain words, in both languages (see FriendlyMessages).
+        \Illuminate\Support\Facades\Validator::resolver(fn ($translator, $data, $rules, $messages, $attributes) => new \App\Validation\FriendlyValidator($translator, $data, $rules, $messages, $attributes));
+
         // The container sits behind aaPanel's nginx, which terminates TLS
         // and proxies to us over plain HTTP -- with no trusted-proxy config,
         // Laravel can't see the request was HTTPS, so asset()/url() (used by

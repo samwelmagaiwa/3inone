@@ -535,9 +535,15 @@ class ApiService {
           throw ApiException(data["message"] ??
               LocalizationService.instance.translate('your_account_has_not_been_given'));
         }
-        throw ApiException(LocalizationService.instance.translate('you_are_not_allowed_to_access'));
+        // The server says WHAT is not allowed ("only the owner can delete this"); the generic line is only for when it says nothing.
+        final Object? why403 = data["message"];
+        throw ApiException(why403 is String && why403.trim().isNotEmpty && why403 != 'This action is unauthorized.'
+            ? why403
+            : LocalizationService.instance.translate('you_are_not_allowed_to_access'));
       case 404:
-        throw ApiException("Rasilimali haipatikani");
+        // "The appointment was not found" says more than "resource not found"; the old line stays for a bare 404.
+        final Object? why404 = data["message"];
+        throw ApiException(why404 is String && why404.contains(' / ') ? why404 : "Rasilimali haipatikani");
       case 409:
         // e.g. "already approved" / "inventory is held by another business":
         // the server's explanation is what the user needs.

@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ], append: [
+            \App\Http\Middleware\FriendlyErrorMessages::class,
             // Does nothing unless BILLING_ENFORCE is on (config/billing.php).
             \App\Http\Middleware\EnsureSubscriptionActive::class,
         ]);
@@ -69,6 +70,15 @@ return Application::configure(basePath: dirname(__DIR__))
         // -- that route doesn't exist here, so it throws RouteNotFoundException
         // and a plain unauthenticated request crashes as a raw 500 instead of
         // the intended 401. Render it as JSON unconditionally instead.
+        // Validation: the message is the first thing wrong, in plain words (not "... (and 2 more errors)"), the full list stays in errors.
+        $exceptions->render(function (\Illuminate\Validation\ValidationException $e, Request $request) {
+            if (!$request->expectsJson() && !$request->is('api/*')) {
+                return null;
+            }
+            $first = collect($e->errors())->flatten()->first();
+
+            return response()->json(['message' => $first ?? $e->getMessage(), 'errors' => $e->errors()], $e->status);
+        });
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             return response()->json(['message' => $e->getMessage()], 401);
         });
