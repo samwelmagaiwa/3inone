@@ -118,6 +118,25 @@ Future<void> _openMenu(WidgetTester t) async {
 
 void main() {
   group('the salon\'s home', () {
+    testWidgets('the header has one three-dots menu holding notifications, AI, menu, services and the language switch', (t) async {
+      await _openHome(t, salon: true);
+
+      expect(find.byIcon(Icons.more_vert), findsOneWidget);
+      expect(find.byIcon(Icons.auto_awesome), findsNothing, reason: 'no loose icons in the header');
+      expect(find.byIcon(Icons.apps), findsNothing);
+
+      await t.tap(find.byKey(const Key('header_more_menu')));
+      await t.pumpAndSettle();
+      for (final String k in <String>['menu_notifications', 'header_ai_assistant', 'menu_sections', 'menu_services', 'menu_language']) {
+        expect(find.byKey(Key(k)), findsOneWidget, reason: k);
+      }
+      expect(find.text('Switch to English'), findsNothing, reason: 'the app is English, so it offers Swahili');
+
+      await t.tap(find.byKey(const Key('menu_language')));
+      await t.pumpAndSettle();
+      expect(LocalizationService.instance.isSwahili, isTrue);
+    });
+
     testWidgets('knows it is a salon and reads who can serve, once', (t) async {
       final (_Counting server, InventoryProvider inv) = await _openHome(t, salon: true);
 

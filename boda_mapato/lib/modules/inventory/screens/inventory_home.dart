@@ -756,65 +756,75 @@ class _InventoryHomeState extends State<InventoryHome> {
           },
         ),
         actions: [
+          // Notifications, the AI assistant, the menu, the services and the language: one place, the same corner on every screen.
           Consumer<NotificationsProvider>(
-            builder: (BuildContext context, NotificationsProvider n, __) =>
-                Stack(
-              clipBehavior: Clip.none,
-              children: <Widget>[
-                IconButton(
-                  icon: Icon(Icons.notifications_outlined, size: 22.sp),
-                  tooltip: loc.translate('notifications'),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ApprovalNotificationsScreen(),
+            builder: (BuildContext context, NotificationsProvider n, __) => PopupMenuButton<String>(
+              key: const Key('header_more_menu'),
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: <Widget>[
+                  Icon(Icons.more_vert, size: 22.sp),
+                  if (n.unreadCount > 0)
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        key: const Key('header_more_unread'),
+                        width: 9,
+                        height: 9,
+                        decoration: const BoxDecoration(color: ThemeConstants.errorRed, shape: BoxShape.circle),
+                      ),
                     ),
+                ],
+              ),
+              tooltip: loc.isSwahili ? 'Zaidi' : 'More',
+              onSelected: (String v) {
+                switch (v) {
+                  case 'notifications':
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const ApprovalNotificationsScreen()));
+                  case 'ai':
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantScreen()));
+                  case 'menu':
+                    Scaffold.of(context).openDrawer();
+                  case 'services':
+                    Navigator.pushReplacementNamed(context, '/select-service');
+                  case 'language':
+                    loc.changeLanguage(loc.isSwahili ? 'en' : 'sw');
+                }
+              },
+              itemBuilder: (BuildContext _) => <PopupMenuEntry<String>>[
+                PopupMenuItem<String>(
+                  key: const Key('menu_notifications'),
+                  value: 'notifications',
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.notifications_outlined),
+                    title: Text(loc.translate('notifications') + (n.unreadCount > 0 ? ' (${n.unreadCount > 9 ? '9+' : n.unreadCount})' : '')),
                   ),
                 ),
-                if (n.unreadCount > 0)
-                  Positioned(
-                    right: 6,
-                    top: 6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      constraints:
-                          const BoxConstraints(minWidth: 16, minHeight: 16),
-                      decoration: BoxDecoration(
-                        color: ThemeConstants.errorRed,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        n.unreadCount > 9 ? '9+' : '${n.unreadCount}',
-                        textAlign: TextAlign.center,
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 10),
-                      ),
-                    ),
-                  ),
+                PopupMenuItem<String>(
+                  key: const Key('header_ai_assistant'),
+                  value: 'ai',
+                  child: ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: const Icon(Icons.auto_awesome), title: Text(loc.isSwahili ? 'Msaidizi wa AI' : 'AI assistant')),
+                ),
+                PopupMenuItem<String>(
+                  key: const Key('menu_sections'),
+                  value: 'menu',
+                  child: ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: const Icon(Icons.menu), title: Text(loc.translate('menu'))),
+                ),
+                PopupMenuItem<String>(
+                  key: const Key('menu_services'),
+                  value: 'services',
+                  child: ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: const Icon(Icons.apps), title: Text(loc.translate('select_service'))),
+                ),
+                PopupMenuItem<String>(
+                  key: const Key('menu_language'),
+                  value: 'language',
+                  child: ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: const Icon(Icons.translate), title: Text(loc.isSwahili ? 'Switch to English' : 'Badili kuwa Kiswahili')),
+                ),
               ],
             ),
-          ),
-          IconButton(
-            key: const Key('header_ai_assistant'),
-            icon: Icon(Icons.auto_awesome, size: 22.sp),
-            tooltip: loc.isSwahili ? 'Msaidizi wa AI' : 'AI assistant',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AssistantScreen()),
-            ),
-          ),
-          Builder(
-            builder: (ctx) => IconButton(
-              icon: Icon(Icons.menu, size: 20.sp),
-              tooltip: loc.translate('menu'),
-              onPressed: () => Scaffold.of(ctx).openDrawer(),
-            ),
-          ),
-          IconButton(
-            icon: Icon(Icons.apps, size: 20.sp),
-            tooltip: loc.translate('select_service'),
-            onPressed: () =>
-                Navigator.pushReplacementNamed(context, '/select-service'),
           ),
         ],
       ),
