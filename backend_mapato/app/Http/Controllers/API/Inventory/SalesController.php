@@ -258,6 +258,59 @@ class SalesController extends Controller
         return response()->json(['data' => $saleArray]);
     }
 
+    #[OA\Put(path: '/inventory/sales/{id}', summary: 'Correct who a sale was for and when it must be paid (never its goods or amounts)', security: [['bearerAuth' => []]], tags: ['Inventory / Sales'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success')])]
+    public function update(Request $request, int $id)
+    {
+        $sale = DB::table('inventory_sales')->where('id', $id)->first();
+        if (!$sale) {
+            return response()->json(['message' => 'Sale not found'], 404);
+        }
+        if (!empty($sale->cancelled_at)) {
+            return response()->json(['message' => 'Mauzo yaliyofutwa hayabadilishwi. / A cancelled sale cannot be changed.'], 422);
+        }
+
+        $data = $request->validate([
+            'customer_id' => 'sometimes|nullable|integer|exists:inventory_customers,id',
+            'customer_name' => 'sometimes|nullable|string|max:160',
+            'customer_phone' => 'sometimes|nullable|string|max:40',
+            'due_date' => 'sometimes|nullable|date',
+        ]);
+
+        $customerId = array_key_exists('customer_id', $data) ? ($data['customer_id'] === null ? null : (int) $data['customer_id']) : ($sale->customer_id === null ? null : (int) $sale->customer_id);
+        // A sale paid later (or in part) is always for a customer: someone has to be asked for the rest.
+        if ($customerId === null && in_array($sale->payment_status, ['debt', 'partial'], true)) {
+            return response()->json(['message' => 'Mauzo ya deni yanahitaji mteja. / A sale paid later needs a customer.'], 422);
+        }
+
+        $update = ['updated_at' => now()];
+        if (array_key_exists('customer_id', $data)) {
+            $update['customer_id'] = $customerId;
+        }
+        if ($customerId !== null) {
+            // a saved customer brings their own name and phone
+            $update['customer_name_override'] = null;
+            $update['customer_phone_override'] = null;
+        } else {
+            if (array_key_exists('customer_name', $data)) {
+                $update['customer_name_override'] = ($data['customer_name'] ?? '') === '' ? null : trim((string) $data['customer_name']);
+            }
+            if (array_key_exists('customer_phone', $data)) {
+                $update['customer_phone_override'] = ($data['customer_phone'] ?? '') === '' ? null : trim((string) $data['customer_phone']);
+            }
+        }
+        if (array_key_exists('due_date', $data)) {
+            $update['due_date'] = $sale->payment_status === 'paid' || empty($data['due_date']) ? null : \App\Support\ClientTime::parse($data['due_date'])->toDateString();
+        }
+
+        DB::table('inventory_sales')->where('id', $id)->update($update);
+        if (array_key_exists('due_date', $update) && $update['due_date'] !== null) {
+            DB::table('inventory_reminders')->where('type', 'payment_due')->where('related_id', $id)->where('status', 'open')->update(['due_at' => $update['due_date'], 'updated_at' => now()]);
+        }
+        $this->audit->record($request, 'sale', $id, 'updated', (array) $sale, $update, $sale->number);
+
+        return $this->show($id);
+    }
+
     /**
      * GET /inventory/kpis
      * Lightweight dashboard summary — today's sales, profit and 7/30 day trend.

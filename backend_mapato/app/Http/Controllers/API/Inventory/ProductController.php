@@ -720,6 +720,25 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             $data['min_stock'] = 0;
         }
 
+        // How an item is counted can be changed: pieces <-> weight <-> volume, or a different label (pcs, pack, kg ...). A different LABEL
+        // is always fine. A different KIND of measure changes what every stored quantity means, so it is allowed only while nothing is
+        // held in stock and the selling units can be rebuilt: see changeMeasure().
+        $changingMeasure = !empty($data['measure']) && $data['measure'] !== ($existing->measure ?? 'count') && empty($existing->is_service) && empty($data['is_service']);
+        if ($changingMeasure) {
+            $refusal = $this->measureCannotChange($id, $existing);
+            if ($refusal !== null) {
+                return response()->json(['message' => $refusal], 422);
+            }
+            $base = ProductUnits::MEASURES[$data['measure']]['base'] ?? null;
+            // counted goods take the label the owner chose (pieces when none); weighed goods count in grams / millilitres
+            $data['unit'] = $base ?? (trim((string) ($data['unit'] ?? '')) !== '' ? trim((string) $data['unit']) : 'pcs');
+            $data['unit_factor'] = 1;
+            $data['quantity'] = 0;
+        } elseif (array_key_exists('unit', $data) && ($existing->measure ?? 'count') !== 'count' && empty($existing->is_service)) {
+            // weighed goods are always counted in grams / millilitres: only their selling units (kg, litre) can differ
+            $data['unit'] = ProductUnits::MEASURES[$existing->measure]['base'] ?? $data['unit'];
+        }
+
         // Renaming a size/colour renames the product too ("T-Shirt — M" -> "T-Shirt — L"), unless the
         // name was changed on purpose in the same request.
         if (array_key_exists('variant_label', $data) && ! array_key_exists('name', $data) && $existing->variant_label) {
@@ -746,10 +765,14 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             }
         }
 
-        DB::transaction(function () use ($id, $data) {
+        DB::transaction(function () use ($id, $data, $changingMeasure, $request) {
             DB::table('inventory_products')->where('id', $id)->update(array_merge($data, [
                 'updated_at' => now(),
             ]));
+
+            if ($changingMeasure) {
+                $this->rebuildSellingUnits($id, (string) $data['measure'], (float) ($data['selling_price'] ?? DB::table('inventory_products')->where('id', $id)->value('selling_price')), $request->user()?->id);
+            }
 
             // Mirror unit/unit_factor onto the base selling unit so the
             // per-unit pricing table (inventory_product_units) stays in sync.
@@ -792,6 +815,51 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     }
 
     /**
+     * Why an item cannot change how it is measured (pieces, weight, volume) right now, or null when it can. The stock is held in the
+     * smallest unit of the OLD measure (pieces or grams), so changing it while stock is held would silently change how much there is:
+     * the stock has to be empty first (sell it or write it off), the item must not be one of a product's sizes/colours, and selling
+     * units that were already used on a sale are kept (they would no longer fit).
+     */
+    private function measureCannotChange(int $id, object $existing): ?string
+    {
+        if (!empty($existing->family_id)) {
+            return 'Saizi na rangi hazibadilishi jinsi ya kupimwa. Tengeneza bidhaa mpya. / A size or colour cannot change how it is measured. Create a new item.';
+        }
+
+        $held = (int) $existing->quantity + (int) DB::table('inventory_batches')->where('product_id', $id)->sum('quantity');
+        if ($held > 0) {
+            return 'Bidhaa ina stoo. Maliza au futa stoo (iwe 0) kwanza, kisha ubadilishe kipimo. / It still has stock. Bring the stock to 0 first (sell it or write it off), then change how it is measured.';
+        }
+
+        $usedUnit = DB::table('inventory_product_units as u')
+            ->join('inventory_sale_items as si', 'si.unit_id', '=', 'u.id')
+            ->where('u.product_id', $id)->where('u.is_base', false)
+            ->exists();
+        if ($usedUnit) {
+            return 'Njia ya kuuza (mfano kg au katoni) tayari imetumika kwenye mauzo. Tengeneza bidhaa mpya ili kubadilisha kipimo. / A selling unit (like kg or carton) was already used on a sale. Create a new item to change how it is measured.';
+        }
+
+        return null;
+    }
+
+    /**
+     * After a change of measure the old extra selling units (1 kg = 1000 g) no longer mean anything: they are removed and, for goods by
+     * weight or volume, the usual bigger unit (kg, litre) is made again with its price. The base unit keeps its row, renamed.
+     */
+    private function rebuildSellingUnits(int $id, string $measure, float $pricePerBase, int|string|null $userId): void
+    {
+        $extra = DB::table('inventory_product_units')->where('product_id', $id)->where('is_base', false)->pluck('id');
+        if ($extra->isNotEmpty()) {
+            DB::table('inventory_product_prices')->whereIn('product_unit_id', $extra)->delete();
+            DB::table('inventory_product_units')->whereIn('id', $extra)->delete();
+        }
+
+        foreach (ProductUnits::MEASURES[$measure]['bigger'] ?? [] as $name => $factor) {
+            $this->units->add($id, ['name' => $name, 'factor' => $factor, 'retail_price' => round($pricePerBase * $factor, 2)], $userId, 'Measure changed');
+        }
+    }
+
+    /**
      * DELETE /inventory/products/{id}
      *
      * Hard-delete when no sales history exists.
@@ -815,34 +883,11 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             return response()->json(['message' => 'Not found'], 404);
         }
 
-        $force = filter_var($request->query('force', false), FILTER_VALIDATE_BOOLEAN);
-        $sold  = DB::table('inventory_sale_items')->where('product_id', $id)->exists();
+        // Never really deleted: it goes to the Trash (out of the till, the lists and the reports, its sales history untouched) and the
+        // owner or an admin can restore it. Removing it for good is a separate step there, refused once it has been sold or stocked.
+        \App\Support\Inventory\RecordTrash::trash($request, 'products', $id, $request->input('reason', $request->query('reason')));
 
-        if ($sold && ! $force) {
-            return response()->json([
-                'message'     => 'Product has sales history. Pass ?force=1 to archive (deactivate) instead.',
-                'sales_count' => DB::table('inventory_sale_items')->where('product_id', $id)->count(),
-            ], 422);
-        }
-
-        if ($sold && $force) {
-            $user = $request->user();
-            if (! $user || ! ($user->isSuperAdmin() || in_array($user->role, ['admin', 'manager']) || $user->full_access)) {
-                return response()->json(['message' => 'Only admins may force-archive a product with sales history.'], 403);
-            }
-            // Archive rather than hard-delete to preserve financial integrity
-            DB::table('inventory_products')->where('id', $id)->update([
-                'status'     => 'inactive',
-                'updated_at' => now(),
-            ]);
-            $this->audit->record($request, 'product', $id, 'archived', (array) $existing, ['status' => 'inactive'], $existing->name);
-            return response()->json(['message' => 'Product archived (has sales history — cannot be hard-deleted)']);
-        }
-
-        DB::table('inventory_products')->where('id', $id)->delete();
-        $this->audit->record($request, 'product', $id, 'deleted', (array) $existing, null, $existing->name);
-
-        return response()->json(['message' => 'Product deleted']);
+        return response()->json(['message' => 'Product moved to the Trash']);
     }
 
     /** A list kept as JSON text; an empty one (or none) is stored as null. */

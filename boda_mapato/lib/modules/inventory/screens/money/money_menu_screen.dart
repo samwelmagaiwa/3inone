@@ -8,6 +8,7 @@ import '../../../../providers/auth_provider.dart';
 import '../../../../services/localization_service.dart';
 import '../credit/credit_screen.dart';
 import 'debts_screen.dart';
+import '../trash/trash_screen.dart';
 import 'monthly_report_screen.dart';
 
 /// One place for the owner's money: who owes the business, what the business owes, and how the month went. Each choice says in a
@@ -50,6 +51,19 @@ class MoneyMenuScreen extends StatelessWidget {
           title: sw ? 'Ripoti ya mwezi' : 'Monthly report',
           text: sw ? 'Faida, bidhaa zilizopo, mtaji, lengo lako, ulinganisho na mwezi uliopita, na wapi uboreshe.' : 'Profit, stock, capital, your target, how you did against last month, and where to improve.',
           open: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => const MonthlyReportScreen())),
+        ),
+      // The Trash: only the owner and the admins (the server checks again).
+      if (perms.has('inv_manage_settings'))
+        _MoneyCard(
+          key: const ValueKey<String>('money_trash'),
+          icon: Icons.delete_outline,
+          color: Colors.white70,
+          title: sw ? 'Takataka (vilivyofutwa)' : 'Trash (deleted)',
+          text: sw ? 'Matumizi, wateja, madeni na bidhaa ulivyofuta. Virudishe au vifute kabisa.' : 'Expenses, customers, debts and products you deleted. Restore them, or delete them for good.',
+          open: () => Navigator.push<void>(
+            context,
+            MaterialPageRoute<void>(builder: (_) => ThemeConstants.buildScaffold(title: sw ? 'Takataka' : 'Trash', body: const TrashScreen())),
+          ),
         ),
     ];
 

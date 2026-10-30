@@ -369,37 +369,26 @@ class InventoryCrudHardenedTest extends TestCase
         $this->assertDatabaseHas('inventory_audit_log', ['entity_type' => 'product', 'entity_id' => $id, 'action' => 'updated']);
     }
 
-    public function test_product_destroy_no_sales_hard_deletes(): void
+    public function test_product_destroy_moves_it_to_the_trash(): void
     {
         $id   = $this->makeProduct();
         $ctrl = app(ProductController::class);
         $res  = $ctrl->destroy($this->req('DELETE', "/api/inventory/products/{$id}"), $id);
         $this->assertEquals(200, $res->getStatusCode());
-        $this->assertSame('Product deleted', json_decode($res->getContent(), true)['message']);
-        $this->assertDatabaseMissing('inventory_products', ['id' => $id]);
-        $this->assertDatabaseHas('inventory_audit_log',    ['entity_type' => 'product', 'entity_id' => $id, 'action' => 'deleted']);
+        $this->assertSame('Product moved to the Trash', json_decode($res->getContent(), true)['message']);
+        $this->assertDatabaseMissing('inventory_products', ['id' => $id]); // out of sight of every query
+        $this->assertTrue((bool) \App\Support\Tenancy\TenantContext::withTrashed(fn () => DB::table('inventory_products')->where('id', $id)->whereNotNull('deleted_at')->exists()), 'but still there, in the Trash');
+        $this->assertDatabaseHas('inventory_audit_log',    ['entity_type' => 'product', 'entity_id' => $id, 'action' => 'trashed']);
     }
 
-    public function test_product_destroy_with_sales_blocked(): void
+    public function test_product_destroy_with_sales_history_is_allowed_because_the_history_is_kept(): void
     {
         $id = $this->makeProduct();
         $this->makeSaleWithItem($id, 'paid');
         $ctrl = app(ProductController::class);
         $res  = $ctrl->destroy($this->req('DELETE', "/api/inventory/products/{$id}"), $id);
-        $this->assertEquals(422, $res->getStatusCode());
-        $this->assertStringContainsString('sales history', json_decode($res->getContent(), true)['message']);
-    }
-
-    public function test_product_destroy_force_archives_instead_of_deleting(): void
-    {
-        $id = $this->makeProduct();
-        $this->makeSaleWithItem($id, 'paid');
-        $ctrl = app(ProductController::class);
-        $res  = $ctrl->destroy($this->adminReq('DELETE', "/api/inventory/products/{$id}", [], ['force' => '1']), $id);
         $this->assertEquals(200, $res->getStatusCode());
-        $this->assertStringContainsString('archived', json_decode($res->getContent(), true)['message']);
-        $this->assertDatabaseHas('inventory_products', ['id' => $id, 'status' => 'inactive']);
-        $this->assertDatabaseHas('inventory_audit_log', ['entity_type' => 'product', 'entity_id' => $id, 'action' => 'archived']);
+        $this->assertSame(1, DB::table('inventory_sale_items')->where('product_id', $id)->count(), 'the sale lines are untouched');
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -416,7 +405,7 @@ class InventoryCrudHardenedTest extends TestCase
         $this->assertEquals(422, $res->getStatusCode());
     }
 
-    public function test_customer_destroy_force_anonymises_sales(): void
+    public function test_customer_with_debt_is_never_moved_to_the_trash_not_even_forced(): void
     {
         $cId    = $this->makeCustomer(['name' => 'Jane Debt', 'phone' => '0712000001']);
         $prodId = $this->makeProduct();
@@ -424,12 +413,10 @@ class InventoryCrudHardenedTest extends TestCase
 
         $ctrl = app(CustomerController::class);
         $res  = $ctrl->destroy($this->adminReq('DELETE', "/api/inventory/customers/{$cId}", [], ['force' => '1']), $cId);
-        $this->assertEquals(200, $res->getStatusCode());
+        $this->assertEquals(422, $res->getStatusCode(), 'what a customer still owes is in the totals, so they stay in sight');
 
-        $this->assertDatabaseMissing('inventory_customers', ['id' => $cId]);
-        $sale = DB::table('inventory_sales')->find($saleId);
-        $this->assertNull($sale->customer_id);
-        $this->assertSame('Jane Debt', $sale->customer_name_override);
+        $this->assertDatabaseHas('inventory_customers', ['id' => $cId]);
+        $this->assertSame($cId, (int) DB::table('inventory_sales')->find($saleId)->customer_id);
     }
 
     public function test_customer_destroy_no_debt_succeeds(): void

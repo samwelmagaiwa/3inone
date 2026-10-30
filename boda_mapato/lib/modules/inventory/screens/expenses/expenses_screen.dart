@@ -348,6 +348,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
     if (ok == true) {
       await _api.delete('/inventory/expenses/${exp['id']}');
+      if (mounted) ThemeConstants.showSuccessSnackBar(context, loc.translate('moved_to_trash'));
       _load();
       InvEventBus.instance.emit({InvDomain.expense});
     }

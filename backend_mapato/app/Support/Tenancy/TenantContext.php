@@ -26,6 +26,9 @@ final class TenantContext
 
     private static ?User $acting = null;
 
+    /** More than 0 while the Trash is being looked at or worked on: trashed rows are then visible to queries. */
+    private static int $trashDepth = 0;
+
     private static bool $unscoped = false;
 
     private static ?User $defaultBusiness = null;
@@ -158,6 +161,22 @@ final class TenantContext
      * @param  Closure(): T  $callback
      * @return T
      */
+    /** Run [callback] with trashed rows visible (the Trash screen, a restore, removing for good). Nothing else ever sees them. */
+    public static function withTrashed(Closure $callback): mixed
+    {
+        self::$trashDepth++;
+        try {
+            return $callback();
+        } finally {
+            self::$trashDepth--;
+        }
+    }
+
+    public static function seesTrashed(): bool
+    {
+        return self::$trashDepth > 0;
+    }
+
     public static function withoutScope(Closure $callback): mixed
     {
         $previous = self::$unscoped;

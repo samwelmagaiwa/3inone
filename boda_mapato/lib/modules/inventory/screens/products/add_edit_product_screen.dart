@@ -877,6 +877,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
   /// The unit, price and stock fields. A depot's are exactly what they always were; the others quote prices
   /// per the unit they think in (a piece, a kg, a litre) and count stock in whole base units.
+  /// Has the owner chosen another kind of measure for an item that already exists?
+  bool get _measureChanged => widget.product != null && ProductMeasure.parse(widget.product!.measure) != _measure;
+
   List<Widget> _unitPriceStock(LocalizationService loc, InvCapabilities caps) {
     final bool sw = loc.isSwahili;
     final bool creating = widget.product == null;
@@ -953,7 +956,9 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         MeasureChips(
           value: _measure,
           sw: sw,
-          enabled: creating,
+          // A new item chooses freely. An existing one may change how it is measured too (it was kg, make it pieces) while its stock is
+          // 0; the server checks that and says why when it cannot. A size or colour of a product cannot.
+          enabled: creating || !(widget.product?.isVariant ?? false),
           onChanged: (ProductMeasure m) => setState(() {
             _measure = m;
             _stockUnitFactor = 1;
@@ -961,6 +966,21 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
             if (m != ProductMeasure.count) _hasVariants = false;
           }),
         ),
+        if (!creating && _measureChanged)
+          Padding(
+            padding: EdgeInsets.only(top: 8.h),
+            child: Container(
+              key: const ValueKey<String>('measure_change_note'),
+              padding: EdgeInsets.all(10.w),
+              decoration: BoxDecoration(color: ThemeConstants.warningAmber.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12.r), border: Border.all(color: ThemeConstants.warningAmber.withValues(alpha: 0.6))),
+              child: Text(
+                sw
+                    ? 'Unabadilisha jinsi bidhaa inavyopimwa. Stoo lazima iwe 0, na njia za kuuza (kama kg) zitatengenezwa upya. Weka bei ya kipimo kipya.'
+                    : 'You are changing how this item is measured. Its stock must be 0, and its selling units (like kg) are made again. Enter the price for the new measure.',
+                style: ThemeConstants.captionStyle,
+              ),
+            ),
+          ),
         // Weighed goods: type the stock in kg or in grams (litres or millilitres) -- whole numbers either way.
         // Right under the choice that brings them in.
         if (weighed && creating)
@@ -1564,6 +1584,17 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     bool ok;
     if (!creating) {
       final InvProduct existing = widget.product!;
+      final bool changesMeasure = !caps.isDepot && !_isService && _measureChanged;
+      // Said here at once; the server checks it again and gives its own reason for anything else.
+      if (changesMeasure && existing.quantity > 0) {
+        setState(() {
+          _saving = false;
+          _saveError = sw
+              ? 'Bidhaa ina stoo (${existing.quantity}). Maliza au futa stoo (iwe 0) kwanza, kisha ubadilishe kipimo.'
+              : 'It still has stock (${existing.quantity}). Bring the stock to 0 first (sell it or write it off), then change how it is measured.';
+        });
+        return;
+      }
       ok = await inv.updateProduct(
         id: existing.id,
         name: _name.text.trim(),
@@ -1577,6 +1608,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
         brandId: _brandId,
         unit: caps.isDepot ? _unit : req.unit,
         unitFactor: caps.isDepot ? req.unitFactor : null,
+        measure: changesMeasure ? _measure.wire : null,
         status: _active ? 'active' : 'inactive',
         barcode: barcode,
         priceTier: req.priceTier,
@@ -1710,7 +1742,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (err == null) {
-      ThemeConstants.showSuccessSnackBar(context, loc.translate('deleted'));
+      ThemeConstants.showSuccessSnackBar(context, loc.translate('moved_to_trash'));
       Navigator.pop(context);
     } else if (err.toLowerCase().contains('sales history')) {
       final archive = await showDialog<bool>(

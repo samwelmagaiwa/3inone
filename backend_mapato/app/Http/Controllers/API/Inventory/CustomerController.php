@@ -208,37 +208,23 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             ], 422);
         }
 
-        $force       = filter_var($request->query('force', false), FILTER_VALIDATE_BOOLEAN);
-        $hasOpenDebt = DB::table('inventory_sales')
+        // What a customer still owes is in the totals and the debts list: a customer who owes cannot be moved out of sight. Settle it first.
+        $owing = (float) DB::table('inventory_sales')
             ->where('customer_id', $id)
             ->whereIn('payment_status', ['debt', 'partial'])
             ->whereNull('cancelled_at')
-            ->exists();
-
-        if ($hasOpenDebt && ! $force) {
+            ->sum(DB::raw('total - paid_total'));
+        $owingOld = \App\Support\Inventory\OpeningDebts::customerOwes($id);
+        if ($owing > 0 || $owingOld > 0) {
             return response()->json([
-                'message' => 'Customer has outstanding debt. Settle all balances first, or pass ?force=1.',
+                'message' => 'Customer has outstanding debt. Settle all balances first.',
+                'owing' => round($owing + $owingOld, 2),
             ], 422);
         }
 
-        if ($force) {
-            $user = $request->user();
-            if (! $user || ! ($user->isSuperAdmin() || in_array($user->role, ['admin', 'manager']) || $user->full_access)) {
-                return response()->json(['message' => 'Only admins may force-delete a customer with open debt.'], 403);
-            }
-        }
+        // Their sales keep pointing at them (their name still shows on those sales); restoring brings the customer back as they were.
+        \App\Support\Inventory\RecordTrash::trash($request, 'customers', $id, $request->input('reason', $request->query('reason')));
 
-        // Nullify FK on sales (keep sale records, customer becomes anonymous)
-        DB::table('inventory_sales')->where('customer_id', $id)->update([
-            'customer_id'            => null,
-            'customer_name_override' => $existing->name,
-            'customer_phone_override'=> $existing->phone,
-            'updated_at'             => now(),
-        ]);
-        DB::table('inventory_customers')->where('id', $id)->delete();
-
-        $this->audit->record($request, 'customer', $id, 'deleted', (array) $existing, null, $existing->name);
-
-        return response()->json(['message' => 'Customer deleted']);
+        return response()->json(['message' => 'Customer moved to the Trash']);
     }
 }

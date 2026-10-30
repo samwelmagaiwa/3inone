@@ -13,6 +13,7 @@ import '../../../../services/localization_service.dart';
 import '../../models/crates_owed.dart';
 import '../../models/inv_product.dart';
 import '../../models/inv_product_unit.dart';
+import '../../models/inv_customer.dart';
 import '../../models/inv_sale.dart';
 import '../../providers/depot_provider.dart';
 import '../../providers/inventory_provider.dart';
@@ -1309,6 +1310,13 @@ class _SalesScreenState extends State<SalesScreen>
                             ),
                           if (isManager && !s.isCancelled)
                             IconButton(
+                              key: ValueKey<String>('edit_sale_${s.id}'),
+                              tooltip: loc.isSwahili ? 'Sahihisha mauzo' : 'Correct the sale',
+                              onPressed: () => _showEditSaleSheet(context, s),
+                              icon: Icon(Icons.edit_outlined, color: Colors.white70, size: 19.sp),
+                            ),
+                          if (isManager && !s.isCancelled)
+                            IconButton(
                               tooltip: loc.translate('cancel_sale'),
                               onPressed: () => _showCancelSheet(context, s),
                               icon: Icon(Icons.cancel_outlined, color: ThemeConstants.errorRed, size: 19.sp),
@@ -1356,6 +1364,110 @@ class _SalesScreenState extends State<SalesScreen>
 
           SizedBox(height: 24.h),
         ],
+      ),
+    );
+  }
+
+  /// Correct who a sale was for, and when it must be paid. The goods and the amounts never change here: a wrong sale is cancelled and made again.
+  void _showEditSaleSheet(BuildContext context, InvSale sale) {
+    final InventoryProvider inv = context.read<InventoryProvider>();
+    final bool sw = LocalizationService.instance.isSwahili;
+    final bool unpaid = sale.paymentStatus != 'paid';
+    final TextEditingController nameCtrl = TextEditingController(text: sale.customerName ?? '');
+    final TextEditingController phoneCtrl = TextEditingController(text: sale.customerPhone ?? '');
+    int? customerId = sale.customerId;
+    DateTime? due = sale.dueDate;
+    String? error;
+    bool busy = false;
+
+    String day(DateTime d) => '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: ThemeConstants.primaryBlue,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20.r))),
+      builder: (BuildContext ctx) => StatefulBuilder(
+        builder: (BuildContext ctx, StateSetter setBS) => Padding(
+          padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, MediaQuery.of(ctx).viewInsets.bottom + 20.h),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text('${sw ? 'Sahihisha mauzo' : 'Correct the sale'} — #${sale.number}', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 15.sp)),
+                SizedBox(height: 4.h),
+                Text(
+                  sw ? 'Unaweza kubadilisha mteja na tarehe ya kulipa. Bidhaa na kiasi havibadiliki: futa mauzo na urudie.' : 'You can change who it was for and when it must be paid. The goods and the amounts cannot change: cancel the sale and make it again.',
+                  key: const ValueKey<String>('edit_sale_note'),
+                  style: ThemeConstants.captionStyle,
+                ),
+                SizedBox(height: 14.h),
+                DropdownButtonFormField<int?>(
+                  key: const ValueKey<String>('edit_sale_customer'),
+                  initialValue: customerId,
+                  isExpanded: true,
+                  dropdownColor: ThemeConstants.primaryBlue,
+                  style: ThemeConstants.bodyStyle,
+                  decoration: ThemeConstants.invInputDecoration(sw ? 'Mteja' : 'Customer'),
+                  items: <DropdownMenuItem<int?>>[
+                    if (!unpaid) DropdownMenuItem<int?>(value: null, child: Text(sw ? 'Mteja wa kawaida (bila jina)' : 'No saved customer')),
+                    for (final InvCustomer c in inv.customers) DropdownMenuItem<int?>(value: c.id, child: Text('${c.name}${c.phone.isEmpty ? '' : ' · ${c.phone}'}', overflow: TextOverflow.ellipsis)),
+                  ],
+                  onChanged: (int? v) => setBS(() => customerId = v),
+                ),
+                if (customerId == null) ...<Widget>[
+                  SizedBox(height: 10.h),
+                  InvTextField(key: const ValueKey<String>('edit_sale_name'), controller: nameCtrl, label: sw ? 'Jina la mteja (hiari)' : 'Customer name (optional)'),
+                  SizedBox(height: 10.h),
+                  InvTextField(key: const ValueKey<String>('edit_sale_phone'), controller: phoneCtrl, label: sw ? 'Simu (hiari)' : 'Phone (optional)', keyboardType: TextInputType.phone),
+                ],
+                if (unpaid) ...<Widget>[
+                  SizedBox(height: 10.h),
+                  OutlinedButton.icon(
+                    key: const ValueKey<String>('edit_sale_due'),
+                    onPressed: () async {
+                      final DateTime? d = await showDatePicker(context: ctx, initialDate: due ?? DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime(2100));
+                      if (d != null) setBS(() => due = d);
+                    },
+                    icon: const Icon(Icons.alarm, size: 18),
+                    label: Text(due == null ? (sw ? 'Tarehe ya kulipa' : 'Pay by') : '${sw ? 'Lipa kabla ya' : 'Pay by'} ${day(due!)}'),
+                  ),
+                ],
+                if (error != null) Padding(padding: EdgeInsets.only(top: 8.h), child: Text(error!, key: const ValueKey<String>('edit_sale_error'), style: const TextStyle(color: ThemeConstants.errorText))),
+                SizedBox(height: 16.h),
+                InvPrimaryButton(
+                  key: const ValueKey<String>('edit_sale_save'),
+                  busy: busy,
+                  label: sw ? 'Hifadhi' : 'Save',
+                  onPressed: () async {
+                    setBS(() {
+                      busy = true;
+                      error = null;
+                    });
+                    final String? problem = await inv.updateSale(
+                      sale.id,
+                      customerId: customerId,
+                      noSavedCustomer: customerId == null,
+                      customerName: customerId == null ? nameCtrl.text : null,
+                      customerPhone: customerId == null ? phoneCtrl.text : null,
+                      dueDate: unpaid ? due : null,
+                    );
+                    if (problem != null) {
+                      setBS(() {
+                        busy = false;
+                        error = problem;
+                      });
+                      return;
+                    }
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (context.mounted) ThemeConstants.showSuccessSnackBar(context, sw ? 'Mauzo yamesahihishwa.' : 'The sale was corrected.');
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1819,7 +1931,7 @@ class _SalesScreenState extends State<SalesScreen>
     _posPhone.clear();
     inv.setManualName('');
     ThemeConstants.showSuccessSnackBar(
-        context, loc.isSwahili ? 'Mteja amefutwa' : 'Customer deleted');
+        context, loc.translate('moved_to_trash'));
   }
 }
 

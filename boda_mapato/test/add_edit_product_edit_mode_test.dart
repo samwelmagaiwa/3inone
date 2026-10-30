@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Canned answers instead of a server. Remembers every change the page asks for.
 class _FakeApi extends ApiService {
@@ -55,7 +56,7 @@ const Map<String, dynamic> _retailShop = <String, dynamic>{
   'tax_percent': '18',
 };
 
-InvProduct _sugar({double? tax = 16}) => InvProduct(
+InvProduct _sugar({double? tax = 16, int quantity = 5500}) => InvProduct(
       id: 2,
       name: 'Sugar',
       sku: 'SUG-1',
@@ -63,7 +64,7 @@ InvProduct _sugar({double? tax = 16}) => InvProduct(
       costPrice: 1.5,
       sellingPrice: 2.2,
       unit: 'g',
-      quantity: 5500,
+      quantity: quantity,
       minStock: 1000,
       status: 'active',
       barcode: 'SUG-1',
@@ -154,6 +155,57 @@ Future<void> _save(WidgetTester t) async {
 }
 
 void main() {
+  group('changing how an existing item is measured (it was kg, make it pieces)', () {
+    late bool wasSwahili;
+    setUp(() async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      wasSwahili = LocalizationService.instance.isSwahili;
+      await LocalizationService.instance.changeLanguage('en');
+    });
+    tearDown(() => LocalizationService.instance.changeLanguage(wasSwahili ? 'sw' : 'en'));
+
+    testWidgets('choosing another measure explains what happens, and the unit picker for it appears', (t) async {
+      await _open(t, _sugar(quantity: 0));
+      expect(_key('measure_change_note'), findsNothing);
+
+      await t.tap(_key('measure_count'));
+      await t.pump();
+
+      expect(_key('measure_change_note'), findsOneWidget);
+      expect(find.textContaining('Its stock must be 0'), findsOneWidget);
+      expect(find.text('Counted in'), findsOneWidget, reason: 'by count it needs a label: pcs, pack, box ...');
+    });
+
+    testWidgets('with no stock the change is sent: the new measure and its label', (t) async {
+      await _open(t, _sugar(quantity: 0));
+
+      await t.tap(_key('measure_count'));
+      await t.pump();
+      await _save(t);
+
+      final Map<String, dynamic> body = _api.puts.single.$2;
+      expect(body['measure'], 'count');
+      expect(body['unit'], 'pcs');
+    });
+
+    testWidgets('with stock held it is refused on the page, with the reason, and nothing is sent', (t) async {
+      await _open(t, _sugar());
+
+      await t.tap(_key('measure_count'));
+      await t.pump();
+      await _save(t);
+
+      expect(_api.puts, isEmpty);
+      expect(find.textContaining('It still has stock (5500)'), findsWidgets);
+    });
+
+    testWidgets('a size or colour of a product cannot change how it is measured', (t) async {
+      await _open(t, _shirt());
+
+      expect(t.widget<ChoiceChip>(_key('measure_weight')).onSelected, isNull);
+    });
+  });
+
   group('editing goods by weight', () {
     testWidgets('prices show per kg while they are stored per gram, and stock stays in grams', (t) async {
       await _open(t, _sugar());
@@ -162,7 +214,7 @@ void main() {
       expect(_typed(t, _hint('e.g. 25,000')), '2,200');
       expect(_typed(t, _hint('e.g. 100')), '5500', reason: 'stock is whole grams');
       expect(t.widget<ChoiceChip>(_key('measure_weight')).selected, isTrue);
-      expect(t.widget<ChoiceChip>(_key('measure_weight')).onSelected, isNull, reason: 'an existing product keeps its measure');
+      expect(t.widget<ChoiceChip>(_key('measure_count')).onSelected, isNotNull, reason: 'an existing item may be measured differently (the server decides when)');
     });
 
     testWidgets('saving without a change sends the same per-gram prices back', (t) async {
@@ -170,6 +222,7 @@ void main() {
       await _save(t);
 
       final Map<String, dynamic> body = _api.puts.single.$2;
+      expect(body.containsKey('measure'), isFalse, reason: 'the measure is sent only when it was changed');
       expect(_api.puts.single.$1, '/inventory/products/2');
       expect(body['cost_price'], 1.5);
       expect(body['selling_price'], 2.2);

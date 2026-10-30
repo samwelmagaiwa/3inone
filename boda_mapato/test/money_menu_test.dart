@@ -58,6 +58,8 @@ void main() {
     expect(find.textContaining('a report for each customer'), findsOneWidget);
     expect(find.textContaining('even from before the app'), findsOneWidget);
     expect(find.textContaining('where to improve'), findsOneWidget);
+    expect(_key('money_trash'), findsOneWidget, reason: 'the owner also has the Trash, last');
+    expect(t.getTopLeft(_key('money_monthly')).dy, lessThan(t.getTopLeft(_key('money_trash')).dy));
   });
 
   testWidgets('a tap on Monthly report opens it', (t) async {
@@ -93,5 +95,6 @@ void main() {
 
     expect(_key('money_monthly'), findsOneWidget);
     expect(_key('money_debts'), findsNothing);
+    expect(_key('money_trash'), findsNothing, reason: 'the Trash is for the owner and the admins');
   });
 }

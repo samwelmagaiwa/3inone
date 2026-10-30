@@ -28,6 +28,11 @@ trait ScopesTenantTables
         $sql = parent::compileWheres($query);
 
         $constraint = $this->tenantConstraint($query);
+        // A row in the Trash is out of sight of everything that reads or changes the table itself.
+        $trash = $this->trashConstraint($query);
+        if ($trash !== null) {
+            $constraint = $constraint === null ? $trash : $constraint . ' and ' . $trash;
+        }
         if ($constraint === null) {
             return $sql;
         }
@@ -38,6 +43,24 @@ trait ScopesTenantTables
         }
 
         return $sql === '' ? 'where ' . $constraint : 'where (' . substr($sql, 6) . ') and ' . $constraint;
+    }
+
+    /**
+     * `alias.deleted_at is null` for the table a query is FROM when that table can be trashed. Never for a join: history that points at
+     * a trashed customer or product (an old sale) keeps showing its name. Lifted only inside TenantContext::withTrashed().
+     */
+    protected function trashConstraint(Builder $query): ?string
+    {
+        if ($query instanceof JoinClause || TenantContext::seesTrashed()) {
+            return null;
+        }
+
+        $table = TenantTables::resolve($query->from);
+        if ($table === null || !TenantTables::softDeletes($table[0])) {
+            return null;
+        }
+
+        return $this->wrap($table[1] . '.deleted_at') . ' is null';
     }
 
     /**

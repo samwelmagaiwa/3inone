@@ -172,7 +172,8 @@ final class OpeningDebts
     }
 
     /** A debt nobody has paid anything on may be removed (a wrong entry); one with payments stays, as a record. */
-    public static function delete(int $id): void
+    /** May this debt be moved to the Trash? Not once a payment was made on it (that money is on record): 404 when there is no such debt. */
+    public static function assertDeletable(int $id): void
     {
         $debt = DB::table('inventory_opening_debts')->where('id', $id)->first();
         if ($debt === null) {
@@ -181,7 +182,36 @@ final class OpeningDebts
         if ((float) $debt->paid_amount > 0) {
             throw ValidationException::withMessages(['id' => ['Deni lenye malipo haliwezi kufutwa. / A debt that has payments cannot be deleted.']]);
         }
-        DB::table('inventory_opening_debts')->where('id', $id)->delete();
+    }
+
+    /** Correct a debt: who, how much (never below what was already paid), the dates and the note. */
+    public static function update(int $id, array $d): void
+    {
+        $debt = DB::table('inventory_opening_debts')->where('id', $id)->first();
+        if ($debt === null) {
+            abort(404, 'Not found');
+        }
+
+        $amount = array_key_exists('amount', $d) ? round((float) $d['amount'], 2) : (float) $debt->amount;
+        if ($amount + 0.001 < (float) $debt->paid_amount) {
+            throw ValidationException::withMessages(['amount' => ['Kiasi hakiwezi kuwa chini ya kilicholipwa tayari. / The amount cannot be less than what was already paid.']]);
+        }
+
+        $started = array_key_exists('started_on', $d) ? (string) $d['started_on'] : (string) $debt->started_on;
+        $due = array_key_exists('due_on', $d) ? ($d['due_on'] === null || $d['due_on'] === '' ? null : (string) $d['due_on']) : $debt->due_on;
+        if ($due !== null && substr((string) $due, 0, 10) < substr($started, 0, 10)) {
+            throw ValidationException::withMessages(['due_on' => ['Tarehe ya mwisho ni kabla ya kuanza. / The due date is before the start.']]);
+        }
+
+        DB::table('inventory_opening_debts')->where('id', $id)->update([
+            'party_name' => array_key_exists('name', $d) ? trim((string) $d['name']) : $debt->party_name,
+            'party_phone' => array_key_exists('phone', $d) ? (trim((string) $d['phone']) ?: null) : $debt->party_phone,
+            'amount' => $amount,
+            'started_on' => $started,
+            'due_on' => $due,
+            'note' => array_key_exists('note', $d) ? (trim((string) $d['note']) ?: null) : $debt->note,
+            'updated_at' => now(),
+        ]);
     }
 
     private static function findOrCreateCustomer(string $name, string $phone): int

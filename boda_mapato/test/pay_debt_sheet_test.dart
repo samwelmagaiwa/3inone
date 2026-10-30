@@ -17,6 +17,7 @@ import 'package:provider/provider.dart';
 class _FakeApi extends ApiService {
   final List<String> posts = <String>[];
   final List<Map<String, dynamic>> bodies = <Map<String, dynamic>>[];
+  final List<(String, Map<String, dynamic>)> puts = <(String, Map<String, dynamic>)>[];
 
   @override
   Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> data,
@@ -26,6 +27,12 @@ class _FakeApi extends ApiService {
     return <String, dynamic>{
       'data': <String, dynamic>{'id': 1, 'number': 'S-TEST-1'}
     };
+  }
+
+  @override
+  Future<Map<String, dynamic>> put(String endpoint, Map<String, dynamic> data, {bool requireAuth = true}) async {
+    puts.add((endpoint, data));
+    return <String, dynamic>{'data': <String, dynamic>{}};
   }
 
   @override
@@ -181,6 +188,30 @@ void main() {
     expect(_api.posts.last, '/inventory/sales/2/payments');
     expect(sent['method'], 'mobile_money');
     expect(sent['reference'], 'MP9988');
+    await t.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('a sale can be corrected for who it was for: the sheet says what cannot change, and sends the new customer', (t) async {
+    await _pump(t);
+    final LocalizationService loc = LocalizationService.instance;
+    await t.tap(find.text(loc.translate('sales_history')));
+    await t.pumpAndSettle();
+
+    await t.tap(find.byKey(const ValueKey<String>('edit_sale_2')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey<String>('edit_sale_note')), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('edit_sale_due')), findsOneWidget, reason: 'a sale on credit has a pay-by date');
+
+    await t.tap(find.byKey(const ValueKey<String>('edit_sale_customer')));
+    await t.pumpAndSettle();
+    await t.tap(find.textContaining('Baba John').last);
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey<String>('edit_sale_save')));
+    await t.pumpAndSettle();
+
+    expect(_api.puts.single.$1, '/inventory/sales/2');
+    expect(_api.puts.single.$2['customer_id'], 5);
+    expect(_api.puts.single.$2.containsKey('total'), isFalse, reason: 'amounts are never sent');
     await t.pump(const Duration(seconds: 4));
   });
 }

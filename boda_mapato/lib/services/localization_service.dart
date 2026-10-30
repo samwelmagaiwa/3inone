@@ -2634,6 +2634,7 @@ class AppLocalizations {
       'thank_you_4': '★  Thank you!  ★',
       'sold_goods_cannot_be_returned_without': 'Sold goods cannot be returned without a receipt.',
       'receipt_welcome_again': 'Welcome again!',
+      'moved_to_trash': 'Moved to the Trash. The owner or an admin can restore it.',
       // Text that used to be written into the screens (translated by the language setting now).
       'stock_history_audit_log': 'Stock History (Audit Log)',
       'current_stock': '📦 Current stock:',
@@ -5264,6 +5265,7 @@ class AppLocalizations {
       'thank_you_4': '★  asante sana!  ★',
       'sold_goods_cannot_be_returned_without': 'Bidhaa zilizouzwa haziruhusiwi kurudishwa bila risiti.',
       'receipt_welcome_again': 'Karibu tena!',
+      'moved_to_trash': 'Imehamishiwa Takataka. Mmiliki au msimamizi anaweza kuirudisha.',
       // Text that used to be written into the screens (translated by the language setting now).
       'stock_history_audit_log': 'Historia ya Mzigo (Audit Log)',
       'current_stock': '📦 Mzigo uliopo sasa:',

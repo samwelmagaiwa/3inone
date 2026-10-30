@@ -83,11 +83,30 @@ class BusinessMoneyController extends Controller
     }
 
     #[OA\Delete(path: '/inventory/opening-debts/{id}', summary: 'Remove a wrongly written old debt (only one with no payments)', security: [['bearerAuth' => []]], tags: ['Inventory / Money'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success')])]
-    public function deleteDebt(int $id): JsonResponse
+    public function deleteDebt(Request $request, int $id): JsonResponse
     {
-        OpeningDebts::delete($id);
+        OpeningDebts::assertDeletable($id);
+        \App\Support\Inventory\RecordTrash::trash($request, 'debts', $id, $request->input('reason', $request->query('reason')));
 
-        return response()->json(['message' => 'Deleted']);
+        return response()->json(['message' => 'Moved to the Trash']);
+    }
+
+    #[OA\Put(path: '/inventory/opening-debts/{id}', summary: 'Correct a debt from before the app', security: [['bearerAuth' => []]], tags: ['Inventory / Money'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success')])]
+    public function updateDebt(Request $request, int $id): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => 'sometimes|required|string|max:160',
+            'phone' => 'sometimes|nullable|string|max:40',
+            'amount' => 'sometimes|required|numeric|min:1|max:100000000000',
+            'started_on' => 'sometimes|required|date_format:Y-m-d',
+            'due_on' => 'sometimes|nullable|date_format:Y-m-d',
+            'note' => 'sometimes|nullable|string|max:255',
+        ]);
+        $before = DB::table('inventory_opening_debts')->where('id', $id)->first();
+        OpeningDebts::update($id, $data);
+        app(\App\Services\Inventory\AuditTrail::class)->record($request, 'opening_debt', $id, 'updated', $before ? (array) $before : null, $data, $before->party_name ?? null);
+
+        return response()->json(['message' => 'Saved']);
     }
 
     // ------------------------------------------------------------------ the monthly report

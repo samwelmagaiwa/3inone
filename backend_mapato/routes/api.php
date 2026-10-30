@@ -443,6 +443,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('inventory/opening-debts/{id}/payments',     [BusinessMoneyController::class, 'payDebt']);
         Route::get('inventory/opening-debts/{id}/payments',      [BusinessMoneyController::class, 'debtPayments']);
         Route::delete('inventory/opening-debts/{id}',            [BusinessMoneyController::class, 'deleteDebt']);
+        Route::put('inventory/opening-debts/{id}',               [BusinessMoneyController::class, 'updateDebt']);
     });
     Route::middleware('inv_perm:inv_view_reports')->group(function () {
         Route::get('inventory/monthly-report',                  [BusinessMoneyController::class, 'report']);
@@ -642,6 +643,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
     Route::middleware('inv_perm:inv_manage_sales')->group(function () {
         Route::post('inventory/sales/{id}/cancel',      [InventorySalesController::class, 'cancel']);
+        Route::put('inventory/sales/{id}',              [InventorySalesController::class, 'update']);
         Route::post('inventory/returns/{id}/decide',    [InventoryPosController::class, 'decideReturn']);
         Route::get('inventory/dispatches',              [InventoryDispatchController::class, 'index']);
         Route::get('inventory/dispatches/{id}',         [InventoryDispatchController::class, 'show']);
@@ -739,6 +741,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
     Route::middleware('inv_perm:inv_manage_settings')->group(function () {
         Route::put('inventory/settings',  [InventoryAlertController::class, 'updateSettings']);
+        // The Trash: the owner and the admins look, restore, and remove for good (checked again in the controller)
+        Route::get('inventory/trash',                          [\App\Http\Controllers\API\Inventory\TrashController::class, 'index']);
+        Route::post('inventory/trash/{type}/{id}/restore',     [\App\Http\Controllers\API\Inventory\TrashController::class, 'restore']);
+        Route::delete('inventory/trash/{type}/{id}',           [\App\Http\Controllers\API\Inventory\TrashController::class, 'remove']);
     });
 
     // ── Approval notifications (any authenticated user, own inbox only) ──────

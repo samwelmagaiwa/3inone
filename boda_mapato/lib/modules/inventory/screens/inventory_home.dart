@@ -158,7 +158,7 @@ List<_InvMenuEntry> _invEntries(LocalizationService loc,
               icon: Icons.account_balance_wallet_outlined,
               color: ThemeConstants.warningAmber,
               pageBuilder: () => const MoneyMenuScreen(),
-              visible: (UserPermissions p) => p.has('inv_view_credit') || p.has('inv_view_reports'),
+              visible: (UserPermissions p) => p.has('inv_view_credit') || p.has('inv_view_reports') || p.has('inv_manage_settings'),
             ),
             // 7e — More than one place to sell from: the branches, and the goods each one holds (the same screens as a salon's)
             _InvMenuEntry(

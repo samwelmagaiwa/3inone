@@ -262,10 +262,13 @@ class _Sheet extends StatelessWidget {
 }
 
 class _AddDebtSheet extends StatefulWidget {
-  const _AddDebtSheet({required this.api, required this.kind});
+  const _AddDebtSheet({required this.api, required this.kind, this.debt});
 
   final MoneyApi api;
   final String kind;
+
+  /// A debt to correct (null = a new one).
+  final Map<String, dynamic>? debt;
 
   @override
   State<_AddDebtSheet> createState() => _AddDebtSheetState();
@@ -280,6 +283,20 @@ class _AddDebtSheetState extends State<_AddDebtSheet> {
   DateTime? _due;
   String? _error;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final Map<String, dynamic>? d = widget.debt;
+    if (d != null) {
+      _name.text = '${d['name'] ?? ''}';
+      _phone.text = '${d['phone'] ?? ''}' == 'null' ? '' : '${d['phone'] ?? ''}';
+      _amount.text = formatAmount(((d['amount'] as num?) ?? 0).round());
+      _note.text = '${d['note'] ?? ''}' == 'null' ? '' : '${d['note'] ?? ''}';
+      _started = DateTime.tryParse('${d['started_on'] ?? ''}') ?? _started;
+      _due = DateTime.tryParse('${d['due_on'] ?? ''}');
+    }
+  }
 
   @override
   void dispose() {
@@ -303,7 +320,12 @@ class _AddDebtSheetState extends State<_AddDebtSheet> {
       _error = null;
     });
     try {
-      await widget.api.addDebt(kind: widget.kind, name: _name.text, phone: _phone.text, amount: amount, startedOn: _started, dueOn: _due, note: _note.text);
+      final Map<String, dynamic>? old = widget.debt;
+      if (old == null) {
+        await widget.api.addDebt(kind: widget.kind, name: _name.text, phone: _phone.text, amount: amount, startedOn: _started, dueOn: _due, note: _note.text);
+      } else {
+        await widget.api.updateDebt((old['id'] as num).toInt(), name: _name.text, phone: _phone.text, amount: amount, startedOn: _started, dueOn: _due, note: _note.text);
+      }
       if (mounted) Navigator.pop(context, true);
     } on Exception catch (e) {
       if (mounted) {
@@ -321,7 +343,11 @@ class _AddDebtSheetState extends State<_AddDebtSheet> {
     final bool receivable = widget.kind == 'receivable';
 
     return _Sheet(
-      title: receivable ? (sw ? 'Deni la zamani ninalodai' : 'Old debt owed to me') : (sw ? 'Deni ninalodaiwa' : 'Debt I owe'),
+      title: widget.debt != null
+          ? (sw ? 'Sahihisha deni' : 'Correct this debt')
+          : receivable
+              ? (sw ? 'Deni la zamani ninalodai' : 'Old debt owed to me')
+              : (sw ? 'Deni ninalodaiwa' : 'Debt I owe'),
       children: <Widget>[
         TextField(key: const Key('debt_name'), controller: _name, style: salonInputStyle, textCapitalization: TextCapitalization.words, decoration: salonInput(labelText: receivable ? (sw ? 'Jina la mdaiwa' : 'Debtor\'s name') : (sw ? 'Ninayemdai (msambazaji au mtu)' : 'Who I owe (supplier or person)'))),
         const SizedBox(height: 10),
@@ -424,11 +450,25 @@ class _DebtSheetState extends State<_DebtSheet> {
     }
   }
 
+  /// Correct who owes, how much and the dates (the amount never goes below what was paid).
+  Future<void> _edit() async {
+    final bool? saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext c) => _AddDebtSheet(api: widget.api, kind: '${widget.debt['kind']}', debt: widget.debt),
+    );
+    if (saved == true && mounted) Navigator.pop(context, true);
+  }
+
   Future<void> _delete() async {
     setState(() => _busy = true);
     try {
       await widget.api.deleteDebt((widget.debt['id'] as num).toInt());
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) {
+        ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('moved_to_trash'));
+        Navigator.pop(context, true);
+      }
     } on Exception catch (e) {
       if (mounted) {
         setState(() {
@@ -468,6 +508,7 @@ class _DebtSheetState extends State<_DebtSheet> {
         if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_error!, key: const Key('pay_error'), style: const TextStyle(color: ThemeConstants.errorText))),
         const SizedBox(height: 12),
         SizedBox(width: double.infinity, child: FilledButton(key: const Key('pay_save'), onPressed: _busy ? null : _pay, child: Text(receivable ? (sw ? 'Pokea malipo' : 'Receive payment') : (sw ? 'Lipa' : 'Pay')))),
+        Align(alignment: Alignment.centerRight, child: TextButton.icon(key: const Key('debt_edit'), onPressed: _busy ? null : _edit, icon: const Icon(Icons.edit_outlined, color: Colors.white70), label: Text(sw ? 'Sahihisha' : 'Correct', style: const TextStyle(color: Colors.white70)))),
         if (!hasPayments)
           Align(alignment: Alignment.centerRight, child: TextButton.icon(key: const Key('debt_delete'), onPressed: _busy ? null : _delete, icon: const Icon(Icons.delete_outline, color: ThemeConstants.errorRed), label: Text(sw ? 'Futa (liliandikwa kimakosa)' : 'Delete (entered by mistake)', style: const TextStyle(color: ThemeConstants.errorText)))),
       ],

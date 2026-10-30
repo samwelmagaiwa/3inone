@@ -104,6 +104,47 @@ final class TenantTables
     public const OWNER_COLUMN = 'owner_id';
 
     /**
+     * Tables whose rows can be moved to the Trash (soft deleted): they carry deleted_at, deleted_by and delete_reason, and the query
+     * grammar hides a trashed row from every read and change on the table itself (never from a join, so an old sale still shows the name of
+     * a customer or product that was trashed afterwards) until it is restored.
+     */
+    public const SOFT_DELETES = ['inventory_expenses', 'inventory_customers', 'inventory_opening_debts', 'inventory_products'];
+
+    private static ?bool $trashReady = null;
+
+    private static int $trashCheckedAt = 0;
+
+    /**
+     * Is [table] soft-deletable AND does it have the column yet? Asked again at most every 30 seconds (like the service column): the
+     * moments between a new release starting and its migration finishing must not break every query on these tables.
+     */
+    public static function softDeletes(string $table): bool
+    {
+        if (!in_array($table, self::SOFT_DELETES, true)) {
+            return false;
+        }
+
+        $now = time();
+        if (self::$trashReady === null || $now - self::$trashCheckedAt >= 30) {
+            try {
+                self::$trashReady = \Illuminate\Support\Facades\Schema::hasColumn('inventory_expenses', 'deleted_at')
+                    && \Illuminate\Support\Facades\Schema::hasColumn('inventory_products', 'deleted_at');
+            } catch (\Throwable) {
+                self::$trashReady = false;
+            }
+            self::$trashCheckedAt = $now;
+        }
+
+        return self::$trashReady;
+    }
+
+    /** Forget what was learnt about the column (a test that has just migrated). */
+    public static function forgetTrash(): void
+    {
+        self::$trashReady = null;
+    }
+
+    /**
      * The column that says which SERVICE a row belongs to: 'inventory' (the shop or depot) or 'salon'. A business
      * that has both runs two separate sets of books on the same tables: the salon's sales, clients, goods,
      * settings and cash are never mixed with the shop's.

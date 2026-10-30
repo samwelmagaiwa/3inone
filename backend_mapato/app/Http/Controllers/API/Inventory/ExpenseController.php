@@ -238,8 +238,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             return response()->json(['message' => 'You can only delete your own expenses.'], 403);
         }
 
-        DB::table('inventory_expenses')->where('id', $id)->delete();
-        return response()->json(['message' => 'Deleted']);
+        // Out of the totals and the reports at once; the owner or an admin can restore it from the Trash.
+        \App\Support\Inventory\RecordTrash::trash($request, 'expenses', $id, $request->input('reason', $request->query('reason')));
+
+        return response()->json(['message' => 'Moved to the Trash']);
     }
 
     /**

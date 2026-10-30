@@ -9,6 +9,7 @@ import '../salon/payment_references_screen.dart';
 import '../salon/payroll_screen.dart';
 import '../salon/profit_loss_screen.dart';
 import '../salon/salon_expenses_screen.dart';
+import '../trash/trash_screen.dart';
 import '../widgets/inventory_widgets.dart';
 
 /// The salon's money in one place: profit and loss, what was spent, and what staff are paid. (Daily cash is in Reports.)
@@ -29,6 +30,7 @@ class SalonFinanceHubScreen extends StatelessWidget {
         sw ? 'Mishahara' : 'Payroll',
         sw ? 'Kitabu cha pesa' : 'Cashbook',
         sw ? 'Hamisha' : 'Export',
+        sw ? 'Takataka' : 'Trash',
       ],
       views: const <Widget>[
         ProfitLossScreen(),
@@ -37,6 +39,7 @@ class SalonFinanceHubScreen extends StatelessWidget {
         PayrollScreen(),
         CashbookScreen(),
         ExportScreen(),
+        TrashScreen(),
       ],
       tabPermissions: <bool Function(UserPermissions)?>[
         (UserPermissions p) => p.has('inv_view_reports'),
@@ -45,6 +48,7 @@ class SalonFinanceHubScreen extends StatelessWidget {
         (UserPermissions p) => p.has('inv_view_reports'),
         (UserPermissions p) => p.has('inv_view_reports'),
         (UserPermissions p) => p.has('inv_view_reports'),
+        (UserPermissions p) => p.has('inv_manage_settings'),
       ],
     );
   }

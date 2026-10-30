@@ -262,7 +262,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                           if (!context.mounted) return;
                                           if (err == null) {
                                             ThemeConstants.showSuccessSnackBar(
-                                                context, loc.translate('deleted'));
+                                                context, loc.translate('moved_to_trash'));
                                           } else if (err.toLowerCase().contains('sales history')) {
                                             // Product has sales — offer to archive instead
                                             final archive = await showDialog<bool>(

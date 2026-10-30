@@ -39,6 +39,26 @@ class MoneyApi {
     });
   }
 
+  /// Correct a debt: who, how much (never below what was already paid), the dates and the note.
+  Future<void> updateDebt(
+    final int id, {
+    required final String name,
+    final String? phone,
+    required final double amount,
+    required final DateTime startedOn,
+    final DateTime? dueOn,
+    final String? note,
+  }) async {
+    await _api.put('/inventory/opening-debts/$id', <String, dynamic>{
+      'name': name,
+      'phone': phone?.trim() ?? '',
+      'amount': amount,
+      'started_on': day(startedOn),
+      'due_on': dueOn == null ? null : day(dueOn),
+      'note': note?.trim() ?? '',
+    });
+  }
+
   Future<void> payDebt(final int id, {required final double amount, final String? method, final String? note}) async {
     await _api.post('/inventory/opening-debts/$id/payments', <String, dynamic>{
       'amount': amount,

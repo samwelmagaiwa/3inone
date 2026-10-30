@@ -11,6 +11,7 @@ class _FakeMoney extends MoneyApi {
   final List<Map<String, dynamic>> added = <Map<String, dynamic>>[];
   final List<(int, double)> paid = <(int, double)>[];
   final List<int> deleted = <int>[];
+  final List<Map<String, dynamic>> corrected = <Map<String, dynamic>>[];
   Object? failAdd;
 
   @override
@@ -39,6 +40,12 @@ class _FakeMoney extends MoneyApi {
 
   @override
   Future<void> deleteDebt(int id) async => deleted.add(id);
+
+  @override
+  Future<void> updateDebt(int id, {required String name, String? phone, required double amount, required DateTime startedOn, DateTime? dueOn, String? note}) async {
+    if (failAdd != null) throw failAdd!;
+    corrected.add(<String, dynamic>{'id': id, 'name': name, 'phone': phone, 'amount': amount, 'started': startedOn, 'due': dueOn, 'note': note});
+  }
 }
 
 Future<_FakeMoney> _open(WidgetTester t, {bool sw = false, int tab = 0}) async {
@@ -157,6 +164,47 @@ void main() {
     await t.pumpAndSettle();
 
     expect(api.deleted, <int>[1]);
+    expect(find.text('Moved to the Trash. The owner or an admin can restore it.'), findsOneWidget, reason: 'it says where the debt went');
+    await t.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('a debt can be corrected: the form opens filled in and the correction is sent', (t) async {
+    final _FakeMoney api = await _open(t);
+
+    await t.tap(_k('debt_1'));
+    await t.pumpAndSettle();
+    await t.tap(_k('debt_edit'));
+    await t.pumpAndSettle();
+
+    expect(find.text('Correct this debt'), findsOneWidget);
+    expect(t.widget<TextField>(_k('debt_name')).controller!.text, 'Mama Neema');
+    expect(t.widget<TextField>(_k('debt_amount')).controller!.text, '350,000');
+
+    await t.enterText(_k('debt_name'), 'Mama Neema K.');
+    await t.enterText(_k('debt_amount'), '360000');
+    await t.tap(_k('debt_save'));
+    await t.pumpAndSettle();
+
+    expect(api.corrected.single['id'], 1);
+    expect(api.corrected.single['name'], 'Mama Neema K.');
+    expect(api.corrected.single['amount'], 360000);
+    expect(api.added, isEmpty, reason: 'a correction is not a new debt');
+  });
+
+  testWidgets('a correction the server refuses (below what was paid) says why on the form', (t) async {
+    final _FakeMoney api = await _open(t);
+    api.failAdd = Exception('The amount cannot be less than what was already paid.');
+
+    await t.tap(_k('debt_2'));
+    await t.pumpAndSettle();
+    await t.tap(_k('debt_edit'));
+    await t.pumpAndSettle();
+    await t.enterText(_k('debt_amount'), '5000');
+    await t.tap(_k('debt_save'));
+    await t.pumpAndSettle();
+
+    expect(find.textContaining('cannot be less than'), findsOneWidget);
+    expect(api.corrected, isEmpty);
   });
 
   testWidgets('in Swahili it is Swahili', (t) async {

@@ -366,6 +366,28 @@ only copies by default). If the server's web server also exposes `/storage` dire
 removing the originals closes it; as an extra layer, deny those folders in the web server config
 (`location ~ ^/storage/(agreements|tenant_photos|maintenance|reports)/ { return 404; }`).
 
+## The Trash (soft delete) for what the owner manages
+
+Expenses, customers, debts from before the app and products/services are never really deleted by the apps. "Delete" moves the row to the
+Trash: `deleted_at`, `deleted_by` and `delete_reason` are set (migration `2026_11_09_000100`). **One rule in the query grammar hides a trashed
+row everywhere** (`ScopesTenantTables::trashConstraint`): every select, update, delete, count, sum and `exists:` validation on those tables
+adds `deleted_at is null`, so lists, totals, reports and the till never see it. Joins are deliberately not filtered: an old sale still shows
+the name of a customer or product trashed afterwards. `TenantContext::withTrashed()` lifts the rule, and only the Trash code uses it.
+Until the column exists (the moments between a release starting and its migration finishing) the rule stays off (`TenantTables::softDeletes()`).
+
+- Code: `App\Support\Inventory\RecordTrash` (trash, list, counts, restore, remove), `TrashController`, routes `GET inventory/trash`,
+  `POST inventory/trash/{type}/{id}/restore`, `DELETE inventory/trash/{type}/{id}?confirm=DELETE` (types: expenses, customers, debts, products;
+  `sales` lists the cancelled sales read-only). Only the owner, `full_access` users and super admins may use them (`RecordTrash::mayManage`).
+- Rules kept: a customer who still owes (a sale on credit or an old debt) cannot be trashed; a customer holding crates cannot be trashed; a
+  debt that has payments cannot be trashed. A product's SKU is suffixed `~trash~<id>` while trashed so a new product may take it; restore strips
+  it, or asks for a new SKU when it was taken meanwhile. Removing for good is refused for anything with history (a product that was sold or
+  stocked, a customer with sales/debts/crates, a debt that was paid on): it stays in the Trash.
+- Sales are never trashed: they are cancelled (stock and payments reversed) and listed under `type=sales`; they cannot be restored.
+  `PUT inventory/sales/{id}` corrects only the customer (or name/phone) and the pay-by date, never goods or amounts. `PUT
+  inventory/opening-debts/{id}` corrects a debt (never below what was paid).
+- Tests: `SoftDeleteTest`. A NEW query on these tables needs nothing; a new table that should be trashable goes in
+  `TenantTables::SOFT_DELETES` with the three columns.
+
 ## Background work
 
 Jobs and commands have nobody signed in, and with nobody signed in nothing is scoped: inventory queries see

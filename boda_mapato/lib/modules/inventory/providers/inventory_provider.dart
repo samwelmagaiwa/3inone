@@ -836,6 +836,7 @@ class InventoryProvider extends ChangeNotifier {
     int? brandId,
     String? unit,
     int? unitFactor,
+    String? measure,
     String status = 'active',
     String? barcode,
     String priceTier = 'retail',
@@ -859,6 +860,8 @@ class InventoryProvider extends ChangeNotifier {
         'name': name,
         'description': description,
         'category': category,
+        // How the item is measured (count / weight / volume): sent only when the owner CHANGED it.
+        if (measure != null) 'measure': measure,
         // The VAT rate: a number sets it, "clear" puts it back to the business's default, nothing leaves it.
         if (taxPercent != null) 'tax_percent': taxPercent,
         if (clearTax) 'tax_percent': null,
@@ -1061,6 +1064,35 @@ class InventoryProvider extends ChangeNotifier {
       return (true, 'cancelled');
     } on Exception catch (_) {
       return (false, 'cancel_failed');
+    }
+  }
+
+  /// Correct who a sale was for and when it must be paid (never its goods or amounts). Returns null on success, else the server's reason.
+  Future<String?> updateSale(
+    final int id, {
+    final int? customerId,
+    final bool noSavedCustomer = false,
+    final String? customerName,
+    final String? customerPhone,
+    final DateTime? dueDate,
+    final bool clearDueDate = false,
+  }) async {
+    try {
+      await _api.put('/inventory/sales/$id', <String, dynamic>{
+        if (customerId != null) 'customer_id': customerId,
+        if (noSavedCustomer) 'customer_id': null,
+        if (customerName != null) 'customer_name': customerName.trim(),
+        if (customerPhone != null) 'customer_phone': customerPhone.trim(),
+        if (dueDate != null) 'due_date': '${dueDate.year.toString().padLeft(4, '0')}-${dueDate.month.toString().padLeft(2, '0')}-${dueDate.day.toString().padLeft(2, '0')}',
+        if (clearDueDate) 'due_date': null,
+      });
+      await fetchSales();
+      InvEventBus.instance.emit({InvDomain.credit});
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } on Exception catch (e) {
+      return readableErrorMessage(e);
     }
   }
 

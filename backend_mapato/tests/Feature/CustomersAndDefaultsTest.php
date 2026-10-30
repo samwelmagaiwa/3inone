@@ -92,9 +92,11 @@ class CustomersAndDefaultsTest extends TestCase
 
         $this->api('DELETE', "/api/inventory/customers/{$id}")->assertOk();
 
+        // The customer is in the Trash, not gone: the sale still points at them, so restoring puts everything back as it was.
         $sale = DB::table('inventory_sales')->find($saleId);
-        $this->assertNull($sale->customer_id);
-        $this->assertSame('mama anna', $sale->customer_name_override);
+        $this->assertSame($id, (int) $sale->customer_id);
+        $name = DB::table('inventory_sales as s')->leftJoin('inventory_customers as c', 'c.id', '=', 's.customer_id')->where('s.id', $saleId)->value('c.name');
+        $this->assertSame('mama anna', $name, 'and the sale still shows their name');
     }
 
     public function test_a_customer_with_an_unpaid_sale_cannot_be_deleted(): void
