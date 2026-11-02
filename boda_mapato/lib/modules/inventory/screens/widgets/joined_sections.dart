@@ -6,7 +6,10 @@ import '../../../../constants/theme_constants.dart';
 /// The glowing line between two joined sections: the same one the inventory dashboard draws between its
 /// valuation, products and chart sections.
 class SectionGlowDivider extends StatelessWidget {
-  const SectionGlowDivider({super.key});
+  const SectionGlowDivider({super.key, this.lift = true});
+
+  /// The dark blue lift under the line, made for the dark dashboard. Off on a light page, where it would only stain it.
+  final bool lift;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -30,12 +33,13 @@ class SectionGlowDivider extends StatelessWidget {
                 blurRadius: 12,
                 spreadRadius: 2,
               ),
-              BoxShadow(
-                color: ThemeConstants.primaryBlue,
-                blurRadius: 20,
-                spreadRadius: 8,
-                offset: const Offset(0, 6),
-              ),
+              if (lift)
+                BoxShadow(
+                  color: ThemeConstants.primaryBlue,
+                  blurRadius: 20,
+                  spreadRadius: 8,
+                  offset: const Offset(0, 6),
+                ),
             ],
           ),
         ),
@@ -45,7 +49,10 @@ class SectionGlowDivider extends StatelessWidget {
 /// The same glowing line stood upright, between two fields side by side. Its glow is only the cyan one: the dark
 /// lift the horizontal line has would lie over the fields on either side.
 class SectionGlowVerticalDivider extends StatelessWidget {
-  const SectionGlowVerticalDivider({super.key});
+  const SectionGlowVerticalDivider({super.key, this.core});
+
+  /// The colour of the line's bright middle (white when null, which is for dark pages; a darker one shows on a white one).
+  final Color? core;
 
   /// How wide the line is; the glow spreads beyond it.
   static const double lineWidth = 2.5;
@@ -59,7 +66,7 @@ class SectionGlowVerticalDivider extends StatelessWidget {
             colors: <Color>[
               Colors.transparent,
               Colors.cyanAccent.withOpacity(0.5),
-              Colors.white.withOpacity(0.7),
+              core ?? Colors.white.withOpacity(0.7),
               Colors.cyanAccent.withOpacity(0.5),
               Colors.transparent,
             ],
