@@ -200,6 +200,31 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         return response()->json(['data' => ['customer_id' => $id, 'customer_name' => $customer->name, 'debt' => CustomerDebt::summary($id)]]);
     }
 
+    /**
+     * One customer's whole account on one page: the old debt, the new debt and the total, every old debt and every credit sale with the
+     * payments made on it, and all the payments together by date.
+     */
+    #[OA\Get(
+        path: '/inventory/credit/customers/{id}/account',
+        summary: 'The whole account of one customer',
+        security: [['bearerAuth' => []]],
+        tags: ['Inventory / Credit'],
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))],
+        responses: [new OA\Response(response: 200, description: 'Success')],
+    )]
+    public function account(int $id)
+    {
+        $customer = DB::table('inventory_customers')->find($id);
+        if (! $customer) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+
+        return response()->json(['data' => ['customer' => [
+            'id' => (int) $customer->id, 'name' => $customer->name, 'phone' => $customer->phone,
+            'credit_limit' => (float) $customer->credit_limit, 'is_blocked' => (bool) $customer->is_blocked,
+        ]] + CustomerDebt::account($id)]);
+    }
+
     /** Opening balance, the period's transactions, closing balance. */
     #[OA\Get(
         path: '/inventory/credit/customers/{id}/statement',

@@ -127,3 +127,138 @@ class CustomerDebtSummary {
           totalLeft: totalLeft + credit,
         );
 }
+
+/// One payment on a customer's debt: made on an old debt (from before the app) or on a credit sale.
+@immutable
+class AccountPayment {
+  const AccountPayment({required this.id, required this.amount, required this.paidOn, this.method, this.reference, this.isOld = false, this.label = ''});
+
+  factory AccountPayment.fromJson(final Map<String, dynamic> j) => AccountPayment(
+        id: _num(j['id']).toInt(),
+        amount: _num(j['amount']),
+        method: j['method']?.toString(),
+        reference: j['reference']?.toString(),
+        paidOn: (j['paid_on'] ?? '').toString(),
+        isOld: j['kind'] == 'old',
+        label: (j['label'] ?? '').toString(),
+      );
+
+  final int id;
+  final double amount;
+  final String paidOn;
+  final String? method;
+  final String? reference;
+
+  /// Made on an old debt (true) or on a credit sale (false).
+  final bool isOld;
+
+  /// What it was paid on: the old debt's note, or the sale's number (only in the one list of all payments).
+  final String label;
+}
+
+/// An old debt with the payments made on it.
+@immutable
+class OldDebtRecord {
+  const OldDebtRecord({required this.id, required this.amount, required this.paid, required this.left, this.startedOn = '', this.dueOn, this.note, this.payments = const <AccountPayment>[]});
+
+  factory OldDebtRecord.fromJson(final Map<String, dynamic> j) => OldDebtRecord(
+        id: _num(j['id']).toInt(),
+        amount: _num(j['amount']),
+        paid: _num(j['paid']),
+        left: _num(j['left']),
+        startedOn: (j['started_on'] ?? '').toString(),
+        dueOn: j['due_on']?.toString(),
+        note: j['note']?.toString(),
+        payments: _payments(j['payments']),
+      );
+
+  final int id;
+  final double amount;
+  final double paid;
+  final double left;
+  final String startedOn;
+  final String? dueOn;
+  final String? note;
+  final List<AccountPayment> payments;
+}
+
+/// A credit sale with the payments made on it.
+@immutable
+class CreditSaleRecord {
+  const CreditSaleRecord({required this.id, required this.number, required this.total, required this.paid, required this.left, this.paymentStatus = 'debt', this.dueDate, this.createdAt = '', this.payments = const <AccountPayment>[]});
+
+  factory CreditSaleRecord.fromJson(final Map<String, dynamic> j) => CreditSaleRecord(
+        id: _num(j['id']).toInt(),
+        number: (j['number'] ?? '').toString(),
+        total: _num(j['total']),
+        paid: _num(j['paid']),
+        left: _num(j['left']),
+        paymentStatus: (j['payment_status'] ?? 'debt').toString(),
+        dueDate: j['due_date']?.toString(),
+        createdAt: (j['created_at'] ?? '').toString(),
+        payments: _payments(j['payments']),
+      );
+
+  final int id;
+  final String number;
+  final double total;
+  final double paid;
+  final double left;
+  final String paymentStatus;
+  final String? dueDate;
+  final String createdAt;
+  final List<AccountPayment> payments;
+
+  bool get isPaidOff => left <= 0;
+}
+
+List<AccountPayment> _payments(final Object? raw) => <AccountPayment>[
+      for (final Object? e in (raw is List ? raw : const <Object?>[])) if (e is Map) AccountPayment.fromJson(Map<String, dynamic>.from(e)),
+    ];
+
+/// One customer's whole account: the three-part summary, every old debt and every credit sale with its payments, and all the payments
+/// together, newest first.
+@immutable
+class CustomerAccount {
+  const CustomerAccount({
+    required this.name,
+    required this.debt,
+    this.phone = '',
+    this.oldDebts = const <OldDebtRecord>[],
+    this.creditSales = const <CreditSaleRecord>[],
+    this.payments = const <AccountPayment>[],
+    this.paidOld = 0,
+    this.paidNew = 0,
+    this.paidAll = 0,
+  });
+
+  factory CustomerAccount.fromJson(final Map<String, dynamic> j) {
+    final Map<String, dynamic> customer = j['customer'] is Map ? Map<String, dynamic>.from(j['customer'] as Map) : <String, dynamic>{};
+    final Map<String, dynamic> paid = j['paid_by_payments'] is Map ? Map<String, dynamic>.from(j['paid_by_payments'] as Map) : <String, dynamic>{};
+    return CustomerAccount(
+      name: (customer['name'] ?? '').toString(),
+      phone: (customer['phone'] ?? '').toString(),
+      debt: CustomerDebtSummary.fromJson(j['debt'] is Map ? Map<String, dynamic>.from(j['debt'] as Map) : <String, dynamic>{}),
+      oldDebts: <OldDebtRecord>[
+        for (final Object? e in (j['old_debts'] is List ? j['old_debts'] as List : const <Object?>[])) if (e is Map) OldDebtRecord.fromJson(Map<String, dynamic>.from(e)),
+      ],
+      creditSales: <CreditSaleRecord>[
+        for (final Object? e in (j['credit_sales'] is List ? j['credit_sales'] as List : const <Object?>[])) if (e is Map) CreditSaleRecord.fromJson(Map<String, dynamic>.from(e)),
+      ],
+      payments: _payments(j['payments']),
+      paidOld: _num(paid['old']),
+      paidNew: _num(paid['new']),
+      paidAll: _num(paid['all']),
+    );
+  }
+
+  final String name;
+  final String phone;
+  final CustomerDebtSummary debt;
+  final List<OldDebtRecord> oldDebts;
+  final List<CreditSaleRecord> creditSales;
+  final List<AccountPayment> payments;
+  final double paidOld;
+  final double paidNew;
+  final double paidAll;
+}

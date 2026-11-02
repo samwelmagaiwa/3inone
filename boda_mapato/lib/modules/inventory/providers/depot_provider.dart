@@ -440,6 +440,18 @@ class DepotProvider extends ChangeNotifier {
   }
 
   /// Returns the unpaid sales for a customer (debt + partial), newest first.
+  /// One customer's whole account: the three parts, every old debt and credit sale with its payments, and all payments by date.
+  /// Null when it could not be loaded.
+  Future<CustomerAccount?> fetchCustomerAccount(int customerId) async {
+    try {
+      final Map<String, dynamic> res = await _api.get('/inventory/credit/customers/$customerId/account');
+      final Object? data = res['data'];
+      return data is Map ? CustomerAccount.fromJson(Map<String, dynamic>.from(data)) : null;
+    } on Exception {
+      return null;
+    }
+  }
+
   /// What the customer owes in three parts (the old debt, the new debt, and the total of both), with the debts still to be paid.
   /// Null when it could not be loaded, which is different from "they owe nothing".
   Future<CustomerDebtSummary?> fetchCustomerDebtSummary(int customerId) async {

@@ -415,6 +415,10 @@ class _LoginScreenState extends State<LoginScreen> {
   static const Color _blue = Color(0xFF1450D6);
   static const Color _gold = Color(0xFFFFC21A);
   static const Color _ink = Color(0xFF14264F);
+
+  /// The colour of the page right where "Smart Access. One Platform." is: the two sections (the services and the sign-in card) are this
+  /// colour, so they sit in the page instead of lying on it as white boards. The fields inside them stay white.
+  static const Color _sectionFill = Color(0xFFD9E8FF);
   static const String _rememberedKey = 'login_remembered_email';
 
   bool _remember = true;
@@ -605,7 +609,7 @@ class _LoginScreenState extends State<LoginScreen> {
       margin: EdgeInsets.fromLTRB(14.w, 6.h, 14.w, 0),
       padding: EdgeInsets.symmetric(vertical: 8.h),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _sectionFill,
         borderRadius: BorderRadius.circular(26.r),
         boxShadow: <BoxShadow>[BoxShadow(color: _navy.withValues(alpha: 0.30), blurRadius: 18, offset: const Offset(0, 8))],
       ),
@@ -643,7 +647,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _card(final LocalizationService loc, final bool signUp, final bool confirm) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.96),
+        color: _sectionFill,
         borderRadius: BorderRadius.circular(26.r),
         boxShadow: <BoxShadow>[BoxShadow(color: _navy.withValues(alpha: 0.28), blurRadius: 22, offset: const Offset(0, 10))],
       ),

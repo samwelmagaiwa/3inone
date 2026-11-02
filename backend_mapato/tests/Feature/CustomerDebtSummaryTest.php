@@ -215,6 +215,37 @@ class CustomerDebtSummaryTest extends TestCase
         $this->assertSame([], collect($this->api('GET', '/api/inventory/credit/debtors-ageing')->json('data'))->where('customer_id', $this->customer)->values()->all());
     }
 
+    public function test_the_account_page_has_every_old_debt_and_credit_sale_with_its_payments_and_all_payments_together(): void
+    {
+        $ids = $this->theStory();
+
+        $a = $this->api('GET', "/api/inventory/credit/customers/{$this->customer}/account")->assertOk()->json('data');
+
+        $this->assertSame('Mama Mary', $a['customer']['name']);
+        $this->assertEquals(280000, $a['debt']['total']['left'], 'the same three-part summary');
+
+        $this->assertCount(1, $a['old_debts']);
+        $this->assertEquals([350000, 100000, 250000], [$a['old_debts'][0]['amount'], $a['old_debts'][0]['paid'], $a['old_debts'][0]['left']]);
+        $this->assertEquals([100000], array_column($a['old_debts'][0]['payments'], 'amount'), 'the old debt keeps its own payments');
+
+        $bySale = collect($a['credit_sales'])->keyBy('id');
+        $this->assertCount(2, $bySale, 'the open sale and the one paid off; the cancelled one is not here');
+        $this->assertFalse($bySale->has($ids['c']));
+        $this->assertEquals([20000], array_column($bySale[$ids['a']]['payments'], 'amount'));
+        $this->assertSame('paid', $bySale[$ids['b']]['payment_status']);
+        $this->assertEquals([30000], array_column($bySale[$ids['b']]['payments'], 'amount'));
+
+        $this->assertCount(3, $a['payments'], 'one list: the old payment and the two on sales');
+        $this->assertEqualsCanonicalizing(['old', 'new', 'new'], array_column($a['payments'], 'kind'));
+        $this->assertEquals([100000, 50000, 150000], [$a['paid_by_payments']['old'], $a['paid_by_payments']['new'], $a['paid_by_payments']['all']]);
+        $this->assertEquals($a['debt']['total']['paid'], $a['paid_by_payments']['all'], 'the payments add up to what the summary says was paid');
+    }
+
+    public function test_the_account_of_an_unknown_customer_is_not_found(): void
+    {
+        $this->api('GET', '/api/inventory/credit/customers/999999/account')->assertStatus(404);
+    }
+
     public function test_an_unknown_customer_is_not_found(): void
     {
         $this->api('GET', '/api/inventory/credit/customers/999999/debt-summary')->assertStatus(404);

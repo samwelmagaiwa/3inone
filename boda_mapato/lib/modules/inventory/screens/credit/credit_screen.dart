@@ -1,4 +1,5 @@
-﻿import 'customer_report_screen.dart';
+﻿import 'customer_account_screen.dart';
+import 'customer_report_screen.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -239,6 +240,23 @@ class _CreditCustomerCard extends StatelessWidget {
                 ),
               ),
             ],
+            SizedBox(height: 8.h),
+            // The whole account on one page: old debt, new debt, total, every debt with its payments, and all payments by date.
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: ValueKey<String>('customer_account_${customer.id}'),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: ThemeConstants.warningAmber.withValues(alpha: 0.14),
+                  side: BorderSide(color: ThemeConstants.warningAmber.withValues(alpha: 0.7)),
+                  padding: EdgeInsets.symmetric(vertical: 10.h),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                ),
+                onPressed: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => CustomerAccountScreen(customer: customer))),
+                icon: Icon(Icons.account_balance_wallet_outlined, size: 18.sp, color: ThemeConstants.warningAmber),
+                label: Text(loc.translate('cd_account_title'), style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700, fontSize: 13.sp)),
+              ),
+            ),
             SizedBox(height: 8.h),
             // Everything about this customer for any week, month or year: bought, paid, profit brought, what they owe.
             SizedBox(

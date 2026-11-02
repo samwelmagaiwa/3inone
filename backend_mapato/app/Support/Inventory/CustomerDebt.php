@@ -87,6 +87,68 @@ final class CustomerDebt
         ];
     }
 
+    /**
+     * The whole account of one customer: the three-part summary, every old debt with the payments made on it, every credit sale (open or
+     * paid off, not cancelled) with the payments made on it, and ONE list of all the payments, old and new together, newest first.
+     *
+     * @return array<string, mixed>
+     */
+    public static function account(int $customerId): array
+    {
+        $oldRows = OpeningDebts::active()
+            ? DB::table('inventory_opening_debts')->where('kind', OpeningDebts::RECEIVABLE)->where('customer_id', $customerId)->orderBy('started_on')->orderBy('id')->get()
+            : collect();
+        $oldPayments = $oldRows->isEmpty() ? collect() : DB::table('inventory_opening_payments')->whereIn('debt_id', $oldRows->pluck('id'))->orderBy('paid_on')->orderBy('id')->get()->groupBy('debt_id');
+
+        $saleRows = self::creditSales($customerId)->orderBy('s.created_at')->orderBy('s.id')
+            ->get(['s.id', 's.number', 's.total', 's.paid_total', 's.payment_status', 's.due_date', 's.created_at']);
+        $salePayments = $saleRows->isEmpty() ? collect() : DB::table('inventory_sale_payments')->whereIn('sale_id', $saleRows->pluck('id'))->orderBy('paid_at')->orderBy('id')->get()->groupBy('sale_id');
+
+        $timeline = [];
+        $oldDebts = $oldRows->map(function ($d) use ($oldPayments, &$timeline) {
+            $payments = ($oldPayments[$d->id] ?? collect())->map(function ($p) use ($d, &$timeline) {
+                $row = ['id' => (int) $p->id, 'amount' => (float) $p->amount, 'method' => $p->method, 'reference' => $p->note, 'paid_on' => (string) $p->paid_on];
+                $timeline[] = $row + ['kind' => 'old', 'label' => $d->note ?: 'Old debt'];
+
+                return $row;
+            })->values()->all();
+
+            return [
+                'id' => (int) $d->id, 'amount' => (float) $d->amount, 'paid' => (float) $d->paid_amount,
+                'left' => round((float) $d->amount - (float) $d->paid_amount, 2),
+                'started_on' => (string) $d->started_on, 'due_on' => $d->due_on === null ? null : (string) $d->due_on,
+                'note' => $d->note, 'payments' => $payments,
+            ];
+        })->values()->all();
+
+        $creditSales = $saleRows->map(function ($s) use ($salePayments, &$timeline) {
+            $payments = ($salePayments[$s->id] ?? collect())->map(function ($p) use ($s, &$timeline) {
+                $row = ['id' => (int) $p->id, 'amount' => (float) $p->amount, 'method' => $p->method_extended ?: $p->method, 'reference' => $p->reference, 'paid_on' => substr((string) $p->paid_at, 0, 10)];
+                $timeline[] = $row + ['kind' => 'new', 'label' => (string) $s->number];
+
+                return $row;
+            })->values()->all();
+
+            return [
+                'id' => (int) $s->id, 'number' => (string) $s->number, 'total' => (float) $s->total, 'paid' => (float) $s->paid_total,
+                'left' => round((float) $s->total - (float) $s->paid_total, 2), 'payment_status' => (string) $s->payment_status,
+                'due_date' => $s->due_date === null ? null : (string) $s->due_date, 'created_at' => (string) $s->created_at, 'payments' => $payments,
+            ];
+        })->values()->all();
+
+        usort($timeline, fn ($a, $b) => [$b['paid_on'], $b['id']] <=> [$a['paid_on'], $a['id']]);
+        $paidOld = round((float) array_sum(array_column(array_filter($timeline, fn ($p) => $p['kind'] === 'old'), 'amount')), 2);
+        $paidNew = round((float) array_sum(array_column(array_filter($timeline, fn ($p) => $p['kind'] === 'new'), 'amount')), 2);
+
+        return [
+            'debt' => self::summary($customerId),
+            'old_debts' => $oldDebts,
+            'credit_sales' => $creditSales,
+            'payments' => $timeline,
+            'paid_by_payments' => ['old' => $paidOld, 'new' => $paidNew, 'all' => round($paidOld + $paidNew, 2)],
+        ];
+    }
+
     /** All that is left to pay, old and new together. */
     public static function left(int $customerId): float
     {
