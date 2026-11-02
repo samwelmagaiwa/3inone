@@ -648,6 +648,19 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  /// [text] in the middle with a line running out from each side of it: how the title, what it is for, and "or sign in with" are set.
+  Widget _lined({required final String text, required final TextStyle style, required final double gap, final Key? key}) {
+    final Widget line = Expanded(child: Divider(color: _navy.withValues(alpha: 0.5), height: 1));
+    return Row(
+      key: key,
+      children: <Widget>[
+        line,
+        Flexible(flex: 4, child: Padding(padding: EdgeInsets.symmetric(horizontal: gap), child: Text(text, textAlign: TextAlign.center, style: style))),
+        line,
+      ],
+    );
+  }
+
   /// The white card: the title and what it is for, the fields, the buttons.
   Widget _card(final LocalizationService loc, final bool signUp, final bool confirm, final double minHeight) {
     return Container(
@@ -660,18 +673,16 @@ class _LoginScreenState extends State<LoginScreen> {
         children: <Widget>[
           AnimatedSwitcher(
             duration: _anim,
-            child: Row(
+            child: _lined(
               key: ValueKey<String>('login_title_${_step.name}'),
-              children: <Widget>[
-                Container(width: 5.w, height: 26.h, decoration: BoxDecoration(color: _blue, borderRadius: BorderRadius.circular(3.r))),
-                SizedBox(width: 8.w),
-                Flexible(child: Text(loc.translate(confirm ? 'confirm_phone_title' : (signUp ? 'sign_up' : 'signin')), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: _navy, fontSize: 24.sp, fontWeight: FontWeight.w900))),
-              ],
+              text: loc.translate(confirm ? 'confirm_phone_title' : (signUp ? 'sign_up' : 'signin')),
+              style: TextStyle(color: _navy, fontSize: 24.sp, fontWeight: FontWeight.w900),
+              gap: 12.w,
             ),
           ),
           if (_step == _Step.signIn) ...<Widget>[
             SizedBox(height: 2.h),
-            Text(loc.translate('signin_subtitle'), key: const ValueKey<String>('signin_subtitle'), style: TextStyle(color: _ink, fontSize: 12.sp)),
+            _lined(key: const ValueKey<String>('signin_subtitle'), text: loc.translate('signin_subtitle'), style: TextStyle(color: _ink, fontSize: 12.sp), gap: 8.w),
           ],
           SizedBox(height: 10.h),
           AnimatedSize(
@@ -685,16 +696,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           if (!confirm) ...<Widget>[
             SizedBox(height: 10.h),
-            Row(
-              children: <Widget>[
-                Expanded(child: Divider(color: _navy.withValues(alpha: 0.5), height: 1)),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w),
-                  child: Text(loc.translate('or_sign_in_with').toUpperCase(), style: TextStyle(color: _navy, fontSize: 10.sp, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
-                ),
-                Expanded(child: Divider(color: _navy.withValues(alpha: 0.5), height: 1)),
-              ],
-            ),
+            _lined(text: loc.translate('or_sign_in_with').toUpperCase(), style: TextStyle(color: _navy, fontSize: 10.sp, fontWeight: FontWeight.w800, letterSpacing: 0.6), gap: 10.w),
             SizedBox(height: 10.h),
             _GoogleButton(label: loc.translate('sign_in_with_google').toUpperCase(), onTap: _handleGoogle),
           ],
