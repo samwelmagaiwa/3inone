@@ -23,7 +23,7 @@ Route::get('/', function () {
 
 // Public pages Google asks for before an app may be published (home page, privacy policy, terms). Plain, static, no session.
 foreach (['about' => 'legal.about', 'privacy' => 'legal.privacy', 'terms' => 'legal.terms'] as $path => $view) {
-    Route::get('/' . $path, fn () => response()->view($view)->header('Cache-Control', 'public, max-age=3600'))
+    Route::get('/' . $path, fn () => response()->view($view)->header('Cache-Control', 'public, max-age=300'))
         ->withoutMiddleware([
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
