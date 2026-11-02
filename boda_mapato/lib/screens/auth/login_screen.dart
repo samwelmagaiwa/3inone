@@ -417,9 +417,6 @@ class _LoginScreenState extends State<LoginScreen> {
   static const Color _gold = Color(0xFFFFC21A);
   static const Color _ink = Color(0xFF14264F);
 
-  /// The colour of the page right where "Smart Access. One Platform." is: the two sections (the services and the sign-in card) are this
-  /// colour, so they sit in the page instead of lying on it as white boards. The fields inside them stay white.
-  static const Color _sectionFill = Color(0xFFD9E8FF);
   static const String _rememberedKey = 'login_remembered_email';
 
   bool _remember = true;
@@ -505,10 +502,16 @@ class _LoginScreenState extends State<LoginScreen> {
             SafeArea(
               child: Column(
                 children: <Widget>[
+                  Expanded(
+                    child: DecoratedBox(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: <Color>[Color(0xFFF4F9FF), Color(0xFFDCE9FF), Color(0xFFC4D8FF)]),
+                      ),
+                      child: Column(
+                        children: <Widget>[
                   _hero(),
                   const SectionGlowDivider(key: ValueKey<String>('divider_hero'), lift: false),
                   _services(loc),
-                  SizedBox(height: 3.h),
                   const SectionGlowDivider(key: ValueKey<String>('divider_services'), lift: false),
                   // The card takes what is left. Signing in fits without scrolling; the longer sign-up form scrolls inside it, between
                   // the fixed top and bottom.
@@ -525,12 +528,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               opacity: _isLoading ? 0.4 : 1.0,
                               duration: const Duration(milliseconds: 300),
                               child: Padding(
-                                padding: EdgeInsets.fromLTRB(16.w, 3.h, 16.w, 3.h),
-                                child: _card(loc, signUp, confirm, box.maxHeight - 6.h),
+                                padding: EdgeInsets.zero,
+                                child: _card(loc, signUp, confirm, box.maxHeight),
                               ),
                             ),
                           ),
                         ),
+                      ),
+                    ),
+                  ),
+                        ],
                       ),
                     ),
                   ),
@@ -606,13 +613,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _services(final LocalizationService loc) {
     return Container(
       key: const ValueKey<String>('service_art'),
-      margin: EdgeInsets.fromLTRB(14.w, 2.h, 14.w, 0),
-      padding: EdgeInsets.symmetric(vertical: 8.h),
-      decoration: BoxDecoration(
-        color: _sectionFill,
-        borderRadius: BorderRadius.circular(26.r),
-        boxShadow: <BoxShadow>[BoxShadow(color: _navy.withValues(alpha: 0.18), blurRadius: 8, offset: const Offset(0, 2))],
-      ),
+      padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -648,12 +649,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       constraints: BoxConstraints(minHeight: minHeight),
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: _sectionFill,
-        borderRadius: BorderRadius.circular(26.r),
-        boxShadow: <BoxShadow>[BoxShadow(color: _navy.withValues(alpha: 0.18), blurRadius: 8, offset: const Offset(0, 2))],
-      ),
-      padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 14.h),
+      padding: EdgeInsets.fromLTRB(24.w, 12.h, 24.w, 14.h),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
