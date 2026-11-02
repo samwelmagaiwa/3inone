@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// The four services of the app as small flat pictures: stacked boxes (shop and depot), a house (rentals), scissors and a comb (salon)
-/// and a bajaji with a pikipiki (transport). Used on the sign-in page and in the loading ring that turns around them.
+/// and a pikipiki with a bajaji (transport). Used on the sign-in page and in the loading ring that turns around them.
 // Each is drawn in a 100 x 100 box, flat, in the colours of its service.
 
 abstract class ServiceArtPainter extends CustomPainter {
@@ -84,48 +84,21 @@ class SalonArtPainter extends ServiceArtPainter {
   }
 }
 
-/// A bajaji (three-wheeler) with a pikipiki (motorbike) beside it: transport.
+/// A pikipiki (motorbike) and a bajaji (three-wheeler) side by side, the same size: transport.
 class BikeArtPainter extends ServiceArtPainter {
   const BikeArtPainter();
 
   @override
   void art(final Canvas canvas) {
     const Color dark = Color(0xFF111827);
-    const Color gold = Color(0xFFF59E0B);
-    const Color blue = Color(0xFF1D4ED8);
+    const Color blue = Color(0xFF2563EB);
+    const Color navy = Color(0xFF1E3A8A);
+    const Color glass = Color(0xFFBFDBFE);
 
-    // the bajaji, on the left: a blue canopy over a yellow body, one wheel in front and one behind
-    final Path body = Path()
-      ..moveTo(6, 74)
-      ..lineTo(6, 44)
-      ..lineTo(46, 44)
-      ..lineTo(58, 62)
-      ..lineTo(62, 62)
-      ..lineTo(62, 74)
-      ..close();
-    canvas.drawPath(body, _fill(gold));
-    final Path roof = Path()
-      ..moveTo(4, 46)
-      ..quadraticBezierTo(4, 30, 22, 30)
-      ..lineTo(40, 30)
-      ..quadraticBezierTo(46, 30, 48, 38)
-      ..lineTo(50, 46)
-      ..close();
-    canvas.drawPath(roof, _fill(blue));
-    // windows and the passenger seat
-    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(10, 48, 20, 12), const Radius.circular(3)), _fill(const Color(0xFFBFDBFE)));
-    canvas.drawPath(Path()..moveTo(34, 48)..lineTo(44, 48)..lineTo(52, 60)..lineTo(34, 60)..close(), _fill(const Color(0xFFBFDBFE)));
-    canvas.drawLine(const Offset(8, 66), const Offset(60, 66), _line(blue, 2.5));
-    canvas.drawCircle(const Offset(61, 58), 3, _fill(const Color(0xFFFCD34D)));
-    for (final Offset hub in const <Offset>[Offset(18, 76), Offset(52, 76)]) {
-      canvas.drawCircle(hub, 9, _fill(dark));
-      canvas.drawCircle(hub, 4, _fill(const Color(0xFFE5E7EB)));
-    }
-
-    // the pikipiki, smaller, in front of it on the right
+    // the pikipiki, on the left
     canvas.save();
-    canvas.translate(54, 44);
-    canvas.scale(0.5);
+    canvas.translate(-4, 36);
+    canvas.scale(0.58);
     for (final Offset hub in const <Offset>[Offset(25, 70), Offset(77, 70)]) {
       canvas.drawCircle(hub, 15, _line(dark, 6));
       canvas.drawCircle(hub, 8, _line(const Color(0xFF9CA3AF), 2));
@@ -140,12 +113,27 @@ class BikeArtPainter extends ServiceArtPainter {
       ..moveTo(40, 52)
       ..lineTo(48, 70)
       ..lineTo(25, 70);
-    canvas.drawPath(frame, _line(const Color(0xFFEF4444), 6));
+    canvas.drawPath(frame, _line(const Color(0xFFF59E0B), 6));
     canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(31, 44, 24, 8), const Radius.circular(3)), _fill(dark));
-    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(52, 40, 18, 10), const Radius.circular(4)), _fill(const Color(0xFF16A34A)));
+    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(52, 40, 18, 10), const Radius.circular(4)), _fill(const Color(0xFF1D4ED8)));
     canvas.drawLine(const Offset(70, 56), const Offset(68, 34), _line(dark, 4));
     canvas.drawLine(const Offset(62, 33), const Offset(77, 33), _line(dark, 4));
     canvas.drawCircle(const Offset(80, 42), 5, _fill(const Color(0xFFFCD34D)));
+    canvas.drawLine(const Offset(40, 68), const Offset(8, 74), _line(const Color(0xFF9CA3AF), 4));
     canvas.restore();
+
+    // the bajaji, on the right: a blue body under a canopy, one wheel in front and one behind
+    canvas.drawRRect(RRect.fromRectAndCorners(const Rect.fromLTWH(52, 60, 46, 17), topLeft: const Radius.circular(5), topRight: const Radius.circular(9), bottomLeft: const Radius.circular(4), bottomRight: const Radius.circular(5)), _fill(blue));
+    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(56, 47, 31, 14), const Radius.circular(3)), _fill(glass));
+    canvas.drawPath(Path()..moveTo(87, 47)..lineTo(95, 60)..lineTo(87, 60)..close(), _fill(glass));
+    canvas.drawLine(const Offset(55, 34), const Offset(55, 60), _line(navy, 2.5));
+    canvas.drawLine(const Offset(87, 34), const Offset(87, 47), _line(navy, 2.5));
+    canvas.drawRRect(RRect.fromRectAndCorners(const Rect.fromLTWH(50, 29, 42, 8), topLeft: const Radius.circular(9), topRight: const Radius.circular(9), bottomLeft: const Radius.circular(2), bottomRight: const Radius.circular(2)), _fill(navy));
+    canvas.drawCircle(const Offset(97, 66), 3, _fill(const Color(0xFFFCD34D)));
+    canvas.drawLine(const Offset(52, 68), const Offset(98, 68), _line(navy, 2));
+    for (final Offset hub in const <Offset>[Offset(63, 78), Offset(88, 78)]) {
+      canvas.drawCircle(hub, 8, _fill(dark));
+      canvas.drawCircle(hub, 3.5, _fill(const Color(0xFFE5E7EB)));
+    }
   }
 }
