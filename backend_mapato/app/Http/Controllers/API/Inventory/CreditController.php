@@ -197,7 +197,11 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             return response()->json(['message' => 'Not found'], 404);
         }
 
-        $from = $request->query('from', now()->startOfMonth()->toDateString());
+        // Asked with NO dates (the "Receive payment" list does) it is the customer's whole history: a debt from last month is still a
+        // debt, and must stay on the list to be paid. A statement that names a period (either end) gets exactly that period, from the
+        // start of this month when only the end is given.
+        $hasPeriod = $request->hasAny(['from', 'to']);
+        $from = $request->query('from', $hasPeriod ? now()->startOfMonth()->toDateString() : '1970-01-01');
         $to = $request->query('to', now()->toDateString());
 
         $openingCharges = (float) DB::table('inventory_sales')

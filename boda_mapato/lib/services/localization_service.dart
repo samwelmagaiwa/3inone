@@ -1089,6 +1089,8 @@ class AppLocalizations {
       'place_type_instead': 'Not in the list? Type it',
       'place_choose_from_list': 'Choose from the list',
       'place_no_match': 'Nothing matches. Type the place instead.',
+      'receive_payment_load_failed': "Could not load this customer's debts. Check the connection and try again.",
+      'receive_old_debt_note': 'TSH {0} of what this customer owes is an old debt from before the app. Receive it under Money & debts, in Debts.',
       'welcome_back': 'Welcome Back',
       'signin_subtitle': 'Sign in to continue to your account',
 
@@ -3783,6 +3785,8 @@ class AppLocalizations {
       'place_type_instead': 'Haipo kwenye orodha? Iandike',
       'place_choose_from_list': 'Chagua kwenye orodha',
       'place_no_match': 'Hakuna kinacholingana. Andika mahali pako.',
+      'receive_payment_load_failed': 'Imeshindikana kupakia madeni ya mteja huyu. Angalia mtandao kisha jaribu tena.',
+      'receive_old_debt_note': 'TSH {0} ya deni la mteja huyu ni deni la zamani (kabla ya programu). Lipokee kwenye Pesa na madeni, sehemu ya Madeni.',
       'welcome_back': 'Karibu Tena',
       'signin_subtitle': 'Ingia ili kuendelea kwenye akaunti yako',
 

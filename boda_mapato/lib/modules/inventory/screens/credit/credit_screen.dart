@@ -439,6 +439,7 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
   String _method = 'cash';
   bool _loading = true;
   bool _saving = false;
+  bool _failed = false;
 
   // Each unpaid sale gets its own amount controller + selected flag
   List<Map<String, dynamic>> _sales = [];
@@ -452,18 +453,49 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
   }
 
   Future<void> _loadSales() async {
-    final sales = await context
+    setState(() {
+      _loading = true;
+      _failed = false;
+    });
+    final List<Map<String, dynamic>>? sales = await context
         .read<DepotProvider>()
         .fetchCustomerDebtSales(widget.customer.id);
     if (!mounted) return;
-    for (final _ in sales) {
+    for (final TextEditingController c in _amountCtrls) {
+      c.dispose();
+    }
+    _amountCtrls.clear();
+    _selected.clear();
+    for (final _ in sales ?? const <Map<String, dynamic>>[]) {
       _amountCtrls.add(TextEditingController());
       _selected.add(false);
     }
     setState(() {
-      _sales = sales;
+      _sales = sales ?? <Map<String, dynamic>>[];
+      _failed = sales == null;
       _loading = false;
     });
+  }
+
+  /// What the customer owes that is NOT a sale (an old debt from before the app): it is received under Money & debts, so say so
+  /// instead of leaving a figure that cannot be paid from here.
+  Widget _oldDebtNote() {
+    final double old = widget.customer.oldBalance;
+    if (old <= 0) return const SizedBox.shrink();
+    return Container(
+      key: const ValueKey<String>('old_debt_note'),
+      margin: EdgeInsets.only(top: 10.h),
+      padding: EdgeInsets.all(10.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(color: ThemeConstants.invBorder),
+      ),
+      child: Text(
+        LocalizationService.instance.translateWith('receive_old_debt_note', <Object?>[old.toStringAsFixed(0)]),
+        style: ThemeConstants.captionStyle.copyWith(color: Colors.white70),
+      ),
+    );
   }
 
   @override
@@ -560,6 +592,7 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
             ],
           ),
         ),
+        _oldDebtNote(),
         SizedBox(height: 14.h),
 
         // Debt list
@@ -567,6 +600,25 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(child: CircularProgressIndicator(color: Colors.white54)),
+          )
+        else if (_failed)
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 12.h),
+            child: Column(
+              children: <Widget>[
+                Text(
+                  LocalizationService.instance.translate('receive_payment_load_failed'),
+                  key: const ValueKey<String>('debts_load_failed'),
+                  style: ThemeConstants.captionStyle,
+                  textAlign: TextAlign.center,
+                ),
+                TextButton(
+                  key: const ValueKey<String>('debts_retry'),
+                  onPressed: _loadSales,
+                  child: Text(LocalizationService.instance.translate('retry')),
+                ),
+              ],
+            ),
           )
         else if (_sales.isEmpty)
           Padding(

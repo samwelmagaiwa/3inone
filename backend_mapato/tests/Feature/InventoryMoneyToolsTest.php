@@ -87,6 +87,28 @@ class InventoryMoneyToolsTest extends TestCase
 
     // ------------------------------------------------------------------ old debts
 
+    public function test_a_debt_from_an_earlier_month_is_still_on_the_list_to_pay_when_no_dates_are_given(): void
+    {
+        // The "Receive payment" list asks for a customer's statement with NO dates. It used to get only this month's sales, so on the
+        // first day of a new month every debt from the month before vanished from it and could not be paid.
+        $this->now('2026-11-05 10:00:00');
+        $owner = $this->shop();
+        $rice = $this->product($owner, 'Rice', 100, 600, 1000);
+        $customer = $this->customer($owner, 'Mama Mary', '0711000777');
+        $old = $this->sell($owner, $rice, 4, 1000, 600, $customer, 'debt', '2026-10-12');
+        $this->sell($owner, $rice, 1, 1000, 600, $customer, 'debt');
+
+        $listed = collect($this->api($owner, 'GET', "/api/inventory/credit/customers/{$customer}/statement")->assertOk()->json('data.sales'))->pluck('id')->all();
+
+        $this->assertContains($old, $listed, 'the October debt is still there in November');
+        $this->assertCount(2, $listed);
+
+        // a statement that names its own period still shows exactly that period
+        $october = $this->api($owner, 'GET', "/api/inventory/credit/customers/{$customer}/statement?from=2026-10-01&to=2026-10-31")->json('data.sales');
+        $this->assertSame([$old], collect($october)->pluck('id')->all());
+        $this->assertCount(1, $this->api($owner, 'GET', "/api/inventory/credit/customers/{$customer}/statement?from=2026-11-01&to=2026-11-30")->json('data.sales'));
+    }
+
     public function test_a_debt_a_customer_had_before_the_app_joins_every_debt_view_and_is_paid_in_parts(): void
     {
         $this->now();

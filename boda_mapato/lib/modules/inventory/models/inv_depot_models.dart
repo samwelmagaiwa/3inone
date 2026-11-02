@@ -193,6 +193,7 @@ class InvCreditCustomer {
     this.paymentTermsDays = 0,
     this.isBlocked = false,
     this.blockReason = '',
+    this.oldBalance = 0,
   });
 
   factory InvCreditCustomer.fromJson(Map<String, dynamic> j) =>
@@ -205,12 +206,16 @@ class InvCreditCustomer {
         paymentTermsDays: _toInt(j['payment_terms_days']),
         isBlocked: j['is_blocked'] == true || j['is_blocked'] == 1,
         blockReason: _toStr(j['block_reason']),
+        oldBalance: _toDouble(j['old_balance']),
       );
 
   final int id;
   final String name;
   final String phone;
   final double balance;
+
+  /// The part of [balance] that is an old debt (from before the app): paid under Money & debts, not against a sale.
+  final double oldBalance;
   final double creditLimit;
   final int paymentTermsDays;
   final bool isBlocked;
