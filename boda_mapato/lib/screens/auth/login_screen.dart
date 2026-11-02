@@ -680,10 +680,6 @@ class _LoginScreenState extends State<LoginScreen> {
               gap: 12.w,
             ),
           ),
-          if (_step == _Step.signIn) ...<Widget>[
-            SizedBox(height: 2.h),
-            _lined(key: const ValueKey<String>('signin_subtitle'), text: loc.translate('signin_subtitle'), style: TextStyle(color: _ink, fontSize: 12.sp), gap: 8.w),
-          ],
           SizedBox(height: 10.h),
           AnimatedSize(
             duration: _anim,
@@ -888,7 +884,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final bool toSignIn = confirm || signUp;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 8.h + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 4.h + MediaQuery.of(context).padding.bottom * 0.6),
       decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: <Color>[Color(0xFF0B3AA8), Color(0xFF061F66)])),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -919,9 +915,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
-          SizedBox(height: 8.h),
+          SizedBox(height: 6.h),
           Container(height: 1, margin: EdgeInsets.symmetric(horizontal: 30.w), decoration: BoxDecoration(gradient: LinearGradient(colors: <Color>[Colors.transparent, Colors.white.withValues(alpha: 0.35), Colors.transparent]))),
-          SizedBox(height: 7.h),
+          SizedBox(height: 5.h),
           Text.rich(
             key: const ValueKey<String>('legal_links'),
             TextSpan(
@@ -935,37 +931,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 8.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              _motto('Manage', Icons.tune_rounded, const Color(0xFF4ADE80)),
-              SizedBox(width: 8.w),
-              _motto('Operate', Icons.bolt_rounded, _gold),
-              SizedBox(width: 8.w),
-              _motto('Grow', Icons.trending_up_rounded, const Color(0xFF38BDF8)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// One word of "Manage, Operate, Grow" as a small glass chip with a coloured icon.
-  Widget _motto(final String word, final IconData icon, final Color color) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: color.withValues(alpha: 0.6)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 13.sp, color: color),
-          SizedBox(width: 4.w),
-          Text(word, style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
         ],
       ),
     );

@@ -110,24 +110,48 @@ void _pikipiki(final Canvas canvas) {
     canvas.drawLine(const Offset(40, 68), const Offset(8, 74), _line(const Color(0xFF9CA3AF), 4));
 }
 
-/// A bajaji (three-wheeler) in a 100 x 100 box, most of it in x 50 to 98.
+/// A bajaji (three-wheeler, the tuk-tuk) in a 100 x 100 box, most of it in x 46 to 98, facing right: a curved canopy over an open cabin,
+/// a slanted windscreen, handlebars and a headlight in front, a wheel at the front and one behind.
 void _bajaji(final Canvas canvas) {
   const Color dark = Color(0xFF111827);
   const Color blue = Color(0xFF2563EB);
   const Color navy = Color(0xFF1E3A8A);
   const Color glass = Color(0xFFBFDBFE);
-    canvas.drawRRect(RRect.fromRectAndCorners(const Rect.fromLTWH(52, 60, 46, 17), topLeft: const Radius.circular(5), topRight: const Radius.circular(9), bottomLeft: const Radius.circular(4), bottomRight: const Radius.circular(5)), _fill(blue));
-    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(56, 47, 31, 14), const Radius.circular(3)), _fill(glass));
-    canvas.drawPath(Path()..moveTo(87, 47)..lineTo(95, 60)..lineTo(87, 60)..close(), _fill(glass));
-    canvas.drawLine(const Offset(55, 34), const Offset(55, 60), _line(navy, 2.5));
-    canvas.drawLine(const Offset(87, 34), const Offset(87, 47), _line(navy, 2.5));
-    canvas.drawRRect(RRect.fromRectAndCorners(const Rect.fromLTWH(50, 29, 42, 8), topLeft: const Radius.circular(9), topRight: const Radius.circular(9), bottomLeft: const Radius.circular(2), bottomRight: const Radius.circular(2)), _fill(navy));
-    canvas.drawCircle(const Offset(97, 66), 3, _fill(const Color(0xFFFCD34D)));
-    canvas.drawLine(const Offset(52, 68), const Offset(98, 68), _line(navy, 2));
-    for (final Offset hub in const <Offset>[Offset(63, 78), Offset(88, 78)]) {
-      canvas.drawCircle(hub, 8, _fill(dark));
-      canvas.drawCircle(hub, 3.5, _fill(const Color(0xFFE5E7EB)));
-    }
+
+  // the body: a rounded cabin at the back and a nose sloping down to the front wheel
+  final Path body = Path()
+    ..moveTo(48, 58)
+    ..quadraticBezierTo(48, 52, 54, 52)
+    ..lineTo(80, 52)
+    ..lineTo(92, 60)
+    ..quadraticBezierTo(98, 62, 98, 70)
+    ..lineTo(98, 76)
+    ..lineTo(48, 76)
+    ..close();
+  canvas.drawPath(body, _fill(blue));
+  // the open cabin: the passenger seat seen between the pillars
+  canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(54, 38, 28, 14), const Radius.circular(3)), _fill(const Color(0xFFDBEAFE)));
+  canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(56, 44, 22, 8), const Radius.circular(3)), _fill(const Color(0xFF93C5FD)));
+  canvas.drawLine(const Offset(52, 36), const Offset(52, 52), _line(navy, 3));
+  canvas.drawLine(const Offset(83, 36), const Offset(90, 56), _line(navy, 3));
+  // the windscreen
+  canvas.drawPath(Path()..moveTo(83, 38)..lineTo(91, 54)..lineTo(85, 54)..close(), _fill(glass));
+  // the canopy
+  final Path roof = Path()
+    ..moveTo(46, 38)
+    ..quadraticBezierTo(46, 26, 60, 26)
+    ..lineTo(78, 26)
+    ..quadraticBezierTo(86, 26, 90, 38)
+    ..close();
+  canvas.drawPath(roof, _fill(navy));
+  // handlebar, headlight and the stripe along the side
+  canvas.drawLine(const Offset(88, 52), const Offset(94, 46), _line(dark, 3));
+  canvas.drawCircle(const Offset(97, 66), 3, _fill(const Color(0xFFFCD34D)));
+  canvas.drawLine(const Offset(50, 66), const Offset(94, 66), _line(const Color(0xFFFCD34D), 2));
+  for (final Offset hub in const <Offset>[Offset(62, 78), Offset(88, 78)]) {
+    canvas.drawCircle(hub, 9, _fill(dark));
+    canvas.drawCircle(hub, 4, _fill(const Color(0xFFE5E7EB)));
+  }
 }
 
 /// A pikipiki beside a bajaji, squeezed into a square (the loading ring).
@@ -166,7 +190,7 @@ class TransportArtPainter extends CustomPainter {
     _pikipiki(canvas);
     canvas.restore();
     canvas.save();
-    canvas.translate(14, -9);
+    canvas.translate(19, -9);
     canvas.scale(1.15);
     _bajaji(canvas);
     canvas.restore();
