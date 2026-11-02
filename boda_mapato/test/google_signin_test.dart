@@ -59,7 +59,9 @@ void main() {
     await t.tap(find.byKey(const ValueKey<String>('toggle_email_signin')));
     await t.pump();
     expect(find.byType(TextFormField), findsWidgets);
-    expect(find.text('Back to Google sign-in'), findsOneWidget);
+    expect(find.text('Sign in with email'), findsOneWidget, reason: 'the button stays; pressing it again hides the form');
+    expect(find.byKey(const ValueKey<String>('legal_links')), findsOneWidget);
+    expect(find.text('Sign in to continue'), findsOneWidget);
 
     await t.tap(find.byKey(const ValueKey<String>('toggle_email_signin')));
     await t.pump();

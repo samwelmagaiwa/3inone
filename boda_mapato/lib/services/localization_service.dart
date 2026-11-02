@@ -1056,6 +1056,11 @@ class AppLocalizations {
       'sign_in_with_email': 'Sign in with email',
       'back_to_google_signin': 'Back to Google sign-in',
       'or_word': 'or',
+      'signin_to_continue': 'Sign in to continue',
+      'by_continuing_you_accept': 'By continuing you accept the',
+      'terms_of_use': 'Terms of Use',
+      'privacy_policy': 'Privacy Policy',
+      'and_word': 'and the',
       'welcome_back': 'Welcome Back',
       'signin_subtitle': 'Sign in to continue to your account',
 
@@ -3717,6 +3722,11 @@ class AppLocalizations {
       'sign_in_with_email': 'Ingia kwa email',
       'back_to_google_signin': 'Rudi kwenye kuingia kwa Google',
       'or_word': 'au',
+      'signin_to_continue': 'Ingia ili uendelee',
+      'by_continuing_you_accept': 'Kwa kuendelea unakubali',
+      'terms_of_use': 'Sheria na Masharti',
+      'privacy_policy': 'Sera ya Faragha',
+      'and_word': 'na',
       'welcome_back': 'Karibu Tena',
       'signin_subtitle': 'Ingia ili kuendelea kwenye akaunti yako',
 

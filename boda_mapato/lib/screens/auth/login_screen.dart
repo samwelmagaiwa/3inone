@@ -1,9 +1,9 @@
 import "dart:convert";
 import "dart:ui";
-import "package:flutter/foundation.dart" show kDebugMode;
 import "package:flutter/material.dart";
 import "package:flutter_screenutil/flutter_screenutil.dart";
 import "package:provider/provider.dart";
+import "package:url_launcher/url_launcher_string.dart";
 import "package:shared_preferences/shared_preferences.dart";
 
 import "../../constants/colors.dart";
@@ -23,67 +23,6 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-// ---------------------------------------------------------------------------
-// Demo accounts shown in the collapsible picker — add / remove freely.
-// ---------------------------------------------------------------------------
-class _DemoAccount {
-  const _DemoAccount({
-    required this.label,
-    required this.role,
-    required this.email,
-    required this.phone,
-    required this.password,
-    required this.color,
-    required this.icon,
-  });
-  final String label;
-  final String role;
-  final String email;
-  final String phone;
-  final String password;
-  final Color color;
-  final IconData icon;
-}
-
-const List<_DemoAccount> _kDemoAccounts = [
-  _DemoAccount(
-    label: 'Samwel Magaiwa',
-    role: 'Admin · E-Mauzo',
-    email: 'admin@gmail.com',
-    phone: '+255743519104',
-    password: '12345678',
-    color: Color(0xFF00E5FF),
-    icon: Icons.manage_accounts_rounded,
-  ),
-  _DemoAccount(
-    label: 'Juma Mwita',
-    role: 'Sales Officer',
-    email: 'juma@gmail.com',
-    phone: '0743519107',
-    password: '12345678',
-    color: Color(0xFF69F0AE),
-    icon: Icons.point_of_sale_rounded,
-  ),
-  _DemoAccount(
-    label: 'John Mwita',
-    role: 'Driver',
-    email: 'john@gmail.com',
-    phone: '+255743519105',
-    password: '12345678',
-    color: Color(0xFFFF6E40),
-    icon: Icons.local_shipping_rounded,
-  ),
-  _DemoAccount(
-    label: 'Jane Mwita',
-    role: 'Driver',
-    email: 'jane@gmail.com',
-    phone: '+255743519107',
-    password: '12345678',
-    color: Color(0xFFCE93D8),
-    icon: Icons.local_shipping_rounded,
-  ),
-];
-
 class _LoginScreenState extends State<LoginScreen> {
   // Once a device has logged a given email in successfully with its
   // matching phone number, that phone is remembered here and the phone
@@ -99,21 +38,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _obscurePassword = true;
   bool _isLoading = false;
-  bool _demoExpanded = false;
 
   /// The email + password + phone form is behind a link: Google is how people sign in. Staff and old accounts use the form.
   bool _showEmailForm = false;
   bool _forcePhoneField = false;
   Map<String, String> _rememberedPhones = <String, String>{};
-
-  void _applyDemo(_DemoAccount account) {
-    setState(() {
-      _emailController.text = account.email;
-      _phoneController.text = account.phone;
-      _passwordController.text = account.password;
-      _demoExpanded = false;
-    });
-  }
 
   /// True once this device already knows this email's registered phone --
   /// the phone field is hidden and that remembered value is used silently.
@@ -261,6 +190,18 @@ class _LoginScreenState extends State<LoginScreen> {
           _showSnackBar(message, Colors.red);
         }
     }
+  }
+
+  /// A link in the small print under the buttons: opens the public page in the browser.
+  InlineSpan _legalLink(final String text, final String url, final Color color) {
+    return WidgetSpan(
+      alignment: PlaceholderAlignment.baseline,
+      baseline: TextBaseline.alphabetic,
+      child: GestureDetector(
+        onTap: () => launchUrlString(url, mode: LaunchMode.externalApplication),
+        child: Text(text, style: TextStyle(color: color, fontSize: 13.sp, height: 1.5)),
+      ),
+    );
   }
 
   void _showSnackBar(final String message, final Color backgroundColor) {
@@ -491,38 +432,48 @@ class _LoginScreenState extends State<LoginScreen> {
                                     fontSize: 28.sp,
                                   ),
                                   
-                                  SizedBox(height: 24.h),
+                                  SizedBox(height: 8.h),
+                                  Text(
+                                    localizationService.translate('signin_to_continue'),
+                                    key: const ValueKey<String>('signin_subtitle'),
+                                    style: TextStyle(color: Colors.white54, fontSize: 15.sp),
+                                  ),
 
-                                  // ── Demo credentials picker ──────────────
-                                  // DEBUG BUILDS ONLY. It holds real sign-in details, and anything
-                                  // in a release build can be read out of the app file by anyone
-                                  // who downloads it. kDebugMode is a compile-time constant, so a
-                                  // release build does not even contain this picker or its list.
-                                  if (kDebugMode) ...<Widget>[
-                                    _DemoPicker(
-                                      expanded: _demoExpanded,
-                                      onToggle: () => setState(() => _demoExpanded = !_demoExpanded),
-                                      onSelect: _applyDemo,
-                                    ),
-
-                                    SizedBox(height: 24.h),
-                                  ],
+                                  SizedBox(height: 28.h),
 
                                   // Sign in with Google: the way in for owners.
                                   _GoogleButton(
                                     label: localizationService.translate('sign_in_with_google'),
                                     onTap: _handleGoogle,
                                   ),
-                                  SizedBox(height: 12.h),
-                                  TextButton(
+                                  SizedBox(height: 16.h),
+                                  Row(
+                                    children: <Widget>[
+                                      const Expanded(child: Divider(color: Colors.white12)),
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 14.w),
+                                        child: Text(localizationService.translate('or_word'), style: TextStyle(color: Colors.white38, fontSize: 13.sp)),
+                                      ),
+                                      const Expanded(child: Divider(color: Colors.white12)),
+                                    ],
+                                  ),
+                                  SizedBox(height: 16.h),
+                                  OutlinedButton.icon(
                                     key: const ValueKey<String>('toggle_email_signin'),
                                     onPressed: () => setState(() => _showEmailForm = !_showEmailForm),
-                                    child: Text(
-                                      localizationService.translate(_showEmailForm ? 'back_to_google_signin' : 'sign_in_with_email'),
-                                      style: TextStyle(color: cyberCyan.withValues(alpha: 0.85), fontSize: 13.sp, fontWeight: FontWeight.w600),
+                                    style: OutlinedButton.styleFrom(
+                                      minimumSize: Size(double.infinity, 56.h),
+                                      foregroundColor: Colors.white,
+                                      side: BorderSide(color: _showEmailForm ? cyberCyan.withValues(alpha: 0.6) : Colors.white24),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                                    ),
+                                    icon: Icon(Icons.mail_outline_rounded, size: 22.sp),
+                                    label: Text(
+                                      localizationService.translate('sign_in_with_email'),
+                                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500),
                                     ),
                                   ),
-                                  SizedBox(height: 12.h),
+                                  SizedBox(height: 18.h),
 
                                   // Glass Card Form (email + password + phone), for staff and accounts made before Google sign-in
                                   if (_showEmailForm) ClipRRect(
@@ -639,7 +590,24 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   ),
                                   
-                              SizedBox(height: 20.h),
+                              SizedBox(height: 28.h),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 8.w),
+                                child: Text.rich(
+                                  key: const ValueKey<String>('legal_links'),
+                                  TextSpan(
+                                    style: TextStyle(color: Colors.white54, fontSize: 13.sp, height: 1.5),
+                                    children: <InlineSpan>[
+                                      TextSpan(text: '${localizationService.translate('by_continuing_you_accept')} '),
+                                      _legalLink(localizationService.translate('terms_of_use'), 'https://3inone.nexoryatech.com/terms', cyberCyan),
+                                      TextSpan(text: ' ${localizationService.translate('and_word')} '),
+                                      _legalLink(localizationService.translate('privacy_policy'), 'https://3inone.nexoryatech.com/privacy', cyberCyan),
+                                    ],
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              SizedBox(height: 28.h),
                             ],
                           ),
                         ),
@@ -775,6 +743,31 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
+/// Google's multicolour "G", drawn from four arcs and a bar (no image file needed).
+class _GoogleGPainter extends CustomPainter {
+  const _GoogleGPainter();
+
+  @override
+  void paint(final Canvas canvas, final Size size) {
+    final double w = size.width;
+    final double stroke = w * 0.22;
+    final Rect rect = Rect.fromLTWH(stroke / 2, stroke / 2, w - stroke, w - stroke);
+    Paint arc(final Color c) => Paint()
+      ..color = c
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke;
+    const double deg = 3.1415926535 / 180;
+    canvas.drawArc(rect, -45 * deg, -95 * deg, false, arc(const Color(0xFFEA4335))); // red, top
+    canvas.drawArc(rect, 135 * deg, 90 * deg, false, arc(const Color(0xFFFBBC05))); // yellow, left
+    canvas.drawArc(rect, 45 * deg, 90 * deg, false, arc(const Color(0xFF34A853))); // green, bottom
+    canvas.drawArc(rect, -45 * deg, 45 * deg, false, arc(const Color(0xFF4285F4))); // blue, right
+    canvas.drawRect(Rect.fromLTWH(w * 0.5, w * 0.4, w * 0.47, stroke), Paint()..color = const Color(0xFF4285F4)); // the bar
+  }
+
+  @override
+  bool shouldRepaint(covariant final CustomPainter oldDelegate) => false;
+}
+
 /// The "Sign in with Google" button: white, with Google's multicolour G, as Google's brand rules ask.
 class _GoogleButton extends StatelessWidget {
   const _GoogleButton({required this.label, required this.onTap});
@@ -798,10 +791,7 @@ class _GoogleButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              Text(
-                'G',
-                style: TextStyle(fontSize: 26.sp, fontWeight: FontWeight.w900, color: const Color(0xFF4285F4)),
-              ),
+              CustomPaint(size: Size(26.w, 26.w), painter: const _GoogleGPainter()),
               SizedBox(width: 12.w),
               Flexible(
                 child: Text(
@@ -812,184 +802,6 @@ class _GoogleButton extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Demo credentials picker (stateless — parent owns expanded flag) ─────────
-class _DemoPicker extends StatelessWidget {
-  const _DemoPicker({
-    required this.expanded,
-    required this.onToggle,
-    required this.onSelect,
-  });
-
-  final bool expanded;
-  final VoidCallback onToggle;
-  final void Function(_DemoAccount) onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16.r),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(16.r),
-            border: Border.all(
-              color: const Color(0xFFFFD700).withValues(alpha: 0.25),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            children: [
-              // ── Header row ───────────────────────────────────────────────
-              GestureDetector(
-                onTap: onToggle,
-                behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.key_rounded,
-                        color: const Color(0xFFFFD700),
-                        size: 18.sp,
-                      ),
-                      SizedBox(width: 10.w),
-                      Expanded(
-                        child: Text(
-                          'Demo Login Credentials',
-                          style: TextStyle(
-                            color: const Color(0xFFFFD700),
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ),
-                      AnimatedRotation(
-                        turns: expanded ? 0.5 : 0.0,
-                        duration: const Duration(milliseconds: 250),
-                        child: Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          color: const Color(0xFFFFD700).withValues(alpha: 0.8),
-                          size: 20.sp,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // ── Expandable account list ──────────────────────────────────
-              AnimatedCrossFade(
-                duration: const Duration(milliseconds: 250),
-                crossFadeState: expanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                firstChild: const SizedBox.shrink(),
-                secondChild: Column(
-                  children: [
-                    Divider(
-                      height: 1,
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
-                    ...List.generate(_kDemoAccounts.length, (i) {
-                      final acc = _kDemoAccounts[i];
-                      return _DemoTile(
-                        account: acc,
-                        onTap: () => onSelect(acc),
-                        isLast: i == _kDemoAccounts.length - 1,
-                      );
-                    }),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DemoTile extends StatelessWidget {
-  const _DemoTile({
-    required this.account,
-    required this.onTap,
-    required this.isLast,
-  });
-
-  final _DemoAccount account;
-  final VoidCallback onTap;
-  final bool isLast;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-        decoration: BoxDecoration(
-          border: isLast
-              ? null
-              : Border(
-                  bottom: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.06),
-                    width: 1,
-                  ),
-                ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36.w,
-              height: 36.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: account.color.withValues(alpha: 0.12),
-                border: Border.all(
-                  color: account.color.withValues(alpha: 0.35),
-                  width: 1,
-                ),
-              ),
-              child: Icon(account.icon, color: account.color, size: 18.sp),
-            ),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    account.label,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    '${account.role}  ·  ${account.email}',
-                    style: TextStyle(
-                      color: Colors.white38,
-                      fontSize: 11.sp,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              color: account.color.withValues(alpha: 0.5),
-              size: 12.sp,
-            ),
-          ],
         ),
       ),
     );
