@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../utils/responsive_helper.dart';
-import '../widgets/loading/faux_3d_loading_widget.dart';
+import '../widgets/loading/service_orbit_loader.dart';
 import '../services/localization_service.dart';
 import '../utils/server_message.dart';
 
@@ -548,7 +548,7 @@ class ThemeConstants {
       {String? message}) {
     ResponsiveHelper.init(context);
     return Center(
-      child: Faux3DLoadingWidget(message: message),
+      child: ServiceOrbitLoader(message: message),
     );
   }
 
