@@ -14,6 +14,15 @@ return [
     |
     */
 
+    // Sign in with Google: the ids of this app's OAuth clients (the Web one is the audience of every token the phone sends; the Android
+    // one is kept for completeness). They are public identifiers, not secrets.
+    'google' => [
+        'client_ids' => array_values(array_filter(array_map('trim', explode(',', (string) env(
+            'GOOGLE_CLIENT_IDS',
+            '427281190551-t67r5mg72ccnso67epg96srp3jkn36cg.apps.googleusercontent.com,427281190551-ctkma33d44dtdpa3kborjmskb71tp1li.apps.googleusercontent.com'
+        ))))),
+    ],
+
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],

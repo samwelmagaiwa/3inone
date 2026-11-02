@@ -1,0 +1,116 @@
+import 'package:boda_mapato/models/business_registration.dart';
+import 'package:boda_mapato/providers/auth_provider.dart';
+import 'package:boda_mapato/screens/auth/login_screen.dart';
+import 'package:boda_mapato/screens/auth/register_business_screen.dart';
+import 'package:boda_mapato/services/localization_service.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// Sign in with Google: the login page leads with the Google button (the email form is behind a link), someone Google knows but we do not
+/// goes to the registration form with their name and email and no password, and a backed-out chooser does nothing.
+class _GoogleAuth extends AuthProvider {
+  _GoogleAuth({this.token, this.newUser});
+
+  final String? token;
+  final GoogleSignup? newUser;
+
+  @override
+  Future<GoogleResult> loginWithGoogle() async {
+    if (token == null && newUser == null) return GoogleResult.cancelled;
+    return GoogleResult.newUser;
+  }
+
+  @override
+  GoogleSignup? get googleSignup => newUser;
+}
+
+Future<void> _open(WidgetTester t, Widget home, AuthProvider auth) async {
+  SharedPreferences.setMockInitialValues(<String, Object>{});
+  await LocalizationService.instance.changeLanguage('en');
+  t.view.physicalSize = const Size(411, 1800);
+  t.view.devicePixelRatio = 1.0;
+  addTearDown(t.view.reset);
+  await t.pumpWidget(
+    ScreenUtilInit(
+      designSize: const Size(390, 844),
+      builder: (BuildContext context, Widget? child) => MultiProvider(
+        providers: <ChangeNotifierProvider<ChangeNotifier>>[
+          ChangeNotifierProvider<LocalizationService>.value(value: LocalizationService.instance),
+          ChangeNotifierProvider<AuthProvider>.value(value: auth),
+        ],
+        child: MaterialApp(home: home),
+      ),
+    ),
+  );
+  await t.pump(const Duration(milliseconds: 300));
+}
+
+void main() {
+  testWidgets('the login page leads with Google and keeps the email form behind a link', (t) async {
+    await _open(t, const LoginScreen(), AuthProvider());
+
+    expect(find.byKey(const ValueKey<String>('google_signin_button')), findsOneWidget);
+    expect(find.text('Sign in with Google'), findsOneWidget);
+    expect(find.byType(TextFormField), findsNothing, reason: 'no email, phone or password fields at first');
+
+    await t.tap(find.byKey(const ValueKey<String>('toggle_email_signin')));
+    await t.pump();
+    expect(find.byType(TextFormField), findsWidgets);
+    expect(find.text('Back to Google sign-in'), findsOneWidget);
+
+    await t.tap(find.byKey(const ValueKey<String>('toggle_email_signin')));
+    await t.pump();
+    expect(find.byType(TextFormField), findsNothing);
+  });
+
+  testWidgets('someone new goes to the registration form with their Google name and email and no password', (t) async {
+    const GoogleSignup signup = GoogleSignup(email: 'neema@gmail.com', name: 'Neema Mushi', token: 'sealed');
+    await _open(t, const LoginScreen(), _GoogleAuth(newUser: signup));
+
+    await t.tap(find.byKey(const ValueKey<String>('google_signin_button')));
+    for (int i = 0; i < 8; i++) {
+      await t.pump(const Duration(milliseconds: 150));
+    }
+
+    expect(find.byType(RegisterBusinessScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('google_signup_note')), findsOneWidget);
+    expect(find.text('neema@gmail.com'), findsOneWidget);
+    expect(find.text('Neema Mushi'), findsOneWidget);
+    expect(find.text('Password'), findsNothing, reason: 'Google is the password');
+    expect(find.text('Confirm password'), findsNothing);
+    expect(find.text('Phone Number'), findsOneWidget, reason: 'the phone moved here from the login page');
+  });
+
+  testWidgets('backing out of the Google chooser changes nothing', (t) async {
+    await _open(t, const LoginScreen(), _GoogleAuth());
+
+    await t.tap(find.byKey(const ValueKey<String>('google_signin_button')));
+    for (int i = 0; i < 5; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.byType(RegisterBusinessScreen), findsNothing);
+  });
+
+  test('the registration sent for a Google person carries the sealed token and no password', () {
+    const BusinessRegistrationRequest request = BusinessRegistrationRequest(
+      name: 'Neema',
+      businessName: 'Neema Shop',
+      email: 'neema@gmail.com',
+      phoneNumber: '0712000111',
+      password: '',
+      passwordConfirmation: '',
+      requestedServices: <String>['inventory'],
+      googleToken: 'sealed',
+    );
+
+    final Map<String, dynamic> json = request.toJson();
+    expect(json['google_token'], 'sealed');
+    expect(json.containsKey('password'), isFalse);
+    expect(json.containsKey('password_confirmation'), isFalse);
+  });
+}

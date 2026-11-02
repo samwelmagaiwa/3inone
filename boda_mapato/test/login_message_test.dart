@@ -161,6 +161,9 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 300));
 
+      // The email form is behind a link: Google is the way in.
+      await tester.tap(find.byKey(const ValueKey<String>('toggle_email_signin')));
+      await tester.pump();
       final Finder fields = find.byType(TextFormField);
       await tester.enterText(fields.at(0), 'owner@example.test');
       await tester.enterText(fields.at(1), '0743519100');

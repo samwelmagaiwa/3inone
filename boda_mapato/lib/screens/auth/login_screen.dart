@@ -100,6 +100,9 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
   bool _demoExpanded = false;
+
+  /// The email + password + phone form is behind a link: Google is how people sign in. Staff and old accounts use the form.
+  bool _showEmailForm = false;
   bool _forcePhoneField = false;
   Map<String, String> _rememberedPhones = <String, String>{};
 
@@ -226,6 +229,37 @@ class _LoginScreenState extends State<LoginScreen> {
         });
         _showSnackBar(readableErrorMessage(e), Colors.red);
       }
+    }
+  }
+
+  /// Google's account chooser. An owner who is registered and approved goes straight in; someone new goes to the registration form
+  /// (no password, no user name: Google is both); someone still waiting hears so.
+  Future<void> _handleGoogle() async {
+    final AuthProvider authProvider = Provider.of<AuthProvider>(context, listen: false);
+    setState(() => _isLoading = true);
+    final GoogleResult result = await authProvider.loginWithGoogle();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    switch (result) {
+      case GoogleResult.signedIn:
+        _showSnackBar(LocalizationService.instance.translate('login_successful'), Colors.green);
+        Navigator.of(context).pop();
+      case GoogleResult.cancelled:
+        break;
+      case GoogleResult.newUser:
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (final BuildContext _) => RegisterBusinessScreen(googleSignup: authProvider.googleSignup),
+          ),
+        );
+      case GoogleResult.failed:
+        final String message = authProvider.errorMessage ?? LocalizationService.instance.translate('login_failed');
+        if (authProvider.lastErrorCode == 'registration_pending') {
+          _showRegistrationPendingDialog(message: message);
+        } else {
+          _showSnackBar(message, Colors.red);
+        }
     }
   }
 
@@ -474,8 +508,24 @@ class _LoginScreenState extends State<LoginScreen> {
                                     SizedBox(height: 24.h),
                                   ],
 
-                                  // Glass Card Form
-                                  ClipRRect(
+                                  // Sign in with Google: the way in for owners.
+                                  _GoogleButton(
+                                    label: localizationService.translate('sign_in_with_google'),
+                                    onTap: _handleGoogle,
+                                  ),
+                                  SizedBox(height: 12.h),
+                                  TextButton(
+                                    key: const ValueKey<String>('toggle_email_signin'),
+                                    onPressed: () => setState(() => _showEmailForm = !_showEmailForm),
+                                    child: Text(
+                                      localizationService.translate(_showEmailForm ? 'back_to_google_signin' : 'sign_in_with_email'),
+                                      style: TextStyle(color: cyberCyan.withValues(alpha: 0.85), fontSize: 13.sp, fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                  SizedBox(height: 12.h),
+
+                                  // Glass Card Form (email + password + phone), for staff and accounts made before Google sign-in
+                                  if (_showEmailForm) ClipRRect(
                                     borderRadius: BorderRadius.circular(24.r),
                                     child: BackdropFilter(
                                       filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
@@ -721,6 +771,49 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The "Sign in with Google" button: white, with Google's multicolour G, as Google's brand rules ask.
+class _GoogleButton extends StatelessWidget {
+  const _GoogleButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(final BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16.r),
+      child: InkWell(
+        key: const ValueKey<String>('google_signin_button'),
+        borderRadius: BorderRadius.circular(16.r),
+        onTap: onTap,
+        child: Container(
+          height: 56.h,
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Text(
+                'G',
+                style: TextStyle(fontSize: 26.sp, fontWeight: FontWeight.w900, color: const Color(0xFF4285F4)),
+              ),
+              SizedBox(width: 12.w),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: const Color(0xFF1F1F1F), fontSize: 16.sp, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

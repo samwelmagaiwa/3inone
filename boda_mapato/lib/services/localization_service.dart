@@ -1052,6 +1052,10 @@ class AppLocalizations {
       'password': 'Password',
       'phone_number': 'Phone Number',
       'signin': 'Sign In',
+      'sign_in_with_google': 'Sign in with Google',
+      'sign_in_with_email': 'Sign in with email',
+      'back_to_google_signin': 'Back to Google sign-in',
+      'or_word': 'or',
       'welcome_back': 'Welcome Back',
       'signin_subtitle': 'Sign in to continue to your account',
 
@@ -3709,6 +3713,10 @@ class AppLocalizations {
       'password': 'Neno la siri',
       'phone_number': 'Nambari ya simu',
       'signin': 'Ingia',
+      'sign_in_with_google': 'Ingia kwa Google',
+      'sign_in_with_email': 'Ingia kwa email',
+      'back_to_google_signin': 'Rudi kwenye kuingia kwa Google',
+      'or_word': 'au',
       'welcome_back': 'Karibu Tena',
       'signin_subtitle': 'Ingia ili kuendelea kwenye akaunti yako',
 

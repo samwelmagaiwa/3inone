@@ -126,150 +126,7 @@ class AuthController extends Controller
                 return ResponseHelper::error('Invalid credentials', 401);
             }
 
-            // A business that registered itself cannot sign in until a super admin
-            // approves it. Say so plainly rather than "account is inactive" -- the
-            // password was correct, so this is not an enumeration risk.
-            if (!$user->is_active) {
-                $registration = $user->registration;
-                if ($registration && $registration->status === \App\Models\BusinessRegistration::PENDING) {
-                    return ResponseHelper::error(
-                        'Usajili wako unasubiri idhini ya super admin. Utaweza kuingia baada ya kukubaliwa. / '
-                        . 'Your registration is awaiting super admin approval. You can sign in once it is approved.',
-                        403,
-                        ['code' => 'registration_pending']
-                    );
-                }
-                if ($registration && $registration->status === \App\Models\BusinessRegistration::REJECTED) {
-                    return ResponseHelper::error(
-                        'Usajili wako haukukubaliwa. Sababu: ' . ($registration->rejection_reason ?: '-') . ' / '
-                        . 'Your registration was not approved. Reason: ' . ($registration->rejection_reason ?: '-'),
-                        403,
-                        ['code' => 'registration_rejected']
-                    );
-                }
-            }
-
-            // Check if user is active
-            if (!$user->is_active) {
-                Log::warning('Login failed - Account inactive', [
-                    'user_id' => $user->id,
-                    'email' => $request->email,
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                    'reason' => 'account_inactive',
-                    'timestamp' => now()->toISOString(),
-                ]);
-                return ResponseHelper::error('Account is inactive', 403);
-            }
-
-            // Everyone working for a business whose owner has been deactivated is shut out with
-            // them. Nothing is deleted: re-activating the owner opens it all again.
-            if (!$user->accountIsActive()) {
-                Log::warning('Login failed - Business suspended', [
-                    'user_id' => $user->id,
-                    'email' => $request->email,
-                    'ip_address' => $request->ip(),
-                    'reason' => 'business_suspended',
-                ]);
-                return ResponseHelper::error(
-                    'Biashara yako imesimamishwa. Wasiliana na msimamizi wako. / Your business has been suspended. Contact your administrator.',
-                    403,
-                    ['code' => 'business_suspended']
-                );
-            }
-
-            // A business that has not paid (past its grace period, with billing enforced) cannot
-            // sign in. Its drivers and tenants are its customers and are not held to this.
-            if (!$user->seesAllAccounts() && !$user->isPortalUser()) {
-                $business = Business::forUser($user);
-                if ($business !== null && $business->blocksAccess()) {
-                    return ResponseHelper::error(
-                        'Usajili wa biashara yako umeisha. Wasiliana na msimamizi ili kuuhuisha. / '
-                        . 'Your business subscription has expired. Contact your administrator to renew it.',
-                        402,
-                        ['code' => 'subscription_expired', 'plan' => $business->plan, 'valid_until' => $business->valid_until?->toIso8601String()]
-                    );
-                }
-            }
-
-            // Verify phone number matches (comparing last 9 digits for maximum compatibility)
-            if (!$this->phoneMatches($user, $request->phone_number)) {
-                Log::warning('Login failed - Phone number mismatch', [
-                    'user_id' => $user->id,
-                    'email' => $request->email,
-                    'provided_phone' => $request->phone_number,
-                    'registered_phone' => $user->phone_number,
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                    'reason' => 'phone_mismatch',
-                    'timestamp' => now()->toISOString(),
-                ]);
-                return ResponseHelper::error('Phone number does not match our records', 400);
-            }
-
-            // Update last login
-            $user->updateLastLogin();
-
-            // Record login activity
-            try {
-                \App\Models\LoginActivity::create([
-                    'user_id' => $user->id,
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                    'login_at' => now(),
-                    'success' => true,
-                ]);
-            } catch (\Exception $e) {
-                Log::warning('Failed to record login activity', [
-                    'user_id' => $user->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
-            // Other devices stay signed in. (Only if a cap was configured are sessions beyond it dropped.)
-            $tokensRevoked = $this->makeRoomForNewSession($user);
-
-            $token = $user->createToken('auth_token')->plainTextToken;
-
-            // Load relationships based on role
-            $userData = $this->getUserDataWithRelations($user);
-
-            // Log successful login
-            Log::info('Login successful', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'name' => $user->name,
-                'role' => $user->role,
-                'phone_number' => $user->phone_number,
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'tokens_revoked' => $tokensRevoked,
-                'dashboard_route' => $this->getDashboardRoute($user->role),
-                'last_login_at' => $user->last_login_at,
-                'timestamp' => now()->toISOString(),
-            ]);
-
-            // Build UI badges and gating flags
-            $badges = [];
-            if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
-                $badges[] = 'Super Admin';
-            }
-
-            $can = [
-                'manage_all' => method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : false,
-                'create_users' => method_exists($user, 'canCreateUsers') ? $user->canCreateUsers() : false,
-                'manage_drivers' => method_exists($user, 'canManageDrivers') ? $user->canManageDrivers() : false,
-            ];
-
-            return ResponseHelper::success([
-                'user' => $userData,
-                'token' => $token,
-                'role' => $user->role,
-                'role_display' => $user->role_display ?? $user->role,
-                'badges' => $badges,
-                'can' => $can,
-                'dashboard_route' => $this->getDashboardRoute($user->role),
-            ], 'Login successful');
+            return $this->completeSignIn($request, $user, true);
 
         } catch (ValidationException $e) {
             Log::error('Login failed - Validation error', [
@@ -297,6 +154,159 @@ class AuthController extends Controller
     }
 
 
+
+    /**
+     * Everything that happens once WHO the person is has been proved (by password and phone, or by Google): has the registration been
+     * approved, is the business active and paid up, does the phone match (only when it was asked for), then the login is recorded and
+     * the token is made.
+     */
+    public function completeSignIn(Request $request, User $user, bool $checkPhone)
+    {
+        // A business that registered itself cannot sign in until a super admin
+        // approves it. Say so plainly rather than "account is inactive" -- the
+        // password was correct, so this is not an enumeration risk.
+        if (!$user->is_active) {
+            $registration = $user->registration;
+            if ($registration && $registration->status === \App\Models\BusinessRegistration::PENDING) {
+                return ResponseHelper::error(
+                    'Usajili wako unasubiri idhini ya super admin. Utaweza kuingia baada ya kukubaliwa. / '
+                    . 'Your registration is awaiting super admin approval. You can sign in once it is approved.',
+                    403,
+                    ['code' => 'registration_pending']
+                );
+            }
+            if ($registration && $registration->status === \App\Models\BusinessRegistration::REJECTED) {
+                return ResponseHelper::error(
+                    'Usajili wako haukukubaliwa. Sababu: ' . ($registration->rejection_reason ?: '-') . ' / '
+                    . 'Your registration was not approved. Reason: ' . ($registration->rejection_reason ?: '-'),
+                    403,
+                    ['code' => 'registration_rejected']
+                );
+            }
+        }
+
+        // Check if user is active
+        if (!$user->is_active) {
+            Log::warning('Login failed - Account inactive', [
+                'user_id' => $user->id,
+                'email' => $request->email,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'reason' => 'account_inactive',
+                'timestamp' => now()->toISOString(),
+            ]);
+            return ResponseHelper::error('Account is inactive', 403);
+        }
+
+        // Everyone working for a business whose owner has been deactivated is shut out with
+        // them. Nothing is deleted: re-activating the owner opens it all again.
+        if (!$user->accountIsActive()) {
+            Log::warning('Login failed - Business suspended', [
+                'user_id' => $user->id,
+                'email' => $request->email,
+                'ip_address' => $request->ip(),
+                'reason' => 'business_suspended',
+            ]);
+            return ResponseHelper::error(
+                'Biashara yako imesimamishwa. Wasiliana na msimamizi wako. / Your business has been suspended. Contact your administrator.',
+                403,
+                ['code' => 'business_suspended']
+            );
+        }
+
+        // A business that has not paid (past its grace period, with billing enforced) cannot
+        // sign in. Its drivers and tenants are its customers and are not held to this.
+        if (!$user->seesAllAccounts() && !$user->isPortalUser()) {
+            $business = Business::forUser($user);
+            if ($business !== null && $business->blocksAccess()) {
+                return ResponseHelper::error(
+                    'Usajili wa biashara yako umeisha. Wasiliana na msimamizi ili kuuhuisha. / '
+                    . 'Your business subscription has expired. Contact your administrator to renew it.',
+                    402,
+                    ['code' => 'subscription_expired', 'plan' => $business->plan, 'valid_until' => $business->valid_until?->toIso8601String()]
+                );
+            }
+        }
+
+        // Verify phone number matches (comparing last 9 digits for maximum compatibility)
+        if ($checkPhone && !$this->phoneMatches($user, $request->phone_number)) {
+            Log::warning('Login failed - Phone number mismatch', [
+                'user_id' => $user->id,
+                'email' => $request->email,
+                'provided_phone' => $request->phone_number,
+                'registered_phone' => $user->phone_number,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'reason' => 'phone_mismatch',
+                'timestamp' => now()->toISOString(),
+            ]);
+            return ResponseHelper::error('Phone number does not match our records', 400);
+        }
+
+        // Update last login
+        $user->updateLastLogin();
+
+        // Record login activity
+        try {
+            \App\Models\LoginActivity::create([
+                'user_id' => $user->id,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'login_at' => now(),
+                'success' => true,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Failed to record login activity', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // Other devices stay signed in. (Only if a cap was configured are sessions beyond it dropped.)
+        $tokensRevoked = $this->makeRoomForNewSession($user);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        // Load relationships based on role
+        $userData = $this->getUserDataWithRelations($user);
+
+        // Log successful login
+        Log::info('Login successful', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'name' => $user->name,
+            'role' => $user->role,
+            'phone_number' => $user->phone_number,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'tokens_revoked' => $tokensRevoked,
+            'dashboard_route' => $this->getDashboardRoute($user->role),
+            'last_login_at' => $user->last_login_at,
+            'timestamp' => now()->toISOString(),
+        ]);
+
+        // Build UI badges and gating flags
+        $badges = [];
+        if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+            $badges[] = 'Super Admin';
+        }
+
+        $can = [
+            'manage_all' => method_exists($user, 'isSuperAdmin') ? $user->isSuperAdmin() : false,
+            'create_users' => method_exists($user, 'canCreateUsers') ? $user->canCreateUsers() : false,
+            'manage_drivers' => method_exists($user, 'canManageDrivers') ? $user->canManageDrivers() : false,
+        ];
+
+        return ResponseHelper::success([
+            'user' => $userData,
+            'token' => $token,
+            'role' => $user->role,
+            'role_display' => $user->role_display ?? $user->role,
+            'badges' => $badges,
+            'can' => $can,
+            'dashboard_route' => $this->getDashboardRoute($user->role),
+        ], 'Login successful');
+    }
 
     /**
      * Create driver account (Admin only)

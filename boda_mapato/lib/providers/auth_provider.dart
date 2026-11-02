@@ -9,10 +9,25 @@ import '../services/api_service.dart';
 import '../services/app_messenger.dart';
 import '../services/auth_events.dart';
 import '../services/auth_service.dart';
+import '../services/google_login.dart';
 import '../services/localization_service.dart';
 import '../utils/server_message.dart';
 import '../models/subscription.dart';
 import '../models/business.dart';
+
+/// What came of "Sign in with Google".
+enum GoogleResult { signedIn, newUser, cancelled, failed }
+
+/// A person Google vouches for who has no account yet: what the registration form starts from.
+class GoogleSignup {
+  const GoogleSignup({required this.email, required this.name, required this.token});
+
+  final String email;
+  final String name;
+
+  /// Sealed by the server; goes back with the registration so it knows this really is that Google person.
+  final String token;
+}
 
 class AuthProvider extends ChangeNotifier {
   AuthProvider() {
@@ -196,12 +211,47 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Set when Google vouched for someone who has no account yet: the registration form is filled from it (name and email are theirs
+  /// from Google, no password), and its sealed token goes back to the server with the form.
+  GoogleSignup? _googleSignup;
+  GoogleSignup? get googleSignup => _googleSignup;
+
+  /// How the phone gets Google's ID token. Replaced in tests; null means the person backed out of the chooser.
+  Future<String?> Function() googleIdTokenSource = GoogleLogin.idToken;
+
+  /// Sign in with Google. [GoogleResult.signedIn] when the account exists and is approved; [GoogleResult.newUser] when it must
+  /// register ([googleSignup] is then set); [GoogleResult.cancelled] when they backed out; otherwise [GoogleResult.failed] with
+  /// [errorMessage] (and [lastErrorCode], e.g. registration_pending, for the screen to explain).
+  Future<GoogleResult> loginWithGoogle() async {
+    _googleSignup = null;
+    _lastErrorCode = null;
+    String? chosen;
+    try {
+      chosen = await googleIdTokenSource();
+    } on Exception catch (e) {
+      final String message = readableErrorMessage(e);
+      _setError(message);
+      _errorMessage = message;
+      return GoogleResult.failed;
+    }
+    if (chosen == null || chosen.isEmpty) return GoogleResult.cancelled;
+    final String idToken = chosen;
+
+    final bool ok = await _performLogin(() => AuthService.googleSignIn(idToken));
+    if (ok) return GoogleResult.signedIn;
+    return _googleSignup != null ? GoogleResult.newUser : GoogleResult.failed;
+  }
+
   // Login (direct authentication)
   Future<bool> login({
     required final String email,
     required final String password,
     required final String phoneNumber,
-  }) async {
+  }) =>
+      _performLogin(() => AuthService.login(email: email, password: password, phoneNumber: phoneNumber));
+
+  /// The one sign-in path: checks the server is reachable, makes the request, then loads the person's profile.
+  Future<bool> _performLogin(final Future<Map<String, dynamic>> Function() request) async {
     _setLoading(true);
     _clearError();
 
@@ -227,11 +277,18 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
-      final Map<String, dynamic> response = await AuthService.login(
-        email: email,
-        password: password,
-        phoneNumber: phoneNumber,
-      );
+      final Map<String, dynamic> response = await request();
+
+      // Someone Google knows but we do not: they register next. Nothing is signed in.
+      final Object? maybeData = response["data"];
+      if (maybeData is Map && maybeData["status"] == 'new_user') {
+        _googleSignup = GoogleSignup(
+          email: (maybeData["email"] ?? '').toString(),
+          name: (maybeData["name"] ?? '').toString(),
+          token: (maybeData["signup_token"] ?? '').toString(),
+        );
+        return false;
+      }
 
       // Extract token and optimistically save it
       final Map<String, dynamic>? responseData =

@@ -92,11 +92,13 @@ class RegistrationController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'business_name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
+            'email' => 'required_without:google_token|nullable|email|max:255',
             'phone_number' => [
                 'required', 'regex:/^(0\d{9}|\+\d{9,15})$/',
             ],
-            'password' => ['required', 'confirmed', Password::min(8)],
+            // A person who signed in with Google has no password: the sealed token from /auth/google says who they are instead.
+            'password' => ['nullable', 'required_without:google_token', 'confirmed', Password::min(8)],
+            'google_token' => 'nullable|string|max:2000',
             'requested_services' => 'required|array|min:1',
             'requested_services.*' => 'string|in:' . implode(',', self::SERVICES),
             // The package they chose (basic = one service, standard = two, premium = all three) and for how many
@@ -119,6 +121,23 @@ class RegistrationController extends Controller
             'inventory_type.required' => 'Chagua aina ya biashara yako ya bidhaa (rejareja, jumla, ...). / Choose what kind of stock business you run (retail, wholesale, ...).',
             'inventory_type.in' => 'Aina ya biashara si sahihi. / That kind of business is not available.',
         ]);
+
+        // Signed in with Google: the email (and the proof of it) come from Google's token, never from what the phone typed, and the
+        // account gets a long random password nobody knows (they sign in with Google, or reset it by SMS if they ever want one).
+        $googleSub = null;
+        if (!empty($data['google_token'])) {
+            $identity = app(\App\Services\Auth\GoogleIdentity::class)->readSignupToken($data['google_token']);
+            if ($identity === null) {
+                return ResponseHelper::error(
+                    'Kuingia kwa Google kumeisha muda. Ingia kwa Google tena. / Your Google sign-in expired. Sign in with Google again.',
+                    422,
+                    ['code' => 'google_token_invalid']
+                );
+            }
+            $googleSub = $identity['sub'];
+            $data['email'] = $identity['email'];
+            $data['password'] = Str::random(40);
+        }
 
         // Only meaningful when inventory is asked for.
         $inventoryType = in_array('inventory', $data['requested_services'], true) ? ($data['inventory_type'] ?? null) : null;
@@ -160,7 +179,8 @@ class RegistrationController extends Controller
             // "already registered" a finished account would give, so these answers cannot be
             // used to find out whose registrations are pending or rejected, or to overwrite them.
             $claimedPassword = (string) ($data['current_password'] ?? $data['password']);
-            if ($reg && !Hash::check($claimedPassword, (string) $existingUser->password)) {
+            $isThatGoogleUser = $googleSub !== null && ($existingUser->google_id === null || $existingUser->google_id === $googleSub);
+            if ($reg && !$isThatGoogleUser && !Hash::check($claimedPassword, (string) $existingUser->password)) {
                 return ResponseHelper::validationError(['email' => ['This email is already registered.']]);
             }
 
@@ -183,7 +203,7 @@ class RegistrationController extends Controller
             }
         }
 
-        $registration = DB::transaction(function () use ($data, $existingUser, $isReapplication, $existingRegistration, $inventoryType, $plan, $months) {
+        $registration = DB::transaction(function () use ($data, $existingUser, $isReapplication, $existingRegistration, $inventoryType, $plan, $months, $googleSub) {
             if ($isReapplication && $existingUser && $existingRegistration) {
                 $existingUser->name = trim($data['name']);
                 $existingUser->email = trim($data['email']);
@@ -193,6 +213,9 @@ class RegistrationController extends Controller
                 }
                 $existingUser->phone_number = $data['phone_number'];
                 $existingUser->password = Hash::make($data['password']);
+                if ($googleSub !== null) {
+                    $existingUser->google_id = $googleSub;
+                }
                 $existingUser->role = 'admin';
                 $existingUser->is_active = false;
                 $existingUser->must_change_password = false;
@@ -223,6 +246,7 @@ class RegistrationController extends Controller
             $user->email = trim($data['email']);
             $user->phone_number = $data['phone_number'];
             $user->password = Hash::make($data['password']);
+            $user->google_id = $googleSub;
             $user->role = 'admin';
             $user->is_active = false;
             $user->must_change_password = false;

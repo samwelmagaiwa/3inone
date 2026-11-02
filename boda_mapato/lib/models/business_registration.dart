@@ -22,6 +22,7 @@ class BusinessRegistrationRequest {
     this.district,
     this.address,
     this.notes,
+    this.googleToken,
   });
 
   final String name;
@@ -44,6 +45,9 @@ class BusinessRegistrationRequest {
   final String? address;
   final String? notes;
 
+  /// Signed in with Google: the sealed token from the server. The password fields are then left empty and are not sent.
+  final String? googleToken;
+
   Map<String, dynamic> toJson() {
     String? clean(String? v) => (v == null || v.trim().isEmpty) ? null : v.trim();
     return <String, dynamic>{
@@ -51,8 +55,7 @@ class BusinessRegistrationRequest {
       'business_name': businessName.trim(),
       'email': email.trim(),
       'phone_number': phoneNumber.trim(),
-      'password': password,
-      'password_confirmation': passwordConfirmation,
+      if (googleToken != null) 'google_token': googleToken else ...<String, dynamic>{'password': password, 'password_confirmation': passwordConfirmation},
       'requested_services': requestedServices,
       if (requestedPlan != null) 'requested_plan': requestedPlan,
       if (requestedMonths != null) 'requested_months': requestedMonths,

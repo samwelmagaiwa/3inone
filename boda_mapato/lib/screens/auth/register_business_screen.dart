@@ -4,6 +4,7 @@ import "package:flutter_screenutil/flutter_screenutil.dart";
 import "../../constants/theme_constants.dart";
 import "../../models/business_registration.dart";
 import "../../models/plan_prices.dart";
+import "../../providers/auth_provider.dart" show GoogleSignup;
 import "../../modules/inventory/models/inv_capabilities.dart";
 import "../../services/api_service.dart";
 import "../../services/auth_service.dart";
@@ -41,6 +42,7 @@ class RegisterBusinessScreen extends StatefulWidget {
     this.onLoadPlans,
     this.initialEmail,
     this.initialPhone,
+    this.googleSignup,
   });
 
   /// Overridable so the screen can be tested without a network.
@@ -53,6 +55,10 @@ class RegisterBusinessScreen extends StatefulWidget {
   final LoadPlans? onLoadPlans;
   final String? initialEmail;
   final String? initialPhone;
+
+  /// Set when the person signed in with Google: their name and email come from Google (the email cannot be changed) and there is no
+  /// password to choose, because Google is how they sign in.
+  final GoogleSignup? googleSignup;
 
   @override
   State<RegisterBusinessScreen> createState() => _RegisterBusinessScreenState();
@@ -107,6 +113,11 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
     super.initState();
     if (widget.initialEmail != null) {
       _email.text = widget.initialEmail!;
+    }
+    final GoogleSignup? google = widget.googleSignup;
+    if (google != null) {
+      _email.text = google.email;
+      _name.text = google.name;
     }
     if (widget.initialPhone != null) {
       _phone.text = widget.initialPhone!;
@@ -186,6 +197,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
           phoneNumber: _phone.text,
           password: _password.text,
           passwordConfirmation: _confirm.text,
+          googleToken: widget.googleSignup?.token,
           requestedServices: kBusinessServices.where(_services.contains).toList(),
           requestedPlan: plan,
           requestedMonths: _months,
@@ -317,6 +329,31 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
             style: TextStyle(color: Colors.white70, fontSize: 13.sp, height: 1.4),
           ),
           SizedBox(height: 18.h),
+          if (widget.googleSignup != null)
+            Container(
+              key: const ValueKey<String>("google_signup_note"),
+              margin: EdgeInsets.only(bottom: 16.h),
+              padding: EdgeInsets.all(12.w),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: ThemeConstants.primaryCyan.withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                children: <Widget>[
+                  Icon(Icons.verified_user_outlined, color: ThemeConstants.primaryCyan, size: 20.sp),
+                  SizedBox(width: 10.w),
+                  Expanded(
+                    child: Text(
+                      _sw
+                          ? "Umeingia kwa Google (${widget.googleSignup!.email}). Hakuna nenosiri la kuweka: utaingia kwa Google. Ongeza namba ya simu na taarifa za biashara yako."
+                          : "You signed in with Google (${widget.googleSignup!.email}). There is no password to set: you will sign in with Google. Add your phone number and your business details.",
+                      style: TextStyle(color: Colors.white70, fontSize: 12.sp, height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           if (_error != null) _errorBox(_error!),
           _section(_sw ? "Taarifa zako" : "About you"),
           _field(
@@ -329,6 +366,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
             controller: _email,
             label: _loc.translate("email"),
             icon: Icons.email_outlined,
+            readOnly: widget.googleSignup != null,
             keyboardType: TextInputType.emailAddress,
             validator: (final String? v) => (v == null || !v.contains("@"))
                 ? _loc.translate("enter_valid_email")
@@ -347,7 +385,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
                         ? "Namba ya simu si sahihi (mfano 0743519100 au +255743519100)"
                         : "Invalid phone number (e.g. 0743519100 or +255743519100)"),
           ),
-          _field(
+          if (widget.googleSignup == null) _field(
             controller: _password,
             label: _loc.translate("password"),
             icon: Icons.lock_outline,
@@ -364,7 +402,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
                 ? (_sw ? "Nenosiri liwe na angalau herufi 8" : "Password must be at least 8 characters")
                 : null,
           ),
-          _field(
+          if (widget.googleSignup == null) _field(
             controller: _confirm,
             label: _sw ? "Thibitisha nenosiri" : "Confirm password",
             icon: Icons.lock_reset_outlined,
@@ -796,10 +834,10 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
               _sw
                   ? 'Msimamizi mkuu atakagua taarifa za "${_business.text.trim()}" na kukupa huduma. '
                       '${_codeUnavailable ? "Ukikubaliwa utaweza" : "Ukikubaliwa utatumiwa ujumbe mfupi, kisha utaweza"} '
-                      'kuingia kwa barua pepe na nenosiri ulilotumia hapa.'
+                      '${widget.googleSignup != null ? "kuingia kwa Google. Tafadhali subiri ombi lako likaguliwe." : "kuingia kwa barua pepe na nenosiri ulilotumia hapa."}'
                   : 'A super admin will review "${_business.text.trim()}" and give you your services. '
                       '${_codeUnavailable ? "Once approved you can" : "Once approved you will get a text message, and can"} '
-                      'sign in with the email and password you just used.',
+                      '${widget.googleSignup != null ? "sign in with Google. Please wait while your request is reviewed." : "sign in with the email and password you just used."}',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white70, fontSize: 14.sp, height: 1.4),
             ),
@@ -967,6 +1005,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
     final Widget? suffix,
     final int maxLines = 1,
     final TextInputType? keyboardType,
+    final bool readOnly = false,
     final String? Function(String?)? validator,
   }) {
     return Padding(
@@ -974,6 +1013,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
       child: TextFormField(
         controller: controller,
         obscureText: obscure,
+        readOnly: readOnly,
         maxLines: obscure ? 1 : maxLines,
         keyboardType: keyboardType,
         validator: validator,

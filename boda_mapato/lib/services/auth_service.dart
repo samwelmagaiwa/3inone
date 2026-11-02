@@ -144,6 +144,32 @@ mixin AuthService {
     }
   }
 
+  /// Sign in with Google: sends the ID token Google gave the phone. The answer is either a normal login (token + user, saved here
+  /// like a password login) or `status: new_user` with the sealed sign-up token the registration form must carry.
+  static Future<Map<String, dynamic>> googleSignIn(final String idToken) async {
+    try {
+      final http.Response response = await http
+          .post(
+            Uri.parse("$baseUrl/auth/google"),
+            headers: _headers,
+            body: jsonEncode(<String, String>{"id_token": idToken}),
+          )
+          .timeout(timeoutDuration);
+
+      final Map<String, dynamic> data = _handleResponse(response);
+      final Map<String, dynamic>? dataMap = data["data"] is Map ? Map<String, dynamic>.from(data["data"] as Map) : null;
+      final String? token = dataMap?['token'] as String?;
+      final Map<String, dynamic>? user = dataMap?['user'] is Map ? Map<String, dynamic>.from(dataMap!['user'] as Map) : null;
+      if (token != null) await saveToken(token);
+      if (user != null) await saveUserData(user);
+      return data;
+    } on AuthHttpException {
+      rethrow;
+    } on Exception catch (e) {
+      throw Exception(readableErrorMessage(e));
+    }
+  }
+
   /// Step 1 of password recovery: asks the server to TEXT a one-time code to the phone
   /// registered on the account (it needs the email AND that phone number). Nothing that
   /// proves identity comes back in the answer, and the answer is the same whether or not

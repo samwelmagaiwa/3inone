@@ -98,6 +98,8 @@ Route::prefix('locations')->group(function () {
 Route::prefix('auth')->group(function () {
     // Brute-force guard: keyed by email + IP so one office NAT can't lock out everyone.
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login');
+    // Sign in with Google (an owner who is already registered signs in; someone new is sent to the registration form).
+    Route::post('google', [\App\Http\Controllers\API\GoogleAuthController::class, 'signIn'])->middleware('throttle:20,1');
     // Rate-limited: both steps are unauthenticated and check identity by
     // email/phone, so without a limit they'd be a brute-force target.
     // A business owner registers themselves; a super admin then reviews and assigns
