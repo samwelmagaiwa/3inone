@@ -161,15 +161,12 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 300));
 
-      // The email form is behind a link: Google is the way in.
-      await tester.tap(find.byKey(const ValueKey<String>('toggle_email_signin')));
-      await tester.pump();
       final Finder fields = find.byType(TextFormField);
       await tester.enterText(fields.at(0), 'owner@example.test');
       await tester.enterText(fields.at(1), '0743519100');
       await tester.enterText(fields.at(2), 'secret-pass-1');
       await tester.pump();
-      await tester.tap(find.byWidgetPredicate((Widget w) => w is Text && (w.data ?? '').toUpperCase() == 'SIGN IN').first);
+      await tester.tap(find.byKey(const ValueKey<String>('login_button')));
       for (int i = 0; i < 10; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }

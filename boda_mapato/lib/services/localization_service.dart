@@ -1061,6 +1061,9 @@ class AppLocalizations {
       'terms_of_use': 'Terms of Use',
       'privacy_policy': 'Privacy Policy',
       'and_word': 'and the',
+      'or_sign_in_with': 'Or sign in with',
+      'no_account_question': "Don't have an account?",
+      'sign_up': 'Sign Up',
       'welcome_back': 'Welcome Back',
       'signin_subtitle': 'Sign in to continue to your account',
 
@@ -3727,6 +3730,9 @@ class AppLocalizations {
       'terms_of_use': 'Sheria na Masharti',
       'privacy_policy': 'Sera ya Faragha',
       'and_word': 'na',
+      'or_sign_in_with': 'Au ingia kwa',
+      'no_account_question': 'Huna akaunti?',
+      'sign_up': 'Jisajili',
       'welcome_back': 'Karibu Tena',
       'signin_subtitle': 'Ingia ili kuendelea kwenye akaunti yako',
 

@@ -10,8 +10,6 @@ import "../../constants/colors.dart";
 import "../../constants/theme_constants.dart";
 import "../../providers/auth_provider.dart";
 import "../../services/localization_service.dart";
-import "../../widgets/backgrounds/starfield_background.dart";
-import "../../widgets/flag_app_name_text.dart";
 import "forgot_password_sheet.dart";
 import "register_business_screen.dart";
 import '../../utils/server_message.dart';
@@ -39,8 +37,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
 
-  /// The email + password + phone form is behind a link: Google is how people sign in. Staff and old accounts use the form.
-  bool _showEmailForm = false;
   bool _forcePhoneField = false;
   Map<String, String> _rememberedPhones = <String, String>{};
 
@@ -347,400 +343,257 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  static const Color _navy = Color(0xFF2D3566);
+  static const Color _teal = Color(0xFF008080);
+
   @override
   Widget build(final BuildContext context) {
-    final Color cyberCyan = const Color(0xFF00E5FF);
-
-    return StarfieldBackground(
-      child: Consumer<LocalizationService>(
-        builder: (context, localizationService, child) => Scaffold(
-          backgroundColor: Colors.transparent,
-          body: Stack(
-            children: [
-              // Nebula Glow
-              Positioned(
-                top: -100.h,
-                right: -50.w,
-                child: Container(
-                  width: 400.w,
-                  height: 400.h,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        cyberCyan.withValues(alpha: 0.12),
-                        Colors.transparent,
+    return Consumer<LocalizationService>(
+      builder: (final BuildContext context, final LocalizationService loc, final Widget? child) => Scaffold(
+        backgroundColor: _navy,
+        body: Stack(
+          children: <Widget>[
+            const Positioned.fill(child: CustomPaint(painter: _BlobPainter())),
+            SafeArea(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: AnimatedOpacity(
+                  opacity: _isLoading ? 0.3 : 1.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 28.w),
+                    child: Column(
+                      children: <Widget>[
+                        SizedBox(height: 96.h),
+                        Text(
+                          loc.translate('signin'),
+                          key: const ValueKey<String>('login_title'),
+                          style: TextStyle(color: Colors.white, fontSize: 36.sp, fontWeight: FontWeight.w800),
+                        ),
+                        SizedBox(height: 28.h),
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            children: <Widget>[
+                              _pillField(controller: _emailController, hint: loc.translate('email'), icon: Icons.email, keyboardType: TextInputType.emailAddress),
+                              if (_phoneFieldNeeded) ...<Widget>[
+                                SizedBox(height: 16.h),
+                                _pillField(controller: _phoneController, hint: loc.translate('phone_number'), icon: Icons.phone_android, keyboardType: TextInputType.phone),
+                              ] else
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextButton(
+                                    onPressed: () => setState(() => _forcePhoneField = true),
+                                    style: TextButton.styleFrom(padding: EdgeInsets.only(left: 12.w, top: 4.h), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                    child: Text(loc.translate('use_different_phone'), style: TextStyle(color: Colors.white54, fontSize: 11.sp)),
+                                  ),
+                                ),
+                              SizedBox(height: 16.h),
+                              _pillField(
+                                controller: _passwordController,
+                                hint: loc.translate('password'),
+                                icon: Icons.lock,
+                                obscureText: _obscurePassword,
+                                suffix: IconButton(
+                                  icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off, color: Colors.black38, size: 20.sp),
+                                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                ),
+                              ),
+                              SizedBox(height: 22.h),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 56.h,
+                                child: ElevatedButton(
+                                  key: const ValueKey<String>('login_button'),
+                                  onPressed: _handleLogin,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _teal,
+                                    foregroundColor: Colors.white,
+                                    elevation: 8,
+                                    shadowColor: Colors.black54,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30.r)),
+                                  ),
+                                  child: Text(loc.translate('signin').toUpperCase(), style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 10.h),
+                        TextButton(
+                          onPressed: _handleForgotPassword,
+                          child: Text(loc.translate('forgot_password'), style: TextStyle(color: Colors.white60, fontSize: 14.sp)),
+                        ),
+                        SizedBox(height: 22.h),
+                        Text(
+                          loc.translate('or_sign_in_with').toUpperCase(),
+                          style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w800),
+                        ),
+                        SizedBox(height: 18.h),
+                        _GoogleButton(label: loc.translate('sign_in_with_google').toUpperCase(), onTap: _handleGoogle),
+                        SizedBox(height: 40.h),
+                        Text.rich(
+                          TextSpan(
+                            style: TextStyle(color: Colors.white, fontSize: 15.sp),
+                            children: <InlineSpan>[
+                              TextSpan(text: '${loc.translate('no_account_question')} '),
+                              WidgetSpan(
+                                alignment: PlaceholderAlignment.baseline,
+                                baseline: TextBaseline.alphabetic,
+                                child: GestureDetector(
+                                  key: const ValueKey<String>('sign_up_link'),
+                                  onTap: _handleGoogle,
+                                  child: Text(loc.translate('sign_up'), style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w800)),
+                                ),
+                              ),
+                            ],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 14.h),
+                        Text.rich(
+                          key: const ValueKey<String>('legal_links'),
+                          TextSpan(
+                            style: TextStyle(color: Colors.white54, fontSize: 12.sp, height: 1.5),
+                            children: <InlineSpan>[
+                              TextSpan(text: '${loc.translate('by_continuing_you_accept')} '),
+                              _legalLink(loc.translate('terms_of_use'), 'https://3inone.nexoryatech.com/terms', Colors.white),
+                              TextSpan(text: ' ${loc.translate('and_word')} '),
+                              _legalLink(loc.translate('privacy_policy'), 'https://3inone.nexoryatech.com/privacy', Colors.white),
+                            ],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 28.h),
                       ],
                     ),
                   ),
                 ),
               ),
+            ),
 
-              SafeArea(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      child: AnimatedOpacity(
-                        opacity: _isLoading ? 0.3 : 1.0,
-                        duration: const Duration(milliseconds: 500),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 24.w),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              SizedBox(height: 36.h),
-                                  
-                                  // Hero Logo Section
-                                  TweenAnimationBuilder<double>(
-                                    tween: Tween(begin: 0.0, end: 1.0),
-                                    duration: const Duration(seconds: 2),
-                                    builder: (context, val, child) {
-                                      return Transform.scale(
-                                        scale: 0.9 + (0.1 * val),
-                                        child: Container(
-                                          padding: EdgeInsets.all(4.w),
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(color: cyberCyan.withValues(alpha: 0.5 * val), width: 2),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: cyberCyan.withValues(alpha: 0.2 * val),
-                                                blurRadius: 30 * val,
-                                                spreadRadius: 5 * val,
-                                              ),
-                                            ],
-                                          ),
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(70.r),
-                                            child: Image.asset(
-                                              'assets/images/app_icon.png',
-                                              width: 110.w,
-                                              height: 110.w,
-                                              fit: BoxFit.cover,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  
-                                  SizedBox(height: 16.h),
-                                  
-                                  FlagAppNameText(
-                                    localizationService.translate('app_name'),
-                                    fontSize: 28.sp,
-                                  ),
-                                  
-                                  SizedBox(height: 8.h),
-                                  Text(
-                                    localizationService.translate('signin_to_continue'),
-                                    key: const ValueKey<String>('signin_subtitle'),
-                                    style: TextStyle(color: Colors.white54, fontSize: 15.sp),
-                                  ),
-
-                                  SizedBox(height: 28.h),
-
-                                  // Sign in with Google: the way in for owners.
-                                  _GoogleButton(
-                                    label: localizationService.translate('sign_in_with_google'),
-                                    onTap: _handleGoogle,
-                                  ),
-                                  SizedBox(height: 16.h),
-                                  Row(
-                                    children: <Widget>[
-                                      const Expanded(child: Divider(color: Colors.white12)),
-                                      Padding(
-                                        padding: EdgeInsets.symmetric(horizontal: 14.w),
-                                        child: Text(localizationService.translate('or_word'), style: TextStyle(color: Colors.white38, fontSize: 13.sp)),
-                                      ),
-                                      const Expanded(child: Divider(color: Colors.white12)),
-                                    ],
-                                  ),
-                                  SizedBox(height: 16.h),
-                                  OutlinedButton.icon(
-                                    key: const ValueKey<String>('toggle_email_signin'),
-                                    onPressed: () => setState(() => _showEmailForm = !_showEmailForm),
-                                    style: OutlinedButton.styleFrom(
-                                      minimumSize: Size(double.infinity, 56.h),
-                                      foregroundColor: Colors.white,
-                                      side: BorderSide(color: _showEmailForm ? cyberCyan.withValues(alpha: 0.6) : Colors.white24),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-                                    ),
-                                    icon: Icon(Icons.mail_outline_rounded, size: 22.sp),
-                                    label: Text(
-                                      localizationService.translate('sign_in_with_email'),
-                                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500),
-                                    ),
-                                  ),
-                                  SizedBox(height: 18.h),
-
-                                  // Glass Card Form (email + password + phone), for staff and accounts made before Google sign-in
-                                  if (_showEmailForm) ClipRRect(
-                                    borderRadius: BorderRadius.circular(24.r),
-                                    child: BackdropFilter(
-                                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                                      child: Container(
-                                        padding: EdgeInsets.all(24.w),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.05),
-                                          borderRadius: BorderRadius.circular(24.r),
-                                          border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
-                                        ),
-                                        child: Form(
-                                          key: _formKey,
-                                          child: Column(
-                                            children: [
-                                              _buildModernField(
-                                                controller: _emailController,
-                                                label: localizationService.translate('email'),
-                                                icon: Icons.email_outlined,
-                                                cyberCyan: cyberCyan,
-                                              ),
-                                              if (_phoneFieldNeeded) ...<Widget>[
-                                                SizedBox(height: 20.h),
-                                                _buildModernField(
-                                                  controller: _phoneController,
-                                                  label: localizationService.translate('phone_number'),
-                                                  icon: Icons.phone_android_outlined,
-                                                  cyberCyan: cyberCyan,
-                                                ),
-                                              ] else ...<Widget>[
-                                                SizedBox(height: 6.h),
-                                                Align(
-                                                  alignment: Alignment.centerLeft,
-                                                  child: TextButton(
-                                                    onPressed: () =>
-                                                        setState(() => _forcePhoneField = true),
-                                                    style: TextButton.styleFrom(
-                                                      padding: EdgeInsets.zero,
-                                                      minimumSize: Size.zero,
-                                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                    ),
-                                                    child: Text(
-                                                      localizationService.translate('use_different_phone'),
-                                                      style: TextStyle(
-                                                        color: cyberCyan.withValues(alpha: 0.7),
-                                                        fontSize: 11.sp,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                              SizedBox(height: 20.h),
-                                              _buildModernField(
-                                                controller: _passwordController,
-                                                label: localizationService.translate('password'),
-                                                icon: Icons.lock_outline,
-                                                obscureText: _obscurePassword,
-                                                cyberCyan: cyberCyan,
-                                                suffix: IconButton(
-                                                  icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off, color: Colors.white38, size: 20.sp),
-                                                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                                                ),
-                                              ),
-                                              SizedBox(height: 32.h),
-                                              
-                                              // Login Button
-                                              GestureDetector(
-                                                onTap: _handleLogin,
-                                                child: Container(
-                                                  height: 56.h,
-                                                  width: double.infinity,
-                                                  decoration: BoxDecoration(
-                                                    borderRadius: BorderRadius.circular(16.r),
-                                                    gradient: LinearGradient(
-                                                      colors: [cyberCyan, const Color(0xFF00B8D4)],
-                                                    ),
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: cyberCyan.withValues(alpha: 0.3),
-                                                        blurRadius: 15,
-                                                        offset: const Offset(0, 5),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  child: Center(
-                                                    child: Text(
-                                                      localizationService.translate('signin').toUpperCase(),
-                                                      style: TextStyle(
-                                                        color: Colors.black,
-                                                        fontSize: 16.sp,
-                                                        fontWeight: FontWeight.w900,
-                                                        letterSpacing: 2.w,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              
-                                              SizedBox(height: 16.h),
-                                              
-                                              TextButton(
-                                                onPressed: _handleForgotPassword,
-                                                child: Text(
-                                                  localizationService.translate('forgot_password'),
-                                                  style: TextStyle(color: Colors.white38, fontSize: 13.sp),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  
-                              SizedBox(height: 28.h),
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 8.w),
-                                child: Text.rich(
-                                  key: const ValueKey<String>('legal_links'),
-                                  TextSpan(
-                                    style: TextStyle(color: Colors.white54, fontSize: 13.sp, height: 1.5),
-                                    children: <InlineSpan>[
-                                      TextSpan(text: '${localizationService.translate('by_continuing_you_accept')} '),
-                                      _legalLink(localizationService.translate('terms_of_use'), 'https://3inone.nexoryatech.com/terms', cyberCyan),
-                                      TextSpan(text: ' ${localizationService.translate('and_word')} '),
-                                      _legalLink(localizationService.translate('privacy_policy'), 'https://3inone.nexoryatech.com/privacy', cyberCyan),
-                                    ],
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                              SizedBox(height: 28.h),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-              // Loading Overlay
-              if (_isLoading)
-                Positioned.fill(
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.8),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          FlagAppNameText(
-                            localizationService.translate('app_name'),
-                            fontSize: 26.sp,
-                          ),
-                          SizedBox(height: 20.h),
-                          ThemeConstants.buildResponsiveLoadingWidget(
-                            context,
-                            message: localizationService.translate('signing_in'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Back-to-home button — last in Stack so it sits on top and is tappable
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 10.h,
-                left: 16.w,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14.r),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: GestureDetector(
-                      onTap: () {
-                        if (Navigator.of(context).canPop()) {
-                          Navigator.of(context).pop();
-                        } else {
-                          Navigator.of(context).pushNamedAndRemoveUntil(
-                            '/',
-                            (route) => false,
-                          );
-                        }
-                      },
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.07),
-                          borderRadius: BorderRadius.circular(14.r),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.arrow_back_ios_new_rounded,
-                                color: Colors.white70, size: 14.sp),
-                            SizedBox(width: 5.w),
-                            Text(
-                              'Home',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+            if (_isLoading)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  child: Center(
+                    child: ThemeConstants.buildResponsiveLoadingWidget(context, message: loc.translate('signing_in')),
                   ),
                 ),
               ),
-            ],
-          ),
+
+            // Back to the landing page: last in the Stack so it sits on top and is tappable
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 10.h,
+              left: 16.w,
+              child: GestureDetector(
+                onTap: () {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  } else {
+                    Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                  }
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                  decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(14.r)),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 14.sp),
+                      SizedBox(width: 5.w),
+                      Text('Home', style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildModernField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    bool obscureText = false,
-    Widget? suffix,
-    required Color cyberCyan,
+  /// A white pill with an icon and a grey hint, as in the design.
+  Widget _pillField({
+    required final TextEditingController controller,
+    required final String hint,
+    required final IconData icon,
+    final bool obscureText = false,
+    final Widget? suffix,
+    final TextInputType? keyboardType,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: TextStyle(color: Colors.white54, fontSize: 11.sp, fontWeight: FontWeight.bold, letterSpacing: 1),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30.r),
+        boxShadow: const <BoxShadow>[BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))],
+      ),
+      child: TextFormField(
+        controller: controller,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        style: TextStyle(color: Colors.black87, fontSize: 16.sp),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: Colors.black38, fontSize: 16.sp),
+          prefixIcon: Icon(icon, color: Colors.black45, size: 22.sp),
+          suffixIcon: suffix,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 18.h),
         ),
-        SizedBox(height: 8.h),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(color: Colors.white12),
-          ),
-          child: TextFormField(
-            controller: controller,
-            obscureText: obscureText,
-            style: const TextStyle(color: Colors.white, decoration: TextDecoration.none),
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.transparent,
-              prefixIcon: Icon(icon, color: cyberCyan.withValues(alpha: 0.6), size: 20.sp),
-              suffixIcon: suffix,
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              errorBorder: InputBorder.none,
-              disabledBorder: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
+}
+
+/// The background of the page: the navy ground with teal shapes at the top left and the bottom right.
+class _BlobPainter extends CustomPainter {
+  const _BlobPainter();
+
+  @override
+  void paint(final Canvas canvas, final Size size) {
+    final double w = size.width;
+    final double h = size.height;
+
+    final Path back = Path()
+      ..moveTo(w * 0.35, 0)
+      ..lineTo(w * 0.85, 0)
+      ..cubicTo(w * 0.78, h * 0.05, w * 0.55, h * 0.04, w * 0.5, h * 0.1)
+      ..cubicTo(w * 0.45, h * 0.17, w * 0.3, h * 0.12, w * 0.35, 0)
+      ..close();
+    canvas.drawPath(back, Paint()..color = const Color(0xFF2A7F94).withValues(alpha: 0.85));
+
+    final Path top = Path()
+      ..moveTo(0, 0)
+      ..lineTo(w * 0.62, 0)
+      ..cubicTo(w * 0.5, h * 0.07, w * 0.58, h * 0.15, w * 0.3, h * 0.17)
+      ..cubicTo(w * 0.1, h * 0.18, w * 0.04, h * 0.22, 0, h * 0.3)
+      ..close();
+    canvas.drawPath(top, Paint()..color = const Color(0xFF008080));
+
+    final Path bottomLeft = Path()
+      ..moveTo(0, h * 0.88)
+      ..cubicTo(w * 0.12, h * 0.9, w * 0.22, h * 0.96, w * 0.2, h)
+      ..lineTo(0, h)
+      ..close();
+    canvas.drawPath(bottomLeft, Paint()..color = const Color(0xFF2A7F94).withValues(alpha: 0.85));
+
+    final Path bottomRight = Path()
+      ..moveTo(w, h)
+      ..lineTo(w * 0.62, h)
+      ..cubicTo(w * 0.6, h * 0.94, w * 0.75, h * 0.9, w * 0.9, h * 0.9)
+      ..cubicTo(w * 0.97, h * 0.9, w, h * 0.87, w, h * 0.83)
+      ..close();
+    canvas.drawPath(bottomRight, Paint()..color = const Color(0xFF008080));
+  }
+
+  @override
+  bool shouldRepaint(covariant final CustomPainter oldDelegate) => false;
 }
 
 /// Google's multicolour "G", drawn from four arcs and a bar (no image file needed).
@@ -768,7 +621,7 @@ class _GoogleGPainter extends CustomPainter {
   bool shouldRepaint(covariant final CustomPainter oldDelegate) => false;
 }
 
-/// The "Sign in with Google" button: white, with Google's multicolour G, as Google's brand rules ask.
+/// The "Sign in with Google" button: a white pill with Google's G, as in the design.
 class _GoogleButton extends StatelessWidget {
   const _GoogleButton({required this.label, required this.onTap});
 
@@ -779,27 +632,29 @@ class _GoogleButton extends StatelessWidget {
   Widget build(final BuildContext context) {
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(16.r),
+      elevation: 6,
+      shadowColor: Colors.black54,
+      borderRadius: BorderRadius.circular(30.r),
       child: InkWell(
         key: const ValueKey<String>('google_signin_button'),
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(30.r),
         onTap: onTap,
         child: Container(
           height: 56.h,
           width: double.infinity,
-          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          padding: EdgeInsets.symmetric(horizontal: 28.w),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              CustomPaint(size: Size(26.w, 26.w), painter: const _GoogleGPainter()),
-              SizedBox(width: 12.w),
-              Flexible(
+              CustomPaint(size: Size(28.w, 28.w), painter: const _GoogleGPainter()),
+              Expanded(
                 child: Text(
                   label,
+                  textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: const Color(0xFF1F1F1F), fontSize: 16.sp, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: const Color(0xFF111111), fontSize: 14.sp, fontWeight: FontWeight.w800, letterSpacing: 1.4),
                 ),
               ),
+              SizedBox(width: 28.w),
             ],
           ),
         ),
