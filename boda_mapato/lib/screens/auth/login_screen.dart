@@ -494,7 +494,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final bool confirm = _step == _Step.confirmPhone;
     return Consumer<LocalizationService>(
       builder: (final BuildContext context, final LocalizationService loc, final Widget? child) => Scaffold(
-        backgroundColor: _navy,
+        backgroundColor: const Color(0xFFC4D8FF),
         resizeToAvoidBottomInset: true,
         body: Stack(
           children: <Widget>[
