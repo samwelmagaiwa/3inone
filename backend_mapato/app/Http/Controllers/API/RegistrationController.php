@@ -93,11 +93,12 @@ class RegistrationController extends Controller
             'name' => 'required|string|max:255',
             'business_name' => 'required|string|max:255',
             'email' => 'required_without:google_token|nullable|email|max:255',
+            // Not asked of someone who signed up first (their phone was captured and confirmed then): checked below.
             'phone_number' => [
-                'required', 'regex:/^(0\d{9}|\+\d{9,15})$/',
+                'nullable', 'regex:/^(0\d{9}|\+\d{9,15})$/',
             ],
             // A person who signed in with Google has no password: the sealed token from /auth/google says who they are instead.
-            'password' => ['nullable', 'required_without:google_token', 'confirmed', Password::min(8)],
+            'password' => ['nullable', 'required_without_all:google_token,current_password', 'confirmed', Password::min(8)],
             'google_token' => 'nullable|string|max:2000',
             'requested_services' => 'required|array|min:1',
             'requested_services.*' => 'string|in:' . implode(',', self::SERVICES),
@@ -164,7 +165,27 @@ class RegistrationController extends Controller
         $isReapplication = false;
         $existingRegistration = null;
 
-        if ($existingUser) {
+        // Someone who signed up first (email, phone, password; phone confirmed) and has now signed in and is giving their business
+        // details. They prove who they are with their password (or Google), and their phone is the one they confirmed.
+        $isApplicant = $existingUser !== null && $existingUser->is_applicant && $existingUser->registration === null;
+        if ($isApplicant) {
+            $proved = $googleSub !== null || Hash::check((string) ($data['current_password'] ?? ''), (string) $existingUser->password);
+            if (!$proved) {
+                return ResponseHelper::validationError(['email' => ['This email is already registered.']]);
+            }
+            if (!$existingUser->phone_verified && $googleSub === null) {
+                return ResponseHelper::error(
+                    'Thibitisha namba ya simu kwanza. / Confirm your phone number first.',
+                    403,
+                    ['code' => 'phone_not_verified']
+                );
+            }
+            $data['phone_number'] = $data['phone_number'] ?? $existingUser->phone_number;
+        } elseif (empty($data['phone_number']) && !($existingUser && $existingUser->registration)) {
+            return ResponseHelper::validationError(['phone_number' => ['Namba ya simu inahitajika. / The phone number is required.']]);
+        }
+
+        if ($existingUser && !$isApplicant) {
             $reg = $existingUser->registration;
             $isApproved = ($reg && $reg->status === BusinessRegistration::APPROVED)
                 || $existingUser->is_active
@@ -203,7 +224,40 @@ class RegistrationController extends Controller
             }
         }
 
-        $registration = DB::transaction(function () use ($data, $existingUser, $isReapplication, $existingRegistration, $inventoryType, $plan, $months, $googleSub) {
+        // A person who already has an account and a registration (turned down, applying again) keeps the phone they gave.
+        $data['phone_number'] = $data['phone_number'] ?? $existingUser?->phone_number;
+
+        $registration = DB::transaction(function () use ($data, $existingUser, $isReapplication, $existingRegistration, $inventoryType, $plan, $months, $googleSub, $isApplicant) {
+            if ($isApplicant) {
+                // The account already exists (made at sign-up): keep its password and phone, take the name, and create the registration.
+                $existingUser->name = trim($data['name']);
+                if ($googleSub !== null) {
+                    $existingUser->google_id = $googleSub;
+                }
+                $last9 = fn (string $n): string => substr(preg_replace('/\D/', '', $n) ?? '', -9);
+                if ($last9((string) $existingUser->phone_number) !== $last9((string) $data['phone_number'])) {
+                    $existingUser->phone_number = $data['phone_number'];
+                    $existingUser->phone_verified = false; // a different number has not been confirmed
+                }
+                $existingUser->is_applicant = false;
+                $existingUser->save();
+
+                return BusinessRegistration::create([
+                    'user_id' => $existingUser->id,
+                    'business_name' => trim($data['business_name']),
+                    'requested_services' => array_values(array_unique($data['requested_services'])),
+                    'requested_plan' => $plan,
+                    'requested_months' => $months,
+                    'inventory_type' => $inventoryType,
+                    'region' => $data['region'] ?? null,
+                    'district' => $data['district'] ?? null,
+                    'address' => $data['address'] ?? null,
+                    'id_number' => $data['id_number'] ?? null,
+                    'notes' => $data['notes'] ?? null,
+                    'status' => BusinessRegistration::PENDING,
+                ]);
+            }
+
             if ($isReapplication && $existingUser && $existingRegistration) {
                 $existingUser->name = trim($data['name']);
                 $existingUser->email = trim($data['email']);
@@ -212,7 +266,9 @@ class RegistrationController extends Controller
                     $existingUser->phone_verified = false; // a different number has not been confirmed
                 }
                 $existingUser->phone_number = $data['phone_number'];
-                $existingUser->password = Hash::make($data['password']);
+                if (!empty($data['password'])) {
+                    $existingUser->password = Hash::make($data['password']);
+                }
                 if ($googleSub !== null) {
                     $existingUser->google_id = $googleSub;
                 }
@@ -311,6 +367,60 @@ class RegistrationController extends Controller
         ], $returnMsg, 201);
     }
 
+    /**
+     * Step 1 of signing up by email: email, phone and password. An account is made (not active, marked as an applicant) and a text code
+     * goes to the phone. Nothing about the business is asked yet: that comes after the phone is confirmed and the person has signed in.
+     */
+    public function signup(Request $request, SmsCodes $codes): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => 'required|email|max:255',
+            'phone_number' => ['required', 'regex:/^(0\d{9}|\+\d{9,15})$/'],
+            'password' => ['required', 'confirmed', Password::min(8)],
+        ], [
+            'phone_number.regex' => 'Namba ya simu si sahihi. Tumia namba ya ndani (mfano: 0743519100) au ya kimataifa (mfano: +255743519100).',
+        ]);
+
+        $email = strtolower(trim($data['email']));
+        $existing = User::whereRaw('LOWER(email) = ?', [$email])->first();
+
+        if ($existing) {
+            // Only the person who started this sign-up (they know its password) may carry on with it; for anyone else the answer
+            // is the same as for a finished account, so it cannot be used to find out who has signed up.
+            if (!$existing->is_applicant || !Hash::check($data['password'], (string) $existing->password)) {
+                return ResponseHelper::validationError(['email' => ['This email is already registered.']]);
+            }
+            $last9 = fn (string $n): string => substr(preg_replace('/\D/', '', $n) ?? '', -9);
+            if ($last9((string) $existing->phone_number) !== $last9($data['phone_number'])) {
+                $existing->phone_verified = false;
+            }
+            $existing->phone_number = $data['phone_number'];
+            $existing->save();
+            $user = $existing;
+        } else {
+            $user = new User();
+            $user->name = Str::before($email, '@');
+            $user->email = $email;
+            $user->phone_number = $data['phone_number'];
+            $user->password = Hash::make($data['password']);
+            $user->role = 'admin';
+            $user->is_active = false;
+            $user->is_applicant = true;
+            $user->must_change_password = false;
+            $user->save();
+        }
+
+        $phoneVerified = (bool) $user->phone_verified;
+        $codeStatus = $phoneVerified ? null : $codes->issue($user, SmsCodes::PHONE_VERIFICATION, self::PHONE_CODE_TEXT);
+
+        return ResponseHelper::success([
+            'phone_verified' => $phoneVerified,
+            'phone_verification_required' => !$phoneVerified,
+            'code_sent' => $codeStatus === SmsCodes::SENT,
+            'code_status' => $codeStatus,
+        ], 'Tumekutumia nambari kwa ujumbe mfupi. / We have texted you a code.', 201);
+    }
+
     #[OA\Post(
         path: '/auth/register/verify-phone',
         summary: 'Confirm the phone number of a registration with the code that was texted',
@@ -340,7 +450,7 @@ class RegistrationController extends Controller
 
         $user = User::whereRaw('LOWER(email) = ?', [strtolower(trim($data['email']))])->first();
 
-        if (!$user || !$user->registration || !$codes->verify($user, SmsCodes::PHONE_VERIFICATION, $data['code'])) {
+        if (!$user || !($user->registration || $user->is_applicant) || !$codes->verify($user, SmsCodes::PHONE_VERIFICATION, $data['code'])) {
             return ResponseHelper::error(
                 'Nambari si sahihi au imeisha muda. Omba nambari mpya. / The code is wrong or has expired. Request a new one.',
                 422
@@ -383,7 +493,7 @@ class RegistrationController extends Controller
         }
 
         $user = User::whereRaw('LOWER(email) = ?', [strtolower(trim($data['email']))])->first();
-        if ($user && $user->registration && !$user->is_active && !$user->phone_verified) {
+        if ($user && ($user->registration || $user->is_applicant) && !$user->is_active && !$user->phone_verified) {
             $codes->issue($user, SmsCodes::PHONE_VERIFICATION, self::PHONE_CODE_TEXT);
         }
 

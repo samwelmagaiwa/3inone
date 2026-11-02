@@ -39,7 +39,9 @@ class GoogleAuthController extends Controller
         $rejected = $user !== null && !$user->is_active
             && $user->registration?->status === \App\Models\BusinessRegistration::REJECTED
             && ($user->google_id === null || $user->google_id === $identity['sub']);
-        if ($user === null || $rejected) {
+        // Someone who started signing up by email and now chooses Google (same email, which Google vouches for) carries on to the form.
+        $applicant = $user !== null && $user->is_applicant && $user->registration === null;
+        if ($user === null || $rejected || $applicant) {
             return ResponseHelper::success([
                 'status' => 'new_user',
                 'email' => $identity['email'],

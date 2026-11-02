@@ -104,6 +104,8 @@ Route::prefix('auth')->group(function () {
     // email/phone, so without a limit they'd be a brute-force target.
     // A business owner registers themselves; a super admin then reviews and assigns
     // services. Public, so it is rate-limited per IP.
+    // Step 1 of signing up by email: email + phone + password, then a text code (register/verify-phone) confirms the phone.
+    Route::post('signup', [RegistrationController::class, 'signup'])->middleware('throttle:10,10');
     Route::post('register', [RegistrationController::class, 'register'])->middleware('throttle:10,10');
     // The applicant proves the phone number is theirs with the code texted at registration.
     Route::post('register/verify-phone', [RegistrationController::class, 'verifyPhone'])->middleware('throttle:10,10');

@@ -54,8 +54,9 @@ void main() {
   testWidgets('the login page has the email form, the Google button and the sign-up and legal links', (t) async {
     await _open(t, const LoginScreen(), AuthProvider());
 
-    expect(find.byKey(const ValueKey<String>('login_title')), findsOneWidget);
-    expect(find.byType(TextFormField), findsWidgets, reason: 'email, phone and password');
+    expect(find.byKey(const ValueKey<String>('login_title_signIn')), findsOneWidget);
+    expect(find.byType(TextFormField), findsNWidgets(2), reason: 'email and password only');
+    expect(find.byKey(const ValueKey<String>('phone_field')), findsNothing);
     expect(find.byKey(const ValueKey<String>('login_button')), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('google_signin_button')), findsOneWidget);
     expect(find.text('SIGN IN WITH GOOGLE'), findsOneWidget);
@@ -81,18 +82,6 @@ void main() {
     expect(find.text('Password'), findsNothing, reason: 'Google is the password');
     expect(find.text('Confirm password'), findsNothing);
     expect(find.text('Phone Number'), findsOneWidget, reason: 'the phone moved here from the login page');
-  });
-
-  testWidgets('the Sign Up link starts the same Google flow, so a new person lands on the registration form', (t) async {
-    const GoogleSignup signup = GoogleSignup(email: 'neema@gmail.com', name: 'Neema Mushi', token: 'sealed');
-    await _open(t, const LoginScreen(), _GoogleAuth(newUser: signup));
-
-    await t.tap(find.byKey(const ValueKey<String>('sign_up_link')));
-    for (int i = 0; i < 8; i++) {
-      await t.pump(const Duration(milliseconds: 150));
-    }
-
-    expect(find.byType(RegisterBusinessScreen), findsOneWidget);
   });
 
   testWidgets('backing out of the Google chooser changes nothing', (t) async {

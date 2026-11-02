@@ -18,6 +18,16 @@ import '../models/business.dart';
 /// What came of "Sign in with Google".
 enum GoogleResult { signedIn, newUser, cancelled, failed }
 
+/// Someone who signed up by email and has signed in, but has not yet given their business details. The registration form is opened
+/// with these: the password is what proves who they are when the details are sent (nothing is signed in yet).
+class ApplicantCredentials {
+  const ApplicantCredentials({required this.email, required this.password, this.name = ''});
+
+  final String email;
+  final String password;
+  final String name;
+}
+
 /// A person Google vouches for who has no account yet: what the registration form starts from.
 class GoogleSignup {
   const GoogleSignup({required this.email, required this.name, required this.token});
@@ -216,6 +226,13 @@ class AuthProvider extends ChangeNotifier {
   GoogleSignup? _googleSignup;
   GoogleSignup? get googleSignup => _googleSignup;
 
+  ApplicantCredentials? _applicant;
+
+  /// Set when the last sign-in found someone who signed up but still owes the business details: the login screen then opens the form.
+  ApplicantCredentials? get applicant => _applicant;
+
+  ApplicantCredentials? _pendingApplicant;
+
   /// How the phone gets Google's ID token. Replaced in tests; null means the person backed out of the chooser.
   Future<String?> Function() googleIdTokenSource = GoogleLogin.idToken;
 
@@ -246,9 +263,12 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> login({
     required final String email,
     required final String password,
-    required final String phoneNumber,
-  }) =>
-      _performLogin(() => AuthService.login(email: email, password: password, phoneNumber: phoneNumber));
+    final String phoneNumber = '',
+  }) {
+    _applicant = null;
+    _pendingApplicant = ApplicantCredentials(email: email.trim(), password: password);
+    return _performLogin(() => AuthService.login(email: email, password: password, phoneNumber: phoneNumber));
+  }
 
   /// The one sign-in path: checks the server is reachable, makes the request, then loads the person's profile.
   Future<bool> _performLogin(final Future<Map<String, dynamic>> Function() request) async {
@@ -278,6 +298,15 @@ class AuthProvider extends ChangeNotifier {
       }
 
       final Map<String, dynamic> response = await request();
+
+      // Signed up by email, phone confirmed, business details still to give: the form opens next. Nothing is signed in.
+      final Object? applicantData = response["data"];
+      if (applicantData is Map && applicantData["status"] == 'needs_business_details') {
+        final ApplicantCredentials? who = _pendingApplicant;
+        _applicant = who == null ? null : ApplicantCredentials(email: who.email, password: who.password, name: (applicantData["name"] ?? '').toString());
+        _lastErrorCode = 'needs_business_details';
+        return false;
+      }
 
       // Someone Google knows but we do not: they register next. Nothing is signed in.
       final Object? maybeData = response["data"];

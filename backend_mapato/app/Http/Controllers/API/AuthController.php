@@ -91,10 +91,10 @@ class AuthController extends Controller
                 [
                     'email' => 'required|email',
                     'password' => 'required|string',
-                    'phone_number' => ['required', 'regex:/^(0\d{9}|\+\d{9,15})$/'],
+                    // Email and password are enough. A phone number is still checked when the app sends one (older versions do).
+                    'phone_number' => ['nullable', 'regex:/^(0\d{9}|\+\d{9,15})$/'],
                 ],
                 [
-                    'phone_number.required' => 'Namba ya simu inahitajika',
                     'phone_number.regex' => 'Namba ya simu si sahihi. Tumia namba ya ndani (mfano: 0743519100) au ya kimataifa (mfano: +255743519100).',
                 ]
             );
@@ -124,6 +124,24 @@ class AuthController extends Controller
                     'timestamp' => now()->toISOString(),
                 ]);
                 return ResponseHelper::error('Invalid credentials', 401);
+            }
+
+            // Signed up but has not yet given the business details: no sign-in yet, the app is told to show that form. Their phone
+            // must have been confirmed first.
+            if ($user->is_applicant) {
+                if (!$user->phone_verified) {
+                    return ResponseHelper::error(
+                        'Thibitisha namba ya simu kwanza kwa nambari uliyotumiwa. / Confirm your phone number first with the code we texted you.',
+                        403,
+                        ['code' => 'phone_not_verified']
+                    );
+                }
+
+                return ResponseHelper::success([
+                    'status' => 'needs_business_details',
+                    'email' => $user->email,
+                    'name' => $user->name,
+                ], 'Jaza taarifa za biashara yako. / Fill in your business details.');
             }
 
             return $this->completeSignIn($request, $user, true);
@@ -229,7 +247,7 @@ class AuthController extends Controller
         }
 
         // Verify phone number matches (comparing last 9 digits for maximum compatibility)
-        if ($checkPhone && !$this->phoneMatches($user, $request->phone_number)) {
+        if ($checkPhone && $request->filled('phone_number') && !$this->phoneMatches($user, $request->phone_number)) {
             Log::warning('Login failed - Phone number mismatch', [
                 'user_id' => $user->id,
                 'email' => $request->email,

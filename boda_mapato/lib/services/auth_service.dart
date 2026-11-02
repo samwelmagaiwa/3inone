@@ -86,7 +86,7 @@ mixin AuthService {
   static Future<Map<String, dynamic>> login({
     required final String email,
     required final String password,
-    required final String phoneNumber,
+    final String phoneNumber = '',
   }) async {
     try {
       final String url = "$baseUrl/auth/login";
@@ -99,10 +99,11 @@ mixin AuthService {
           .post(
             Uri.parse(url),
             headers: _headers,
+            // Email and password are enough: the phone is sent only when someone still gives one.
             body: jsonEncode(<String, String>{
               "email": email,
               "password": password,
-              "phone_number": phoneNumber,
+              if (phoneNumber.trim().isNotEmpty) "phone_number": phoneNumber.trim(),
             }),
           )
           .timeout(timeoutDuration);
@@ -142,6 +143,43 @@ mixin AuthService {
       }
       throw Exception(readableErrorMessage(e));
     }
+  }
+
+  /// Step 1 of signing up by email: email, phone and password. The server makes the account and texts a code to the phone; the code is
+  /// confirmed with [verifyRegistrationPhone], then the person signs in with email and password and fills in the business details.
+  static Future<Map<String, dynamic>> signup({
+    required final String email,
+    required final String phoneNumber,
+    required final String password,
+    required final String passwordConfirmation,
+  }) async {
+    final http.Response response = await http
+        .post(
+          Uri.parse("$baseUrl/auth/signup"),
+          headers: _headers,
+          body: jsonEncode(<String, String>{
+            "email": email.trim(),
+            "phone_number": phoneNumber.trim(),
+            "password": password,
+            "password_confirmation": passwordConfirmation,
+          }),
+        )
+        .timeout(timeoutDuration);
+
+    Map<String, dynamic> data;
+    try {
+      data = jsonDecode(response.body) as Map<String, dynamic>;
+    } on FormatException {
+      throw AuthHttpException(response.statusCode, "Jibu la seva halieleweki (${response.statusCode})");
+    }
+    if (response.statusCode >= 200 && response.statusCode < 300) return data;
+
+    final dynamic errors = data["errors"];
+    if (response.statusCode == 422 && errors is Map && errors.isNotEmpty) {
+      final List<String> lines = errors.values.expand((final v) => v is List ? v : <dynamic>[v]).map((final e) => e.toString()).toList();
+      throw AuthHttpException(422, lines.join("\n"));
+    }
+    throw AuthHttpException(response.statusCode, (data["message"] ?? "Server error: ${response.statusCode}").toString());
   }
 
   /// Sign in with Google: sends the ID token Google gave the phone. The answer is either a normal login (token + user, saved here

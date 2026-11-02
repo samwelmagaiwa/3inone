@@ -162,9 +162,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       final Finder fields = find.byType(TextFormField);
+      // email and password only: the phone is not asked at sign-in any more
+      expect(fields, findsNWidgets(2));
       await tester.enterText(fields.at(0), 'owner@example.test');
-      await tester.enterText(fields.at(1), '0743519100');
-      await tester.enterText(fields.at(2), 'secret-pass-1');
+      await tester.enterText(fields.at(1), 'secret-pass-1');
       await tester.pump();
       await tester.tap(find.byKey(const ValueKey<String>('login_button')));
       for (int i = 0; i < 10; i++) {

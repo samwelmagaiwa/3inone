@@ -549,7 +549,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   void _goToRegister(BuildContext ctx) {
     Navigator.of(ctx).push(
-      MaterialPageRoute<void>(builder: (_) => const RegisterBusinessScreen()),
+      MaterialPageRoute<void>(builder: (_) => const LoginScreen(startInSignup: true)),
     );
   }
 

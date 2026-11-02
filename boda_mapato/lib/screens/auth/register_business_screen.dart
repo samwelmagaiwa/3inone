@@ -4,7 +4,7 @@ import "package:flutter_screenutil/flutter_screenutil.dart";
 import "../../constants/theme_constants.dart";
 import "../../models/business_registration.dart";
 import "../../models/plan_prices.dart";
-import "../../providers/auth_provider.dart" show GoogleSignup;
+import "../../providers/auth_provider.dart" show ApplicantCredentials, GoogleSignup;
 import "../../modules/inventory/models/inv_capabilities.dart";
 import "../../services/api_service.dart";
 import "../../services/auth_service.dart";
@@ -43,6 +43,7 @@ class RegisterBusinessScreen extends StatefulWidget {
     this.initialEmail,
     this.initialPhone,
     this.googleSignup,
+    this.applicant,
   });
 
   /// Overridable so the screen can be tested without a network.
@@ -59,6 +60,10 @@ class RegisterBusinessScreen extends StatefulWidget {
   /// Set when the person signed in with Google: their name and email come from Google (the email cannot be changed) and there is no
   /// password to choose, because Google is how they sign in.
   final GoogleSignup? googleSignup;
+
+  /// Set when the person signed up by email, confirmed their phone and signed in again: the email, phone and password were already
+  /// taken then, so the form asks only about them and the business (the password they signed in with proves who they are).
+  final ApplicantCredentials? applicant;
 
   @override
   State<RegisterBusinessScreen> createState() => _RegisterBusinessScreenState();
@@ -113,6 +118,12 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
     super.initState();
     if (widget.initialEmail != null) {
       _email.text = widget.initialEmail!;
+    }
+    final ApplicantCredentials? who = widget.applicant;
+    if (who != null) {
+      _email.text = who.email;
+      // The account was made with the start of the email as its name; the person types their real name.
+      if (who.name.isNotEmpty && who.name != who.email.split('@').first) _name.text = who.name;
     }
     final GoogleSignup? google = widget.googleSignup;
     if (google != null) {
@@ -198,6 +209,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
           password: _password.text,
           passwordConfirmation: _confirm.text,
           googleToken: widget.googleSignup?.token,
+          currentPassword: widget.applicant?.password,
           requestedServices: kBusinessServices.where(_services.contains).toList(),
           requestedPlan: plan,
           requestedMonths: _months,
@@ -354,6 +366,31 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
                 ],
               ),
             ),
+          if (widget.applicant != null)
+            Container(
+              key: const ValueKey<String>("applicant_note"),
+              margin: EdgeInsets.only(bottom: 16.h),
+              padding: EdgeInsets.all(12.w),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                children: <Widget>[
+                  Icon(Icons.verified_outlined, color: Colors.greenAccent, size: 20.sp),
+                  SizedBox(width: 10.w),
+                  Expanded(
+                    child: Text(
+                      _sw
+                          ? "Barua pepe na namba yako ya simu vimethibitishwa. Sasa tuambie kuhusu wewe na biashara yako."
+                          : "Your email and phone number are confirmed. Now tell us about you and your business.",
+                      style: TextStyle(color: Colors.white70, fontSize: 12.sp, height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           if (_error != null) _errorBox(_error!),
           _section(_sw ? "Taarifa zako" : "About you"),
           _field(
@@ -362,7 +399,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
             icon: Icons.person_outline,
             validator: _required,
           ),
-          _field(
+          if (widget.applicant == null) _field(
             controller: _email,
             label: _loc.translate("email"),
             icon: Icons.email_outlined,
@@ -372,7 +409,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
                 ? _loc.translate("enter_valid_email")
                 : null,
           ),
-          _field(
+          if (widget.applicant == null) _field(
             controller: _phone,
             label: _loc.translate("phone_number"),
             hint: "0743519100",
@@ -385,7 +422,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
                         ? "Namba ya simu si sahihi (mfano 0743519100 au +255743519100)"
                         : "Invalid phone number (e.g. 0743519100 or +255743519100)"),
           ),
-          if (widget.googleSignup == null) _field(
+          if (widget.googleSignup == null && widget.applicant == null) _field(
             controller: _password,
             label: _loc.translate("password"),
             icon: Icons.lock_outline,
@@ -402,7 +439,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
                 ? (_sw ? "Nenosiri liwe na angalau herufi 8" : "Password must be at least 8 characters")
                 : null,
           ),
-          if (widget.googleSignup == null) _field(
+          if (widget.googleSignup == null && widget.applicant == null) _field(
             controller: _confirm,
             label: _sw ? "Thibitisha nenosiri" : "Confirm password",
             icon: Icons.lock_reset_outlined,

@@ -1,89 +1,69 @@
-import "dart:convert";
-import "dart:ui";
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 import "package:flutter_screenutil/flutter_screenutil.dart";
 import "package:provider/provider.dart";
 import "package:url_launcher/url_launcher_string.dart";
-import "package:shared_preferences/shared_preferences.dart";
 
 import "../../constants/colors.dart";
 import "../../constants/theme_constants.dart";
 import "../../providers/auth_provider.dart";
+import "../../services/auth_service.dart";
 import "../../services/localization_service.dart";
 import "forgot_password_sheet.dart";
 import "register_business_screen.dart";
 import '../../utils/server_message.dart';
 
+/// Which part of the page is showing: signing in (email + password), signing up (email, phone, password, confirm) or confirming the
+/// phone with the code that was texted after signing up.
+enum _Step { signIn, signUp, confirmPhone }
+
+typedef SignupCall = Future<Map<String, dynamic>> Function({
+  required String email,
+  required String phone,
+  required String password,
+  required String confirm,
+});
+
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.startInSignup = false, this.onSignup, this.onVerifyCode, this.onResendCode});
+
+  /// Opens with the sign-up fields showing (the landing page's "register" button).
+  final bool startInSignup;
+
+  /// Replaceable so the page can be tested without a network.
+  final SignupCall? onSignup;
+  final Future<void> Function(String email, String code)? onVerifyCode;
+  final Future<void> Function(String email)? onResendCode;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Once a device has logged a given email in successfully with its
-  // matching phone number, that phone is remembered here and the phone
-  // field is skipped on later logins for the same email -- only a NEW
-  // email on this device (or a manual "use a different number" tap) asks
-  // for the phone again. Keyed on lower-cased email, persisted locally.
-  static const String _rememberedPhonesKey = 'remembered_login_phones';
+  static const Color _navy = Color(0xFF2D3566);
+  static const Color _teal = Color(0xFF008080);
+  static final RegExp _phonePattern = RegExp(r"^(0\d{9}|\+\d{9,15})$");
+  static const Duration _anim = Duration(milliseconds: 320);
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _confirmController = TextEditingController();
+  final TextEditingController _codeController = TextEditingController();
 
   bool _obscurePassword = true;
   bool _isLoading = false;
+  late _Step _step;
+  String? _error;
+  String? _notice;
 
-  bool _forcePhoneField = false;
-  Map<String, String> _rememberedPhones = <String, String>{};
-
-  /// True once this device already knows this email's registered phone --
-  /// the phone field is hidden and that remembered value is used silently.
-  bool get _phoneFieldNeeded {
-    if (_forcePhoneField) return true;
-    final String email = _emailController.text.trim().toLowerCase();
-    return email.isEmpty || !_rememberedPhones.containsKey(email);
-  }
+  LocalizationService get _loc => LocalizationService.instance;
 
   @override
   void initState() {
     super.initState();
-    _emailController.addListener(() => setState(() {}));
-    _loadRememberedPhones();
-  }
-
-  Future<void> _loadRememberedPhones() async {
-    try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final String? raw = prefs.getString(_rememberedPhonesKey);
-      if (raw == null || raw.isEmpty) return;
-      final dynamic decoded = jsonDecode(raw);
-      if (decoded is Map && mounted) {
-        setState(() {
-          _rememberedPhones = decoded.map(
-            (dynamic k, dynamic v) => MapEntry(k.toString(), v.toString()),
-          );
-        });
-      }
-    } on Exception {
-      // First run / corrupted prefs -- just fall back to always asking.
-    }
-  }
-
-  Future<void> _rememberPhone(String email, String phone) async {
-    try {
-      _rememberedPhones = <String, String>{
-        ..._rememberedPhones,
-        email.toLowerCase(): phone,
-      };
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_rememberedPhonesKey, jsonEncode(_rememberedPhones));
-    } on Exception {
-      // Non-fatal -- the next login just asks for the phone again.
-    }
+    _step = widget.startInSignup ? _Step.signUp : _Step.signIn;
   }
 
   @override
@@ -91,74 +71,168 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _phoneController.dispose();
+    _confirmController.dispose();
+    _codeController.dispose();
     super.dispose();
   }
+
+  void _goTo(final _Step step, {final String? notice}) {
+    setState(() {
+      _step = step;
+      _error = null;
+      _notice = notice;
+    });
+  }
+
+  String? _emailError(final String? v) => (v == null || !v.contains('@') || v.trim().length < 5) ? _loc.translate('enter_valid_email') : null;
+
+  Future<void> _submit() => switch (_step) {
+        _Step.signIn => _handleLogin(),
+        _Step.signUp => _handleSignup(),
+        _Step.confirmPhone => _handleVerify(),
+      };
+
+  // ------------------------------------------------------------------ sign in (email + password only)
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
     final String email = _emailController.text.trim();
-    final String phone = _phoneFieldNeeded
-        ? _phoneController.text.trim()
-        : _rememberedPhones[email.toLowerCase()]!;
-
+    final String password = _passwordController.text;
     setState(() {
       _isLoading = true;
+      _error = null;
     });
 
+    final AuthProvider authProvider = Provider.of<AuthProvider>(context, listen: false);
+    bool success;
     try {
-      final AuthProvider authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final bool success = await authProvider.login(
-        email: email,
-        password: _passwordController.text,
-        phoneNumber: phone,
-      );
-
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-
-      if (success) {
-        await _rememberPhone(email, phone);
-        if (mounted) {
-          _showSnackBar(LocalizationService.instance.translate('login_successful'), Colors.green);
-          Navigator.of(context).pop();
-        }
-      } else {
-        if (mounted) {
-          // The remembered phone may be stale (number changed) -- surface
-          // the field again so the user can correct it instead of being
-          // stuck unable to see why login keeps failing.
-          setState(() => _forcePhoneField = true);
-          if (authProvider.lastErrorCode == 'registration_rejected') {
-            _showRegistrationRejectedDialog(
-              message: authProvider.errorMessage ?? LocalizationService.instance.translate('login_failed'),
-              email: email,
-              phone: phone,
-            );
-          } else if (authProvider.lastErrorCode == 'registration_pending') {
-            _showRegistrationPendingDialog(
-              message: authProvider.errorMessage ?? LocalizationService.instance.translate('login_failed'),
-            );
-          } else {
-            _showSnackBar(authProvider.errorMessage ?? LocalizationService.instance.translate('login_failed'), Colors.red);
-          }
-        }
-      }
+      success = await authProvider.login(email: email, password: password);
     } on Exception catch (e) {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
         _showSnackBar(readableErrorMessage(e), Colors.red);
       }
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (success) {
+      _showSnackBar(_loc.translate('login_successful'), Colors.green);
+      Navigator.of(context).pop();
+      return;
+    }
+
+    final String message = authProvider.errorMessage ?? _loc.translate('login_failed');
+    switch (authProvider.lastErrorCode) {
+      case 'needs_business_details':
+        // Signed up and confirmed the phone: now the business details (the phone and password are already known).
+        final ApplicantCredentials? who = authProvider.applicant;
+        if (who != null) {
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (final BuildContext _) => RegisterBusinessScreen(applicant: who)),
+          );
+        }
+      case 'phone_not_verified':
+        // They signed up but never entered the code: ask for it, and text a fresh one.
+        _goTo(_Step.confirmPhone, notice: _loc.translate('confirm_phone_hint'));
+        await _resend(silent: true);
+      case 'registration_rejected':
+        _showRegistrationRejectedDialog(message: message, email: email, password: password);
+      case 'registration_pending':
+        _showRegistrationPendingDialog(message: message);
+      default:
+        _showSnackBar(message, Colors.red);
     }
   }
 
+  // ------------------------------------------------------------------ sign up (email, phone, password, confirm) + the code
+
+  Future<void> _handleSignup() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final String email = _emailController.text.trim();
+    final String phone = _phoneController.text.trim();
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final SignupCall call = widget.onSignup ??
+          ({required final String email, required final String phone, required final String password, required final String confirm}) =>
+              AuthService.signup(email: email, phoneNumber: phone, password: password, passwordConfirmation: confirm);
+      final Map<String, dynamic> result = await call(email: email, phone: phone, password: _passwordController.text, confirm: _confirmController.text);
+      if (!mounted) return;
+      final Object? data = result['data'];
+      final bool unavailable = data is Map && data['code_status'] == 'unavailable';
+      final bool alreadyConfirmed = data is Map && data['phone_verified'] == true;
+      setState(() => _isLoading = false);
+      if (unavailable) {
+        setState(() => _error = _loc.translate('sms_unavailable_try_later'));
+      } else if (alreadyConfirmed) {
+        _passwordController.clear();
+        _confirmController.clear();
+        _goTo(_Step.signIn, notice: _loc.translate('phone_confirmed_sign_in'));
+      } else {
+        _codeController.clear();
+        _goTo(_Step.confirmPhone, notice: _loc.translateWith('code_sent_to', <Object?>[phone]));
+      }
+    } on AuthHttpException catch (e) {
+      if (mounted) setState(() {
+        _isLoading = false;
+        _error = e.message;
+      });
+    } on Exception catch (e) {
+      if (mounted) setState(() {
+        _isLoading = false;
+        _error = readableErrorMessage(e);
+      });
+    }
+  }
+
+  Future<void> _handleVerify() async {
+    final String code = _codeController.text.trim();
+    if (!RegExp(r"^\d{6}$").hasMatch(code)) {
+      setState(() => _error = _loc.translate('enter_valid_code'));
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final Future<void> Function(String, String) verify =
+          widget.onVerifyCode ?? (final String e, final String c) => AuthService.verifyRegistrationPhone(email: e, code: c);
+      await verify(_emailController.text.trim(), code);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      // The phone is confirmed. Signing in again is with email and password only.
+      _passwordController.clear();
+      _confirmController.clear();
+      _goTo(_Step.signIn, notice: _loc.translate('phone_confirmed_sign_in'));
+    } on Exception catch (e) {
+      if (mounted) setState(() {
+        _isLoading = false;
+        _error = e is AuthHttpException ? e.message : readableErrorMessage(e);
+      });
+    }
+  }
+
+  Future<void> _resend({final bool silent = false}) async {
+    try {
+      final Future<void> Function(String) resend = widget.onResendCode ?? (final String e) => AuthService.resendRegistrationCode(email: e);
+      await resend(_emailController.text.trim());
+      if (mounted && !silent) setState(() => _notice = _loc.translate('code_resent'));
+    } on Exception catch (e) {
+      if (mounted) setState(() => _error = e is AuthHttpException ? e.message : readableErrorMessage(e));
+    }
+  }
+
+  // ------------------------------------------------------------------ Google
+
   /// Google's account chooser. An owner who is registered and approved goes straight in; someone new goes to the registration form
-  /// (no password, no user name: Google is both); someone still waiting hears so.
+  /// (their phone is asked there, no password: Google is the sign-in); someone still waiting hears so.
   Future<void> _handleGoogle() async {
     final AuthProvider authProvider = Provider.of<AuthProvider>(context, listen: false);
     setState(() => _isLoading = true);
@@ -168,7 +242,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     switch (result) {
       case GoogleResult.signedIn:
-        _showSnackBar(LocalizationService.instance.translate('login_successful'), Colors.green);
+        _showSnackBar(_loc.translate('login_successful'), Colors.green);
         Navigator.of(context).pop();
       case GoogleResult.cancelled:
         break;
@@ -179,7 +253,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       case GoogleResult.failed:
-        final String message = authProvider.errorMessage ?? LocalizationService.instance.translate('login_failed');
+        final String message = authProvider.errorMessage ?? _loc.translate('login_failed');
         if (authProvider.lastErrorCode == 'registration_pending') {
           _showRegistrationPendingDialog(message: message);
         } else {
@@ -213,7 +287,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showRegistrationRejectedDialog({
     required final String message,
     required final String email,
-    required final String phone,
+    required final String password,
   }) {
     final bool isSwahili = LocalizationService.instance.isSwahili;
     showDialog<void>(
@@ -254,11 +328,11 @@ class _LoginScreenState extends State<LoginScreen> {
             label: Text(isSwahili ? 'Rekebisha Maombi' : 'Re-apply'),
             onPressed: () {
               Navigator.of(ctx).pop();
+              // The email and password they just signed in with prove who they are; the phone on the registration is kept.
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (final BuildContext _) => RegisterBusinessScreen(
-                    initialEmail: email,
-                    initialPhone: phone,
+                    applicant: ApplicantCredentials(email: email, password: password),
                   ),
                 ),
               );
@@ -327,27 +401,58 @@ class _LoginScreenState extends State<LoginScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => ForgotPasswordSheet(
-        initialEmail: _emailController.text.trim().isEmpty
-            ? null
-            : _emailController.text.trim(),
+        initialEmail: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
       ),
     );
     if (verifiedEmail != null && mounted) {
       setState(() {
         _emailController.text = verifiedEmail;
-        // The account's phone is unchanged by a password reset, so if this
-        // device already remembered it, keep skipping the phone field.
-        _forcePhoneField = false;
         _passwordController.clear();
       });
     }
   }
 
-  static const Color _navy = Color(0xFF2D3566);
-  static const Color _teal = Color(0xFF008080);
+  // ------------------------------------------------------------------ the page
+
+  /// Shows [child] under a fold-out animation when [show], nothing otherwise: how the phone and confirm-password fields appear when
+  /// "Sign up" is chosen on the same page.
+  Widget _reveal({required final bool show, required final Key key, required final Widget child}) {
+    return AnimatedSwitcher(
+      duration: _anim,
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (final Widget c, final Animation<double> a) => SizeTransition(
+        sizeFactor: a,
+        axisAlignment: -1,
+        child: FadeTransition(opacity: a, child: c),
+      ),
+      layoutBuilder: (final Widget? current, final List<Widget> previous) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[...previous, if (current != null) current],
+      ),
+      child: show ? KeyedSubtree(key: key, child: child) : SizedBox(key: ValueKey<String>('hidden_${key.toString()}'), width: double.infinity),
+    );
+  }
+
+  Widget _messageBox(final String text, {required final bool isError, final Key? key}) {
+    return Container(
+      key: key,
+      width: double.infinity,
+      margin: EdgeInsets.only(top: 14.h),
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: isError ? const Color(0xFF5A1D1D) : Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: isError ? const Color(0xFFFFB4AB) : Colors.white24),
+      ),
+      child: Text(text, style: TextStyle(color: isError ? const Color(0xFFFFDAD6) : Colors.white, fontSize: 13.sp, height: 1.4)),
+    );
+  }
 
   @override
   Widget build(final BuildContext context) {
+    final bool signUp = _step == _Step.signUp;
+    final bool confirm = _step == _Step.confirmPhone;
     return Consumer<LocalizationService>(
       builder: (final BuildContext context, final LocalizationService loc, final Widget? child) => Scaffold(
         backgroundColor: _navy,
@@ -357,6 +462,7 @@ class _LoginScreenState extends State<LoginScreen> {
             SafeArea(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 child: AnimatedOpacity(
                   opacity: _isLoading ? 0.3 : 1.0,
                   duration: const Duration(milliseconds: 300),
@@ -365,91 +471,43 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       children: <Widget>[
                         SizedBox(height: 96.h),
-                        Text(
-                          loc.translate('signin'),
-                          key: const ValueKey<String>('login_title'),
-                          style: TextStyle(color: Colors.white, fontSize: 36.sp, fontWeight: FontWeight.w800),
+                        AnimatedSwitcher(
+                          duration: _anim,
+                          child: Text(
+                            loc.translate(confirm ? 'confirm_phone_title' : (signUp ? 'sign_up' : 'signin')),
+                            key: ValueKey<String>('login_title_${_step.name}'),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white, fontSize: 36.sp, fontWeight: FontWeight.w800),
+                          ),
                         ),
                         SizedBox(height: 28.h),
-                        Form(
-                          key: _formKey,
-                          child: Column(
-                            children: <Widget>[
-                              _pillField(controller: _emailController, hint: loc.translate('email'), icon: Icons.email, keyboardType: TextInputType.emailAddress),
-                              if (_phoneFieldNeeded) ...<Widget>[
-                                SizedBox(height: 16.h),
-                                _pillField(controller: _phoneController, hint: loc.translate('phone_number'), icon: Icons.phone_android, keyboardType: TextInputType.phone),
-                              ] else
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: TextButton(
-                                    onPressed: () => setState(() => _forcePhoneField = true),
-                                    style: TextButton.styleFrom(padding: EdgeInsets.only(left: 12.w, top: 4.h), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                                    child: Text(loc.translate('use_different_phone'), style: TextStyle(color: Colors.white54, fontSize: 11.sp)),
-                                  ),
-                                ),
-                              SizedBox(height: 16.h),
-                              _pillField(
-                                controller: _passwordController,
-                                hint: loc.translate('password'),
-                                icon: Icons.lock,
-                                obscureText: _obscurePassword,
-                                suffix: IconButton(
-                                  icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off, color: Colors.black38, size: 20.sp),
-                                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                                ),
-                              ),
-                              SizedBox(height: 22.h),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 56.h,
-                                child: ElevatedButton(
-                                  key: const ValueKey<String>('login_button'),
-                                  onPressed: _handleLogin,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _teal,
-                                    foregroundColor: Colors.white,
-                                    elevation: 8,
-                                    shadowColor: Colors.black54,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30.r)),
-                                  ),
-                                  child: Text(loc.translate('signin').toUpperCase(), style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.w800, letterSpacing: 1)),
-                                ),
-                              ),
-                            ],
+                        AnimatedSize(
+                          duration: _anim,
+                          curve: Curves.easeOutCubic,
+                          alignment: Alignment.topCenter,
+                          child: AnimatedSwitcher(
+                            duration: _anim,
+                            child: confirm ? _confirmPanel(loc) : _formPanel(loc, signUp),
                           ),
                         ),
-                        SizedBox(height: 10.h),
-                        TextButton(
-                          onPressed: _handleForgotPassword,
-                          child: Text(loc.translate('forgot_password'), style: TextStyle(color: Colors.white60, fontSize: 14.sp)),
-                        ),
-                        SizedBox(height: 22.h),
-                        Text(
-                          loc.translate('or_sign_in_with').toUpperCase(),
-                          style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w800),
-                        ),
-                        SizedBox(height: 18.h),
-                        _GoogleButton(label: loc.translate('sign_in_with_google').toUpperCase(), onTap: _handleGoogle),
-                        SizedBox(height: 40.h),
-                        Text.rich(
-                          TextSpan(
-                            style: TextStyle(color: Colors.white, fontSize: 15.sp),
-                            children: <InlineSpan>[
-                              TextSpan(text: '${loc.translate('no_account_question')} '),
-                              WidgetSpan(
-                                alignment: PlaceholderAlignment.baseline,
-                                baseline: TextBaseline.alphabetic,
-                                child: GestureDetector(
-                                  key: const ValueKey<String>('sign_up_link'),
-                                  onTap: _handleGoogle,
-                                  child: Text(loc.translate('sign_up'), style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w800)),
-                                ),
-                              ),
-                            ],
+                        if (_step == _Step.signIn) ...<Widget>[
+                          SizedBox(height: 10.h),
+                          TextButton(
+                            onPressed: _handleForgotPassword,
+                            child: Text(loc.translate('forgot_password'), style: TextStyle(color: Colors.white60, fontSize: 14.sp)),
                           ),
-                          textAlign: TextAlign.center,
-                        ),
+                        ],
+                        if (!confirm) ...<Widget>[
+                          SizedBox(height: 22.h),
+                          Text(
+                            loc.translate('or_sign_in_with').toUpperCase(),
+                            style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w800),
+                          ),
+                          SizedBox(height: 18.h),
+                          _GoogleButton(label: loc.translate('sign_in_with_google').toUpperCase(), onTap: _handleGoogle),
+                        ],
+                        SizedBox(height: 36.h),
+                        _switchLine(loc),
                         SizedBox(height: 14.h),
                         Text.rich(
                           key: const ValueKey<String>('legal_links'),
@@ -514,14 +572,167 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  /// The email and password fields, with the phone and confirm-password fields folding out under "Sign up".
+  Widget _formPanel(final LocalizationService loc, final bool signUp) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        key: const ValueKey<String>('form_panel'),
+        children: <Widget>[
+          _pillField(
+            fieldKey: const ValueKey<String>('email_field'),
+            controller: _emailController,
+            hint: loc.translate('email'),
+            icon: Icons.email,
+            keyboardType: TextInputType.emailAddress,
+            validator: _emailError,
+          ),
+          _reveal(
+            show: signUp,
+            key: const ValueKey<String>('signup_phone'),
+            child: Padding(
+              padding: EdgeInsets.only(top: 16.h),
+              child: _pillField(
+                fieldKey: const ValueKey<String>('phone_field'),
+                controller: _phoneController,
+                hint: loc.translate('phone_number'),
+                icon: Icons.phone_android,
+                keyboardType: TextInputType.phone,
+                validator: (final String? v) => _phonePattern.hasMatch((v ?? '').trim()) ? null : loc.translate('invalid_phone_number'),
+              ),
+            ),
+          ),
+          SizedBox(height: 16.h),
+          _pillField(
+            fieldKey: const ValueKey<String>('password_field'),
+            controller: _passwordController,
+            hint: loc.translate('password'),
+            icon: Icons.lock,
+            obscureText: _obscurePassword,
+            validator: (final String? v) {
+              if (v == null || v.isEmpty) return loc.translate('enter_password_hint');
+              if (signUp && v.length < 8) return loc.translate('password_min_8');
+              return null;
+            },
+            suffix: IconButton(
+              icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off, color: Colors.black38, size: 20.sp),
+              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            ),
+          ),
+          _reveal(
+            show: signUp,
+            key: const ValueKey<String>('signup_confirm'),
+            child: Padding(
+              padding: EdgeInsets.only(top: 16.h),
+              child: _pillField(
+                fieldKey: const ValueKey<String>('confirm_field'),
+                controller: _confirmController,
+                hint: loc.translate('confirm_password'),
+                icon: Icons.lock_reset,
+                obscureText: _obscurePassword,
+                validator: (final String? v) => v != _passwordController.text ? loc.translate('passwords_do_not_match') : null,
+              ),
+            ),
+          ),
+          if (_notice != null) _messageBox(_notice!, isError: false, key: const ValueKey<String>('login_notice')),
+          if (_error != null) _messageBox(_error!, isError: true, key: const ValueKey<String>('login_error')),
+          SizedBox(height: 22.h),
+          _mainButton(signUp ? loc.translate('sign_up').toUpperCase() : loc.translate('signin').toUpperCase(), const ValueKey<String>('login_button')),
+        ],
+      ),
+    );
+  }
+
+  /// After signing up: the code that was texted to the phone.
+  Widget _confirmPanel(final LocalizationService loc) {
+    return Column(
+      key: const ValueKey<String>('confirm_panel'),
+      children: <Widget>[
+        if (_notice != null)
+          Text(_notice!, key: const ValueKey<String>('confirm_notice'), textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 14.sp, height: 1.4)),
+        SizedBox(height: 18.h),
+        _pillField(
+          fieldKey: const ValueKey<String>('otp_field'),
+          controller: _codeController,
+          hint: loc.translate('verification_code'),
+          icon: Icons.sms,
+          keyboardType: TextInputType.number,
+          formatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
+        ),
+        if (_error != null) _messageBox(_error!, isError: true, key: const ValueKey<String>('login_error')),
+        SizedBox(height: 22.h),
+        _mainButton(loc.translate('confirm_code_button').toUpperCase(), const ValueKey<String>('confirm_code_button')),
+        TextButton(
+          key: const ValueKey<String>('resend_code_button'),
+          onPressed: _resend,
+          child: Text(loc.translate('resend_code'), style: TextStyle(color: Colors.white70, fontSize: 14.sp)),
+        ),
+      ],
+    );
+  }
+
+  Widget _mainButton(final String label, final Key key) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56.h,
+      child: ElevatedButton(
+        key: key,
+        onPressed: _submit,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _teal,
+          foregroundColor: Colors.white,
+          elevation: 8,
+          shadowColor: Colors.black54,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30.r)),
+        ),
+        child: AnimatedSwitcher(
+          duration: _anim,
+          child: Text(label, key: ValueKey<String>(label), style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.w800, letterSpacing: 1)),
+        ),
+      ),
+    );
+  }
+
+  /// "No account? Sign up" / "Have an account? Sign in" under the buttons: switches the page between the two.
+  Widget _switchLine(final LocalizationService loc) {
+    final bool confirm = _step == _Step.confirmPhone;
+    final bool signUp = _step == _Step.signUp;
+    final String question = loc.translate(signUp ? 'have_account_question' : 'no_account_question');
+    final String action = loc.translate(signUp ? 'signin' : 'sign_up');
+    return Text.rich(
+      TextSpan(
+        style: TextStyle(color: Colors.white, fontSize: 15.sp),
+        children: <InlineSpan>[
+          if (!confirm) TextSpan(text: '$question '),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: GestureDetector(
+              key: ValueKey<String>(confirm || signUp ? 'sign_in_link' : 'sign_up_link'),
+              onTap: () => _goTo(confirm || signUp ? _Step.signIn : _Step.signUp),
+              child: Text(
+                confirm ? loc.translate('back') : action,
+                style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ],
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+
   /// A white pill with an icon and a grey hint, as in the design.
   Widget _pillField({
     required final TextEditingController controller,
     required final String hint,
     required final IconData icon,
+    final Key? fieldKey,
     final bool obscureText = false,
     final Widget? suffix,
     final TextInputType? keyboardType,
+    final String? Function(String?)? validator,
+    final List<TextInputFormatter>? formatters,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -530,19 +741,24 @@ class _LoginScreenState extends State<LoginScreen> {
         boxShadow: const <BoxShadow>[BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))],
       ),
       child: TextFormField(
+        key: fieldKey,
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
+        validator: validator,
+        inputFormatters: formatters,
         style: TextStyle(color: Colors.black87, fontSize: 16.sp),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(color: Colors.black38, fontSize: 16.sp),
+          errorStyle: TextStyle(color: const Color(0xFFB3261E), fontSize: 12.sp),
           prefixIcon: Icon(icon, color: Colors.black45, size: 22.sp),
           suffixIcon: suffix,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
           errorBorder: InputBorder.none,
+          focusedErrorBorder: InputBorder.none,
           disabledBorder: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 18.h),
         ),
