@@ -53,6 +53,7 @@ void main() {
     expect(_key('email_field'), findsOneWidget, reason: 'the same page, the same fields');
     expect(find.text('SIGN UP'), findsOneWidget, reason: 'the button changes with the page');
 
+    await t.ensureVisible(_key('sign_in_link'));
     await t.tap(_key('sign_in_link'));
     await _settle(t);
     expect(_key('phone_field'), findsNothing);

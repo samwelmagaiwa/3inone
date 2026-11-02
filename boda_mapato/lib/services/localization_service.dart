@@ -1075,6 +1075,10 @@ class AppLocalizations {
       'invalid_phone_number': 'Invalid phone number (for example 0743519100 or +255743519100)',
       'password_min_8': 'The password must have at least 8 characters',
       'enter_password_hint': 'Enter your password',
+      'svc_rental': 'Rental',
+      'svc_transport': 'Transport',
+      'svc_shop': 'Shop & Depot',
+      'svc_salon': 'Salon',
       'welcome_back': 'Welcome Back',
       'signin_subtitle': 'Sign in to continue to your account',
 
@@ -3755,6 +3759,10 @@ class AppLocalizations {
       'invalid_phone_number': 'Namba ya simu si sahihi (mfano 0743519100 au +255743519100)',
       'password_min_8': 'Nenosiri liwe na angalau herufi 8',
       'enter_password_hint': 'Andika nenosiri lako',
+      'svc_rental': 'Ukodishaji',
+      'svc_transport': 'Usafiri',
+      'svc_shop': 'Duka na Depo',
+      'svc_salon': 'Saluni',
       'welcome_back': 'Karibu Tena',
       'signin_subtitle': 'Ingia ili kuendelea kwenye akaunti yako',
 
