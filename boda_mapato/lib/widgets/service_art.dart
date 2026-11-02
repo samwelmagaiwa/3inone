@@ -84,21 +84,9 @@ class SalonArtPainter extends ServiceArtPainter {
   }
 }
 
-/// A pikipiki (motorbike) and a bajaji (three-wheeler) side by side, the same size: transport.
-class BikeArtPainter extends ServiceArtPainter {
-  const BikeArtPainter();
-
-  @override
-  void art(final Canvas canvas) {
-    const Color dark = Color(0xFF111827);
-    const Color blue = Color(0xFF2563EB);
-    const Color navy = Color(0xFF1E3A8A);
-    const Color glass = Color(0xFFBFDBFE);
-
-    // the pikipiki, on the left
-    canvas.save();
-    canvas.translate(-4, 36);
-    canvas.scale(0.58);
+/// A pikipiki (motorbike) in a 100 x 100 box.
+void _pikipiki(final Canvas canvas) {
+  const Color dark = Color(0xFF111827);
     for (final Offset hub in const <Offset>[Offset(25, 70), Offset(77, 70)]) {
       canvas.drawCircle(hub, 15, _line(dark, 6));
       canvas.drawCircle(hub, 8, _line(const Color(0xFF9CA3AF), 2));
@@ -120,9 +108,14 @@ class BikeArtPainter extends ServiceArtPainter {
     canvas.drawLine(const Offset(62, 33), const Offset(77, 33), _line(dark, 4));
     canvas.drawCircle(const Offset(80, 42), 5, _fill(const Color(0xFFFCD34D)));
     canvas.drawLine(const Offset(40, 68), const Offset(8, 74), _line(const Color(0xFF9CA3AF), 4));
-    canvas.restore();
+}
 
-    // the bajaji, on the right: a blue body under a canopy, one wheel in front and one behind
+/// A bajaji (three-wheeler) in a 100 x 100 box, most of it in x 50 to 98.
+void _bajaji(final Canvas canvas) {
+  const Color dark = Color(0xFF111827);
+  const Color blue = Color(0xFF2563EB);
+  const Color navy = Color(0xFF1E3A8A);
+  const Color glass = Color(0xFFBFDBFE);
     canvas.drawRRect(RRect.fromRectAndCorners(const Rect.fromLTWH(52, 60, 46, 17), topLeft: const Radius.circular(5), topRight: const Radius.circular(9), bottomLeft: const Radius.circular(4), bottomRight: const Radius.circular(5)), _fill(blue));
     canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(56, 47, 31, 14), const Radius.circular(3)), _fill(glass));
     canvas.drawPath(Path()..moveTo(87, 47)..lineTo(95, 60)..lineTo(87, 60)..close(), _fill(glass));
@@ -135,5 +128,51 @@ class BikeArtPainter extends ServiceArtPainter {
       canvas.drawCircle(hub, 8, _fill(dark));
       canvas.drawCircle(hub, 3.5, _fill(const Color(0xFFE5E7EB)));
     }
+}
+
+/// A pikipiki beside a bajaji, squeezed into a square (the loading ring).
+class BikeArtPainter extends ServiceArtPainter {
+  const BikeArtPainter();
+
+  @override
+  void art(final Canvas canvas) {
+    canvas.save();
+    canvas.translate(-4, 36);
+    canvas.scale(0.58);
+    _pikipiki(canvas);
+    canvas.restore();
+    _bajaji(canvas);
   }
+}
+
+/// The same two, each drawn larger, for a picture that is wider than it is tall (the Transport tile on the sign-in page): the pikipiki
+/// on the left and the bajaji on the right, side by side.
+class TransportArtPainter extends CustomPainter {
+  const TransportArtPainter();
+
+  /// The shape it is drawn for: this wide for every 100 high.
+  static const double aspect = 1.32;
+
+  @override
+  void paint(final Canvas canvas, final Size size) {
+    final double scale = size.height / 100 < size.width / (100 * aspect) ? size.height / 100 : size.width / (100 * aspect);
+    canvas.save();
+    canvas.translate((size.width - 100 * aspect * scale) / 2, (size.height - 100 * scale) / 2);
+    canvas.scale(scale);
+    canvas.drawOval(Rect.fromLTWH(4, 86, 100 * aspect - 8, 8), Paint()..color = const Color(0xFF0A2E8A).withValues(alpha: 0.16));
+    canvas.save();
+    canvas.translate(-8, 17);
+    canvas.scale(0.85);
+    _pikipiki(canvas);
+    canvas.restore();
+    canvas.save();
+    canvas.translate(14, -9);
+    canvas.scale(1.15);
+    _bajaji(canvas);
+    canvas.restore();
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant final CustomPainter oldDelegate) => false;
 }
