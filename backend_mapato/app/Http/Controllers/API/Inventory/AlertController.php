@@ -163,6 +163,7 @@ class AlertController extends Controller
     {
         return DB::table('inventory_customers as c')
             ->join('inventory_sales as s', 's.customer_id', '=', 'c.id')
+            ->whereNull('s.cancelled_at')
             ->whereIn('s.payment_status', ['debt', 'partial'])
             ->where('c.credit_limit', '>', 0)
             ->groupBy('c.id', 'c.name', 'c.credit_limit')
@@ -186,6 +187,7 @@ class AlertController extends Controller
     {
         return DB::table('inventory_sales as s')
             ->leftJoin('inventory_customers as c', 'c.id', '=', 's.customer_id')
+            ->whereNull('s.cancelled_at')
             ->whereIn('s.payment_status', ['debt', 'partial'])
             ->whereNotNull('s.due_date')
             ->whereDate('s.due_date', '<', now()->subDays($days)->toDateString())

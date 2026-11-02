@@ -242,7 +242,78 @@ describe('customers & credit', () => {
       h.http.expectOne((r) => r.url === `${CUSTOMERS}/1/statement`).flush({ data: { ...STATEMENT.data, sales: [STATEMENT.data.sales[2]] } });
       await settle(fixture);
 
-      expect(text(byTestId(el, 'pay-none')!)).toContain('no unpaid sales');
+      expect(text(byTestId(el, 'pay-none')!)).toContain('owes nothing that can be paid here');
+    });
+
+    describe('a customer with an old debt and a new one', () => {
+      /** Old debt 350,000 (100,000 paid), new: S-0012 has 60,000 left. All together 280,000 left. */
+      const WITH_OLD = {
+        data: {
+          ...STATEMENT.data,
+          sales: [STATEMENT.data.sales[1]],
+          debt: {
+            old: { entries: [{ id: 7, amount: 350000, paid: 100000, left: 250000, started_on: '2026-06-01', note: 'Soda za mwaka jana' }], original: 350000, paid: 100000, left: 250000 },
+            new: { sales: [], billed: 100000, paid: 40000, left: 60000 },
+            total: { owed: 450000, paid: 140000, left: 310000 },
+          },
+        },
+      };
+
+      async function openOld() {
+        const o = await open(SALES_OFFICER);
+        click(o.el, 'cr-pay-1');
+        o.h.http.expectOne((r) => r.url === `${CUSTOMERS}/1/statement`).flush(WITH_OLD);
+        await settle(o.fixture);
+
+        return o;
+      }
+
+      it('shows the old debt, the new debt and the total apart, each with owed, paid and left', async () => {
+        const { el } = await openOld();
+
+        expect(text(byTestId(el, 'pay-debt-old')!)).toContain('Owed: TSH 350,000');
+        expect(text(byTestId(el, 'pay-debt-old')!)).toContain('Paid: TSH 100,000');
+        expect(text(byTestId(el, 'pay-debt-old')!)).toContain('Left to pay: TSH 250,000');
+        expect(text(byTestId(el, 'pay-debt-new')!)).toContain('Left to pay: TSH 60,000');
+        expect(text(byTestId(el, 'pay-debt-total')!)).toContain('Balance (old + new): TSH 310,000');
+        expect(text(byTestId(el, 'pay-debt-total')!)).toContain('All paid so far (old + new): TSH 140,000');
+      });
+
+      it('lists the old debt first and pays it with its own share', async () => {
+        const { h, fixture, el } = await openOld();
+        expect(byTestId(el, 'pay-pick-old-7')).not.toBeNull();
+        expect(byTestId(el, 'pay-pick-12')).not.toBeNull();
+
+        (byTestId(el, 'pay-pick-old-7') as HTMLInputElement).click();
+        (byTestId(el, 'pay-pick-12') as HTMLInputElement).click();
+        await settle(fixture);
+        expect((byTestId(el, 'pay-amount-old-7') as HTMLInputElement).value).toBe('250,000');
+        type(el, '[data-testid="pay-amount-old-7"]', '100000');
+        type(el, '[data-testid="pay-amount-12"]', '10000');
+        await settle(fixture);
+        click(el, 'pay-save');
+
+        const req = h.http.expectOne({ method: 'POST', url: `${API}/inventory/payments` });
+        expect(req.request.body).toEqual({ customer_id: 1, amount: 110000, method: 'cash', allocations: [{ sale_id: 12, amount: 10000 }], old_allocations: [{ debt_id: 7, amount: 100000 }] });
+        req.flush({ data: {} });
+        await settle(fixture);
+        h.http.expectOne({ method: 'GET', url: CUSTOMERS }).flush({ data: ROWS });
+        h.http.expectOne({ method: 'GET', url: `${API}/inventory/credit/debtors-ageing` }).flush(AGEING);
+      });
+
+      it('refuses more than the old debt has left', async () => {
+        const { h, fixture, el } = await openOld();
+
+        (byTestId(el, 'pay-pick-old-7') as HTMLInputElement).click();
+        await settle(fixture);
+        type(el, '[data-testid="pay-amount-old-7"]', '300000');
+        await settle(fixture);
+        click(el, 'pay-save');
+        await settle(fixture);
+
+        expect(text(byTestId(el, 'pay-error')!)).toContain('owes only TSH 250,000');
+        h.http.expectNone({ method: 'POST', url: `${API}/inventory/payments` });
+      });
     });
   });
 });

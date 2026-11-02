@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../services/api_service.dart';
 import '../models/inv_capabilities.dart';
+import '../models/inv_customer_debt.dart';
 import '../models/inv_depot_models.dart';
 import '../services/inv_event_bus.dart';
 import '../../../services/localization_service.dart';
@@ -439,19 +440,13 @@ class DepotProvider extends ChangeNotifier {
   }
 
   /// Returns the unpaid sales for a customer (debt + partial), newest first.
-  /// The customer's sales still to be paid (credit or part-paid), from the whole history: a debt from an earlier month is still a debt.
-  /// Null when the list could not be loaded, which is different from "there are none".
-  Future<List<Map<String, dynamic>>?> fetchCustomerDebtSales(int customerId) async {
+  /// What the customer owes in three parts (the old debt, the new debt, and the total of both), with the debts still to be paid.
+  /// Null when it could not be loaded, which is different from "they owe nothing".
+  Future<CustomerDebtSummary?> fetchCustomerDebtSummary(int customerId) async {
     try {
-      final Map<String, dynamic> res =
-          await _api.get('/inventory/credit/customers/$customerId/statement?from=2000-01-01');
-      final dynamic salesRaw = (res['data'] as Map?)?['sales'];
-      if (salesRaw is! List) return null;
-      return salesRaw
-          .whereType<Map>()
-          .where((s) => s['payment_status'] == 'debt' || s['payment_status'] == 'partial')
-          .map((s) => Map<String, dynamic>.from(s))
-          .toList();
+      final Map<String, dynamic> res = await _api.get('/inventory/credit/customers/$customerId/debt-summary');
+      final Object? debt = (res['data'] as Map?)?['debt'];
+      return debt is Map ? CustomerDebtSummary.fromJson(Map<String, dynamic>.from(debt)) : null;
     } on Exception {
       return null;
     }
@@ -552,6 +547,7 @@ class DepotProvider extends ChangeNotifier {
     required String method,
     String? reference,
     List<Map<String, dynamic>>? allocations,
+    List<Map<String, dynamic>>? oldAllocations,
   }) async {
     try {
       final Map<String, dynamic> res =
@@ -562,6 +558,9 @@ class DepotProvider extends ChangeNotifier {
         if (reference != null && reference.isNotEmpty) 'reference': reference,
         if (allocations != null && allocations.isNotEmpty)
           'allocations': allocations,
+        // the part that settles an old debt (from before the app)
+        if (oldAllocations != null && oldAllocations.isNotEmpty)
+          'old_allocations': oldAllocations,
       });
       await Future.wait<void>(<Future<void>>[
         fetchCreditCustomers(),

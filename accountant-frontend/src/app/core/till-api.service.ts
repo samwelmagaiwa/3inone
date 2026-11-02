@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { DebtSummary } from './credit.models';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 
@@ -76,6 +77,8 @@ export interface CreditCheck {
   over_limit: boolean;
   near_limit: boolean;
   block_reason?: string | null;
+  /** What the customer owes in three parts (old debt, new debt, total), when the server sends it. */
+  debt?: DebtSummary | null;
 }
 
 export interface CrateType {

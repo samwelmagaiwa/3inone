@@ -246,19 +246,46 @@
     @if (payLoading()) {
       <div class="skeleton-box" style="height: 90px; border-radius: 12px;"></div>
     } @else {
+      @if (payDebt(); as d) {
+        <!-- the debt in three parts: old, new, and the total of both -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" data-testid="pay-debt">
+          @if (d.old.original > 0) {
+            <div class="rounded-xl border border-slate-200 p-3" data-testid="pay-debt-old">
+              <p class="text-xs font-black uppercase tracking-wide text-slate-500">{{ i18n.t('cr.debt.old') }}</p>
+              <p class="text-sm font-semibold text-slate-600 mt-1">{{ i18n.t('cr.debt.owed') }}: {{ tsh(d.old.original) }}</p>
+              <p class="text-sm font-semibold text-emerald-700">{{ i18n.t('cr.debt.paid') }}: {{ tsh(d.old.paid) }}</p>
+              <p class="text-sm font-black text-slate-900">{{ i18n.t('cr.debt.left') }}: {{ tsh(d.old.left) }}</p>
+            </div>
+          }
+          @if (d.new.billed > 0) {
+            <div class="rounded-xl border border-slate-200 p-3" data-testid="pay-debt-new">
+              <p class="text-xs font-black uppercase tracking-wide text-slate-500">{{ i18n.t('cr.debt.new') }}</p>
+              <p class="text-sm font-semibold text-slate-600 mt-1">{{ i18n.t('cr.debt.owed') }}: {{ tsh(d.new.billed) }}</p>
+              <p class="text-sm font-semibold text-emerald-700">{{ i18n.t('cr.debt.paid') }}: {{ tsh(d.new.paid) }}</p>
+              <p class="text-sm font-black text-slate-900">{{ i18n.t('cr.debt.left') }}: {{ tsh(d.new.left) }}</p>
+            </div>
+          }
+          <div class="rounded-xl border-2 border-slate-300 bg-slate-50 p-3" data-testid="pay-debt-total">
+            <p class="text-xs font-black uppercase tracking-wide text-slate-500">{{ i18n.t('cr.debt.total') }}</p>
+            <p class="text-sm font-semibold text-slate-600 mt-1">{{ i18n.t('cr.debt.owed') }}: {{ tsh(d.total.owed) }}</p>
+            <p class="text-sm font-semibold text-emerald-700">{{ i18n.t('cr.debt.paidall') }}: {{ tsh(d.total.paid) }}</p>
+            <p class="text-sm font-black text-slate-900">{{ i18n.t('cr.debt.balance') }}: {{ tsh(d.total.left) }}</p>
+          </div>
+        </div>
+      }
       <p class="text-sm text-slate-500">{{ i18n.t('cr.pay.hint') }}</p>
       @if (allocations().length) {
-        @for (a of allocations(); track a.sale.id; let i = $index) {
+        @for (a of allocations(); track a.kind + a.id; let i = $index) {
           <div class="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-3">
             <label class="flex items-center gap-3 flex-1 min-w-48 cursor-pointer">
-              <input type="checkbox" [attr.name]="'alloc' + i" [ngModel]="a.picked" (ngModelChange)="pick(i, $event)" [attr.data-testid]="'pay-pick-' + a.sale.id">
+              <input type="checkbox" [attr.name]="'alloc' + i" [ngModel]="a.picked" (ngModelChange)="pick(i, $event)" [attr.data-testid]="(a.kind === 'old' ? 'pay-pick-old-' : 'pay-pick-') + a.id">
               <span>
-                <span class="font-black text-slate-900">{{ a.sale.number }}</span>
-                <span class="block text-xs font-semibold text-slate-400">{{ eatDay(a.sale.created_at) }} · {{ i18n.t('cr.pay.owing', tsh(a.owing)) }}</span>
+                <span class="font-black text-slate-900">{{ a.label }}@if (a.kind === 'old') { <span class="ml-1 text-xs font-bold text-amber-600">{{ i18n.t('cr.debt.old') }}</span> }</span>
+                <span class="block text-xs font-semibold text-slate-400">{{ eatDay(a.date) }} · {{ i18n.t('cr.pay.owing', tsh(a.owing)) }}</span>
               </span>
             </label>
             @if (a.picked) {
-              <input appMoney class="modal-input w-40" inputmode="numeric" [attr.name]="'allocAmount' + i" [ngModel]="a.amount" (ngModelChange)="setAmount(i, $event)" autocomplete="off" [attr.data-testid]="'pay-amount-' + a.sale.id" [attr.aria-label]="i18n.t('cr.pay.amount')">
+              <input appMoney class="modal-input w-40" inputmode="numeric" [attr.name]="'allocAmount' + i" [ngModel]="a.amount" (ngModelChange)="setAmount(i, $event)" autocomplete="off" [attr.data-testid]="(a.kind === 'old' ? 'pay-amount-old-' : 'pay-amount-') + a.id" [attr.aria-label]="i18n.t('cr.pay.amount')">
             }
           </div>
         }

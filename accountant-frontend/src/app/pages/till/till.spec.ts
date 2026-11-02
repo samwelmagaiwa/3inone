@@ -252,6 +252,37 @@ describe('the till', () => {
     h.http.expectNone((r) => r.url.endsWith('/inventory/sales') && r.method === 'POST');
   });
 
+  it('shows the account of the customer on a credit sale: old debt, new debt, what this sale adds and the total', async () => {
+    const { h, fixture, el } = await open();
+    byTestId(el, 'good-1')!.click();
+    type(el, '[data-testid=till-customer-search]', 'nee');
+    await settle(fixture);
+    h.http.expectOne((r) => r.url.endsWith('/inventory/customers') && r.method === 'GET').flush({ data: [{ id: 7, name: 'Neema', phone: '0712' }] });
+    await settle(fixture);
+    byTestId(el, 'hit-7')!.click();
+    await settle(fixture);
+    byTestId(el, 'mode-debt')!.click();
+    await settle(fixture);
+    h.http.match((r) => r.url.includes('/credit/customers/7/check')).forEach((r) => r.flush({
+      data: {
+        customer_id: 7, balance: 280000, credit_limit: 0, available: null, is_blocked: false, over_limit: false, near_limit: false,
+        debt: {
+          old: { entries: [], original: 350000, paid: 100000, left: 250000 },
+          new: { billed: 80000, paid: 50000, left: 30000 },
+          total: { owed: 430000, paid: 150000, left: 280000 },
+        },
+      },
+    }));
+    await settle(fixture);
+
+    const account = text(byTestId(el, 'till-account')!);
+    expect(account).toContain('Old debt (before the app): Left to pay TSH 250,000');
+    expect(account).toContain('New debt (credit sales): Left to pay TSH 30,000');
+    expect(text(byTestId(el, 'till-acct-thissale')!)).toBe('This sale, on credit: TSH 1,000');
+    expect(text(byTestId(el, 'till-acct-paid')!)).toContain('TSH 150,000');
+    expect(text(byTestId(el, 'till-acct-after')!)).toBe('Balance after this sale: TSH 281,000');
+  });
+
   it('puts a sale aside', async () => {
     const { h, fixture, el } = await open();
     byTestId(el, 'good-1')!.click();

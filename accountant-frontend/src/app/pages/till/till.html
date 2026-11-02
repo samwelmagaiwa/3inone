@@ -260,6 +260,19 @@
             @if (c.is_blocked) { <p class="form-error mt-2" role="alert">{{ i18n.t('till.err.blocked') }}</p> }
             @else if (c.over_limit) { <p class="form-error mt-2" role="alert">{{ i18n.t('till.err.limit', tsh(c.credit_limit)) }}</p> }
             @else if (c.near_limit) { <p class="text-xs font-bold text-amber-600 mt-2">{{ i18n.t('till.near', tsh(c.available ?? 0)) }}</p> }
+            @if (c.debt; as d) {
+              @if (d.total.owed > 0 || balanceDue() > 0) {
+                <!-- what this customer owes already, old debt and new debt apart and together, and what this sale adds -->
+                <div class="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm" data-testid="till-account">
+                  <p class="text-xs font-black uppercase tracking-wide text-slate-500">{{ i18n.t('till.acct.title') }}</p>
+                  @if (d.old.original > 0) { <p class="font-semibold text-slate-700" data-testid="till-acct-old">{{ i18n.t('cr.debt.old') }}: {{ i18n.t('cr.debt.left') }} {{ tsh(d.old.left) }} · {{ i18n.t('cr.debt.paid') }} {{ tsh(d.old.paid) }}</p> }
+                  @if (d.new.billed > 0) { <p class="font-semibold text-slate-700" data-testid="till-acct-new">{{ i18n.t('cr.debt.new') }}: {{ i18n.t('cr.debt.left') }} {{ tsh(d.new.left) }} · {{ i18n.t('cr.debt.paid') }} {{ tsh(d.new.paid) }}</p> }
+                  @if (balanceDue() > 0) { <p class="font-semibold text-amber-700" data-testid="till-acct-thissale">{{ i18n.t('till.acct.thissale') }}: {{ tsh(balanceDue()) }}</p> }
+                  <p class="font-semibold text-emerald-700" data-testid="till-acct-paid">{{ i18n.t('cr.debt.paidall') }}: {{ tsh(d.total.paid) }}</p>
+                  <p class="font-black text-slate-900" data-testid="till-acct-after">{{ i18n.t(balanceDue() > 0 ? 'till.acct.after' : 'cr.debt.balance') }}: {{ tsh(d.total.left + balanceDue()) }}</p>
+                </div>
+              }
+            }
           }
         }
 

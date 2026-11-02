@@ -8,9 +8,11 @@ import 'package:provider/provider.dart';
 import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../models/crates_owed.dart';
+import '../../models/inv_customer_debt.dart';
 import '../../models/inv_depot_models.dart';
 import '../../providers/depot_provider.dart';
 import '../widgets/crates_owed_note.dart';
+import '../widgets/customer_debt_card.dart';
 import '../widgets/inventory_widgets.dart';
 import '../../providers/inventory_provider.dart';
 import '../salon/client_history_screen.dart';
@@ -424,14 +426,33 @@ class _CreditSettingsSheetState extends State<_CreditSettingsSheet> {
   }
 }
 
-/// Take money against a customer's outstanding invoices.
+/// Take money against a customer's debt: the OLD debt (from before the app) and the NEW debt (credit sales) are shown apart, with the
+/// total of both, and the money is shared between them as chosen here.
 class ReceivePaymentSheet extends StatefulWidget {
-  const ReceivePaymentSheet({required this.customer, super.key});
+  const ReceivePaymentSheet({super.key, required this.customer});
 
   final InvCreditCustomer customer;
 
   @override
   State<ReceivePaymentSheet> createState() => _ReceivePaymentSheetState();
+}
+
+/// One debt that can be paid: an old debt entry, or a credit sale.
+class _PayLine {
+  _PayLine({required this.isOld, required this.id, required this.title, required this.left, required this.paid, this.date, this.due, this.status = ''});
+
+  final bool isOld;
+  final int id;
+  final String title;
+  final double left;
+  final double paid;
+  final DateTime? date;
+  final DateTime? due;
+  final String status;
+  final TextEditingController amount = TextEditingController();
+  bool selected = false;
+
+  double get entered => double.tryParse(amount.text.replaceAll(',', '').trim()) ?? 0;
 }
 
 class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
@@ -441,351 +462,145 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
   bool _saving = false;
   bool _failed = false;
 
-  // Each unpaid sale gets its own amount controller + selected flag
-  List<Map<String, dynamic>> _sales = [];
-  final List<TextEditingController> _amountCtrls = [];
-  final List<bool> _selected = [];
+  CustomerDebtSummary? _debt;
+  final List<_PayLine> _lines = <_PayLine>[];
 
   @override
   void initState() {
     super.initState();
-    _loadSales();
+    _load();
   }
 
-  Future<void> _loadSales() async {
+  Future<void> _load() async {
     setState(() {
       _loading = true;
       _failed = false;
     });
-    final List<Map<String, dynamic>>? sales = await context
-        .read<DepotProvider>()
-        .fetchCustomerDebtSales(widget.customer.id);
+    final CustomerDebtSummary? s = await context.read<DepotProvider>().fetchCustomerDebtSummary(widget.customer.id);
     if (!mounted) return;
-    for (final TextEditingController c in _amountCtrls) {
-      c.dispose();
+    for (final _PayLine l in _lines) {
+      l.amount.dispose();
     }
-    _amountCtrls.clear();
-    _selected.clear();
-    for (final _ in sales ?? const <Map<String, dynamic>>[]) {
-      _amountCtrls.add(TextEditingController());
-      _selected.add(false);
+    _lines.clear();
+    if (s != null) {
+      for (final OldDebtEntry e in s.oldEntries.where((final OldDebtEntry e) => e.left > 0)) {
+        _lines.add(_PayLine(isOld: true, id: e.id, title: e.note?.trim().isNotEmpty == true ? e.note!.trim() : LocalizationService.instance.translate('cd_old_title'), left: e.left, paid: e.paid, date: DateTime.tryParse(e.startedOn)));
+      }
+      for (final NewDebtSale sale in s.newSales) {
+        _lines.add(_PayLine(isOld: false, id: sale.id, title: sale.number.isEmpty ? '—' : sale.number, left: sale.left, paid: sale.paid, date: DateTime.tryParse(sale.createdAt ?? ''), due: DateTime.tryParse(sale.dueDate ?? ''), status: sale.paymentStatus));
+      }
     }
     setState(() {
-      _sales = sales ?? <Map<String, dynamic>>[];
-      _failed = sales == null;
+      _debt = s;
+      _failed = s == null;
       _loading = false;
     });
-  }
-
-  /// What the customer owes that is NOT a sale (an old debt from before the app): it is received under Money & debts, so say so
-  /// instead of leaving a figure that cannot be paid from here.
-  Widget _oldDebtNote() {
-    final double old = widget.customer.oldBalance;
-    if (old <= 0) return const SizedBox.shrink();
-    return Container(
-      key: const ValueKey<String>('old_debt_note'),
-      margin: EdgeInsets.only(top: 10.h),
-      padding: EdgeInsets.all(10.w),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(10.r),
-        border: Border.all(color: ThemeConstants.invBorder),
-      ),
-      child: Text(
-        LocalizationService.instance.translateWith('receive_old_debt_note', <Object?>[old.toStringAsFixed(0)]),
-        style: ThemeConstants.captionStyle.copyWith(color: Colors.white70),
-      ),
-    );
   }
 
   @override
   void dispose() {
     _reference.dispose();
-    for (final c in _amountCtrls) c.dispose();
+    for (final _PayLine l in _lines) {
+      l.amount.dispose();
+    }
     super.dispose();
   }
 
-  double get _totalEntered {
-    double total = 0;
-    for (int i = 0; i < _sales.length; i++) {
-      if (_selected[i]) {
-        total += double.tryParse(_amountCtrls[i].text.replaceAll(',', '').trim()) ?? 0;
-      }
-    }
-    return total;
-  }
+  double get _totalEntered => _lines.where((final _PayLine l) => l.selected).fold<double>(0, (final double s, final _PayLine l) => s + l.entered);
 
   Future<void> _save() async {
-    final allocations = <Map<String, dynamic>>[];
-    for (int i = 0; i < _sales.length; i++) {
-      if (!_selected[i]) continue;
-      final amount = double.tryParse(_amountCtrls[i].text.replaceAll(',', '').trim()) ?? 0;
-      if (amount <= 0) continue;
-      allocations.add({'sale_id': _sales[i]['id'], 'amount': amount});
+    final List<Map<String, dynamic>> sales = <Map<String, dynamic>>[];
+    final List<Map<String, dynamic>> old = <Map<String, dynamic>>[];
+    for (final _PayLine l in _lines) {
+      if (!l.selected || l.entered <= 0) continue;
+      (l.isOld ? old : sales).add(<String, dynamic>{l.isOld ? 'debt_id' : 'sale_id': l.id, 'amount': l.entered});
     }
 
-    if (allocations.isEmpty) {
-      ThemeConstants.showErrorSnackBar(
-        context,
-        LocalizationService.instance.translate('select_at_least_one_debt_and'),
-      );
+    if (sales.isEmpty && old.isEmpty) {
+      ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('select_at_least_one_debt_and'));
       return;
     }
 
     setState(() => _saving = true);
-
-    final double total = allocations.fold(0, (s, a) => s + (a['amount'] as double));
-
-    final Map<String, dynamic>? result =
-        await context.read<DepotProvider>().receivePayment(
-              customerId: widget.customer.id,
-              amount: total,
-              method: _method,
-              reference: _reference.text.trim(),
-              allocations: allocations,
-            );
+    final double total = _totalEntered;
+    final Map<String, dynamic>? result = await context.read<DepotProvider>().receivePayment(
+          customerId: widget.customer.id,
+          amount: total,
+          method: _method,
+          reference: _reference.text.trim(),
+          allocations: sales,
+          oldAllocations: old,
+        );
 
     if (!mounted) return;
     setState(() => _saving = false);
 
     if (result == null) {
-      ThemeConstants.showErrorSnackBar(
-        context,
-        LocalizationService.instance.translate('operation_failed'),
-      );
+      ThemeConstants.showErrorSnackBar(context, LocalizationService.instance.translate('operation_failed'));
       return;
     }
 
     Navigator.pop(context, true);
-    ThemeConstants.showSuccessSnackBar(
-      context,
-      LocalizationService.instance.translate('payment_recorded'),
-    );
+    ThemeConstants.showSuccessSnackBar(context, LocalizationService.instance.translate('payment_recorded'));
   }
 
   @override
   Widget build(BuildContext context) {
     final LocalizationService loc = context.watch<LocalizationService>();
+    final CustomerDebtSummary? debt = _debt;
+    final List<_PayLine> oldLines = _lines.where((final _PayLine l) => l.isOld).toList();
+    final List<_PayLine> newLines = _lines.where((final _PayLine l) => !l.isOld).toList();
 
     return InvSheetShell(
       title: '${loc.translate('receive_payment')} — ${widget.customer.name}',
       children: [
-        // Total owed summary
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-          decoration: BoxDecoration(
-            color: ThemeConstants.warningAmber.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(10.r),
-            border: Border.all(color: ThemeConstants.warningAmber.withOpacity(0.4)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(loc.translate('owes'), style: ThemeConstants.captionStyle),
-              Text(
-                'TSH ${widget.customer.balance.toStringAsFixed(0)}',
-                style: ThemeConstants.bodyStyle.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: ThemeConstants.warningAmber,
-                ),
-              ),
-            ],
-          ),
-        ),
-        _oldDebtNote(),
-        SizedBox(height: 14.h),
-
-        // Debt list
         if (_loading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(child: CircularProgressIndicator(color: Colors.white54)),
           )
-        else if (_failed)
+        else if (_failed || debt == null)
           Padding(
             padding: EdgeInsets.symmetric(vertical: 12.h),
             child: Column(
               children: <Widget>[
                 Text(
-                  LocalizationService.instance.translate('receive_payment_load_failed'),
+                  loc.translate('receive_payment_load_failed'),
                   key: const ValueKey<String>('debts_load_failed'),
                   style: ThemeConstants.captionStyle,
                   textAlign: TextAlign.center,
                 ),
-                TextButton(
-                  key: const ValueKey<String>('debts_retry'),
-                  onPressed: _loadSales,
-                  child: Text(LocalizationService.instance.translate('retry')),
-                ),
+                TextButton(key: const ValueKey<String>('debts_retry'), onPressed: _load, child: Text(loc.translate('retry'))),
               ],
             ),
           )
-        else if (_sales.isEmpty)
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: 16.h),
-            child: Text(
-              LocalizationService.instance.translate('no_outstanding_debts_found'),
-              style: ThemeConstants.captionStyle,
-              textAlign: TextAlign.center,
-            ),
-          )
-        else ...[
-          Text(
-            LocalizationService.instance.translate('select_debts_to_pay'),
-            style: ThemeConstants.captionStyle.copyWith(color: Colors.white70),
-          ),
-          SizedBox(height: 8.h),
-          ...List.generate(_sales.length, (i) {
-            final sale = _sales[i];
-            final double saleTotal = double.tryParse(sale['total']?.toString() ?? '') ?? 0;
-            final double paidTotal = double.tryParse(sale['paid_total']?.toString() ?? '') ?? 0;
-            final double outstanding = (saleTotal - paidTotal).clamp(0, double.infinity);
-            final String number = sale['number']?.toString() ?? '—';
-            final String status = sale['payment_status']?.toString() ?? '';
-            final String? dueDateRaw = sale['due_date']?.toString();
-            final String? createdRaw = sale['created_at']?.toString();
-            final DateTime? date = createdRaw != null ? DateTime.tryParse(createdRaw) : null;
-            final DateTime? due  = dueDateRaw != null ? DateTime.tryParse(dueDateRaw) : null;
-            final bool overdue = due != null && due.isBefore(DateTime.now()) && status != 'paid';
-
-            return Container(
-              margin: EdgeInsets.only(bottom: 8.h),
-              decoration: BoxDecoration(
-                color: _selected[i]
-                    ? ThemeConstants.successGreen.withOpacity(0.12)
-                    : ThemeConstants.invFill,
-                borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(
-                  color: _selected[i]
-                      ? ThemeConstants.successGreen.withOpacity(0.5)
-                      : ThemeConstants.invBorder,
-                ),
-              ),
-              child: Column(
-                children: [
-                  // Sale header row — tap to toggle
-                  InkWell(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(12.r)),
-                    onTap: () => setState(() {
-                      _selected[i] = !_selected[i];
-                      if (_selected[i] && _amountCtrls[i].text.isEmpty) {
-                        // Pre-fill with full outstanding amount
-                        _amountCtrls[i].text = formatAmount(outstanding.round());
-                      }
-                    }),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-                      child: Row(
-                        children: [
-                          Icon(
-                            _selected[i]
-                                ? Icons.check_circle_rounded
-                                : Icons.radio_button_unchecked,
-                            color: _selected[i]
-                                ? ThemeConstants.successGreen
-                                : Colors.white38,
-                            size: 20.sp,
-                          ),
-                          SizedBox(width: 10.w),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  number,
-                                  style: ThemeConstants.bodyStyle.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                SizedBox(height: 2.h),
-                                Row(
-                                  children: [
-                                    if (date != null)
-                                      Text(
-                                        '${date.day}/${date.month}/${date.year}',
-                                        style: ThemeConstants.captionStyle,
-                                      ),
-                                    if (due != null) ...[
-                                      Text(' · ', style: ThemeConstants.captionStyle),
-                                      Text(
-                                        LocalizationService.instance.translateWith('due_2', <Object?>[due.day, due.month, due.year]),
-                                        style: ThemeConstants.captionStyle.copyWith(
-                                          color: overdue
-                                              ? ThemeConstants.errorText
-                                              : Colors.white54,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                'TSH ${outstanding.toStringAsFixed(0)}',
-                                style: ThemeConstants.bodyStyle.copyWith(
-                                  color: overdue
-                                      ? ThemeConstants.errorText
-                                      : ThemeConstants.warningAmber,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              if (status == 'partial')
-                                Text(
-                                  LocalizationService.instance.translateWith('partial_paid', <Object?>[paidTotal.toStringAsFixed(0)]),
-                                  style: ThemeConstants.captionStyle.copyWith(
-                                    fontSize: 10.sp,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Amount input — only when selected
-                  if (_selected[i])
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 10.h),
-                      child: TextField(
-                        controller: _amountCtrls[i],
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
-                        onChanged: (_) => setState(() {}),
-                        decoration: ThemeConstants.invInputDecoration(
-                          'Amount to pay (TSH)',
-                        ).copyWith(
-                          hintText: LocalizationService.instance.translateWith('max', <Object?>[outstanding.toStringAsFixed(0)]),
-                        ),
-                        style: ThemeConstants.bodyStyle,
-                      ),
-                    ),
-                ],
-              ),
-            );
-          }),
-
-          // Running total
-          if (_totalEntered > 0) ...[
-            SizedBox(height: 4.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text('${LocalizationService.instance.translate('total_payment')}: ', style: ThemeConstants.captionStyle),
-                Text(
-                  'TSH ${_totalEntered.toStringAsFixed(0)}',
-                  style: ThemeConstants.bodyStyle.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: ThemeConstants.successGreen,
-                  ),
-                ),
-              ],
-            ),
-          ],
+        else ...<Widget>[
+          // The three parts: old debt, new debt, and the total of both
+          CustomerDebtCard(summary: debt),
           SizedBox(height: 14.h),
+          if (_lines.isEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.h),
+              child: Text(loc.translate('no_outstanding_debts_found'), style: ThemeConstants.captionStyle, textAlign: TextAlign.center),
+            )
+          else ...<Widget>[
+            Text(loc.translate('select_debts_to_pay'), style: ThemeConstants.captionStyle.copyWith(color: Colors.white70)),
+            SizedBox(height: 8.h),
+            if (oldLines.isNotEmpty) ...<Widget>[
+              _groupTitle(loc.translate('cd_old_title')),
+              ...oldLines.map(_lineTile),
+            ],
+            if (newLines.isNotEmpty) ...<Widget>[
+              _groupTitle(loc.translate('cd_new_title')),
+              ...newLines.map(_lineTile),
+            ],
+            if (_totalEntered > 0) ...<Widget>[
+              SizedBox(height: 4.h),
+              _summaryRow(loc.translate('total_payment'), _totalEntered, ThemeConstants.successGreen, const ValueKey<String>('payment_entered')),
+              _summaryRow(loc.translate('cd_balance_after_payment'), (debt.totalLeft - _totalEntered).clamp(0, double.infinity).toDouble(), ThemeConstants.warningAmber, const ValueKey<String>('balance_after_payment')),
+            ],
+            SizedBox(height: 14.h),
+          ],
         ],
 
         // Method
@@ -798,10 +613,7 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
           items: const ['cash', 'mobile_money', 'bank_transfer', 'cheque']
               .map((m) => DropdownMenuItem(
                     value: m,
-                    child: Text(loc.translate(m),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: ThemeConstants.bodyStyle),
+                    child: Text(loc.translate(m), maxLines: 1, overflow: TextOverflow.ellipsis, style: ThemeConstants.bodyStyle),
                   ))
               .toList(),
           onChanged: (v) => setState(() => _method = v ?? 'cash'),
@@ -816,6 +628,101 @@ class _ReceivePaymentSheetState extends State<ReceivePaymentSheet> {
         SizedBox(height: 16.h),
         InvPrimaryButton(busy: _saving, onPressed: _save),
       ],
+    );
+  }
+
+  Widget _groupTitle(final String title) => Padding(
+        padding: EdgeInsets.only(top: 6.h, bottom: 6.h),
+        child: Text(title.toUpperCase(), style: ThemeConstants.captionStyle.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1)),
+      );
+
+  Widget _summaryRow(final String label, final double value, final Color color, final Key key) => Padding(
+        key: key,
+        padding: EdgeInsets.symmetric(vertical: 2.h),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: <Widget>[
+            Text('$label: ', style: ThemeConstants.captionStyle),
+            Text('TSH ${value.toStringAsFixed(0)}', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700, color: color)),
+          ],
+        ),
+      );
+
+  /// One debt (old or new) that can be ticked and paid in part or in full.
+  Widget _lineTile(final _PayLine l) {
+    final bool overdue = l.due != null && l.due!.isBefore(DateTime.now());
+    return Container(
+      key: ValueKey<String>('pay_line_${l.isOld ? 'old' : 'sale'}_${l.id}'),
+      margin: EdgeInsets.only(bottom: 8.h),
+      decoration: BoxDecoration(
+        color: l.selected ? ThemeConstants.successGreen.withOpacity(0.12) : ThemeConstants.invFill,
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: l.selected ? ThemeConstants.successGreen.withOpacity(0.5) : ThemeConstants.invBorder),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(12.r)),
+            onTap: () => setState(() {
+              l.selected = !l.selected;
+              if (l.selected && l.amount.text.isEmpty) l.amount.text = formatAmount(l.left.round());
+            }),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+              child: Row(
+                children: [
+                  Icon(l.selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked, color: l.selected ? ThemeConstants.successGreen : Colors.white38, size: 20.sp),
+                  SizedBox(width: 10.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l.title, style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
+                        SizedBox(height: 2.h),
+                        Row(
+                          children: [
+                            if (l.date != null) Text('${l.date!.day}/${l.date!.month}/${l.date!.year}', style: ThemeConstants.captionStyle),
+                            if (l.due != null) ...[
+                              Text(' · ', style: ThemeConstants.captionStyle),
+                              Text(
+                                LocalizationService.instance.translateWith('due_2', <Object?>[l.due!.day, l.due!.month, l.due!.year]),
+                                style: ThemeConstants.captionStyle.copyWith(color: overdue ? ThemeConstants.errorText : Colors.white54),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('TSH ${l.left.toStringAsFixed(0)}', style: ThemeConstants.bodyStyle.copyWith(color: overdue ? ThemeConstants.errorText : ThemeConstants.warningAmber, fontWeight: FontWeight.w700)),
+                      if (l.paid > 0)
+                        Text(LocalizationService.instance.translateWith('partial_paid', <Object?>[l.paid.toStringAsFixed(0)]), style: ThemeConstants.captionStyle.copyWith(fontSize: 10.sp)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (l.selected)
+            Padding(
+              padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 10.h),
+              child: TextField(
+                key: ValueKey<String>('pay_amount_${l.isOld ? 'old' : 'sale'}_${l.id}'),
+                controller: l.amount,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
+                onChanged: (_) => setState(() {}),
+                decoration: ThemeConstants.invInputDecoration('Amount to pay (TSH)').copyWith(
+                  hintText: LocalizationService.instance.translateWith('max', <Object?>[l.left.toStringAsFixed(0)]),
+                ),
+                style: ThemeConstants.bodyStyle,
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

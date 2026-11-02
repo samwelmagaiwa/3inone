@@ -60,6 +60,23 @@ export interface StatementPayment {
   sale_number: string;
 }
 
+/** What a customer owes in three parts: the OLD debt (before the app), the NEW debt (credit sales since), and the total of both. */
+export interface DebtSummary {
+  old: { entries: OldDebtEntry[]; original: number; paid: number; left: number };
+  new: { billed: number; paid: number; left: number };
+  total: { owed: number; paid: number; left: number };
+}
+
+/** One old debt (from before the app) that can be paid in part or in full. */
+export interface OldDebtEntry {
+  id: number;
+  amount: number;
+  paid: number;
+  left: number;
+  started_on: string;
+  note: string | null;
+}
+
 export interface Statement {
   from: string;
   to: string;
@@ -70,6 +87,8 @@ export interface Statement {
   closing_balance: number;
   sales: StatementSale[];
   payments: StatementPayment[];
+  /** The customer's debt in its three parts; null from a server that does not send it. */
+  debt: DebtSummary | null;
 }
 
 export interface CreditSettingsBody {
@@ -85,6 +104,8 @@ export interface ReceivePaymentBody {
   method: 'cash' | 'mobile_money' | 'bank_transfer' | 'cheque';
   reference?: string;
   allocations: { sale_id: number; amount: number }[];
+  /** The part of the money that settles an old debt (from before the app), by the debt's id. */
+  old_allocations?: { debt_id: number; amount: number }[];
 }
 
 /** How close a customer is to their limit, in the words the screens use (the mobile app's rule: "near" starts at 90% of the limit). */

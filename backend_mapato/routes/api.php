@@ -684,6 +684,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('inventory/credit/customers/{id}',       [InventoryCreditController::class, 'updateCredit']);
         Route::get('inventory/credit/customers/{id}/check', [InventoryCreditController::class, 'creditCheck']);
         Route::get('inventory/credit/customers/{id}/statement', [InventoryCreditController::class, 'statement']);
+        // The old debt, the new debt and the total of both, with what was paid on each.
+        Route::get('inventory/credit/customers/{id}/debt-summary', [InventoryCreditController::class, 'debtSummary']);
         Route::get('inventory/credit/customers/{id}/report', [InventoryCreditController::class, 'report']);
         Route::get('inventory/credit/debtors-ageing',       [InventoryCreditController::class, 'debtorsAgeing']);
     });

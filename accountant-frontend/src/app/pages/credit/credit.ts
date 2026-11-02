@@ -5,7 +5,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { AuthService } from '../../core/auth.service';
 import { CreditApi } from '../../core/credit-api.service';
-import { AgeingListing, CreditCustomer, CreditSettingsBody, CreditState, Statement, StatementSale, creditState } from '../../core/credit.models';
+import { DebtSummary, AgeingListing, CreditCustomer, CreditSettingsBody, CreditState, Statement, StatementSale, creditState } from '../../core/credit.models';
 import { dayLabel, dayOf, eatDay, offline, parseAmount, serverMessage, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
 import { MotionService } from '../../core/services/motion.service';
@@ -19,9 +19,13 @@ import { MoneyDirective } from '../../shared/ui/money.directive';
 type Tab = 'customers' | 'ageing';
 type Method = 'cash' | 'mobile_money' | 'bank_transfer' | 'cheque';
 
-/** One unpaid sale in the "receive payment" window: ticked, and how much of it is being paid now (text while typed). */
+/** One debt in the "receive payment" window, an old debt (from before the app) or an unpaid sale: ticked, and how much of it is being paid now (text while typed). */
 interface Allocation {
-  sale: StatementSale;
+  kind: 'old' | 'sale';
+  id: number;
+  label: string;
+  /** The day it began (an old debt) or was made (a sale). */
+  date: string;
   owing: number;
   picked: boolean;
   amount: string;
@@ -106,6 +110,8 @@ export class CreditPage implements OnInit {
   // ---- the receive-payment window
   protected readonly payFor = signal<CreditCustomer | null>(null);
   protected readonly allocations = signal<Allocation[]>([]);
+  /** The customer's debt in three parts, shown above the list: old debt, new debt, and the total of both. */
+  protected readonly payDebt = signal<DebtSummary | null>(null);
   protected readonly payLoading = signal(false);
   protected method: Method = 'cash';
   protected reference = '';
@@ -210,18 +216,23 @@ export class CreditPage implements OnInit {
   protected async openPay(c: CreditCustomer): Promise<void> {
     this.payFor.set(c);
     this.allocations.set([]);
+    this.payDebt.set(null);
     this.method = 'cash';
     this.reference = '';
     this.payError.set('');
     this.payLoading.set(true);
     try {
       const s = await firstValueFrom(this.api.statement(c.id, '2000-01-01', dayOf(new Date())));
-      this.allocations.set(
-        s.sales
-          .filter((x) => x.payment_status === 'debt' || x.payment_status === 'partial')
-          .map((x) => ({ sale: x, owing: Math.max(0, x.total - x.paid_total), picked: false, amount: '' }))
-          .filter((a) => a.owing > 0),
-      );
+      this.payDebt.set(s.debt);
+      const old: Allocation[] = (s.debt?.old.entries ?? [])
+        .filter((e) => e.left > 0)
+        .map((e) => ({ kind: 'old', id: e.id, label: e.note?.trim() || this.i18n.t('cr.debt.old'), date: e.started_on, owing: e.left, picked: false, amount: '' }));
+      const sales: Allocation[] = s.sales
+        .filter((x) => x.payment_status === 'debt' || x.payment_status === 'partial')
+        .map((x): Allocation => ({ kind: 'sale', id: x.id, label: x.number, date: x.created_at, owing: Math.max(0, x.total - x.paid_total), picked: false, amount: '' }))
+        .filter((a) => a.owing > 0);
+      // the old debt first, then the credit sales
+      this.allocations.set([...old, ...sales]);
     } catch (err) {
       this.payError.set(this.messageOf(err));
     } finally {
@@ -244,12 +255,15 @@ export class CreditPage implements OnInit {
     const chosen = this.allocations().filter((a) => a.picked);
     if (!chosen.length) return this.payError.set(this.i18n.t('cr.err.pick'));
     const allocations: { sale_id: number; amount: number }[] = [];
+    const oldAllocations: { debt_id: number; amount: number }[] = [];
     for (const a of chosen) {
       const amount = parseAmount(a.amount);
       if (Number.isNaN(amount) || amount <= 0) return this.payError.set(this.i18n.t('cr.err.amount'));
-      if (amount > a.owing) return this.payError.set(this.i18n.t('cr.err.toomuch', a.sale.number, tsh(a.owing)));
-      allocations.push({ sale_id: a.sale.id, amount });
+      if (amount > a.owing) return this.payError.set(this.i18n.t('cr.err.toomuch', a.label, tsh(a.owing)));
+      if (a.kind === 'old') oldAllocations.push({ debt_id: a.id, amount });
+      else allocations.push({ sale_id: a.id, amount });
     }
+    const total = [...allocations, ...oldAllocations].reduce((s, a) => s + a.amount, 0);
 
     if (this.method !== 'cash' && !this.reference.trim()) return this.payError.set(this.i18n.t('till.err.reference_required'));
 
@@ -257,9 +271,9 @@ export class CreditPage implements OnInit {
     this.payError.set('');
     try {
       await firstValueFrom(
-        this.api.receivePayment({ customer_id: c.id, amount: allocations.reduce((s, a) => s + a.amount, 0), method: this.method, ...(this.reference.trim() ? { reference: this.reference.trim() } : {}), allocations }),
+        this.api.receivePayment({ customer_id: c.id, amount: total, method: this.method, ...(this.reference.trim() ? { reference: this.reference.trim() } : {}), allocations, ...(oldAllocations.length ? { old_allocations: oldAllocations } : {}) }),
       );
-      this.toast.success(this.i18n.t('cr.paid', tsh(allocations.reduce((s, a) => s + a.amount, 0)), c.name), this.i18n.t('common.done'));
+      this.toast.success(this.i18n.t('cr.paid', tsh(total), c.name), this.i18n.t('common.done'));
       this.payFor.set(null);
       await this.load();
     } catch (err) {

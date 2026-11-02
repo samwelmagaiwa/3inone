@@ -3,9 +3,36 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { AgeingListing, AgeingRow, CreditCustomer, CreditSettingsBody, CustomerReport, ReceivePaymentBody, Statement, StatementPayment, StatementSale } from './credit.models';
+import { DebtSummary, AgeingListing, AgeingRow, CreditCustomer, CreditSettingsBody, CustomerReport, ReceivePaymentBody, Statement, StatementPayment, StatementSale } from './credit.models';
 
 const API = environment.apiUrl;
+
+/** The debt summary the server sends (old, new and total), or null when there is none. */
+export function parseDebt(raw: unknown): DebtSummary | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const d = raw as Record<string, Record<string, unknown>>;
+  const old = d['old'] ?? {};
+  const neu = d['new'] ?? {};
+  const tot = d['total'] ?? {};
+
+  return {
+    old: {
+      original: num(old['original']),
+      paid: num(old['paid']),
+      left: num(old['left']),
+      entries: ((old['entries'] as Record<string, unknown>[]) ?? []).map((e) => ({
+        id: num(e['id']),
+        amount: num(e['amount']),
+        paid: num(e['paid']),
+        left: num(e['left']),
+        started_on: String(e['started_on'] ?? ''),
+        note: e['note'] ? String(e['note']) : null,
+      })),
+    },
+    new: { billed: num(neu['billed']), paid: num(neu['paid']), left: num(neu['left']) },
+    total: { owed: num(tot['owed']), paid: num(tot['paid']), left: num(tot['left']) },
+  };
+}
 
 const num = (v: unknown): number => {
   const n = typeof v === 'number' ? v : Number(v);
@@ -85,6 +112,7 @@ export class CreditApi {
             due_date: str(s['due_date']) || null,
             created_at: str(s['created_at']),
           })),
+          debt: parseDebt(d['debt']),
           payments: ((d['payments'] as Record<string, unknown>[]) ?? []).map((p): StatementPayment => ({
             id: num(p['id']),
             amount: num(p['amount']),

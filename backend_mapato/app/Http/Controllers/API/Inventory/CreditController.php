@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\Inventory;
 
 use App\Services\Inventory\AuditTrail;
+use App\Support\Inventory\CustomerDebt;
 use App\Support\Inventory\OpeningDebts;
 use App\Support\GroupColumns;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ class CreditController extends Controller
         $query = DB::table('inventory_customers as c')
             ->leftJoin('inventory_sales as s', function ($join) {
                 $join->on('s.customer_id', '=', 'c.id')
+                    ->whereNull('s.cancelled_at')
                     ->whereIn('s.payment_status', ['debt', 'partial']);
             })
             ->select(
@@ -146,11 +148,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             return response()->json(['message' => 'Not found'], 404);
         }
 
-        $balance = (float) DB::table('inventory_sales')
-            ->where('customer_id', $id)
-            ->whereIn('payment_status', ['debt', 'partial'])
-            ->sum(DB::raw('total - paid_total'));
-        $balance += OpeningDebts::customerOwes($id);
+        // Old debt + new debt, a cancelled sale left out: the same figures the customer's summary shows.
+        $debt = CustomerDebt::summary($id);
+        $balance = $debt['total']['left'];
 
         $amount = (float) $request->query('amount', 0);
         $limit = (float) $customer->credit_limit;
@@ -164,6 +164,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         return response()->json(['data' => [
             'customer_id' => $id,
             'balance' => $balance,
+            'debt' => $debt,
             'credit_limit' => $limit,
             'available' => $limit > 0 ? max(0, $limit - $balance) : null,
             'projected_balance' => $projected,
@@ -175,6 +176,28 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 ? ($customer->block_reason ?: 'Customer is blocked')
                 : ($overLimit ? 'Credit limit reached' : null),
         ]]);
+    }
+
+    /**
+     * The customer's debt in three parts: the OLD debt (before the app), the NEW debt (sales on credit), and the total of both, each with
+     * what was owed, what was paid and what is left.
+     */
+    #[OA\Get(
+        path: '/inventory/credit/customers/{id}/debt-summary',
+        summary: 'Old debt, new debt and total',
+        security: [['bearerAuth' => []]],
+        tags: ['Inventory / Credit'],
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))],
+        responses: [new OA\Response(response: 200, description: 'Success')],
+    )]
+    public function debtSummary(int $id)
+    {
+        $customer = DB::table('inventory_customers')->find($id);
+        if (! $customer) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+
+        return response()->json(['data' => ['customer_id' => $id, 'customer_name' => $customer->name, 'debt' => CustomerDebt::summary($id)]]);
     }
 
     /** Opening balance, the period's transactions, closing balance. */
@@ -243,6 +266,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'period_charges' => $periodCharges,
             'period_payments' => $periodPaid,
             'closing_balance' => $opening + $periodCharges - $periodPaid,
+            'debt' => CustomerDebt::summary($id),
             'sales' => $sales,
             'payments' => $payments,
         ]]);
@@ -287,6 +311,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     {
         $rows = DB::table('inventory_sales as s')
             ->join('inventory_customers as c', 'c.id', '=', 's.customer_id')
+            ->whereNull('s.cancelled_at')
             ->whereIn('s.payment_status', ['debt', 'partial'])
             ->select(
                 'c.id as customer_id',

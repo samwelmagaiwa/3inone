@@ -18,6 +18,7 @@ import '../../../../models/user_permissions.dart';
 import '../../../../providers/auth_provider.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/localization_service.dart';
+import '../../models/inv_customer_debt.dart';
 import '../../models/inv_sale.dart';
 import '../../providers/depot_provider.dart';
 import '../salon/salon_sale_breakdown_card.dart';
@@ -50,6 +51,31 @@ String receiptFooterText(Map<String, String> s, {bool lines = false}) {
 /// Full-screen thermal receipt viewer.
 /// Settings are read live from [DepotProvider] so the receipt always reflects
 /// the latest configuration saved by admin/manager.
+/// The customer's account as lines of text for the paper (label, then value; a heading has no value): the old debt, the new debt (each
+/// only when there is one) and the total of both, with all that was paid so far.
+List<List<String>> receiptAccountLines(CustomerDebtSummary a, String Function(double) fmt) {
+  final LocalizationService loc = LocalizationService.instance;
+  String tsh(double v) => 'TZS ${fmt(v)}';
+  return <List<String>>[
+    if (a.hasOld) ...<List<String>>[
+      <String>[loc.translate('cd_old_title').toUpperCase(), ''],
+      <String>[loc.translate('cd_owed'), tsh(a.oldOriginal)],
+      <String>[loc.translate('cd_paid'), tsh(a.oldPaid)],
+      <String>[loc.translate('cd_left'), tsh(a.oldLeft)],
+    ],
+    if (a.newBilled > 0) ...<List<String>>[
+      <String>[loc.translate('cd_new_title').toUpperCase(), ''],
+      <String>[loc.translate('cd_owed'), tsh(a.newBilled)],
+      <String>[loc.translate('cd_paid'), tsh(a.newPaid)],
+      <String>[loc.translate('cd_left'), tsh(a.newLeft)],
+    ],
+    <String>[loc.translate('cd_total_title').toUpperCase(), ''],
+    <String>[loc.translate('cd_owed'), tsh(a.totalOwed)],
+    <String>[loc.translate('cd_paid_all'), tsh(a.totalPaid)],
+    <String>[loc.translate('cd_balance'), tsh(a.totalLeft)],
+  ];
+}
+
 class SaleReceiptScreen extends StatefulWidget {
   const SaleReceiptScreen({super.key, required this.sale});
 
@@ -70,6 +96,34 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
   final GlobalKey _receiptKey = GlobalKey();
 
   InvSale get sale => widget.sale;
+
+  /// What the customer owes now (old debt, new debt and the total), so a sale to someone who owes can say it on the paper.
+  CustomerDebtSummary? _account;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadAccount());
+  }
+
+  Future<void> _loadAccount() async {
+    if (sale.customerId == null) return;
+    try {
+      final CustomerDebtSummary? s = await context.read<DepotProvider>().fetchCustomerDebtSummary(sale.customerId!);
+      if (mounted) setState(() => _account = s);
+    } on Exception {
+      // no account lines on the paper this time
+    }
+  }
+
+  /// The account is printed when the customer owes (or owed) something from before the app, or this sale was not paid in full.
+  CustomerDebtSummary? get _accountToShow {
+    final CustomerDebtSummary? a = _account;
+    if (a == null || !a.hasAny) return null;
+    return (a.hasOld || sale.paymentStatus != 'paid') ? a : null;
+  }
+
+  List<List<String>> _accountLines(CustomerDebtSummary a) => receiptAccountLines(a, _fmt);
 
   // Sanitise a setting value — treat missing, empty and literal "null" as ''.
   static String _s(Map<String, String> s, String key, [String fallback = '']) {
@@ -157,6 +211,15 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
     final outstanding = (sale.total    - sale.paidTotal).clamp(0, double.infinity);
     if (change > 0)      sb.writeln(lr('${LocalizationService.instance.translate('change')}:', 'TZS ${_fmt(change as double)}'));
     if (outstanding > 0) sb.writeln(lr('${LocalizationService.instance.translate('balance_due').toUpperCase()}:', 'TZS ${_fmt(outstanding as double)}'));
+
+    final CustomerDebtSummary? account = _accountToShow;
+    if (account != null) {
+      sb.writeln(line('-'));
+      sb.writeln(c(LocalizationService.instance.translate('cd_account_title').toUpperCase()));
+      for (final List<String> l in _accountLines(account)) {
+        sb.writeln(l[1].isEmpty ? l[0] : lr('${l[0]}:', l[1]));
+      }
+    }
 
     final status = sale.paymentStatus == 'paid' ? LocalizationService.instance.translate('ok_fully_paid').toUpperCase() :
                    sale.paymentStatus == 'debt'  ? LocalizationService.instance.translate('x_debt').toUpperCase() : LocalizationService.instance.translate('partial_2').toUpperCase();
@@ -466,6 +529,13 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
               ]),
             ),
           ],
+          if (_accountToShow != null) ...[
+            pw.SizedBox(height: 6),
+            pw.Text(LocalizationService.instance.translate('cd_account_title').toUpperCase(), style: ts(9, b: true, color: ink)),
+            pw.SizedBox(height: 2),
+            for (final List<String> l in _accountLines(_accountToShow!))
+              l[1].isEmpty ? pw.Padding(padding: const pw.EdgeInsets.only(top: 3), child: pw.Text(l[0], style: ts(8, b: true, color: muted))) : row(l[0], l[1]),
+          ],
           pw.SizedBox(height: 6),
 
           // ── Status badge ─────────────────────────────────────────────────
@@ -668,6 +738,7 @@ class _SaleReceiptScreenState extends State<SaleReceiptScreen> {
               showTin: showTin,
               stars: _stars,
               dots: _dots,
+              account: _accountToShow,
             ),
           ),
         ),
@@ -856,7 +927,11 @@ class _ReceiptPaper extends StatelessWidget {
     required this.showTin,
     required this.stars,
     required this.dots,
+    this.account,
   });
+
+  /// What the customer owes now, old debt and new debt apart and together (null: not printed).
+  final CustomerDebtSummary? account;
 
   final InvSale sale;
   final String shopName;
@@ -1174,6 +1249,7 @@ class _ReceiptPaper extends StatelessWidget {
                     ),
                   ),
                 ],
+                if (account != null) ReceiptAccountBlock(account: account!),
                 const SizedBox(height: 6),
 
                 // ── Status stamp (transparent) ────────────────────────────
@@ -1231,6 +1307,47 @@ class _ReceiptPaper extends StatelessWidget {
 // ── Supporting widgets ────────────────────────────────────────────────────────
 
 /// Full-width dashed separator.
+/// The customer's account at the foot of a receipt: the old debt, the new debt and the total of both.
+class ReceiptAccountBlock extends StatelessWidget {
+  const ReceiptAccountBlock({super.key, required this.account});
+
+  final CustomerDebtSummary account;
+
+  @override
+  Widget build(BuildContext context) {
+    final LocalizationService loc = LocalizationService.instance;
+    String tsh(double v) => 'TZS ${NumberFormat('#,##0').format(v)}';
+    Widget part(String title, double owed, double paid, double left) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(padding: const EdgeInsets.only(top: 4), child: Text(title.toUpperCase(), style: const TextStyle(fontFamily: 'Courier', fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF444444)))),
+            _TotalsRow(label: loc.translate('cd_owed'), value: tsh(owed), bold: false),
+            _TotalsRow(label: loc.translate('cd_paid'), value: tsh(paid), bold: false),
+            _TotalsRow(label: loc.translate('cd_left'), value: tsh(left), bold: true),
+          ],
+        );
+    return Container(
+      key: const ValueKey<String>('receipt_account'),
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(4), border: Border.all(color: const Color(0xFFBDBDBD))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(loc.translate('cd_account_title').toUpperCase(), style: const TextStyle(fontFamily: 'Courier', fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1)),
+          if (account.hasOld) part(loc.translate('cd_old_title'), account.oldOriginal, account.oldPaid, account.oldLeft),
+          if (account.newBilled > 0) part(loc.translate('cd_new_title'), account.newBilled, account.newPaid, account.newLeft),
+          const Divider(height: 10, color: Color(0xFF9E9E9E)),
+          Text(loc.translate('cd_total_title').toUpperCase(), style: const TextStyle(fontFamily: 'Courier', fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF444444))),
+          _TotalsRow(label: loc.translate('cd_owed'), value: tsh(account.totalOwed), bold: false),
+          _TotalsRow(label: loc.translate('cd_paid_all'), value: tsh(account.totalPaid), bold: false),
+          _TotalsRow(label: loc.translate('cd_balance'), value: tsh(account.totalLeft), bold: true),
+        ],
+      ),
+    );
+  }
+}
+
 class _DashedDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) => CustomPaint(

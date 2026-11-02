@@ -4,9 +4,13 @@ namespace App\Http\Controllers\API\Inventory;
 
 use App\Services\Inventory\AuditTrail;
 use App\Support\ClientTime;
+use App\Support\Inventory\CustomerDebt;
+use App\Support\Inventory\OpeningDebts;
+use App\Support\PaymentChannels;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
 
 /**
@@ -55,21 +59,49 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'allocations' => 'nullable|array',
             'allocations.*.sale_id' => 'required|integer|exists:inventory_sales,id',
             'allocations.*.amount' => 'required|numeric|min:0.01',
+            // the part of the money that settles an OLD debt (from before the app), by the debt's id
+            'old_allocations' => 'nullable|array',
+            'old_allocations.*.debt_id' => 'required|integer',
+            'old_allocations.*.amount' => 'required|numeric|min:0.01',
         ]);
 
-        $result = DB::transaction(function () use ($data, $request) {
-            $targets = ! empty($data['allocations'])
-                ? collect($data['allocations'])->map(fn ($a) => [
-                    'sale_id' => (int) $a['sale_id'],
-                    'amount' => (float) $a['amount'],
-                ])->all()
-                : $this->autoAllocate((int) $data['customer_id'], (float) $data['amount']);
+        $customerId = (int) $data['customer_id'];
+        $explicit = ! empty($data['allocations']) || ! empty($data['old_allocations']);
+
+        $result = DB::transaction(function () use ($data, $request, $customerId, $explicit) {
+            // The money is shared out as the person said, or (when they said nothing) the oldest debt first: an old debt from before
+            // the app, then the credit sales in the order they were made.
+            $plan = $explicit
+                ? [
+                    'old' => collect($data['old_allocations'] ?? [])->map(fn ($a) => ['debt_id' => (int) $a['debt_id'], 'amount' => (float) $a['amount']])->all(),
+                    'sales' => collect($data['allocations'] ?? [])->map(fn ($a) => ['sale_id' => (int) $a['sale_id'], 'amount' => (float) $a['amount']])->all(),
+                ]
+                : $this->autoAllocate($customerId, (float) $data['amount']);
+
+            $paidOn = ClientTime::parse($data['paid_at'] ?? null);
+            $oldApplied = [];
+            foreach ($plan['old'] as $target) {
+                $debt = DB::table('inventory_opening_debts')->lockForUpdate()->find($target['debt_id']);
+                if ($debt === null || $debt->kind !== OpeningDebts::RECEIVABLE || (int) $debt->customer_id !== $customerId) {
+                    throw ValidationException::withMessages(['old_allocations' => ['Deni hilo si la mteja huyu. / That debt is not this customer\'s.']]);
+                }
+                $amount = min($target['amount'], round((float) $debt->amount - (float) $debt->paid_amount, 2));
+                if ($amount <= 0) {
+                    continue;
+                }
+                $channel = in_array($data['method'], PaymentChannels::all(), true) ? $data['method'] : null;
+                OpeningDebts::pay((int) $debt->id, $amount, $channel, substr((string) $paidOn, 0, 10) ?: null, $data['reference'] ?? null, (string) optional($request->user())->id);
+                $oldApplied[] = ['debt_id' => (int) $debt->id, 'amount' => $amount];
+            }
 
             $applied = [];
-            foreach ($targets as $target) {
+            foreach ($plan['sales'] as $target) {
                 $sale = DB::table('inventory_sales')->lockForUpdate()->find($target['sale_id']);
                 if (! $sale) {
                     continue;
+                }
+                if ((int) $sale->customer_id !== $customerId || $sale->cancelled_at !== null) {
+                    throw ValidationException::withMessages(['allocations' => ['Mauzo hayo si ya mteja huyu au yalifutwa. / That sale is not this customer\'s, or it was cancelled.']]);
                 }
 
                 $outstanding = (float) $sale->total - (float) $sale->paid_total;
@@ -88,7 +120,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'method' => $data['method'] === 'cheque' ? 'bank_transfer' : $data['method'],
                     'method_extended' => $data['method'],
                     'reference' => $data['reference'] ?? null,
-                    'paid_at' => ClientTime::parse($data['paid_at'] ?? null),
+                    'paid_at' => $paidOn,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -118,35 +150,63 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 $applied[] = ['sale_id' => (int) $sale->id, 'amount' => $amount];
             }
 
-            return $applied;
+            return ['old' => $oldApplied, 'sales' => $applied];
         });
 
-        $this->audit->record($request, 'customer_payment', (int) $data['customer_id'], 'received', null, $data);
+        $this->audit->record($request, 'customer_payment', $customerId, 'received', null, $data);
 
-        $allocated = array_sum(array_column($result, 'amount'));
+        $oldAllocated = array_sum(array_column($result['old'], 'amount'));
+        $salesAllocated = array_sum(array_column($result['sales'], 'amount'));
+        $allocated = $oldAllocated + $salesAllocated;
 
         return response()->json([
             'message' => 'Payment recorded',
             'data' => [
-                'allocations' => $result,
+                // kept as it was: the credit sales the money went to
+                'allocations' => $result['sales'],
+                // and the old debts it went to
+                'old_allocations' => $result['old'],
+                'old_allocated' => round($oldAllocated, 2),
+                'new_allocated' => round($salesAllocated, 2),
                 'allocated' => $allocated,
                 'unallocated' => round((float) $data['amount'] - $allocated, 2),
+                // what the customer owes now, old and new apart and together
+                'debt' => CustomerDebt::summary($customerId),
             ],
         ], 201);
     }
 
-    /** Oldest unpaid sale first, until the money runs out. */
+    /**
+     * Oldest debt first, until the money runs out: the customer's old debts (from before the app) in the order they began, then the
+     * credit sales in the order they were made. A cancelled sale is not owed.
+     *
+     * @return array{old: array<int, array{debt_id: int, amount: float}>, sales: array<int, array{sale_id: int, amount: float}>}
+     */
     private function autoAllocate(int $customerId, float $amount): array
     {
+        $left = $amount;
+        $old = [];
+        if (OpeningDebts::active()) {
+            $debts = DB::table('inventory_opening_debts')->where('kind', OpeningDebts::RECEIVABLE)->where('customer_id', $customerId)
+                ->whereRaw('amount - paid_amount > 0')->orderBy('started_on')->orderBy('id')->get(['id', 'amount', 'paid_amount']);
+            foreach ($debts as $debt) {
+                if ($left <= 0) {
+                    break;
+                }
+                $take = min($left, round((float) $debt->amount - (float) $debt->paid_amount, 2));
+                $old[] = ['debt_id' => (int) $debt->id, 'amount' => $take];
+                $left -= $take;
+            }
+        }
+
         $sales = DB::table('inventory_sales')
             ->where('customer_id', $customerId)
+            ->whereNull('cancelled_at')
             ->whereIn('payment_status', ['debt', 'partial'])
             ->orderBy('created_at')
             ->get(['id', 'total', 'paid_total']);
 
-        $left = $amount;
         $targets = [];
-
         foreach ($sales as $sale) {
             if ($left <= 0) {
                 break;
@@ -160,7 +220,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             $left -= $take;
         }
 
-        return $targets;
+        return ['old' => $old, 'sales' => $targets];
     }
 
     // ------------------------------------------------------- cash sessions

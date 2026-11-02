@@ -1322,6 +1322,8 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'total' => (float) $request->total,
                     'paid_total' => (float) $request->paid_total,
                     'items' => $insertedItems,
+                    // What this customer owes now, old debt and new apart and together, so the receipt can say it.
+                    'customer_debt' => $request->customer_id ? \App\Support\Inventory\CustomerDebt::summary((int) $request->customer_id) : null,
                 ],
             ], 201);
         });

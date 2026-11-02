@@ -20,6 +20,7 @@ import '../../providers/inventory_provider.dart';
 import '../../services/inventory_export_service.dart';
 import '../scanning/barcode_scanner_screen.dart';
 import '../widgets/crates_owed_note.dart';
+import '../widgets/customer_account_note.dart';
 import '../widgets/inv_units_ui.dart';
 import '../widgets/inventory_widgets.dart';
 import '../widgets/joined_sections.dart';
@@ -637,6 +638,13 @@ class _SalesScreenState extends State<SalesScreen>
                     ),
                     swahili: loc.isSwahili,
                     isDepot: inv.capabilities.isDepot,
+                  ),
+
+                // What this customer owes already, old debt and new debt apart and together, with what this sale adds.
+                if (inv.paymentMode != 'cash' && inv.selectedCustomerId != null)
+                  CustomerAccountNote(
+                    customerId: inv.selectedCustomerId!,
+                    thisSale: inv.paymentMode == 'debt' ? inv.cartTotal : (inv.cartTotal - inv.paidAmount).clamp(0, double.infinity).toDouble(),
                   ),
 
                 // Customer name + phone (always shown, optional)
