@@ -1,4 +1,5 @@
 import 'package:boda_mapato/screens/auth/forgot_password_sheet.dart';
+import 'support/fake_places.dart';
 import 'package:boda_mapato/screens/auth/register_business_screen.dart';
 import 'package:boda_mapato/screens/settings/backup_screen.dart';
 import 'package:boda_mapato/services/auth_service.dart';
@@ -40,8 +41,8 @@ void main() {
     Future<void> fillAndSubmit(WidgetTester t) async {
       final Finder f = find.byType(TextFormField);
       await t.enterText(f.at(0), 'Asha Owner');
-      await t.enterText(f.at(1), 'asha@example.test');
-      await t.enterText(f.at(2), '0743519100');
+      await t.enterText(f.at(1), '0743519100'); // name and phone sit side by side
+      await t.enterText(f.at(2), 'asha@example.test');
       await t.enterText(f.at(3), 'secret-pass-1');
       await t.enterText(f.at(4), 'secret-pass-1');
       await t.enterText(f.at(5), 'Asha Rentals');
@@ -60,7 +61,7 @@ void main() {
       _tall(t);
       final List<String> calls = <String>[];
       await t.pumpWidget(_scaled(MaterialApp(
-        home: RegisterBusinessScreen(
+        home: RegisterBusinessScreen(placeSource: const NoPlaces(),
           onSubmit: (_) async => <String, dynamic>{'data': serverAnswer},
           onVerifyPhone: (String e, String c) async {
             calls.add('verify $e $c');

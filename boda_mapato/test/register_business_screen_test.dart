@@ -1,4 +1,5 @@
 import 'package:boda_mapato/models/business_registration.dart';
+import 'support/fake_places.dart';
 import 'package:boda_mapato/screens/auth/register_business_screen.dart';
 import 'package:boda_mapato/services/auth_service.dart';
 import 'package:boda_mapato/services/localization_service.dart';
@@ -10,8 +11,7 @@ import 'package:provider/provider.dart';
 // Default app language is Swahili, so these are the Swahili texts.
 const String _required = 'Sehemu hii inahitajika';
 const String _pickService = 'Chagua angalau huduma moja';
-const String _badPhone =
-    'Namba ya simu si sahihi (mfano 0743519100 au +255743519100)';
+const String _badPhone = 'Namba ya simu si sahihi (mfano 0743519100)';
 
 final Finder _submit = find.byKey(const ValueKey<String>('registration_submit'));
 
@@ -45,10 +45,11 @@ Future<void> _fill(
   String confirm = 'secret-pass-1',
   bool pickService = true,
 }) async {
+  await t.pump(); // the place lists (none here) have answered: region and district are boxes to type in
   final Finder f = find.byType(TextFormField);
   await t.enterText(f.at(0), 'Asha Owner'); // your name
-  await t.enterText(f.at(1), 'asha@example.test');
-  await t.enterText(f.at(2), phone);
+  await t.enterText(f.at(1), phone); // name and phone sit side by side
+  await t.enterText(f.at(2), 'asha@example.test');
   await t.enterText(f.at(3), 'secret-pass-1');
   await t.enterText(f.at(4), confirm);
   await t.enterText(f.at(5), 'Asha Rentals'); // business name
@@ -64,7 +65,7 @@ void main() {
   testWidgets('an empty form is not sent and says what is missing', (t) async {
     _tall(t);
     int calls = 0;
-    await t.pumpWidget(_host(RegisterBusinessScreen(
+    await t.pumpWidget(_host(RegisterBusinessScreen(placeSource: const NoPlaces(),
       onSubmit: (_) async => <String, dynamic>{'n': calls++},
     )));
 
@@ -80,7 +81,7 @@ void main() {
       (t) async {
     _tall(t);
     int calls = 0;
-    await t.pumpWidget(_host(RegisterBusinessScreen(
+    await t.pumpWidget(_host(RegisterBusinessScreen(placeSource: const NoPlaces(),
       onSubmit: (_) async => <String, dynamic>{'n': calls++},
     )));
 
@@ -98,7 +99,7 @@ void main() {
       (t) async {
     _tall(t);
     BusinessRegistrationRequest? sent;
-    await t.pumpWidget(_host(RegisterBusinessScreen(
+    await t.pumpWidget(_host(RegisterBusinessScreen(placeSource: const NoPlaces(),
       onSubmit: (r) async {
         sent = r;
         return <String, dynamic>{'status': 'success'};
@@ -131,7 +132,7 @@ void main() {
 
   testWidgets('the form does not ask for an ID number (NIDA)', (t) async {
     _tall(t);
-    await t.pumpWidget(_host(const RegisterBusinessScreen()));
+    await t.pumpWidget(_host(RegisterBusinessScreen(placeSource: const NoPlaces())));
 
     expect(find.textContaining('NIDA'), findsNothing);
     expect(find.textContaining('kitambulisho'), findsNothing);
@@ -143,7 +144,7 @@ void main() {
 
   testWidgets('a server rejection is shown and the input is kept', (t) async {
     _tall(t);
-    await t.pumpWidget(_host(RegisterBusinessScreen(
+    await t.pumpWidget(_host(RegisterBusinessScreen(placeSource: const NoPlaces(),
       onSubmit: (_) async =>
           throw AuthHttpException(422, 'The email has already been taken.'),
     )));
@@ -162,7 +163,7 @@ void main() {
   testWidgets('no connection gives a plain message, not an exception dump',
       (t) async {
     _tall(t);
-    await t.pumpWidget(_host(RegisterBusinessScreen(
+    await t.pumpWidget(_host(RegisterBusinessScreen(placeSource: const NoPlaces(),
       onSubmit: (_) async => throw Exception('SocketException: Failed host lookup'),
     )));
 
@@ -177,7 +178,7 @@ void main() {
   testWidgets('prefilled initialEmail and initialPhone populate the form fields',
       (t) async {
     _tall(t);
-    await t.pumpWidget(_host(const RegisterBusinessScreen(
+    await t.pumpWidget(_host(RegisterBusinessScreen(placeSource: const NoPlaces(),
       initialEmail: 'rejected_owner@example.test',
       initialPhone: '0788112233',
     )));
@@ -191,7 +192,7 @@ void main() {
 
     testWidgets('is not asked for until inventory is chosen, and then shows a placeholder', (t) async {
       _tall(t);
-      await t.pumpWidget(_host(const RegisterBusinessScreen()));
+      await t.pumpWidget(_host(RegisterBusinessScreen(placeSource: const NoPlaces())));
 
       expect(typeField, findsNothing);
       await t.tap(find.byKey(const ValueKey<String>('service_inventory')));
@@ -209,7 +210,7 @@ void main() {
     testWidgets('must be chosen before a registration with inventory is sent', (t) async {
       _tall(t);
       int calls = 0;
-      await t.pumpWidget(_host(RegisterBusinessScreen(
+      await t.pumpWidget(_host(RegisterBusinessScreen(placeSource: const NoPlaces(),
         onSubmit: (_) async => <String, dynamic>{'n': calls++},
       )));
 
@@ -226,7 +227,7 @@ void main() {
     testWidgets('is sent with the registration once chosen', (t) async {
       _tall(t);
       BusinessRegistrationRequest? sent;
-      await t.pumpWidget(_host(RegisterBusinessScreen(
+      await t.pumpWidget(_host(RegisterBusinessScreen(placeSource: const NoPlaces(),
         onSubmit: (r) async {
           sent = r;
           return <String, dynamic>{'status': 'success'};
@@ -254,7 +255,7 @@ void main() {
     testWidgets('is left out when inventory is not one of the services', (t) async {
       _tall(t);
       BusinessRegistrationRequest? sent;
-      await t.pumpWidget(_host(RegisterBusinessScreen(
+      await t.pumpWidget(_host(RegisterBusinessScreen(placeSource: const NoPlaces(),
         onSubmit: (r) async {
           sent = r;
           return <String, dynamic>{'status': 'success'};

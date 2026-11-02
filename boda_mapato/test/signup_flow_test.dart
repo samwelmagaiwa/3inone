@@ -1,4 +1,5 @@
 import 'package:boda_mapato/models/business_registration.dart';
+import 'support/fake_places.dart';
 import 'package:boda_mapato/providers/auth_provider.dart';
 import 'package:boda_mapato/screens/auth/login_screen.dart';
 import 'package:boda_mapato/screens/auth/register_business_screen.dart';
@@ -191,7 +192,7 @@ void main() {
     Map<String, dynamic>? sent;
     await _open(
       t,
-      RegisterBusinessScreen(
+      RegisterBusinessScreen(placeSource: const NoPlaces(),
         applicant: const ApplicantCredentials(email: 'asha@example.test', password: 'secret-pass-1'),
         onSubmit: (BusinessRegistrationRequest r) async {
           sent = r.toJson();
@@ -231,7 +232,7 @@ void main() {
   testWidgets('with Google the business form still asks for the phone number', (t) async {
     await _open(
       t,
-      RegisterBusinessScreen(
+      RegisterBusinessScreen(placeSource: const NoPlaces(),
         googleSignup: const GoogleSignup(email: 'neema@gmail.com', name: 'Neema Mushi', token: 'sealed'),
         onLoadPlans: () async => throw Exception('offline'),
       ),

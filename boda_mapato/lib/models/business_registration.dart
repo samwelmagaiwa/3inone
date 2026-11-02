@@ -20,6 +20,8 @@ class BusinessRegistrationRequest {
     this.inventoryType,
     this.region,
     this.district,
+    this.ward,
+    this.street,
     this.address,
     this.notes,
     this.googleToken,
@@ -43,6 +45,10 @@ class BusinessRegistrationRequest {
   final String? inventoryType;
   final String? region;
   final String? district;
+  final String? ward;
+
+  /// The street or village.
+  final String? street;
   final String? address;
   final String? notes;
 
@@ -69,6 +75,8 @@ class BusinessRegistrationRequest {
       if (requestedServices.contains('inventory') && clean(inventoryType) != null) 'inventory_type': clean(inventoryType),
       if (clean(region) != null) 'region': clean(region),
       if (clean(district) != null) 'district': clean(district),
+      if (clean(ward) != null) 'ward': clean(ward),
+      if (clean(street) != null) 'street': clean(street),
       if (clean(address) != null) 'address': clean(address),
       if (clean(notes) != null) 'notes': clean(notes),
     };
@@ -93,6 +101,8 @@ class BusinessRegistration {
     this.inventoryType,
     this.region,
     this.district,
+    this.ward,
+    this.street,
     this.address,
     this.idNumber,
     this.notes,
@@ -122,6 +132,8 @@ class BusinessRegistration {
       inventoryType: json['inventory_type'] as String?,
       region: json['region'] as String?,
       district: json['district'] as String?,
+      ward: json['ward'] as String?,
+      street: json['street'] as String?,
       address: json['address'] as String?,
       idNumber: json['id_number'] as String?,
       notes: json['notes'] as String?,
@@ -157,6 +169,8 @@ class BusinessRegistration {
   final String? inventoryType;
   final String? region;
   final String? district;
+  final String? ward;
+  final String? street;
   final String? address;
   final String? idNumber;
   final String? notes;
@@ -167,8 +181,8 @@ class BusinessRegistration {
 
   bool get isPending => status == pending;
 
-  /// "Kinondoni, Dar es Salaam" -- whatever location parts were given.
-  String get location => <String?>[address, district, region]
+  /// "Mikocheni B, Mikocheni, Kinondoni, Dar es Salaam" -- whatever location parts were given.
+  String get location => <String?>[address, street, ward, district, region]
       .where((String? p) => p != null && p.trim().isNotEmpty)
       .join(', ');
 

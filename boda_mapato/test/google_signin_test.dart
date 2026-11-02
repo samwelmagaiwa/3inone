@@ -80,7 +80,7 @@ void main() {
     expect(find.text('neema@gmail.com'), findsOneWidget);
     expect(find.text('Neema Mushi'), findsOneWidget);
     expect(find.text('Password'), findsNothing, reason: 'Google is the password');
-    expect(find.text('Confirm password'), findsNothing);
+    expect(find.text('Repeat password'), findsNothing);
     expect(find.text('Phone Number'), findsOneWidget, reason: 'the phone moved here from the login page');
   });
 

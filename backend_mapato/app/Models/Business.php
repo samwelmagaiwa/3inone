@@ -162,7 +162,7 @@ class Business extends Model
         }
 
         $address = trim(implode(', ', array_filter(
-            [$registration->address, $registration->district, $registration->region],
+            [$registration->address, $registration->street, $registration->ward, $registration->district, $registration->region],
             fn ($part) => $part !== null && trim((string) $part) !== ''
         )));
 

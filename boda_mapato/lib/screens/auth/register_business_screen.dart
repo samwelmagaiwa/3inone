@@ -10,6 +10,7 @@ import "../../services/api_service.dart";
 import "../../services/auth_service.dart";
 import "../../services/localization_service.dart";
 import "../../utils/plan_text.dart";
+import "../../widgets/place_picker.dart";
 import "../../widgets/backgrounds/starfield_background.dart";
 
 /// Sends a registration. [AuthService.registerBusiness] in the app; a stub in tests.
@@ -44,6 +45,7 @@ class RegisterBusinessScreen extends StatefulWidget {
     this.initialPhone,
     this.googleSignup,
     this.applicant,
+    this.placeSource,
   });
 
   /// Overridable so the screen can be tested without a network.
@@ -65,6 +67,9 @@ class RegisterBusinessScreen extends StatefulWidget {
   /// taken then, so the form asks only about them and the business (the password they signed in with proves who they are).
   final ApplicantCredentials? applicant;
 
+  /// Where the region, district, ward and street lists come from (the server's imported locations unless a test says otherwise).
+  final PlaceSource? placeSource;
+
   @override
   State<RegisterBusinessScreen> createState() => _RegisterBusinessScreenState();
 }
@@ -81,8 +86,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
   final TextEditingController _phone = TextEditingController();
   final TextEditingController _password = TextEditingController();
   final TextEditingController _confirm = TextEditingController();
-  final TextEditingController _region = TextEditingController();
-  final TextEditingController _district = TextEditingController();
+  PlaceChoice _place = PlaceChoice.empty;
   final TextEditingController _address = TextEditingController();
   final TextEditingController _notes = TextEditingController();
   final TextEditingController _code = TextEditingController();
@@ -160,7 +164,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
   void dispose() {
     for (final TextEditingController c in <TextEditingController>[
       _name, _business, _email, _phone, _password, _confirm,
-      _region, _district, _address, _notes, _code, //
+      _address, _notes, _code, //
     ]) {
       c.dispose();
     }
@@ -214,8 +218,10 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
           requestedPlan: plan,
           requestedMonths: _months,
           inventoryType: _services.contains("inventory") ? _inventoryType : null,
-          region: _region.text,
-          district: _district.text,
+          region: _place.region,
+          district: _place.district,
+          ward: _place.ward,
+          street: _place.street,
           address: _address.text,
           notes: _notes.text,
         ),
@@ -393,61 +399,13 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
             ),
           if (_error != null) _errorBox(_error!),
           _section(_sw ? "Taarifa zako" : "About you"),
-          _field(
-            controller: _name,
-            label: _sw ? "Jina lako kamili" : "Your full name",
-            icon: Icons.person_outline,
-            validator: _required,
-          ),
-          if (widget.applicant == null) _field(
-            controller: _email,
-            label: _loc.translate("email"),
-            icon: Icons.email_outlined,
-            readOnly: widget.googleSignup != null,
-            keyboardType: TextInputType.emailAddress,
-            validator: (final String? v) => (v == null || !v.contains("@"))
-                ? _loc.translate("enter_valid_email")
-                : null,
-          ),
-          if (widget.applicant == null) _field(
-            controller: _phone,
-            label: _loc.translate("phone_number"),
-            hint: "0743519100",
-            icon: Icons.phone_android_outlined,
-            keyboardType: TextInputType.phone,
-            validator: (final String? v) =>
-                _phonePattern.hasMatch((v ?? "").trim())
-                    ? null
-                    : (_sw
-                        ? "Namba ya simu si sahihi (mfano 0743519100 au +255743519100)"
-                        : "Invalid phone number (e.g. 0743519100 or +255743519100)"),
-          ),
-          if (widget.googleSignup == null && widget.applicant == null) _field(
-            controller: _password,
-            label: _loc.translate("password"),
-            icon: Icons.lock_outline,
-            obscure: _obscure,
-            suffix: IconButton(
-              icon: Icon(
-                _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                color: Colors.white54,
-                size: 20.sp,
-              ),
-              onPressed: () => setState(() => _obscure = !_obscure),
-            ),
-            validator: (final String? v) => (v == null || v.length < 8)
-                ? (_sw ? "Nenosiri liwe na angalau herufi 8" : "Password must be at least 8 characters")
-                : null,
-          ),
-          if (widget.googleSignup == null && widget.applicant == null) _field(
-            controller: _confirm,
-            label: _sw ? "Thibitisha nenosiri" : "Confirm password",
-            icon: Icons.lock_reset_outlined,
-            obscure: _obscure,
-            validator: (final String? v) => v != _password.text
-                ? _loc.translate("passwords_do_not_match")
-                : null,
-          ),
+          // name | phone side by side; someone who signed up first gave their phone and email already, so only the name is asked
+          if (widget.applicant == null)
+            _pair(_nameField(), _phoneField())
+          else
+            _nameField(),
+          if (widget.applicant == null) _emailField(),
+          if (widget.googleSignup == null && widget.applicant == null) _pair(_passwordField(), _confirmField()),
           _section(_sw ? "Biashara yako" : "Your business"),
           _field(
             controller: _business,
@@ -459,9 +417,12 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
           if (_services.contains("inventory")) _inventoryTypePicker(),
           _packagePicker(),
           _section(_sw ? "Mahali na maelezo (hiari)" : "Location and details (optional)"),
-          _field(controller: _region, label: _sw ? "Mkoa" : "Region", icon: Icons.map_outlined),
-          _field(controller: _district, label: _sw ? "Wilaya" : "District", icon: Icons.location_city_outlined),
-          _field(controller: _address, label: _sw ? "Anuani" : "Address", icon: Icons.place_outlined),
+          // region, district, ward, street or village: chosen from the imported locations, or typed when the list has nothing
+          Padding(
+            padding: EdgeInsets.only(bottom: 14.h),
+            child: PlacePicker(source: widget.placeSource, onChanged: (final PlaceChoice c) => _place = c, decoration: _decoration),
+          ),
+          _field(controller: _address, label: _sw ? "Anuani (nyumba, jengo, karibu na ...)" : "Address (house, building, near ...)", icon: Icons.place_outlined),
           _field(
             controller: _notes,
             label: _sw ? "Maelezo ya ziada" : "Anything else we should know",
@@ -1033,6 +994,107 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
         child: Text(message, style: TextStyle(color: Colors.red[200], fontSize: 13.sp)),
       );
 
+  Widget _nameField() => _field(
+        controller: _name,
+        label: _sw ? "Jina lako kamili" : "Your full name",
+        icon: Icons.person_outline,
+        validator: _required,
+      );
+
+  Widget _emailField() => _field(
+        controller: _email,
+        label: _loc.translate("email"),
+        icon: Icons.email_outlined,
+        readOnly: widget.googleSignup != null,
+        keyboardType: TextInputType.emailAddress,
+        validator: (final String? v) => (v == null || !v.contains("@")) ? _loc.translate("enter_valid_email") : null,
+      );
+
+  Widget _phoneField() => _field(
+        controller: _phone,
+        label: _sw ? "Namba ya simu" : _loc.translate("phone_number"),
+        hint: "0743519100",
+        icon: Icons.phone_android_outlined,
+        keyboardType: TextInputType.phone,
+        validator: (final String? v) => _phonePattern.hasMatch((v ?? "").trim())
+            ? null
+            : (_sw ? "Namba ya simu si sahihi (mfano 0743519100)" : "Invalid phone number (e.g. 0743519100)"),
+      );
+
+  Widget _passwordField() => _field(
+        controller: _password,
+        label: _loc.translate("password"),
+        icon: Icons.lock_outline,
+        obscure: _obscure,
+        suffix: IconButton(
+          padding: EdgeInsets.zero,
+          constraints: BoxConstraints(minWidth: 34.w, minHeight: 34.h),
+          icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: Colors.white54, size: 20.sp),
+          onPressed: () => setState(() => _obscure = !_obscure),
+        ),
+        validator: (final String? v) => (v == null || v.length < 8)
+            ? (_sw ? "Nenosiri liwe na angalau herufi 8" : "Password must be at least 8 characters")
+            : null,
+      );
+
+  Widget _confirmField() => _field(
+        controller: _confirm,
+        label: _sw ? "Rudia nenosiri" : "Repeat password",
+        icon: Icons.lock_reset_outlined,
+        obscure: _obscure,
+        validator: (final String? v) => v != _password.text ? _loc.translate("passwords_do_not_match") : null,
+      );
+
+  /// Two fields side by side (one under the other on a very narrow screen). Each keeps its own spacing below it.
+  Widget _pair(final Widget a, final Widget b) {
+    return LayoutBuilder(
+      builder: (final BuildContext context, final BoxConstraints box) {
+        if (box.maxWidth < 300) return Column(children: <Widget>[a, b]);
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[Expanded(child: a), SizedBox(width: 12.w), Expanded(child: b)],
+        );
+      },
+    );
+  }
+
+  /// The look of every field on this form (also handed to the place pickers).
+  InputDecoration _decoration(final String label, final IconData icon, {final String? hint, final Widget? suffix}) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      hintStyle: const TextStyle(color: Colors.white24),
+      labelStyle: TextStyle(color: Colors.white54, fontSize: 13.sp),
+      prefixIcon: Icon(icon, color: ThemeConstants.primaryCyan, size: 20.sp),
+      // close the icons up, so a name still fits in half the width
+      prefixIconConstraints: BoxConstraints(minWidth: 40.w, minHeight: 40.h),
+      suffixIcon: suffix,
+      suffixIconConstraints: BoxConstraints(minWidth: 34.w, minHeight: 34.h),
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.05),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: const BorderSide(color: Colors.white12),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: const BorderSide(color: Colors.white10),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: const BorderSide(color: ThemeConstants.primaryCyan),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
+    );
+  }
+
   Widget _field({
     required final TextEditingController controller,
     required final String label,
@@ -1055,32 +1117,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
         keyboardType: keyboardType,
         validator: validator,
         style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white24),
-          labelStyle: TextStyle(color: Colors.white54, fontSize: 13.sp),
-          prefixIcon: Icon(icon, color: ThemeConstants.primaryCyan, size: 20.sp),
-          suffixIcon: suffix,
-          filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.05),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: const BorderSide(color: Colors.white12),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: const BorderSide(color: ThemeConstants.primaryCyan),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: const BorderSide(color: Colors.redAccent),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: const BorderSide(color: Colors.redAccent),
-          ),
-        ),
+        decoration: _decoration(label, icon, hint: hint, suffix: suffix),
       ),
     );
   }

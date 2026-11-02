@@ -28,6 +28,8 @@ class BusinessRegistration extends Model
         'inventory_type',
         'region',
         'district',
+        'ward',
+        'street',
         'address',
         'id_number',
         'notes',

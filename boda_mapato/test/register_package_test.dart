@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:boda_mapato/models/business_registration.dart';
+import 'support/fake_places.dart';
 import 'package:boda_mapato/models/plan_prices.dart';
 import 'package:boda_mapato/screens/auth/register_business_screen.dart';
 import 'package:boda_mapato/services/localization_service.dart';
@@ -55,7 +56,7 @@ Future<BusinessRegistrationRequest?> _capture(
 }) async {
   _tall(t);
   BusinessRegistrationRequest? sent;
-  await t.pumpWidget(_host(RegisterBusinessScreen(
+  await t.pumpWidget(_host(RegisterBusinessScreen(placeSource: const NoPlaces(),
     onLoadPlans: load ?? (() async => catalog ?? _priced()),
     onSubmit: (BusinessRegistrationRequest r) async {
       sent = r;
@@ -66,8 +67,8 @@ Future<BusinessRegistrationRequest?> _capture(
 
   final Finder f = find.byType(TextFormField);
   await t.enterText(f.at(0), 'Asha Owner');
-  await t.enterText(f.at(1), 'asha@example.test');
-  await t.enterText(f.at(2), '0743519100');
+  await t.enterText(f.at(1), '0743519100'); // name and phone sit side by side
+  await t.enterText(f.at(2), 'asha@example.test');
   await t.enterText(f.at(3), 'secret-pass-1');
   await t.enterText(f.at(4), 'secret-pass-1');
   await t.enterText(f.at(5), 'Asha Rentals');
@@ -274,7 +275,7 @@ void main() {
     testWidgets('prices that arrive a moment later appear on their own', (t) async {
       _tall(t);
       final Completer<PlanCatalog> later = Completer<PlanCatalog>();
-      await t.pumpWidget(_host(RegisterBusinessScreen(onLoadPlans: () => later.future, onSubmit: (_) async => <String, dynamic>{})));
+      await t.pumpWidget(_host(RegisterBusinessScreen(placeSource: const NoPlaces(),onLoadPlans: () => later.future, onSubmit: (_) async => <String, dynamic>{})));
       await _settle(t);
       await _pick(t, <String>['rental']);
       expect(_text(t, 'price_basic'), 'Bei itatangazwa');
