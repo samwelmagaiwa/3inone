@@ -622,24 +622,25 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Expanded(child: _tile(const BoxesArtPainter(), loc.translate('svc_shop'))),
+            Expanded(flex: 4, child: _tile(const BoxesArtPainter(), loc.translate('svc_shop'))),
             Padding(padding: EdgeInsets.symmetric(vertical: 8.h), child: const SizedBox(width: SectionGlowVerticalDivider.lineWidth, child: SectionGlowVerticalDivider(core: Color(0xFF1450D6)))),
-            Expanded(child: _tile(const HouseArtPainter(), loc.translate('svc_rental'))),
+            Expanded(flex: 4, child: _tile(const HouseArtPainter(), loc.translate('svc_rental'))),
             Padding(padding: EdgeInsets.symmetric(vertical: 8.h), child: const SizedBox(width: SectionGlowVerticalDivider.lineWidth, child: SectionGlowVerticalDivider(core: Color(0xFF1450D6)))),
-            Expanded(child: _tile(const SalonArtPainter(), loc.translate('svc_salon'))),
+            Expanded(flex: 4, child: _tile(const SalonArtPainter(), loc.translate('svc_salon'))),
             Padding(padding: EdgeInsets.symmetric(vertical: 8.h), child: const SizedBox(width: SectionGlowVerticalDivider.lineWidth, child: SectionGlowVerticalDivider(core: Color(0xFF1450D6)))),
-            Expanded(child: _tile(const TransportArtPainter(), loc.translate('svc_transport'), wide: true)),
+            Expanded(flex: 5, child: _tile(null, loc.translate('svc_transport'))),
           ],
         ),
       ),
     );
   }
 
-  Widget _tile(final CustomPainter painter, final String label, {final bool wide = false}) {
+  /// One service: its picture ([painter], or the transport picture when null), its name and the gold stroke under it.
+  Widget _tile(final CustomPainter? painter, final String label) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
-        SizedBox(width: wide ? 88.w : 64.w, height: 58.h, child: CustomPaint(painter: painter)),
+        SizedBox(height: 58.h, width: double.infinity, child: painter == null ? const Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: TransportArt()) : CustomPaint(painter: painter)),
         SizedBox(height: 2.h),
         Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: _navy, fontSize: 11.sp, fontWeight: FontWeight.w800)),
         SizedBox(height: 2.h),

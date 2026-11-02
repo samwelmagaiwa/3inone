@@ -30,7 +30,7 @@ class _ServiceOrbitLoaderState extends State<ServiceOrbitLoader> with SingleTick
   late final AnimationController _turn = AnimationController(vsync: this, duration: const Duration(seconds: 7))..repeat();
   final Stopwatch _clock = Stopwatch()..start();
 
-  static const List<CustomPainter> _pictures = <CustomPainter>[BoxesArtPainter(), HouseArtPainter(), SalonArtPainter(), BikeArtPainter()];
+  static const List<CustomPainter?> _pictures = <CustomPainter?>[BoxesArtPainter(), HouseArtPainter(), SalonArtPainter(), null];
 
   @override
   void dispose() {
@@ -89,7 +89,7 @@ class _ServiceOrbitLoaderState extends State<ServiceOrbitLoader> with SingleTick
                           border: Border.all(color: const Color(0xFF22D3EE), width: 2),
                           boxShadow: const <BoxShadow>[BoxShadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 3))],
                         ),
-                        child: CustomPaint(painter: _pictures[i]),
+                        child: _pictures[i] == null ? Image.asset(bajajiAsset, fit: BoxFit.contain) : CustomPaint(painter: _pictures[i]),
                       ),
                     ),
                   // the percentage in the middle
