@@ -110,67 +110,81 @@ void _pikipiki(final Canvas canvas) {
     canvas.drawLine(const Offset(40, 68), const Offset(8, 74), _line(const Color(0xFF9CA3AF), 4));
 }
 
-/// A bajaji (three-wheeler, the tuk-tuk) in a 100 x 100 box, most of it in x 46 to 98, facing right: a curved canopy over an open cabin,
-/// a slanted windscreen, handlebars and a headlight in front, a wheel at the front and one behind.
+/// A bajaji (three-wheeler, the tuk-tuk) in a 132 x 100 scene, seen from the front-left: a light canopy on three pillars, a blue body, a
+/// big windscreen, a headlight and bumper at the front, the passengers' windows along the side.
 void _bajaji(final Canvas canvas) {
   const Color dark = Color(0xFF111827);
   const Color blue = Color(0xFF2563EB);
+  const Color deep = Color(0xFF1D4ED8);
   const Color navy = Color(0xFF1E3A8A);
   const Color glass = Color(0xFFBFDBFE);
 
-  // the body: a rounded cabin at the back and a nose sloping down to the front wheel
+  // the rear wheel, then the body over it
+  canvas.drawCircle(const Offset(120, 80), 10, _fill(dark));
+  canvas.drawCircle(const Offset(120, 80), 4.5, _fill(const Color(0xFFE5E7EB)));
   final Path body = Path()
-    ..moveTo(48, 58)
-    ..quadraticBezierTo(48, 52, 54, 52)
-    ..lineTo(80, 52)
-    ..lineTo(92, 60)
-    ..quadraticBezierTo(98, 62, 98, 70)
-    ..lineTo(98, 76)
-    ..lineTo(48, 76)
+    ..moveTo(72, 70)
+    ..quadraticBezierTo(72, 58, 80, 57)
+    ..lineTo(124, 54)
+    ..quadraticBezierTo(132, 54, 132, 64)
+    ..lineTo(132, 78)
+    ..lineTo(72, 78)
     ..close();
   canvas.drawPath(body, _fill(blue));
-  // the open cabin: the passenger seat seen between the pillars
-  canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(54, 38, 28, 14), const Radius.circular(3)), _fill(const Color(0xFFDBEAFE)));
-  canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(56, 44, 22, 8), const Radius.circular(3)), _fill(const Color(0xFF93C5FD)));
-  canvas.drawLine(const Offset(52, 36), const Offset(52, 52), _line(navy, 3));
-  canvas.drawLine(const Offset(83, 36), const Offset(90, 56), _line(navy, 3));
-  // the windscreen
-  canvas.drawPath(Path()..moveTo(83, 38)..lineTo(91, 54)..lineTo(85, 54)..close(), _fill(glass));
-  // the canopy
-  final Path roof = Path()
-    ..moveTo(46, 38)
-    ..quadraticBezierTo(46, 26, 60, 26)
-    ..lineTo(78, 26)
-    ..quadraticBezierTo(86, 26, 90, 38)
-    ..close();
-  canvas.drawPath(roof, _fill(navy));
-  // handlebar, headlight and the stripe along the side
-  canvas.drawLine(const Offset(88, 52), const Offset(94, 46), _line(dark, 3));
-  canvas.drawCircle(const Offset(97, 66), 3, _fill(const Color(0xFFFCD34D)));
-  canvas.drawLine(const Offset(50, 66), const Offset(94, 66), _line(const Color(0xFFFCD34D), 2));
-  for (final Offset hub in const <Offset>[Offset(62, 78), Offset(88, 78)]) {
-    canvas.drawCircle(hub, 9, _fill(dark));
-    canvas.drawCircle(hub, 4, _fill(const Color(0xFFE5E7EB)));
-  }
+  canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(98, 62, 32, 6), const Radius.circular(3)), _fill(deep));
+
+  // the passengers' side windows with a person in each
+  canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(103, 36, 26, 20), const Radius.circular(3)), _fill(glass));
+  canvas.drawCircle(const Offset(112, 44), 3.5, _fill(navy));
+  canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(107, 47, 9, 9), const Radius.circular(2)), _fill(navy));
+  canvas.drawCircle(const Offset(122, 44), 3.5, _fill(const Color(0xFF475569)));
+  canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(117, 47, 9, 9), const Radius.circular(2)), _fill(const Color(0xFF475569)));
+
+  // the windscreen, with a bright streak across it
+  final Path screen = Path()..moveTo(78, 38)..lineTo(100, 36)..lineTo(102, 56)..lineTo(76, 58)..close();
+  canvas.drawPath(screen, _fill(glass));
+  canvas.drawPath(Path()..moveTo(82, 38)..lineTo(90, 37.5)..lineTo(80, 57.5)..lineTo(77, 58)..close(), _fill(Colors.white.withValues(alpha: 0.55)));
+
+  // the pillars and the canopy
+  canvas.drawLine(const Offset(77, 38), const Offset(76, 58), _line(navy, 2.5));
+  canvas.drawLine(const Offset(101, 36), const Offset(102, 56), _line(navy, 2.5));
+  canvas.drawLine(const Offset(130, 36), const Offset(130, 54), _line(navy, 2.5));
+  canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(71, 28, 62, 11), const Radius.circular(8)), _fill(navy));
+  canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(71, 26, 62, 10), const Radius.circular(8)), _fill(const Color(0xFFE0ECFF)));
+
+  // the front: headlight, bumper and the wheel
+  canvas.drawCircle(const Offset(79, 67), 4.5, _fill(const Color(0xFFFEF3C7)));
+  canvas.drawCircle(const Offset(79, 67), 2.5, _fill(const Color(0xFFFCD34D)));
+  canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(70, 74, 28, 4), const Radius.circular(2)), _fill(navy));
+  canvas.drawCircle(const Offset(86, 80), 9, _fill(dark));
+  canvas.drawCircle(const Offset(86, 80), 4, _fill(const Color(0xFFE5E7EB)));
 }
 
-/// A pikipiki beside a bajaji, squeezed into a square (the loading ring).
+/// The whole scene, 132 wide by 100 high: the pikipiki (facing left, as in the picture it follows) with the bajaji in front of its right side.
+void _transportScene(final Canvas canvas) {
+  canvas.save();
+  canvas.translate(80.5, 17);
+  canvas.scale(-0.85, 0.85);
+  _pikipiki(canvas);
+  canvas.restore();
+  _bajaji(canvas);
+}
+
+/// The pikipiki and the bajaji, squeezed into a square (the loading ring).
 class BikeArtPainter extends ServiceArtPainter {
   const BikeArtPainter();
 
   @override
   void art(final Canvas canvas) {
     canvas.save();
-    canvas.translate(-4, 36);
-    canvas.scale(0.58);
-    _pikipiki(canvas);
+    canvas.translate(0, 14);
+    canvas.scale(0.75);
+    _transportScene(canvas);
     canvas.restore();
-    _bajaji(canvas);
   }
 }
 
-/// The same two, each drawn larger, for a picture that is wider than it is tall (the Transport tile on the sign-in page): the pikipiki
-/// on the left and the bajaji on the right, side by side.
+/// The same scene at full size, for a picture that is wider than it is tall (the Transport tile on the sign-in page).
 class TransportArtPainter extends CustomPainter {
   const TransportArtPainter();
 
@@ -183,17 +197,8 @@ class TransportArtPainter extends CustomPainter {
     canvas.save();
     canvas.translate((size.width - 100 * aspect * scale) / 2, (size.height - 100 * scale) / 2);
     canvas.scale(scale);
-    canvas.drawOval(Rect.fromLTWH(4, 86, 100 * aspect - 8, 8), Paint()..color = const Color(0xFF0A2E8A).withValues(alpha: 0.16));
-    canvas.save();
-    canvas.translate(-8, 17);
-    canvas.scale(0.85);
-    _pikipiki(canvas);
-    canvas.restore();
-    canvas.save();
-    canvas.translate(19, -9);
-    canvas.scale(1.15);
-    _bajaji(canvas);
-    canvas.restore();
+    canvas.drawOval(Rect.fromLTWH(2, 86, 100 * aspect - 4, 8), Paint()..color = const Color(0xFF0A2E8A).withValues(alpha: 0.16));
+    _transportScene(canvas);
     canvas.restore();
   }
 
