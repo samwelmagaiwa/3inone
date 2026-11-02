@@ -8,7 +8,7 @@
   <ul>
     <li><b>Akaunti ya Google:</b> unapoingia kwa Google tunapokea jina lako na anwani ya barua pepe tu. Hatusomi barua pepe zako, anwani, picha, kalenda wala data nyingine ya akaunti yako ya Google.</li>
     <li><b>Taarifa za usajili:</b> namba ya simu, jina la biashara, anwani, huduma unazoomba, na (kwa hiari) TIN.</li>
-    <li><b>Data ya biashara unayoiingiza:</b> mauzo, bidhaa na stoo, wateja na madeni, matumizi, wafanyakazi, na risiti.</li>
+    <li><b>Data ya biashara unayoiingiza:</b> mauzo, bidhaa na stoo, wateja na madeni, matumizi, wafanyakazi, na risiti; kwa ukodishaji pia nyumba, wapangaji (majina na namba za simu) na mikataba ya upangishaji.</li>
     <li><b>Taarifa za kiufundi:</b> kumbukumbu za kuingia (muda na kifaa) kwa ajili ya usalama.</li>
   </ul>
 
@@ -36,7 +36,7 @@
     <h1>Privacy policy (English)</h1>
     <p>Updated November 2026.</p>
     <h2>Information we collect</h2>
-    <p>With Google sign-in we receive only your name and email address; we do not read your email, contacts, photos or other Google data. We also collect the registration details you give (phone number, business name, address, requested services, optional TIN), the business data you enter (sales, stock, customers and debts, expenses, staff, receipts) and sign-in records for security.</p>
+    <p>With Google sign-in we receive only your name and email address; we do not read your email, contacts, photos or other Google data. We also collect the registration details you give (phone number, business name, address, requested services, optional TIN), the business data you enter (sales, stock, customers and debts, expenses, staff, receipts; for rentals also houses, tenants' names and phone numbers, and lease agreements) and sign-in records for security.</p>
     <h2>How we use it</h2>
     <p>To identify you and protect your account, to run the service and show your reports, and to send text messages such as phone confirmation and approval notices. We do not sell or rent your information.</p>
     <h2>Who sees it</h2>
