@@ -884,10 +884,8 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 8.h + MediaQuery.of(context).padding.bottom),
-      decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: <Color>[Color(0xFF1450D6), Color(0xFF0B3AA8), Color(0xFF061F66)])),
-      child: CustomPaint(
-        painter: const _FooterArtPainter(),
-        child: Column(
+      decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: <Color>[Color(0xFF0B3AA8), Color(0xFF061F66)])),
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Row(
@@ -944,7 +942,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
         ],
-        ),
       ),
     );
   }
@@ -1126,21 +1123,6 @@ class _BrandArcsPainter extends CustomPainter {
     _glowBand(canvas, _band(Offset(w * 0.30, h * 0.96), Offset(w * 0.5, h * 0.84), Offset(w * 0.70, h * 0.96), 2.4), const Color(0xFF1450D6));
     _spark(canvas, Offset(w * 0.16, h * 0.93), 2.6, _tzGreen);
     _spark(canvas, Offset(w * 0.84, h * 0.93), 2.6, _tzBlue);
-  }
-
-  @override
-  bool shouldRepaint(covariant final CustomPainter oldDelegate) => false;
-}
-
-/// Soft light shapes behind the foot of the page: a soft glow behind the Sign Up button.
-class _FooterArtPainter extends CustomPainter {
-  const _FooterArtPainter();
-
-  @override
-  void paint(final Canvas canvas, final Size size) {
-    final double w = size.width;
-    final double h = size.height;
-    canvas.drawCircle(Offset(w * 0.5, h * 0.18), w * 0.42, Paint()..shader = RadialGradient(colors: <Color>[const Color(0xFF38BDF8).withValues(alpha: 0.35), Colors.transparent]).createShader(Rect.fromCircle(center: Offset(w * 0.5, h * 0.18), radius: w * 0.42)));
   }
 
   @override
