@@ -84,73 +84,39 @@ class SalonArtPainter extends ServiceArtPainter {
   }
 }
 
-/// A pikipiki (motorbike) in a 100 x 100 box.
-void _pikipiki(final Canvas canvas) {
-  const Color dark = Color(0xFF111827);
-    for (final Offset hub in const <Offset>[Offset(25, 70), Offset(77, 70)]) {
-      canvas.drawCircle(hub, 15, _line(dark, 6));
-      canvas.drawCircle(hub, 8, _line(const Color(0xFF9CA3AF), 2));
-      canvas.drawCircle(hub, 3, _fill(const Color(0xFFE5E7EB)));
-    }
-    final Path frame = Path()
-      ..moveTo(25, 70)
-      ..lineTo(40, 52)
-      ..lineTo(58, 50)
-      ..lineTo(70, 56)
-      ..lineTo(77, 70)
-      ..moveTo(40, 52)
-      ..lineTo(48, 70)
-      ..lineTo(25, 70);
-    canvas.drawPath(frame, _line(const Color(0xFFF59E0B), 6));
-    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(31, 44, 24, 8), const Radius.circular(3)), _fill(dark));
-    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(52, 40, 18, 10), const Radius.circular(4)), _fill(const Color(0xFF1D4ED8)));
-    canvas.drawLine(const Offset(70, 56), const Offset(68, 34), _line(dark, 4));
-    canvas.drawLine(const Offset(62, 33), const Offset(77, 33), _line(dark, 4));
-    canvas.drawCircle(const Offset(80, 42), 5, _fill(const Color(0xFFFCD34D)));
-    canvas.drawLine(const Offset(40, 68), const Offset(8, 74), _line(const Color(0xFF9CA3AF), 4));
-}
-
-/// The pikipiki on its own, facing left, in a 100 x 100 box.
-class PikipikiArtPainter extends ServiceArtPainter {
-  const PikipikiArtPainter();
-
-  @override
-  void art(final Canvas canvas) {
-    canvas.save();
-    canvas.translate(100, 8);
-    canvas.scale(-1.05, 1.05);
-    _pikipiki(canvas);
-    canvas.restore();
-  }
-}
-
-/// The picture of a bajaji (a tuk-tuk with its driver) the app uses for transport.
+/// The pictures of transport the app uses: a bajaji (a tuk-tuk with its driver) and a pikipiki (a motorbike with its rider).
 const String bajajiAsset = 'assets/images/bajaji.png';
+const String pikipikiAsset = 'assets/images/pikipiki.png';
 
-/// Transport: a pikipiki and a bajaji side by side, the bajaji a little in front. It fills the room it is given (about twice as wide as it
-/// is high) and sits on the bottom edge.
+/// Transport: a pikipiki and a bajaji side by side, both facing right. It fills the room it is given (a little over twice as wide as it is
+/// high) and sits on the bottom edge.
 class TransportArt extends StatelessWidget {
   const TransportArt({super.key});
 
-  /// The bajaji picture is this much wider than it is high.
+  /// How much wider than high each picture is.
   static const double _bajajiAspect = 338 / 209;
+  static const double _pikipikiAspect = 145 / 126;
+
+  /// The pikipiki is this much of the bajaji's height, and the two overlap by a tenth of the height.
+  static const double _bikeShare = 0.88;
+  static const double _overlap = 0.1;
 
   @override
   Widget build(final BuildContext context) {
     return LayoutBuilder(
       builder: (final BuildContext context, final BoxConstraints box) {
-        // the pikipiki, drawn in a square box with room round it, goes behind the bajaji
-        final double bajajiH = (box.maxHeight < box.maxWidth / (_bajajiAspect + 0.55) ? box.maxHeight : box.maxWidth / (_bajajiAspect + 0.55)) * 1.0;
-        final double bajajiW = bajajiH * _bajajiAspect;
-        final double bikeS = bajajiH * 1.2;
+        const double across = _bajajiAspect + _bikeShare * _pikipikiAspect - _overlap;
+        final double fit = box.maxWidth / across;
+        final double bajajiH = box.maxHeight < fit ? box.maxHeight : fit;
+        final double bikeH = bajajiH * _bikeShare;
         return SizedBox(
           width: box.maxWidth,
           height: box.maxHeight,
           child: Stack(
             alignment: Alignment.bottomCenter,
             children: <Widget>[
-              Positioned(left: 0, bottom: 0, width: bikeS, height: bikeS, child: const CustomPaint(painter: PikipikiArtPainter())),
-              Positioned(right: 0, bottom: 0, width: bajajiW, height: bajajiH, child: Image.asset(bajajiAsset, fit: BoxFit.contain, alignment: Alignment.bottomRight)),
+              Positioned(right: 0, bottom: 0, height: bajajiH, width: bajajiH * _bajajiAspect, child: Image.asset(bajajiAsset, fit: BoxFit.contain, alignment: Alignment.bottomRight)),
+              Positioned(left: 0, bottom: 0, height: bikeH, width: bikeH * _pikipikiAspect, child: Image.asset(pikipikiAsset, fit: BoxFit.contain, alignment: Alignment.bottomLeft)),
             ],
           ),
         );
