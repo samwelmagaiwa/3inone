@@ -1132,7 +1132,7 @@ class _BrandArcsPainter extends CustomPainter {
   bool shouldRepaint(covariant final CustomPainter oldDelegate) => false;
 }
 
-/// Soft light shapes behind the foot of the page: a glow behind the Sign Up button, a gold swoosh and faint flag-coloured rings.
+/// Soft light shapes behind the foot of the page: a soft glow behind the Sign Up button.
 class _FooterArtPainter extends CustomPainter {
   const _FooterArtPainter();
 
@@ -1141,9 +1141,6 @@ class _FooterArtPainter extends CustomPainter {
     final double w = size.width;
     final double h = size.height;
     canvas.drawCircle(Offset(w * 0.5, h * 0.18), w * 0.42, Paint()..shader = RadialGradient(colors: <Color>[const Color(0xFF38BDF8).withValues(alpha: 0.35), Colors.transparent]).createShader(Rect.fromCircle(center: Offset(w * 0.5, h * 0.18), radius: w * 0.42)));
-    canvas.drawPath(Path()..moveTo(0, h * 0.78)..quadraticBezierTo(w * 0.5, h * 0.52, w, h * 0.78)..lineTo(w, h * 0.84)..quadraticBezierTo(w * 0.5, h * 0.60, 0, h * 0.84)..close(), Paint()..color = const Color(0xFFFFC21A).withValues(alpha: 0.22));
-    canvas.drawCircle(Offset(w * 0.04, h * 0.35), h * 0.45, Paint()..color = const Color(0xFF4ADE80).withValues(alpha: 0.10));
-    canvas.drawCircle(Offset(w * 0.97, h * 0.30), h * 0.40, Paint()..color = const Color(0xFF38BDF8).withValues(alpha: 0.14));
   }
 
   @override
