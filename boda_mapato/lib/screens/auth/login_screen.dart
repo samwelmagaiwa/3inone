@@ -500,6 +500,7 @@ class _LoginScreenState extends State<LoginScreen> {
           children: <Widget>[
             const Positioned.fill(child: CustomPaint(painter: _BackdropPainter())),
             SafeArea(
+              bottom: false,
               child: Column(
                 children: <Widget>[
                   Expanded(
@@ -882,9 +883,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final bool toSignIn = confirm || signUp;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 6.h),
-      decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: <Color>[Color(0xFF0B3AA8), Color(0xFF061F66)])),
-      child: Column(
+      padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 8.h + MediaQuery.of(context).padding.bottom),
+      decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: <Color>[Color(0xFF1450D6), Color(0xFF0B3AA8), Color(0xFF061F66)])),
+      child: CustomPaint(
+        painter: const _FooterArtPainter(),
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Row(
@@ -896,8 +899,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 key: ValueKey<String>(toSignIn ? 'sign_in_link' : 'sign_up_link'),
                 onTap: () => _goTo(toSignIn ? _Step.signIn : _Step.signUp),
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
-                  decoration: BoxDecoration(color: _gold, borderRadius: BorderRadius.circular(20.r)),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 7.h),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: <Color>[Color(0xFFFFD84D), _gold]),
+                    borderRadius: BorderRadius.circular(22.r),
+                    boxShadow: <BoxShadow>[BoxShadow(color: _gold.withValues(alpha: 0.55), blurRadius: 14, spreadRadius: 1)],
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
@@ -909,11 +916,13 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
-          SizedBox(height: 6.h),
+          SizedBox(height: 8.h),
+          Container(height: 1, margin: EdgeInsets.symmetric(horizontal: 30.w), decoration: BoxDecoration(gradient: LinearGradient(colors: <Color>[Colors.transparent, Colors.white.withValues(alpha: 0.35), Colors.transparent]))),
+          SizedBox(height: 7.h),
           Text.rich(
             key: const ValueKey<String>('legal_links'),
             TextSpan(
-              style: TextStyle(color: Colors.white60, fontSize: 10.sp, height: 1.4),
+              style: TextStyle(color: Colors.white70, fontSize: 10.sp, height: 1.4),
               children: <InlineSpan>[
                 TextSpan(text: '${loc.translate('by_continuing_you_accept')} '),
                 _legalLink(loc.translate('terms_of_use'), 'https://3inone.nexoryatech.com/terms', Colors.white),
@@ -923,8 +932,38 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 4.h),
-          Text('Manage   •   Operate   •   Grow', style: TextStyle(color: Colors.white70, fontSize: 11.sp, fontStyle: FontStyle.italic, letterSpacing: 1.2)),
+          SizedBox(height: 8.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              _motto('Manage', Icons.tune_rounded, const Color(0xFF4ADE80)),
+              SizedBox(width: 8.w),
+              _motto('Operate', Icons.bolt_rounded, _gold),
+              SizedBox(width: 8.w),
+              _motto('Grow', Icons.trending_up_rounded, const Color(0xFF38BDF8)),
+            ],
+          ),
+        ],
+        ),
+      ),
+    );
+  }
+
+  /// One word of "Manage, Operate, Grow" as a small glass chip with a coloured icon.
+  Widget _motto(final String word, final IconData icon, final Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: color.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 13.sp, color: color),
+          SizedBox(width: 4.w),
+          Text(word, style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
         ],
       ),
     );
@@ -1087,6 +1126,24 @@ class _BrandArcsPainter extends CustomPainter {
     _glowBand(canvas, _band(Offset(w * 0.30, h * 0.96), Offset(w * 0.5, h * 0.84), Offset(w * 0.70, h * 0.96), 2.4), const Color(0xFF1450D6));
     _spark(canvas, Offset(w * 0.16, h * 0.93), 2.6, _tzGreen);
     _spark(canvas, Offset(w * 0.84, h * 0.93), 2.6, _tzBlue);
+  }
+
+  @override
+  bool shouldRepaint(covariant final CustomPainter oldDelegate) => false;
+}
+
+/// Soft light shapes behind the foot of the page: a glow behind the Sign Up button, a gold swoosh and faint flag-coloured rings.
+class _FooterArtPainter extends CustomPainter {
+  const _FooterArtPainter();
+
+  @override
+  void paint(final Canvas canvas, final Size size) {
+    final double w = size.width;
+    final double h = size.height;
+    canvas.drawCircle(Offset(w * 0.5, h * 0.18), w * 0.42, Paint()..shader = RadialGradient(colors: <Color>[const Color(0xFF38BDF8).withValues(alpha: 0.35), Colors.transparent]).createShader(Rect.fromCircle(center: Offset(w * 0.5, h * 0.18), radius: w * 0.42)));
+    canvas.drawPath(Path()..moveTo(0, h * 0.78)..quadraticBezierTo(w * 0.5, h * 0.52, w, h * 0.78)..lineTo(w, h * 0.84)..quadraticBezierTo(w * 0.5, h * 0.60, 0, h * 0.84)..close(), Paint()..color = const Color(0xFFFFC21A).withValues(alpha: 0.22));
+    canvas.drawCircle(Offset(w * 0.04, h * 0.35), h * 0.45, Paint()..color = const Color(0xFF4ADE80).withValues(alpha: 0.10));
+    canvas.drawCircle(Offset(w * 0.97, h * 0.30), h * 0.40, Paint()..color = const Color(0xFF38BDF8).withValues(alpha: 0.14));
   }
 
   @override
