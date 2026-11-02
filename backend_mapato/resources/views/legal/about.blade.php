@@ -12,7 +12,7 @@
   </ul>
   <h2>Jinsi ya kuanza</h2>
   <p>Mmiliki mpya anaingia kwa akaunti yake ya Google, anajaza taarifa za biashara yake, na kusubiri idhini ya msimamizi wa mfumo. Akishaidhinishwa, anaanza kutumia huduma alizoomba.</p>
-  <p>Wasiliana nasi: <a href="mailto:samwelmagaiwa229@gmail.com">samwelmagaiwa229@gmail.com</a> &middot; simu 0617919104.</p>
+  <p>Wasiliana nasi: <a href="mailto:info@nexoryatech.com">info@nexoryatech.com</a> &middot; simu 0617919104.</p>
   <div class="en">
     <h2>About (English)</h2>
     <p>3 in One is a mobile and web app for small and medium business owners in Tanzania. It keeps a business's records in one place: sales, stock, debts, expenses and profit reports, for shops and depots, salons, transport (boda-boda) and property rental (houses, tenants, lease agreements, rent bills and arrears). A new owner signs in with Google, fills in the business details and waits for a system administrator's approval before using the services requested.</p>

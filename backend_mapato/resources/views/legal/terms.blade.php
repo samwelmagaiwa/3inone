@@ -18,10 +18,10 @@
   <h2>5. Upatikanaji na dhima</h2>
   <p>Tunajitahidi huduma ipatikane kila wakati, lakini hatuahidi isiyokatika. Hesabu na ripoti ni msaada wa kumbukumbu; mmiliki anabaki na jukumu la maamuzi ya kibiashara na ya kodi.</p>
   <h2>6. Mabadiliko na mawasiliano</h2>
-  <p>Tunaweza kubadilisha masharti haya na kuweka tarehe mpya hapa. Maswali: <a href="mailto:samwelmagaiwa229@gmail.com">samwelmagaiwa229@gmail.com</a>, simu 0617919104.</p>
+  <p>Tunaweza kubadilisha masharti haya na kuweka tarehe mpya hapa. Maswali: <a href="mailto:info@nexoryatech.com">info@nexoryatech.com</a>, simu 0617919104.</p>
   <div class="en">
     <h1>Terms of use (English)</h1>
-    <p>By using 3 in One you accept these terms. You sign in with your Google account; a new business is reviewed by a system administrator and services start after approval, and we may refuse or suspend an account that breaks these terms. Give true information, protect your account and answer for the staff you allow, and do not use the service for anything unlawful. Your business data is yours; we use it only to run the service (see the <a href="/privacy">privacy policy</a>). Some plans may carry a fee; when a plan ends, service pauses until payment and your data stays safe. We aim for the service to be available but do not promise it will never be interrupted; reports are a record-keeping aid and the owner stays responsible for business and tax decisions. We may change these terms and will date the change here. Questions: samwelmagaiwa229@gmail.com, phone 0617919104.</p>
+    <p>By using 3 in One you accept these terms. You sign in with your Google account; a new business is reviewed by a system administrator and services start after approval, and we may refuse or suspend an account that breaks these terms. Give true information, protect your account and answer for the staff you allow, and do not use the service for anything unlawful. Your business data is yours; we use it only to run the service (see the <a href="/privacy">privacy policy</a>). Some plans may carry a fee; when a plan ends, service pauses until payment and your data stays safe. We aim for the service to be available but do not promise it will never be interrupted; reports are a record-keeping aid and the owner stays responsible for business and tax decisions. We may change these terms and will date the change here. Questions: info@nexoryatech.com, phone 0617919104.</p>
   </div>
 </article>
 @endsection

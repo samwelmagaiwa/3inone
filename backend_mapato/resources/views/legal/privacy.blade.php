@@ -30,7 +30,7 @@
   <p>Unaweza kuomba kuona, kusahihisha au kufuta akaunti yako na data zake kwa kuwasiliana nasi.</p>
 
   <h2>6. Mawasiliano</h2>
-  <p><a href="mailto:samwelmagaiwa229@gmail.com">samwelmagaiwa229@gmail.com</a> &middot; simu 0617919104.</p>
+  <p><a href="mailto:info@nexoryatech.com">info@nexoryatech.com</a> &middot; simu 0617919104.</p>
 
   <div class="en">
     <h1>Privacy policy (English)</h1>
@@ -44,7 +44,7 @@
     <h2>Security and retention</h2>
     <p>All communication uses HTTPS. We keep your data while your account is in use. Items you delete stay in the Trash until the owner removes them permanently.</p>
     <h2>Your rights and contact</h2>
-    <p>You may ask to see, correct or delete your account and its data: <a href="mailto:samwelmagaiwa229@gmail.com">samwelmagaiwa229@gmail.com</a>, phone 0617919104.</p>
+    <p>You may ask to see, correct or delete your account and its data: <a href="mailto:info@nexoryatech.com">info@nexoryatech.com</a>, phone 0617919104.</p>
   </div>
 </article>
 @endsection
