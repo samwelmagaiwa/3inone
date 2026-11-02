@@ -500,6 +500,7 @@ class _LoginScreenState extends State<LoginScreen> {
           children: <Widget>[
             const Positioned.fill(child: CustomPaint(painter: _BackdropPainter())),
             SafeArea(
+              top: false,
               bottom: false,
               child: Column(
                 children: <Widget>[
@@ -562,8 +563,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// The back button, then the name written in the colours of the flag of Tanzania with the line under it.
   Widget _hero() {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(14.w, 6.h, 14.w, 4.h),
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: <Color>[Color(0xFF061F66), Color(0xFF0B3AA8), Color(0xFF1450D6)])),
+      padding: EdgeInsets.fromLTRB(14.w, 6.h + MediaQuery.of(context).padding.top, 14.w, 6.h),
       child: Column(
         children: <Widget>[
           Align(
@@ -604,7 +607,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           ),
-          Text('Smart Access. One Platform.', style: TextStyle(color: _ink, fontSize: 13.sp, fontStyle: FontStyle.italic, fontWeight: FontWeight.w600)),
+          Text('Smart Access. One Platform.', style: TextStyle(color: Colors.white, fontSize: 13.sp, fontStyle: FontStyle.italic, fontWeight: FontWeight.w600)),
         ],
       ),
     );
