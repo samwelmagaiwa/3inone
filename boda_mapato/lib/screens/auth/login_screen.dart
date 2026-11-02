@@ -886,14 +886,14 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 4.h + MediaQuery.of(context).padding.bottom * 0.6),
-      decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: <Color>[Color(0xFF0B3AA8), Color(0xFF061F66)])),
+      color: const Color(0xFFC4D8FF),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              if (!confirm) Flexible(child: Text(loc.translate(signUp ? 'have_account_question' : 'no_account_question'), style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w600))),
+              if (!confirm) Flexible(child: Text(loc.translate(signUp ? 'have_account_question' : 'no_account_question'), style: TextStyle(color: _navy, fontSize: 13.sp, fontWeight: FontWeight.w700))),
               SizedBox(width: 8.w),
               GestureDetector(
                 key: ValueKey<String>(toSignIn ? 'sign_in_link' : 'sign_up_link'),
@@ -917,17 +917,17 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
           SizedBox(height: 6.h),
-          Container(height: 1, margin: EdgeInsets.symmetric(horizontal: 30.w), decoration: BoxDecoration(gradient: LinearGradient(colors: <Color>[Colors.transparent, Colors.white.withValues(alpha: 0.35), Colors.transparent]))),
+          Container(height: 1, margin: EdgeInsets.symmetric(horizontal: 30.w), decoration: BoxDecoration(gradient: LinearGradient(colors: <Color>[Colors.transparent, _navy.withValues(alpha: 0.35), Colors.transparent]))),
           SizedBox(height: 5.h),
           Text.rich(
             key: const ValueKey<String>('legal_links'),
             TextSpan(
-              style: TextStyle(color: Colors.white70, fontSize: 10.sp, height: 1.4),
+              style: TextStyle(color: _ink, fontSize: 10.sp, height: 1.4),
               children: <InlineSpan>[
                 TextSpan(text: '${loc.translate('by_continuing_you_accept')} '),
-                _legalLink(loc.translate('terms_of_use'), 'https://3inone.nexoryatech.com/terms', Colors.white),
+                _legalLink(loc.translate('terms_of_use'), 'https://3inone.nexoryatech.com/terms', _blue),
                 TextSpan(text: ' ${loc.translate('and_word')} '),
-                _legalLink(loc.translate('privacy_policy'), 'https://3inone.nexoryatech.com/privacy', Colors.white),
+                _legalLink(loc.translate('privacy_policy'), 'https://3inone.nexoryatech.com/privacy', _blue),
               ],
             ),
             textAlign: TextAlign.center,
