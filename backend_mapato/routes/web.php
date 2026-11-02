@@ -21,6 +21,16 @@ Route::get('/', function () {
     \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
 ]);
 
+// Public pages Google asks for before an app may be published (home page, privacy policy, terms). Plain, static, no session.
+foreach (['about' => 'legal.about', 'privacy' => 'legal.privacy', 'terms' => 'legal.terms'] as $path => $view) {
+    Route::get('/' . $path, fn () => response()->view($view)->header('Cache-Control', 'public, max-age=3600'))
+        ->withoutMiddleware([
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+        ]);
+}
+
 // The page a client opens from the text a salon sends after a visit: rate it, leave a comment or a complaint. It needs
 // no sign-in and no session; the secret is in the link.
 Route::get('/f/{token}', [\App\Http\Controllers\API\Inventory\SalonFeedbackController::class, 'page'])

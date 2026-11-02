@@ -1,4 +1,4 @@
-package com.example.boda_mapato
+package com.nexoryatech.threeinone
 
 import io.flutter.embedding.android.FlutterActivity
 
