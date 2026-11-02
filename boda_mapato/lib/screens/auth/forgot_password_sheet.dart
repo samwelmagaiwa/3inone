@@ -162,7 +162,7 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
       ),
       child: Container(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: <Color>[Color(0xFF1450D6), Color(0xFF0B3AA8), Color(0xFF061F66)]),
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: <Color>[Color(0xFF061F66), Color(0xFF0B3AA8), Color(0xFF1450D6)]),
           borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
         ),
         padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
