@@ -884,7 +884,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final bool toSignIn = confirm || signUp;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16.w, 2.h, 16.w, 14.h + MediaQuery.of(context).padding.bottom * 0.6),
+      padding: EdgeInsets.fromLTRB(16.w, 2.h, 16.w, 22.h + MediaQuery.of(context).padding.bottom * 0.6),
       color: const Color(0xFFC4D8FF),
       child: Column(
         mainAxisSize: MainAxisSize.min,
