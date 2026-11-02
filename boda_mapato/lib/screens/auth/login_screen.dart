@@ -987,13 +987,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
 const Color _tzGold = Color(0xFFFCD116);
 const Color _tzBlack = Color(0xFF000000);
+const Color _tzGreen = Color(0xFF1EB53A);
+const Color _tzBlue = Color(0xFF00A3DD);
 
-/// The name, written in the colours of the flag of Tanzania: the 3 in green, "iN" in a black box edged in gold (the black band and its
-/// gold edges), and One in blue. Each letter has a light edge and a soft shadow so it stands off the page.
+/// The name, written in the colours of the flag of Tanzania: the 3 and the One are each a little flag (green above, blue below, the black
+/// band edged in gold running across), with "iN" in a black box edged in gold between them. Each letter has a light edge and a soft shadow so it stands off the page.
 class _FlagText extends StatelessWidget {
   const _FlagText({super.key});
 
-  Widget _word(final String text, final Color light, final Color dark) {
+  Widget _word(final String text) {
     final TextStyle base = TextStyle(fontSize: 56.sp, fontWeight: FontWeight.w900, height: 1.0);
     return Stack(
       alignment: Alignment.center,
@@ -1011,7 +1013,12 @@ class _FlagText extends StatelessWidget {
         ),
         ShaderMask(
           blendMode: BlendMode.srcIn,
-          shaderCallback: (final Rect r) => LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: <Color>[light, dark]).createShader(r),
+          shaderCallback: (final Rect r) => const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[_tzGreen, _tzGreen, _tzGold, _tzGold, _tzBlack, _tzBlack, _tzGold, _tzGold, _tzBlue, _tzBlue],
+            stops: <double>[0, 0.36, 0.36, 0.43, 0.43, 0.57, 0.57, 0.64, 0.64, 1],
+          ).createShader(r),
           child: Text(text, style: base.copyWith(color: Colors.white)),
         ),
       ],
@@ -1026,7 +1033,7 @@ class _FlagText extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
-          _word('3', const Color(0xFF4ADE6B), const Color(0xFF138A2B)),
+          _word('3'),
           SizedBox(width: 8.w),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 2.h),
@@ -1039,29 +1046,57 @@ class _FlagText extends StatelessWidget {
             child: Text('iN', style: TextStyle(color: _tzGold, fontSize: 44.sp, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, height: 1.05)),
           ),
           SizedBox(width: 8.w),
-          _word('One', const Color(0xFF38BDF8), const Color(0xFF0369A1)),
+          _word('One'),
         ],
       ),
     );
   }
 }
 
-/// The gold and blue arcs over and under the name.
+/// The arcs over and under the name: three tapering bands in the flag's green, gold and blue with a soft glow, sparks at their ends, and
+/// a gold swoosh with a blue trail below.
 class _BrandArcsPainter extends CustomPainter {
   const _BrandArcsPainter();
+
+  /// A band that is thick in the middle and comes to a point at both ends, from [a] to [b] bowing through [control].
+  static Path _band(final Offset a, final Offset control, final Offset b, final double thick) {
+    final Offset bow = Offset(control.dx, control.dy + thick * 2);
+    return Path()
+      ..moveTo(a.dx, a.dy)
+      ..quadraticBezierTo(control.dx, control.dy, b.dx, b.dy)
+      ..quadraticBezierTo(bow.dx, bow.dy, a.dx, a.dy)
+      ..close();
+  }
+
+  void _glowBand(final Canvas canvas, final Path path, final Color color) {
+    canvas.drawPath(path, Paint()..color = color.withValues(alpha: 0.55)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  void _spark(final Canvas canvas, final Offset c, final double r, final Color color) {
+    canvas.drawCircle(c, r * 2.2, Paint()..color = color.withValues(alpha: 0.35)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
+    canvas.drawCircle(c, r, Paint()..color = color);
+    canvas.drawCircle(c, r * 0.4, Paint()..color = Colors.white);
+  }
 
   @override
   void paint(final Canvas canvas, final Size size) {
     final double w = size.width;
     final double h = size.height;
-    Paint stroke(final Color c, final double width) => Paint()
-      ..color = c
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = width
-      ..strokeCap = StrokeCap.round;
-    canvas.drawPath(Path()..moveTo(w * 0.28, h * 0.12)..quadraticBezierTo(w * 0.5, -h * 0.12, w * 0.72, h * 0.12), stroke(const Color(0xFFFFC21A), 3.5));
-    canvas.drawPath(Path()..moveTo(w * 0.36, h * 0.15)..quadraticBezierTo(w * 0.5, 0, w * 0.62, h * 0.15), stroke(const Color(0xFF1450D6), 2.5));
-    canvas.drawPath(Path()..moveTo(w * 0.3, h * 0.98)..quadraticBezierTo(w * 0.5, h * 0.84, w * 0.7, h * 0.98), stroke(const Color(0xFFFFC21A), 3));
+
+    // three bands over the name, the longest outside: gold, green and blue
+    _glowBand(canvas, _band(Offset(w * 0.22, h * 0.20), Offset(w * 0.5, -h * 0.20), Offset(w * 0.78, h * 0.20), 3), const Color(0xFFFFC21A));
+    _glowBand(canvas, _band(Offset(w * 0.29, h * 0.21), Offset(w * 0.5, -h * 0.06), Offset(w * 0.71, h * 0.21), 2.6), _tzGreen);
+    _glowBand(canvas, _band(Offset(w * 0.36, h * 0.22), Offset(w * 0.5, h * 0.06), Offset(w * 0.64, h * 0.22), 2.2), const Color(0xFF1450D6));
+    _spark(canvas, Offset(w * 0.22, h * 0.20), 2.6, const Color(0xFFFFC21A));
+    _spark(canvas, Offset(w * 0.78, h * 0.20), 2.6, const Color(0xFFFFC21A));
+    _spark(canvas, Offset(w * 0.5, h * 0.015), 2.2, Colors.white);
+
+    // a swoosh under the name: gold, with a thinner blue trail and a spark at each end
+    _glowBand(canvas, _band(Offset(w * 0.16, h * 0.93), Offset(w * 0.5, h * 0.70), Offset(w * 0.84, h * 0.93), 3.4), const Color(0xFFFFC21A));
+    _glowBand(canvas, _band(Offset(w * 0.30, h * 0.96), Offset(w * 0.5, h * 0.84), Offset(w * 0.70, h * 0.96), 2.4), const Color(0xFF1450D6));
+    _spark(canvas, Offset(w * 0.16, h * 0.93), 2.6, _tzGreen);
+    _spark(canvas, Offset(w * 0.84, h * 0.93), 2.6, _tzBlue);
   }
 
   @override
@@ -1099,16 +1134,7 @@ class _BackdropPainter extends CustomPainter {
         ..close(),
       Paint()..color = Colors.white.withValues(alpha: 0.22),
     );
-    // gold sweeps at the corners
-    canvas.drawPath(
-      Path()
-        ..moveTo(0, h * 0.10)
-        ..quadraticBezierTo(w * 0.06, h * 0.20, 0, h * 0.30)
-        ..lineTo(0, h * 0.26)
-        ..quadraticBezierTo(w * 0.035, h * 0.20, 0, h * 0.14)
-        ..close(),
-      Paint()..color = const Color(0xFFFFC21A),
-    );
+    // a gold sweep at the right edge
     canvas.drawPath(
       Path()
         ..moveTo(w, h * 0.62)
