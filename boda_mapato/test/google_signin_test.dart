@@ -2,7 +2,9 @@ import 'package:boda_mapato/models/business_registration.dart';
 import 'package:boda_mapato/providers/auth_provider.dart';
 import 'package:boda_mapato/screens/auth/login_screen.dart';
 import 'package:boda_mapato/screens/auth/register_business_screen.dart';
+import 'package:boda_mapato/services/google_login.dart';
 import 'package:boda_mapato/services/localization_service.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -121,5 +123,17 @@ void main() {
     expect(json['google_token'], 'sealed');
     expect(json.containsKey('password'), isFalse);
     expect(json.containsKey('password_confirmation'), isFalse);
+  });
+
+  test('a chooser that could not offer an account is explained, not silent', () async {
+    await LocalizationService.instance.changeLanguage('en');
+    final String msg = GoogleLogin.explain(GoogleSignInExceptionCode.canceled, 'No credentials available');
+    expect(msg, contains('Add a Google account'));
+    expect(msg, contains('canceled: No credentials available'), reason: 'the code stays visible for whoever is helping');
+
+    final AuthProvider auth = AuthProvider();
+    auth.googleIdTokenSource = () async => throw GoogleLoginProblem(msg);
+    expect(await auth.loginWithGoogle(), GoogleResult.failed);
+    expect(auth.errorMessage, contains('Add a Google account'));
   });
 }
