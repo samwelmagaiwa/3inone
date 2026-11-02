@@ -508,7 +508,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   _hero(),
                   const SectionGlowDivider(key: ValueKey<String>('divider_hero'), lift: false),
                   _services(loc),
-                  SizedBox(height: 8.h),
+                  SizedBox(height: 3.h),
                   const SectionGlowDivider(key: ValueKey<String>('divider_services'), lift: false),
                   // The card takes what is left. Signing in fits without scrolling; the longer sign-up form scrolls inside it, between
                   // the fixed top and bottom.
@@ -525,8 +525,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               opacity: _isLoading ? 0.4 : 1.0,
                               duration: const Duration(milliseconds: 300),
                               child: Padding(
-                                padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 8.h),
-                                child: _card(loc, signUp, confirm),
+                                padding: EdgeInsets.fromLTRB(16.w, 3.h, 16.w, 3.h),
+                                child: _card(loc, signUp, confirm, box.maxHeight - 6.h),
                               ),
                             ),
                           ),
@@ -586,14 +586,13 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-          SizedBox(height: 2.h),
           SizedBox(
-            height: 104.h,
+            height: 84.h,
             child: Stack(
               alignment: Alignment.center,
               children: <Widget>[
                 const Positioned.fill(child: CustomPaint(painter: _BrandArcsPainter())),
-                const Padding(padding: EdgeInsets.only(top: 8), child: _FlagText(key: ValueKey<String>('brand_name'))),
+                const Padding(padding: EdgeInsets.only(top: 0), child: _FlagText(key: ValueKey<String>('brand_name'))),
               ],
             ),
           ),
@@ -607,12 +606,12 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _services(final LocalizationService loc) {
     return Container(
       key: const ValueKey<String>('service_art'),
-      margin: EdgeInsets.fromLTRB(14.w, 6.h, 14.w, 0),
+      margin: EdgeInsets.fromLTRB(14.w, 2.h, 14.w, 0),
       padding: EdgeInsets.symmetric(vertical: 8.h),
       decoration: BoxDecoration(
         color: _sectionFill,
         borderRadius: BorderRadius.circular(26.r),
-        boxShadow: <BoxShadow>[BoxShadow(color: _navy.withValues(alpha: 0.30), blurRadius: 18, offset: const Offset(0, 8))],
+        boxShadow: <BoxShadow>[BoxShadow(color: _navy.withValues(alpha: 0.18), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: IntrinsicHeight(
         child: Row(
@@ -645,12 +644,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   /// The white card: the title and what it is for, the fields, the buttons.
-  Widget _card(final LocalizationService loc, final bool signUp, final bool confirm) {
+  Widget _card(final LocalizationService loc, final bool signUp, final bool confirm, final double minHeight) {
     return Container(
+      constraints: BoxConstraints(minHeight: minHeight),
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: _sectionFill,
         borderRadius: BorderRadius.circular(26.r),
-        boxShadow: <BoxShadow>[BoxShadow(color: _navy.withValues(alpha: 0.28), blurRadius: 22, offset: const Offset(0, 10))],
+        boxShadow: <BoxShadow>[BoxShadow(color: _navy.withValues(alpha: 0.18), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 14.h),
       child: Column(
@@ -991,12 +992,12 @@ const Color _tzGreen = Color(0xFF1EB53A);
 const Color _tzBlue = Color(0xFF00A3DD);
 
 /// The name, written in the colours of the flag of Tanzania: the 3 and the One are each a little flag (green above, blue below, the black
-/// band edged in gold running across), with "iN" in a black box edged in gold between them. Each letter has a light edge and a soft shadow so it stands off the page.
+/// band edged in gold running across), with "iN" in gold between them. Each letter has a light edge and a soft shadow so it stands off the page.
 class _FlagText extends StatelessWidget {
   const _FlagText({super.key});
 
-  Widget _word(final String text) {
-    final TextStyle base = TextStyle(fontSize: 56.sp, fontWeight: FontWeight.w900, height: 1.0);
+  Widget _word(final String text, {final List<Color>? gradient, final bool italic = false}) {
+    final TextStyle base = TextStyle(fontSize: 46.sp, fontWeight: FontWeight.w900, height: 1.0, fontStyle: italic ? FontStyle.italic : FontStyle.normal);
     return Stack(
       alignment: Alignment.center,
       children: <Widget>[
@@ -1013,7 +1014,9 @@ class _FlagText extends StatelessWidget {
         ),
         ShaderMask(
           blendMode: BlendMode.srcIn,
-          shaderCallback: (final Rect r) => const LinearGradient(
+          shaderCallback: (final Rect r) => gradient != null
+              ? LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: gradient).createShader(r)
+              : const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: <Color>[_tzGreen, _tzGreen, _tzGold, _tzGold, _tzBlack, _tzBlack, _tzGold, _tzGold, _tzBlue, _tzBlue],
@@ -1035,16 +1038,7 @@ class _FlagText extends StatelessWidget {
         children: <Widget>[
           _word('3'),
           SizedBox(width: 8.w),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 2.h),
-            decoration: BoxDecoration(
-              color: _tzBlack,
-              borderRadius: BorderRadius.circular(16.r),
-              border: Border.all(color: _tzGold, width: 3),
-              boxShadow: const <BoxShadow>[BoxShadow(color: Color(0x730A2E8A), blurRadius: 10, offset: Offset(0, 5))],
-            ),
-            child: Text('iN', style: TextStyle(color: _tzGold, fontSize: 44.sp, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, height: 1.05)),
-          ),
+          _word('iN', gradient: const <Color>[Color(0xFFFFE680), _tzGold, Color(0xFFE5A800)], italic: true),
           SizedBox(width: 8.w),
           _word('One'),
         ],
