@@ -5,6 +5,7 @@ import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
+import '../widgets/glow_list_card.dart';
 import 'salon_input.dart';
 
 /// Where the goods are: for each product the whole stock, what each branch holds and what is still in the main store.
@@ -108,24 +109,30 @@ class _BranchStockScreenState extends State<BranchStockScreen> {
                     if (SalonEmbedded.of(context)) Align(alignment: Alignment.centerRight, child: history(sw)),
                     if (_list(_data['products']).isEmpty && branches.isNotEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Hakuna bidhaa bado. Ongeza bidhaa kwenye Huduma na Bidhaa.' : 'No goods yet. Add goods in Services & Goods.', key: const Key('bs_no_goods'), textAlign: TextAlign.center)),
                     if (branches.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Ongeza tawi kwanza (menyu ya Matawi).' : 'Add a branch first (the Branches menu).', key: const Key('bs_no_branches'), textAlign: TextAlign.center)),
-                    for (final Map<String, dynamic> p in _list(_data['products']))
-                      Card(
-                        key: Key('bs_${p['id']}'),
-                        child: ListTile(
-                          title: Text('${p['name']}  ·  ${p['total']}'),
-                          subtitle: Text(<String>[
-                            '${sw ? 'Stoo kuu' : 'Main store'} ${p['unallocated']}',
-                            for (final Map<String, dynamic> b in _list(p['branches'])) '${b['low'] == true ? '⚠ ' : ''}${b['name']} ${b['quantity']}${b['min_quantity'] == null ? '' : ' (${sw ? 'kiwango' : 'level'} ${b['min_quantity']})'}',
-                            if (p['over_allocated'] == true) (sw ? 'Matawi yana zaidi ya stoo — hesabu upya' : 'Branches hold more than the stock: recount'),
-                          ].join(' · ')),
-                          isThreeLine: _list(p['branches']).length > 1,
-                          trailing: widget.canMove && branches.isNotEmpty
-                              ? Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
-                                  IconButton(key: Key('bs_level_${p['id']}'), tooltip: sw ? 'Kiwango cha tahadhari' : 'Alert level', icon: const Icon(Icons.notifications_active_outlined), onPressed: () => _level(p)),
-                                  IconButton(key: Key('bs_move_${p['id']}'), tooltip: sw ? 'Hamisha' : 'Move', icon: const Icon(Icons.swap_horiz), onPressed: () => _move(p)),
-                                ])
-                              : null,
-                        ),
+                    // The goods are ONE card of rows, each divided from the next by the glowing line.
+                    if (_list(_data['products']).isNotEmpty)
+                      GlowListCard(
+                        dividerKey: 'goods_divider',
+                        padding: EdgeInsets.zero,
+                        children: <Widget>[
+                          for (final Map<String, dynamic> p in _list(_data['products']))
+                            ListTile(
+                              key: Key('bs_${p['id']}'),
+                              title: Text('${p['name']}  ·  ${p['total']}'),
+                              subtitle: Text(<String>[
+                                '${sw ? 'Stoo kuu' : 'Main store'} ${p['unallocated']}',
+                                for (final Map<String, dynamic> b in _list(p['branches'])) '${b['low'] == true ? '⚠ ' : ''}${b['name']} ${b['quantity']}${b['min_quantity'] == null ? '' : ' (${sw ? 'kiwango' : 'level'} ${b['min_quantity']})'}',
+                                if (p['over_allocated'] == true) (sw ? 'Matawi yana zaidi ya stoo — hesabu upya' : 'Branches hold more than the stock: recount'),
+                              ].join(' · ')),
+                              isThreeLine: _list(p['branches']).length > 1,
+                              trailing: widget.canMove && branches.isNotEmpty
+                                  ? Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+                                      IconButton(key: Key('bs_level_${p['id']}'), tooltip: sw ? 'Kiwango cha tahadhari' : 'Alert level', icon: const Icon(Icons.notifications_active_outlined), onPressed: () => _level(p)),
+                                      IconButton(key: Key('bs_move_${p['id']}'), tooltip: sw ? 'Hamisha' : 'Move', icon: const Icon(Icons.swap_horiz), onPressed: () => _move(p)),
+                                    ])
+                                  : null,
+                            ),
+                        ],
                       ),
                   ]),
                 ),
@@ -328,6 +335,8 @@ class _BranchTransfersScreenState extends State<BranchTransfersScreen> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(padding: const EdgeInsets.all(16), children: <Widget>[
+                    if (_rows.isNotEmpty)
+                      GlowListCard(padding: EdgeInsets.zero, children: <Widget>[
                     for (final Map<String, dynamic> t in _rows)
                       ListTile(
                         key: Key('tr_${t['id']}'),
@@ -335,6 +344,7 @@ class _BranchTransfersScreenState extends State<BranchTransfersScreen> {
                         subtitle: Text('${t['from'] ?? store} → ${t['to'] ?? store}\n${t['at']}${'${t['by'] ?? ''}'.isEmpty ? '' : ' · ${t['by']}'}'),
                         isThreeLine: true,
                       ),
+                      ]),
                     if (_rows.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Hakuna uhamisho bado.' : 'Nothing has been moved yet.', key: const Key('tr_empty'), textAlign: TextAlign.center)),
                   ]),
                 ),

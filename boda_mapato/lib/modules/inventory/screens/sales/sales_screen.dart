@@ -21,6 +21,7 @@ import '../../services/inventory_export_service.dart';
 import '../scanning/barcode_scanner_screen.dart';
 import '../widgets/add_customer_dialog.dart';
 import '../widgets/crates_owed_note.dart';
+import '../widgets/glow_list_card.dart';
 import '../widgets/customer_account_note.dart';
 import '../widgets/inv_units_ui.dart';
 import '../widgets/inventory_widgets.dart';
@@ -1194,12 +1195,13 @@ class _SalesScreenState extends State<SalesScreen>
               ),
             )
           else
-            ListView.separated(
-              itemCount: inv.sales.length,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              separatorBuilder: (_, __) => SizedBox(height: 8.h),
-              itemBuilder: (context, index) {
+            // The sales are ONE card of rows, each divided from the next by the glowing line.
+            GlowListCard(
+              dividerKey: 'sale_divider',
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+              children: <Widget>[
+                for (int index = 0; index < inv.sales.length; index++)
+                  Builder(builder: (context) {
                 final s = inv.sales[index];
                 final custName = s.customerName?.isNotEmpty == true
                     ? s.customerName!
@@ -1226,8 +1228,7 @@ class _SalesScreenState extends State<SalesScreen>
                     : s.paymentStatus.toUpperCase();
 
                 return Container(
-                  decoration: ThemeConstants.invCardDecoration,
-                  padding: EdgeInsets.all(10.w),
+                  key: ValueKey<String>('sale_row_${s.id}'),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1329,7 +1330,8 @@ class _SalesScreenState extends State<SalesScreen>
                     ],
                   ),
                 );
-              },
+                  }),
+              ],
             ),
 
           // ── Load more ──────────────────────────────────────────────────

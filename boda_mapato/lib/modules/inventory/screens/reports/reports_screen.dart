@@ -14,7 +14,9 @@ import '../../../../services/localization_service.dart';
 import '../../models/inv_depot_models.dart';
 import '../../providers/depot_provider.dart';
 import '../../services/inventory_export_service.dart';
+import '../widgets/glow_list_card.dart';
 import '../widgets/inventory_widgets.dart';
+import '../widgets/joined_sections.dart';
 import '../salon/salon_mode.dart';
 
 /// Area 11 — the 12 standard reports. One list, one viewer: every report
@@ -27,6 +29,18 @@ class ReportsScreen extends StatefulWidget {
 }
 
 class _ReportsScreenState extends State<ReportsScreen> {
+  /// One report as a tile of the card; opens it.
+  Widget _tile(final InvReportMeta report) => _ReportTile(
+        report: report,
+        icon: _icons[report.key] ?? Icons.description_outlined,
+        onTap: () => Navigator.push<void>(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => ReportViewerScreen(reportKey: report.key, title: report.title),
+          ),
+        ),
+      );
+
   bool _loading = false;
 
   static const Map<String, IconData> _icons = <String, IconData>{
@@ -262,36 +276,35 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 ),
                               ],
                             )
-                          : GridView.builder(
+                          // The reports are ONE card: two to a row, divided by the glowing lines (across and down).
+                          : ListView(
                               physics: const AlwaysScrollableScrollPhysics(
                                 parent: BouncingScrollPhysics(),
                               ),
                               padding: EdgeInsets.all(12.w),
-                              // A fixed aspect ratio makes tiles too short on a
-                              // narrow screen; pin the height instead so the tile
-                              // always has room for its two-line title.
-                              gridDelegate:
-                                  SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: 220.w,
-                                mainAxisSpacing: 8.h,
-                                crossAxisSpacing: 8.w,
-                                mainAxisExtent: 80.h,
-                              ),
-                              itemCount: rows.length,
-                              itemBuilder: (_, int i) => _ReportTile(
-                                report: rows[i],
-                                icon: _icons[rows[i].key] ??
-                                    Icons.description_outlined,
-                                onTap: () => Navigator.push<void>(
-                                  context,
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => ReportViewerScreen(
-                                      reportKey: rows[i].key,
-                                      title: rows[i].title,
-                                    ),
-                                  ),
+                              children: <Widget>[
+                                GlowListCard(
+                                  dividerKey: 'report_divider',
+                                  padding: EdgeInsets.zero,
+                                  children: <Widget>[
+                                    for (int i = 0; i < rows.length; i += 2)
+                                      SizedBox(
+                                        height: 80.h,
+                                        child: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                          children: <Widget>[
+                                            Expanded(child: _tile(rows[i])),
+                                            Padding(
+                                              padding: EdgeInsets.symmetric(vertical: 8.h),
+                                              child: const SizedBox(width: SectionGlowVerticalDivider.lineWidth, child: SectionGlowVerticalDivider()),
+                                            ),
+                                            Expanded(child: i + 1 < rows.length ? _tile(rows[i + 1]) : const SizedBox.shrink()),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
                                 ),
-                              ),
+                              ],
                             ),
                     ),
                   ),
@@ -324,9 +337,7 @@ class _ReportTile extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20.r),
       child: Container(
-        decoration: ThemeConstants.glassCardDecoration,
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

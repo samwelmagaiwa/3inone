@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../constants/theme_constants.dart';
+import '../widgets/glow_list_card.dart';
+import '../widgets/joined_sections.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../models/salon_models.dart';
@@ -203,10 +205,13 @@ class _PaymentReferencesScreenState extends State<PaymentReferencesScreen> {
       if (_rows.isEmpty)
         InvEmptyState(icon: Icons.confirmation_number_outlined, message: sw ? 'Hakuna miamala yenye namba kwa chaguo hili.' : 'No payments with a reference number for this choice.')
       else
-        for (final PaymentReference r in _rows) ...<Widget>[
-          _ReferenceCard(reference: r, sw: sw, onTap: () => _open(r)),
-          SizedBox(height: 8.h),
-        ],
+        // The payments are ONE card of rows, each divided from the next by the glowing line.
+        GlowListCard(
+          dividerKey: 'reference_divider',
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+          children: <Widget>[for (final PaymentReference r in _rows) _ReferenceCard(reference: r, sw: sw, onTap: () => _open(r))],
+        ),
+        SizedBox(height: 8.h),
       if (page.page < page.lastPage)
         Center(
           child: TextButton(
@@ -233,12 +238,9 @@ class _ReferenceCard extends StatelessWidget {
     final PaymentReference r = reference;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(20.r),
       onTap: onTap,
       child: Container(
         key: ValueKey<String>('reference_${r.id}'),
-        decoration: ThemeConstants.glassCardDecoration,
-        padding: EdgeInsets.all(12.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
@@ -361,7 +363,7 @@ class _SaleSheetState extends State<_SaleSheet> {
       if (when != null) line(sw ? 'Tarehe' : 'Date', '${dayLabel(when)} ${_hm(when)}'),
       line(sw ? 'Hali' : 'Status', '${sale['payment_status'] ?? ''}'),
       SizedBox(height: 8.h),
-      Divider(color: Colors.white24, height: 1.h),
+      const SectionGlowDivider(lift: false),
       SizedBox(height: 8.h),
       Text(sw ? 'Vilivyouzwa' : 'What was sold', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
       for (final dynamic it in items)
@@ -371,13 +373,13 @@ class _SaleSheetState extends State<_SaleSheet> {
             tsh(_n(it['total'])),
           ),
       SizedBox(height: 8.h),
-      Divider(color: Colors.white24, height: 1.h),
+      const SectionGlowDivider(lift: false),
       SizedBox(height: 8.h),
       if (discount > 0) line(sw ? 'Punguzo' : 'Discount', '− ${tsh(discount)}'),
       line(sw ? 'Jumla' : 'Total', tsh(_n(sale['total'])), bold: true),
       line(sw ? 'Kimelipwa' : 'Paid', tsh(_n(sale['paid_total']))),
       SizedBox(height: 8.h),
-      Divider(color: Colors.white24, height: 1.h),
+      const SectionGlowDivider(lift: false),
       SizedBox(height: 8.h),
       Text(sw ? 'Malipo' : 'Payments', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
       for (final dynamic p in payments)

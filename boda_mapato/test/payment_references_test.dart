@@ -138,6 +138,14 @@ void main() {
     expect(api.asked.single.to, DateTime(2026, 10, 15));
   });
 
+  testWidgets('the references are one card of rows divided by the glowing line', (t) async {
+    await _host(t, PaymentReferencesScreen(api: _FakeSalon(), today: DateTime(2026, 10, 15)));
+
+    expect(find.byKey(const ValueKey<String>('reference_divider_1')), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('reference_divider_2')), findsOneWidget, reason: 'three rows: two lines');
+    expect(find.byKey(const ValueKey<String>('reference_divider_3')), findsNothing);
+  });
+
   testWidgets('a tap on a reference opens the whole sale: customer, what was sold, totals and every payment', (t) async {
     final _FakeSalon api = _FakeSalon();
     await _host(t, PaymentReferencesScreen(api: api, today: DateTime(2026, 10, 15)));
