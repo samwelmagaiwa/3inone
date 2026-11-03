@@ -286,7 +286,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
                 key: const Key('assistant_input'),
                 controller: _input,
                 enabled: !_sending && left > 0,
-                maxLength: 600,
+                maxLength: 1200,
                 minLines: 1,
                 maxLines: 3,
                 textInputAction: TextInputAction.send,

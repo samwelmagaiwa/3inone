@@ -321,7 +321,7 @@ class AssistantServicesTest extends TestCase
         $this->api($shop, 'POST', '/api/assistant', ['question' => 'How do I add a product?', 'topic' => 'hg_product'])->assertOk();
 
         $this->assertSame(0, $this->sent()[0]['generationConfig']['thinkingConfig']['thinkingBudget']);
-        $this->assertLessThanOrEqual(1024, $this->sent()[0]['generationConfig']['maxOutputTokens']);
+        $this->assertLessThanOrEqual(2048, $this->sent()[0]['generationConfig']['maxOutputTokens']);
         $this->assertStringContainsString('PRODUCTS: menu "Products"', $this->sent()[0]['systemInstruction']['parts'][0]['text']);
     }
 }

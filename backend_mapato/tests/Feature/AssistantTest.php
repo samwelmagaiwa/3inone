@@ -104,7 +104,7 @@ class AssistantTest extends TestCase
         $second = json_encode($bodies[1]['contents']);
         $this->assertStringContainsString('Mama Neema Joseph', $second);
         $this->assertStringNotContainsString('0711000001', $second);
-        $this->assertStringContainsString('ONLY about this business', $bodies[0]['systemInstruction']['parts'][0]['text']);
+        $this->assertStringContainsString('you help with this business', $bodies[0]['systemInstruction']['parts'][0]['text']);
         Http::assertSent(fn ($req) => $req->hasHeader('x-goog-api-key', 'g-test') && !str_contains($req->url(), 'g-test'));
     }
 
@@ -182,7 +182,7 @@ class AssistantTest extends TestCase
         $owner = $this->shop();
 
         $this->api($owner, 'POST', '/api/assistant', ['question' => ''])->assertStatus(422);
-        $this->api($owner, 'POST', '/api/assistant', ['question' => str_repeat('x', 601)])->assertStatus(422);
+        $this->api($owner, 'POST', '/api/assistant', ['question' => str_repeat('x', 1201)])->assertStatus(422);
 
         Cache::put('assistant_questions:' . $owner->id . ':' . now()->toDateString(), 60, now()->endOfDay());
         $this->api($owner, 'POST', '/api/assistant', ['question' => 'One more?'])->assertStatus(429)->assertJsonPath('code', 'assistant_daily_limit');
