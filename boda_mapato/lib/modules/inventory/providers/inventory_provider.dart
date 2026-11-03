@@ -1116,6 +1116,14 @@ class InventoryProvider extends ChangeNotifier {
     required String name,
     required String phone,
     String? address,
+  }) async => (await saveCustomer(name: name, phone: phone, address: address)).id;
+
+  /// Saves a customer, or finds the one who is already saved with this name or this phone number (the server never makes a second
+  /// card for the same person). [existed] says it was already there, and [name] is how they are saved.
+  Future<({int? id, bool existed, String name})> saveCustomer({
+    required String name,
+    required String phone,
+    String? address,
   }) async {
     try {
       final res = await _api.post('/inventory/customers', {
@@ -1124,12 +1132,11 @@ class InventoryProvider extends ChangeNotifier {
         if (address != null && address.isNotEmpty) 'address': address,
       });
       await fetchCustomers();
-      final int? id = (res['data'] is Map<String, dynamic>)
-          ? (res['data'] as Map<String, dynamic>)['id'] as int?
-          : null;
-      return id;
+      final Map<String, dynamic>? data = res['data'] is Map ? Map<String, dynamic>.from(res['data'] as Map) : null;
+      final Object? id = data?['id'];
+      return (id: id is num ? id.toInt() : null, existed: data?['existing'] == true, name: (data?['name'] ?? name).toString());
     } on Exception {
-      return null;
+      return (id: null, existed: false, name: name);
     }
   }
 

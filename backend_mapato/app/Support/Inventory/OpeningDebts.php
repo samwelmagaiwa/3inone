@@ -216,6 +216,6 @@ final class OpeningDebts
 
     private static function findOrCreateCustomer(string $name, string $phone): int
     {
-        return CustomerMatch::findOrCreate($name, $phone, null, true);
+        return CustomerMatch::findOrCreate($name, $phone);
     }
 }

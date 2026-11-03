@@ -97,13 +97,16 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         $name = trim($data['name']);
         $phone = trim($data['phone']);
 
-        // The same person saved twice (a double-tap, or re-entering a known customer, written with other capitals or another way of writing
-        // the number) must not become two records: hand back the existing one.
-        $existingId = \App\Support\Inventory\CustomerMatch::find($name, $phone);
+        // A customer is saved once. The same name (however it is written) or the same phone number (however it is written) is the customer
+        // who is already there: hand that one back and say so, so the till picks them instead of making a second card.
+        $by = null;
+        $existingId = \App\Support\Inventory\CustomerMatch::find($name, $phone, $by);
         if ($existingId) {
+            $row = DB::table('inventory_customers')->where('id', $existingId)->first(['id', 'name', 'phone']);
+
             return response()->json([
-                'message' => 'Customer already exists',
-                'data' => ['id' => (int) $existingId, 'existing' => true],
+                'message' => 'Mteja huyu tayari yupo. / This customer already exists.',
+                'data' => ['id' => (int) $existingId, 'existing' => true, 'matched_by' => $by, 'name' => (string) ($row->name ?? ''), 'phone' => (string) ($row->phone ?? '')],
             ]);
         }
 
@@ -158,6 +161,14 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'phone' => 'sometimes|required|string|max:32',
             'address' => 'nullable|string|max:255',
         ]);
+        $current = DB::table('inventory_customers')->where('id', $id)->first(['name', 'phone']);
+        $taken = \App\Support\Inventory\CustomerMatch::takenBy((string) ($data['name'] ?? $current->name), (string) ($data['phone'] ?? $current->phone), $id);
+        if ($taken !== null) {
+            return response()->json([
+                'message' => "Mteja huyu tayari yupo: {$taken->name}. / This customer already exists: {$taken->name}.",
+                'errors' => ['name' => ['Mteja huyu tayari yupo. / This customer already exists.']],
+            ], 422);
+        }
         DB::table('inventory_customers')->where('id', $id)->update(array_merge($data, [
             'updated_at' => now(),
         ]));

@@ -39,7 +39,7 @@ class SaleDueDateTest extends TestCase
     private function sellOnCredit(User $owner, ?string $due): int
     {
         $product = $this->api($owner, 'POST', '/api/inventory/products', ['name' => 'Soda', 'sku' => 'SODA' . ++$this->seq, 'quantity' => 50, 'min_stock' => 0, 'status' => 'active', 'cost_price' => 600, 'selling_price' => 1000])->assertCreated()->json('data.id');
-        $customer = $this->api($owner, 'POST', '/api/inventory/customers', ['name' => 'Neema', 'phone' => '07120001' . str_pad((string) $this->seq, 2, '0', STR_PAD_LEFT)])->assertCreated()->json('data.id');
+        $customer = $this->api($owner, 'POST', '/api/inventory/customers', ['name' => 'Neema ' . $this->seq, 'phone' => '07120001' . str_pad((string) $this->seq, 2, '0', STR_PAD_LEFT)])->assertCreated()->json('data.id');
 
         return $this->api($owner, 'POST', '/api/inventory/sales', array_filter([
             'customer_id' => $customer, 'payment_status' => 'debt', 'subtotal' => 2000, 'discount' => 0, 'tax' => 0, 'total' => 2000, 'paid_total' => 0,

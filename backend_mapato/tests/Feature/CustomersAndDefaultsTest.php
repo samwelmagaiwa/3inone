@@ -63,12 +63,13 @@ class CustomersAndDefaultsTest extends TestCase
         $this->assertSame(1, DB::table('inventory_customers')->count());
     }
 
-    public function test_a_different_person_sharing_a_phone_is_still_a_new_customer(): void
+    public function test_the_same_phone_under_another_name_is_the_same_customer(): void
     {
-        $this->api('POST', '/api/inventory/customers', ['name' => 'Mama Anna', 'phone' => '0783510498'])->assertCreated();
-        $this->api('POST', '/api/inventory/customers', ['name' => 'Baba Anna', 'phone' => '0783510498'])->assertCreated();
+        $first = $this->api('POST', '/api/inventory/customers', ['name' => 'Mama Anna', 'phone' => '0783510498'])->assertCreated()->json('data.id');
+        $second = $this->api('POST', '/api/inventory/customers', ['name' => 'Baba Anna', 'phone' => '0783510498'])->assertOk()->json('data');
 
-        $this->assertSame(2, DB::table('inventory_customers')->count());
+        $this->assertSame($first, $second['id']);
+        $this->assertSame(1, DB::table('inventory_customers')->count());
     }
 
     // -------------------------------------------------------------- delete

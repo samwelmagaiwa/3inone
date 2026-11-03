@@ -69,6 +69,12 @@ class CustomerMergeTest extends TestCase
         return $this->api('POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'customer_id' => $customer, 'amount' => $amount, 'started_on' => '2026-06-01'])->assertCreated()->json('data.id');
     }
 
+    /** A second record for the same person, made the way old data got in (straight into the table). */
+    private function legacyDuplicate(string $name, string $phone): int
+    {
+        return $this->rows(fn () => (int) DB::table('inventory_customers')->insertGetId(['name' => $name, 'phone' => $phone, 'created_at' => now(), 'updated_at' => now()]));
+    }
+
     public function test_the_same_person_written_another_way_is_not_saved_twice(): void
     {
         $first = $this->customer('Mama Chale', '0711000777');
@@ -81,12 +87,55 @@ class CustomerMergeTest extends TestCase
         $this->assertSame(1, $this->rows(fn () => DB::table('inventory_customers')->count()));
     }
 
-    public function test_two_people_with_one_name_but_different_numbers_stay_two(): void
+    public function test_the_same_name_is_the_same_customer_even_with_another_number(): void
     {
         $a = $this->customer('Mama Chale', '0711000777');
-        $b = $this->customer('Mama Chale', '0722000888');
 
-        $this->assertNotSame($a, $b);
+        $again = $this->api('POST', '/api/inventory/customers', ['name' => 'mama chale', 'phone' => '0722000888'])->assertOk();
+
+        $this->assertTrue($again->json('data.existing'));
+        $this->assertSame('name', $again->json('data.matched_by'));
+        $this->assertSame($a, $again->json('data.id'));
+        $this->assertSame('Mama Chale', $again->json('data.name'), 'says who is already there');
+        $this->assertStringContainsString('tayari yupo', $again->json('message'));
+        $this->assertSame(1, $this->rows(fn () => DB::table('inventory_customers')->count()));
+        $this->assertSame('0711000777', $this->rows(fn () => DB::table('inventory_customers')->where('id', $a)->value('phone')), 'the saved number is not overwritten');
+    }
+
+    public function test_the_same_number_is_the_same_customer_even_with_another_name(): void
+    {
+        $a = $this->customer('Baba Juma', '0733000999');
+
+        $again = $this->api('POST', '/api/inventory/customers', ['name' => 'Juma Senior', 'phone' => '733000999'])->assertOk();
+
+        $this->assertTrue($again->json('data.existing'));
+        $this->assertSame('phone', $again->json('data.matched_by'));
+        $this->assertSame($a, $again->json('data.id'));
+        $this->assertSame(1, $this->rows(fn () => DB::table('inventory_customers')->count()));
+    }
+
+    public function test_a_sale_typed_with_a_known_name_goes_to_the_customer_who_is_there(): void
+    {
+        $a = $this->customer('Mama Chale', '0711000777');
+
+        $sale = $this->api('POST', '/api/inventory/sales', [
+            'customer_name_override' => 'mama chale', 'customer_phone' => '', 'payment_status' => 'paid', 'subtotal' => 1000, 'discount' => 0, 'tax' => 0, 'total' => 1000, 'paid_total' => 1000,
+            'items' => [['product_id' => $this->rice, 'quantity' => 1, 'unit_price' => 1000, 'unit_cost_snapshot' => 600]],
+        ])->assertCreated();
+
+        $this->assertSame(1, $this->rows(fn () => DB::table('inventory_customers')->count()));
+        $this->assertSame($a, $this->rows(fn () => (int) DB::table('inventory_sales')->where('id', $sale->json('data.id'))->value('customer_id')));
+    }
+
+    public function test_a_customer_cannot_be_edited_into_another_ones_name_or_number(): void
+    {
+        $a = $this->customer('Mama Chale', '0711000777');
+        $b = $this->customer('Baba Juma', '0733000999');
+
+        $this->api('PUT', "/api/inventory/customers/{$b}", ['name' => 'MAMA CHALE'])->assertStatus(422)->assertJsonPath('errors.name.0', 'Mteja huyu tayari yupo. / This customer already exists.');
+        $this->api('PUT', "/api/inventory/customers/{$b}", ['phone' => '+255711000777'])->assertStatus(422);
+        $this->api('PUT', "/api/inventory/customers/{$b}", ['name' => 'Baba Juma Jr', 'phone' => '0744000111'])->assertOk();
+        $this->api('PUT', "/api/inventory/customers/{$a}", ['name' => 'mama chale', 'phone' => '0711000777'])->assertOk();   // itself is fine
     }
 
     public function test_an_old_debt_typed_with_just_the_name_goes_to_the_customer_already_saved(): void
@@ -113,9 +162,9 @@ class CustomerMergeTest extends TestCase
     public function test_duplicates_are_found_by_name_or_by_number(): void
     {
         $a = $this->customer('Mama Chale', '0711000777');
-        $b = $this->customer('mama chale', '0722000888');   // same name, another number
+        $b = $this->legacyDuplicate('mama chale', '0722000888');   // same name, another number
         $c = $this->customer('Baba Juma', '0733000999');
-        $d = $this->customer('Juma Senior', '0733000999');   // another name, the same number as Baba Juma
+        $d = $this->legacyDuplicate('Juma Senior', '0733000999');   // another name, the same number as Baba Juma
         $e = $this->customer('Asha', '0744000111');           // alone
         $this->creditSale($a, 210000);
 
@@ -134,7 +183,7 @@ class CustomerMergeTest extends TestCase
     public function test_merging_puts_both_customers_debts_payments_and_old_debts_on_one_account(): void
     {
         $keep = $this->customer('Mama Chale', '0711000777');
-        $drop = $this->customer('mama chale', '0722000888');
+        $drop = $this->legacyDuplicate('mama chale', '0722000888');
         $oldDebt = $this->oldDebt($drop, 430000);
         $this->api('POST', "/api/inventory/opening-debts/{$oldDebt}/payments", ['amount' => 30000, 'method' => 'cash'])->assertOk();
         $this->creditSale($keep, 210000);

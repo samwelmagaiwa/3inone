@@ -987,6 +987,15 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             $request->merge(['customer_id' => $typed, 'customer_name_override' => null]);
         }
 
+        // Anywhere else: a name or number typed at the till that is already a saved customer's is that customer, so the sale lands on their
+        // card (and their account) instead of on a second, nameless record. Nothing is created here.
+        if (! $request->filled('customer_id')) {
+            $known = \App\Support\Inventory\CustomerMatch::find(trim((string) $request->input('customer_name_override', '')), trim((string) $request->input('customer_phone', '')));
+            if ($known !== null) {
+                $request->merge(['customer_id' => $known, 'customer_name_override' => null]);
+            }
+        }
+
         if (in_array($request->payment_status, ['debt', 'partial']) && empty($request->customer_id)) {
             return response()->json(['message' => 'Customer required for debt/partial'], 422);
         }
@@ -1264,15 +1273,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                 $nameOverride  = trim((string) $request->input('customer_name_override', ''));
                 $phoneOverride = trim((string) $request->input('customer_phone', ''));
                 if ($nameOverride !== '' || $phoneOverride !== '') {
-                    $crateCustomer = DB::table('inventory_customers')
-                        ->where(function ($q) use ($phoneOverride, $nameOverride) {
-                            if ($phoneOverride !== '') {
-                                $q->where('phone', $phoneOverride);
-                            } else {
-                                $q->where('name', $nameOverride);
-                            }
-                        })
-                        ->value('id');
+                    $crateCustomer = \App\Support\Inventory\CustomerMatch::find($nameOverride, $phoneOverride);
 
                     if (! $crateCustomer) {
                         $crateCustomer = DB::table('inventory_customers')->insertGetId([

@@ -2,6 +2,7 @@
 
 namespace App\Support\Salon;
 
+use App\Support\Inventory\CustomerMatch;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,7 @@ final class SalonClientFromSale
             return null;
         }
 
-        $found = $phone !== '' ? self::byPhone($phone) : self::byNameOnly($name);
+        $found = CustomerMatch::find($name, $phone);
         if ($found !== null) {
             return $found;
         }
@@ -49,23 +50,5 @@ final class SalonClientFromSale
         $nine = substr($digits, -9);
 
         return array_values(array_unique([trim($phone), "0{$nine}", $nine, "255{$nine}", "+255{$nine}"]));
-    }
-
-    private static function byPhone(string $phone): ?int
-    {
-        $id = DB::table('inventory_customers')->whereIn('phone', self::spellings($phone))->orderBy('id')->value('id');
-
-        return $id === null ? null : (int) $id;
-    }
-
-    /** Only a name was typed: the same name with no number is the same person; otherwise a new client. */
-    private static function byNameOnly(string $name): ?int
-    {
-        $id = DB::table('inventory_customers')
-            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
-            ->where(fn ($q) => $q->whereNull('phone')->orWhere('phone', ''))
-            ->orderBy('id')->value('id');
-
-        return $id === null ? null : (int) $id;
     }
 }

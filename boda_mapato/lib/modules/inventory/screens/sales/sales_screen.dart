@@ -1854,14 +1854,20 @@ class _SalesScreenState extends State<SalesScreen>
                       return;
                     }
                     setDialogState(() => saving = true);
-                    final id = await inv.createCustomer(
+                    final saved = await inv.saveCustomer(
                       name: _custName.text.trim(),
                       phone: _custPhone.text.trim(),
                       address: _custAddress.text.trim(),
                     );
-                    if (id != null) {
-                      inv.setCustomer(id);
-                      if (context.mounted) Navigator.pop(ctx);
+                    if (saved.id != null) {
+                      inv.setCustomer(saved.id!);
+                      if (context.mounted) {
+                        Navigator.pop(ctx);
+                        // Already saved: no second card is made, the one who is there is chosen for this sale.
+                        if (saved.existed) {
+                          ThemeConstants.showWarningSnackBar(context, loc.translate('customer_exists').replaceAll('{name}', saved.name));
+                        }
+                      }
                       return;
                     }
                     setDialogState(() => saving = false);

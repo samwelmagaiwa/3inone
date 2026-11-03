@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\DB;
  * debt, a sale, the salon), so the same person is not saved twice just because it was typed with a different capital letter, a space
  * or a different way of writing the phone number.
  *
- * The same person: the same phone number (however written) and the same name; or the same name when only one side has a number.
- * Two people who share a name but have different numbers stay two people (they can still be merged by hand if they are one).
+ * The same person: the same name (however written), or the same phone number (however written). A customer is saved once: typing a
+ * name or a number that is already saved gives the customer who is there, never a second card.
  */
 final class CustomerMatch
 {
@@ -30,57 +30,63 @@ final class CustomerMatch
     }
 
     /**
-     * The customer already saved for this name and phone, or null. With [$phoneAlone] the number alone is enough (an old debt is typed with
-     * a short form of the name); otherwise the name must agree too.
-     *
-     * A saved customer with no number is given the number that was typed.
+     * The customer already saved for this name or this phone number, or null: the same name (however it is written) is the same
+     * customer, and so is the same phone number (however it is written). One customer, one record, one card in every list.
+     * When the saved one has no number and one was typed, it takes the number. $by says which of the two matched.
      */
-    public static function find(string $name, string $phone, bool $phoneAlone = false): ?int
+    public static function find(string $name, string $phone, ?string &$by = null): ?int
     {
         $name = trim($name);
         $phone = trim($phone);
-        $wanted = self::name($name);
 
-        // by number: the same number and the same name
         if ($phone !== '') {
-            $byPhone = DB::table('inventory_customers')->whereIn('phone', SalonClientFromSale::spellings($phone))->orderBy('id')->get(['id', 'name']);
-            foreach ($byPhone as $c) {
-                if ($phoneAlone || $wanted === '' || self::name((string) $c->name) === $wanted) {
-                    return (int) $c->id;
-                }
-            }
-            if ($byPhone->isNotEmpty() && $wanted === '') {
-                return (int) $byPhone->first()->id;
+            $id = DB::table('inventory_customers')->whereIn('phone', SalonClientFromSale::spellings($phone))->orderBy('id')->value('id');
+            if ($id !== null) {
+                $by = 'phone';
+
+                return (int) $id;
             }
         }
 
+        $wanted = self::name($name);
+        if ($wanted === '') {
+            return null;
+        }
+        $named = DB::table('inventory_customers')->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($name)])->orderBy('id')->get(['id', 'name', 'phone']);
+        $first = $named->first(fn ($c) => self::name((string) $c->name) === $wanted);
+        if ($first === null) {
+            return null;
+        }
+        if ($phone !== '' && trim((string) $first->phone) === '') {
+            DB::table('inventory_customers')->where('id', $first->id)->update(['phone' => $phone, 'updated_at' => now()]);
+        }
+        $by = 'name';
+
+        return (int) $first->id;
+    }
+
+    /** Is another customer (not [$exceptId]) already saved with this name or phone? Used when a customer is edited. */
+    public static function takenBy(string $name, string $phone, int $exceptId): ?object
+    {
+        $phone = trim($phone);
+        if ($phone !== '') {
+            $row = DB::table('inventory_customers')->where('id', '!=', $exceptId)->whereIn('phone', SalonClientFromSale::spellings($phone))->orderBy('id')->first(['id', 'name', 'phone']);
+            if ($row !== null) {
+                return $row;
+            }
+        }
+        $wanted = self::name($name);
         if ($wanted === '') {
             return null;
         }
 
-        // by name: only when there is no number to tell people apart, on one side or the other
-        $named = DB::table('inventory_customers')->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($name)])->orderBy('id')->get(['id', 'name', 'phone']);
-        $named = $named->filter(fn ($c) => self::name((string) $c->name) === $wanted)->values();
-        if ($named->isEmpty()) {
-            return null;
-        }
-        if ($phone === '') {
-            // nothing typed but the name: it is the one customer with that name, when there is only one
-            return $named->count() === 1 ? (int) $named->first()->id : null;
-        }
-        $blank = $named->first(fn ($c) => self::phoneKey($c->phone) === '' && trim((string) $c->phone) === '');
-        if ($blank !== null) {
-            DB::table('inventory_customers')->where('id', $blank->id)->update(['phone' => $phone, 'updated_at' => now()]);
-
-            return (int) $blank->id;
-        }
-
-        return null;
+        return DB::table('inventory_customers')->where('id', '!=', $exceptId)->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower(trim($name))])->orderBy('id')->get(['id', 'name', 'phone'])
+            ->first(fn ($c) => self::name((string) $c->name) === $wanted);
     }
 
-    public static function findOrCreate(string $name, string $phone, ?string $address = null, bool $phoneAlone = false): int
+    public static function findOrCreate(string $name, string $phone, ?string $address = null): int
     {
-        $id = self::find($name, $phone, $phoneAlone);
+        $id = self::find($name, $phone);
         if ($id !== null) {
             return $id;
         }
