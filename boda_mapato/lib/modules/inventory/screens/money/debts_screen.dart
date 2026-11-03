@@ -78,11 +78,20 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
     final Object? source = kind == 'receivable' && _data[kind]?['parties'] is List ? _data[kind]!['parties'] : _data[kind]?['debts'];
     final String q = (_queries[kind] ?? '').trim().toLowerCase();
 
-    return <Map<String, dynamic>>[
+    final List<Map<String, dynamic>> rows = <Map<String, dynamic>>[
       if (source is List)
         for (final dynamic r in source)
           if (r is Map && (q.isEmpty || '${r['name']}'.toLowerCase().contains(q) || '${r['phone'] ?? ''}'.contains(q))) Map<String, dynamic>.from(r),
     ];
+    // The biggest debt first, down to the smallest (equal amounts keep the order the server gave).
+    final Map<Map<String, dynamic>, int> place = <Map<String, dynamic>, int>{for (int i = 0; i < rows.length; i++) rows[i]: i};
+    rows.sort((Map<String, dynamic> a, Map<String, dynamic> b) {
+      final int byAmount = _num(b['left']).compareTo(_num(a['left']));
+
+      return byAmount != 0 ? byAmount : place[a]!.compareTo(place[b]!);
+    });
+
+    return rows;
   }
 
   num _num(final dynamic v) => v is num ? v : (num.tryParse('${v ?? ''}') ?? 0);

@@ -91,6 +91,22 @@ void main() {
     expect(find.byKey(const Key('debt_divider_1')), findsNothing, reason: 'none above the first');
   });
 
+  testWidgets('the biggest debt is first, down to the smallest', (t) async {
+    final _FakeMoney fake = _FakeMoney()
+      ..parties = <Map<String, dynamic>>[
+        <String, dynamic>{'id': 3, 'customer_id': 3, 'name': 'Small', 'phone': '0700000003', 'amount': 5000, 'paid': 0, 'left': 5000, 'old_left': 0, 'new_left': 5000, 'started_on': '2026-11-03', 'due_on': null, 'days_late': 0, 'note': null},
+        <String, dynamic>{'id': 4, 'customer_id': 4, 'name': 'Biggest', 'phone': '0700000004', 'amount': 900000, 'paid': 0, 'left': 900000, 'old_left': 0, 'new_left': 900000, 'started_on': '2026-11-03', 'due_on': null, 'days_late': 0, 'note': null},
+        <String, dynamic>{'id': 5, 'customer_id': 5, 'name': 'Middle', 'phone': '0700000005', 'amount': 70000, 'paid': 0, 'left': 70000, 'old_left': 0, 'new_left': 70000, 'started_on': '2026-11-03', 'due_on': null, 'days_late': 0, 'note': null},
+      ];
+    await _open(t, fake: fake);
+
+    final double big = t.getTopLeft(find.byKey(const Key('debt_4'))).dy;
+    final double mid = t.getTopLeft(find.byKey(const Key('debt_5'))).dy;
+    final double small = t.getTopLeft(find.byKey(const Key('debt_3'))).dy;
+    expect(big, lessThan(mid));
+    expect(mid, lessThan(small));
+  });
+
   testWidgets('owed to me: the total, what came from before the app, and each debt with how much is left', (t) async {
     await _open(t);
 
