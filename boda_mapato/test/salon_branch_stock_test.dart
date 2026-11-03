@@ -1,4 +1,6 @@
+import 'package:boda_mapato/modules/inventory/models/salon_models.dart';
 import 'package:boda_mapato/modules/inventory/screens/salon/branch_stock_screen.dart';
+import 'package:boda_mapato/modules/inventory/screens/salon/branches_screen.dart';
 import 'package:boda_mapato/modules/inventory/services/salon_api.dart';
 import 'package:boda_mapato/services/localization_service.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class _FakeSalon extends SalonApi {
   bool noBranches = false;
   bool many = false;
+  int stockReads = 0;
   Object? failMove;
   final List<Map<String, dynamic>> moves = <Map<String, dynamic>>[];
   final List<Map<String, dynamic>> levels = <Map<String, dynamic>>[];
@@ -27,7 +30,11 @@ class _FakeSalon extends SalonApi {
   Future<List<Map<String, dynamic>>> branchTransfers({int? productId, int? branchId}) async => history;
 
   @override
+  Future<List<SalonBranchInfo>> branches() async => <SalonBranchInfo>[];
+
+  @override
   Future<Map<String, dynamic>> branchStock() async => <String, dynamic>{
+        'reads': ++stockReads,
         'branches': noBranches ? <dynamic>[] : <Map<String, dynamic>>[<String, dynamic>{'id': 1, 'name': 'Kariakoo'}, <String, dynamic>{'id': 2, 'name': 'Mikocheni'}],
         'products': <Map<String, dynamic>>[
           if (many)
@@ -107,6 +114,28 @@ void main() {
     final double noticeBottom = t.getBottomLeft(find.byKey(const Key('bs_no_branches'))).dy;
     final double firstRowTop = t.getTopLeft(find.byKey(const Key('bs_name_7'))).dy;
     expect(firstRowTop - noticeBottom, lessThan(60), reason: 'a slim notice and then the goods, not a page of empty space');
+  });
+
+  testWidgets('"Add a branch first" is a button that opens the branches page, and the goods are read again when it is closed', (t) async {
+    final _FakeSalon api = _FakeSalon()..noBranches = true;
+    await _pump(t, api);
+    final int before = api.stockReads;
+
+    await t.tap(find.byKey(const Key('bs_add_branch')));
+    await t.pumpAndSettle();
+    expect(find.byType(BranchesScreen), findsOneWidget);
+
+    t.state<NavigatorState>(find.byType(Navigator)).pop();
+    await t.pumpAndSettle();
+    expect(find.byType(BranchesScreen), findsNothing);
+    expect(api.stockReads, greaterThan(before), reason: 'the page is refreshed so a new branch shows as a column');
+  });
+
+  testWidgets('someone who may not move goods gets the notice but no button', (t) async {
+    await _pump(t, _FakeSalon()..noBranches = true, canMove: false);
+
+    expect(find.byKey(const Key('bs_no_branches')), findsOneWidget);
+    expect(find.byKey(const Key('bs_add_branch')), findsNothing);
   });
 
   testWidgets('without a branch there is only the main store column', (t) async {

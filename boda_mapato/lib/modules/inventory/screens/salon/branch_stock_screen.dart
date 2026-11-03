@@ -6,6 +6,7 @@ import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
 import '../widgets/glow_list_card.dart';
+import 'branches_screen.dart';
 import '../widgets/joined_sections.dart';
 import 'salon_input.dart';
 
@@ -129,6 +130,12 @@ class _BranchStockScreenState extends State<BranchStockScreen> {
     );
   }
 
+  /// Opens the page where a branch is made, and reads the goods again when it is closed (the new branch is then a column).
+  Future<void> _openBranches() async {
+    await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => BranchesScreen(api: widget.api)));
+    if (mounted) await _load();
+  }
+
   /// What is missing (no goods yet, no branch yet) as a slim notice, with the history button beside it when this page is inside the salon.
   Widget _topLine(final bool sw, final List<Map<String, dynamic>> branches) {
     final bool noGoods = _list(_data['products']).isEmpty && branches.isNotEmpty;
@@ -141,9 +148,16 @@ class _BranchStockScreenState extends State<BranchStockScreen> {
       child: Row(children: <Widget>[
         if (noGoods || noBranch)
           Expanded(
-            child: Container(
+            // "Add a branch first" is a button: it opens the page where the branch is made (for those who may make one).
+            child: Material(
+              color: ThemeConstants.warningAmber.withValues(alpha: 0.14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: ThemeConstants.warningAmber.withValues(alpha: 0.6))),
+              child: InkWell(
+                key: noBranch && widget.canMove ? const Key('bs_add_branch') : null,
+                borderRadius: BorderRadius.circular(12),
+                onTap: noBranch && widget.canMove ? _openBranches : null,
+                child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(color: ThemeConstants.warningAmber.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12), border: Border.all(color: ThemeConstants.warningAmber.withValues(alpha: 0.6))),
               child: Row(children: <Widget>[
                 const Icon(Icons.info_outline_rounded, size: 18, color: ThemeConstants.warningAmber),
                 const SizedBox(width: 8),
@@ -154,7 +168,10 @@ class _BranchStockScreenState extends State<BranchStockScreen> {
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                   ),
                 ),
+                if (noBranch && widget.canMove) const Icon(Icons.chevron_right_rounded, color: ThemeConstants.warningAmber),
               ]),
+                ),
+              ),
             ),
           )
         else
