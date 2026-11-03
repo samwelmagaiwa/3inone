@@ -32,6 +32,8 @@ class BusinessMoneyController extends Controller
         return response()->json(['data' => [
             'kind' => $data['kind'],
             'debts' => OpeningDebts::list($data['kind'], (bool) ($data['paid'] ?? false)),
+            // Each customer once, the debt from before the app and the debt from sales added together (the list the screen shows).
+            'parties' => $data['kind'] === OpeningDebts::RECEIVABLE ? \App\Support\Inventory\CustomerDebt::parties() : null,
             // The whole of what is owed, with the part that came from before the app and the part from sales or invoices.
             'total' => $data['kind'] === OpeningDebts::RECEIVABLE ? $position['receivable'] : $position['payable'],
             'old' => $data['kind'] === OpeningDebts::RECEIVABLE ? $position['owed_old'] : $position['payable_old'],

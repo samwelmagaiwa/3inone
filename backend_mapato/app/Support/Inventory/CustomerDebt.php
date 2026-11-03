@@ -41,6 +41,91 @@ final class CustomerDebt
     }
 
     /**
+     * Everyone who owes, one row each, with the old debt and the new debt (credit sales) added together: what the "Debts - owed to me"
+     * list shows, so a customer is one row whether the debt is from before the app, from a sale, or both. A debt from before the app that
+     * is not tied to a customer is a row of its own (it has no customer to join).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function parties(): array
+    {
+        $today = \Carbon\Carbon::now('Africa/Dar_es_Salaam')->startOfDay();
+        $late = function (?string $due, float $left) use ($today): int {
+            if ($left <= 0 || $due === null || $due === '') {
+                return 0;
+            }
+            $d = \Carbon\Carbon::parse($due, 'Africa/Dar_es_Salaam')->startOfDay();
+
+            return $d->lt($today) ? (int) $d->diffInDays($today) : 0;
+        };
+
+        /** @var array<string, array<string, mixed>> $rows keyed by "c<customer id>" or "d<old debt id>" */
+        $rows = [];
+        $blank = fn (string $name, ?string $phone, ?int $customerId, int $id) => [
+            'id' => $id, 'customer_id' => $customerId, 'name' => $name, 'phone' => $phone, 'amount' => 0.0, 'paid' => 0.0, 'left' => 0.0,
+            'old_left' => 0.0, 'new_left' => 0.0, 'started_on' => null, 'due_on' => null, 'days_late' => 0, 'note' => null,
+        ];
+        $touch = function (array &$row, string $started, float $amount, float $paid, float $left, ?string $due, ?string $note) use ($late): void {
+            $row['amount'] += $amount;
+            $row['paid'] += $paid;
+            $row['left'] += $left;
+            $row['started_on'] = $row['started_on'] === null || $started < $row['started_on'] ? $started : $row['started_on'];
+            if ($due !== null && $due !== '' && ($row['due_on'] === null || $due < $row['due_on'])) {
+                $row['due_on'] = $due;
+            }
+            $row['days_late'] = max($row['days_late'], $late($due, $left));
+            if ($note !== null && $note !== '' && $row['note'] === null) {
+                $row['note'] = $note;
+            }
+        };
+        $customers = DB::table('inventory_customers')->get(['id', 'name', 'phone'])->keyBy('id');
+
+        // the debts from before the app
+        foreach (OpeningDebts::active() ? DB::table('inventory_opening_debts')->where('kind', OpeningDebts::RECEIVABLE)->whereRaw('amount - paid_amount > 0')->orderBy('started_on')->orderBy('id')->get() : [] as $d) {
+            $cid = $d->customer_id === null ? null : (int) $d->customer_id;
+            $key = $cid === null ? 'd' . $d->id : 'c' . $cid;
+            $c = $cid === null ? null : $customers->get($cid);
+            $rows[$key] ??= $blank($c->name ?? $d->party_name, $c->phone ?? $d->party_phone, $cid, $cid ?? (int) $d->id);
+            $left = round((float) $d->amount - (float) $d->paid_amount, 2);
+            $touch($rows[$key], (string) $d->started_on, (float) $d->amount, (float) $d->paid_amount, $left, $d->due_on === null ? null : (string) $d->due_on, $d->note);
+            $rows[$key]['old_left'] += $left;
+        }
+
+        // the sales on credit that still have something to pay
+        $sales = DB::table('inventory_sales')->whereNotNull('customer_id')->whereNull('cancelled_at')->whereIn('payment_status', ['debt', 'partial'])
+            ->orderBy('created_at')->get(['id', 'customer_id', 'total', 'paid_total', 'due_date', 'created_at']);
+        foreach ($sales as $s) {
+            $cid = (int) $s->customer_id;
+            $c = $customers->get($cid);
+            if ($c === null) {
+                continue;
+            }
+            $key = 'c' . $cid;
+            $rows[$key] ??= $blank($c->name, $c->phone, $cid, $cid);
+            $left = round((float) $s->total - (float) $s->paid_total, 2);
+            if ($left <= 0) {
+                continue;
+            }
+            $touch($rows[$key], substr((string) $s->created_at, 0, 10), (float) $s->total, (float) $s->paid_total, $left, $s->due_date === null ? null : substr((string) $s->due_date, 0, 10), null);
+            $rows[$key]['new_left'] += $left;
+        }
+
+        $out = [];
+        foreach ($rows as $r) {
+            if ($r['left'] <= 0) {
+                continue;
+            }
+            foreach (['amount', 'paid', 'left', 'old_left', 'new_left'] as $k) {
+                $r[$k] = round((float) $r[$k], 2);
+            }
+            $out[] = $r;
+        }
+        usort($out, fn ($a, $b) => [$a['started_on'], $a['id']] <=> [$b['started_on'], $b['id']]);
+
+        return $out;
+    }
+
+    /**
      * @return array{old: array<string, mixed>, new: array<string, mixed>, total: array<string, float>}
      */
     public static function summary(int $customerId): array

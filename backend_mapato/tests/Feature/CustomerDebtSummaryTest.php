@@ -250,4 +250,39 @@ class CustomerDebtSummaryTest extends TestCase
     {
         $this->api('GET', '/api/inventory/credit/customers/999999/debt-summary')->assertStatus(404);
     }
+
+    public function test_the_owed_to_me_list_has_each_customer_once_with_the_old_and_the_new_debt_added(): void
+    {
+        $this->oldDebt(210000);                       // Mama Mary: 210,000 from before the app
+        $this->creditSale(30000);                     // and 30,000 on credit since
+        $other = $this->api('POST', '/api/inventory/customers', ['name' => 'Baba Juma', 'phone' => '0722000111'])->assertCreated()->json('data.id');
+        $this->creditSale(50000, $other);             // Baba Juma: only a sale
+        $paidUp = $this->api('POST', '/api/inventory/customers', ['name' => 'Asha Paid', 'phone' => '0733000222'])->assertCreated()->json('data.id');
+        $this->oldDebt(1000, $paidUp);
+        $this->api('POST', '/api/inventory/opening-debts/' . $this->api('GET', '/api/inventory/opening-debts?kind=receivable')->json('data.debts.1.id') . '/payments', ['amount' => 1000, 'method' => 'cash'])->assertOk();
+
+        $res = $this->api('GET', '/api/inventory/opening-debts?kind=receivable')->assertOk()->json('data');
+        $parties = collect($res['parties']);
+
+        $this->assertCount(2, $parties, 'one row per customer who owes; the paid-up one is not there');
+        $mary = $parties->firstWhere('customer_id', $this->customer);
+        $this->assertSame('Mama Mary', $mary['name']);
+        $this->assertSame('0711000777', $mary['phone']);
+        $this->assertEquals(240000, $mary['amount']);
+        $this->assertEquals(240000, $mary['left']);
+        $this->assertEquals(210000, $mary['old_left']);
+        $this->assertEquals(30000, $mary['new_left']);
+        $this->assertEquals(50000, $parties->firstWhere('customer_id', $other)['left']);
+        $this->assertEquals(290000, $parties->sum('left'), 'the rows add up to what the customers owe');
+
+        $this->assertNull($this->api('GET', '/api/inventory/opening-debts?kind=payable')->assertOk()->json('data.parties'), 'what I owe has no such list');
+    }
+
+    public function test_a_cancelled_sale_and_a_paid_one_are_not_in_the_list(): void
+    {
+        $sale = $this->creditSale(30000)->json('data.id');
+        $this->api('POST', "/api/inventory/sales/{$sale}/cancel", ['reason' => 'mistake'])->assertOk();
+
+        $this->assertSame([], $this->api('GET', '/api/inventory/opening-debts?kind=receivable')->assertOk()->json('data.parties'));
+    }
 }

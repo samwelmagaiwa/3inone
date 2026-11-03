@@ -16,6 +16,7 @@ import '../../providers/depot_provider.dart';
 import '../widgets/crates_owed_note.dart';
 import '../widgets/customer_debt_card.dart';
 import '../widgets/inv_action_button.dart';
+import '../widgets/glow_list_card.dart';
 import '../widgets/joined_sections.dart';
 import '../widgets/inventory_widgets.dart';
 import '../../providers/inventory_provider.dart';
@@ -108,28 +109,26 @@ class _CreditCustomersTabState extends State<_CreditCustomersTab> {
       onRefresh: widget.onRefresh,
       backgroundColor: Colors.white,
       color: ThemeConstants.primaryBlue,
-      child: ListView.separated(
+      child: ListView(
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
         ),
         padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 24.h),
-        itemCount: rows.length + 1,
-        // Each customer is a section of its own, divided from the next by the glowing line of the inventory dashboard.
-        separatorBuilder: (_, int i) => i == 0 ? SizedBox(height: 10.h) : const SectionGlowDivider(key: ValueKey<String>('customer_divider')),
-        itemBuilder: (_, int i) {
-          if (i == 0) {
-            return Column(
-              children: <Widget>[
-                if (duplicates > 0) _DuplicatesBanner(groups: duplicates),
-                InvSearchField(
-                  hint: loc.translate('search_customers'),
-                  onChanged: (String v) => setState(() => _query = v),
-                ),
-              ],
-            );
-          }
-          return _CreditCustomerCard(customer: rows[i - 1]);
-        },
+        children: <Widget>[
+          if (duplicates > 0) _DuplicatesBanner(groups: duplicates),
+          InvSearchField(
+            hint: loc.translate('search_customers'),
+            onChanged: (String v) => setState(() => _query = v),
+          ),
+          SizedBox(height: 10.h),
+          // Every customer is a row of ONE card, divided from the next by the glowing line of the inventory dashboard.
+          if (rows.isNotEmpty)
+            GlowListCard(
+              dividerKey: 'customer_divider',
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+              children: <Widget>[for (final InvCreditCustomer c in rows) _CreditCustomerCard(customer: c)],
+            ),
+        ],
       ),
     );
   }
@@ -244,7 +243,7 @@ class _CreditCustomerCard extends StatelessWidget {
       ),
       borderRadius: BorderRadius.circular(20.r),
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 14.h),
+        padding: EdgeInsets.symmetric(vertical: 10.h),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
@@ -833,11 +832,10 @@ class _AgeingTab extends StatelessWidget {
               message: loc.translate('no_debtors'),
             )
           else
-            ...rows.map(
-              (InvDebtorAgeing d) => Padding(
-                padding: EdgeInsets.only(bottom: 8.h),
-                child: _AgeingCard(debtor: d),
-              ),
+            GlowListCard(
+              dividerKey: 'ageing_divider',
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+              children: <Widget>[for (final InvDebtorAgeing d in rows) _AgeingCard(debtor: d)],
             ),
         ],
       ),
@@ -855,8 +853,6 @@ class _AgeingCard extends StatelessWidget {
     final LocalizationService loc = context.watch<LocalizationService>();
 
     return Container(
-      decoration: ThemeConstants.glassCardDecoration,
-      padding: EdgeInsets.all(12.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -882,13 +878,13 @@ class _AgeingCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: 6.h),
-          InvKeyValueWrap(entries: <String, String>{
-            '0-30': debtor.current.toStringAsFixed(0),
-            '31-60': debtor.days31to60.toStringAsFixed(0),
-            '61-90': debtor.days61to90.toStringAsFixed(0),
-            '90+': debtor.days90Plus.toStringAsFixed(0),
-            loc.translate('oldest'): '${debtor.oldestDays}d',
-          }),
+          _CreditFigures(figures: <(String, String)>[
+            ('0-30', debtor.current.toStringAsFixed(0)),
+            ('31-60', debtor.days31to60.toStringAsFixed(0)),
+            ('61-90', debtor.days61to90.toStringAsFixed(0)),
+            ('90+', debtor.days90Plus.toStringAsFixed(0)),
+            (loc.translate('oldest'), '${debtor.oldestDays}d'),
+          ]),
         ],
       ),
     );

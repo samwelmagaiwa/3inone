@@ -9,6 +9,7 @@ import '../../models/inv_customer_debt.dart';
 import '../../models/inv_depot_models.dart';
 import '../../providers/depot_provider.dart';
 import '../widgets/customer_debt_card.dart';
+import '../widgets/glow_list_card.dart';
 import '../widgets/inv_action_button.dart';
 import 'credit_screen.dart' show ReceivePaymentSheet;
 
@@ -94,43 +95,53 @@ class _CustomerAccountScreenState extends State<CustomerAccountScreen> {
                       physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                       padding: EdgeInsets.fromLTRB(12.w, 4.h, 12.w, 24.h),
                       children: <Widget>[
-                        if (a.phone.isNotEmpty) Padding(padding: EdgeInsets.only(bottom: 8.h), child: Text(a.phone, style: ThemeConstants.captionStyle)),
-                        CustomerDebtCard(summary: a.debt),
-                        SizedBox(height: 10.h),
-                        if (a.lifetime.purchases > 0) _lifetimeCard(loc, a.lifetime),
-                        if (a.debt.totalLeft > 0)
-                          InvActionButton(
-                            key: const ValueKey<String>('account_receive'),
-                            label: loc.translate('receive_payment'),
-                            icon: Icons.payments_rounded,
-                            color: ThemeConstants.successGreen,
-                            arrow: false,
-                            onPressed: _receive,
-                          ),
-                        if (a.oldDebts.isNotEmpty) ...<Widget>[
-                          _title(loc.translate('cd_old_title')),
-                          ...a.oldDebts.map(_oldDebt),
-                        ],
-                        if (a.creditSales.isNotEmpty) ...<Widget>[
-                          _title(loc.translate('cd_new_title')),
-                          ...a.creditSales.map(_creditSale),
-                        ],
-                        _title(loc.translate('cd_all_payments')),
-                        if (a.payments.isEmpty)
-                          Padding(padding: EdgeInsets.symmetric(vertical: 12.h), child: Text(loc.translate('cd_no_payments'), key: const ValueKey<String>('no_payments'), style: ThemeConstants.captionStyle, textAlign: TextAlign.center))
-                        else ...<Widget>[
-                          ...a.payments.map((AccountPayment p) => _paymentRow(p, withLabel: true)),
-                          Padding(
-                            padding: EdgeInsets.only(top: 6.h),
-                            child: Row(
-                              key: const ValueKey<String>('payments_total'),
-                              children: <Widget>[
-                                Expanded(child: Text(loc.translate('cd_paid_all'), style: ThemeConstants.captionStyle.copyWith(color: Colors.white70, fontWeight: FontWeight.w700))),
-                                Text(_tsh(a.paidAll), style: ThemeConstants.bodyStyle.copyWith(color: ThemeConstants.successGreen, fontWeight: FontWeight.w800)),
+                        // The whole account is ONE card: each part is a section, divided from the next by the glowing line.
+                        GlowListCard(
+                          dividerKey: 'account_divider',
+                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+                          children: <Widget>[
+                            if (a.phone.isNotEmpty) Text(a.phone, style: ThemeConstants.captionStyle),
+                            CustomerDebtCard(summary: a.debt, flat: true),
+                            if (a.lifetime.purchases > 0) _lifetimeCard(loc, a.lifetime),
+                            if (a.debt.totalLeft > 0)
+                              InvActionButton(
+                                key: const ValueKey<String>('account_receive'),
+                                label: loc.translate('receive_payment'),
+                                icon: Icons.payments_rounded,
+                                color: ThemeConstants.successGreen,
+                                arrow: false,
+                                onPressed: _receive,
+                              ),
+                            if (a.oldDebts.isNotEmpty)
+                              Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+                                _title(loc.translate('cd_old_title')),
+                                ..._separated(a.oldDebts.map(_oldDebt).toList()),
+                              ]),
+                            if (a.creditSales.isNotEmpty)
+                              Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+                                _title(loc.translate('cd_new_title')),
+                                ..._separated(a.creditSales.map(_creditSale).toList()),
+                              ]),
+                            Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+                              _title(loc.translate('cd_all_payments')),
+                              if (a.payments.isEmpty)
+                                Padding(padding: EdgeInsets.symmetric(vertical: 8.h), child: Center(child: Text(loc.translate('cd_no_payments'), key: const ValueKey<String>('no_payments'), style: ThemeConstants.captionStyle, textAlign: TextAlign.center)))
+                              else ...<Widget>[
+                                ...a.payments.map((AccountPayment p) => _paymentRow(p, withLabel: true)),
+                                Padding(
+                                  padding: EdgeInsets.only(top: 6.h),
+                                  child: Row(
+                                    key: const ValueKey<String>('payments_total'),
+                                    children: <Widget>[
+                                      Expanded(child: Text(loc.translate('cd_paid_all'), style: ThemeConstants.captionStyle.copyWith(color: Colors.white70, fontWeight: FontWeight.w700))),
+                                      Text(_tsh(a.paidAll), style: ThemeConstants.bodyStyle.copyWith(color: ThemeConstants.successGreen, fontWeight: FontWeight.w800)),
+                                    ],
+                                  ),
+                                ),
                               ],
-                            ),
-                          ),
-                        ],
+                            ]),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -153,9 +164,6 @@ class _CustomerAccountScreenState extends State<CustomerAccountScreen> {
     String day(final String? s) => s == null || s.length < 10 ? '—' : s.substring(0, 10);
     return Container(
       key: const ValueKey<String>('account_lifetime'),
-      margin: EdgeInsets.only(bottom: 10.h),
-      padding: EdgeInsets.all(10.w),
-      decoration: BoxDecoration(color: ThemeConstants.invFill, borderRadius: BorderRadius.circular(12.r), border: Border.all(color: ThemeConstants.invBorder)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -177,16 +185,13 @@ class _CustomerAccountScreenState extends State<CustomerAccountScreen> {
   }
 
   Widget _title(final String text) => Padding(
-        padding: EdgeInsets.only(top: 16.h, bottom: 8.h),
+        padding: EdgeInsets.only(bottom: 8.h),
         child: Text(text.toUpperCase(), style: ThemeConstants.captionStyle.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1, color: Colors.white70)),
       );
 
   Widget _box({required final Key key, required final Widget header, required final List<AccountPayment> payments}) {
     return Container(
       key: key,
-      margin: EdgeInsets.only(bottom: 8.h),
-      padding: EdgeInsets.all(10.w),
-      decoration: BoxDecoration(color: ThemeConstants.invFill, borderRadius: BorderRadius.circular(12.r), border: Border.all(color: ThemeConstants.invBorder)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -199,6 +204,14 @@ class _CustomerAccountScreenState extends State<CustomerAccountScreen> {
       ),
     );
   }
+
+  /// [rows] with a thin line between them.
+  List<Widget> _separated(final List<Widget> rows) => <Widget>[
+        for (int i = 0; i < rows.length; i++) ...<Widget>[
+          if (i > 0) Divider(height: 18.h, color: ThemeConstants.invBorder),
+          rows[i],
+        ],
+      ];
 
   Widget _oldDebt(final OldDebtRecord d) {
     final LocalizationService loc = LocalizationService.instance;

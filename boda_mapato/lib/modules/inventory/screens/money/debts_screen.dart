@@ -9,6 +9,9 @@ import '../../services/money_api.dart';
 import 'money_style.dart';
 import '../salon/salon_input.dart';
 import '../salon/salon_text.dart';
+import '../../models/inv_depot_models.dart';
+import '../../providers/depot_provider.dart';
+import '../credit/customer_account_screen.dart';
 import '../widgets/inventory_widgets.dart';
 
 /// Every debt in one place, in two tabs: what customers owe me and what I owe. Debts from before the app are written here
@@ -32,6 +35,8 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
   final Map<String, Map<String, dynamic>> _data = <String, Map<String, dynamic>>{};
   final Map<String, String> _errors = <String, String>{};
   bool _loading = true;
+  /// What was typed in the search box of each tab.
+  final Map<String, String> _queries = <String, String>{};
 
   static const List<String> _kinds = <String>['receivable', 'payable'];
 
@@ -66,11 +71,18 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
     if (mounted) setState(() => _loading = false);
   }
 
-  List<Map<String, dynamic>> _debts(final String kind) => <Map<String, dynamic>>[
-        if (_data[kind]?['debts'] is List)
-          for (final dynamic r in _data[kind]!['debts'] as List<dynamic>)
-            if (r is Map) Map<String, dynamic>.from(r),
-      ];
+  /// What is owed to me is listed per customer, the old debt and the new debt (credit sales) added together; the server's `parties`.
+  /// Without them (an older server) it is the debts from before the app, as before. What I owe is always the debts.
+  List<Map<String, dynamic>> _debts(final String kind) {
+    final Object? source = kind == 'receivable' && _data[kind]?['parties'] is List ? _data[kind]!['parties'] : _data[kind]?['debts'];
+    final String q = (_queries[kind] ?? '').trim().toLowerCase();
+
+    return <Map<String, dynamic>>[
+      if (source is List)
+        for (final dynamic r in source)
+          if (r is Map && (q.isEmpty || '${r['name']}'.toLowerCase().contains(q) || '${r['phone'] ?? ''}'.contains(q))) Map<String, dynamic>.from(r),
+    ];
+  }
 
   num _num(final dynamic v) => v is num ? v : (num.tryParse('${v ?? ''}') ?? 0);
 
@@ -84,7 +96,27 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
     if (saved == true && mounted) await _load();
   }
 
+  bool _hasDepot() {
+    try {
+      context.read<DepotProvider>();
+
+      return true;
+    } on ProviderNotFoundException {
+      return false;
+    }
+  }
+
   Future<void> _open(final Map<String, dynamic> debt) async {
+    // A row that is a customer (old and new debt together) opens the customer's whole account; a debt with no customer opens its own sheet.
+    final int? customerId = debt['customer_id'] is num ? (debt['customer_id'] as num).toInt() : null;
+    if (customerId != null && debt.containsKey('old_left') && _hasDepot()) {
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => CustomerAccountScreen(customer: InvCreditCustomer(id: customerId, name: '${debt['name']}', balance: _num(debt['left']).toDouble(), creditLimit: 0, phone: '${debt['phone'] ?? ''}')),
+      ));
+      if (mounted) await _load();
+
+      return;
+    }
     final bool? changed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -138,6 +170,8 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
         key: Key('debts_$kind'),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
         children: <Widget>[
+          InvSearchField(key: Key('debts_search_$kind'), hint: receivable ? (sw ? 'Tafuta mteja' : 'Search customers') : (sw ? 'Tafuta' : 'Search'), onChanged: (String v) => setState(() => _queries[kind] = v)),
+          const SizedBox(height: 12),
           Card(
             color: (receivable ? ThemeConstants.successGreen : ThemeConstants.warningAmber).withValues(alpha: 0.14),
             child: Padding(
@@ -218,6 +252,11 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
               else
                 _chip('${sw ? 'Ilianza' : 'Since'} ${dayLabel(DateTime.parse('${debt['started_on']}'))}', Colors.white54),
             ]),
+            if (_num(debt['old_left']) > 0 && _num(debt['new_left']) > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text('${sw ? 'La zamani' : 'Old'} ${tsh(_num(debt['old_left']))}  ·  ${sw ? 'Jipya' : 'New'} ${tsh(_num(debt['new_left']))}', key: Key('debt_split_${debt['id']}'), style: kMoneyCaption),
+              ),
             if ('${debt['note'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('${debt['note']}', style: kMoneyCaption)),
           ]),
         ),

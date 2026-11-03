@@ -99,7 +99,8 @@ void main() {
     await _pump(t, const CreditScreen());
 
     // two customers: one line between them (the search box has its own gap), and two vertical lines inside each customer's figures
-    expect(find.byKey(const ValueKey<String>('customer_divider')), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('customer_divider_1')), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('customer_divider_2')), findsNothing);
     expect(find.byType(SectionGlowVerticalDivider), findsNWidgets(4));
   });
 

@@ -9,12 +9,15 @@ import '../../models/inv_customer_debt.dart';
 /// and the TOTAL of both, each with what was owed, what was paid and what is left. With [thisSale] (a sale about to go on credit) it
 /// also says what that adds and what the whole account becomes.
 class CustomerDebtCard extends StatelessWidget {
-  const CustomerDebtCard({super.key, required this.summary, this.thisSale = 0});
+  const CustomerDebtCard({super.key, required this.summary, this.thisSale = 0, this.flat = false});
 
   final CustomerDebtSummary summary;
 
   /// The part of the sale being made that will be owed (0 for none).
   final double thisSale;
+
+  /// Without its own box, for when it sits inside a list card (the customer account page).
+  final bool flat;
 
   static String _tsh(final double v) => 'TSH ${v.round().toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (final Match m) => ',')}';
 
@@ -25,12 +28,14 @@ class CustomerDebtCard extends StatelessWidget {
 
     return Container(
       key: const ValueKey<String>('customer_debt_card'),
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        color: ThemeConstants.invFill,
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: ThemeConstants.invBorder),
-      ),
+      padding: flat ? EdgeInsets.zero : EdgeInsets.all(12.w),
+      decoration: flat
+          ? null
+          : BoxDecoration(
+              color: ThemeConstants.invFill,
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: ThemeConstants.invBorder),
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
