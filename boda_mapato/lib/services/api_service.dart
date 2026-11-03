@@ -295,12 +295,14 @@ class ApiService {
     }
   }
 
+  /// [timeout] is for a request that is slow by nature (the AI assistant works several steps before it answers); the others wait the usual time.
   Future<Map<String, dynamic>> post(
     final String endpoint,
     final Map<String, dynamic> data, {
     final bool requireAuth = true,
+    final Duration? timeout,
   }) async {
-    return _post(endpoint, data, requireAuth: requireAuth);
+    return _post(endpoint, data, requireAuth: requireAuth, timeout: timeout);
   }
 
   Future<Map<String, dynamic>> put(
@@ -379,6 +381,7 @@ class ApiService {
     final String endpoint,
     final Map<String, dynamic> data, {
     final bool requireAuth = true,
+    final Duration? timeout,
   }) async {
     try {
       final Map<String, String> headers =
@@ -398,7 +401,7 @@ class ApiService {
             headers: headers,
             body: json.encode(data),
           )
-          .timeout(timeoutDuration);
+          .timeout(timeout ?? timeoutDuration);
 
       return _handleResponse(response);
     } on SocketException catch (e) {

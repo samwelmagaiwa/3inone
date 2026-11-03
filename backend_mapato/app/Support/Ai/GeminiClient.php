@@ -49,10 +49,12 @@ final class GeminiClient
      * Ask Gemini, falling down the chain as needed.
      *
      * @param  array<string, mixed>  $body a generateContent body; the generation settings that only some models accept are adjusted per model
+     * @param  int|null  $budget at most this many seconds for this call (the caller has other steps to fit in the same request)
      * @return array<string, mixed>
      */
-    public static function generate(array $body): array
+    public static function generate(array $body, ?int $budget = null): array
     {
+        $total = $budget === null ? self::SECONDS_IN_ALL : max(4, min(self::SECONDS_IN_ALL, $budget));
         $models = self::chain();
         // Models marked down are skipped, unless that would leave none: then everything is tried again.
         $live = array_values(array_filter($models, fn (string $m) => !Cache::has(self::downKey($m))));
@@ -61,7 +63,7 @@ final class GeminiClient
         $last = 'no model configured';
         $started = microtime(true);
         foreach ($order as $model) {
-            $left = self::SECONDS_IN_ALL - (microtime(true) - $started);
+            $left = $total - (microtime(true) - $started);
             if ($left < 4) {
                 $last = 'AI is too slow now';
                 break;
