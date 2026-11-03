@@ -7,6 +7,7 @@ import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../models/inv_reminder.dart';
 import '../../providers/inventory_provider.dart';
+import '../widgets/glow_list_card.dart';
 import '../widgets/inventory_widgets.dart';
 
 /// Simple reminders: low stock and payments coming due. For the fuller list
@@ -62,19 +63,26 @@ class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
                         ),
                       ],
                     )
-                  : ListView.separated(
+                  : ListView(
                       physics: const AlwaysScrollableScrollPhysics(
                         parent: BouncingScrollPhysics(),
                       ),
                       padding: EdgeInsets.all(12.w),
-                      itemCount: reminders.length,
-                      separatorBuilder: (_, __) => SizedBox(height: 8.h),
-                      itemBuilder: (BuildContext context, int index) =>
-                          _ReminderCard(
-                        reminder: reminders[index],
-                        onMarkDone: () => _markDone(reminders[index].id),
-                        onSnooze: () => _snooze(reminders[index].id),
-                      ),
+                      children: <Widget>[
+                        // The reminders are ONE card of rows, each divided from the next by the glowing line.
+                        GlowListCard(
+                          dividerKey: 'reminder_divider',
+                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+                          children: <Widget>[
+                            for (final InvReminder r in reminders)
+                              _ReminderCard(
+                                reminder: r,
+                                onMarkDone: () => _markDone(r.id),
+                                onSnooze: () => _snooze(r.id),
+                              ),
+                          ],
+                        ),
+                      ],
                     ),
             ),
     );
@@ -133,8 +141,7 @@ class _ReminderCard extends StatelessWidget {
     };
 
     return Container(
-      decoration: ThemeConstants.glassCardDecoration,
-      padding: EdgeInsets.all(12.w),
+      key: ValueKey<String>('reminder_${reminder.id}'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
