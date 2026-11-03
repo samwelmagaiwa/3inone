@@ -9,6 +9,7 @@ import '../../models/inv_reminder.dart';
 import '../../providers/inventory_provider.dart';
 import '../../../../providers/auth_provider.dart';
 import '../../models/inv_reminder.dart' show InvReminderStatus;
+import '../../services/daily_voice.dart';
 import '../../services/reminder_voice.dart';
 import '../widgets/glow_list_card.dart';
 import '../widgets/inv_action_button.dart';
@@ -30,12 +31,16 @@ class InventoryRemindersScreen extends StatefulWidget {
 
 class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
   bool _loading = false;
-  late final ReminderVoice _voice = ReminderVoice(speech: widget.speech);
+  // The phone's own reader is shared with the one that reads when the app opens; a test brings its own.
+  late final ReminderVoice _voice = widget.speech == null ? ReminderVoice.shared : ReminderVoice(speech: widget.speech);
+  bool _auto = true;
 
   @override
   void dispose() {
-    _voice.stop();
-    _voice.dispose();
+    if (widget.speech != null) {
+      _voice.stop();
+      _voice.dispose();
+    }
     super.dispose();
   }
 
@@ -64,6 +69,9 @@ class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
   void initState() {
     super.initState();
     _loading = context.read<InventoryProvider>().reminders.isEmpty;
+    VoiceSettings.autoRead().then((bool on) {
+      if (mounted) setState(() => _auto = on);
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
@@ -106,6 +114,27 @@ class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
                       ),
                       padding: EdgeInsets.all(12.w),
                       children: <Widget>[
+                        // Reading by itself when the app is opened (once a day): on until it is switched off here.
+                        Container(
+                          margin: EdgeInsets.only(bottom: 10.h),
+                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14.r), border: Border.all(color: Colors.white24)),
+                          child: Row(
+                            children: <Widget>[
+                              Icon(Icons.record_voice_over_rounded, color: const Color(0xFF3B82F6), size: 20.sp),
+                              SizedBox(width: 10.w),
+                              Expanded(child: Text(loc.translate('voice_auto_read'), style: ThemeConstants.captionStyle.copyWith(color: Colors.white))),
+                              Switch(
+                                key: const ValueKey<String>('voice_auto_switch'),
+                                value: _auto,
+                                onChanged: (bool v) {
+                                  setState(() => _auto = v);
+                                  VoiceSettings.setAutoRead(v);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
                         // Reads every debt reminder aloud, one after the other: "Hello ..., customer ... owes ... shillings ...".
                         if (reminders.any(canSpeak))
                           Padding(

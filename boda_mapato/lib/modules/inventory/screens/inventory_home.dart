@@ -1,6 +1,8 @@
 // ignore_for_file: cascade_invocations
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+import '../services/daily_voice.dart';
+import '../services/reminder_voice.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
@@ -520,7 +522,31 @@ class _InventoryHomeState extends State<InventoryHome> {
       context.read<DepotProvider>().resetForNewContext();
       inv.fetchCapabilities().then((_) => _askKindIfUnset());
       if (widget.salon) inv.fetchSalonStaff();
+      _readDebtsOnOpening();
     });
+  }
+
+  static bool _voiced = false;
+
+  /// Once a day, when the app is opened, the phone reads the debt reminders aloud (unless the owner switched it off).
+  Future<void> _readDebtsOnOpening() async {
+    if (_voiced || !mounted || !_perms(context).has('inv_view_reminders')) return;
+    _voiced = true;
+    final InventoryProvider inv = context.read<InventoryProvider>();
+    final String owner = context.read<AuthProvider>().userDisplayName;
+    final LocalizationService loc = LocalizationService.instance;
+    final VoiceResult? r = await DailyDebtVoice.maybeRead(
+      load: () async {
+        await inv.fetchReminders();
+
+        return inv.reminders;
+      },
+      owner: owner,
+      sw: loc.isSwahili,
+    );
+    if (r == VoiceResult.noVoice && mounted) {
+      ThemeConstants.showWarningSnackBar(context, loc.translate('voice_missing'));
+    }
   }
 
   static bool _kindAsked = false;

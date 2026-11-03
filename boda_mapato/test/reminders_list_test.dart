@@ -1,5 +1,6 @@
 import 'package:boda_mapato/modules/inventory/providers/inventory_provider.dart';
 import 'package:boda_mapato/modules/inventory/screens/reminders/inventory_reminders_screen.dart';
+import 'package:boda_mapato/modules/inventory/services/daily_voice.dart';
 import 'package:boda_mapato/modules/inventory/services/reminder_voice.dart';
 import 'package:boda_mapato/providers/auth_provider.dart';
 import 'package:boda_mapato/services/api_service.dart';
@@ -172,6 +173,49 @@ void main() {
 
     expect(find.text('Mark this reminder as done?'), findsNothing);
     expect(api.puts.single, endsWith('/snooze'));
+  });
+
+  group('reading by itself when the app opens', () {
+    testWidgets('the switch is on at first and switching it off is remembered', (t) async {
+      await open(t, speech: _Speech());
+      await t.pump();
+
+      expect(t.widget<Switch>(find.byKey(const ValueKey<String>('voice_auto_switch'))).value, isTrue);
+
+      await t.tap(find.byKey(const ValueKey<String>('voice_auto_switch')));
+      await t.pump();
+
+      expect(t.widget<Switch>(find.byKey(const ValueKey<String>('voice_auto_switch'))).value, isFalse);
+      expect(await VoiceSettings.autoRead(), isFalse, reason: 'kept for the next time the app is opened');
+    });
+
+    testWidgets('a choice made before is shown when the page opens', (t) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{'voice_auto_read': false});
+      await LocalizationService.instance.changeLanguage('en');
+      t.view.physicalSize = const Size(800, 2400);
+      t.view.devicePixelRatio = 1.0;
+      addTearDown(t.view.reset);
+      await t.pumpWidget(
+        MultiProvider(
+          providers: <ChangeNotifierProvider<ChangeNotifier>>[
+            ChangeNotifierProvider<LocalizationService>.value(value: LocalizationService.instance),
+            ChangeNotifierProvider<InventoryProvider>(create: (_) => InventoryProvider(api: _Api())),
+          ],
+          child: ScreenUtilInit(designSize: const Size(390, 844), builder: (_, __) => MaterialApp(home: Scaffold(body: InventoryRemindersScreen(speech: _Speech())))),
+        ),
+      );
+      await t.pump();
+      await t.pump();
+      await t.pump();
+
+      expect(t.widget<Switch>(find.byKey(const ValueKey<String>('voice_auto_switch'))).value, isFalse);
+    });
+
+    testWidgets('the sentence says what it does, in Kiswahili too', (t) async {
+      await open(t, sw: true, speech: _Speech());
+
+      expect(find.text('Soma madeni kwa sauti ninapofungua app (mara moja kwa siku)'), findsOneWidget);
+    });
   });
 
   group('reading the debts aloud', () {

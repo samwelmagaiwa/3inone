@@ -86,6 +86,9 @@ enum VoiceResult { done, nothingToRead, noVoice, stopped }
 class ReminderVoice extends ChangeNotifier {
   ReminderVoice({SpeechPort? speech}) : _speech = speech ?? DeviceSpeech();
 
+  /// The one reader the whole app shares, so the screen can show "Stop" for a reading that began when the app was opened.
+  static final ReminderVoice shared = ReminderVoice();
+
   final SpeechPort _speech;
   bool _speaking = false;
   bool _stop = false;
