@@ -438,6 +438,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('inventory/customers',          [InventoryCustomerController::class, 'index']);
         Route::get('customers',                    [InventoryCustomerController::class, 'index']);
     });
+    Route::middleware('inv_perm:inv_manage_products,inv_create_sales,inv_view_credit')->group(function () {
+        Route::get('inventory/customers/lookup', [InventoryCustomerController::class, 'lookup']);
+    });
     Route::middleware('inv_perm:inv_manage_products,inv_create_sales')->group(function () {
         Route::post('inventory/customers',         [InventoryCustomerController::class, 'store']);
     });
@@ -453,6 +456,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
     Route::middleware('inv_perm:inv_view_reports')->group(function () {
         Route::get('inventory/monthly-report',                  [BusinessMoneyController::class, 'report']);
+        Route::get('inventory/monthly-report/lists',            [BusinessMoneyController::class, 'reportLists']);
         Route::get('inventory/advice',                           [BusinessMoneyController::class, 'advice']);
         Route::get('inventory/payment-references',               [BusinessMoneyController::class, 'paymentReferences']);
     });

@@ -13,6 +13,10 @@ use Illuminate\Support\Facades\Schema;
  */
 final class MonthlyReport
 {
+    /** How many sleeping products and debtors the report page lists; the rest are one tap away ("More"). */
+    public const SLEEPING_SHOWN = 6;
+    public const DEBTORS_SHOWN = 10;
+
     /** @return array<string, mixed> */
     public static function build(string $month, ?int $branch = null): array
     {
@@ -51,6 +55,10 @@ final class MonthlyReport
             ? MonthlyFigures::compare((float) $position['capital'], (float) $opening['capital'])
             : null;
 
+        // The full lists are worked out once; the report shows the first few and says how many there are, and the "More" pages show all.
+        $sleeping = self::slowStock(100000);
+        $owing = self::debtors(100000);
+
         return [
             'month' => $month,
             'branch_id' => $branch,
@@ -68,8 +76,12 @@ final class MonthlyReport
             'target' => self::target($month, (float) $figures['net_profit'], $isCurrent, $isFuture, $first->daysInMonth, $isCurrent ? $today->day : null),
             'top_products' => self::topProducts($first, $last, 5, $branch),
             'top_customers' => self::topCustomers($first, $last, 5, $branch),
-            'slow_stock' => self::slowStock(),
-            'debtors' => self::debtors(),
+            'slow_stock' => array_slice($sleeping, 0, self::SLEEPING_SHOWN),
+            'slow_stock_count' => count($sleeping),
+            'slow_stock_value' => round((float) array_sum(array_column($sleeping, 'value')), 2),
+            'debtors' => array_slice($owing, 0, self::DEBTORS_SHOWN),
+            'debtors_count' => count($owing),
+            'debtors_total' => round((float) array_sum(array_column($owing, 'owed')), 2),
             'creditors' => OpeningDebts::list(OpeningDebts::PAYABLE)->take(8)->all(),
         ];
     }
@@ -148,6 +160,24 @@ final class MonthlyReport
             ->limit($limit)
             ->get(['c.name', DB::raw('COUNT(*) as visits'), DB::raw('SUM(s.total) as spent')])
             ->map(fn ($r) => ['name' => $r->name, 'purchases' => (int) $r->visits, 'spent' => round((float) $r->spent, 2)])->all();
+    }
+
+    /**
+     * The whole of the two lists the report cuts short: every sleeping product and everyone who owes, with their totals.
+     *
+     * @return array<string, mixed>
+     */
+    public static function lists(): array
+    {
+        $sleeping = self::slowStock(100000);
+        $owing = self::debtors(100000);
+
+        return [
+            'sleeping_stock' => $sleeping,
+            'sleeping_stock_value' => round((float) array_sum(array_column($sleeping, 'value')), 2),
+            'debtors' => $owing,
+            'debtors_total' => round((float) array_sum(array_column($owing, 'owed')), 2),
+        ];
     }
 
     /**

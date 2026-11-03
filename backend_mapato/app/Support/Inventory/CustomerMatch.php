@@ -4,6 +4,7 @@ namespace App\Support\Inventory;
 
 use App\Support\Salon\SalonClientFromSale;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Is this the same customer as one already saved? One answer for every place that can create a customer (the customers screen, an old
@@ -34,7 +35,7 @@ final class CustomerMatch
      * customer, and so is the same phone number (however it is written). One customer, one record, one card in every list.
      * When the saved one has no number and one was typed, it takes the number. $by says which of the two matched.
      */
-    public static function find(string $name, string $phone, ?string &$by = null): ?int
+    public static function find(string $name, string $phone, ?string &$by = null, bool $fillPhone = true): ?int
     {
         $name = trim($name);
         $phone = trim($phone);
@@ -57,7 +58,7 @@ final class CustomerMatch
         if ($first === null) {
             return null;
         }
-        if ($phone !== '' && trim((string) $first->phone) === '') {
+        if ($fillPhone && $phone !== '' && trim((string) $first->phone) === '') {
             DB::table('inventory_customers')->where('id', $first->id)->update(['phone' => $phone, 'updated_at' => now()]);
         }
         $by = 'name';
@@ -84,12 +85,27 @@ final class CustomerMatch
             ->first(fn ($c) => self::name((string) $c->name) === $wanted);
     }
 
+    /** A customer's phone number must have at least nine digits (0743519104, 743519104, +255743519104 ...). */
+    public static function isValidPhone(?string $phone): bool
+    {
+        return self::phoneKey($phone) !== '';
+    }
+
+    /** @throws ValidationException when the number is missing or too short */
+    public static function requirePhone(?string $phone): void
+    {
+        if (!self::isValidPhone($phone)) {
+            throw ValidationException::withMessages(['phone' => ['Namba ya simu ya mteja ni lazima (angalau tarakimu 9). / The phone number of the customer is required (at least 9 digits).']]);
+        }
+    }
+
     public static function findOrCreate(string $name, string $phone, ?string $address = null): int
     {
         $id = self::find($name, $phone);
         if ($id !== null) {
             return $id;
         }
+        self::requirePhone($phone);
 
         return (int) DB::table('inventory_customers')->insertGetId([
             'name' => trim($name),

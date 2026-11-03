@@ -148,10 +148,9 @@ class CustomerMergeTest extends TestCase
         $this->assertSame($saved, $this->rows(fn () => (int) DB::table('inventory_opening_debts')->where('id', $debt->json('data.id'))->value('customer_id')));
     }
 
-    public function test_a_customer_saved_without_a_number_takes_the_number_when_it_is_typed_later(): void
+    public function test_a_customer_saved_long_ago_without_a_number_takes_the_number_when_it_is_typed(): void
     {
-        $first = $this->api('POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'name' => 'Mama Chale', 'amount' => 1000, 'started_on' => '2026-06-01'])->assertCreated();
-        $id = $this->rows(fn () => (int) DB::table('inventory_opening_debts')->where('id', $first->json('data.id'))->value('customer_id'));
+        $id = $this->legacyDuplicate('Mama Chale', '');
 
         $again = $this->api('POST', '/api/inventory/customers', ['name' => 'mama chale', 'phone' => '0711000777'])->assertOk();
 
@@ -220,5 +219,61 @@ class CustomerMergeTest extends TestCase
         $this->app['auth']->forgetGuards();
         $this->flushHeaders();
         $this->withHeader('Authorization', "Bearer {$token}")->withHeader('X-Service', 'inventory')->json('POST', "/api/inventory/customers/{$a}/merge", ['into_id' => $a + 1])->assertStatus(404);
+    }
+
+    public function test_a_customer_cannot_be_saved_without_a_phone_number(): void
+    {
+        $this->api('POST', '/api/inventory/customers', ['name' => 'No Number'])->assertStatus(422);
+        $this->api('POST', '/api/inventory/customers', ['name' => 'No Number', 'phone' => ''])->assertStatus(422);
+        $short = $this->api('POST', '/api/inventory/customers', ['name' => 'No Number', 'phone' => '07435'])->assertStatus(422);
+        $this->assertStringContainsString('9', $short->json('errors.phone.0'));
+        $this->assertSame(0, $this->rows(fn () => DB::table('inventory_customers')->count()));
+    }
+
+    public function test_a_phone_number_may_be_written_any_way_but_needs_nine_digits(): void
+    {
+        foreach (['0743519104', '743519104', '+255743519104', '+255 743 519 104'] as $i => $phone) {
+            $this->api('POST', '/api/inventory/customers', ['name' => "Person {$i}", 'phone' => $phone])->assertStatus($i === 0 ? 201 : 200);
+        }
+        $this->assertSame(1, $this->rows(fn () => DB::table('inventory_customers')->count()), 'all four are the same number, so one customer');
+    }
+
+    public function test_editing_a_customer_cannot_remove_the_number(): void
+    {
+        $a = $this->customer('Mama Chale', '0711000777');
+
+        $this->api('PUT', "/api/inventory/customers/{$a}", ['phone' => ''])->assertStatus(422);
+        $this->api('PUT', "/api/inventory/customers/{$a}", ['phone' => '123'])->assertStatus(422);
+        $this->api('PUT', "/api/inventory/customers/{$a}", ['phone' => '0722000888'])->assertOk();
+    }
+
+    public function test_an_old_debt_for_a_new_customer_needs_a_number_but_not_for_one_who_is_saved(): void
+    {
+        $this->api('POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'name' => 'Brand New', 'amount' => 1000, 'started_on' => '2026-06-01'])->assertStatus(422)->assertJsonPath('errors.phone.0', 'Namba ya simu ya mteja ni lazima (angalau tarakimu 9). / The phone number of the customer is required (at least 9 digits).');
+        $this->assertSame(0, $this->rows(fn () => DB::table('inventory_customers')->count()), 'nothing was saved');
+
+        $this->customer('Mama Chale', '0711000777');
+        $this->api('POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'name' => 'mama chale', 'amount' => 1000, 'started_on' => '2026-06-01'])->assertCreated();
+        $this->api('POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'name' => 'Brand New', 'phone' => '0733000999', 'amount' => 1000, 'started_on' => '2026-06-01'])->assertCreated();
+        $this->assertSame(2, $this->rows(fn () => DB::table('inventory_customers')->count()));
+    }
+
+    public function test_lookup_finds_a_saved_customer_by_number_or_name_and_changes_nothing(): void
+    {
+        $a = $this->customer('Mama Chale', '0711000777');
+        // a customer saved long ago with no number
+        $blank = $this->legacyDuplicate('Baba Juma', '');
+
+        $byPhone = $this->api('GET', '/api/inventory/customers/lookup?name=Somebody&phone=%2B255711000777')->assertOk()->json('data');
+        $this->assertSame([$a, 'phone', 'Mama Chale'], [$byPhone['id'], $byPhone['matched_by'], $byPhone['name']]);
+
+        $byName = $this->api('GET', '/api/inventory/customers/lookup?name=%20MAMA%20chale&phone=')->assertOk()->json('data');
+        $this->assertSame([$a, 'name'], [$byName['id'], $byName['matched_by']]);
+
+        $this->assertNull($this->api('GET', '/api/inventory/customers/lookup?name=Nobody&phone=0799000111')->assertOk()->json('data'));
+
+        // asking never fills a number in: only saving does
+        $this->api('GET', '/api/inventory/customers/lookup?name=Baba%20Juma&phone=0755000222')->assertOk();
+        $this->assertSame('', (string) $this->rows(fn () => DB::table('inventory_customers')->where('id', $blank)->value('phone')));
     }
 }

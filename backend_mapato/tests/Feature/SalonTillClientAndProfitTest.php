@@ -102,7 +102,7 @@ class SalonTillClientAndProfitTest extends TestCase
         $this->assertSame('Neema', $this->clients($owner)[0][0], 'the name she was saved with is kept');
     }
 
-    public function test_only_a_number_makes_a_client_named_by_her_number_and_only_a_name_makes_one_without_a_number(): void
+    public function test_only_a_number_makes_a_client_named_by_her_number_and_a_name_alone_makes_no_client(): void
     {
         $owner = $this->salon();
         $braids = $this->service($owner);
@@ -111,10 +111,11 @@ class SalonTillClientAndProfitTest extends TestCase
         $this->assertSame([['0711000009', '0711000009']], $this->clients($owner));
         $this->assertCount(1, $this->sms->sent);
 
+        // a client is saved only with a phone number: a name alone stays a walk-in on the sale and makes no client
         $this->sms->sent = [];
         $this->cashSale($owner, $braids, 40000, ['customer_name_override' => 'Rehema'])->assertCreated();
         $this->cashSale($owner, $braids, 40000, ['customer_name_override' => 'rehema'])->assertCreated();
-        $this->assertCount(2, $this->clients($owner), 'the same name with no number is the same person');
+        $this->assertCount(1, $this->clients($owner), 'no second client is made from a name alone');
         $this->assertCount(0, $this->sms->sent, 'no number, nobody to text');
     }
 

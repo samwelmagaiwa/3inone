@@ -144,7 +144,7 @@ class InventoryMoneyToolsTest extends TestCase
 
         // a debt with payments stays as a record; a wrong one with none can be removed
         $this->api($owner, 'DELETE', "/api/inventory/opening-debts/{$id}")->assertStatus(422);
-        $other = $this->api($owner, 'POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'name' => 'Wrong', 'amount' => 5])->json('data.id');
+        $other = $this->api($owner, 'POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'name' => 'Wrong', 'phone' => '0700000101', 'amount' => 5])->json('data.id');
         $this->api($owner, 'DELETE', "/api/inventory/opening-debts/{$other}")->assertOk();
     }
 
@@ -168,7 +168,7 @@ class InventoryMoneyToolsTest extends TestCase
         $this->now();
         $a = $this->shop('A shop');
         $b = $this->shop('B shop');
-        $id = $this->api($a, 'POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'name' => 'Only A', 'amount' => 1000])->assertCreated()->json('data.id');
+        $id = $this->api($a, 'POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'name' => 'Only A', 'phone' => '0700000102', 'amount' => 1000])->assertCreated()->json('data.id');
 
         $this->assertCount(0, $this->api($b, 'GET', '/api/inventory/opening-debts?kind=receivable')->json('data.debts'));
         $this->api($b, 'POST', "/api/inventory/opening-debts/{$id}/payments", ['amount' => 10])->assertNotFound();
@@ -227,7 +227,7 @@ class InventoryMoneyToolsTest extends TestCase
         // a cancelled sale counts for nothing
         $cancelled = $this->sell($owner, $soda, 5, 1000, 500, null, 'paid', '2026-11-12');
         $this->api($owner, 'POST', "/api/inventory/sales/{$cancelled}/cancel", ['reason' => 'Mistake'])->assertOk();
-        $this->api($owner, 'POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'name' => 'Old Debtor', 'amount' => 40000, 'started_on' => '2026-05-01'])->assertCreated();
+        $this->api($owner, 'POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'name' => 'Old Debtor', 'phone' => '0700000103', 'amount' => 40000, 'started_on' => '2026-05-01'])->assertCreated();
         $this->api($owner, 'POST', '/api/inventory/opening-debts', ['kind' => 'payable', 'name' => 'Supplier Old', 'amount' => 25000])->assertCreated();
 
         $r = $this->api($owner, 'GET', '/api/inventory/monthly-report?month=2026-11')->assertOk()->json('data');
@@ -387,8 +387,9 @@ class InventoryMoneyToolsTest extends TestCase
         $a = $this->api($owner, 'GET', '/api/inventory/advice?month=2026-11&lang=en')->assertOk()->json('data');
 
         $this->assertSame(['ai', true, null], [$a['source'], $a['ai_available'], $a['ai_error']]);
-        $this->assertSame(['warning', 'tip'], array_column($a['items'], 'level'), 'a level the app does not know becomes a tip; an item with no title is dropped');
-        $this->assertCount(2, $a['items']);
+        $this->assertSame(['warning', 'tip'], array_slice(array_column($a['items'], 'level'), 0, 2), 'a level the app does not know becomes a tip; an item with no title is dropped');
+        $this->assertGreaterThanOrEqual(3, count($a['items']), 'with only two usable AI pieces the rules fill the page');
+        $this->assertLessThanOrEqual(BusinessAdvisor::ITEMS, count($a['items']));
 
         Http::assertSentCount(1);
         Http::assertSent(function ($req) {
@@ -442,7 +443,7 @@ class InventoryMoneyToolsTest extends TestCase
         $this->assertNotEmpty($a['items']);
 
         $b = $this->api($owner, 'GET', '/api/inventory/advice?month=2026-11&lang=en&refresh=1')->json('data');
-        $this->assertSame(['rules', 'empty'], [$b['source'], $b['ai_error']]);
+        $this->assertSame(['rules', 'empty or not checked'], [$b['source'], $b['ai_error']]);
 
         $left = $b['refreshes_left'];
         for ($i = 0; $i < BusinessAdvisor::REFRESHES_PER_DAY + 2; $i++) {
@@ -502,5 +503,50 @@ class InventoryMoneyToolsTest extends TestCase
         $this->assertNull($this->api($b, 'GET', '/api/inventory/monthly-report?month=2026-11')->json('data.target'));
         $this->assertSame(0, $this->rows($b, fn () => DB::table('inventory_targets')->count()));
         $this->assertSame(1, $this->rows($a, fn () => DB::table('inventory_targets')->count()));
+    }
+
+    public function test_the_report_shows_the_first_six_sleeping_products_and_ten_debtors_and_the_more_pages_show_all(): void
+    {
+        $this->now('2026-11-20 10:00:00');
+        $owner = $this->shop('Mama Shop');
+        for ($i = 1; $i <= 8; $i++) {
+            $this->product($owner, "Dusty {$i}", 10 * $i, 1000, 1500);   // never sold: sleeping, the dearest first
+        }
+        for ($i = 1; $i <= 12; $i++) {
+            $this->api($owner, 'POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'name' => "Debtor {$i}", 'phone' => '07110000' . str_pad((string) $i, 2, '0', STR_PAD_LEFT), 'amount' => 1000 * $i, 'started_on' => '2026-10-01'])->assertCreated();
+        }
+
+        $r = $this->api($owner, 'GET', '/api/inventory/monthly-report?month=2026-11')->assertOk()->json('data');
+
+        $this->assertCount(6, $r['slow_stock']);
+        $this->assertSame(8, $r['slow_stock_count']);
+        $this->assertEquals(360000, $r['slow_stock_value'], 'all eight products are in the value: 10..80 units at 1,000 each');
+        $this->assertSame('Dusty 8', $r['slow_stock'][0]['name'], 'the dearest first');
+        $this->assertCount(10, $r['debtors']);
+        $this->assertSame(12, $r['debtors_count']);
+        $this->assertEquals(1000 * 78, $r['debtors_total']);
+        $this->assertSame('Debtor 12', $r['debtors'][0]['name'], 'the biggest debt first');
+
+        $all = $this->api($owner, 'GET', '/api/inventory/monthly-report/lists')->assertOk()->json('data');
+        $this->assertCount(8, $all['sleeping_stock']);
+        $this->assertCount(12, $all['debtors']);
+        $this->assertEquals(1000 * 78, $all['debtors_total']);
+        $this->assertEquals($r['slow_stock_value'], $all['sleeping_stock_value']);
+    }
+
+    public function test_the_best_customers_are_the_top_five_biggest_first(): void
+    {
+        $this->now('2026-11-20 10:00:00');
+        $owner = $this->shop('Mama Shop');
+        $soda = $this->product($owner, 'Soda', 1000, 500, 600);
+        foreach ([1, 2, 3, 4, 5, 6, 7] as $i) {
+            $c = $this->customer($owner, "Buyer {$i}", '07120000' . str_pad((string) $i, 2, '0', STR_PAD_LEFT));
+            $this->sell($owner, $soda, $i * 2, 600, 500, $c, 'paid', '2026-11-05');
+        }
+
+        $top = $this->api($owner, 'GET', '/api/inventory/monthly-report?month=2026-11')->assertOk()->json('data.top_customers');
+
+        $this->assertCount(5, $top);
+        $this->assertSame(['Buyer 7', 'Buyer 6', 'Buyer 5', 'Buyer 4', 'Buyer 3'], array_column($top, 'name'));
     }
 }

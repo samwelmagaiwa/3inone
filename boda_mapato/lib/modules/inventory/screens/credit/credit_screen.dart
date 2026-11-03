@@ -16,6 +16,7 @@ import '../../providers/depot_provider.dart';
 import '../widgets/crates_owed_note.dart';
 import '../widgets/customer_debt_card.dart';
 import '../widgets/inv_action_button.dart';
+import '../widgets/joined_sections.dart';
 import '../widgets/inventory_widgets.dart';
 import '../../providers/inventory_provider.dart';
 import '../salon/client_history_screen.dart';
@@ -113,7 +114,8 @@ class _CreditCustomersTabState extends State<_CreditCustomersTab> {
         ),
         padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 24.h),
         itemCount: rows.length + 1,
-        separatorBuilder: (_, __) => SizedBox(height: 8.h),
+        // Each customer is a section of its own, divided from the next by the glowing line of the inventory dashboard.
+        separatorBuilder: (_, int i) => i == 0 ? SizedBox(height: 10.h) : const SectionGlowDivider(key: ValueKey<String>('customer_divider')),
         itemBuilder: (_, int i) {
           if (i == 0) {
             return Column(
@@ -174,6 +176,37 @@ bool _isSalon(BuildContext context) {
   }
 }
 
+/// A few labelled figures side by side with the glowing vertical line of the inventory dashboard between them.
+class _CreditFigures extends StatelessWidget {
+  const _CreditFigures({required this.figures});
+
+  final List<(String, String)> figures;
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          for (int i = 0; i < figures.length; i++) ...<Widget>[
+            if (i > 0) Padding(padding: EdgeInsets.symmetric(vertical: 4.h, horizontal: 8.w), child: const SizedBox(width: SectionGlowVerticalDivider.lineWidth, child: SectionGlowVerticalDivider())),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(figures[i].$1, style: ThemeConstants.captionStyle),
+                  SizedBox(height: 2.h),
+                  FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(figures[i].$2, maxLines: 1, style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w800))),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _CreditCustomerCard extends StatelessWidget {
   const _CreditCustomerCard({required this.customer});
 
@@ -211,8 +244,7 @@ class _CreditCustomerCard extends StatelessWidget {
       ),
       borderRadius: BorderRadius.circular(20.r),
       child: Container(
-        decoration: ThemeConstants.glassCardDecoration,
-        padding: EdgeInsets.all(12.w),
+        padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 14.h),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
@@ -233,16 +265,12 @@ class _CreditCustomerCard extends StatelessWidget {
               ],
             ),
             SizedBox(height: 6.h),
-            InvKeyValueWrap(entries: <String, String>{
-              loc.translate('owes'):
-                  'TSH ${customer.balance.toStringAsFixed(0)}',
-              loc.translate('credit_limit'): customer.hasLimit
-                  ? 'TSH ${customer.creditLimit.toStringAsFixed(0)}'
-                  : '—',
-              loc.translate('available'): customer.hasLimit
-                  ? 'TSH ${customer.available.toStringAsFixed(0)}'
-                  : '—',
-            }),
+            // Owes | Credit limit | Available, with the glowing vertical line between them.
+            _CreditFigures(figures: <(String, String)>[
+              (loc.translate('owes'), 'TSH ${customer.balance.toStringAsFixed(0)}'),
+              (loc.translate('credit_limit'), customer.hasLimit ? 'TSH ${customer.creditLimit.toStringAsFixed(0)}' : '—'),
+              (loc.translate('available'), customer.hasLimit ? 'TSH ${customer.available.toStringAsFixed(0)}' : '—'),
+            ]),
             CratesOwedNote(
               owed: CratesOwed.forCustomer(
                   context.watch<DepotProvider>().crateBalances, customer.id),

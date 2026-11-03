@@ -1,5 +1,6 @@
 import 'package:boda_mapato/modules/inventory/providers/depot_provider.dart';
 import 'package:boda_mapato/modules/inventory/screens/credit/credit_screen.dart';
+import 'package:boda_mapato/modules/inventory/screens/widgets/joined_sections.dart';
 import 'package:boda_mapato/services/api_service.dart';
 import 'package:boda_mapato/services/localization_service.dart';
 import 'package:flutter/material.dart';
@@ -91,6 +92,15 @@ void main() {
     expect(find.text('Baba John'), findsOneWidget);
     // Exactly one card carries the note -- hers.
     expect(find.text(note), findsOneWidget);
+  });
+
+  testWidgets('Debts list: each customer is a section divided from the next by the glowing line, and the three figures by vertical lines',
+      (t) async {
+    await _pump(t, const CreditScreen());
+
+    // two customers: one line between them (the search box has its own gap), and two vertical lines inside each customer's figures
+    expect(find.byKey(const ValueKey<String>('customer_divider')), findsOneWidget);
+    expect(find.byType(SectionGlowVerticalDivider), findsNWidgets(4));
   });
 
   testWidgets('Customer statement shows the crates owed above the money',

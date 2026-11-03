@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../services/api_service.dart';
+import '../models/existing_customer.dart';
 import '../models/inv_batch.dart';
 import '../models/inv_brand.dart';
 import '../models/inv_capabilities.dart';
@@ -1117,6 +1118,21 @@ class InventoryProvider extends ChangeNotifier {
     required String phone,
     String? address,
   }) async => (await saveCustomer(name: name, phone: phone, address: address)).id;
+
+  /// Is this name or phone number already a saved customer? Asked while the person types; changes nothing. Null when nobody matches
+  /// (or when it could not be asked).
+  Future<ExistingCustomer?> lookupCustomer(String name, String phone) async {
+    try {
+      final res = await _api.getOrNull('/inventory/customers/lookup?name=${Uri.encodeQueryComponent(name)}&phone=${Uri.encodeQueryComponent(phone)}');
+      final Object? data = res?['data'];
+      if (data is! Map) return null;
+      final Object? id = data['id'];
+
+      return id is num ? ExistingCustomer(id: id.toInt(), name: (data['name'] ?? '').toString(), phone: (data['phone'] ?? '').toString()) : null;
+    } on Exception {
+      return null;
+    }
+  }
 
   /// Saves a customer, or finds the one who is already saved with this name or this phone number (the server never makes a second
   /// card for the same person). [existed] says it was already there, and [name] is how they are saved.

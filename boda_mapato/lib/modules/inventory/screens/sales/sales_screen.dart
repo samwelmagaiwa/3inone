@@ -19,6 +19,7 @@ import '../../providers/depot_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../services/inventory_export_service.dart';
 import '../scanning/barcode_scanner_screen.dart';
+import '../widgets/add_customer_dialog.dart';
 import '../widgets/crates_owed_note.dart';
 import '../widgets/customer_account_note.dart';
 import '../widgets/inv_units_ui.dart';
@@ -43,9 +44,6 @@ class SalesScreen extends StatefulWidget {
 class _SalesScreenState extends State<SalesScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final TextEditingController _custName = TextEditingController();
-  final TextEditingController _custPhone = TextEditingController();
-  final TextEditingController _custAddress = TextEditingController();
   final TextEditingController _posPhone = TextEditingController(); // inline POS phone
   final TextEditingController _posName  = TextEditingController(); // inline POS name
   String _status = 'all'; // all | paid | debt | partial
@@ -88,9 +86,6 @@ class _SalesScreenState extends State<SalesScreen>
   @override
   void dispose() {
     _tabController.dispose();
-    _custName.dispose();
-    _custPhone.dispose();
-    _custAddress.dispose();
     _posPhone.dispose();
     _posName.dispose();
     _oweCrateQty.dispose();
@@ -1796,101 +1791,23 @@ class _SalesScreenState extends State<SalesScreen>
   Future<void> _openCreateCustomerDialog(BuildContext context) async {
     final loc = LocalizationService.instance;
     final inv = context.read<InventoryProvider>();
-    _custName.clear();
-    _custPhone.clear();
-    _custAddress.clear();
-    bool saving = false;
-    await showDialog<void>(
+    final CustomerChoice? chosen = await showDialog<CustomerChoice>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-        backgroundColor: ThemeConstants.primaryBlue,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-        title: Text(loc.translate('add_customer'),
-            style: ThemeConstants.bodyStyle),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                  controller: _custName,
-                  decoration: ThemeConstants.invInputDecoration(
-                      loc.translate('customer_name')),
-                  style: ThemeConstants.bodyStyle),
-              SizedBox(height: 8.h),
-              TextField(
-                  controller: _custPhone,
-                  keyboardType: TextInputType.phone,
-                  decoration: ThemeConstants.invInputDecoration(
-                      loc.translate('phone_number')),
-                  style: ThemeConstants.bodyStyle),
-              SizedBox(height: 8.h),
-              TextField(
-                  controller: _custAddress,
-                  decoration: ThemeConstants.invInputDecoration(
-                      loc.translate('address')),
-                  style: ThemeConstants.bodyStyle),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(loc.translate('cancel'))),
-          ElevatedButton(
-            // Disabled while the request runs so a double-tap can't save twice.
-            onPressed: saving
-                ? null
-                : () async {
-                    if (_custName.text.trim().isEmpty ||
-                        _custPhone.text.trim().isEmpty) {
-                      ThemeConstants.showWarningSnackBar(
-                        context,
-                        loc.isSwahili
-                            ? 'Ingiza jina na namba ya simu ya mteja'
-                            : 'Enter the customer name and phone number',
-                      );
-                      return;
-                    }
-                    setDialogState(() => saving = true);
-                    final saved = await inv.saveCustomer(
-                      name: _custName.text.trim(),
-                      phone: _custPhone.text.trim(),
-                      address: _custAddress.text.trim(),
-                    );
-                    if (saved.id != null) {
-                      inv.setCustomer(saved.id!);
-                      if (context.mounted) {
-                        Navigator.pop(ctx);
-                        // Already saved: no second card is made, the one who is there is chosen for this sale.
-                        if (saved.existed) {
-                          ThemeConstants.showWarningSnackBar(context, loc.translate('customer_exists').replaceAll('{name}', saved.name));
-                        }
-                      }
-                      return;
-                    }
-                    setDialogState(() => saving = false);
-                    if (context.mounted) {
-                      ThemeConstants.showErrorSnackBar(
-                        context,
-                        loc.isSwahili
-                            ? 'Imeshindikana kuhifadhi mteja. Jaribu tena.'
-                            : 'Could not save the customer. Please try again.',
-                      );
-                    }
-                  },
-            child: saving
-                ? SizedBox(
-                    width: 16.sp,
-                    height: 16.sp,
-                    child: const CircularProgressIndicator(strokeWidth: 2))
-                : Text(loc.translate('save')),
-          ),
-        ],
-      ),
+      builder: (_) => AddCustomerDialog(
+        lookup: inv.lookupCustomer,
+        save: ({required String name, required String phone, String? address}) async {
+          final saved = await inv.saveCustomer(name: name, phone: phone, address: address);
+
+          return saved.id == null ? null : CustomerChoice(id: saved.id!, name: saved.name, existed: saved.existed);
+        },
       ),
     );
+    if (chosen == null) return;
+    // Already saved: no second card is made; the one who is there is chosen for this sale.
+    inv.setCustomer(chosen.id);
+    if (chosen.existed && context.mounted) {
+      ThemeConstants.showWarningSnackBar(context, loc.translate('customer_exists').replaceAll('{name}', chosen.name));
+    }
   }
 
   /// Asks before removing the selected customer; the server refuses (and says

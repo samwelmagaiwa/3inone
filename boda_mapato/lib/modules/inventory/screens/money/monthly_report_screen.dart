@@ -5,10 +5,13 @@ import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/money_api.dart';
+import '../widgets/inv_action_button.dart';
+import '../widgets/joined_sections.dart';
 import 'money_style.dart';
 import '../salon/salon_input.dart';
 import '../salon/salon_text.dart';
 import 'debts_screen.dart';
+import 'report_list_screen.dart';
 
 const List<String> _monthsEn = <String>['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const List<String> _monthsSw = <String>['Januari', 'Februari', 'Machi', 'Aprili', 'Mei', 'Juni', 'Julai', 'Agosti', 'Septemba', 'Oktoba', 'Novemba', 'Desemba'];
@@ -181,104 +184,205 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     final Map<String, dynamic> pos = _r['position'] is Map ? _m(_r['position']) : <String, dynamic>{};
     final bool hasPos = _r['position'] is Map;
     final bool future = _r['is_future'] == true;
+    final bool current = _r['is_current'] == true;
     final List<Map<String, dynamic>> cats = _list(f['expenses_by_category']);
     final num spendTotal = _n(f['expenses']);
     final String prevMonth = '${_m(_r['previous'])['month'] ?? ''}';
 
-    return ListView(
-      key: const Key('report_list'),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-      children: <Widget>[
-        if (!future) _headline(sw, prevMonth),
-        _targetCard(sw),
-        _section(sw ? 'Hesabu za mwezi' : 'The month in numbers'),
-        Row(children: <Widget>[
-          Expanded(child: _figure('fig_sales', sw ? 'Mauzo' : 'Sales', _n(f['sales']), cmp['sales'] is Map ? _m(cmp['sales']) : null)),
-          const SizedBox(width: 8),
-          Expanded(child: _figure('fig_cogs', sw ? 'Gharama ya bidhaa' : 'Cost of goods', _n(f['cost_of_goods']), null)),
-        ]),
-        const SizedBox(height: 8),
-        Row(children: <Widget>[
-          Expanded(child: _figure('fig_gross', sw ? 'Faida ya mauzo' : 'Gross profit', _n(f['gross_profit']), cmp['gross_profit'] is Map ? _m(cmp['gross_profit']) : null, note: f['margin_percent'] == null ? null : '${f['margin_percent']}%')),
-          const SizedBox(width: 8),
-          Expanded(child: _figure('fig_expenses', sw ? 'Matumizi ya biashara' : 'Business expenses', _n(f['expenses']), cmp['expenses'] is Map ? _m(cmp['expenses']) : null)),
-        ]),
-        const SizedBox(height: 8),
-        _figure('fig_net', sw ? 'Faida halisi' : 'Net profit', _n(f['net_profit']), cmp['net_profit'] is Map ? _m(cmp['net_profit']) : null, big: true),
-        // In plain words, for someone who does not keep books: how the profit is worked out.
-        Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Text(
-            sw ? 'Faida halisi = Mauzo − Gharama ya bidhaa − Matumizi ya biashara. Matumizi binafsi hayaondolewi kwenye faida.' : 'Net profit = Sales − Cost of goods − Business expenses. Personal spending is not taken off the profit.',
-            key: const Key('hint_net'),
-            style: kMoneyCaption,
+    // The five best customers, the biggest first.
+    final List<Map<String, dynamic>> best = _list(_r['top_customers'])..sort((Map<String, dynamic> a, Map<String, dynamic> b) => _n(b['spent']).compareTo(_n(a['spent'])));
+    final List<Map<String, dynamic>> sleeping = _list(_r['slow_stock']).take(_sleepingShown).toList();
+    final int sleepingCount = _r['slow_stock_count'] is num ? _n(_r['slow_stock_count']).toInt() : sleeping.length;
+    final List<Map<String, dynamic>> owing = _list(_r['debtors']).take(_debtorsShown).toList();
+    final int owingCount = _r['debtors_count'] is num ? _n(_r['debtors_count']).toInt() : owing.length;
+
+    final List<Widget> sections = <Widget>[
+      if (!future) _headline(sw, prevMonth),
+      if (_targetCard(sw) case final Widget target when target is! SizedBox) target,
+      _flush(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+          _section(sw ? 'Hesabu za mwezi' : 'The month in numbers'),
+          _pair(
+            _figure('fig_sales', sw ? 'Mauzo' : 'Sales', _n(f['sales']), cmp['sales'] is Map ? _m(cmp['sales']) : null),
+            _figure('fig_cogs', sw ? 'Gharama ya bidhaa' : 'Cost of goods', _n(f['cost_of_goods']), null),
           ),
-        ),
-        _section(sw ? 'Biashara ilipo' : 'Where the business stands'),
-        if (!hasPos)
-          Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Text(sw ? 'Hesabu za mali, madeni na mtaji zinaanza kuhifadhiwa tangu unapofungua ripoti hii kwa mara ya kwanza.' : 'Stock, debts and capital are recorded from the day you first open this report; this month was not recorded.', key: const Key('no_position'), style: kMoneyCaption))
-        else
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(children: <Widget>[
-                _line(sw ? 'Bidhaa dukani (kwa gharama)' : 'Stock on hand (at cost)', tsh(_n(pos['stock_value'])), key: 'pos_stock'),
-                _line(sw ? 'Ninayodai (madeni ya wateja)' : 'Owed to me (customers)', tsh(_n(pos['receivable'])), key: 'pos_receivable', tap: () => _openDebts(0)),
-                _line(sw ? 'Ninayodaiwa' : 'I owe (suppliers, loans)', tsh(_n(pos['payable'])), key: 'pos_payable', tap: () => _openDebts(1)),
-                const Divider(),
-                _line(sw ? 'Mtaji' : 'Capital', tsh(_n(pos['capital'])), key: 'pos_capital', bold: true),
-                if (_r['capital_change'] is Map) _capitalChange(sw),
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    sw ? 'Mtaji = Bidhaa dukani + Ninayodai − Ninayodaiwa.' : 'Capital = Stock on hand + Owed to me − I owe.',
-                    key: const Key('hint_capital'),
-                    style: kMoneyCaption,
-                  ),
-                ),
-              ]),
+          const SectionGlowDivider(lift: false),
+          _pair(
+            _figure('fig_gross', sw ? 'Faida ya mauzo' : 'Gross profit', _n(f['gross_profit']), cmp['gross_profit'] is Map ? _m(cmp['gross_profit']) : null, note: f['margin_percent'] == null ? null : '${f['margin_percent']}%'),
+            _figure('fig_expenses', sw ? 'Matumizi ya biashara' : 'Business expenses', _n(f['expenses']), cmp['expenses'] is Map ? _m(cmp['expenses']) : null),
+          ),
+          const SectionGlowDivider(lift: false),
+          _figure('fig_net', sw ? 'Faida halisi' : 'Net profit', _n(f['net_profit']), cmp['net_profit'] is Map ? _m(cmp['net_profit']) : null, big: true),
+          // In plain words, for someone who does not keep books: how the profit is worked out.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+            child: Text(
+              sw ? 'Faida halisi = Mauzo − Gharama ya bidhaa − Matumizi ya biashara. Matumizi binafsi hayaondolewi kwenye faida.' : 'Net profit = Sales − Cost of goods − Business expenses. Personal spending is not taken off the profit.',
+              key: const Key('hint_net'),
+              style: kMoneyCaption,
             ),
           ),
-        if (cats.isNotEmpty || _n(f['personal_spending']) > 0) ...<Widget>[
-          _section(sw ? 'Matumizi' : 'Spending'),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(children: <Widget>[
-                for (final Map<String, dynamic> c in cats) _spendRow('${c['category']}', _n(c['total']), spendTotal),
-                if (_n(f['write_offs']) > 0) _line(sw ? 'Bidhaa zilizoharibika' : 'Damaged and written off', tsh(_n(f['write_offs'])), key: 'spend_writeoffs'),
-                if (_n(f['personal_spending']) > 0) ...<Widget>[
-                  const Divider(),
-                  _line(sw ? 'Matumizi binafsi (hayahesabiwi kwenye faida)' : 'Personal spending (not taken off the profit)', tsh(_n(f['personal_spending'])), key: 'spend_personal'),
+        ]),
+      ),
+      _padded(
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+          _section(sw ? 'Biashara ilipo' : 'Where the business stands'),
+          if (!hasPos)
+            Text(sw ? 'Hesabu za mali, madeni na mtaji zinaanza kuhifadhiwa tangu unapofungua ripoti hii kwa mara ya kwanza.' : 'Stock, debts and capital are recorded from the day you first open this report; this month was not recorded.', key: const Key('no_position'), style: kMoneyCaption)
+          else ...<Widget>[
+            _line(sw ? 'Bidhaa dukani (kwa gharama)' : 'Stock on hand (at cost)', tsh(_n(pos['stock_value'])), key: 'pos_stock'),
+            _line(sw ? 'Ninayodai (madeni ya wateja)' : 'Owed to me (customers)', tsh(_n(pos['receivable'])), key: 'pos_receivable', tap: () => _openDebts(0)),
+            _line(sw ? 'Ninayodaiwa' : 'I owe (suppliers, loans)', tsh(_n(pos['payable'])), key: 'pos_payable', tap: () => _openDebts(1)),
+            const SectionGlowDivider(lift: false),
+            _line(sw ? 'Mtaji' : 'Capital', tsh(_n(pos['capital'])), key: 'pos_capital', bold: true),
+            if (_r['capital_change'] is Map) _capitalChange(sw),
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                sw ? 'Mtaji = Bidhaa dukani + Ninayodai − Ninayodaiwa.' : 'Capital = Stock on hand + Owed to me − I owe.',
+                key: const Key('hint_capital'),
+                style: kMoneyCaption,
+              ),
+            ),
+          ],
+        ]),
+      ),
+      if (cats.isNotEmpty || _n(f['personal_spending']) > 0)
+        _padded(
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            _section(sw ? 'Matumizi' : 'Spending'),
+            for (final Map<String, dynamic> c in cats) _spendRow('${c['category']}', _n(c['total']), spendTotal),
+            if (_n(f['write_offs']) > 0) _line(sw ? 'Bidhaa zilizoharibika' : 'Damaged and written off', tsh(_n(f['write_offs'])), key: 'spend_writeoffs'),
+            if (_n(f['personal_spending']) > 0) ...<Widget>[
+              const SectionGlowDivider(lift: false),
+              _line(sw ? 'Matumizi binafsi (hayahesabiwi kwenye faida)' : 'Personal spending (not taken off the profit)', tsh(_n(f['personal_spending'])), key: 'spend_personal'),
+            ],
+          ]),
+        ),
+      if (_list(_r['top_products']).isNotEmpty)
+        _padded(
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            _section(sw ? 'Bidhaa zilizoleta faida zaidi' : 'Products that earned the most'),
+            for (final Map<String, dynamic> p in _list(_r['top_products'])) _line('${p['name']}  ×${p['qty']}', tsh(_n(p['profit'])), key: 'top_${p['name']}'),
+          ]),
+        ),
+      if (best.isNotEmpty)
+        _padded(
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            _section(sw ? 'Wateja watano bora' : 'Top five best customers', key: 'best_title'),
+            for (int i = 0; i < best.length && i < 5; i++) _line('${i + 1}.  ${best[i]['name']}  (${best[i]['purchases']})', tsh(_n(best[i]['spent'])), key: 'cust_${best[i]['name']}'),
+          ]),
+        ),
+      if (sleeping.isNotEmpty && current)
+        _padded(
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            _section(sw ? 'Bidhaa zilizolala (siku 30 bila kuuzwa)' : 'Sleeping stock (not sold in 30 days)'),
+            for (final Map<String, dynamic> p in sleeping) _line('${p['name']}  ×${p['quantity']}', tsh(_n(p['value'])), key: 'slow_${p['name']}'),
+            if (sleepingCount > sleeping.length) _more('slow_more', sw ? 'Zaidi ($sleepingCount)' : 'More ($sleepingCount)', _openSleeping),
+          ]),
+        ),
+      if (owing.isNotEmpty && current)
+        _padded(
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            _section(sw ? 'Wanaonidai zaidi' : 'Who owes me most'),
+            for (final Map<String, dynamic> d in owing) _line('${d['name']}  (${sw ? 'siku' : 'days'} ${d['days']})', tsh(_n(d['owed'])), key: 'debtor_${d['name']}', tap: () => _openDebts(0)),
+            if (owingCount > owing.length) _more('debtors_more', sw ? 'Zaidi ($owingCount)' : 'More ($owingCount)', _openDebtors),
+          ]),
+        ),
+      if (!future) _adviceHeader(sw),
+      if (!future) ..._adviceSections(sw),
+    ];
+
+    return ListView(
+      key: const Key('report_list'),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 32),
+      children: <Widget>[
+        DecoratedBox(
+          decoration: joinedCardDecoration(),
+          child: DecoratedBox(
+            decoration: joinedCardBorder(),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+                for (int i = 0; i < sections.length; i++) ...<Widget>[
+                  if (i > 0) const SectionGlowDivider(),
+                  sections[i],
                 ],
               ]),
             ),
           ),
-        ],
-        if (_list(_r['top_products']).isNotEmpty) ...<Widget>[
-          _section(sw ? 'Bidhaa zilizoleta faida zaidi' : 'Products that earned the most'),
-          Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(children: <Widget>[for (final Map<String, dynamic> p in _list(_r['top_products'])) _line('${p['name']}  ×${p['qty']}', tsh(_n(p['profit'])), key: 'top_${p['name']}')]))),
-        ],
-        if (_list(_r['top_customers']).isNotEmpty) ...<Widget>[
-          _section(sw ? 'Wateja wakubwa' : 'Best customers'),
-          Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(children: <Widget>[for (final Map<String, dynamic> c in _list(_r['top_customers'])) _line('${c['name']}  (${c['purchases']})', tsh(_n(c['spent'])), key: 'cust_${c['name']}')]))),
-        ],
-        if (_list(_r['slow_stock']).isNotEmpty && _r['is_current'] == true) ...<Widget>[
-          _section(sw ? 'Bidhaa zilizolala (siku 30 bila kuuzwa)' : 'Sleeping stock (not sold in 30 days)'),
-          Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(children: <Widget>[for (final Map<String, dynamic> p in _list(_r['slow_stock'])) _line('${p['name']}  ×${p['quantity']}', tsh(_n(p['value'])), key: 'slow_${p['name']}')]))),
-        ],
-        if (_list(_r['debtors']).isNotEmpty && _r['is_current'] == true) ...<Widget>[
-          _section(sw ? 'Wanaonidai zaidi' : 'Who owes me most'),
-          Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(children: <Widget>[for (final Map<String, dynamic> d in _list(_r['debtors'])) _line('${d['name']}  (${sw ? 'siku' : 'days'} ${d['days']})', tsh(_n(d['owed'])), key: 'debtor_${d['name']}', tap: () => _openDebts(0))]))),
-        ],
-        if (!future) _adviceCard(sw),
+        ),
       ],
     );
   }
 
+  /// A section with the report's own padding.
+  Widget _padded(final Widget child) => Padding(padding: const EdgeInsets.fromLTRB(14, 10, 14, 14), child: child);
+
+  /// A section that carries its own padding (its pieces reach the sides).
+  Widget _flush({required final Widget child}) => child;
+
+  /// Two figures side by side with the glowing vertical line between them.
+  Widget _pair(final Widget a, final Widget b) => IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+          Expanded(child: a),
+          const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: SizedBox(width: SectionGlowVerticalDivider.lineWidth, child: SectionGlowVerticalDivider())),
+          Expanded(child: b),
+        ]),
+      );
+
+  /// "More": a raised button under a cut-short list.
+  Widget _more(final String key, final String label, final VoidCallback onTap) => Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: InvActionButton(key: Key(key), label: label, icon: Icons.unfold_more_rounded, color: ThemeConstants.invAccent, onPressed: onTap),
+      );
+
+  static const int _sleepingShown = 6;
+  static const int _debtorsShown = 10;
+
+  /// Every sleeping product, on its own page.
+  Future<void> _openSleeping() async {
+    final bool sw = LocalizationService.instance.isSwahili;
+    final Map<String, dynamic>? all = await _loadLists();
+    if (all == null || !mounted) return;
+    final List<Map<String, dynamic>> rows = _list(all['sleeping_stock']);
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => ReportListScreen(
+        title: sw ? 'Bidhaa zilizolala' : 'Sleeping stock',
+        summary: sw ? 'Bidhaa ${rows.length} hazijauzwa kwa siku 30. Pesa zilizofungwa: ${tsh(_n(all['sleeping_stock_value']))}' : '${rows.length} products have not sold in 30 days. Money tied up: ${tsh(_n(all['sleeping_stock_value']))}',
+        rows: <ReportListRow>[for (final Map<String, dynamic> p in rows) ReportListRow(label: '${p['name']}', sub: '×${p['quantity']}', value: tsh(_n(p['value'])))],
+      ),
+    ));
+  }
+
+  /// Everyone who owes, on their own page.
+  Future<void> _openDebtors() async {
+    final bool sw = LocalizationService.instance.isSwahili;
+    final Map<String, dynamic>? all = await _loadLists();
+    if (all == null || !mounted) return;
+    final List<Map<String, dynamic>> rows = _list(all['debtors']);
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => ReportListScreen(
+        title: sw ? 'Wanaonidai' : 'Who owes me',
+        summary: sw ? 'Wateja ${rows.length} wanadaiwa jumla ya ${tsh(_n(all['debtors_total']))}' : '${rows.length} customers owe ${tsh(_n(all['debtors_total']))} in all',
+        rows: <ReportListRow>[for (final Map<String, dynamic> d in rows) ReportListRow(label: '${d['name']}', sub: '${sw ? 'siku' : 'days'} ${d['days']}', value: tsh(_n(d['owed'])), onTap: () => _openDebts(0))],
+      ),
+    ));
+  }
+
+  Future<Map<String, dynamic>?> _loadLists() async {
+    try {
+      return await _api.reportLists();
+    } on Exception catch (e) {
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
+
+      return null;
+    }
+  }
+
   void _openDebts(final int tab) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => DebtsScreen(api: widget.api, initialTab: tab)));
 
-  Widget _section(final String t) => Padding(padding: const EdgeInsets.fromLTRB(2, 18, 2, 8), child: Text(t, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)));
+  Widget _section(final String t, {final String? key}) => Padding(padding: const EdgeInsets.fromLTRB(0, 0, 0, 8), child: Text(t, key: key == null ? null : Key(key), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)));
 
   Widget _line(final String label, final String value, {final String? key, final bool bold = false, final VoidCallback? tap}) {
     final Widget row = Padding(
@@ -330,7 +434,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
             ? (sw ? 'Uko chini ya $prev$pctText' : 'Below $prev$pctText')
             : (sw ? 'Umebaki pale pale na $prev' : 'The same as $prev');
 
-    return Card(
+    return Container(
       key: Key('headline_$dir'),
       color: color.withValues(alpha: 0.16),
       child: Padding(
@@ -361,7 +465,8 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     if (t == null) {
       if (past) return const SizedBox.shrink();
 
-      return Card(
+      return Material(
+        type: MaterialType.transparency,
         child: ListTile(
           key: const Key('target_set'),
           leading: const Icon(Icons.flag_outlined, color: ThemeConstants.invAccent),
@@ -390,7 +495,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
       _ => sw ? 'Bado haijaanza' : 'Not started',
     };
 
-    return Card(
+    return Container(
       key: Key('target_$status'),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -432,7 +537,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     final String dir = '${cmp?['direction']}';
     final num? pct = cmp?['percent'] is num ? cmp!['percent'] as num : null;
 
-    return Card(
+    return Container(
       key: Key(key),
       color: big ? ThemeConstants.invAccent.withValues(alpha: 0.16) : null,
       child: Padding(
@@ -479,15 +584,15 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     );
   }
 
-  Widget _adviceCard(final bool sw) {
-    final List<Map<String, dynamic>> items = _list(_advice?['items']);
+  /// Where to improve: the title with where the advice came from and the button for a fresh one.
+  Widget _adviceHeader(final bool sw) {
     final bool ai = _advice?['source'] == 'ai';
     final int left = _n(_advice?['refreshes_left']).toInt();
+    final String? why = _advice == null || ai || _advice!['ai_available'] != true ? null : _aiReason('${_advice!['ai_error'] ?? ''}', sw);
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-      Padding(
-        padding: const EdgeInsets.fromLTRB(2, 18, 2, 8),
-        child: Row(children: <Widget>[
+    return _padded(
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+        Row(children: <Widget>[
           const Icon(Icons.auto_awesome, color: ThemeConstants.invAccent, size: 18),
           const SizedBox(width: 6),
           Expanded(child: Text(sw ? 'Wapi uboreshe' : 'Where to improve', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white))),
@@ -495,14 +600,42 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: (ai ? ThemeConstants.invAccent : Colors.white24).withValues(alpha: 0.25), borderRadius: BorderRadius.circular(10)), child: Text(ai ? 'AI' : (sw ? 'Mahesabu' : 'Rules'), key: const Key('advice_source'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white))),
           IconButton(key: const Key('advice_refresh'), visualDensity: VisualDensity.compact, tooltip: sw ? 'Ushauri mpya' : 'Fresh advice', icon: const Icon(Icons.refresh, size: 20, color: Colors.white70), onPressed: _adviceLoading || left <= 0 && _advice != null ? null : () => _loadAdvice(refresh: true)),
         ]),
-      ),
-      if (_adviceLoading) const Padding(padding: EdgeInsets.all(12), child: Center(child: CircularProgressIndicator())),
-      if (_adviceError != null && !_adviceLoading) Text(_adviceError!, style: const TextStyle(color: ThemeConstants.errorText)),
-      if (!_adviceLoading)
-        for (int i = 0; i < items.length; i++) _adviceItem(items[i], i),
-      if (!_adviceLoading && _advice != null && ai == false && _advice!['ai_available'] == true)
-        Padding(padding: const EdgeInsets.only(top: 4), child: Text(sw ? 'AI haipatikani sasa, ushauri umetokana na mahesabu ya mfumo.' : 'The AI could not be reached just now; this advice comes from the app\'s own rules.', key: const Key('advice_ai_down'), style: kMoneyCaption)),
-    ]);
+        if (_adviceLoading) const Padding(padding: EdgeInsets.all(12), child: Center(child: CircularProgressIndicator())),
+        if (_adviceError != null && !_adviceLoading) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_adviceError!, style: const TextStyle(color: ThemeConstants.errorText))),
+        // Said plainly: the AI is switched on but did not answer this time, so these five come from the app's own calculation.
+        if (!_adviceLoading && _advice != null && !ai && _advice!['ai_available'] == true)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              sw ? 'AI haikuweza kujibu sasa, kwa hiyo ushauri huu umetokana na hesabu za mfumo.${why == null ? '' : ' ($why)'}' : 'The AI could not answer just now, so this advice comes from the app\'s own calculations.${why == null ? '' : ' ($why)'}',
+              key: const Key('advice_ai_down'),
+              style: kMoneyCaption,
+            ),
+          ),
+      ]),
+    );
+  }
+
+  /// A short, plain reason for the AI not answering, from the server's note ('' when none).
+  String? _aiReason(final String error, final bool sw) {
+    if (error.isEmpty) return null;
+    if (error.contains('429')) return sw ? 'kikomo cha matumizi ya AI kimeisha' : 'the AI\'s usage limit is used up';
+    if (error.contains('401') || error.contains('403')) return sw ? 'ufunguo wa AI si sahihi' : 'the AI key was refused';
+    if (error.contains('404')) return sw ? 'modeli ya AI haipatikani' : 'the AI model is not available';
+    if (error.contains('slow')) return sw ? 'AI ilichelewa' : 'the AI was too slow';
+    if (error.contains('connection')) return sw ? 'hakuna mtandao kwa AI' : 'no connection to the AI';
+    if (error.contains('empty') || error.contains('checked')) return sw ? 'jibu la AI halikuwa sahihi' : 'the AI\'s answer could not be used';
+    if (RegExp(r'\b5\d\d\b').hasMatch(error)) return sw ? 'huduma ya AI imezidiwa' : 'the AI service is busy';
+
+    return null;
+  }
+
+  /// Each piece of advice is a section of its own, divided from the next by the glowing line; at most five.
+  List<Widget> _adviceSections(final bool sw) {
+    if (_adviceLoading) return const <Widget>[];
+    final List<Map<String, dynamic>> items = _list(_advice?['items']).take(5).toList();
+
+    return <Widget>[for (int i = 0; i < items.length; i++) _adviceItem(items[i], i)];
   }
 
   Widget _adviceItem(final Map<String, dynamic> a, final int i) {
@@ -510,24 +643,21 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     final Color color = level == 'warning' ? ThemeConstants.warningAmber : (level == 'good' ? ThemeConstants.successGreen : ThemeConstants.invAccent);
     final IconData icon = level == 'warning' ? Icons.warning_amber_rounded : (level == 'good' ? Icons.check_circle_outline : Icons.lightbulb_outline);
 
-    return Card(
+    return Container(
       key: Key('advice_$i'),
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Container(
-        decoration: BoxDecoration(border: Border(left: BorderSide(color: color, width: 4)), borderRadius: BorderRadius.circular(12)),
-        padding: const EdgeInsets.all(12),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-          Icon(icon, color: color, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-              Text('${a['title']}', style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white)),
-              const SizedBox(height: 3),
-              Text('${a['detail']}', style: kMoneyCaption.copyWith(color: Colors.white70)),
-            ]),
-          ),
-        ]),
-      ),
+      decoration: BoxDecoration(border: Border(left: BorderSide(color: color, width: 4))),
+      padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+        Icon(icon, color: color, size: 22),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            Text('${a['title']}', style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white)),
+            const SizedBox(height: 3),
+            Text('${a['detail']}', style: kMoneyCaption.copyWith(color: Colors.white70)),
+          ]),
+        ),
+      ]),
     );
   }
 }

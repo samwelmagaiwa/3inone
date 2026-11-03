@@ -86,6 +86,9 @@ class MoneyApi {
   Future<Map<String, dynamic>> monthlyReport([final String? month]) async =>
       _data(await _api.get('/inventory/monthly-report${month == null ? '' : '?month=$month'}'));
 
+  /// The whole sleeping-stock list and the whole list of who owes (the report page shows only the first few of each).
+  Future<Map<String, dynamic>> reportLists() async => _data(await _api.get('/inventory/monthly-report/lists'));
+
   /// Set the profit target of a month; zero clears it. Returns the target as the report now shows it (null when cleared).
   Future<Map<String, dynamic>?> setTarget(final String month, final double target) async {
     final Map<String, dynamic> res = await _api.put('/inventory/monthly-target', <String, dynamic>{'month': month, 'profit_target': target});

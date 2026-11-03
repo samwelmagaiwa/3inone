@@ -1276,12 +1276,8 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     $crateCustomer = \App\Support\Inventory\CustomerMatch::find($nameOverride, $phoneOverride);
 
                     if (! $crateCustomer) {
-                        $crateCustomer = DB::table('inventory_customers')->insertGetId([
-                            'name'       => $nameOverride ?: $phoneOverride,
-                            'phone'      => $phoneOverride ?: null,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
+                        // a customer is saved only with a phone number (the till is told if it is missing)
+                        $crateCustomer = \App\Support\Inventory\CustomerMatch::findOrCreate($nameOverride !== '' ? $nameOverride : $phoneOverride, $phoneOverride);
                         // Link the sale to the newly created customer record.
                         DB::table('inventory_sales')
                             ->where('id', $saleId)

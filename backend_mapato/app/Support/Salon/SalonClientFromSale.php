@@ -31,13 +31,12 @@ final class SalonClientFromSale
             return $found;
         }
 
-        return (int) DB::table('inventory_customers')->insertGetId([
-            'name' => $name !== '' ? $name : $phone,
-            // The column does not take an empty value: a client with no number is saved with a blank one.
-            'phone' => $phone,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // A client is saved only with a phone number: without one the till keeps the name as a walk-in and makes no client.
+        if (!CustomerMatch::isValidPhone($phone)) {
+            return null;
+        }
+
+        return CustomerMatch::findOrCreate($name !== '' ? $name : $phone, $phone);
     }
 
     /** The numbers a phone may be written as: 0743519104, 743519104, 255743519104, +255743519104. */

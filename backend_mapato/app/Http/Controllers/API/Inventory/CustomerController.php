@@ -96,6 +96,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         ]);
         $name = trim($data['name']);
         $phone = trim($data['phone']);
+        \App\Support\Inventory\CustomerMatch::requirePhone($phone);
 
         // A customer is saved once. The same name (however it is written) or the same phone number (however it is written) is the customer
         // who is already there: hand that one back and say so, so the till picks them instead of making a second card.
@@ -161,6 +162,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'phone' => 'sometimes|required|string|max:32',
             'address' => 'nullable|string|max:255',
         ]);
+        if (array_key_exists('phone', $data)) {
+            \App\Support\Inventory\CustomerMatch::requirePhone($data['phone']);
+        }
         $current = DB::table('inventory_customers')->where('id', $id)->first(['name', 'phone']);
         $taken = \App\Support\Inventory\CustomerMatch::takenBy((string) ($data['name'] ?? $current->name), (string) ($data['phone'] ?? $current->phone), $id);
         if ($taken !== null) {
@@ -254,5 +258,23 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         $result = \App\Support\Inventory\CustomerMerge::merge($request, (int) $data['into_id'], $id);
 
         return response()->json(['message' => 'Customers merged', 'data' => $result]);
+    }
+
+    /**
+     * GET /inventory/customers/lookup?name=&phone=
+     *
+     * Is this person already saved? By the phone number or by the name (however they are written). Changes nothing: the screen asks
+     * while the person types, and shows who is already there so they can be chosen instead of saved again.
+     */
+    public function lookup(Request $request)
+    {
+        $by = null;
+        $id = \App\Support\Inventory\CustomerMatch::find(trim((string) $request->query('name', '')), trim((string) $request->query('phone', '')), $by, false);
+        if ($id === null) {
+            return response()->json(['data' => null]);
+        }
+        $row = DB::table('inventory_customers')->where('id', $id)->first(['id', 'name', 'phone']);
+
+        return response()->json(['data' => ['id' => (int) $row->id, 'name' => (string) $row->name, 'phone' => (string) ($row->phone ?? ''), 'matched_by' => $by]]);
     }
 }

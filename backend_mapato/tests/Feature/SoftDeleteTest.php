@@ -234,7 +234,7 @@ class SoftDeleteTest extends TestCase
 
     public function test_an_old_debt_can_be_corrected_deleted_and_restored(): void
     {
-        $id = $this->api($this->owner, 'POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'name' => 'Mama Anna', 'amount' => 50000])->assertCreated()->json('data.id');
+        $id = $this->api($this->owner, 'POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'name' => 'Mama Anna', 'phone' => '0700000104', 'amount' => 50000])->assertCreated()->json('data.id');
         $total = fn () => (float) $this->api($this->owner, 'GET', '/api/inventory/opening-debts?kind=receivable')->assertOk()->json('data.total');
         $this->assertSame(50000.0, $total());
 
@@ -251,7 +251,7 @@ class SoftDeleteTest extends TestCase
 
     public function test_a_debt_cannot_be_corrected_below_what_was_paid_and_one_with_payments_cannot_be_deleted(): void
     {
-        $id = $this->api($this->owner, 'POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'name' => 'Baba John', 'amount' => 50000])->assertCreated()->json('data.id');
+        $id = $this->api($this->owner, 'POST', '/api/inventory/opening-debts', ['kind' => 'receivable', 'name' => 'Baba John', 'phone' => '0700000105', 'amount' => 50000])->assertCreated()->json('data.id');
         $this->api($this->owner, 'POST', "/api/inventory/opening-debts/{$id}/payments", ['amount' => 20000])->assertOk();
 
         $this->api($this->owner, 'PUT', "/api/inventory/opening-debts/{$id}", ['amount' => 10000])->assertStatus(422);

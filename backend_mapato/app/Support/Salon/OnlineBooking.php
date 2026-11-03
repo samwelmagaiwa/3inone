@@ -172,12 +172,11 @@ final class OnlineBooking
             }
 
             $name = trim($in['name']);
-            $customer = DB::table('inventory_customers')->where('phone', $phone)->first();
-            $customerId = $customer?->id ?? DB::table('inventory_customers')->insertGetId(['name' => $name, 'phone' => $phone, 'created_at' => now(), 'updated_at' => now()]);
+            $customerId = \App\Support\Inventory\CustomerMatch::findOrCreate($name, $phone);
 
             $id = DB::table('inventory_appointments')->insertGetId([
                 'customer_id' => $customerId,
-                'client_name' => $customer->name ?? $name,
+                'client_name' => DB::table('inventory_customers')->where('id', $customerId)->value('name') ?? $name,
                 'client_phone' => $phone,
                 'staff_id' => (string) $person->id,
                 'staff_name' => $person->name,

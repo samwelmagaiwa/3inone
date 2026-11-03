@@ -3,6 +3,7 @@ import 'package:boda_mapato/modules/inventory/screens/money/monthly_report_scree
 import 'package:boda_mapato/modules/inventory/services/money_api.dart';
 import 'package:boda_mapato/services/localization_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,7 +21,7 @@ String _before(String month) {
 }
 
 class _FakeMoney extends MoneyApi {
-  _FakeMoney({this.dir = 'up', this.target, this.position = true, this.answer, this.failReport = false, this.current = true});
+  _FakeMoney({this.dir = 'up', this.target, this.position = true, this.answer, this.failReport = false, this.current = true, this.extra = const <String, dynamic>{}, this.lists});
 
   final String dir;
   final Map<String, dynamic>? target;
@@ -28,6 +29,11 @@ class _FakeMoney extends MoneyApi {
   final Map<String, dynamic>? answer;
   final bool failReport;
   final bool current;
+
+  /// Replaces parts of the report (longer lists, counts), and the answer of the "More" pages.
+  final Map<String, dynamic> extra;
+  final Map<String, dynamic>? lists;
+  int listsAsked = 0;
   final List<String?> asked = <String?>[];
   final List<(String, double)> targets = <(String, double)>[];
   final List<bool> adviceRefresh = <bool>[];
@@ -39,6 +45,7 @@ class _FakeMoney extends MoneyApi {
     final int pct = dir == 'up' ? 50 : (dir == 'down' ? -30 : 0);
 
     return <String, dynamic>{
+      ...<String, dynamic>{
       'month': month ?? '2026-11', 'is_current': current, 'is_future': false, 'days_elapsed': 20, 'days_in_month': 30,
       'figures': <String, dynamic>{
         'sales': 300000, 'sales_count': 12, 'cost_of_goods': 150000, 'gross_profit': 150000, 'margin_percent': 50.0, 'expenses': 30000,
@@ -61,7 +68,16 @@ class _FakeMoney extends MoneyApi {
       'slow_stock': <Map<String, dynamic>>[<String, dynamic>{'name': 'Dusty Dye', 'quantity': 50, 'value': 100000}],
       'debtors': <Map<String, dynamic>>[<String, dynamic>{'name': 'Baba Juma', 'owed': 90000, 'days': 200}],
       'creditors': <dynamic>[],
+      },
+      ...extra,
     };
+  }
+
+  @override
+  Future<Map<String, dynamic>> reportLists() async {
+    listsAsked++;
+    if (lists == null) throw Exception('No connection');
+    return lists!;
   }
 
   @override
@@ -87,7 +103,7 @@ Future<void> _open(WidgetTester t, MoneyApi api, {bool sw = false, String? month
   await t.pumpWidget(
     ChangeNotifierProvider<LocalizationService>.value(
       value: LocalizationService.instance,
-      child: MaterialApp(home: MonthlyReportScreen(api: api, month: month ?? '2026-11', today: DateTime(2026, 11, 20))),
+      child: ScreenUtilInit(designSize: const Size(800, 6000), builder: (_, __) => MaterialApp(home: MonthlyReportScreen(api: api, month: month ?? '2026-11', today: DateTime(2026, 11, 20)))),
     ),
   );
   await t.pump();
@@ -269,6 +285,132 @@ void main() {
       await _open(t, _FakeMoney(answer: <String, dynamic>{...(_ai()), 'refreshes_left': 0}));
 
       expect(t.widget<IconButton>(_k('advice_refresh')).onPressed, isNull);
+    });
+  });
+
+  group('the lists the report cuts short', () {
+    List<Map<String, dynamic>> sleepers(int n) => <Map<String, dynamic>>[for (int i = 1; i <= n; i++) <String, dynamic>{'name': 'Sleeper $i', 'quantity': i, 'value': 10000 * (n - i + 1)}];
+    List<Map<String, dynamic>> owers(int n) => <Map<String, dynamic>>[for (int i = 1; i <= n; i++) <String, dynamic>{'name': 'Ower $i', 'owed': 1000 * (n - i + 1), 'days': i}];
+
+    testWidgets('the best customers are the top five, the biggest first, and the section says so', (t) async {
+      final List<Map<String, dynamic>> seven = <Map<String, dynamic>>[
+        for (final (String, int) c in <(String, int)>[('Small', 10000), ('Third', 30000), ('Top', 90000), ('Fifth', 20000), ('Second', 50000), ('Fourth', 25000), ('Sixth', 15000)]) <String, dynamic>{'name': c.$1, 'purchases': 2, 'spent': c.$2},
+      ];
+      await _open(t, _FakeMoney(extra: <String, dynamic>{'top_customers': seven}));
+
+      expect(t.widget<Text>(_k('best_title')).data, 'Top five best customers');
+      final List<double> tops = <String>['Top', 'Second', 'Third', 'Fourth', 'Fifth'].map((String n) => t.getTopLeft(_k('cust_$n')).dy).toList();
+      expect(tops, orderedEquals(<double>[...tops]..sort()), reason: 'the biggest first, in order');
+      expect(_k('cust_Sixth'), findsNothing);
+      expect(_k('cust_Small'), findsNothing);
+    });
+
+    testWidgets('in Swahili the section is "Wateja watano bora"', (t) async {
+      await _open(t, _FakeMoney(), sw: true);
+
+      expect(t.widget<Text>(_k('best_title')).data, 'Wateja watano bora');
+    });
+
+    testWidgets('sleeping stock shows six; "More" opens every product with what they add up to', (t) async {
+      final _FakeMoney api = _FakeMoney(
+        extra: <String, dynamic>{'slow_stock': sleepers(6), 'slow_stock_count': 9},
+        lists: <String, dynamic>{'sleeping_stock': sleepers(9), 'sleeping_stock_value': 450000, 'debtors': <dynamic>[], 'debtors_total': 0},
+      );
+      await _open(t, api);
+
+      expect(_k('slow_Sleeper 6'), findsOneWidget);
+      expect(_k('slow_Sleeper 7'), findsNothing);
+      expect(find.text('More (9)', findRichText: true), findsOneWidget);
+
+      await t.ensureVisible(_k('slow_more'));
+      await t.tap(_k('slow_more'));
+      await t.pump();
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 400));
+
+      expect(api.listsAsked, 1);
+      expect(t.widget<Text>(_k('report_list_summary')).data, '9 products have not sold in 30 days. Money tied up: TSH 450,000');
+      for (int i = 0; i < 9; i++) {
+        expect(_k('report_row_$i'), findsOneWidget);
+      }
+    });
+
+    testWidgets('no "More" when everything fits', (t) async {
+      await _open(t, _FakeMoney(extra: <String, dynamic>{'slow_stock': sleepers(6), 'slow_stock_count': 6, 'debtors': owers(10), 'debtors_count': 10}));
+
+      expect(_k('slow_more'), findsNothing);
+      expect(_k('debtors_more'), findsNothing);
+    });
+
+    testWidgets('who owes me shows ten; "More" opens everyone with the total', (t) async {
+      final _FakeMoney api = _FakeMoney(
+        extra: <String, dynamic>{'debtors': owers(10), 'debtors_count': 14},
+        lists: <String, dynamic>{'sleeping_stock': <dynamic>[], 'sleeping_stock_value': 0, 'debtors': owers(14), 'debtors_total': 105000},
+      );
+      await _open(t, api);
+
+      expect(_k('debtor_Ower 10'), findsOneWidget);
+      expect(_k('debtor_Ower 11'), findsNothing);
+      expect(find.text('More (14)', findRichText: true), findsOneWidget);
+
+      await t.ensureVisible(_k('debtors_more'));
+      await t.tap(_k('debtors_more'));
+      await t.pump();
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 400));
+
+      expect(t.widget<Text>(_k('report_list_summary')).data, '14 customers owe TSH 105,000 in all');
+      expect(_k('report_row_13'), findsOneWidget);
+    });
+
+    testWidgets('a "More" that cannot load stays on the report', (t) async {
+      await _open(t, _FakeMoney(extra: <String, dynamic>{'slow_stock': sleepers(6), 'slow_stock_count': 9}));
+
+      await t.ensureVisible(_k('slow_more'));
+      await t.tap(_k('slow_more'));
+      await t.pump();
+      await t.pump();
+      await t.pump(const Duration(seconds: 6));
+
+      expect(_k('report_full_list'), findsNothing);
+    });
+  });
+
+  group('the advice holds at most five pieces', () {
+    Map<String, dynamic> rulesAnswer(String? error, {bool available = true}) => <String, dynamic>{
+          'items': <Map<String, dynamic>>[<String, dynamic>{'level': 'tip', 'title': 'x', 'detail': 'y'}],
+          'source': 'rules', 'ai_available': available, 'ai_error': error, 'refreshes_left': 5,
+        };
+
+    testWidgets('six from the server show five', (t) async {
+      final Map<String, dynamic> six = <String, dynamic>{
+        'source': 'ai', 'ai_available': true, 'refreshes_left': 4,
+        'items': <Map<String, dynamic>>[for (int i = 0; i < 6; i++) <String, dynamic>{'level': 'tip', 'title': 'Advice $i', 'detail': 'Detail $i'}],
+      };
+      await _open(t, _FakeMoney(answer: six));
+
+      for (int i = 0; i < 5; i++) {
+        expect(_k('advice_$i'), findsOneWidget);
+      }
+      expect(_k('advice_5'), findsNothing);
+    });
+
+    testWidgets('when the AI did not answer it says why, in plain words', (t) async {
+      await _open(t, _FakeMoney(answer: rulesAnswer('AI answered 429')));
+
+      expect(t.widget<Text>(_k('advice_ai_down')).data, "The AI could not answer just now, so this advice comes from the app's own calculations. (the AI's usage limit is used up)");
+    });
+
+    testWidgets('in Swahili', (t) async {
+      await _open(t, _FakeMoney(answer: rulesAnswer('AI answered 401')), sw: true);
+
+      expect(t.widget<Text>(_k('advice_ai_down')).data, 'AI haikuweza kujibu sasa, kwa hiyo ushauri huu umetokana na hesabu za mfumo. (ufunguo wa AI si sahihi)');
+    });
+
+    testWidgets('no message at all when the AI is not switched on', (t) async {
+      await _open(t, _FakeMoney(answer: rulesAnswer(null, available: false)));
+
+      expect(_k('advice_ai_down'), findsNothing);
     });
   });
 

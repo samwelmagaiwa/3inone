@@ -23,6 +23,12 @@ final class BusinessAdvisor
 {
     public const REFRESHES_PER_DAY = 5;
 
+    /** The page shows this many pieces of advice, the most important first. */
+    public const ITEMS = 5;
+
+    /** An answer that came only from the rules because the AI failed is kept this long, then the AI is tried again (not the whole day). */
+    private const FAILED_AI_SECONDS = 180;
+
     private const CACHE_KEY = 'advice_cache';
 
     /**
@@ -35,6 +41,12 @@ final class BusinessAdvisor
         $cached = self::cached();
         $branch = \App\Support\Salon\SalonBranch::selected();
         $same = $cached !== null && ($cached['branch'] ?? null) === $branch && ($cached['date'] ?? null) === $today && ($cached['month'] ?? null) === $month && ($cached['lang'] ?? null) === $lang;
+        // The AI was switched on but failed (no quota, a slow answer): that is not kept for the day, so it is tried again soon.
+        $failedAndOld = $same && ($cached['source'] ?? 'rules') === 'rules' && ($cached['ai_error'] ?? null) !== null
+            && \Carbon\Carbon::parse((string) ($cached['created'] ?? now()->toIso8601String()))->diffInSeconds(now(), false) > self::FAILED_AI_SECONDS;
+        if ($failedAndOld && !$refresh) {
+            $same = false;
+        }
         $used = $cached !== null && ($cached['date'] ?? null) === $today ? (int) ($cached['count'] ?? 1) : 0;
 
         if ($same && !$refresh) {
@@ -57,7 +69,7 @@ final class BusinessAdvisor
                     $items = $ai;
                     $source = 'ai';
                 } else {
-                    $error = 'empty';
+                    $error = 'empty or not checked';
                 }
             } catch (\Throwable $e) {
                 $error = mb_substr($e->getMessage(), 0, 160);
@@ -141,8 +153,36 @@ final class BusinessAdvisor
             'best_products_by_profit' => $r['top_products'],
             'best_customers' => $r['top_customers'],
             'sleeping_stock_30_days' => $r['slow_stock'],
+            'sleeping_stock_totals' => ['products' => $r['slow_stock_count'], 'value_at_cost' => $r['slow_stock_value']],
             'customers_who_owe' => $r['debtors'],
+            'customers_who_owe_totals' => ['customers' => $r['debtors_count'], 'amount' => $r['debtors_total']],
+            'worked_out' => self::workedOut($f, $r),
             'business_owes' => array_map(fn ($d) => ['name' => $d['name'], 'left' => $d['left'], 'days_late' => $d['days_late']], $r['creditors']),
+        ];
+    }
+
+    /**
+     * Figures the AI would otherwise have to calculate (and might get wrong): shares, averages and what is needed per day.
+     *
+     * @return array<string, float|int|null>
+     */
+    private static function workedOut(array $f, array $r): array
+    {
+        $sales = (float) $f['sales'];
+        $days = max(1, (int) $r['days_elapsed']);
+        $target = $r['target'];
+        $topCustomer = $r['top_customers'][0]['spent'] ?? null;
+
+        return [
+            'sales_per_day' => round($sales / $days, 2),
+            'net_profit_per_day' => round((float) $f['net_profit'] / $days, 2),
+            'expenses_percent_of_sales' => $sales > 0 ? round((float) $f['expenses'] / $sales * 100, 1) : null,
+            'cost_of_goods_percent_of_sales' => $sales > 0 ? round((float) $f['cost_of_goods'] / $sales * 100, 1) : null,
+            'average_sale' => (int) $f['sales_count'] > 0 ? round($sales / (int) $f['sales_count'], 2) : null,
+            'best_customer_percent_of_sales' => $sales > 0 && $topCustomer !== null ? round((float) $topCustomer / $sales * 100, 1) : null,
+            'sleeping_stock_percent_of_stock' => (float) ($r['position']['stock_value'] ?? 0) > 0 ? round((float) $r['slow_stock_value'] / (float) $r['position']['stock_value'] * 100, 1) : null,
+            'owed_percent_of_sales' => $sales > 0 ? round((float) $r['debtors_total'] / $sales * 100, 1) : null,
+            'profit_needed_per_day_for_target' => $target !== null && (int) ($target['days_left'] ?? 0) > 0 ? round((float) $target['left'] / (int) $target['days_left'], 2) : null,
         ];
     }
 
@@ -227,7 +267,35 @@ final class BusinessAdvisor
             $items[] = ['level' => 'tip', 'title' => $t('Weka lengo la faida', 'Set a profit target'), 'detail' => $t('Weka lengo la mwezi uone kama uko mbele au nyuma.', 'Set a target for the month to see whether you are ahead or behind.')];
         }
 
-        return array_slice($items, 0, 8);
+        return self::prioritise($items);
+    }
+
+    /**
+     * The most important pieces of advice, at most [ITEMS]: warnings first (they cost money), then one piece of good news so the owner
+     * sees what is working, then the tips.
+     *
+     * @param  array<int, array{level: string, title: string, detail: string}>  $items
+     * @return array<int, array{level: string, title: string, detail: string}>
+     */
+    private static function prioritise(array $items): array
+    {
+        $by = fn (string $level) => array_values(array_filter($items, fn ($i) => $i['level'] === $level));
+        $warnings = $by('warning');
+        $good = $by('good');
+        $tips = $by('tip');
+
+        $out = array_slice($warnings, 0, $good === [] ? self::ITEMS : self::ITEMS - 1);
+        if ($good !== []) {
+            $out[] = $good[0];
+        }
+        foreach ($tips as $tip) {
+            if (count($out) >= self::ITEMS) {
+                break;
+            }
+            $out[] = $tip;
+        }
+
+        return array_slice($out, 0, self::ITEMS);
     }
 
     // ------------------------------------------------------------------ the AI
@@ -240,12 +308,17 @@ final class BusinessAdvisor
     private static function askAi(array $facts, array $rules, string $lang): array
     {
         $language = $lang === 'sw' ? 'Swahili (simple, as spoken by a shop owner in Tanzania)' : 'English (simple and short)';
-        $system = "You are a business adviser inside a shop-management app for a small business owner in Tanzania. "
-            . "You are given the facts of one month as JSON (money is TSh). Reply with ONLY a JSON array of at most 6 objects "
-            . '{"level":"warning|tip|good","title":"...","detail":"..."}, most important first. '
-            . "Write in {$language}. Use ONLY numbers, product names and customer names found in the facts; never invent a figure. "
-            . "Each detail must name the specific product, customer, expense or amount it is about and say one concrete action the owner can take this week. "
-            . "Mention what is going well too. Do not repeat the same point. No markdown, no text outside the JSON.";
+        $system = "You are a sharp, practical business adviser inside a shop-management app for a small business owner in Tanzania. "
+            . "You are given the facts of one month as JSON (money is TSh) and some notes written by plain rules. "
+            . 'Reply with ONLY a JSON array of exactly ' . self::ITEMS . ' objects {"level":"warning|tip|good","title":"...","detail":"..."}, the one that matters most to the owner\'s money first. '
+            . "Write in {$language}. "
+            . "ACCURACY: every number you write must be copied from the facts (the 'worked_out' section already holds the percentages, averages and per-day figures: use those, do not calculate your own). "
+            . "Never invent a figure, product or person; use names exactly as they appear. If something is not in the facts, do not mention it. "
+            . "USEFULNESS: think about THIS business (its kind, its month so far, how it compares with the month before) and find what is really driving the result: "
+            . "what is eating the profit, where money is stuck (sleeping stock, debts), what depends too much on one customer or product, and how far the target is. "
+            . "Each detail must name the specific product, customer, expense or amount it is about, say why it matters in one short sentence, and give ONE concrete action the owner can take this week. "
+            . "Include one thing that is going well. Do not repeat a point, do not copy the rule notes word for word (they are hints, add your own insight), and do not give generic advice. "
+            . "No markdown, no text outside the JSON.";
 
         $prompt = "Facts:\n" . json_encode(['facts' => $facts, 'rule_based_notes' => $rules], JSON_UNESCAPED_UNICODE);
 
@@ -255,10 +328,10 @@ final class BusinessAdvisor
                 $reply = GeminiClient::generate([
                     'systemInstruction' => ['parts' => [['text' => $system]]],
                     'contents' => [['role' => 'user', 'parts' => [['text' => $prompt]]]],
-                    'generationConfig' => ['temperature' => 0.4, 'maxOutputTokens' => 4096, 'responseMimeType' => 'application/json'],
+                    'generationConfig' => ['temperature' => 0.3, 'maxOutputTokens' => 4096, 'responseMimeType' => 'application/json'],
                 ]);
 
-                return self::parse((string) data_get($reply, 'candidates.0.content.parts.0.text', ''));
+                return self::checked(self::parse((string) data_get($reply, 'candidates.0.content.parts.0.text', '')), $facts, $rules);
             } catch (\RuntimeException $e) {
                 // Every Gemini model failed: use Claude when a key for it is set, else let the rules answer.
                 if (trim((string) config('services.anthropic.key', '')) === '') {
@@ -271,7 +344,7 @@ final class BusinessAdvisor
             ->timeout(45)->acceptJson()
             ->post('https://api.anthropic.com/v1/messages', [
                 'model' => (string) config('services.anthropic.model', 'claude-sonnet-5-5'),
-                'max_tokens' => 1500,
+                'max_tokens' => 2000,
                 'system' => $system,
                 'messages' => [['role' => 'user', 'content' => $prompt]],
             ]);
@@ -279,7 +352,98 @@ final class BusinessAdvisor
             throw new \RuntimeException('AI answered ' . $res->status());
         }
 
-        return self::parse((string) data_get($res->json(), 'content.0.text', ''));
+        return self::checked(self::parse((string) data_get($res->json(), 'content.0.text', '')), $facts, $rules);
+    }
+
+    /**
+     * The AI's advice, checked against the facts: a piece that quotes an amount the facts do not hold (nor a sum or difference of two of
+     * them) is dropped, so an invented figure never reaches the owner. When too few pieces are left, the rule-based ones fill the page.
+     *
+     * @param  array<int, array{level: string, title: string, detail: string}>  $items
+     * @param  array<string, mixed>  $facts
+     * @param  array<int, array{level: string, title: string, detail: string}>  $rules
+     * @return array<int, array{level: string, title: string, detail: string}>
+     */
+    public static function checked(array $items, array $facts, array $rules): array
+    {
+        $known = self::numbersIn($facts);
+        $kept = array_values(array_filter($items, fn ($i) => self::quotesOnlyKnownAmounts($i['title'] . ' ' . $i['detail'], $known)));
+        if ($kept === []) {
+            return [];   // nothing usable: the caller treats this as the AI not answering and shows the rules
+        }
+        if (count($kept) < 3) {
+            $have = array_map(fn ($i) => mb_strtolower($i['title']), $kept);
+            foreach ($rules as $rule) {
+                if (count($kept) >= self::ITEMS) {
+                    break;
+                }
+                if (!in_array(mb_strtolower($rule['title']), $have, true)) {
+                    $kept[] = $rule;
+                }
+            }
+        }
+
+        return array_slice($kept, 0, self::ITEMS);
+    }
+
+    /** @return array<int, float> every amount of 1,000 or more found in the facts (smaller numbers are counts, days and percentages) */
+    private static function numbersIn(mixed $data): array
+    {
+        $out = [];
+        $walk = function ($v) use (&$walk, &$out) {
+            if (is_array($v)) {
+                foreach ($v as $x) {
+                    $walk($x);
+                }
+            } elseif (is_numeric($v) && abs((float) $v) >= 1000) {
+                $out[] = abs((float) $v);
+            }
+        };
+        $walk($data);
+
+        return array_values(array_unique($out));
+    }
+
+    /** @param  array<int, float>  $known */
+    private static function quotesOnlyKnownAmounts(string $text, array $known): bool
+    {
+        preg_match_all('/\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d{4,}(?:\.\d+)?/', $text, $m);
+        foreach ($m[0] as $raw) {
+            $v = (float) str_replace(',', '', $raw);
+            if ($v < 1000) {
+                continue;
+            }
+            // A year ("2026") is not an amount.
+            if ($v >= 1990 && $v <= 2100 && !str_contains($raw, ',')) {
+                continue;
+            }
+            if (!self::matches($v, $known)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** @param  array<int, float>  $known  is $v one of the known amounts, or the sum or difference of two, within a rounding of 1%? */
+    private static function matches(float $v, array $known): bool
+    {
+        $near = fn (float $a) => abs($a - $v) <= max(1.0, $v * 0.01);
+        foreach ($known as $a) {
+            if ($near($a)) {
+                return true;
+            }
+        }
+        $n = count($known);
+        for ($i = 0; $i < $n; $i++) {
+            for ($j = $i + 1; $j < $n; $j++) {
+                if ($near($known[$i] + $known[$j]) || $near(abs($known[$i] - $known[$j]))) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -307,6 +471,6 @@ final class BusinessAdvisor
             $out[] = ['level' => $level, 'title' => mb_substr(trim((string) $row['title']), 0, 120), 'detail' => mb_substr(trim((string) $row['detail']), 0, 500)];
         }
 
-        return array_slice($out, 0, 6);
+        return array_slice($out, 0, self::ITEMS);
     }
 }
