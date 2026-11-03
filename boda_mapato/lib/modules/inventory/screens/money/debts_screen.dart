@@ -208,7 +208,8 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
               ]),
             ),
           for (int i = 0; i < list.length; i++) ...<Widget>[
-            if (i > 0) Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: SectionGlowDivider(key: Key('debt_divider_${list[i]['id']}'), lift: false)),
+            // A short glowing line in the middle between two debts, with little space around it.
+            if (i > 0) Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Center(child: FractionallySizedBox(widthFactor: 0.45, child: SectionGlowDivider(key: Key('debt_divider_${list[i]['id']}'), lift: false)))),
             _card(list[i], sw),
           ],
         ],
