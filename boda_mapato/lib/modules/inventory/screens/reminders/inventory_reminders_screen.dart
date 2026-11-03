@@ -7,14 +7,21 @@ import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../models/inv_reminder.dart';
 import '../../providers/inventory_provider.dart';
+import '../../../../providers/auth_provider.dart';
+import '../../models/inv_reminder.dart' show InvReminderStatus;
+import '../../services/reminder_voice.dart';
 import '../widgets/glow_list_card.dart';
+import '../widgets/inv_action_button.dart';
 import '../widgets/inventory_widgets.dart';
 
 /// Simple reminders: low stock and payments coming due. For the fuller list
 /// — near-expiry, over-limit customers, overdue invoices — see the Alerts
 /// screen instead.
 class InventoryRemindersScreen extends StatefulWidget {
-  const InventoryRemindersScreen({super.key});
+  const InventoryRemindersScreen({super.key, this.speech});
+
+  /// The speaker (the phone's own voice); a test gives its own.
+  final SpeechPort? speech;
 
   @override
   State<InventoryRemindersScreen> createState() =>
@@ -23,6 +30,35 @@ class InventoryRemindersScreen extends StatefulWidget {
 
 class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
   bool _loading = false;
+  late final ReminderVoice _voice = ReminderVoice(speech: widget.speech);
+
+  @override
+  void dispose() {
+    _voice.stop();
+    _voice.dispose();
+    super.dispose();
+  }
+
+  /// The owner's name for the greeting ('' when it is not known).
+  String _owner() {
+    try {
+      return context.read<AuthProvider>().userDisplayName;
+    } on ProviderNotFoundException {
+      return '';
+    }
+  }
+
+  /// Reads the given reminders aloud in the chosen language, or says why it cannot.
+  Future<void> _speak(final List<InvReminder> list) async {
+    final LocalizationService loc = LocalizationService.instance;
+    final VoiceResult r = await _voice.read(list, owner: _owner(), sw: loc.isSwahili);
+    if (!mounted) return;
+    if (r == VoiceResult.noVoice) {
+      ThemeConstants.showWarningSnackBar(context, loc.translate('voice_missing'));
+    } else if (r == VoiceResult.nothingToRead) {
+      ThemeConstants.showWarningSnackBar(context, loc.translate('voice_nothing'));
+    }
+  }
 
   @override
   void initState() {
@@ -70,6 +106,22 @@ class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
                       ),
                       padding: EdgeInsets.all(12.w),
                       children: <Widget>[
+                        // Reads every debt reminder aloud, one after the other: "Hello ..., customer ... owes ... shillings ...".
+                        if (reminders.any(canSpeak))
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 10.h),
+                            child: ListenableBuilder(
+                              listenable: _voice,
+                              builder: (BuildContext context, Widget? _) => InvActionButton(
+                                key: const ValueKey<String>('read_all_aloud'),
+                                label: _voice.speaking ? loc.translate('stop_reading') : loc.translate('read_aloud'),
+                                icon: _voice.speaking ? Icons.stop_circle_rounded : Icons.volume_up_rounded,
+                                color: _voice.speaking ? ThemeConstants.errorRed : const Color(0xFF3B82F6),
+                                arrow: false,
+                                onPressed: _voice.speaking ? _voice.stop : () => _speak(reminders),
+                              ),
+                            ),
+                          ),
                         // The reminders are ONE card of rows, each divided from the next by the glowing line.
                         GlowListCard(
                           dividerKey: 'reminder_divider',
@@ -80,6 +132,7 @@ class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
                                 reminder: r,
                                 onMarkDone: () => _markDone(r.id),
                                 onSnooze: () => _snooze(r.id),
+                                onSpeak: canSpeak(r) ? () => _speak(<InvReminder>[r]) : null,
                               ),
                           ],
                         ),
@@ -137,11 +190,15 @@ class _ReminderCard extends StatelessWidget {
     required this.reminder,
     required this.onMarkDone,
     required this.onSnooze,
+    this.onSpeak,
   });
 
   final InvReminder reminder;
   final VoidCallback onMarkDone;
   final VoidCallback onSnooze;
+
+  /// Reads this reminder aloud (null when it has no customer and amount to read).
+  final VoidCallback? onSpeak;
 
   @override
   Widget build(BuildContext context) {
@@ -214,6 +271,14 @@ class _ReminderCard extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 8.w),
+              if (onSpeak != null)
+                IconButton(
+                  key: ValueKey<String>('voice_${reminder.id}'),
+                  visualDensity: VisualDensity.compact,
+                  tooltip: loc.translate('read_aloud'),
+                  icon: Icon(Icons.volume_up_rounded, color: const Color(0xFF3B82F6), size: 22.sp),
+                  onPressed: onSpeak,
+                ),
               InvBadge(label: statusLabel, color: color),
             ],
           ),

@@ -114,4 +114,24 @@ class ReminderSnoozeTest extends TestCase
         $this->api('PUT', "/api/inventory/reminders/{$this->reminder}/snooze", ['minutes' => 0])->assertStatus(422);
         $this->api('PUT', '/api/inventory/reminders/999999/snooze', ['minutes' => 60])->assertStatus(404);
     }
+
+    public function test_a_payment_reminder_says_whose_debt_how_much_is_left_and_for_how_many_days(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-06 10:00:00', 'UTC'));
+
+        $row = $this->listed()[$this->reminder];
+
+        $this->assertSame('Mama Mary', $row['customer_name']);
+        $this->assertEquals(5000, $row['amount_left']);
+        $this->assertSame(3, $row['days'], 'the sale was three days ago');
+    }
+
+    public function test_what_is_left_goes_down_when_part_of_it_is_paid(): void
+    {
+        $sale = (int) $this->rows(fn () => DB::table('inventory_reminders')->where('id', $this->reminder)->value('related_id'));
+        $customer = (int) $this->rows(fn () => DB::table('inventory_sales')->where('id', $sale)->value('customer_id'));
+        $this->api('POST', '/api/inventory/payments', ['customer_id' => $customer, 'amount' => 2000, 'method' => 'cash', 'allocations' => [['sale_id' => $sale, 'amount' => 2000]]])->assertCreated();
+
+        $this->assertEquals(3000, $this->listed()[$this->reminder]['amount_left']);
+    }
 }

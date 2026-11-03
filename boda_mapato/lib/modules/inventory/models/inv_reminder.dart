@@ -10,6 +10,9 @@ class InvReminder {
     this.status = InvReminderStatus.open,
     this.snoozeUntil,
     this.relatedId,
+    this.customerName,
+    this.amountLeft,
+    this.days,
   });
 
   final int id;
@@ -20,4 +23,9 @@ class InvReminder {
   InvReminderStatus status;
   DateTime? snoozeUntil;
   int? relatedId; // saleId or productId
+
+  /// A payment reminder: whose debt it is, how much of the sale is still owed, and for how many days (read aloud).
+  final String? customerName;
+  final double? amountLeft;
+  final int? days;
 }

@@ -2515,6 +2515,9 @@ InvReminder _fromReminderJson(Map<String, dynamic> j) {
     relatedId: j['related_id'] != null 
         ? int.tryParse(j['related_id'].toString()) 
         : (j['sale_id'] != null ? int.tryParse(j['sale_id'].toString()) : null),
+    customerName: j['customer_name']?.toString(),
+    amountLeft: j['amount_left'] == null ? null : double.tryParse(j['amount_left'].toString()),
+    days: j['days'] == null ? null : int.tryParse(j['days'].toString()),
   );
 }
 

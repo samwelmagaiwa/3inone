@@ -35,8 +35,28 @@ class ReminderController extends Controller
         if ($status) { $q->where('status', $status); }
 
         $reminders = $q->paginate(20);
+
+        // A payment reminder says whose debt it is, how much is still owed and for how many days (what the phone reads aloud).
+        $saleIds = collect($reminders->items())->where('type', 'payment_due')->pluck('related_id')->filter()->unique()->values();
+        $sales = $saleIds->isEmpty() ? collect() : DB::table('inventory_sales as s')->leftJoin('inventory_customers as c', 'c.id', '=', 's.customer_id')
+            ->whereIn('s.id', $saleIds)->get(['s.id', 's.total', 's.paid_total', 's.created_at', 's.due_date', 's.customer_name_override', 'c.name as customer_name'])->keyBy('id');
+        $today = now('Africa/Dar_es_Salaam')->startOfDay();
+        $items = collect($reminders->items())->map(function ($r) use ($sales, $today) {
+            $s = $r->type === 'payment_due' && $r->related_id ? $sales->get($r->related_id) : null;
+            if ($s === null) {
+                return $r;
+            }
+            $since = \Carbon\Carbon::parse($s->created_at, 'UTC')->setTimezone('Africa/Dar_es_Salaam')->startOfDay();
+            $r->customer_name = $s->customer_name ?: $s->customer_name_override;
+            $r->amount_left = round(max(0, (float) $s->total - (float) $s->paid_total), 2);
+            $r->days = max(0, (int) $since->diffInDays($today));
+            $r->due_date = $s->due_date;
+
+            return $r;
+        })->all();
+
         return response()->json([
-            'data' => $reminders->items(),
+            'data' => $items,
             'meta' => [
                 'current_page' => $reminders->currentPage(),
                 'last_page' => $reminders->lastPage(),
