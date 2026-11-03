@@ -42,7 +42,8 @@ class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
   Widget build(BuildContext context) {
     final LocalizationService loc = context.watch<LocalizationService>();
     final InventoryProvider inv = context.watch<InventoryProvider>();
-    final List<InvReminder> reminders = inv.reminders;
+    // Open reminders first, then the ones put away for a while, then the done ones.
+    final List<InvReminder> reminders = List<InvReminder>.of(inv.reminders)..sort((InvReminder a, InvReminder b) => a.status.index.compareTo(b.status.index));
 
     return SafeArea(
       child: _loading
@@ -107,6 +108,9 @@ class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
     }
   }
 }
+
+/// "04/11 10:00": the day and the time a snoozed reminder comes back.
+String _when(final DateTime d) => '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
 class _ReminderCard extends StatelessWidget {
   const _ReminderCard({
@@ -193,6 +197,15 @@ class _ReminderCard extends StatelessWidget {
               InvBadge(label: statusLabel, color: color),
             ],
           ),
+          if (reminder.status == InvReminderStatus.snoozed && reminder.snoozeUntil != null)
+            Padding(
+              padding: EdgeInsets.only(top: 6.h),
+              child: Text(
+                loc.translate('snoozed_until').replaceAll('{when}', _when(reminder.snoozeUntil!.toLocal())),
+                key: ValueKey<String>('reminder_back_${reminder.id}'),
+                style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.warningAmber),
+              ),
+            ),
           if (!isDone) ...<Widget>[
             SizedBox(height: 10.h),
             Row(

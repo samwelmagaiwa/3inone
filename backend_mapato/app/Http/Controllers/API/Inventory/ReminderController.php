@@ -26,6 +26,10 @@ class ReminderController extends Controller
         $type = $request->query('type'); // payment_due | low_stock
         $status = $request->query('status'); // open | snoozed | done
 
+        // A reminder put away for a while comes back as open when that time has passed, so it asks again.
+        DB::table('inventory_reminders')->where('status', 'snoozed')->whereNotNull('snooze_until')->where('snooze_until', '<=', now())
+            ->update(['status' => 'open', 'snooze_until' => null, 'updated_at' => now()]);
+
         $q = DB::table('inventory_reminders')->orderByDesc('id');
         if ($type) { $q->where('type', $type); }
         if ($status) { $q->where('status', $status); }
