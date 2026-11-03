@@ -176,4 +176,34 @@ class AssistantFlexibleTest extends TestCase
         $this->assertStringContainsString('forecasts', $bodies[0]['systemInstruction']['parts'][0]['text']);
         $this->assertStringContainsString('Sunday', json_encode($bodies[1]['contents']) . 'Sunday', 'the weekday name goes back to the AI');
     }
+
+    public function test_an_empty_answer_is_asked_for_again_instead_of_failing_the_question(): void
+    {
+        $owner = $this->shop();
+        config(['services.gemini.key' => 'g-test', 'services.gemini.model' => 'gemini-test']);
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::sequence()
+            ->push(['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'thinking...', 'thought' => true]]]]]], 200)
+            ->push(['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Here is my advice.']]]]]], 200)]);
+
+        $this->api($owner, 'POST', '/api/assistant', ['question' => 'Advise me about this business'])->assertOk()->assertJsonPath('data.answer', 'Here is my advice.');
+
+        $bodies = Http::recorded()->map(fn ($pair) => $pair[0]->data())->values()->all();
+        $this->assertCount(2, $bodies);
+        $this->assertStringContainsString('answer now', json_encode($bodies[1]['contents']));
+    }
+
+    public function test_a_tool_that_fails_does_not_fail_the_question(): void
+    {
+        $owner = $this->shop();
+        config(['services.gemini.key' => 'g-test', 'services.gemini.model' => 'gemini-test']);
+        \Illuminate\Support\Facades\Schema::drop('inventory_expenses');
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::sequence()
+            ->push(['candidates' => [['content' => ['role' => 'model', 'parts' => [['functionCall' => ['name' => 'expenses_detail', 'args' => []]]]]]]], 200)
+            ->push(['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'I could not read the spending now.']]]]]], 200)]);
+
+        $this->api($owner, 'POST', '/api/assistant', ['question' => 'How much did I spend?'])->assertOk()->assertJsonPath('data.answer', 'I could not read the spending now.');
+
+        $bodies = Http::recorded()->map(fn ($pair) => $pair[0]->data())->values()->all();
+        $this->assertStringContainsString('could not be read', json_encode($bodies[1]['contents']));
+    }
 }
