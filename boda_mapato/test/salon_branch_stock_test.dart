@@ -101,6 +101,14 @@ void main() {
     expect(t.getTopLeft(find.byKey(const Key('bs_name_1'))).dy, lessThan(firstBefore - 500), reason: 'the first product did scroll up and away');
   });
 
+  testWidgets('the notice and the list are close together: no big gap between "add a branch first" and the goods', (t) async {
+    await _pump(t, _FakeSalon()..noBranches = true);
+
+    final double noticeBottom = t.getBottomLeft(find.byKey(const Key('bs_no_branches'))).dy;
+    final double firstRowTop = t.getTopLeft(find.byKey(const Key('bs_name_7'))).dy;
+    expect(firstRowTop - noticeBottom, lessThan(60), reason: 'a slim notice and then the goods, not a page of empty space');
+  });
+
   testWidgets('without a branch there is only the main store column', (t) async {
     await _pump(t, _FakeSalon()..noBranches = true);
 

@@ -112,9 +112,8 @@ class _BranchStockScreenState extends State<BranchStockScreen> {
                       child: RefreshIndicator(
                         onRefresh: _load,
                         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), children: <Widget>[
-                          if (SalonEmbedded.of(context)) Align(alignment: Alignment.centerRight, child: history(sw)),
-                          if (_list(_data['products']).isEmpty && branches.isNotEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Hakuna bidhaa bado. Ongeza bidhaa kwenye Huduma na Bidhaa.' : 'No goods yet. Add goods in Services & Goods.', key: const Key('bs_no_goods'), textAlign: TextAlign.center)),
-                          if (branches.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Ongeza tawi kwanza (menyu ya Matawi).' : 'Add a branch first (the Branches menu).', key: const Key('bs_no_branches'), textAlign: TextAlign.center)),
+                          // One slim line: what is missing (if anything) and the history button, with no big gaps around them.
+                          _topLine(sw, branches),
                           // The goods are ONE card of rows, each divided from the next by the glowing line.
                           if (_list(_data['products']).isNotEmpty)
                             GlowListCard(
@@ -127,6 +126,41 @@ class _BranchStockScreenState extends State<BranchStockScreen> {
                     ),
                   ],
                 ),
+    );
+  }
+
+  /// What is missing (no goods yet, no branch yet) as a slim notice, with the history button beside it when this page is inside the salon.
+  Widget _topLine(final bool sw, final List<Map<String, dynamic>> branches) {
+    final bool noGoods = _list(_data['products']).isEmpty && branches.isNotEmpty;
+    final bool noBranch = branches.isEmpty;
+    final bool embedded = SalonEmbedded.of(context);
+    if (!noGoods && !noBranch && !embedded) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(children: <Widget>[
+        if (noGoods || noBranch)
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(color: ThemeConstants.warningAmber.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12), border: Border.all(color: ThemeConstants.warningAmber.withValues(alpha: 0.6))),
+              child: Row(children: <Widget>[
+                const Icon(Icons.info_outline_rounded, size: 18, color: ThemeConstants.warningAmber),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    noBranch ? (sw ? 'Ongeza tawi kwanza (menyu ya Matawi).' : 'Add a branch first (the Branches menu).') : (sw ? 'Hakuna bidhaa bado. Ongeza bidhaa kwenye Huduma na Bidhaa.' : 'No goods yet. Add goods in Services & Goods.'),
+                    key: Key(noBranch ? 'bs_no_branches' : 'bs_no_goods'),
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ),
+              ]),
+            ),
+          )
+        else
+          const Spacer(),
+        if (embedded) history(sw),
+      ]),
     );
   }
 
