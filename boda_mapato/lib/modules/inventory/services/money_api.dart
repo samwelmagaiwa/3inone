@@ -7,6 +7,9 @@ class MoneyApi {
 
   final ApiService _api;
 
+  /// The advice is worked out by the AI on the server, which can take close to a minute: wait for it.
+  static const Duration adviceTimeout = Duration(seconds: 65);
+
   static String day(final DateTime d) => '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   static String monthKey(final DateTime d) => '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}';
@@ -98,5 +101,5 @@ class MoneyApi {
 
   /// Where to do better: [lang] is `sw` or `en`; [refresh] asks for a fresh answer (a few a day).
   Future<Map<String, dynamic>> advice(final String month, final String lang, {final bool refresh = false}) async =>
-      _data(await _api.get('/inventory/advice?month=$month&lang=$lang${refresh ? '&refresh=1' : ''}'));
+      _data(await _api.get('/inventory/advice?month=$month&lang=$lang${refresh ? '&refresh=1' : ''}', timeout: adviceTimeout));
 }

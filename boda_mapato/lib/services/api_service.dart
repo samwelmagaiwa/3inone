@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 // ignore_for_file: avoid_dynamic_calls, avoid_positional_boolean_parameters, cascade_invocations, avoid_catches_without_on_clauses
@@ -110,12 +111,14 @@ class ApiService {
   }
 
   // Generic HTTP methods
+  /// [timeout] is for a request that is slow by nature (advice from the AI waits for it); the others wait the usual time.
   Future<Map<String, dynamic>> get(
     final String endpoint, {
     final bool requireAuth = true,
     final Map<String, dynamic>? queryParams,
+    final Duration? timeout,
   }) async {
-    return _get(endpoint, requireAuth: requireAuth, queryParams: queryParams);
+    return _get(endpoint, requireAuth: requireAuth, queryParams: queryParams, timeout: timeout);
   }
 
   // Safe GET that returns null instead of throwing on API errors (e.g., 404)
@@ -320,6 +323,7 @@ class ApiService {
     final String endpoint, {
     final bool requireAuth = true,
     final Map<String, dynamic>? queryParams,
+    final Duration? timeout,
   }) async {
     try {
       final Map<String, String> headers =
@@ -335,9 +339,11 @@ class ApiService {
             queryParams?.map((key, value) => MapEntry(key, value.toString())),
       );
 
-      final http.Response response = await _sharedGet(uri, headers);
+      final http.Response response = await _sharedGet(uri, headers, timeout);
 
       return _handleResponse(response);
+    } on TimeoutException {
+      throw ApiException(LocalizationService.instance.translate('request_took_too_long'));
     } on SocketException catch (e) {
       throw ApiException(LocalizationService.instance.translateWith('no_network_connection', <Object?>[e.message]));
     } on HttpException catch (e) {
@@ -357,12 +363,12 @@ class ApiService {
   /// so nobody ever receives an old answer. Each caller decodes the response for itself.
   static final Map<String, Future<http.Response>> _inFlight = <String, Future<http.Response>>{};
 
-  Future<http.Response> _sharedGet(final Uri uri, final Map<String, String> headers) {
+  Future<http.Response> _sharedGet(final Uri uri, final Map<String, String> headers, [final Duration? timeout]) {
     final String key = '${headers["Authorization"] ?? ""} ${headers["X-Service"] ?? ""} $uri';
     final Future<http.Response>? running = _inFlight[key];
     if (running != null) return running;
 
-    final Future<http.Response> request = http.get(uri, headers: headers).timeout(timeoutDuration);
+    final Future<http.Response> request = http.get(uri, headers: headers).timeout(timeout ?? timeoutDuration);
     _inFlight[key] = request;
     // Block bodies, not arrows: `remove` hands back the request itself, and returning a FAILED request from the
     // error handler made this derived future fail too, with nobody listening (an uncaught error on every timeout).
@@ -404,6 +410,8 @@ class ApiService {
           .timeout(timeout ?? timeoutDuration);
 
       return _handleResponse(response);
+    } on TimeoutException {
+      throw ApiException(LocalizationService.instance.translate('request_took_too_long'));
     } on SocketException catch (e) {
       throw ApiException(LocalizationService.instance.translateWith('no_network_connection', <Object?>[e.message]));
     } on HttpException catch (e) {
