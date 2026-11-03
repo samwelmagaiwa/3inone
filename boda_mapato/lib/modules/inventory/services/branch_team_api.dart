@@ -20,6 +20,19 @@ class BranchTeamApi {
   /// The branches that can be chosen (`id`, `name`, `active`).
   Future<List<Map<String, dynamic>>> branches() async => _rows(await _api.get('/inventory/branches'));
 
+  /// Makes a branch with its place (region, district, ward, street or village) and address.
+  Future<void> addBranch({required final String name, required final String region, required final String district, required final String ward, required final String street, final String address = '', final String phone = ''}) async {
+    await _api.post('/inventory/branches', <String, dynamic>{
+      'name': name,
+      'region': region,
+      'district': district,
+      'ward': ward,
+      'street': street,
+      if (address.isNotEmpty) 'address': address,
+      if (phone.isNotEmpty) 'phone': phone,
+    });
+  }
+
   /// Place a person in a branch; null takes them out of any branch.
   Future<void> assign(final String staffId, final int? branchId) async {
     await _api.put('/inventory/branch-team/$staffId', <String, dynamic>{'branch_id': branchId});

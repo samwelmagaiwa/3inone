@@ -27,12 +27,16 @@ class ServiceBranchApi extends SalonApi {
   }
 
   @override
-  Future<void> saveBranch({final int? id, required final String name, final String? address, final String? phone, final bool? active}) async {
+  Future<void> saveBranch({final int? id, required final String name, final String? address, final String? phone, final bool? active, final String? region, final String? district, final String? ward, final String? street}) async {
     final Map<String, dynamic> body = <String, dynamic>{
       'name': name,
       if (address != null) 'address': address,
       if (phone != null) 'phone': phone,
       if (active != null) 'active': active,
+      if (region != null) 'region': region,
+      if (district != null) 'district': district,
+      if (ward != null) 'ward': ward,
+      if (street != null) 'street': street,
     };
     if (id == null) {
       await _client.post(_path, body);

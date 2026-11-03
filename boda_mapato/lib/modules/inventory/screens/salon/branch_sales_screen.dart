@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/branch_team_api.dart';
 import '../money/money_style.dart';
 import 'salon_input.dart' show SalonEmbedded;
+import '../../../../widgets/place_picker.dart';
+import '../widgets/branch_form_dialog.dart';
 import '../widgets/glow_list_card.dart';
+import '../widgets/inv_action_button.dart';
 import '../widgets/inventory_widgets.dart' show formatAmount;
 
 enum _Period { week, month, quarter, year }
@@ -15,7 +19,10 @@ enum _Period { week, month, quarter, year }
 /// settings). A person's branch is where their sales are recorded when no other branch is chosen. Profit appears only when the
 /// server sends it.
 class BranchSalesScreen extends StatefulWidget {
-  const BranchSalesScreen({super.key, this.api, this.manage, this.today});
+  const BranchSalesScreen({super.key, this.api, this.manage, this.today, this.placeSource});
+
+  /// Where the location lists for a new branch come from (the server's; a test brings its own).
+  final PlaceSource? placeSource;
 
   final BranchTeamApi? api;
 
@@ -95,6 +102,20 @@ class _BranchSalesScreenState extends State<BranchSalesScreen> {
       if (mounted) setState(() => _error = readableErrorMessage(e));
     }
     if (mounted) setState(() => _loading = false);
+  }
+
+  /// Opens the popup that makes a branch with its whole place; the list of branches is read again when it is saved.
+  Future<void> _addBranch() async {
+    final bool sw = LocalizationService.instance.isSwahili;
+    final BranchForm? got = await showDialog<BranchForm>(context: context, builder: (BuildContext d) => BranchFormDialog(placeSource: widget.placeSource));
+    if (got == null || !mounted) return;
+    try {
+      await _api.addBranch(name: got.name, region: got.region!, district: got.district!, ward: got.ward!, street: got.street!, address: got.address, phone: got.phone);
+      await _load();
+      if (mounted) ThemeConstants.showSuccessSnackBar(context, sw ? 'Tawi limeongezwa.' : 'Branch added.');
+    } on Exception catch (e) {
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
+    }
   }
 
   Future<void> _place(final Map<String, dynamic> member, final int? branchId) async {
@@ -213,7 +234,17 @@ class _BranchSalesScreenState extends State<BranchSalesScreen> {
               : 'Place each person in the branch they work in. Their sales are recorded there when no other branch is chosen.',
           style: kMoneyCaption,
         ),
-        if (_branches.isEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(sw ? 'Ongeza tawi kwanza (menyu ya Matawi).' : 'Add a branch first (Branches menu).', key: const Key('bp_nobranches'), style: const TextStyle(color: Colors.amber))),
+        const SizedBox(height: 10),
+        // Branches can be made right here, with their whole place; "Add a branch first" is the same button when there is none yet.
+        InvActionButton(
+          key: const Key('people_add_branch'),
+          label: sw ? 'Ongeza tawi' : 'Add branch',
+          icon: Icons.add_business_rounded,
+          color: ThemeConstants.invAccent,
+          arrow: false,
+          onPressed: _addBranch,
+        ),
+        if (_branches.isEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(sw ? 'Ongeza tawi kwanza ili uweke watu kwenye matawi.' : 'Add a branch first, then place people in branches.', key: const Key('bp_nobranches'), style: const TextStyle(color: Colors.amber))),
         const SizedBox(height: 10),
         if (_team.isNotEmpty)
           GlowListCard(

@@ -48,6 +48,10 @@ class BusinessBranchController extends Controller
             'name' => $row->name,
             'address' => $row->address,
             'phone' => $row->phone,
+            'region' => $row->region ?? null,
+            'district' => $row->district ?? null,
+            'ward' => $row->ward ?? null,
+            'street' => $row->street ?? null,
             'active' => (bool) $row->active,
             'records' => $this->used($service, (int) $row->id),
         ];
@@ -80,6 +84,10 @@ class BusinessBranchController extends Controller
             'name' => ['required', 'string', 'max:80', Rule::unique('business_branches', 'name')->where('owner_id', $owner)->where('service', $service)],
             'address' => 'nullable|string|max:160',
             'phone' => 'nullable|string|max:30',
+            'region' => 'nullable|string|max:80',
+            'district' => 'nullable|string|max:80',
+            'ward' => 'nullable|string|max:80',
+            'street' => 'nullable|string|max:80',
         ], ['name.unique' => 'Tawi lenye jina hili lipo tayari. / A branch with this name already exists.']);
 
         $id = DB::table('business_branches')->insertGetId($data + [
@@ -98,6 +106,10 @@ class BusinessBranchController extends Controller
             'name' => ['sometimes', 'string', 'max:80', Rule::unique('business_branches', 'name')->where('owner_id', $row->owner_id)->where('service', $service)->ignore($id)],
             'address' => 'sometimes|nullable|string|max:160',
             'phone' => 'sometimes|nullable|string|max:30',
+            'region' => 'sometimes|nullable|string|max:80',
+            'district' => 'sometimes|nullable|string|max:80',
+            'ward' => 'sometimes|nullable|string|max:80',
+            'street' => 'sometimes|nullable|string|max:80',
             'active' => 'sometimes|boolean',
         ], ['name.unique' => 'Tawi lenye jina hili lipo tayari. / A branch with this name already exists.']);
 

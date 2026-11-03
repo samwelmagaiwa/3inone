@@ -6,14 +6,19 @@ import '../../../../services/api_service.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../models/salon_models.dart';
+import '../../../../widgets/place_picker.dart';
 import '../../services/salon_api.dart';
+import '../widgets/branch_form_dialog.dart';
 import 'salon_input.dart';
 
 /// The business's branches (a salon's, a shop's or a depot's). Choosing one makes every figure, list and new record on the phone
 /// that branch's; "All branches" goes back to the whole business. The owner and managers add, rename and switch branches off.
 /// A business with one branch never needs this page.
 class BranchesScreen extends StatefulWidget {
-  const BranchesScreen({super.key, this.api, this.manage = true, this.service});
+  const BranchesScreen({super.key, this.api, this.manage = true, this.service, this.placeSource});
+
+  /// Where the location lists come from (the server's; a test brings its own).
+  final PlaceSource? placeSource;
 
   final SalonApi? api;
 
@@ -66,9 +71,9 @@ class _BranchesScreenState extends State<BranchesScreen> {
   }
 
   Future<void> _edit([final SalonBranchInfo? b]) async {
-    final (String, String)? got = await showDialog<(String, String)>(context: context, builder: (BuildContext d) => _BranchDialog(branch: b));
-    if (got == null || got.$1.isEmpty || !mounted) return;
-    await _run(() => _api.saveBranch(id: b?.id, name: got.$1, address: got.$2));
+    final BranchForm? got = await showDialog<BranchForm>(context: context, builder: (BuildContext d) => BranchFormDialog(branch: b, placeSource: widget.placeSource));
+    if (got == null || !mounted) return;
+    await _run(() => _api.saveBranch(id: b?.id, name: got.name, address: got.address, phone: got.phone, region: got.region, district: got.district, ward: got.ward, street: got.street));
   }
 
   Future<void> _run(final Future<void> Function() action) async {
@@ -116,7 +121,7 @@ class _BranchesScreenState extends State<BranchesScreen> {
                         key: Key('branch_${b.id}'),
                         leading: Radio<int?>(value: b.id, groupValue: chosen, onChanged: b.active ? _choose : null),
                         title: Text(b.name, style: TextStyle(color: b.active ? null : Colors.grey)),
-                        subtitle: Text(<String>[if (b.address.isNotEmpty) b.address, if (!b.active) (sw ? 'Limezimwa' : 'Switched off')].join(' · ')),
+                        subtitle: Text(<String>[if (b.placeLine.isNotEmpty) b.placeLine, if (b.address.isNotEmpty) b.address, if (!b.active) (sw ? 'Limezimwa' : 'Switched off')].join(' · ')),
                         onTap: b.active ? () => _choose(b.id) : null,
                         trailing: widget.manage
                             ? PopupMenuButton<String>(
@@ -141,45 +146,6 @@ class _BranchesScreenState extends State<BranchesScreen> {
                       ),
                   ]),
                 ),
-    );
-  }
-}
-
-/// Name and address of a branch. It owns its controllers so they outlive the dialog's closing animation.
-class _BranchDialog extends StatefulWidget {
-  const _BranchDialog({this.branch});
-
-  final SalonBranchInfo? branch;
-
-  @override
-  State<_BranchDialog> createState() => _BranchDialogState();
-}
-
-class _BranchDialogState extends State<_BranchDialog> {
-  late final TextEditingController _name = TextEditingController(text: widget.branch?.name ?? '');
-  late final TextEditingController _address = TextEditingController(text: widget.branch?.address ?? '');
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _address.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bool sw = context.watch<LocalizationService>().isSwahili;
-
-    return AlertDialog(
-      title: Text(widget.branch == null ? (sw ? 'Tawi jipya' : 'New branch') : (sw ? 'Badili tawi' : 'Edit branch')),
-      content: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-        TextField(style: salonInputStyle, key: const Key('branch_name'), controller: _name, decoration: salonInput(labelText: sw ? 'Jina la tawi' : 'Branch name')),
-        TextField(style: salonInputStyle, key: const Key('branch_address'), controller: _address, decoration: salonInput(labelText: sw ? 'Mahali' : 'Address')),
-      ]),
-      actions: <Widget>[
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(sw ? 'Ghairi' : 'Cancel')),
-        FilledButton(key: const Key('branch_save'), onPressed: () => Navigator.pop(context, (_name.text.trim(), _address.text.trim())), child: Text(sw ? 'Hifadhi' : 'Save')),
-      ],
     );
   }
 }
