@@ -230,6 +230,7 @@ class CustomerAccount {
     this.paidOld = 0,
     this.paidNew = 0,
     this.paidAll = 0,
+    this.lifetime = const CustomerLifetime(),
   });
 
   factory CustomerAccount.fromJson(final Map<String, dynamic> j) {
@@ -249,6 +250,7 @@ class CustomerAccount {
       paidOld: _num(paid['old']),
       paidNew: _num(paid['new']),
       paidAll: _num(paid['all']),
+      lifetime: CustomerLifetime.fromJson(j['lifetime'] is Map ? Map<String, dynamic>.from(j['lifetime'] as Map) : <String, dynamic>{}),
     );
   }
 
@@ -261,4 +263,73 @@ class CustomerAccount {
   final double paidOld;
   final double paidNew;
   final double paidAll;
+
+  /// Everything this customer has bought, and what it earned the business.
+  final CustomerLifetime lifetime;
+}
+
+/// All the customer has bought since the first sale, and the profit it brought (null for anyone who may not see profit).
+@immutable
+class CustomerLifetime {
+  const CustomerLifetime({this.purchases = 0, this.sales = 0, this.profit, this.firstPurchase, this.lastPurchase});
+
+  factory CustomerLifetime.fromJson(final Map<String, dynamic> j) => CustomerLifetime(
+        purchases: _num(j['purchases']).toInt(),
+        sales: _num(j['sales']),
+        profit: j['profit_visible'] == true && j['profit'] != null ? _num(j['profit']) : null,
+        firstPurchase: j['first_purchase']?.toString(),
+        lastPurchase: j['last_purchase']?.toString(),
+      );
+
+  final int purchases;
+  final double sales;
+  final double? profit;
+  final String? firstPurchase;
+  final String? lastPurchase;
+}
+
+/// One of the customer records that look like the same person saved more than once.
+@immutable
+class DuplicateCustomer {
+  const DuplicateCustomer({required this.id, required this.name, this.phone = '', this.sales = 0, this.owes = 0});
+
+  factory DuplicateCustomer.fromJson(final Map<String, dynamic> j) => DuplicateCustomer(
+        id: _num(j['id']).toInt(),
+        name: (j['name'] ?? '').toString(),
+        phone: (j['phone'] ?? '').toString(),
+        sales: _num(j['sales']).toInt(),
+        owes: _num(j['owes']),
+      );
+
+  final int id;
+  final String name;
+  final String phone;
+
+  /// How many sales it has, and what it owes (old and new debts): what helps to choose the one to keep.
+  final int sales;
+  final double owes;
+}
+
+/// Customers that look like one person: to be merged into one.
+@immutable
+class DuplicateGroup {
+  const DuplicateGroup(this.customers);
+
+  factory DuplicateGroup.fromJson(final Map<String, dynamic> j) => DuplicateGroup(<DuplicateCustomer>[
+        for (final Object? e in (j['customers'] is List ? j['customers'] as List : const <Object?>[])) if (e is Map) DuplicateCustomer.fromJson(Map<String, dynamic>.from(e)),
+      ]);
+
+  final List<DuplicateCustomer> customers;
+
+  /// The one most likely to be kept: the one with the most sales, then the one with a phone number, then the oldest.
+  DuplicateCustomer get suggested {
+    final List<DuplicateCustomer> sorted = List<DuplicateCustomer>.of(customers)
+      ..sort((DuplicateCustomer a, DuplicateCustomer b) {
+        final int bySales = b.sales.compareTo(a.sales);
+        if (bySales != 0) return bySales;
+        final int byPhone = (b.phone.isNotEmpty ? 1 : 0).compareTo(a.phone.isNotEmpty ? 1 : 0);
+        return byPhone != 0 ? byPhone : a.id.compareTo(b.id);
+      });
+    return sorted.first;
+  }
 }

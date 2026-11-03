@@ -424,6 +424,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('inventory/brands',        [InventoryBrandController::class, 'store']);
         Route::put('inventory/brands/{id}',    [InventoryBrandController::class, 'update']);
         Route::delete('inventory/brands/{id}', [InventoryBrandController::class, 'destroy']);
+        Route::get('inventory/customers/duplicates', [InventoryCustomerController::class, 'duplicates']);
+        Route::post('inventory/customers/{id}/merge', [InventoryCustomerController::class, 'merge']);
         Route::put('inventory/customers/{id}',     [InventoryCustomerController::class, 'update']);
         Route::delete('inventory/customers/{id}',  [InventoryCustomerController::class, 'destroy']);
     });

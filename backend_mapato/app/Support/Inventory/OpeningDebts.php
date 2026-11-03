@@ -216,15 +216,6 @@ final class OpeningDebts
 
     private static function findOrCreateCustomer(string $name, string $phone): int
     {
-        if ($phone !== '') {
-            $id = DB::table('inventory_customers')->whereIn('phone', SalonClientFromSale::spellings($phone))->orderBy('id')->value('id');
-        } else {
-            $id = DB::table('inventory_customers')->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->where(fn ($q) => $q->whereNull('phone')->orWhere('phone', ''))->orderBy('id')->value('id');
-        }
-        if ($id !== null) {
-            return (int) $id;
-        }
-
-        return (int) DB::table('inventory_customers')->insertGetId(['name' => $name, 'phone' => $phone, 'created_at' => now(), 'updated_at' => now()]);
+        return CustomerMatch::findOrCreate($name, $phone, null, true);
     }
 }

@@ -1,5 +1,6 @@
 ﻿import 'customer_account_screen.dart';
 import 'customer_report_screen.dart';
+import 'merge_customers_screen.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -43,6 +44,7 @@ class _CreditScreenState extends State<CreditScreen> {
       depot.fetchCreditCustomers(),
       depot.fetchDebtorsAgeing(),
       depot.fetchCrateBalances(),
+      depot.fetchDuplicateCustomers(),
     ]);
     if (mounted) {
       setState(() => _loading = false);
@@ -90,6 +92,7 @@ class _CreditCustomersTabState extends State<_CreditCustomersTab> {
   Widget build(BuildContext context) {
     final LocalizationService loc = context.watch<LocalizationService>();
     final String q = _query.trim().toLowerCase();
+    final int duplicates = context.watch<DepotProvider>().duplicateGroups.length;
     final List<InvCreditCustomer> rows = context
         .watch<DepotProvider>()
         .creditCustomers
@@ -112,13 +115,50 @@ class _CreditCustomersTabState extends State<_CreditCustomersTab> {
         separatorBuilder: (_, __) => SizedBox(height: 8.h),
         itemBuilder: (_, int i) {
           if (i == 0) {
-            return InvSearchField(
-              hint: loc.translate('search_customers'),
-              onChanged: (String v) => setState(() => _query = v),
+            return Column(
+              children: <Widget>[
+                if (duplicates > 0) _DuplicatesBanner(groups: duplicates),
+                InvSearchField(
+                  hint: loc.translate('search_customers'),
+                  onChanged: (String v) => setState(() => _query = v),
+                ),
+              ],
             );
           }
           return _CreditCustomerCard(customer: rows[i - 1]);
         },
+      ),
+    );
+  }
+}
+
+/// Said above the list when some customers look like one person saved twice: opens the screen that merges them.
+class _DuplicatesBanner extends StatelessWidget {
+  const _DuplicatesBanner({required this.groups});
+
+  final int groups;
+
+  @override
+  Widget build(BuildContext context) {
+    final LocalizationService loc = context.watch<LocalizationService>();
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: InkWell(
+        key: const ValueKey<String>('duplicates_banner'),
+        borderRadius: BorderRadius.circular(12.r),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MergeCustomersScreen())),
+        child: Container(
+          padding: EdgeInsets.all(10.w),
+          decoration: BoxDecoration(color: ThemeConstants.warningAmber.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(12.r), border: Border.all(color: ThemeConstants.warningAmber)),
+          child: Row(
+            children: <Widget>[
+              Icon(Icons.merge_type_rounded, color: ThemeConstants.warningAmber, size: 22.sp),
+              SizedBox(width: 8.w),
+              Expanded(child: Text(loc.translate('dup_banner').replaceAll('{n}', '$groups'), style: ThemeConstants.captionStyle.copyWith(color: Colors.white, fontWeight: FontWeight.w600))),
+              const Icon(Icons.chevron_right_rounded, color: Colors.white70),
+            ],
+          ),
+        ),
       ),
     );
   }

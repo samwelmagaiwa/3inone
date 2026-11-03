@@ -452,6 +452,25 @@ class DepotProvider extends ChangeNotifier {
     }
   }
 
+  /// Customers that look like the same person saved more than once (to be merged). Empty when there are none or it could not be loaded.
+  List<DuplicateGroup> duplicateGroups = <DuplicateGroup>[];
+
+  Future<void> fetchDuplicateCustomers() async {
+    duplicateGroups = await _getList<DuplicateGroup>('/inventory/customers/duplicates', DuplicateGroup.fromJson);
+    notifyListeners();
+  }
+
+  /// Customer [dropId] is the same person as [keepId]: everything moves onto [keepId]. Null when done, otherwise why not.
+  Future<String?> mergeCustomers({required int keepId, required int dropId}) async {
+    try {
+      await _api.post('/inventory/customers/$dropId/merge', <String, dynamic>{'into_id': keepId});
+      await Future.wait<void>(<Future<void>>[fetchCreditCustomers(), fetchDuplicateCustomers()]);
+      return null;
+    } on Exception catch (e) {
+      return readableErrorMessage(e);
+    }
+  }
+
   /// What the customer owes in three parts (the old debt, the new debt, and the total of both), with the debts still to be paid.
   /// Null when it could not be loaded, which is different from "they owe nothing".
   Future<CustomerDebtSummary?> fetchCustomerDebtSummary(int customerId) async {

@@ -96,6 +96,7 @@ class _CustomerAccountScreenState extends State<CustomerAccountScreen> {
                         if (a.phone.isNotEmpty) Padding(padding: EdgeInsets.only(bottom: 8.h), child: Text(a.phone, style: ThemeConstants.captionStyle)),
                         CustomerDebtCard(summary: a.debt),
                         SizedBox(height: 10.h),
+                        if (a.lifetime.purchases > 0) _lifetimeCard(loc, a.lifetime),
                         if (a.debt.totalLeft > 0)
                           SizedBox(
                             width: double.infinity,
@@ -134,6 +135,44 @@ class _CustomerAccountScreenState extends State<CustomerAccountScreen> {
                       ],
                     ),
                   ),
+      ),
+    );
+  }
+
+  /// What this customer has bought in all, and the profit it brought (only for those who may see profit).
+  Widget _lifetimeCard(final LocalizationService loc, final CustomerLifetime l) {
+    Widget cell(final String label, final String value, {final Color? color, final Key? key}) => Expanded(
+          child: Column(
+            key: key,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(label, style: ThemeConstants.captionStyle.copyWith(fontSize: 10.sp)),
+              Text(value, style: ThemeConstants.bodyStyle.copyWith(color: color ?? Colors.white, fontWeight: FontWeight.w800, fontSize: 13.sp)),
+            ],
+          ),
+        );
+    String day(final String? s) => s == null || s.length < 10 ? '—' : s.substring(0, 10);
+    return Container(
+      key: const ValueKey<String>('account_lifetime'),
+      margin: EdgeInsets.only(bottom: 10.h),
+      padding: EdgeInsets.all(10.w),
+      decoration: BoxDecoration(color: ThemeConstants.invFill, borderRadius: BorderRadius.circular(12.r), border: Border.all(color: ThemeConstants.invBorder)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(loc.translate('acct_bought_title').toUpperCase(), style: ThemeConstants.captionStyle.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1, color: Colors.white70)),
+          SizedBox(height: 6.h),
+          Row(children: <Widget>[
+            cell(loc.translate('acct_purchases'), '${l.purchases}'),
+            cell(loc.translate('acct_sales'), _tsh(l.sales), key: const ValueKey<String>('lifetime_sales')),
+            if (l.profit != null) cell(loc.translate('acct_profit'), _tsh(l.profit!), color: l.profit! >= 0 ? ThemeConstants.successGreen : ThemeConstants.errorRed, key: const ValueKey<String>('lifetime_profit')),
+          ]),
+          SizedBox(height: 6.h),
+          Row(children: <Widget>[
+            cell(loc.translate('acct_first'), day(l.firstPurchase)),
+            cell(loc.translate('acct_last'), day(l.lastPurchase)),
+          ]),
+        ],
       ),
     );
   }

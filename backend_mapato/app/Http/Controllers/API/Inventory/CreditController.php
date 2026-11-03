@@ -212,17 +212,21 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))],
         responses: [new OA\Response(response: 200, description: 'Success')],
     )]
-    public function account(int $id)
+    public function account(Request $request, int $id)
     {
         $customer = DB::table('inventory_customers')->find($id);
         if (! $customer) {
             return response()->json(['message' => 'Not found'], 404);
         }
 
+        // what this customer has bought in all, and (to those who may see profit) what it earned
+        $tz = \App\Support\Inventory\MonthlyFigures::TIMEZONE;
+        $story = \App\Support\Inventory\CustomerReport::build($id, '2000-01-01', now($tz)->toDateString(), 'month', $request->user());
+
         return response()->json(['data' => ['customer' => [
             'id' => (int) $customer->id, 'name' => $customer->name, 'phone' => $customer->phone,
             'credit_limit' => (float) $customer->credit_limit, 'is_blocked' => (bool) $customer->is_blocked,
-        ]] + CustomerDebt::account($id)]);
+        ], 'lifetime' => $story['lifetime'] + ['profit_visible' => $story['profit_visible']]] + CustomerDebt::account($id)]);
     }
 
     /** Opening balance, the period's transactions, closing balance. */

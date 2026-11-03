@@ -97,12 +97,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         $name = trim($data['name']);
         $phone = trim($data['phone']);
 
-        // The same person saved twice (a double-tap, or re-entering a known
-        // customer) must not become two records: hand back the existing one.
-        $existingId = DB::table('inventory_customers')
-            ->where('phone', $phone)
-            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
-            ->value('id');
+        // The same person saved twice (a double-tap, or re-entering a known customer, written with other capitals or another way of writing
+        // the number) must not become two records: hand back the existing one.
+        $existingId = \App\Support\Inventory\CustomerMatch::find($name, $phone);
         if ($existingId) {
             return response()->json([
                 'message' => 'Customer already exists',
@@ -226,5 +223,25 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         \App\Support\Inventory\RecordTrash::trash($request, 'customers', $id, $request->input('reason', $request->query('reason')));
 
         return response()->json(['message' => 'Customer moved to the Trash']);
+    }
+
+    /** GET /inventory/customers/duplicates: customers that look like one person saved more than once, to be merged. */
+    public function duplicates()
+    {
+        return response()->json(['data' => \App\Support\Inventory\CustomerMatch::duplicateGroups()]);
+    }
+
+    /**
+     * POST /inventory/customers/{id}/merge  { into_id }
+     *
+     * Customer {id} is the same person as customer into_id: everything of {id} moves onto into_id, which keeps the name, and {id} goes to
+     * the Trash. The debts, payments and history of both then show on one customer account.
+     */
+    public function merge(Request $request, int $id)
+    {
+        $data = $request->validate(['into_id' => 'required|integer']);
+        $result = \App\Support\Inventory\CustomerMerge::merge($request, (int) $data['into_id'], $id);
+
+        return response()->json(['message' => 'Customers merged', 'data' => $result]);
     }
 }
