@@ -15,6 +15,7 @@ import '../../models/inv_depot_models.dart';
 import '../../providers/depot_provider.dart';
 import '../widgets/crates_owed_note.dart';
 import '../widgets/customer_debt_card.dart';
+import '../widgets/inv_action_button.dart';
 import '../widgets/inventory_widgets.dart';
 import '../../providers/inventory_provider.dart';
 import '../salon/client_history_screen.dart';
@@ -263,105 +264,70 @@ class _CreditCustomerCard extends StatelessWidget {
             // Salon: the client's page (visits, favourite service, notes, when they are due back).
             if (_isSalon(context)) ...<Widget>[
               SizedBox(height: 8.h),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  key: ValueKey<String>('client_history_${customer.id}'),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.white24),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                  ),
-                  onPressed: () => Navigator.push<void>(
-                    context,
-                    MaterialPageRoute<void>(builder: (_) => ClientHistoryScreen(customerId: customer.id, name: customer.name)),
-                  ),
-                  icon: Icon(Icons.history, size: 16.sp, color: Colors.white70),
-                  label: Text(loc.isSwahili ? 'Historia ya mteja' : 'Client history', style: ThemeConstants.captionStyle),
+              InvActionButton(
+                key: ValueKey<String>('client_history_${customer.id}'),
+                label: loc.isSwahili ? 'Historia ya mteja' : 'Client history',
+                icon: Icons.history_rounded,
+                color: const Color(0xFF8B5CF6),
+                onPressed: () => Navigator.push<void>(
+                  context,
+                  MaterialPageRoute<void>(builder: (_) => ClientHistoryScreen(customerId: customer.id, name: customer.name)),
                 ),
               ),
             ],
-            SizedBox(height: 8.h),
+            SizedBox(height: 10.h),
             // The whole account on one page: old debt, new debt, total, every debt with its payments, and all payments by date.
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                key: ValueKey<String>('customer_account_${customer.id}'),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: ThemeConstants.warningAmber.withValues(alpha: 0.14),
-                  side: BorderSide(color: ThemeConstants.warningAmber.withValues(alpha: 0.7)),
-                  padding: EdgeInsets.symmetric(vertical: 10.h),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                ),
-                onPressed: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => CustomerAccountScreen(customer: customer))),
-                icon: Icon(Icons.account_balance_wallet_outlined, size: 18.sp, color: ThemeConstants.warningAmber),
-                label: Text(loc.translate('cd_account_title'), style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700, fontSize: 13.sp)),
-              ),
+            InvActionButton(
+              key: ValueKey<String>('customer_account_${customer.id}'),
+              label: loc.translate('cd_account_title'),
+              icon: Icons.account_balance_wallet_rounded,
+              color: const Color(0xFFF59E0B),
+              onPressed: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => CustomerAccountScreen(customer: customer))),
             ),
             SizedBox(height: 8.h),
             // Everything about this customer for any week, month or year: bought, paid, profit brought, what they owe.
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                key: ValueKey<String>('customer_report_${customer.id}'),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: ThemeConstants.invAccent.withValues(alpha: 0.14),
-                  side: BorderSide(color: ThemeConstants.invAccent.withValues(alpha: 0.7)),
-                  padding: EdgeInsets.symmetric(vertical: 10.h),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                ),
-                onPressed: () => Navigator.push<void>(
-                  context,
-                  MaterialPageRoute<void>(builder: (_) => CustomerReportScreen(customerId: customer.id, name: customer.name)),
-                ),
-                icon: Icon(Icons.insights_outlined, size: 18.sp, color: ThemeConstants.invAccent),
-                label: Text(loc.isSwahili ? 'Ripoti ya mteja (wiki, mwezi, mwaka)' : 'Customer report (week, month, year)', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700, fontSize: 13.sp)),
+            InvActionButton(
+              key: ValueKey<String>('customer_report_${customer.id}'),
+              label: loc.isSwahili ? 'Ripoti ya mteja (wiki, mwezi, mwaka)' : 'Customer report (week, month, year)',
+              icon: Icons.insights_rounded,
+              color: const Color(0xFF3B82F6),
+              onPressed: () => Navigator.push<void>(
+                context,
+                MaterialPageRoute<void>(builder: (_) => CustomerReportScreen(customerId: customer.id, name: customer.name)),
               ),
             ),
             SizedBox(height: 8.h),
             Row(
               children: <Widget>[
                 Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.white24),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                    ),
+                  child: InvActionButton(
+                    key: ValueKey<String>('credit_settings_${customer.id}'),
+                    label: loc.translate('credit_settings'),
+                    icon: Icons.tune_rounded,
+                    color: const Color(0xFF94A3B8),
+                    filled: false,
+                    arrow: false,
                     onPressed: () => showModalBottomSheet<bool>(
                       context: context,
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
                       builder: (_) => _CreditSettingsSheet(customer: customer),
                     ),
-                    child: AutoSizeText(
-                      loc.translate('credit_settings'),
-                      maxLines: 1,
-                      minFontSize: 9,
-                      style: ThemeConstants.captionStyle,
-                    ),
                   ),
                 ),
                 SizedBox(width: 8.w),
                 Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ThemeConstants.successGreen,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                    ),
+                  child: InvActionButton(
+                    key: ValueKey<String>('receive_payment_${customer.id}'),
+                    label: loc.translate('receive_payment'),
+                    icon: Icons.payments_rounded,
+                    color: ThemeConstants.successGreen,
+                    arrow: false,
                     onPressed: () => showModalBottomSheet<bool>(
                       context: context,
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
                       builder: (_) => ReceivePaymentSheet(customer: customer),
-                    ),
-                    child: AutoSizeText(
-                      loc.translate('receive_payment'),
-                      maxLines: 1,
-                      minFontSize: 9,
-                      style: const TextStyle(color: Colors.white),
                     ),
                   ),
                 ),

@@ -6,6 +6,7 @@ import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../models/inv_customer_debt.dart';
 import '../../providers/depot_provider.dart';
+import '../widgets/inv_action_button.dart';
 
 /// Customers that look like one person saved more than once: in each group the owner picks the one to keep, and the others are merged
 /// onto it (their sales, debts and payments move; they go to the Trash). The customer account then shows everything in one place.
@@ -131,12 +132,13 @@ class _MergeCustomersScreenState extends State<MergeCustomersScreen> {
               ),
             ),
           SizedBox(height: 6.h),
-          FilledButton.icon(
+          InvActionButton(
             key: ValueKey<String>('merge_go_$key'),
-            style: FilledButton.styleFrom(backgroundColor: ThemeConstants.successGreen, padding: EdgeInsets.symmetric(vertical: 10.h), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))),
+            label: loc.translate('dup_merge'),
+            icon: Icons.merge_type_rounded,
+            color: ThemeConstants.successGreen,
+            arrow: false,
             onPressed: _busy.contains(key) ? null : () => _merge(g),
-            icon: _busy.contains(key) ? SizedBox(width: 16.w, height: 16.w, child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.merge_type_rounded),
-            label: Text(loc.translate('dup_merge'), style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w800)),
           ),
         ],
       ),

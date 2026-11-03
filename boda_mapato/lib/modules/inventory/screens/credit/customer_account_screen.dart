@@ -9,6 +9,7 @@ import '../../models/inv_customer_debt.dart';
 import '../../models/inv_depot_models.dart';
 import '../../providers/depot_provider.dart';
 import '../widgets/customer_debt_card.dart';
+import '../widgets/inv_action_button.dart';
 import 'credit_screen.dart' show ReceivePaymentSheet;
 
 /// One customer's whole account on one page: the old debt, the new debt and the total (with all that was paid), then every old debt and
@@ -98,15 +99,13 @@ class _CustomerAccountScreenState extends State<CustomerAccountScreen> {
                         SizedBox(height: 10.h),
                         if (a.lifetime.purchases > 0) _lifetimeCard(loc, a.lifetime),
                         if (a.debt.totalLeft > 0)
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton.icon(
-                              key: const ValueKey<String>('account_receive'),
-                              style: FilledButton.styleFrom(backgroundColor: ThemeConstants.successGreen, padding: EdgeInsets.symmetric(vertical: 12.h), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))),
-                              onPressed: _receive,
-                              icon: const Icon(Icons.payments_outlined),
-                              label: Text(loc.translate('receive_payment'), style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w800)),
-                            ),
+                          InvActionButton(
+                            key: const ValueKey<String>('account_receive'),
+                            label: loc.translate('receive_payment'),
+                            icon: Icons.payments_rounded,
+                            color: ThemeConstants.successGreen,
+                            arrow: false,
+                            onPressed: _receive,
                           ),
                         if (a.oldDebts.isNotEmpty) ...<Widget>[
                           _title(loc.translate('cd_old_title')),
