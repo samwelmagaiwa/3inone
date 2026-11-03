@@ -15,8 +15,8 @@ enum _Period { week, month, quarter, year, custom }
 /// One customer's story for any period: how many times they bought, how much (and how much of it they paid), the profit they brought,
 /// what they buy most, how it moved day by day, week by week or month by month, and what they owe now. Profit is shown only to people
 /// whose rights include it (the server leaves it out for everyone else).
-/// The colour of the section titles (By week, Buys most, ...), so they stand apart from the white figures and names under them.
-const Color _sectionColor = Color(0xFF5CE1E6);
+/// The colour of the section titles (By week, Buys most, ...) in warm gold, so they stand apart from the white figures and names under them.
+const Color _sectionColor = Color(0xFFFFD166);
 
 class CustomerReportScreen extends StatefulWidget {
   const CustomerReportScreen({super.key, required this.customerId, required this.name, this.api, this.today});
