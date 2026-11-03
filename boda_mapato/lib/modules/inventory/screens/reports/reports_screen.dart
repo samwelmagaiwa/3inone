@@ -380,8 +380,9 @@ class _ReportTileState extends State<_ReportTile> {
                         Container(
                           width: 28.w,
                           height: 28.w,
+                          // the blue of the "Customer report" button on the customers screen
                           decoration: BoxDecoration(
-                            color: ThemeConstants.invAccent.withValues(alpha: 0.28),
+                            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: <Color>[Color(0xFF3B82F6), Color(0xFF1D4ED8)]),
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Icon(widget.icon, color: Colors.white, size: 15.sp),
@@ -391,8 +392,8 @@ class _ReportTileState extends State<_ReportTile> {
                         Container(
                           width: 22.w,
                           height: 22.w,
-                          decoration: const BoxDecoration(shape: BoxShape.circle, color: ThemeConstants.invAccent),
-                          child: Icon(Icons.arrow_forward_rounded, color: Colors.black, size: 14.sp),
+                          decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: <Color>[Color(0xFF3B82F6), Color(0xFF1D4ED8)])),
+                          child: Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 14.sp),
                         ),
                       ],
                     ),
