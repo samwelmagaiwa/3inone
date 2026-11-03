@@ -529,6 +529,12 @@ class _InventoryHomeState extends State<InventoryHome> {
   static bool _voiced = false;
 
   /// Once a day, when the app is opened, the phone reads the debt reminders aloud (unless the owner switched it off).
+  /// Signs out and returns to the sign-in page (the same as the Logout row in the side menu).
+  Future<void> _logout(BuildContext context) async {
+    await Provider.of<AuthProvider>(context, listen: false).logout();
+    if (context.mounted) await Navigator.of(context).pushNamedAndRemoveUntil('/', (r) => false);
+  }
+
   Future<void> _readDebtsOnOpening() async {
     if (_voiced || !mounted || !_perms(context).has('inv_view_reminders')) return;
     _voiced = true;
@@ -816,6 +822,8 @@ class _InventoryHomeState extends State<InventoryHome> {
                     Navigator.pushReplacementNamed(context, '/select-service');
                   case 'language':
                     loc.changeLanguage(loc.isSwahili ? 'en' : 'sw');
+                  case 'logout':
+                    _logout(context);
                 }
               },
               itemBuilder: (BuildContext _) => <PopupMenuEntry<String>>[
@@ -848,6 +856,11 @@ class _InventoryHomeState extends State<InventoryHome> {
                   key: const Key('menu_language'),
                   value: 'language',
                   child: ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: const Icon(Icons.translate), title: Text(loc.isSwahili ? 'Switch to English' : 'Badili kuwa Kiswahili')),
+                ),
+                PopupMenuItem<String>(
+                  key: const Key('menu_logout'),
+                  value: 'logout',
+                  child: ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: const Icon(Icons.logout), title: Text(loc.translate('logout'))),
                 ),
               ],
             ),

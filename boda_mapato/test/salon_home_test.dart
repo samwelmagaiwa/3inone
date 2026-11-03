@@ -127,7 +127,7 @@ void main() {
 
       await t.tap(find.byKey(const Key('header_more_menu')));
       await t.pumpAndSettle();
-      for (final String k in <String>['menu_notifications', 'header_ai_assistant', 'menu_sections', 'menu_services', 'menu_language']) {
+      for (final String k in <String>['menu_notifications', 'header_ai_assistant', 'menu_sections', 'menu_services', 'menu_language', 'menu_logout']) {
         expect(find.byKey(Key(k)), findsOneWidget, reason: k);
       }
       expect(find.text('Switch to English'), findsNothing, reason: 'the app is English, so it offers Swahili');
