@@ -158,7 +158,7 @@ class _CustomerReportScreenState extends State<CustomerReportScreen> {
 
   Widget _section(final String title) => Padding(
         padding: EdgeInsets.zero,
-        child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _sectionColor)),
+        child: Center(child: Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _sectionColor))),
       );
 
   Widget _card(final String label, final String value, {final Key? key, final Color? color, final String? note}) => Padding(
