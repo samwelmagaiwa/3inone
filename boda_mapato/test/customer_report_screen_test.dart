@@ -1,4 +1,6 @@
 import 'package:boda_mapato/modules/inventory/screens/credit/customer_report_screen.dart';
+import 'package:boda_mapato/modules/inventory/screens/widgets/glow_list_card.dart';
+import 'package:boda_mapato/modules/inventory/screens/widgets/joined_sections.dart';
 import 'package:boda_mapato/modules/inventory/services/customer_report_api.dart';
 import 'package:boda_mapato/services/localization_service.dart';
 import 'package:flutter/material.dart';
@@ -68,6 +70,15 @@ void main() {
     expect(find.text('Soda'), findsOneWidget);
     expect(find.text('S-0007'), findsOneWidget);
     expect(find.descendant(of: _k('cr_life'), matching: find.text('TSh 12,000,000')), findsOneWidget);
+  });
+
+  testWidgets('it is one card of rows divided by the glowing lines, with a vertical line between the figures side by side', (WidgetTester t) async {
+    await _open(t, _FakeReport());
+
+    expect(find.byType(GlowListCard), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('cr_divider_1')), findsOneWidget);
+    expect(find.byType(SectionGlowVerticalDivider), findsNWidgets(2), reason: 'bought | paid, and profit | owes');
+    expect(find.byType(SectionGlowDivider), findsNWidgets(13), reason: 'one between every two of the 14 rows');
   });
 
   testWidgets('a person who may not see profit gets no profit anywhere', (WidgetTester t) async {
