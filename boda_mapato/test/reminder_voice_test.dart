@@ -1,5 +1,7 @@
 import 'package:boda_mapato/modules/inventory/models/inv_reminder.dart';
 import 'package:boda_mapato/modules/inventory/services/reminder_voice.dart';
+import 'package:boda_mapato/services/localization_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// The spoken reminder: "Hello <owner>, customer <name> owes <amount> shillings ... for <days> days", in Kiswahili or English, read one
@@ -36,27 +38,36 @@ InvReminder _r(int id, {String type = 'payment_due', String? name = 'Mama Chale'
 
 void main() {
   group('the sentence', () {
-    test('in Kiswahili', () {
-      expect(reminderSentence(owner: 'Samwel', customer: 'Mama Chale', amount: 430000, days: 3, sw: true), 'Habari Samwel, mteja Mama Chale anadaiwa kiasi cha shilingi 430000 ndani ya siku 3. Huu ni ukumbusho.');
+    Future<String> say({required bool sw, String owner = 'Samwel', String customer = 'Mama Chale', num amount = 430000, int days = 3}) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      await LocalizationService.instance.changeLanguage(sw ? 'sw' : 'en');
+
+      return reminderSentence(owner: owner, customer: customer, amount: amount, days: days);
+    }
+
+    tearDown(() => LocalizationService.instance.changeLanguage('en'));
+
+    test('in Kiswahili', () async {
+      expect(await say(sw: true), 'Habari Samwel, mteja Mama Chale anadaiwa kiasi cha shilingi 430000 ndani ya siku 3. Huu ni ukumbusho.');
     });
 
-    test('in English', () {
-      expect(reminderSentence(owner: 'Samwel', customer: 'Mama Chale', amount: 430000, days: 3, sw: false), 'Hello Samwel, customer Mama Chale owes 430000 shillings, outstanding for 3 days. This is a reminder.');
+    test('in English', () async {
+      expect(await say(sw: false), 'Hello Samwel, customer Mama Chale owes 430000 shillings, outstanding for 3 days. This is a reminder.');
     });
 
-    test('a debt from today says today, and one day is "1 day"', () {
-      expect(reminderSentence(owner: 'S', customer: 'A', amount: 1000, days: 0, sw: true), contains('ndani ya siku ya leo'));
-      expect(reminderSentence(owner: 'S', customer: 'A', amount: 1000, days: 0, sw: false), contains('since today'));
-      expect(reminderSentence(owner: 'S', customer: 'A', amount: 1000, days: 1, sw: false), contains('outstanding for 1 day.'));
+    test('a debt from today says today, and one day is "1 day"', () async {
+      expect(await say(sw: true, days: 0), contains('ndani ya siku ya leo'));
+      expect(await say(sw: false, days: 0), contains('since today'));
+      expect(await say(sw: false, days: 1), contains('outstanding for 1 day.'));
     });
 
-    test('without the owner\'s name the greeting is just a greeting', () {
-      expect(reminderSentence(owner: '  ', customer: 'A', amount: 1000, days: 2, sw: true), startsWith('Habari, mteja A'));
-      expect(reminderSentence(owner: '', customer: 'A', amount: 1000, days: 2, sw: false), startsWith('Hello, customer A'));
+    test("without the owner's name the greeting is just a greeting", () async {
+      expect(await say(sw: true, owner: '  ', customer: 'A', days: 2), startsWith('Habari, mteja A'));
+      expect(await say(sw: false, owner: '', customer: 'A', days: 2), startsWith('Hello, customer A'));
     });
 
-    test('a decimal amount is read as a whole number of shillings', () {
-      expect(reminderSentence(owner: 'S', customer: 'A', amount: 1234.6, days: 2, sw: false), contains('1235 shillings'));
+    test('a decimal amount is read as a whole number of shillings', () async {
+      expect(await say(sw: false, amount: 1234.6, days: 2), contains('1235 shillings'));
     });
   });
 
@@ -77,6 +88,9 @@ void main() {
 
   group('reading aloud', () {
     test('reads each reminder that can be read, in order, in the chosen language', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      await LocalizationService.instance.changeLanguage('sw');
+      addTearDown(() => LocalizationService.instance.changeLanguage('en'));
       final _Speech speech = _Speech();
       final ReminderVoice voice = ReminderVoice(speech: speech);
 
