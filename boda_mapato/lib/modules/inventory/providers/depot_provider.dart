@@ -1073,6 +1073,14 @@ class DepotProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The latest things one person did, newest first, without touching the list the page shows.
+  Future<List<InvAuditEntry>> fetchAuditByUser(String userId, {int limit = 20}) {
+    return _getList(
+      '/inventory/audit-log?user_id=${Uri.encodeQueryComponent(userId)}&per_page=$limit',
+      InvAuditEntry.fromJson,
+    );
+  }
+
   Future<void> fetchSettings() async {
     try {
       final Map<String, dynamic>? res =

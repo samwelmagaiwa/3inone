@@ -18,6 +18,7 @@ import '../../models/inv_depot_models.dart';
 import '../../providers/depot_provider.dart';
 import '../widgets/inventory_widgets.dart';
 import '../widgets/joined_sections.dart';
+import 'audit_detail_screen.dart';
 import 'business_kind_card.dart';
 import 'crate_deposit_card.dart';
 import 'receipt_header_screen.dart';
@@ -676,43 +677,54 @@ class _AuditTab extends StatelessWidget {
                 final InvAuditEntry e = rows[i];
                 final DateTime at = e.createdAt;
 
-                return Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            AutoSizeText(
-                              '${e.entityType.replaceAll('_', ' ')} · ${e.action}',
-                              maxLines: 1,
-                              minFontSize: 10,
-                              overflow: TextOverflow.ellipsis,
-                              style: ThemeConstants.bodyStyle
-                                  .copyWith(fontWeight: FontWeight.w600),
-                            ),
-                            SizedBox(height: 2.h),
-                            AutoSizeText(
-                              <String>[
-                                '${at.day}/${at.month}/${at.year} ${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}',
-                                if (e.userName.isNotEmpty) e.userName,
-                                if (e.summary.isNotEmpty) e.summary,
-                              ].join('  •  '),
-                              maxLines: 2,
-                              minFontSize: 9,
-                              overflow: TextOverflow.ellipsis,
-                              style: ThemeConstants.captionStyle,
-                            ),
-                          ],
+                final String changes = auditChangesLine(loc, e);
+
+                return InkWell(
+                  key: Key('audit_row_${e.id}'),
+                  borderRadius: BorderRadius.circular(12.r),
+                  onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => AuditDetailScreen(entry: e))),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              AutoSizeText(
+                                '${auditEntityText(e.entityType)} · ${auditActionText(loc, e.action)}',
+                                maxLines: 1,
+                                minFontSize: 10,
+                                overflow: TextOverflow.ellipsis,
+                                style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              SizedBox(height: 2.h),
+                              AutoSizeText(
+                                <String>[
+                                  '${at.day}/${at.month}/${at.year} ${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}',
+                                  if (e.userName.isNotEmpty) e.userName,
+                                  if (e.summary.isNotEmpty) e.summary,
+                                ].join('  •  '),
+                                maxLines: 2,
+                                minFontSize: 9,
+                                overflow: TextOverflow.ellipsis,
+                                style: ThemeConstants.captionStyle,
+                              ),
+                              // What changed, in a line: old → new, so a row says more than "updated".
+                              if (changes.isNotEmpty) ...<Widget>[
+                                SizedBox(height: 2.h),
+                                Text(changes, maxLines: 2, overflow: TextOverflow.ellipsis, style: ThemeConstants.captionStyle.copyWith(color: const Color(0xFFFFD166))),
+                              ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                        const Icon(Icons.chevron_right, color: Colors.white54),
+                      ],
+                    ),
                   ),
                 );
               },

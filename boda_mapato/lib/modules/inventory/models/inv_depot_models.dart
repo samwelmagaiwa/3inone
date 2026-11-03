@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 /// Models for Areas 4–13. All are immutable value types parsed defensively:
@@ -789,6 +791,9 @@ class InvAuditEntry {
     this.entityId,
     this.summary = '',
     this.userName = '',
+    this.userId = '',
+    this.before,
+    this.after,
   });
 
   factory InvAuditEntry.fromJson(Map<String, dynamic> j) => InvAuditEntry(
@@ -798,8 +803,25 @@ class InvAuditEntry {
         action: _toStr(j['action']),
         summary: _toStr(j['summary']),
         userName: _toStr(j['user_name']),
+        userId: _toStr(j['user_id']),
+        before: _record(j['before']),
+        after: _record(j['after']),
         createdAt: DateTime.tryParse('${j['created_at']}') ?? DateTime.now(),
       );
+
+  /// The record as it was kept: a map, or the JSON text of one (older servers); anything else is "nothing kept".
+  static Map<String, dynamic>? _record(dynamic v) {
+    dynamic value = v;
+    if (value is String && value.trim().startsWith('{')) {
+      try {
+        value = jsonDecode(value);
+      } on FormatException {
+        return null;
+      }
+    }
+
+    return value is Map ? Map<String, dynamic>.from(value) : null;
+  }
 
   final int id;
   final String entityType;
@@ -807,7 +829,48 @@ class InvAuditEntry {
   final String action;
   final String summary;
   final String userName;
+  final String userId;
   final DateTime createdAt;
+
+  /// What the record held before the change, and after it (null when the action had no such side: nothing before a creation).
+  final Map<String, dynamic>? before;
+  final Map<String, dynamic>? after;
+
+  /// Fields that are bookkeeping, not something a person changed.
+  static const Set<String> _noise = <String>{'updated_at', 'created_at', 'owner_id', 'password', 'remember_token'};
+
+  /// Shows a kept value as text: an empty one as null, so the screen can say "(empty)" in the person's language.
+  static String? show(dynamic v) {
+    if (v == null) return null;
+    if (v is Map || v is List) return jsonEncode(v);
+    final String s = '$v';
+
+    return s.isEmpty ? null : s;
+  }
+
+  /// What changed, field by field, old next to new. For a change, only the fields that were sent and differ; for a creation or a
+  /// removal, every field the record had (old or new empty).
+  List<AuditChange> get changes {
+    final Map<String, dynamic> b = before ?? const <String, dynamic>{};
+    final Map<String, dynamic> a = after ?? const <String, dynamic>{};
+    final Iterable<String> keys = before != null && after != null ? a.keys : (after ?? before ?? const <String, dynamic>{}).keys;
+
+    return <AuditChange>[
+      for (final String k in keys)
+        if (!_noise.contains(k) && (before == null || after == null || show(b[k]) != show(a[k])))
+          AuditChange(field: k, before: show(b[k]), after: show(a[k])),
+    ];
+  }
+}
+
+/// One field of a record: what it was and what it became (null = empty).
+@immutable
+class AuditChange {
+  const AuditChange({required this.field, this.before, this.after});
+
+  final String field;
+  final String? before;
+  final String? after;
 }
 
 /// A scanned barcode resolved to what it identifies.

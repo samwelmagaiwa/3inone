@@ -301,7 +301,7 @@ class AlertController extends Controller
             $query->where('entity_id', (int) $entityId);
         }
         if ($userId = $request->query('user_id')) {
-            $query->where('user_id', (int) $userId);
+            $query->where('user_id', (string) $userId);
         }
         if ($from = $request->query('from')) {
             $query->whereDate('created_at', '>=', $from);
@@ -313,8 +313,18 @@ class AlertController extends Controller
         $rows = $query->orderByDesc('id')
             ->paginate(Pagination::perPage($request, 50));
 
+        // The before/after columns hold JSON text: hand them over as the records they are, so the app can show old next to new.
+        $items = array_map(function ($row) {
+            foreach (['before', 'after'] as $column) {
+                $decoded = is_string($row->{$column} ?? null) ? json_decode($row->{$column}, true) : null;
+                $row->{$column} = is_array($decoded) ? $decoded : null;
+            }
+
+            return $row;
+        }, $rows->items());
+
         return response()->json([
-            'data' => $rows->items(),
+            'data' => $items,
             'meta' => [
                 'current_page' => $rows->currentPage(),
                 'last_page' => $rows->lastPage(),
@@ -386,10 +396,15 @@ class AlertController extends Controller
         $payload = $request->all();
 
         $saved = [];
+        $old = DB::table('inventory_settings')->pluck('value', 'key')->all();
+        $before = [];
+        $after = [];
         foreach ($payload as $key => $value) {
             if (! in_array($key, $allowed, true)) {
                 continue;
             }
+            $before[$key] = $old[$key] ?? null;
+            $after[$key] = is_scalar($value) ? (string) $value : json_encode($value);
             DB::table('inventory_settings')->updateOrInsert(['key' => $key], [
                 'value' => is_scalar($value) ? (string) $value : json_encode($value),
                 'updated_at' => now(),
@@ -401,8 +416,10 @@ class AlertController extends Controller
             return response()->json(['message' => 'Nothing to save'], 422);
         }
 
+        // What changed is kept, old next to new, and only for the settings that were saved (the rest of the request is not a change).
+        $changed = array_values(array_filter($saved, fn ($k) => ($before[$k] ?? null) !== ($after[$k] ?? null)));
         app(\App\Services\Inventory\AuditTrail::class)
-            ->record($request, 'settings', null, 'updated', null, $payload);
+            ->record($request, 'settings', null, 'updated', array_intersect_key($before, array_flip($saved)), array_intersect_key($after, array_flip($saved)), implode(', ', $changed === [] ? $saved : $changed));
 
         return response()->json(['message' => 'Settings saved', 'data' => ['saved' => $saved]]);
     }
