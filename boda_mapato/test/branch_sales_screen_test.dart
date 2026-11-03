@@ -1,4 +1,5 @@
 import 'package:boda_mapato/modules/inventory/screens/salon/branch_sales_screen.dart';
+import 'package:boda_mapato/modules/inventory/screens/salon/salon_input.dart';
 import 'package:boda_mapato/modules/inventory/services/branch_team_api.dart';
 import 'package:boda_mapato/services/localization_service.dart';
 import 'package:flutter/material.dart';
@@ -71,6 +72,25 @@ void main() {
     expect(find.byKey(const Key('staff_u1')), findsOneWidget);
     expect(find.textContaining('profit TSh 1,500,000'), findsWidgets);
     expect(api.asked.single.$1, DateTime(2026, 11, 1), reason: 'starts on this month');
+  });
+
+  testWidgets('on its own the page has its title; inside the home there is no second title, only the tabs', (WidgetTester t) async {
+    await _open(t, _FakeTeam());
+    expect(find.text('Sales by branch and person'), findsOneWidget, reason: 'its own title bar');
+
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    await t.pumpWidget(
+      ChangeNotifierProvider<LocalizationService>.value(
+        value: LocalizationService.instance,
+        child: MaterialApp(home: SalonEmbedded(child: BranchSalesScreen(api: _FakeTeam(), today: DateTime(2026, 11, 25)))),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    expect(find.text('Sales by branch and person'), findsNothing, reason: 'the home already shows the title');
+    expect(find.text('Sales'), findsOneWidget);
+    expect(find.text('People'), findsOneWidget);
+    expect(find.byKey(const Key('bs_total')), findsOneWidget);
   });
 
   testWidgets('the sales figures are one card, each part divided from the next by the glowing line', (WidgetTester t) async {

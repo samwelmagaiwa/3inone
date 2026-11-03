@@ -5,6 +5,7 @@ import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/branch_team_api.dart';
 import '../money/money_style.dart';
+import 'salon_input.dart' show SalonEmbedded;
 import '../widgets/glow_list_card.dart';
 import '../widgets/inventory_widgets.dart' show formatAmount;
 
@@ -120,10 +121,13 @@ class _BranchSalesScreenState extends State<BranchSalesScreen> {
       key: ValueKey<bool>(_manage),
       length: _manage ? 2 : 1,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(sw ? 'Mauzo kwa tawi na mtu' : 'Sales by branch and person'),
-          bottom: _manage ? TabBar(tabs: <Widget>[Tab(text: sw ? 'Mauzo' : 'Sales'), Tab(text: sw ? 'Watu' : 'People')]) : null,
-        ),
+        // Inside the home this page already sits under the home's title bar: no second title, only the tabs (when there are any).
+        appBar: SalonEmbedded.of(context)
+            ? (_manage ? AppBar(toolbarHeight: 0, bottom: TabBar(tabs: <Widget>[Tab(text: sw ? 'Mauzo' : 'Sales'), Tab(text: sw ? 'Watu' : 'People')])) : null)
+            : AppBar(
+                title: Text(sw ? 'Mauzo kwa tawi na mtu' : 'Sales by branch and person'),
+                bottom: _manage ? TabBar(tabs: <Widget>[Tab(text: sw ? 'Mauzo' : 'Sales'), Tab(text: sw ? 'Watu' : 'People')]) : null,
+              ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
