@@ -101,5 +101,5 @@ class MoneyApi {
 
   /// Where to do better: [lang] is `sw` or `en`; [refresh] asks for a fresh answer (a few a day).
   Future<Map<String, dynamic>> advice(final String month, final String lang, {final bool refresh = false}) async =>
-      _data(await _api.get('/inventory/advice?month=$month&lang=$lang${refresh ? '&refresh=1' : ''}', timeout: adviceTimeout));
+      _data(await _api.getSlow('/inventory/advice?month=$month&lang=$lang${refresh ? '&refresh=1' : ''}', timeout: adviceTimeout));
 }

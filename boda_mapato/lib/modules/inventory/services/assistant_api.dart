@@ -20,5 +20,5 @@ class AssistantApi {
   /// Returns `answer`, `cards` (records shown as they are in the data) and `questions_left`.
   /// [topic] is the id of a one-tap suggestion: the server then reads the data first and needs just one AI call, so it is faster.
   Future<Map<String, dynamic>> ask(final String question, final String lang, final List<Map<String, String>> history, {final String? topic}) async =>
-      _data(await _api.post('/assistant', <String, dynamic>{'question': question, 'lang': lang, 'history': history, if (topic != null) 'topic': topic}, timeout: askTimeout));
+      _data(await _api.postSlow('/assistant', <String, dynamic>{'question': question, 'lang': lang, 'history': history, if (topic != null) 'topic': topic}, timeout: askTimeout));
 }

@@ -111,14 +111,18 @@ class ApiService {
   }
 
   // Generic HTTP methods
-  /// [timeout] is for a request that is slow by nature (advice from the AI waits for it); the others wait the usual time.
   Future<Map<String, dynamic>> get(
     final String endpoint, {
     final bool requireAuth = true,
     final Map<String, dynamic>? queryParams,
-    final Duration? timeout,
   }) async {
-    return _get(endpoint, requireAuth: requireAuth, queryParams: queryParams, timeout: timeout);
+    return _get(endpoint, requireAuth: requireAuth, queryParams: queryParams);
+  }
+
+  /// [get] for a request that is slow by nature (the advice the AI works out on the server): it waits [timeout] instead of the usual time.
+  /// A separate method, so everything that stands in for [get] (screens' fakes) keeps working as it is.
+  Future<Map<String, dynamic>> getSlow(final String endpoint, {required final Duration timeout}) async {
+    return _get(endpoint, timeout: timeout);
   }
 
   // Safe GET that returns null instead of throwing on API errors (e.g., 404)
@@ -298,14 +302,17 @@ class ApiService {
     }
   }
 
-  /// [timeout] is for a request that is slow by nature (the AI assistant works several steps before it answers); the others wait the usual time.
   Future<Map<String, dynamic>> post(
     final String endpoint,
     final Map<String, dynamic> data, {
     final bool requireAuth = true,
-    final Duration? timeout,
   }) async {
-    return _post(endpoint, data, requireAuth: requireAuth, timeout: timeout);
+    return _post(endpoint, data, requireAuth: requireAuth);
+  }
+
+  /// [post] for a request that is slow by nature (the AI assistant works several steps before it answers): waits [timeout] instead of the usual time.
+  Future<Map<String, dynamic>> postSlow(final String endpoint, final Map<String, dynamic> data, {required final Duration timeout}) async {
+    return _post(endpoint, data, timeout: timeout);
   }
 
   Future<Map<String, dynamic>> put(
