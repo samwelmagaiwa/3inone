@@ -73,6 +73,26 @@ void main() {
     expect(api.asked.single.$1, DateTime(2026, 11, 1), reason: 'starts on this month');
   });
 
+  testWidgets('the sales figures are one card, each part divided from the next by the glowing line', (WidgetTester t) async {
+    await _open(t, _FakeTeam());
+
+    // total | "By branch" | Kariakoo with its people | "By person" | Asha with her branches
+    for (int i = 1; i <= 4; i++) {
+      expect(find.byKey(ValueKey<String>('sales_divider_$i')), findsOneWidget, reason: 'line $i');
+    }
+    expect(find.byKey(const ValueKey<String>('sales_divider_5')), findsNothing);
+  });
+
+  testWidgets('the people are one card too, a line between each person', (WidgetTester t) async {
+    await _open(t, _FakeTeam());
+
+    await t.tap(find.text('People'));
+    await t.pumpAndSettle();
+
+    expect(find.byKey(const Key('place_u1')), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('people_divider_1')), findsNothing, reason: 'one person: no line to draw');
+  });
+
   testWidgets('leaves the profit out when the server does not send it, and asks again for another period', (WidgetTester t) async {
     final _FakeTeam api = _FakeTeam(profit: false);
     await _open(t, api);

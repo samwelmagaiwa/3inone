@@ -5,6 +5,7 @@ import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/branch_team_api.dart';
 import '../money/money_style.dart';
+import '../widgets/glow_list_card.dart';
 import '../widgets/inventory_widgets.dart' show formatAmount;
 
 enum _Period { week, month, quarter, year }
@@ -145,6 +146,12 @@ class _BranchSalesScreenState extends State<BranchSalesScreen> {
         ]),
       );
 
+  /// A heading inside the card (no space above it: the glowing line above it already separates it).
+  Widget _title(final String title) => Padding(
+        padding: const EdgeInsets.only(bottom: 2),
+        child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+      );
+
   Widget _section(final String title) => Padding(
         padding: const EdgeInsets.fromLTRB(2, 18, 2, 6),
         child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
@@ -168,18 +175,29 @@ class _BranchSalesScreenState extends State<BranchSalesScreen> {
             }),
         ]),
         const SizedBox(height: 10),
-        _line(sw ? 'Jumla iliyouzwa' : 'Total sold', _tsh(_n(total['sales'])), key: const Key('bs_total'), note: '${_n(total['sales_count']).toInt()}${sw ? ' mauzo' : ' sales'}  ·  ${sw ? 'zimelipwa' : 'paid'} ${_tsh(_n(total['paid']))}'),
-        _section(sw ? 'Kwa tawi' : 'By branch'),
-        if (_list(_r['by_branch']).isEmpty) Text(sw ? 'Hakuna kilichouzwa katika kipindi hiki.' : 'Nothing sold in this period.', key: const Key('bs_none'), style: kMoneyCaption),
-        for (final Map<String, dynamic> b in _list(_r['by_branch'])) ...<Widget>[
-          _line('${b['name'] ?? none}', _tsh(_n(b['sales'])), key: Key('branch_${b['branch_id'] ?? 0}'), note: _cellNote(b, sw)),
-          for (final Map<String, dynamic> s in _list(b['staff'])) Padding(padding: const EdgeInsets.only(left: 14), child: _line('${s['name']}', _tsh(_n(s['sales'])), note: _cellNote(s, sw))),
-        ],
-        _section(sw ? 'Kwa mtu' : 'By person'),
-        for (final Map<String, dynamic> s in _list(_r['by_staff'])) ...<Widget>[
-          _line('${s['name']}', _tsh(_n(s['sales'])), key: Key('staff_${s['staff_id']}'), note: _cellNote(s, sw)),
-          for (final Map<String, dynamic> b in _list(s['branches'])) Padding(padding: const EdgeInsets.only(left: 14), child: _line('${b['name'] ?? none}', _tsh(_n(b['sales'])), note: _cellNote(b, sw))),
-        ],
+        // Total, by branch and by person: ONE card, each part divided from the next by the glowing line.
+        GlowListCard(
+          dividerKey: 'sales_divider',
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          children: <Widget>[
+            _line(sw ? 'Jumla iliyouzwa' : 'Total sold', _tsh(_n(total['sales'])), key: const Key('bs_total'), note: '${_n(total['sales_count']).toInt()}${sw ? ' mauzo' : ' sales'}  ·  ${sw ? 'zimelipwa' : 'paid'} ${_tsh(_n(total['paid']))}'),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+              _title(sw ? 'Kwa tawi' : 'By branch'),
+              if (_list(_r['by_branch']).isEmpty) Text(sw ? 'Hakuna kilichouzwa katika kipindi hiki.' : 'Nothing sold in this period.', key: const Key('bs_none'), style: kMoneyCaption),
+            ]),
+            for (final Map<String, dynamic> b in _list(_r['by_branch']))
+              Column(children: <Widget>[
+                _line('${b['name'] ?? none}', _tsh(_n(b['sales'])), key: Key('branch_${b['branch_id'] ?? 0}'), note: _cellNote(b, sw)),
+                for (final Map<String, dynamic> s in _list(b['staff'])) Padding(padding: const EdgeInsets.only(left: 14), child: _line('${s['name']}', _tsh(_n(s['sales'])), note: _cellNote(s, sw))),
+              ]),
+            _title(sw ? 'Kwa mtu' : 'By person'),
+            for (final Map<String, dynamic> s in _list(_r['by_staff']))
+              Column(children: <Widget>[
+                _line('${s['name']}', _tsh(_n(s['sales'])), key: Key('staff_${s['staff_id']}'), note: _cellNote(s, sw)),
+                for (final Map<String, dynamic> b in _list(s['branches'])) Padding(padding: const EdgeInsets.only(left: 14), child: _line('${b['name'] ?? none}', _tsh(_n(b['sales'])), note: _cellNote(b, sw))),
+              ]),
+          ],
+        ),
       ]),
     );
   }
@@ -192,21 +210,26 @@ class _BranchSalesScreenState extends State<BranchSalesScreen> {
           style: kMoneyCaption,
         ),
         if (_branches.isEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(sw ? 'Ongeza tawi kwanza (menyu ya Matawi).' : 'Add a branch first (Branches menu).', key: const Key('bp_nobranches'), style: const TextStyle(color: Colors.amber))),
-        for (final Map<String, dynamic> m in _team)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Row(children: <Widget>[
-              Expanded(child: Text('${m['name']}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
-              DropdownButton<int?>(
-                key: Key('place_${m['staff_id']}'),
-                value: _branches.any((Map<String, dynamic> b) => b['id'] == m['branch_id']) ? m['branch_id'] as int? : null,
-                items: <DropdownMenuItem<int?>>[
-                  DropdownMenuItem<int?>(value: null, child: Text(sw ? 'Hana tawi' : 'No branch')),
-                  for (final Map<String, dynamic> b in _branches) DropdownMenuItem<int?>(value: b['id'] as int, child: Text('${b['name']}')),
-                ],
-                onChanged: (final int? v) => _place(m, v),
-              ),
-            ]),
+        const SizedBox(height: 10),
+        if (_team.isNotEmpty)
+          GlowListCard(
+            dividerKey: 'people_divider',
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            children: <Widget>[
+              for (final Map<String, dynamic> m in _team)
+                Row(children: <Widget>[
+                  Expanded(child: Text('${m['name']}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+                  DropdownButton<int?>(
+                    key: Key('place_${m['staff_id']}'),
+                    value: _branches.any((Map<String, dynamic> b) => b['id'] == m['branch_id']) ? m['branch_id'] as int? : null,
+                    items: <DropdownMenuItem<int?>>[
+                      DropdownMenuItem<int?>(value: null, child: Text(sw ? 'Hana tawi' : 'No branch')),
+                      for (final Map<String, dynamic> b in _branches) DropdownMenuItem<int?>(value: b['id'] as int, child: Text('${b['name']}')),
+                    ],
+                    onChanged: (final int? v) => _place(m, v),
+                  ),
+                ]),
+            ],
           ),
       ]);
 }
