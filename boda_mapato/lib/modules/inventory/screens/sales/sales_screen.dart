@@ -1159,19 +1159,19 @@ class _SalesScreenState extends State<SalesScreen>
                     label: loc.translate('total'),
                     value: 'TZS ${_fmt(summary['total'])}',
                     icon: Icons.attach_money_rounded,
-                    color: ThemeConstants.primaryBlue,
+                    color: Colors.white,
                   ),
                   _StatChip(
                     label: loc.translate('paid'),
                     value: 'TZS ${_fmt(summary['paid'])}',
                     icon: Icons.check_circle_outline,
-                    color: ThemeConstants.successGreen,
+                    color: _vivid(ThemeConstants.successGreen),
                   ),
                   _StatChip(
                     label: loc.translate('debt'),
                     value: 'TZS ${_fmt(summary['debt'])}',
                     icon: Icons.warning_amber_rounded,
-                    color: ThemeConstants.errorRed,
+                    color: _vivid(ThemeConstants.errorRed),
                   ),
                 ],
               ),
@@ -1237,10 +1237,10 @@ class _SalesScreenState extends State<SalesScreen>
                           Container(
                             padding: EdgeInsets.all(8.w),
                             decoration: BoxDecoration(
-                              color: statusColor.withValues(alpha: 0.15),
+                              color: statusColor.withValues(alpha: 0.3),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(Icons.receipt_long, color: statusColor, size: 18.sp),
+                            child: Icon(Icons.receipt_long, color: _vivid(statusColor), size: 18.sp),
                           ),
                           SizedBox(width: 10.w),
                           Expanded(
@@ -1253,17 +1253,19 @@ class _SalesScreenState extends State<SalesScreen>
                                     Text('#${s.number}',
                                         style: ThemeConstants.bodyStyle
                                             .copyWith(fontWeight: FontWeight.bold)),
+                                    // a solid chip with white letters (amber: dark letters), so the state is read at a glance
                                     Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
+                                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                                       decoration: BoxDecoration(
-                                        color: statusColor.withValues(alpha: 0.2),
+                                        color: s.isCancelled ? Colors.white24 : statusColor,
                                         borderRadius: BorderRadius.circular(6.r),
                                       ),
                                       child: Text(statusLabel,
                                           style: TextStyle(
-                                              color: statusColor,
-                                              fontSize: 9.sp,
-                                              fontWeight: FontWeight.bold)),
+                                              color: statusColor == ThemeConstants.warningAmber ? Colors.black87 : Colors.white,
+                                              fontSize: 10.sp,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: 0.4)),
                                     ),
                                   ],
                                 ),
@@ -1323,7 +1325,7 @@ class _SalesScreenState extends State<SalesScreen>
                             IconButton(
                               tooltip: loc.translate('cancel_sale'),
                               onPressed: () => _showCancelSheet(context, s),
-                              icon: Icon(Icons.cancel_outlined, color: ThemeConstants.errorRed, size: 19.sp),
+                              icon: Icon(Icons.cancel_outlined, color: _vivid(ThemeConstants.errorRed), size: 19.sp),
                             ),
                         ],
                       ),
@@ -1893,11 +1895,19 @@ class _StatChip extends StatelessWidget {
                   color: color, fontSize: 10.sp, fontWeight: FontWeight.bold),
               maxLines: 1,
               overflow: TextOverflow.ellipsis),
-          Text(label, style: TextStyle(color: Colors.white38, fontSize: 9.sp)),
+          Text(label, style: TextStyle(color: Colors.white70, fontSize: 9.sp)),
         ],
       ),
     );
   }
+}
+
+/// The bright form of a status colour for TEXT and ICONS on the dark cards: the plain red and green are dim there, so they are lifted.
+Color _vivid(final Color c) {
+  if (c == ThemeConstants.errorRed) return const Color(0xFFFF6B6B);
+  if (c == ThemeConstants.successGreen) return const Color(0xFF4ADE80);
+
+  return c;
 }
 
 class _AmountBadge extends StatelessWidget {
@@ -1916,18 +1926,18 @@ class _AmountBadge extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withValues(alpha: 0.22),
         borderRadius: BorderRadius.circular(6.r),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.9)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 8.sp)),
+              style: TextStyle(color: _vivid(color), fontSize: 9.sp, fontWeight: FontWeight.w600)),
           Text('TZS ${amount.toStringAsFixed(0)}',
               style: TextStyle(
-                  color: color, fontSize: 10.sp, fontWeight: FontWeight.w600)),
+                  color: _vivid(color), fontSize: 11.sp, fontWeight: FontWeight.w800)),
         ],
       ),
     );
