@@ -91,6 +91,26 @@ class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
 
   Future<void> _markDone(int id) async {
     final LocalizationService loc = LocalizationService.instance;
+    // A reminder is closed for good: ask first, so a stray tap does not lose it.
+    final bool? yes = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        backgroundColor: ThemeConstants.primaryBlue,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Text(loc.translate('mark_done_question'), style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w800)),
+        content: Text(loc.translate('mark_done_explain'), style: ThemeConstants.captionStyle),
+        actions: <Widget>[
+          TextButton(key: const ValueKey<String>('mark_done_no'), onPressed: () => Navigator.pop(ctx, false), child: Text(loc.translate('no'))),
+          ElevatedButton(
+            key: const ValueKey<String>('mark_done_yes'),
+            style: ElevatedButton.styleFrom(backgroundColor: ThemeConstants.successGreen, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(loc.translate('yes'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
     await context.read<InventoryProvider>().markReminderDone(id);
     if (mounted) {
       ThemeConstants.showSuccessSnackBar(context, loc.translate('done'));

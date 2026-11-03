@@ -113,6 +113,8 @@ class AppLocalizations {
       'in_stock': 'In stock',
       'snoozed_a_day': 'Snoozed for a day',
       'snoozed_until': 'Comes back on {when}',
+      'mark_done_question': 'Mark this reminder as done?',
+      'mark_done_explain': 'It will be closed and will not come back.',
       'snooze_a_day': 'Snooze a day',
       'stock_in_note':
           'Use this when new stock arrives outside a formal purchase order — for example a small top-up bought in cash. Add a batch number and expiry date so the app can track it properly.',
@@ -2824,6 +2826,8 @@ class AppLocalizations {
       'in_stock': 'Bidhaa ipo',
       'snoozed_a_day': 'Imesitishwa kwa siku moja',
       'snoozed_until': 'Itarudi tarehe {when}',
+      'mark_done_question': 'Kikumbusho hiki kimekamilika?',
+      'mark_done_explain': 'Kitafungwa na hakitarudi tena.',
       'snooze_a_day': 'Sitisha kwa siku moja',
       'stock_in_note':
           'Tumia hii wakati bidhaa mpya inapowasili nje ya oda rasmi ya manunuzi — mfano nyongeza ndogo iliyonunuliwa kwa taslimu. Ongeza namba ya bechi na tarehe ya mwisho ili programu iweze kuifuatilia vizuri.',
