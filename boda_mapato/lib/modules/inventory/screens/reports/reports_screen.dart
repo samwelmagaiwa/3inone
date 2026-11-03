@@ -289,7 +289,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                   children: <Widget>[
                                     for (int i = 0; i < rows.length; i += 2)
                                       SizedBox(
-                                        height: 80.h,
+                                        height: 92.h,
                                         child: Row(
                                           crossAxisAlignment: CrossAxisAlignment.stretch,
                                           children: <Widget>[
@@ -315,7 +315,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 }
 
-class _ReportTile extends StatelessWidget {
+/// One report as a button: a raised, rounded tile with its picture, its name and an arrow that says "open", which sinks a little when it
+/// is pressed. It sits in the reports card, between the glowing lines.
+class _ReportTile extends StatefulWidget {
   const _ReportTile({
     required this.report,
     required this.icon,
@@ -327,42 +329,87 @@ class _ReportTile extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_ReportTile> createState() => _ReportTileState();
+}
+
+class _ReportTileState extends State<_ReportTile> {
+  bool _down = false;
+
+  @override
   Widget build(BuildContext context) {
     final loc = context.watch<LocalizationService>();
-    final translatedTitle = loc.translate('report_${report.key}');
+    final translatedTitle = loc.translate('report_${widget.report.key}');
     // Fallback: if key not found the service returns the key itself; use backend title then.
-    final title = (translatedTitle == 'report_${report.key}')
-        ? report.title
+    final title = (translatedTitle == 'report_${widget.report.key}')
+        ? widget.report.title
         : translatedTitle;
+    final BorderRadius radius = BorderRadius.circular(14.r);
 
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: <Widget>[
-            Container(
-              width: 28.w,
-              height: 28.w,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8.r),
-              ),
-              child: Icon(icon, color: Colors.white, size: 15.sp),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 6.h),
+      child: AnimatedScale(
+        scale: _down ? 0.97 : 1,
+        duration: const Duration(milliseconds: 90),
+        child: Container(
+          key: ValueKey<String>('report_tile_${widget.report.key}'),
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: <Color>[Colors.white.withValues(alpha: 0.20), Colors.white.withValues(alpha: 0.07)],
             ),
-            Flexible(
-              child: AutoSizeText(
-                title,
-                maxLines: 2,
-                minFontSize: 9,
-                overflow: TextOverflow.ellipsis,
-                style: ThemeConstants.bodyStyle
-                    .copyWith(fontWeight: FontWeight.w600),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+            boxShadow: _down ? const <BoxShadow>[] : const <BoxShadow>[BoxShadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 3))],
+          ),
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              borderRadius: radius,
+              onTap: widget.onTap,
+              onHighlightChanged: (bool v) => setState(() => _down = v),
+              splashColor: Colors.white24,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(10.w, 8.h, 8.w, 8.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Container(
+                          width: 28.w,
+                          height: 28.w,
+                          decoration: BoxDecoration(
+                            color: ThemeConstants.invAccent.withValues(alpha: 0.28),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: Icon(widget.icon, color: Colors.white, size: 15.sp),
+                        ),
+                        const Spacer(),
+                        // The arrow that says "open".
+                        Container(
+                          width: 22.w,
+                          height: 22.w,
+                          decoration: const BoxDecoration(shape: BoxShape.circle, color: ThemeConstants.invAccent),
+                          child: Icon(Icons.arrow_forward_rounded, color: Colors.black, size: 14.sp),
+                        ),
+                      ],
+                    ),
+                    Flexible(
+                      child: AutoSizeText(
+                        title,
+                        maxLines: 2,
+                        minFontSize: 9,
+                        overflow: TextOverflow.ellipsis,
+                        style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
