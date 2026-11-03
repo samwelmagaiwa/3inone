@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:boda_mapato/modules/inventory/providers/inventory_provider.dart';
 import 'package:boda_mapato/modules/inventory/screens/reminders/inventory_reminders_screen.dart';
 import 'package:boda_mapato/modules/inventory/services/daily_voice.dart';
@@ -36,13 +38,47 @@ class _Speech implements SpeechPort {
   bool hasVoice = true;
 
   @override
-  Future<bool> prepare({required bool swahili}) async => hasVoice;
+  Future<bool> prepare({required bool swahili, String? voiceName, double rate = 0.42}) async => hasVoice;
+
+  @override
+  Future<List<VoiceOption>> voices({required bool swahili}) async => const <VoiceOption>[];
 
   @override
   Future<void> speak(String text) async => said.add(text);
 
   @override
   Future<void> stop() async {}
+}
+
+/// A speaker that takes its time over each sentence, so the reading can be switched off while it is going on.
+class _SlowSpeech implements SpeechPort {
+  final List<String> said = <String>[];
+  Completer<void>? _current;
+  int stops = 0;
+
+  @override
+  Future<bool> prepare({required bool swahili, String? voiceName, double rate = 0.42}) async => true;
+
+  @override
+  Future<List<VoiceOption>> voices({required bool swahili}) async => const <VoiceOption>[];
+
+  @override
+  Future<void> speak(String text) async {
+    said.add(text);
+    _current = Completer<void>();
+    await _current!.future;
+  }
+
+  /// The sentence being said ends by itself.
+  void finish() {
+    if (_current != null && !_current!.isCompleted) _current!.complete();
+  }
+
+  @override
+  Future<void> stop() async {
+    stops++;
+    finish();
+  }
 }
 
 void main() {
@@ -99,8 +135,8 @@ void main() {
     expect(t.getTopLeft(find.byKey(const ValueKey<String>('reminder_2'))).dy, lessThan(t.getTopLeft(find.byKey(const ValueKey<String>('reminder_1'))).dy), reason: 'open first, snoozed after');
   });
 
-  Future<_Api> open(WidgetTester t, {bool sw = false, SpeechPort? speech}) async {
-    SharedPreferences.setMockInitialValues(<String, Object>{});
+  Future<_Api> open(WidgetTester t, {bool sw = false, SpeechPort? speech, Map<String, Object> saved = const <String, Object>{}}) async {
+    SharedPreferences.setMockInitialValues(saved);
     await LocalizationService.instance.changeLanguage(sw ? 'sw' : 'en');
     addTearDown(() => LocalizationService.instance.changeLanguage('en'));
     t.view.physicalSize = const Size(800, 2400);
@@ -228,7 +264,7 @@ void main() {
       await t.pump();
 
       expect(speech.said, hasLength(2), reason: 'the snoozed one (#1) is put away for a day, so it is not read');
-      expect(speech.said.first, 'Hello, customer Mteja 2 owes 2000 shillings, outstanding for 2 days. This is a reminder.', reason: 'no owner name in this test, so a plain greeting');
+      expect(speech.said.first, 'Hello, customer Mteja 2 owes two thousand shillings, outstanding for two days. This is a reminder.', reason: 'no owner name in this test, so a plain greeting');
       expect(speech.said.last, contains('Mteja 3'));
     });
 
@@ -240,7 +276,7 @@ void main() {
       await t.pump();
       await t.pump();
 
-      expect(speech.said.first, 'Habari, mteja Mteja 2 anadaiwa kiasi cha shilingi 2000 ndani ya siku 2. Huu ni ukumbusho.');
+      expect(speech.said.first, 'Habari, mteja Mteja 2 anadaiwa kiasi cha shilingi elfu mbili ndani ya siku mbili. Huu ni ukumbusho.');
       expect(find.text('Soma kwa sauti'), findsOneWidget);
     });
 
@@ -303,6 +339,50 @@ void main() {
       expect(find.text('This phone has no voice for this language. Install it in Settings > Text-to-speech.'), findsOneWidget);
       expect(speech.said, isEmpty);
       await t.pump(const Duration(seconds: 6));
+    });
+  });
+
+  group('the switch works at once, while the app is open', () {
+    testWidgets('switching it ON reads the debts right now, without waiting for the next opening', (t) async {
+      final _Speech speech = _Speech();
+      await open(t, speech: speech, saved: <String, Object>{'voice_auto_read': false});
+
+      await t.tap(find.byKey(const ValueKey<String>('voice_auto_switch')));
+      await t.pump();
+      await t.pump();
+
+      expect(await VoiceSettings.autoRead(), isTrue);
+      expect(speech.said, hasLength(2), reason: 'both open debt reminders are read now');
+      expect(await VoiceSettings.dueToday(DateTime.now()), isFalse, reason: 'today counts as read, so it does not read again when the app is next opened');
+    });
+
+    testWidgets('switching it OFF in the middle of a reading stops it that moment, and the rest is not read', (t) async {
+      final _SlowSpeech speech = _SlowSpeech();
+      await open(t, speech: speech);
+      // it starts by itself, as if switched on
+      await t.tap(find.byKey(const ValueKey<String>('read_all_aloud')));
+      await t.pump();
+      expect(speech.said, hasLength(1), reason: 'the first sentence is being said');
+
+      await t.tap(find.byKey(const ValueKey<String>('voice_auto_switch')));
+      await t.pump();
+      await t.pump();
+
+      expect(await VoiceSettings.autoRead(), isFalse);
+      expect(speech.stops, greaterThanOrEqualTo(1), reason: 'the voice was stopped at once');
+      expect(speech.said, hasLength(1), reason: 'the second reminder was never read');
+      expect(t.widget<Switch>(find.byKey(const ValueKey<String>('voice_auto_switch'))).value, isFalse);
+    });
+
+    testWidgets('switched off, the "Read aloud" button still reads when it is pressed', (t) async {
+      final _Speech speech = _Speech();
+      await open(t, speech: speech, saved: <String, Object>{'voice_auto_read': false});
+
+      await t.tap(find.byKey(const ValueKey<String>('read_all_aloud')));
+      await t.pump();
+      await t.pump();
+
+      expect(speech.said, hasLength(2), reason: 'pressing the button is asking for it');
     });
   });
 }

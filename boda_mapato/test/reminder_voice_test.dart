@@ -16,11 +16,14 @@ class _Speech implements SpeechPort {
   void Function()? onSay;
 
   @override
-  Future<bool> prepare({required bool swahili}) async {
+  Future<bool> prepare({required bool swahili, String? voiceName, double rate = 0.42}) async {
     languages.add(swahili);
 
     return hasVoice;
   }
+
+  @override
+  Future<List<VoiceOption>> voices({required bool swahili}) async => const <VoiceOption>[];
 
   @override
   Future<void> speak(String text) async {
@@ -48,17 +51,17 @@ void main() {
     tearDown(() => LocalizationService.instance.changeLanguage('en'));
 
     test('in Kiswahili', () async {
-      expect(await say(sw: true), 'Habari Samwel, mteja Mama Chale anadaiwa kiasi cha shilingi 430000 ndani ya siku 3. Huu ni ukumbusho.');
+      expect(await say(sw: true), 'Habari Samwel, mteja Mama Chale anadaiwa kiasi cha shilingi laki nne na elfu thelathini ndani ya siku tatu. Huu ni ukumbusho.');
     });
 
     test('in English', () async {
-      expect(await say(sw: false), 'Hello Samwel, customer Mama Chale owes 430000 shillings, outstanding for 3 days. This is a reminder.');
+      expect(await say(sw: false), 'Hello Samwel, customer Mama Chale owes four hundred thirty thousand shillings, outstanding for three days. This is a reminder.');
     });
 
     test('a debt from today says today, and one day is "1 day"', () async {
       expect(await say(sw: true, days: 0), contains('ndani ya siku ya leo'));
       expect(await say(sw: false, days: 0), contains('since today'));
-      expect(await say(sw: false, days: 1), contains('outstanding for 1 day.'));
+      expect(await say(sw: false, days: 1), contains('outstanding for one day.'));
     });
 
     test("without the owner's name the greeting is just a greeting", () async {
@@ -66,8 +69,14 @@ void main() {
       expect(await say(sw: false, owner: '', customer: 'A', days: 2), startsWith('Hello, customer A'));
     });
 
+    test('the sentence has no digits at all, so the voice has nothing to misread', () async {
+      for (final bool sw in <bool>[true, false]) {
+        expect(await say(sw: sw, amount: 5610000, days: 14), isNot(contains(RegExp(r'\d'))));
+      }
+    });
+
     test('a decimal amount is read as a whole number of shillings', () async {
-      expect(await say(sw: false, amount: 1234.6, days: 2), contains('1235 shillings'));
+      expect(await say(sw: false, amount: 1234.6, days: 2), contains('one thousand two hundred thirty five shillings'));
     });
   });
 
@@ -133,6 +142,16 @@ void main() {
       expect(speech.said, hasLength(1), reason: 'the rest were not read');
       expect(speech.stopped, isTrue);
       expect(voice.speaking, isFalse);
+    });
+
+    test('when the owner switches the reading off between two reminders it stops there', () async {
+      final _Speech speech = _Speech();
+      int asked = 0;
+
+      final VoiceResult r = await ReminderVoice(speech: speech).read(<InvReminder>[_r(1), _r(2), _r(3)], owner: 'S', sw: false, keepGoing: () async => ++asked <= 1);
+
+      expect(r, VoiceResult.stopped);
+      expect(speech.said, hasLength(1), reason: 'the second one was not read: it was switched off');
     });
 
     test('a new reading after a stop starts clean', () async {

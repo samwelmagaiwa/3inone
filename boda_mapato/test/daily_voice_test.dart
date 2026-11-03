@@ -12,7 +12,10 @@ class _Speech implements SpeechPort {
   final List<String> said = <String>[];
 
   @override
-  Future<bool> prepare({required bool swahili}) async => hasVoice;
+  Future<bool> prepare({required bool swahili, String? voiceName, double rate = 0.42}) async => hasVoice;
+
+  @override
+  Future<List<VoiceOption>> voices({required bool swahili}) async => const <VoiceOption>[];
 
   @override
   Future<void> speak(String text) async => said.add(text);

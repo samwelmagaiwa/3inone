@@ -11,6 +11,7 @@ import '../../../../providers/auth_provider.dart';
 import '../../models/inv_reminder.dart' show InvReminderStatus;
 import '../../services/daily_voice.dart';
 import '../../services/reminder_voice.dart';
+import 'voice_picker_sheet.dart';
 import '../widgets/glow_list_card.dart';
 import '../widgets/inv_action_button.dart';
 import '../widgets/inventory_widgets.dart';
@@ -51,6 +52,38 @@ class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
     } on ProviderNotFoundException {
       return '';
     }
+  }
+
+  /// The switch takes effect at once, here and now. Switched ON, the debts are read aloud right away (and from then on whenever the app is
+  /// opened, once a day). Switched OFF, whatever is being read stops that moment, and nothing is read by itself any more.
+  Future<void> _autoChanged(final bool on, final List<InvReminder> list) async {
+    setState(() => _auto = on);
+    await VoiceSettings.setAutoRead(on);
+    if (!on) {
+      await _voice.stop();
+
+      return;
+    }
+    if (!mounted) return;
+    final LocalizationService loc = LocalizationService.instance;
+    final VoiceResult r = await _voice.read(list, owner: _owner(), sw: loc.isSwahili, keepGoing: VoiceSettings.autoRead);
+    if (!mounted) return;
+    if (r == VoiceResult.done) {
+      await VoiceSettings.markReadToday(DateTime.now());
+    } else if (r == VoiceResult.noVoice) {
+      ThemeConstants.showWarningSnackBar(context, loc.translate('voice_missing'));
+    }
+  }
+
+  /// Opens the sheet where the voice and the speed are chosen (each voice can be listened to first).
+  Future<void> _pickVoice() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext _) => VoicePickerSheet(voice: _voice),
+    );
+    await _voice.stop();
   }
 
   /// Reads the given reminders aloud in the chosen language, or says why it cannot.
@@ -127,12 +160,21 @@ class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
                               Switch(
                                 key: const ValueKey<String>('voice_auto_switch'),
                                 value: _auto,
-                                onChanged: (bool v) {
-                                  setState(() => _auto = v);
-                                  VoiceSettings.setAutoRead(v);
-                                },
+                                onChanged: (bool v) => _autoChanged(v, reminders),
                               ),
                             ],
+                          ),
+                        ),
+                        // The voice and how fast it speaks: every voice the phone has can be listened to, and the clearest one kept.
+                        Padding(
+                          padding: EdgeInsets.only(bottom: 10.h),
+                          child: InvActionButton(
+                            key: const ValueKey<String>('voice_settings'),
+                            label: loc.translate('voice_settings'),
+                            icon: Icons.tune_rounded,
+                            color: const Color(0xFF3B82F6),
+                            filled: false,
+                            onPressed: _pickVoice,
                           ),
                         ),
                         // Reads every debt reminder aloud, one after the other: "Hello ..., customer ... owes ... shillings ...".
