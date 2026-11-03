@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeSalon extends SalonApi {
   bool noBranches = false;
+  bool many = false;
   Object? failMove;
   final List<Map<String, dynamic>> moves = <Map<String, dynamic>>[];
   final List<Map<String, dynamic>> levels = <Map<String, dynamic>>[];
@@ -29,11 +30,15 @@ class _FakeSalon extends SalonApi {
   Future<Map<String, dynamic>> branchStock() async => <String, dynamic>{
         'branches': noBranches ? <dynamic>[] : <Map<String, dynamic>>[<String, dynamic>{'id': 1, 'name': 'Kariakoo'}, <String, dynamic>{'id': 2, 'name': 'Mikocheni'}],
         'products': <Map<String, dynamic>>[
+          if (many)
+            for (int i = 1; i <= 30; i++) <String, dynamic>{'id': i, 'name': 'Item $i', 'total': i, 'unallocated': i, 'over_allocated': false, 'branches': <Map<String, dynamic>>[]},
+          if (!many) ...<Map<String, dynamic>>[
           <String, dynamic>{
             'id': 7, 'name': 'Shampoo', 'total': 10, 'unallocated': 4, 'over_allocated': false,
             'branches': <Map<String, dynamic>>[<String, dynamic>{'branch_id': 1, 'name': 'Kariakoo', 'quantity': 4, 'min_quantity': 5, 'low': true}, <String, dynamic>{'branch_id': 2, 'name': 'Mikocheni', 'quantity': 2, 'min_quantity': null, 'low': false}],
           },
           <String, dynamic>{'id': 8, 'name': 'Dye', 'total': 1, 'unallocated': 0, 'over_allocated': true, 'branches': <Map<String, dynamic>>[]},
+          ],
         ],
       };
 
@@ -56,11 +61,52 @@ Future<void> _pump(WidgetTester t, _FakeSalon api, {bool canMove = true}) async 
 }
 
 void main() {
-  testWidgets('shows the whole stock, the main store and each branch, and flags more allocated than held', (t) async {
+  testWidgets('each product shows its name and total, and under it the main store and each branch in their own column', (t) async {
     await _pump(t, _FakeSalon());
-    expect(find.text('Shampoo  ·  10'), findsOneWidget);
-    expect(find.textContaining('Main store 4 · ⚠ Kariakoo 4 (level 5) · Mikocheni 2'), findsOneWidget);
+
+    expect(t.widget<Text>(find.byKey(const Key('bs_name_7'))).data, 'Shampoo');
+    expect(find.descendant(of: find.byKey(const Key('bs_total_7')), matching: find.text('Total 10')), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('bs_main_7'))).data, '4');
+    expect(t.widget<Text>(find.byKey(const Key('bs_br_7_1'))).data, '⚠ 4', reason: 'Kariakoo is below its level of 5');
+    expect(find.text('level 5'), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('bs_br_7_2'))).data, '2');
+    expect(t.widget<Text>(find.byKey(const Key('bs_br_8_1'))).data, '0', reason: 'a branch that holds none shows 0, not a blank');
+    expect(find.byKey(const Key('bs_over_8')), findsOneWidget, reason: 'more allocated than held is flagged');
+    expect(find.byKey(const Key('bs_over_7')), findsNothing);
     expect(find.textContaining('recount'), findsOneWidget);
+  });
+
+  testWidgets('the titles are the main store and the branches, once, above the list', (t) async {
+    await _pump(t, _FakeSalon());
+
+    expect(t.widget<Text>(find.byKey(const Key('bs_head_main'))).data, 'Main store');
+    expect(t.widget<Text>(find.byKey(const Key('bs_head_1'))).data, 'Kariakoo');
+    expect(t.widget<Text>(find.byKey(const Key('bs_head_2'))).data, 'Mikocheni');
+    // each product's figures sit under their title
+    expect(t.getCenter(find.byKey(const Key('bs_main_7'))).dx, closeTo(t.getCenter(find.byKey(const Key('bs_head_main'))).dx, 2));
+    expect(t.getCenter(find.byKey(const Key('bs_br_7_1'))).dx, closeTo(t.getCenter(find.byKey(const Key('bs_head_1'))).dx, 2));
+    expect(t.getCenter(find.byKey(const Key('bs_br_8_2'))).dx, closeTo(t.getCenter(find.byKey(const Key('bs_head_2'))).dx, 2));
+  });
+
+  testWidgets('the titles stay where they are when the goods are scrolled', (t) async {
+    final _FakeSalon api = _FakeSalon()..many = true;
+    await _pump(t, api);
+    final Offset before = t.getTopLeft(find.byKey(const Key('bs_head_main')));
+
+    final double firstBefore = t.getTopLeft(find.byKey(const Key('bs_name_1'))).dy;
+    await t.drag(find.byType(ListView), const Offset(0, -900));
+    await t.pump();
+
+    expect(t.getTopLeft(find.byKey(const Key('bs_head_main'))), before, reason: 'pinned, not scrolled away');
+    expect(t.getTopLeft(find.byKey(const Key('bs_name_1'))).dy, lessThan(firstBefore - 500), reason: 'the first product did scroll up and away');
+  });
+
+  testWidgets('without a branch there is only the main store column', (t) async {
+    await _pump(t, _FakeSalon()..noBranches = true);
+
+    expect(find.byKey(const Key('bs_head_main')), findsOneWidget);
+    expect(find.byKey(const Key('bs_head_1')), findsNothing);
+    expect(find.byKey(const Key('bs_no_branches')), findsOneWidget);
   });
 
   testWidgets('moves goods from the main store to a branch', (t) async {
@@ -121,7 +167,8 @@ void main() {
   testWidgets('a low shelf is marked and its level can be set, changed or cleared', (t) async {
     final _FakeSalon api = _FakeSalon();
     await _pump(t, api);
-    expect(find.textContaining('⚠ Kariakoo 4'), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('bs_br_7_1'))).data, '⚠ 4');
+    expect(find.text('level 5'), findsOneWidget);
     await t.tap(find.byKey(const Key('bs_level_7')));
     await t.pumpAndSettle();
     expect(t.widget<TextField>(find.byKey(const Key('lv_min'))).controller!.text, '5', reason: 'its own level is filled in');

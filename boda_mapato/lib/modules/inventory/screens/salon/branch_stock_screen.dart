@@ -6,6 +6,7 @@ import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
 import '../widgets/glow_list_card.dart';
+import '../widgets/joined_sections.dart';
 import 'salon_input.dart';
 
 /// Where the goods are: for each product the whole stock, what each branch holds and what is still in the main store.
@@ -103,39 +104,107 @@ class _BranchStockScreenState extends State<BranchStockScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Text(_error!))
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView(padding: const EdgeInsets.all(16), children: <Widget>[
-                    if (SalonEmbedded.of(context)) Align(alignment: Alignment.centerRight, child: history(sw)),
-                    if (_list(_data['products']).isEmpty && branches.isNotEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Hakuna bidhaa bado. Ongeza bidhaa kwenye Huduma na Bidhaa.' : 'No goods yet. Add goods in Services & Goods.', key: const Key('bs_no_goods'), textAlign: TextAlign.center)),
-                    if (branches.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Ongeza tawi kwanza (menyu ya Matawi).' : 'Add a branch first (the Branches menu).', key: const Key('bs_no_branches'), textAlign: TextAlign.center)),
-                    // The goods are ONE card of rows, each divided from the next by the glowing line.
-                    if (_list(_data['products']).isNotEmpty)
-                      GlowListCard(
-                        dividerKey: 'goods_divider',
-                        padding: EdgeInsets.zero,
-                        children: <Widget>[
-                          for (final Map<String, dynamic> p in _list(_data['products']))
-                            ListTile(
-                              key: Key('bs_${p['id']}'),
-                              title: Text('${p['name']}  ·  ${p['total']}'),
-                              subtitle: Text(<String>[
-                                '${sw ? 'Stoo kuu' : 'Main store'} ${p['unallocated']}',
-                                for (final Map<String, dynamic> b in _list(p['branches'])) '${b['low'] == true ? '⚠ ' : ''}${b['name']} ${b['quantity']}${b['min_quantity'] == null ? '' : ' (${sw ? 'kiwango' : 'level'} ${b['min_quantity']})'}',
-                                if (p['over_allocated'] == true) (sw ? 'Matawi yana zaidi ya stoo — hesabu upya' : 'Branches hold more than the stock: recount'),
-                              ].join(' · ')),
-                              isThreeLine: _list(p['branches']).length > 1,
-                              trailing: widget.canMove && branches.isNotEmpty
-                                  ? Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
-                                      IconButton(key: Key('bs_level_${p['id']}'), tooltip: sw ? 'Kiwango cha tahadhari' : 'Alert level', icon: const Icon(Icons.notifications_active_outlined), onPressed: () => _level(p)),
-                                      IconButton(key: Key('bs_move_${p['id']}'), tooltip: sw ? 'Hamisha' : 'Move', icon: const Icon(Icons.swap_horiz), onPressed: () => _move(p)),
-                                    ])
-                                  : null,
+              : Column(
+                  children: <Widget>[
+                    // The column titles stay where they are while the goods scroll under them.
+                    if (_list(_data['products']).isNotEmpty) _header(sw, branches),
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _load,
+                        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), children: <Widget>[
+                          if (SalonEmbedded.of(context)) Align(alignment: Alignment.centerRight, child: history(sw)),
+                          if (_list(_data['products']).isEmpty && branches.isNotEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Hakuna bidhaa bado. Ongeza bidhaa kwenye Huduma na Bidhaa.' : 'No goods yet. Add goods in Services & Goods.', key: const Key('bs_no_goods'), textAlign: TextAlign.center)),
+                          if (branches.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Ongeza tawi kwanza (menyu ya Matawi).' : 'Add a branch first (the Branches menu).', key: const Key('bs_no_branches'), textAlign: TextAlign.center)),
+                          // The goods are ONE card of rows, each divided from the next by the glowing line.
+                          if (_list(_data['products']).isNotEmpty)
+                            GlowListCard(
+                              dividerKey: 'goods_divider',
+                              padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                              children: <Widget>[for (final Map<String, dynamic> p in _list(_data['products'])) _row(p, sw, branches)],
                             ),
-                        ],
+                        ]),
                       ),
-                  ]),
+                    ),
+                  ],
                 ),
+    );
+  }
+
+  /// The titles of the figures under each product: the main store, then each branch. Fixed above the scrolling list.
+  Widget _header(final bool sw, final List<Map<String, dynamic>> branches) {
+    Widget title(final String text, final Key key) => Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(text, key: key, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+          ),
+        );
+    Widget line() => const Padding(padding: EdgeInsets.symmetric(vertical: 6), child: SizedBox(width: SectionGlowVerticalDivider.lineWidth, child: SectionGlowVerticalDivider()));
+
+    return Padding(
+      key: const Key('bs_header'),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: GlowListCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        children: <Widget>[
+          Row(children: <Widget>[
+            title(sw ? 'Stoo kuu' : 'Main store', const Key('bs_head_main')),
+            for (final Map<String, dynamic> b in branches) ...<Widget>[line(), title('${b['name']}', Key('bs_head_${b['id']}'))],
+          ]),
+        ],
+      ),
+    );
+  }
+
+  /// One product: its name, its total and the buttons on top; under it the figures, one under each title, divided by the glowing lines.
+  Widget _row(final Map<String, dynamic> p, final bool sw, final List<Map<String, dynamic>> branches) {
+    final Map<int, Map<String, dynamic>> held = <int, Map<String, dynamic>>{
+      for (final Map<String, dynamic> b in _list(p['branches'])) if (b['branch_id'] is num) (b['branch_id'] as num).toInt(): b,
+    };
+    Widget cell(final Key key, final String value, {final bool low = false, final String? note}) => Expanded(
+          child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+            FittedBox(fit: BoxFit.scaleDown, child: Text('${low ? '⚠ ' : ''}$value', key: key, style: TextStyle(color: low ? const Color(0xFFFFB020) : Colors.white, fontSize: 20, fontWeight: FontWeight.w800))),
+            if (note != null) Text(note, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFFFB020), fontSize: 10)),
+          ]),
+        );
+    Widget line() => const Padding(padding: EdgeInsets.symmetric(vertical: 2), child: SizedBox(width: SectionGlowVerticalDivider.lineWidth, child: SectionGlowVerticalDivider()));
+    final int id = (p['id'] as num).toInt();
+
+    return Column(
+      key: Key('bs_$id'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(children: <Widget>[
+          Expanded(child: Text('${p['name']}', key: Key('bs_name_$id'), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700))),
+          const SizedBox(width: 8),
+          Container(
+            key: Key('bs_total_$id'),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(color: ThemeConstants.invAccent.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: ThemeConstants.invAccent)),
+            child: Text('${sw ? 'Jumla' : 'Total'} ${p['total']}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+          ),
+          if (widget.canMove && branches.isNotEmpty) ...<Widget>[
+            IconButton(key: Key('bs_level_$id'), visualDensity: VisualDensity.compact, tooltip: sw ? 'Kiwango cha tahadhari' : 'Alert level', icon: const Icon(Icons.notifications_active_outlined), onPressed: () => _level(p)),
+            IconButton(key: Key('bs_move_$id'), visualDensity: VisualDensity.compact, tooltip: sw ? 'Hamisha' : 'Move', icon: const Icon(Icons.swap_horiz), onPressed: () => _move(p)),
+          ],
+        ]),
+        const SizedBox(height: 6),
+        IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: <Widget>[
+            cell(Key('bs_main_$id'), '${p['unallocated']}'),
+            for (final Map<String, dynamic> b in branches) ...<Widget>[
+              line(),
+              Builder(builder: (BuildContext context) {
+                final Map<String, dynamic>? h = held[(b['id'] as num).toInt()];
+                final bool low = h?['low'] == true;
+
+                return cell(Key('bs_br_${id}_${b['id']}'), '${h?['quantity'] ?? 0}', low: low, note: low && h?['min_quantity'] != null ? '${sw ? 'kiwango' : 'level'} ${h!['min_quantity']}' : null);
+              }),
+            ],
+          ]),
+        ),
+        if (p['over_allocated'] == true)
+          Padding(padding: const EdgeInsets.only(top: 6), child: Text(sw ? 'Matawi yana zaidi ya stoo — hesabu upya' : 'Branches hold more than the stock: recount', key: Key('bs_over_$id'), style: const TextStyle(color: Color(0xFFFFB020), fontSize: 12))),
+      ],
     );
   }
 }
