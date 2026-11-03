@@ -13,6 +13,7 @@ import '../../models/inv_depot_models.dart';
 import '../../providers/depot_provider.dart';
 import '../credit/customer_account_screen.dart';
 import '../widgets/inventory_widgets.dart';
+import '../widgets/joined_sections.dart';
 
 /// Every debt in one place, in two tabs: what customers owe me and what I owe. Debts from before the app are written here
 /// (name, amount, when it began, when it is due) and join the debtors ageing, the customer's credit balance and the monthly
@@ -189,7 +190,7 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
               ]),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           if (list.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 32),
@@ -206,7 +207,10 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
                 ),
               ]),
             ),
-          for (final Map<String, dynamic> debt in list) _card(debt, sw),
+          for (int i = 0; i < list.length; i++) ...<Widget>[
+            if (i > 0) Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: SectionGlowDivider(key: Key('debt_divider_${list[i]['id']}'), lift: false)),
+            _card(list[i], sw),
+          ],
         ],
       ),
     );
@@ -221,7 +225,7 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
 
     return Card(
       key: Key('debt_${debt['id']}'),
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.zero,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () => _open(debt),
@@ -240,7 +244,11 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
               Text(tsh(left), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white)),
             ]),
             const SizedBox(height: 10),
-            ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: paidShare, minHeight: 5, backgroundColor: Colors.white12, valueColor: const AlwaysStoppedAnimation<Color>(ThemeConstants.successGreen))),
+            Row(children: <Widget>[
+              Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: paidShare, minHeight: 5, backgroundColor: Colors.white12, valueColor: const AlwaysStoppedAnimation<Color>(ThemeConstants.successGreen)))),
+              const SizedBox(width: 8),
+              Text('${(paidShare * 100).floor()}%', key: Key('debt_percent_${debt['id']}'), style: const TextStyle(color: ThemeConstants.successGreen, fontSize: 12, fontWeight: FontWeight.w800)),
+            ]),
             const SizedBox(height: 8),
             Row(children: <Widget>[
               Text('${sw ? 'Jumla' : 'Of'} ${tsh(amount)}', style: kMoneyCaption),

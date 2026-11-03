@@ -81,6 +81,16 @@ Future<_FakeMoney> _open(WidgetTester t, {bool sw = false, int tab = 0, _FakeMon
 Finder _k(String k) => find.byKey(Key(k));
 
 void main() {
+  testWidgets('each debt shows the percentage paid on its progress line, and the debts are divided by the glowing line', (t) async {
+    await _open(t);
+
+    expect(find.byKey(const Key('debt_percent_1')), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('debt_percent_1'))).data, '0%');
+    expect(t.widget<Text>(find.byKey(const Key('debt_percent_2'))).data, '50%', reason: '10,000 of 20,000');
+    expect(find.byKey(const Key('debt_divider_2')), findsOneWidget);
+    expect(find.byKey(const Key('debt_divider_1')), findsNothing, reason: 'none above the first');
+  });
+
   testWidgets('owed to me: the total, what came from before the app, and each debt with how much is left', (t) async {
     await _open(t);
 
