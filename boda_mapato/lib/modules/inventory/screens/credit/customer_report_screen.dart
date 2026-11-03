@@ -15,6 +15,9 @@ enum _Period { week, month, quarter, year, custom }
 /// One customer's story for any period: how many times they bought, how much (and how much of it they paid), the profit they brought,
 /// what they buy most, how it moved day by day, week by week or month by month, and what they owe now. Profit is shown only to people
 /// whose rights include it (the server leaves it out for everyone else).
+/// The colour of the section titles (By week, Buys most, ...), so they stand apart from the white figures and names under them.
+const Color _sectionColor = Color(0xFF5CE1E6);
+
 class CustomerReportScreen extends StatefulWidget {
   const CustomerReportScreen({super.key, required this.customerId, required this.name, this.api, this.today});
 
@@ -155,7 +158,7 @@ class _CustomerReportScreenState extends State<CustomerReportScreen> {
 
   Widget _section(final String title) => Padding(
         padding: EdgeInsets.zero,
-        child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+        child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _sectionColor)),
       );
 
   Widget _card(final String label, final String value, {final Key? key, final Color? color, final String? note}) => Padding(
@@ -180,16 +183,16 @@ class _CustomerReportScreenState extends State<CustomerReportScreen> {
           ]),
         );
 
-  Widget _line(final String title, final String value, {final String? note, final Key? key}) => Padding(
+  Widget _line(final String title, final String value, {final String? note, final Key? key, final Color? color}) => Padding(
         key: key,
         padding: EdgeInsets.zero,
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-            Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            Text(title, style: TextStyle(color: color ?? Colors.white, fontWeight: FontWeight.w600)),
             if (note != null && note.isNotEmpty) Text(note, style: kMoneyCaption),
           ])),
           const SizedBox(width: 8),
-          Text(value, style: const TextStyle(color: Colors.white70)),
+          Text(value, style: TextStyle(color: color ?? Colors.white70, fontWeight: color == null ? null : FontWeight.w700)),
         ]),
       );
 
@@ -238,7 +241,7 @@ class _CustomerReportScreenState extends State<CustomerReportScreen> {
         ],
         _section(sw ? 'Tangu ameanza kununua' : 'Since they first bought'),
         _line(sw ? 'Manunuzi yote' : 'All purchases', _tsh(_n(life['sales'])), key: const Key('cr_life'), note: '${_n(life['purchases']).toInt()}${sw ? ' mara' : ' times'}${life['first_purchase'] == null ? '' : (sw ? '  ·  ya kwanza ${life['first_purchase']}' : '  ·  first ${life['first_purchase']}')}'),
-        if (profit && life['profit'] != null) _line(sw ? 'Faida yote aliyoleta' : 'All the profit they brought', _tsh(_n(life['profit']))),
+        if (profit && life['profit'] != null) _line(sw ? 'Faida yote aliyoleta' : 'All the profit they brought', _tsh(_n(life['profit'])), color: ThemeConstants.successGreen),
       ]),
     ]);
   }
