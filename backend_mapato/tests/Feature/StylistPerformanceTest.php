@@ -180,6 +180,18 @@ class StylistPerformanceTest extends TestCase
         $this->assertNull($rows['Chao']['target']);
     }
 
+    public function test_in_the_first_days_of_a_month_nobody_is_called_behind(): void
+    {
+        [$owner, $asha, $bahati] = $this->scene();
+        $this->sell($owner, '2026-11-02', $this->service($owner, 'Wash', 10000), 10000, $bahati);
+        $this->api($owner, 'PUT', '/api/inventory/salon/stylist-targets', ['month' => '2026-11', 'targets' => [['staff_id' => (string) $bahati->id, 'revenue_target' => 900000]]])->assertOk();
+
+        $t = StylistPerformance::targets('2026-11', '2026-11-03');
+        $this->assertSame('on_track', $t[(string) $bahati->id]['pace'], 'three days in, 1% of the target: too early to say behind');
+        $later = StylistPerformance::targets('2026-11', '2026-11-20');
+        $this->assertSame('behind', $later[(string) $bahati->id]['pace'], 'twenty days in it is');
+    }
+
     public function test_reaching_the_target_is_said_so_and_an_old_month_is_judged_by_the_whole_month(): void
     {
         [$owner, $asha] = $this->scene();

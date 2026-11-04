@@ -192,6 +192,7 @@ final class DemoSalon
             $this->equipment();
             $this->feedback($start);
             $this->bookings();
+            $this->attendance();
         } finally {
             Carbon::setTestNow();
             TenantContext::reset();
@@ -561,6 +562,28 @@ final class DemoSalon
                 'message' => $complaint ? $this->pick($complaints) : $this->pick($praise), 'customer_id' => $c['id'], 'staff_id' => $this->staffIds[$staff],
             ], fn ($v) => $v !== null), $day);
             $this->made['reviews']++;
+        }
+    }
+
+    /** Who came to work in the last four weeks and for how long (the Team page): in a little after half past eight, out a little after six. */
+    private function attendance(): void
+    {
+        $from = max(0, $this->days - 28);
+        for ($d = $from; $d < $this->days; $d++) {
+            $day = $this->end->copy()->subDays($this->days - $d - 1);
+            foreach (array_keys(self::STAFF) as $key) {
+                if (!$this->working($key, $day, $this->days - $d)) {
+                    continue;
+                }
+                try {
+                    $in = $day->copy()->setTime(8, $this->between(20, 59))->addMinutes($this->chance(0.12) ? $this->between(15, 40) : 0);
+                    $this->call('owner', 'POST', '/api/inventory/salon/attendance/clock-in', ['staff_id' => $this->staffIds[$key]], $in);
+                    $this->call('owner', 'POST', '/api/inventory/salon/attendance/clock-out', ['staff_id' => $this->staffIds[$key]], $day->copy()->setTime(17, $this->between(30, 59))->addMinutes($this->between(0, 70)));
+                    $this->made['shifts']++;
+                } catch (\RuntimeException) {
+                    // a day the app refuses is not recorded
+                }
+            }
         }
     }
 

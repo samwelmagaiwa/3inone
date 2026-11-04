@@ -60,6 +60,7 @@ class SalonDemoTest extends TestCase
         $this->assertGreaterThan(10, $s['made']['expenses']);
         $this->assertGreaterThan(0, $s['made']['payouts']);
         $this->assertSame(6, $s['made']['equipment']);
+        $this->assertGreaterThan(20, $s['made']['shifts'], 'the Team page has attendance');
         $this->assertGreaterThan(0, $s['made']['reviews']);
         $this->assertGreaterThan(0, $s['made']['bookings']);
         $this->assertGreaterThan(2000000, $s['revenue']);

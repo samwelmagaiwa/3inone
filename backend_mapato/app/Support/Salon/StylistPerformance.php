@@ -207,7 +207,7 @@ final class StylistPerformance
             $out[(string) $t->staff_id] = [
                 'month' => $month, 'amount' => $amount, 'achieved' => $achieved, 'percent' => $percent, 'expected_percent' => $expected,
                 // ahead: more than the days gone say it should be; behind: well short of it.
-                'pace' => $percent >= 100 ? 'reached' : ($percent >= $expected ? 'ahead' : ($percent >= $expected * 0.85 ? 'on_track' : 'behind')),
+                'pace' => $percent >= 100 ? 'reached' : ($percent >= $expected ? 'ahead' : ($percent >= $expected * 0.85 || $gone < 5 ? 'on_track' : 'behind')),
             ];
         }
 
