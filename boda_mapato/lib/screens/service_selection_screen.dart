@@ -10,6 +10,7 @@ import '../services/api_service.dart';
 import '../services/localization_service.dart';
 import '../widgets/pending_registrations_count.dart';
 import 'admin/registrations_screen.dart';
+import 'admin/users_control_screen.dart';
 
 class ServiceSelectionScreen extends StatelessWidget {
   const ServiceSelectionScreen({
@@ -120,8 +121,10 @@ class ServiceSelectionScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-              if (_isSuperAdmin(context))
+              if (_isSuperAdmin(context)) ...<Widget>[
                 _RegistrationRequestsCard(source: registrationsSource),
+                const _UsersControlCard(),
+              ],
               AutoSizeText(
                 loc.translate('select_service_subtitle'),
                 maxLines: 2,
@@ -248,6 +251,54 @@ class _RegistrationRequestsCardState extends State<_RegistrationRequestsCard> {
           ),
         );
       },
+    );
+  }
+}
+
+/// For the super admin: the door to every account on the platform (create, edit, roles, services, access rights, passwords,
+/// switching off, deleting). Opens the users control screen.
+class _UsersControlCard extends StatelessWidget {
+  const _UsersControlCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final bool sw = LocalizationService.instance.isSwahili;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 14.h),
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14.r),
+        child: InkWell(
+          key: const ValueKey<String>('users_control_card'),
+          borderRadius: BorderRadius.circular(14.r),
+          onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (BuildContext _) => const UsersControlScreen())),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(14.r), border: Border.all(color: Colors.white24)),
+            child: Row(
+              children: <Widget>[
+                Icon(Icons.admin_panel_settings_rounded, color: ThemeConstants.invAccent, size: 28.sp),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(sw ? 'Watumiaji na ruhusa' : 'Users & access', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
+                      SizedBox(height: 2.h),
+                      Text(
+                        sw ? 'Unda, hariri, wadhifa, huduma na ruhusa' : 'Create, edit, roles, services and rights',
+                        style: TextStyle(color: Colors.white54, fontSize: 12.sp),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.white54),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

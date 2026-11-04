@@ -99,6 +99,8 @@ void main() {
 
       expect(_key('registration_requests_card'), findsOneWidget);
       expect(find.text('Registration requests'), findsOneWidget);
+      expect(_key('users_control_card'), findsOneWidget, reason: 'and the door to every account sits beside it');
+      expect(find.text('Users & access'), findsOneWidget);
       expect(find.text('3 waiting for approval'), findsOneWidget);
       expect(find.byKey(const ValueKey<String>('count_badge')), findsOneWidget);
       expect(find.text('3'), findsOneWidget, reason: 'the badge');
@@ -153,6 +155,7 @@ void main() {
 
         expect(_key('registration_requests_card'), findsNothing);
         expect(source.loads, 0, reason: 'nothing is even asked of the server');
+        expect(_key('users_control_card'), findsNothing, reason: 'the users control belongs to the super admin alone');
       });
     }
 
