@@ -25,15 +25,21 @@
       }
     </div>
 
+    <!-- Branches and the people who sold there, in one table -->
     <section class="section-card overflow-hidden">
-      <div class="list-bar"><h3 class="list-bar-count font-black text-slate-900">{{ i18n.t('bsl.by.branch') }}</h3><span class="text-sm font-semibold text-slate-500">{{ d.by_branch.length }}</span></div>
+      <div class="list-bar">
+        <div class="list-bar-count flex flex-wrap items-center gap-2" role="tablist">
+          <button type="button" role="tab" class="pill-tab" [class.is-active]="group() === 'branch'" [attr.aria-selected]="group() === 'branch'" (click)="setGroup('branch')" data-testid="bsl-by-branch">{{ i18n.t('bsl.by.branch') }}</button>
+          <button type="button" role="tab" class="pill-tab" [class.is-active]="group() === 'staff'" [attr.aria-selected]="group() === 'staff'" (click)="setGroup('staff')" data-testid="bsl-by-staff">{{ i18n.t('bsl.by.staff') }}</button>
+        </div>
+        <span class="text-sm font-semibold text-slate-500">{{ groups().length }}</span>
+      </div>
       @if (d.by_branch.length) {
         <div class="table-scroll-container" style="border: 0; border-radius: 0;">
           <table class="grid-table">
             <thead>
               <tr>
-                <th><button type="button" class="grid-sort" [class.is-sorted]="branchSort()?.key === 'name'" (click)="sortBranches('name')" [attr.title]="i18n.t('table.sort', i18n.t('bsl.col.branch'))">{{ i18n.t('bsl.col.branch') }} <span class="arrow">{{ arrow(branchSort(), 'name') }}</span></button></th>
-                <th>{{ i18n.t('bsl.col.people') }}</th>
+                <th><button type="button" class="grid-sort" [class.is-sorted]="branchSort()?.key === 'name'" (click)="sortBranches('name')" [attr.title]="i18n.t('table.sort', group() === 'branch' ? i18n.t('bsl.col.branch') : i18n.t('bsl.col.person'))">{{ group() === 'branch' ? i18n.t('bsl.col.branch') : i18n.t('bsl.col.person') }} <span class="arrow">{{ arrow(branchSort(), 'name') }}</span></button></th>
                 <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="branchSort()?.key === 'count'" (click)="sortBranches('count')">{{ i18n.t('bsl.col.count') }} <span class="arrow">{{ arrow(branchSort(), 'count') }}</span></button></th>
                 <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="branchSort()?.key === 'sales'" (click)="sortBranches('sales')">{{ i18n.t('bsl.col.sold') }} <span class="arrow">{{ arrow(branchSort(), 'sales') }}</span></button></th>
                 <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="branchSort()?.key === 'paid'" (click)="sortBranches('paid')">{{ i18n.t('bsl.col.paid') }} <span class="arrow">{{ arrow(branchSort(), 'paid') }}</span></button></th>
@@ -43,55 +49,29 @@
               </tr>
             </thead>
             <tbody>
-              @for (b of branches(); track b.branch_id) {
-                <tr [attr.data-testid]="'bsl-branch-' + (b.branch_id ?? 0)">
-                  <td class="font-black">{{ b.name ?? i18n.t('bsl.nobranch') }}</td>
-                  <td class="text-slate-600 text-[13px]">@for (s of b.staff; track s.staff_id) {<div>{{ s.name }}: {{ tsh(s.sales) }} ({{ s.sales_count }})</div>}</td>
-                  <td class="text-right">{{ b.sales_count }}</td>
-                  <td class="text-right font-black">{{ tsh(b.sales) }}</td>
-                  <td class="text-right">{{ tsh(b.paid) }}</td>
-                  @if (hasProfit()) { <td class="text-right font-bold text-emerald-700">{{ b.profit !== null ? i18n.t('bsl.profit', tsh(b.profit)) : '' }}</td> }
+              @for (g of groups(); track g.id) {
+                <tr class="branch-row" [attr.data-testid]="'bsl-' + group() + '-' + g.id">
+                  <td class="font-black">{{ g.name }}</td>
+                  <td class="text-right font-black">{{ g.sales_count }}</td>
+                  <td class="text-right font-black">{{ tsh(g.sales) }}</td>
+                  <td class="text-right font-black">{{ tsh(g.paid) }}</td>
+                  @if (hasProfit()) { <td class="text-right font-black text-emerald-700">{{ g.profit !== null ? i18n.t('bsl.profit', tsh(g.profit)) : '' }}</td> }
                 </tr>
+                @for (c of g.children; track c.id) {
+                  <tr [attr.data-testid]="'bsl-' + group() + '-' + g.id + '-' + c.id">
+                    <td class="text-slate-700" style="padding-left: 34px;">{{ c.name }}</td>
+                    <td class="text-right">{{ c.sales_count }}</td>
+                    <td class="text-right">{{ tsh(c.sales) }}</td>
+                    <td class="text-right">{{ tsh(c.paid) }}</td>
+                    @if (hasProfit()) { <td class="text-right text-emerald-700">{{ c.profit !== null ? i18n.t('bsl.profit', tsh(c.profit)) : '' }}</td> }
+                  </tr>
+                }
               }
             </tbody>
           </table>
         </div>
       } @else {
         <p class="px-5 py-6 text-sm text-slate-400" data-testid="bsl-empty">{{ i18n.t('bsl.empty') }}</p>
-      }
-
-      <div class="list-bar" style="border-top: 1px solid #e2e8f4;"><h3 class="list-bar-count font-black text-slate-900">{{ i18n.t('bsl.by.staff') }}</h3><span class="text-sm font-semibold text-slate-500">{{ d.by_staff.length }}</span></div>
-      @if (d.by_staff.length) {
-        <div class="table-scroll-container" style="border: 0; border-radius: 0;">
-          <table class="grid-table">
-            <thead>
-              <tr>
-                <th><button type="button" class="grid-sort" [class.is-sorted]="staffSort()?.key === 'name'" (click)="sortPeople('name')" [attr.title]="i18n.t('table.sort', i18n.t('bsl.col.person'))">{{ i18n.t('bsl.col.person') }} <span class="arrow">{{ arrow(staffSort(), 'name') }}</span></button></th>
-                <th>{{ i18n.t('bsl.col.branches') }}</th>
-                <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="staffSort()?.key === 'count'" (click)="sortPeople('count')">{{ i18n.t('bsl.col.count') }} <span class="arrow">{{ arrow(staffSort(), 'count') }}</span></button></th>
-                <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="staffSort()?.key === 'sales'" (click)="sortPeople('sales')">{{ i18n.t('bsl.col.sold') }} <span class="arrow">{{ arrow(staffSort(), 'sales') }}</span></button></th>
-                <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="staffSort()?.key === 'paid'" (click)="sortPeople('paid')">{{ i18n.t('bsl.col.paid') }} <span class="arrow">{{ arrow(staffSort(), 'paid') }}</span></button></th>
-                @if (hasProfit()) {
-                  <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="staffSort()?.key === 'profit'" (click)="sortPeople('profit')">{{ i18n.t('bsl.col.profit') }} <span class="arrow">{{ arrow(staffSort(), 'profit') }}</span></button></th>
-                }
-              </tr>
-            </thead>
-            <tbody>
-              @for (s of people(); track s.staff_id) {
-                <tr [attr.data-testid]="'bsl-staff-' + s.staff_id">
-                  <td class="font-black">{{ s.name }}</td>
-                  <td class="text-slate-600 text-[13px]">@for (b of s.branches; track b.branch_id) {<div>{{ b.name ?? i18n.t('bsl.nobranch') }}: {{ tsh(b.sales) }} ({{ b.sales_count }})</div>}</td>
-                  <td class="text-right">{{ s.sales_count }}</td>
-                  <td class="text-right font-black">{{ tsh(s.sales) }}</td>
-                  <td class="text-right">{{ tsh(s.paid) }}</td>
-                  @if (hasProfit()) { <td class="text-right font-bold text-emerald-700">{{ s.profit !== null ? i18n.t('bsl.profit', tsh(s.profit)) : '' }}</td> }
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      } @else {
-        <p class="px-5 py-6 text-sm text-slate-400">{{ i18n.t('bsl.empty') }}</p>
       }
     </section>
   }
@@ -106,3 +86,8 @@
     }
   </div>
 </ng-template>
+
+<style>
+  :host { display: block; }
+  .branch-row td { background: #dfe8fb !important; border-top: 2px solid #b9c9ee; }
+</style>

@@ -9,6 +9,17 @@ import { MotionService } from '../../core/services/motion.service';
 import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
 
 type Period = 'week' | 'month' | 'quarter' | 'year';
+interface Row {
+  id: string;
+  name: string;
+  sales: number;
+  paid: number;
+  sales_count: number;
+  profit: number | null;
+}
+interface Group extends Row {
+  children: Row[];
+}
 
 /**
  * What each branch sold and what each person sold, for a week, a month, three months or a year (Tanzania days). Profit appears only
@@ -34,24 +45,39 @@ export class BranchSalesPage implements OnInit, AfterViewInit, OnDestroy {
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
 
-  // Each table sorts by the header that was clicked; profit is shown only when the server sent it (people who may not see profit never get it).
+  // One table that can be read two ways: by branch (each branch with the people who sold there) or by person (each person with the
+  // branches they sold in). A header sorts the groups, and what is inside each group the same way. Profit is shown only when the server
+  // sent it (people who may not see profit never get it).
+  protected readonly group = signal<'branch' | 'staff'>('branch');
   protected readonly branchSort = signal<SortState | null>(null);
-  protected readonly staffSort = signal<SortState | null>(null);
   protected readonly arrow = sortArrow;
-  protected readonly hasProfit = computed(() => (this.data()?.by_branch ?? []).some((b) => b.profit !== null) || (this.data()?.by_staff ?? []).some((s) => s.profit !== null));
-  protected readonly branches = computed(() =>
-    sorted(this.data()?.by_branch ?? [], this.branchSort(), (b, k) => (k === 'name' ? (b.name ?? this.i18n.t('bsl.nobranch')) : k === 'count' ? b.sales_count : k === 'paid' ? b.paid : k === 'profit' ? b.profit : b.sales)),
-  );
-  protected readonly people = computed(() =>
-    sorted(this.data()?.by_staff ?? [], this.staffSort(), (s, k) => (k === 'name' ? s.name : k === 'count' ? s.sales_count : k === 'paid' ? s.paid : k === 'profit' ? s.profit : s.sales)),
-  );
+  protected readonly hasProfit = computed(() => (this.data()?.by_branch ?? []).some((b) => b.profit !== null));
+
+  private value(row: Row, key: string): string | number | null {
+    return key === 'name' ? row.name : key === 'count' ? row.sales_count : key === 'paid' ? row.paid : key === 'profit' ? row.profit : row.sales;
+  }
+
+  /** The groups of the chosen reading, each with its own rows under it, all sorted by the chosen header. */
+  protected readonly groups = computed<Group[]>(() => {
+    const d = this.data();
+    if (!d) return [];
+    const none = this.i18n.t('bsl.nobranch');
+    const cell = (c: { sales: number; paid: number; sales_count: number; profit: number | null }) => ({ sales: c.sales, paid: c.paid, sales_count: c.sales_count, profit: c.profit });
+    const sort = this.branchSort();
+    const rows: Group[] =
+      this.group() === 'branch'
+        ? d.by_branch.map((b) => ({ id: `b${b.branch_id ?? 0}`, name: b.name ?? none, ...cell(b), children: b.staff.map((s) => ({ id: s.staff_id, name: s.name, ...cell(s) })) }))
+        : d.by_staff.map((p) => ({ id: p.staff_id, name: p.name, ...cell(p), children: p.branches.map((b) => ({ id: `b${b.branch_id ?? 0}`, name: b.name ?? none, ...cell(b) })) }));
+
+    return sorted(rows, sort, (r, k) => this.value(r, k)).map((r) => ({ ...r, children: sorted(r.children, sort, (c, k) => this.value(c, k)) }));
+  });
+
+  protected setGroup(g: 'branch' | 'staff'): void {
+    this.group.set(g);
+  }
 
   protected sortBranches(key: string): void {
     this.branchSort.update((c) => nextSort(c, key));
-  }
-
-  protected sortPeople(key: string): void {
-    this.staffSort.update((c) => nextSort(c, key));
   }
 
   ngOnInit(): void {

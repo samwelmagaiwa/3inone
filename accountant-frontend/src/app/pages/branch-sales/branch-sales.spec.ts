@@ -34,10 +34,10 @@ describe('sales by branch and by person', () => {
 
     expect(text(byTestId(el, 'bsl-goods')!)).toContain('2,500');
     expect(text(byTestId(el, 'bsl-service-profit')!)).toContain('450');
-    expect(text(byTestId(el, 'bsl-branch-1')!)).toContain('Kariakoo');
-    expect(text(byTestId(el, 'bsl-branch-1')!)).toContain('Asha');
-    expect(text(byTestId(el, 'bsl-branch-1')!)).toContain('profit');
-    expect(text(byTestId(el, 'bsl-staff-u1')!)).toContain('Kariakoo');
+    expect(text(byTestId(el, 'bsl-branch-b1')!)).toContain('Kariakoo');
+    expect(text(byTestId(el, 'bsl-branch-b1')!)).toContain('profit');
+    expect(text(byTestId(el, 'bsl-branch-b1-u1')!)).toContain('Asha'); // under its branch, in the same table
+    expect(text(byTestId(el, 'bsl-branch-b1-u1')!)).toContain('profit');
   });
 
   it('shows no profit when the server leaves it out', async () => {
@@ -45,7 +45,7 @@ describe('sales by branch and by person', () => {
 
     expect(byTestId(el, 'bsl-service-profit')).toBeNull();
     expect(text(byTestId(el, 'bsl-goods')!)).toContain('2,500');
-    expect(text(byTestId(el, 'bsl-branch-1')!)).not.toContain('profit');
+    expect(text(byTestId(el, 'bsl-branch-b1')!)).not.toContain('profit');
   });
 
   it('shows a bordered grid whose headers sort the rows, and no page title card', async () => {
@@ -53,7 +53,7 @@ describe('sales by branch and by person', () => {
 
     expect(el.querySelector('table.grid-table')).not.toBeNull();
     expect(el.querySelectorAll('section.section-card').length).toBe(1);
-    expect(el.querySelectorAll('table.grid-table').length).toBe(2);
+    expect(el.querySelectorAll('table.grid-table').length).toBe(1); // branches and people in one table
     expect(el.querySelector('.page-header-card')).toBeNull();
     const head = el.querySelector('table.grid-table th .grid-sort') as HTMLElement;
     head.click();
@@ -63,6 +63,21 @@ describe('sales by branch and by person', () => {
     head.click();
     await settle(fixture);
     expect(text(head)).toContain('▼');
+  });
+
+  it('can be read by person instead of by branch: each person with the branches they sold in', async () => {
+    const { fixture, el } = await open(true);
+
+    byTestId(el, 'bsl-by-staff')!.click();
+    await settle(fixture);
+
+    expect(el.querySelectorAll('table.grid-table').length).toBe(1);
+    expect(text(byTestId(el, 'bsl-staff-u1')!)).toContain('Asha');
+    expect(text(byTestId(el, 'bsl-staff-u1-b1')!)).toContain('Kariakoo');
+    expect(text(el.querySelector('table.grid-table th .grid-sort') as HTMLElement)).toContain('Person');
+    byTestId(el, 'bsl-by-branch')!.click();
+    await settle(fixture);
+    expect(byTestId(el, 'bsl-branch-b1')).not.toBeNull();
   });
 
   it('asks again for another period', async () => {
