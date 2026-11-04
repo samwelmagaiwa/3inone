@@ -243,6 +243,41 @@ void main() {
     expect(_k('uc_act_place'), findsNothing, reason: 'an owner is not placed under another admin');
   });
 
+  testWidgets('the roles offered in Add user follow the services ticked', (WidgetTester t) async {
+    await _open(t);
+    await t.tap(_k('uc_add'));
+    await t.pumpAndSettle();
+
+    Future<void> roles(void Function() check) async {
+      await t.tap(find.byType(DropdownButtonFormField<String>).first);
+      await t.pumpAndSettle();
+      check();
+      await t.tapAt(const Offset(5, 5));
+      await t.pumpAndSettle();
+    }
+
+    // Inventory is ticked to begin with: its roles and the roles that fit every service.
+    await roles(() {
+      expect(find.text('Sales officer'), findsWidgets);
+      expect(find.text('Manager'), findsWidgets);
+      expect(find.text('Hair stylist'), findsNothing);
+      expect(find.text('Driver'), findsNothing);
+    });
+
+    await t.tap(_k('uc_newsvc_transport'));
+    await t.tap(_k('uc_newsvc_salon'));
+    await t.pumpAndSettle();
+    await roles(() {
+      expect(find.text('Driver'), findsWidgets);
+      expect(find.text('Hair stylist'), findsWidgets);
+      expect(find.text('Landlord'), findsNothing);
+    });
+
+    await t.tap(_k('uc_newsvc_rental'));
+    await t.pumpAndSettle();
+    await roles(() => expect(find.text('Landlord'), findsWidgets));
+  });
+
   testWidgets('adding a user checks the form and sends the services', (WidgetTester t) async {
     final _Api api = await _open(t);
 

@@ -31,6 +31,26 @@ class _Roles {
     'hair_stylist', 'nail_technician', 'lash_makeup_artist', 'caretaker', 'driver', 'tenant', 'viewer',
   ];
 
+  /// The services a role works in. Roles missing here (the owners, manager, viewer) fit any service.
+  static const Map<String, List<String>> servicesOf = <String, List<String>>{
+    'sales_officer': <String>['inventory'],
+    'operator': <String>['inventory'],
+    'accountant': <String>['inventory', 'salon'],
+    'hair_stylist': <String>['salon'],
+    'nail_technician': <String>['salon'],
+    'lash_makeup_artist': <String>['salon'],
+    'driver': <String>['transport'],
+    'landlord': <String>['rental'],
+    'caretaker': <String>['rental'],
+    'tenant': <String>['rental'],
+  };
+
+  /// The roles that make sense for the services ticked: those of a ticked service, and the ones that fit every service.
+  static List<String> forServices(final Set<String> services) => <String>[
+        for (final String r in all)
+          if (r == superAdmin || !servicesOf.containsKey(r) || servicesOf[r]!.any(services.contains)) r,
+      ];
+
   static bool isOwner(final String role) => owners.contains(role);
   static bool isStaff(final String role) => role != superAdmin && !isOwner(role) && !outside.contains(role);
 
@@ -695,6 +715,7 @@ class _UsersControlScreenState extends State<UsersControlScreen> {
       builder: (BuildContext ctx) => StatefulBuilder(
         builder: (BuildContext ctx, void Function(void Function()) setDialog) {
           final bool staff = _Roles.isStaff(role);
+          final List<String> roles = _Roles.forServices(services);
 
           return AlertDialog(
             backgroundColor: ThemeConstants.bgMid,
@@ -713,13 +734,13 @@ class _UsersControlScreenState extends State<UsersControlScreen> {
                   TextField(key: const Key('uc_new_password'), controller: password, style: const TextStyle(color: Colors.white), decoration: _field((_sw ? 'Nywila (herufi 8 au zaidi)' : 'Password (8 or more characters)'), icon: Icons.lock_rounded)),
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
-                    key: const Key('uc_new_role'),
+                    key: Key('uc_new_role_${roles.length}'),
                     initialValue: role,
                     isExpanded: true,
                     dropdownColor: ThemeConstants.bgMid,
                     style: const TextStyle(color: Colors.white),
                     decoration: _field((_sw ? 'Wadhifa' : 'Role'), icon: Icons.verified_user_rounded),
-                    items: <DropdownMenuItem<String>>[for (final String r in _Roles.all) DropdownMenuItem<String>(value: r, child: Text(_Roles.label(r, _sw), style: TextStyle(color: _Roles.color(r))))],
+                    items: <DropdownMenuItem<String>>[for (final String r in roles) DropdownMenuItem<String>(value: r, child: Text(_Roles.label(r, _sw), style: TextStyle(color: _Roles.color(r))))],
                     onChanged: (String? v) => setDialog(() => role = v ?? role),
                   ),
                   if (role != _Roles.superAdmin) ...<Widget>[
@@ -736,7 +757,11 @@ class _UsersControlScreenState extends State<UsersControlScreen> {
                           selectedColor: ThemeConstants.invAccent.withValues(alpha: 0.55),
                           backgroundColor: Colors.white.withValues(alpha: 0.07),
                           labelStyle: const TextStyle(color: Colors.white),
-                          onSelected: (bool on) => setDialog(() => on ? services.add(s) : services.remove(s)),
+                          onSelected: (bool on) => setDialog(() {
+                            on ? services.add(s) : services.remove(s);
+                            // A role that no longer fits the ticked services gives way to the one that fits all of them.
+                            if (!_Roles.forServices(services).contains(role)) role = 'manager';
+                          }),
                         ),
                     ]),
                   ],
