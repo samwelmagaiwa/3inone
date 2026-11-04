@@ -41,6 +41,12 @@ class ApiService {
   static String? activeService;
 
   /// The branch (of a salon, a shop or a depot) being looked at / worked in (its id), or null for all branches. Sent as `X-Branch`.
+  /// Goes up each time the server accepted a change (a sale, an expense, a payment, an edit, a delete ...). Screens that show
+  /// totals listen to it and read their figures again by themselves (see LiveRefresh).
+  static final ValueNotifier<int> changes = ValueNotifier<int>(0);
+
+  static void _changed() => changes.value++;
+
   static int? activeBranch;
 
   /// The chosen branch's name, for showing where figures come from.
@@ -416,7 +422,9 @@ class ApiService {
           )
           .timeout(timeout ?? timeoutDuration);
 
-      return _handleResponse(response);
+      final Map<String, dynamic> result = _handleResponse(response);
+      _changed();
+      return result;
     } on TimeoutException {
       throw ApiException(LocalizationService.instance.translate('request_took_too_long'));
     } on SocketException catch (e) {
@@ -449,7 +457,9 @@ class ApiService {
           )
           .timeout(timeoutDuration);
 
-      return _handleResponse(response);
+      final Map<String, dynamic> result = _handleResponse(response);
+      _changed();
+      return result;
     } on SocketException catch (e) {
       throw ApiException(LocalizationService.instance.translateWith('no_network_connection', <Object?>[e.message]));
     } on HttpException catch (e) {
@@ -476,7 +486,9 @@ class ApiService {
           )
           .timeout(timeoutDuration);
 
-      return _handleResponse(response);
+      final Map<String, dynamic> result = _handleResponse(response);
+      _changed();
+      return result;
     } on SocketException catch (e) {
       throw ApiException(LocalizationService.instance.translateWith('no_network_connection', <Object?>[e.message]));
     } on HttpException catch (e) {

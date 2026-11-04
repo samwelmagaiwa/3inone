@@ -7,6 +7,7 @@ import '../../../../services/api_service.dart';
 import '../../../../services/localization_service.dart';
 import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
+import '../../../../widgets/live_refresh.dart';
 import 'salon_text.dart';
 import 'services_report_screen.dart';
 import 'stylists_screen.dart';
@@ -51,8 +52,11 @@ class _SalonOverviewCardState extends State<SalonOverviewCard> {
     }
   }
 
+  /// The salon's takings, diary and debts read again by themselves after any change, on return to the app, and every so often.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LiveRefresh(onRefresh: _load, child: Builder(builder: _content));
+
+  Widget _content(BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     final SalonOverview? d = _data;
 

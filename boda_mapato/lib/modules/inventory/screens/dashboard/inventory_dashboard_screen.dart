@@ -13,6 +13,7 @@ import '../../../../models/user_permissions.dart';
 import '../../../../providers/auth_provider.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/responsive_helper.dart';
+import '../../../../widgets/live_refresh.dart';
 import '../../models/inv_sale.dart';
 import '../../providers/inventory_provider.dart';
 import '../credit/credit_screen.dart';
@@ -213,8 +214,20 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
     unawaited(_chartAnimationController.forward());
   }
 
+  /// Reads the figures again without a spinner or the chart's replay: the totals, the lists and the month's chart.
+  Future<void> _quietRefresh() async {
+    final InventoryProvider inv = Provider.of<InventoryProvider>(context, listen: false);
+    await inv.bootstrap();
+    if (!mounted) return;
+    await Provider.of<InventoryProvider>(context, listen: false).fetchMonthlyChart(DateTime.now().year, _selectedMonth);
+  }
+
+  /// The dashboard (the shop's and the salon's) keeps its figures fresh by itself: after any change made in the app, when the app
+  /// comes back to the front, and every so often for what other phones did.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LiveRefresh(onRefresh: _quietRefresh, child: Builder(builder: _dashboard));
+
+  Widget _dashboard(BuildContext context) {
     ResponsiveHelper.init(context);
     // watch — rebuilds automatically when language toggles
     final LocalizationService loc = context.watch<LocalizationService>();
