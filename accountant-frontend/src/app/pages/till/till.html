@@ -106,7 +106,7 @@
           </div>
         </div>
         @if (till.lines().length) {
-          <div class="mt-2 space-y-2">
+          <div class="mt-2 grid grid-cols-1 xl:grid-cols-2 gap-2 items-start">
             @for (l of till.lines(); track l.key) {
               <div class="cart-line" [attr.data-testid]="'line-' + l.productId">
                 <div class="flex items-start justify-between gap-3">
@@ -464,14 +464,14 @@
   /* The sale is made in a popup card, one step at a time (the steps share the page's panels; the others are hidden) */
   .wizard-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(15, 23, 42, .55); backdrop-filter: blur(6px); }
   .wizard-card { display: flex; flex-direction: column; width: 100%; max-width: 1320px; height: calc(100vh - 40px); max-height: 940px; background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 30px 70px -20px rgba(15, 23, 42, .45), 0 0 0 1px rgba(15, 23, 42, .08); }
-  .wizard-head { padding: 18px 24px 14px; border-bottom: 1px solid #e6ecfb; background: linear-gradient(180deg, #f5f8ff, #fff); }
+  .wizard-head { padding: 12px 20px 10px; border-bottom: 1px solid #e6ecfb; background: linear-gradient(180deg, #f5f8ff, #fff); }
   .wizard-eyebrow { font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; color: #7d8fc4; }
-  .wizard-title { font-size: 20px; font-weight: 900; color: #1a2f6e; letter-spacing: -.01em; }
+  .wizard-title { font-size: 18px; font-weight: 900; color: #1a2f6e; letter-spacing: -.01em; }
   .wizard-close { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 10px; color: #475a8f; background: #fff; border: 1px solid #dbe4ff; cursor: pointer; }
   .wizard-close:hover { background: #f3f5ff; }
-  .wizard-steps { display: flex; gap: 6px; margin-top: 14px; padding: 0; list-style: none; overflow-x: auto; }
+  .wizard-steps { display: flex; gap: 6px; margin-top: 10px; padding: 0; list-style: none; overflow-x: auto; }
   .wizard-steps li { flex: 1 1 0; min-width: 0; }
-  .wz-dot { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border-radius: 12px; font-size: 12px; font-weight: 800; color: #7d8fc4; background: #f1f5ff; border: 1px solid transparent; cursor: pointer; text-align: left; }
+  .wz-dot { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 10px; border-radius: 12px; font-size: 12px; font-weight: 800; color: #7d8fc4; background: #f1f5ff; border: 1px solid transparent; cursor: pointer; text-align: left; }
   .wz-dot b { display: inline-flex; flex: none; width: 24px; height: 24px; align-items: center; justify-content: center; border-radius: 50%; font-size: 12px; color: #475a8f; background: #fff; border: 1px solid #dbe4ff; }
   .wz-dot span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .wz-dot:disabled { cursor: default; opacity: .7; }
@@ -480,9 +480,9 @@
   .wz-dot.is-current { color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); box-shadow: 0 10px 20px -12px rgba(26,47,110,.8); }
   .wz-dot.is-current b { color: #1a2f6e; border-color: transparent; }
   .wizard-body .hidden { display: none !important; }
-  .wizard-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 24px; overscroll-behavior: contain; }
+  .wizard-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 12px 20px; overscroll-behavior: contain; }
   .wizard-body .panel { padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
-  .wizard-foot { padding: 12px 24px 16px; border-top: 1px solid #e6ecfb; background: #fff; }
+  .wizard-foot { padding: 10px 20px 12px; border-top: 1px solid #e6ecfb; background: #fff; }
   .wizard-foot .form-error { margin-bottom: 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c; font-size: 13px; font-weight: 800; }
   .wz-total { font-size: 13px; font-weight: 700; color: #475a8f; }
   .wz-total b { font-size: 18px; font-weight: 900; color: #1a2f6e; }
@@ -528,21 +528,21 @@
   .price-tag { padding: 5px 10px; border-radius: 10px; font-size: 12px; font-weight: 900; color: #1a2f6e; background: #eef3ff; white-space: nowrap; }
   .price-tag.is-choose { color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); }
 
-  .cart-line { padding: 10px 12px; border: 1px solid #e6ecfb; border-left: 4px solid #3b61e2; border-radius: 16px; background: linear-gradient(180deg, #fff, #f9fbff); transition: box-shadow .2s; }
+  .cart-line { padding: 8px 12px; border: 1px solid #e6ecfb; border-left: 4px solid #3b61e2; border-radius: 16px; background: linear-gradient(180deg, #fff, #f9fbff); transition: box-shadow .2s; }
   .cart-line:hover { box-shadow: 0 14px 28px -20px rgba(26,47,110,.5); }
-  .price-box { width: 9.5rem; padding: 6px 10px; text-align: right; font-weight: 800; border-radius: 10px; }
+  .price-box { width: 8rem; padding: 3px 10px; height: 34px; text-align: right; font-weight: 800; border-radius: 10px; }
   .qty-box { display: inline-flex; align-items: center; border: 1px solid #dbe4ff; border-radius: 12px; overflow: hidden; background: #fff; }
-  .qty-box button { width: 38px; height: 38px; font-size: 18px; font-weight: 900; color: #1a2f6e; cursor: pointer; }
+  .qty-box button { width: 32px; height: 32px; font-size: 18px; font-weight: 900; color: #1a2f6e; cursor: pointer; }
   .qty-box button:hover:not(:disabled) { background: #eef3ff; }
   .qty-box button:disabled { opacity: .35; cursor: not-allowed; }
-  .qty-box input { width: 56px; height: 38px; text-align: center; font-weight: 800; border: 0; outline: 0; }
+  .qty-box input { width: 48px; height: 32px; text-align: center; font-weight: 800; border: 0; outline: 0; }
   .unit-pick { width: auto; min-width: 130px; padding-top: 6px; padding-bottom: 6px; border-radius: 10px; }
   .link-btn { font-size: 13px; font-weight: 800; color: #2e4dbd; cursor: pointer; }
   .link-btn:hover { text-decoration: underline; }
   .link-btn.danger { color: #dc2626; }
   .cust.is-needed { padding: 10px 12px; border: 1px solid #fecaca; border-radius: 16px; background: #fff7f7; }
   .req-chip { padding: 2px 9px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 10px; letter-spacing: .04em; }
-  .stylists { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border-radius: 12px; background: #f5f8ff; border: 1px solid #e0e8fb; }
+  .stylists { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; padding: 4px 10px; border-radius: 12px; background: #f5f8ff; border: 1px solid #e0e8fb; }
   .stylists.is-missing { background: #fff7f7; border-color: #fecaca; }
   .stylists-label { margin-right: 4px; font-size: 11px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; color: #475a8f; }
   .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px 4px 4px; border-radius: 999px; font-size: 13px; font-weight: 800; color: #1a2f6e; background: #fff; border: 1px solid #dbe4ff; cursor: pointer; transition: all .15s; }
