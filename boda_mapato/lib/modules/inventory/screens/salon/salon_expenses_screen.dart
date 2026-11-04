@@ -17,8 +17,7 @@ import '../widgets/inventory_widgets.dart';
 import 'salon_access.dart';
 import 'salon_text.dart';
 import '../widgets/glow_list_card.dart';
-
-enum _Range { today, week, month, lastMonth }
+import 'salon_period.dart';
 
 /// What the salon spends: rent, salaries, products, electricity and water, transport, repairs, marketing, licences. Each
 /// expense says who supplied, how it was paid and carries a photo of the receipt. What the owner or a manager records
@@ -43,7 +42,7 @@ class SalonExpensesScreen extends StatefulWidget {
 class _SalonExpensesScreenState extends State<SalonExpensesScreen> {
   late final SalonApi _api = widget.api ?? SalonApi();
 
-  _Range _range = _Range.month;
+  SalonPeriod _range = SalonPeriod.thisMonth;
   List<SalonExpense> _items = <SalonExpense>[];
   String? _error;
   bool _loading = true;
@@ -54,18 +53,27 @@ class _SalonExpensesScreenState extends State<SalonExpensesScreen> {
     return DateTime(d.year, d.month, d.day);
   }
 
-  (DateTime, DateTime) get _dates {
-    final DateTime t = _today;
-    switch (_range) {
-      case _Range.today:
-        return (t, t);
-      case _Range.week:
-        return (t.subtract(Duration(days: t.weekday - 1)), t);
-      case _Range.month:
-        return (DateTime(t.year, t.month), t);
-      case _Range.lastMonth:
-        return (DateTime(t.year, t.month - 1), DateTime(t.year, t.month, 0));
+  (DateTime, DateTime) get _dates => salonRange(_range, _today, custom: _custom);
+
+  /// The two days the person picked (for the "Pick dates" chip).
+  DateTimeRange? _custom;
+
+  /// A chip was tapped: "Pick dates" asks for the two days first (and again each time it is tapped), the others just change the period.
+  Future<void> _choose(final SalonPeriod p) async {
+    if (p == SalonPeriod.custom) {
+      final DateTimeRange? got = await pickSalonRange(context, _today, _custom);
+      if (got == null || !mounted) return;
+      setState(() {
+        _custom = got;
+        _range = p;
+      });
+      _load();
+
+      return;
     }
+    if (p == _range) return;
+    setState(() => _range = p);
+    _load();
   }
 
   @override
@@ -75,7 +83,7 @@ class _SalonExpensesScreenState extends State<SalonExpensesScreen> {
   }
 
   Future<void> _load() async {
-    final _Range asked = _range;
+    final SalonPeriod asked = _range;
     final (DateTime from, DateTime to) = _dates;
     setState(() {
       _loading = true;
@@ -173,19 +181,10 @@ class _SalonExpensesScreenState extends State<SalonExpensesScreen> {
     final int waiting = _items.where((SalonExpense e) => e.isPending).length;
 
     return <Widget>[
-      InvFilterChips<_Range>(
+      InvFilterChips<SalonPeriod>(
         value: _range,
-        options: <_Range, String>{
-          _Range.today: sw ? 'Leo' : 'Today',
-          _Range.week: sw ? 'Wiki hii' : 'This week',
-          _Range.month: sw ? 'Mwezi huu' : 'This month',
-          _Range.lastMonth: sw ? 'Mwezi uliopita' : 'Last month',
-        },
-        onSelected: (_Range r) {
-          if (r == _range) return;
-          setState(() => _range = r);
-          _load();
-        },
+        options: salonPeriodOptions(sw: sw, custom: _custom),
+        onSelected: _choose,
       ),
       SizedBox(height: 10.h),
       Row(

@@ -239,5 +239,4 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
     );
   }
 
-  Widget _head(final String t) => Padding(padding: const EdgeInsets.fromLTRB(16, 20, 16, 4), child: Text(t, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)));
 }

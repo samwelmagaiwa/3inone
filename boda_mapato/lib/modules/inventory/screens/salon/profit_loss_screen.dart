@@ -8,10 +8,9 @@ import '../../../../utils/server_message.dart';
 import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
 import '../widgets/glow_list_card.dart';
+import 'salon_period.dart';
 import '../widgets/inventory_widgets.dart';
 import 'salon_text.dart';
-
-enum _Period { today, week, month, year }
 
 /// The salon's profit and loss for a period: what the services and goods earned (after discounts), what the goods
 /// cost, what was spent, what stylists earned in commission and were paid in salary, and what is left. Below it:
@@ -32,7 +31,7 @@ class ProfitLossScreen extends StatefulWidget {
 class _ProfitLossScreenState extends State<ProfitLossScreen> {
   late final SalonApi _api = widget.api ?? SalonApi();
 
-  _Period _period = _Period.month;
+  SalonPeriod _period = SalonPeriod.thisMonth;
   ProfitLoss? _data;
   String? _error;
   bool _loading = true;
@@ -42,18 +41,27 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
     return DateTime(d.year, d.month, d.day);
   }
 
-  (DateTime, DateTime) get _dates {
-    final DateTime t = _today;
-    switch (_period) {
-      case _Period.today:
-        return (t, t);
-      case _Period.week:
-        return (t.subtract(Duration(days: t.weekday - 1)), t);
-      case _Period.month:
-        return (DateTime(t.year, t.month), t);
-      case _Period.year:
-        return (DateTime(t.year), t);
+  (DateTime, DateTime) get _dates => salonRange(_period, _today, custom: _custom);
+
+  /// The two days the person picked (for the "Pick dates" chip).
+  DateTimeRange? _custom;
+
+  /// A chip was tapped: "Pick dates" asks for the two days first (and again each time it is tapped), the others just change the period.
+  Future<void> _choose(final SalonPeriod p) async {
+    if (p == SalonPeriod.custom) {
+      final DateTimeRange? got = await pickSalonRange(context, _today, _custom);
+      if (got == null || !mounted) return;
+      setState(() {
+        _custom = got;
+        _period = p;
+      });
+      _load();
+
+      return;
     }
+    if (p == _period) return;
+    setState(() => _period = p);
+    _load();
   }
 
   @override
@@ -63,7 +71,7 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
   }
 
   Future<void> _load() async {
-    final _Period asked = _period;
+    final SalonPeriod asked = _period;
     final (DateTime from, DateTime to) = _dates;
     setState(() {
       _loading = true;
@@ -99,19 +107,10 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
           physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
           padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 24.h),
           children: <Widget>[
-            InvFilterChips<_Period>(
+            InvFilterChips<SalonPeriod>(
               value: _period,
-              options: <_Period, String>{
-                _Period.today: sw ? 'Leo' : 'Today',
-                _Period.week: sw ? 'Wiki hii' : 'This week',
-                _Period.month: sw ? 'Mwezi huu' : 'This month',
-                _Period.year: sw ? 'Mwaka huu' : 'This year',
-              },
-              onSelected: (_Period p) {
-                if (p == _period) return;
-                setState(() => _period = p);
-                _load();
-              },
+              options: salonPeriodOptions(sw: sw, custom: _custom),
+              onSelected: _choose,
             ),
             SizedBox(height: 12.h),
             ..._body(sw),

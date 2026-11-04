@@ -8,10 +8,9 @@ import '../../../../utils/server_message.dart';
 import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
+import 'salon_period.dart';
 import 'salon_text.dart';
 import '../widgets/glow_list_card.dart';
-
-enum _Period { thisMonth, lastMonth, last7 }
 
 /// Every service the salon sold in a period: how often, what it brought in, for how many clients, and (opened with a tap)
 /// each time it was done: the day, the client's name, the stylist and what it was worth. The owner and managers see all of
@@ -32,7 +31,7 @@ class ServicesReportScreen extends StatefulWidget {
 class _ServicesReportScreenState extends State<ServicesReportScreen> {
   late final SalonApi _api = widget.api ?? SalonApi();
 
-  _Period _period = _Period.thisMonth;
+  SalonPeriod _period = SalonPeriod.thisMonth;
   ServiceReport? _report;
   String? _error;
   bool _loading = true;
@@ -43,16 +42,27 @@ class _ServicesReportScreenState extends State<ServicesReportScreen> {
     return DateTime(now.year, now.month, now.day);
   }
 
-  (DateTime, DateTime) get _range {
-    final DateTime t = _today;
-    switch (_period) {
-      case _Period.thisMonth:
-        return (DateTime(t.year, t.month), t);
-      case _Period.lastMonth:
-        return (DateTime(t.year, t.month - 1), DateTime(t.year, t.month, 0));
-      case _Period.last7:
-        return (t.subtract(const Duration(days: 6)), t);
+  /// The two days the person picked (for the "Pick dates" chip).
+  DateTimeRange? _custom;
+
+  (DateTime, DateTime) get _range => salonRange(_period, _today, custom: _custom);
+
+  /// A chip was tapped: the "Pick dates" one asks for the two days first (and again each time it is tapped), the others just change the period.
+  Future<void> _choose(final SalonPeriod p) async {
+    if (p == SalonPeriod.custom) {
+      final DateTimeRange? got = await pickSalonRange(context, _today, _custom);
+      if (got == null || !mounted) return;
+      setState(() {
+        _custom = got;
+        _period = p;
+      });
+      _load();
+
+      return;
     }
+    if (p == _period) return;
+    setState(() => _period = p);
+    _load();
   }
 
   @override
@@ -63,7 +73,7 @@ class _ServicesReportScreenState extends State<ServicesReportScreen> {
 
   Future<void> _load() async {
     final (DateTime from, DateTime to) = _range;
-    final _Period asked = _period;
+    final SalonPeriod asked = _period;
     setState(() {
       _loading = true;
       _error = null;
@@ -99,18 +109,10 @@ class _ServicesReportScreenState extends State<ServicesReportScreen> {
           physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
           padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 24.h),
           children: <Widget>[
-            InvFilterChips<_Period>(
+            InvFilterChips<SalonPeriod>(
               value: _period,
-              options: <_Period, String>{
-                _Period.thisMonth: sw ? 'Mwezi huu' : 'This month',
-                _Period.lastMonth: sw ? 'Mwezi uliopita' : 'Last month',
-                _Period.last7: sw ? 'Siku 7' : 'Last 7 days',
-              },
-              onSelected: (_Period p) {
-                if (p == _period) return;
-                setState(() => _period = p);
-                _load();
-              },
+              options: salonPeriodOptions(sw: sw, custom: _custom),
+              onSelected: _choose,
             ),
             SizedBox(height: 12.h),
             ..._body(sw),

@@ -651,6 +651,21 @@ void main() {
       expect(api.plAsks.last, (DateTime(2026, 10, 15), DateTime(2026, 10, 15)));
     });
 
+    testWidgets('yesterday and last week can be chosen too, and any two days picked on the calendar', (t) async {
+      final _FakeSalon api = _FakeSalon()..pl = data();
+      await _host(t, ProfitLossScreen(api: api, today: _today));
+
+      await t.ensureVisible(find.text('Yesterday'));
+      await t.tap(find.text('Yesterday'));
+      await _settle(t);
+      expect(api.plAsks.last, (DateTime(2026, 10, 14), DateTime(2026, 10, 14)));
+      await t.ensureVisible(find.text('Last week'));
+      await t.tap(find.text('Last week'));
+      await _settle(t);
+      expect(api.plAsks.last, (DateTime(2026, 10, 5), DateTime(2026, 10, 11)));
+      expect(find.text('Pick dates'), findsOneWidget, reason: 'and the calendar chip is there');
+    });
+
     testWidgets('a failed load says why and can be retried; Swahili is Swahili', (t) async {
       final _FakeSalon api = _FakeSalon()
         ..pl = data()

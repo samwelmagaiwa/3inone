@@ -153,6 +153,7 @@ void main() {
     await t.pump(const Duration(milliseconds: 300));
 
     expect(api.askedServices.single, (DateTime(2026, 10), DateTime(2026, 10, 15)));
+    await t.ensureVisible(find.text('Last month'));
     await t.tap(find.text('Last month'));
     await t.pump(const Duration(milliseconds: 300));
     expect(api.askedServices.last, (DateTime(2026, 9), DateTime(2026, 9, 30)));

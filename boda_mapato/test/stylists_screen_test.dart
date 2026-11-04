@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:boda_mapato/modules/inventory/models/salon_models.dart';
+import 'package:boda_mapato/modules/inventory/screens/salon/salon_period.dart';
 import 'package:boda_mapato/modules/inventory/screens/salon/stylists_screen.dart';
 import 'package:boda_mapato/modules/inventory/screens/widgets/joined_sections.dart';
 import 'package:boda_mapato/modules/inventory/services/salon_api.dart';
@@ -136,12 +137,13 @@ void main() {
 
     expect(api.asked.last, (DateTime(2026, 10), DateTime(2026, 10, 15)), reason: 'this month: the 1st to today');
 
+    await t.ensureVisible(find.text('Last month')); // the chips scroll sideways on a narrow phone
     await t.tap(find.text('Last month'));
     await t.pump();
     await t.pump(const Duration(milliseconds: 50));
     expect(api.asked.last, (DateTime(2026, 9), DateTime(2026, 9, 30)), reason: 'all of September');
 
-    await t.ensureVisible(find.text('Last 7 days')); // the chips scroll sideways on a narrow phone
+    await t.ensureVisible(find.text('Last 7 days'));
     await t.tap(find.text('Last 7 days'));
     await t.pump();
     await t.pump(const Duration(milliseconds: 50));
@@ -168,6 +170,7 @@ void main() {
     await t.pump();
     await t.pump(const Duration(milliseconds: 50));
 
+    await t.ensureVisible(find.text('Last month')); // the chips scroll sideways on a narrow phone
     await t.tap(find.text('Last month'));
     await t.pump();
     await t.pump(const Duration(milliseconds: 50));
@@ -210,6 +213,7 @@ void main() {
     });
     await _open(t, api);
 
+    await t.ensureVisible(find.text('Last month')); // the chips scroll sideways on a narrow phone
     await t.tap(find.text('Last month')); // while this month is still loading
     await t.pump();
     await t.pump(const Duration(milliseconds: 50));
@@ -417,6 +421,93 @@ void main() {
       expect(find.text('Mbele ya kasi'), findsOneWidget);
       expect(find.textContaining('Ikilinganishwa na'), findsOneWidget);
       expect(find.text('Weka malengo ya mwezi'), findsOneWidget);
+    });
+  });
+
+  group('looking at other days', () {
+    final DateTime today = DateTime(2026, 10, 15); // a Thursday
+
+    test('every period is worked out from the day it is asked on, with weeks from Monday to Sunday', () {
+      expect(salonRange(SalonPeriod.today, today), (DateTime(2026, 10, 15), DateTime(2026, 10, 15)));
+      expect(salonRange(SalonPeriod.yesterday, today), (DateTime(2026, 10, 14), DateTime(2026, 10, 14)));
+      expect(salonRange(SalonPeriod.last7, today), (DateTime(2026, 10, 9), DateTime(2026, 10, 15)));
+      expect(salonRange(SalonPeriod.thisWeek, today), (DateTime(2026, 10, 12), DateTime(2026, 10, 15)), reason: 'Monday to today');
+      expect(salonRange(SalonPeriod.lastWeek, today), (DateTime(2026, 10, 5), DateTime(2026, 10, 11)), reason: 'last Monday to last Sunday');
+      expect(salonRange(SalonPeriod.thisMonth, today), (DateTime(2026, 10), DateTime(2026, 10, 15)));
+      expect(salonRange(SalonPeriod.lastMonth, today), (DateTime(2026, 9), DateTime(2026, 9, 30)));
+      expect(salonRange(SalonPeriod.thisYear, today), (DateTime(2026), DateTime(2026, 10, 15)));
+    });
+
+    test('yesterday and last week cross a month and a year end correctly', () {
+      expect(salonRange(SalonPeriod.yesterday, DateTime(2026, 11, 1)), (DateTime(2026, 10, 31), DateTime(2026, 10, 31)));
+      expect(salonRange(SalonPeriod.yesterday, DateTime(2027, 1, 1)), (DateTime(2026, 12, 31), DateTime(2026, 12, 31)));
+      expect(salonRange(SalonPeriod.lastWeek, DateTime(2027, 1, 6)), (DateTime(2026, 12, 28), DateTime(2027, 1, 3)));
+      expect(salonRange(SalonPeriod.lastMonth, DateTime(2027, 1, 10)), (DateTime(2026, 12), DateTime(2026, 12, 31)));
+    });
+
+    test('two days picked are used as they are, the time of day dropped', () {
+      final DateTimeRange picked = DateTimeRange(start: DateTime(2026, 8, 3, 14, 30), end: DateTime(2026, 8, 9, 23, 59));
+
+      expect(salonRange(SalonPeriod.custom, today, custom: picked), (DateTime(2026, 8, 3), DateTime(2026, 8, 9)));
+      expect(salonRange(SalonPeriod.custom, today), (DateTime(2026, 10, 9), DateTime(2026, 10, 15)), reason: 'nothing picked yet: the last seven days');
+    });
+
+    test('the chips are in the order a person looks for them, in both languages', () {
+      expect(salonPeriodOptions(sw: false).values.toList(), <String>['Today', 'Yesterday', 'Last 7 days', 'This week', 'Last week', 'This month', 'Last month', 'This year', 'Pick dates']);
+      expect(salonPeriodOptions(sw: true).values.toList(), <String>['Leo', 'Jana', 'Siku 7', 'Wiki hii', 'Wiki iliyopita', 'Mwezi huu', 'Mwezi uliopita', 'Mwaka huu', 'Chagua tarehe']);
+      expect(salonPeriodOptions(sw: false, custom: DateTimeRange(start: DateTime(2026, 8, 3), end: DateTime(2026, 8, 9)))[SalonPeriod.custom], '3/8 - 9/8', reason: 'once picked, the chip says which days');
+    });
+
+    testWidgets('Yesterday, Today, This week, Last week and This year each ask the server for their days', (t) async {
+      final _FakeSalon api = _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha]));
+      await _open(t, api);
+
+      Future<void> choose(String label) async {
+        await t.ensureVisible(find.text(label));
+        await t.tap(find.text(label));
+        await t.pump();
+        await t.pump(const Duration(milliseconds: 50));
+      }
+
+      await choose('Yesterday');
+      expect(api.asked.last, (DateTime(2026, 10, 14), DateTime(2026, 10, 14)));
+      await choose('Today');
+      expect(api.asked.last, (DateTime(2026, 10, 15), DateTime(2026, 10, 15)));
+      await choose('This week');
+      expect(api.asked.last, (DateTime(2026, 10, 12), DateTime(2026, 10, 15)));
+      await choose('Last week');
+      expect(api.asked.last, (DateTime(2026, 10, 5), DateTime(2026, 10, 11)));
+      await choose('This year');
+      expect(api.asked.last, (DateTime(2026), DateTime(2026, 10, 15)));
+    });
+
+    testWidgets('the page says which days the figures are for', (t) async {
+      final _FakeSalon api = _FakeSalon((_, __) async => StylistReport(from: DateTime(2026, 10, 14), to: DateTime(2026, 10, 14), stylists: const <StylistRow>[_asha], services: 3, revenue: 50000, visits: 2));
+      await _open(t, api);
+
+      final String says = t.widget<Text>(_key('stylists_period')).data!;
+      expect(says, contains('14/10/2026'));
+      expect(says, isNot(contains('–')), reason: 'a single day is not written as a range');
+    });
+
+    testWidgets('"Pick dates" opens the calendar, and backing out leaves the page as it was', (t) async {
+      final _FakeSalon api = _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha]));
+      await _open(t, api);
+      final int before = api.asked.length;
+
+      t.view.physicalSize = const Size(900, 1600); // the calendar needs more room than the test phone's width
+      await t.pump();
+      await t.ensureVisible(find.text('Pick dates'));
+      await t.tap(find.text('Pick dates'));
+      await t.pumpAndSettle();
+      expect(find.byType(DateRangePickerDialog), findsOneWidget);
+
+      await t.tap(find.byIcon(Icons.close));
+      await t.pumpAndSettle();
+
+      expect(find.byType(DateRangePickerDialog), findsNothing);
+      expect(api.asked.length, before, reason: 'nothing was chosen, so nothing is asked again');
+      expect(find.text('Pick dates'), findsOneWidget);
     });
   });
 }
