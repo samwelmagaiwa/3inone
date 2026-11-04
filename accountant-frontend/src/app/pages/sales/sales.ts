@@ -11,11 +11,12 @@ import { I18nService } from '../../core/i18n.service';
 import { SaleRow } from '../../core/models';
 import { printReceipt } from '../../core/receipt';
 import { MotionService } from '../../core/services/motion.service';
+import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
 import { ToastService } from '../../core/services/toast.service';
 import { PAYMENT_CHANNELS } from '../../core/till.service';
 import { SaleDetail, SaleReturn, TillApi } from '../../core/till-api.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
-import { TablePaginationComponent } from '../../shared/components/table-pagination/table-pagination';
+import { ListBarComponent } from '../../shared/components/list-bar/list-bar';
 import { TableToolbarComponent } from '../../shared/components/table-toolbar/table-toolbar';
 import { CountUpDirective } from '../../shared/ui/count-up.directive';
 import { MoneyDirective } from '../../shared/ui/money.directive';
@@ -29,7 +30,7 @@ type Status = '' | 'paid' | 'partial' | 'debt';
  */
 @Component({
   selector: 'app-sales',
-  imports: [FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, TablePaginationComponent, CountUpDirective, MoneyDirective],
+  imports: [FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, ListBarComponent, CountUpDirective, MoneyDirective],
   templateUrl: './sales.html',
 })
 export class SalesPage implements OnInit, OnDestroy {
@@ -54,6 +55,15 @@ export class SalesPage implements OnInit, OnDestroy {
   protected readonly summary = signal<{ count: number; total: number; paid: number; debt: number } | null>(null);
   protected readonly open = signal<number | null>(null);
   protected readonly loading = signal(true);
+
+  // The page in view can be sorted by any column header; the server still decides which sales are on the page.
+  protected readonly sort = signal<SortState | null>(null);
+  protected readonly arrow = sortArrow;
+  protected readonly shown = computed(() =>
+    sorted(this.rows(), this.sort(), (s, k) =>
+      k === 'number' ? s.number : k === 'when' ? s.created_at : k === 'customer' ? (s.customer_name ?? '') : k === 'total' ? s.total : k === 'paid' ? s.paid_total : this.cancelled(s) ? 'cancelled' : s.payment_status
+    ),
+  );
   protected readonly error = signal<string | null>(null);
 
   protected readonly tsh = tsh;
@@ -140,6 +150,10 @@ export class SalesPage implements OnInit, OnDestroy {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  protected sortBy(key: string): void {
+    this.sort.update((c) => nextSort(c, key));
   }
 
   protected toggle(id: number): void {

@@ -1,10 +1,11 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { BranchSales, BranchesService } from '../../core/branches.service';
 import { dayOf, offline, serverMessage, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
 import { MotionService } from '../../core/services/motion.service';
+import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
 
 type Period = 'week' | 'month' | 'quarter' | 'year';
 
@@ -27,6 +28,26 @@ export class BranchSalesPage implements OnInit {
   protected readonly data = signal<BranchSales | null>(null);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
+
+  // Each table sorts by the header that was clicked; profit is shown only when the server sent it (people who may not see profit never get it).
+  protected readonly branchSort = signal<SortState | null>(null);
+  protected readonly staffSort = signal<SortState | null>(null);
+  protected readonly arrow = sortArrow;
+  protected readonly hasProfit = computed(() => (this.data()?.by_branch ?? []).some((b) => b.profit !== null) || (this.data()?.by_staff ?? []).some((s) => s.profit !== null));
+  protected readonly branches = computed(() =>
+    sorted(this.data()?.by_branch ?? [], this.branchSort(), (b, k) => (k === 'name' ? (b.name ?? this.i18n.t('bsl.nobranch')) : k === 'count' ? b.sales_count : k === 'paid' ? b.paid : k === 'profit' ? b.profit : b.sales)),
+  );
+  protected readonly people = computed(() =>
+    sorted(this.data()?.by_staff ?? [], this.staffSort(), (s, k) => (k === 'name' ? s.name : k === 'count' ? s.sales_count : k === 'paid' ? s.paid : k === 'profit' ? s.profit : s.sales)),
+  );
+
+  protected sortBranches(key: string): void {
+    this.branchSort.update((c) => nextSort(c, key));
+  }
+
+  protected sortPeople(key: string): void {
+    this.staffSort.update((c) => nextSort(c, key));
+  }
 
   ngOnInit(): void {
     void this.choose('month');

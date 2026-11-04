@@ -2,11 +2,7 @@
 @for (k of [motion.tick()]; track k) {
 <div class="space-y-5 animate-fade-in-up">
 
-  <div class="page-header-card flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-    <div class="min-w-0">
-      <h1 class="text-slate-900 font-black text-xl tracking-tight">{{ i18n.t(salon() ? 'prod.title.salon' : 'prod.title') }}</h1>
-      <p class="text-slate-500 text-sm mt-0.5">{{ i18n.t(canManage() ? 'prod.sub.manage' : 'prod.sub') }}</p>
-    </div>
+  <div class="flex flex-wrap items-center justify-end gap-2 empty:hidden">
     @if (tab() === 'products' && canAdd()) {
       <button type="button" class="btn-primary big-btn shrink-0" (click)="openAdd()" data-testid="prod-add">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>

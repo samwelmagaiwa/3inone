@@ -45,6 +45,21 @@ describe('sales by branch and by person', () => {
     expect(text(byTestId(el, 'bsl-branch-1')!)).not.toContain('profit');
   });
 
+  it('shows a bordered grid whose headers sort the rows, and no page title card', async () => {
+    const { fixture, el } = await open(true);
+
+    expect(el.querySelector('table.grid-table')).not.toBeNull();
+    expect(el.querySelector('.page-header-card')).toBeNull();
+    const head = el.querySelector('table.grid-table th .grid-sort') as HTMLElement;
+    head.click();
+    await settle(fixture);
+    expect(head.className).toContain('is-sorted');
+    expect(text(head)).toContain('▲');
+    head.click();
+    await settle(fixture);
+    expect(text(head)).toContain('▼');
+  });
+
   it('asks again for another period', async () => {
     const { h, fixture, el } = await open(true);
 

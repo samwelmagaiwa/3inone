@@ -45,6 +45,22 @@ describe('sales', () => {
     expect(second).toContain('On credit');
   });
 
+  it('shows "Showing 1-2 of 2" above a bordered grid, and a header sorts the sales on the page', async () => {
+    const { fixture, el } = await open();
+
+    expect(text(byTestId(el, 'list-showing')!)).toBe('Showing 1–2 of 2');
+    expect(el.querySelector('table.grid-table')).not.toBeNull();
+    const totalHead = Array.from(el.querySelectorAll('.grid-sort')).find((b) => text(b as HTMLElement).startsWith('Total')) as HTMLElement;
+    totalHead.click();
+    totalHead.click(); // descending: the biggest sale first
+    await settle(fixture);
+    const rows = Array.from(el.querySelectorAll('[data-testid^="sale-row-"]')).map((r) => r.getAttribute('data-testid'));
+    expect(rows).toEqual(['sale-row-1', 'sale-row-2']);
+    totalHead.click(); // ascending: the smallest first
+    await settle(fixture);
+    expect(Array.from(el.querySelectorAll('[data-testid^="sale-row-"]')).map((r) => r.getAttribute('data-testid'))).toEqual(['sale-row-2', 'sale-row-1']);
+  });
+
   it('clicking a sale opens what was sold and how it was paid', async () => {
     const { fixture, el } = await open();
 
