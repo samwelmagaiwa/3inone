@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -10,6 +11,7 @@ import { BranchesService } from '../../core/branches.service';
 import { serverDate } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
 import { ConfirmService } from '../../core/services/confirm.service';
+import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { ToastService } from '../../core/services/toast.service';
 import { AppNotification, ServiceName } from '../../core/models';
 import { NAV, NavItem, allowedPages } from '../../core/nav';
@@ -21,11 +23,12 @@ import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal
  */
 @Component({
   selector: 'app-shell-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, ModalDialogComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, NgTemplateOutlet, ModalDialogComponent],
   templateUrl: './shell-layout.html',
 })
 export class ShellLayout implements OnDestroy {
   protected readonly auth = inject(AuthService);
+  protected readonly slot = inject(HeaderSlotService);
   protected readonly i18n = inject(I18nService);
   protected readonly toastService = inject(ToastService);
   private readonly confirm = inject(ConfirmService);

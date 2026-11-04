@@ -218,6 +218,7 @@
           <span class="breadcrumb-sep">&gt;</span>
           <span class="breadcrumb-active">{{ breadcrumb() }}</span>
         </div>
+        @if (slot.template(); as bar) { <div class="breadcrumb-slot" data-testid="header-slot"><ng-container [ngTemplateOutlet]="bar" /></div> }
         <span class="breadcrumb-date">{{ today() }}</span>
       </div>
 
@@ -344,7 +345,8 @@
   .top-chip--ai { color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b5bdb); border-color: #1a2f6e; text-decoration: none; }
   .top-chip--ai:hover, .top-chip--on { background: linear-gradient(135deg, #14255a, #2f4bc4); }
   .help-step { flex: none; width: 26px; height: 26px; border-radius: 99px; display: inline-flex; align-items: center; justify-content: center; background: #1a2f6e; color: #fff; font-weight: 900; font-size: 12px; }
-  .breadcrumb-strip { justify-content: space-between; }
+  .breadcrumb-strip { justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
+  .breadcrumb-slot { margin-left: auto; }
   .breadcrumb-date { font-size: 12px; font-weight: 700; color: #64748b; padding-right: 8px; }
   @media (max-width: 720px) { .breadcrumb-date { display: none; } }
 </style>

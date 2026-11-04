@@ -10,9 +10,10 @@ import { Expense, ExpenseSummary } from '../../core/models';
 import { PAYMENT_CHANNELS } from '../../core/till.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { MotionService } from '../../core/services/motion.service';
+import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
 import { ToastService } from '../../core/services/toast.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
-import { TablePaginationComponent } from '../../shared/components/table-pagination/table-pagination';
+import { ListBarComponent } from '../../shared/components/list-bar/list-bar';
 import { TableToolbarComponent } from '../../shared/components/table-toolbar/table-toolbar';
 import { BsDateDirective } from '../../shared/ui/bs-date.directive';
 import { BsSelectDirective } from '../../shared/ui/bs-select.directive';
@@ -30,7 +31,7 @@ const PERSONAL_CATEGORIES = ['drawings', 'family'];
  */
 @Component({
   selector: 'app-expenses',
-  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, TablePaginationComponent, BsDateDirective, BsSelectDirective, CountUpDirective, MoneyDirective],
+  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, ListBarComponent, BsDateDirective, BsSelectDirective, CountUpDirective, MoneyDirective],
   templateUrl: './expenses.html',
 })
 export class ExpensesPage implements OnInit {
@@ -65,8 +66,17 @@ export class ExpensesPage implements OnInit {
   protected readonly rows = computed(() => {
     const q = this.query().toLowerCase().trim();
     const all = this.rowsAll();
-    return q ? all.filter((e) => `${e.description} ${this.categoryName(e.category)} ${e.created_by_name ?? ''}`.toLowerCase().includes(q)) : all;
+    const found = q ? all.filter((e) => `${e.description} ${this.categoryName(e.category)} ${e.created_by_name ?? ''}`.toLowerCase().includes(q)) : all;
+
+    return sorted(found, this.sort(), (e, k) => (k === 'date' ? e.expense_date : k === 'what' ? e.description : k === 'category' ? this.categoryName(e.category) : e.amount));
   });
+  protected readonly sort = signal<SortState | null>(null);
+  protected readonly arrow = sortArrow;
+
+  protected sortBy(key: string): void {
+    this.sort.update((c) => nextSort(c, key));
+    this.page.set(1);
+  }
   protected readonly pageRows = computed(() => {
     const size = this.pageSize();
     const start = (this.page() - 1) * size;

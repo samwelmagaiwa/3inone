@@ -1,9 +1,10 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { BranchSales, BranchesService } from '../../core/branches.service';
 import { dayOf, offline, serverMessage, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
+import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { MotionService } from '../../core/services/motion.service';
 import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
 
@@ -17,10 +18,14 @@ type Period = 'week' | 'month' | 'quarter' | 'year';
   selector: 'app-branch-sales',
   templateUrl: './branch-sales.html',
 })
-export class BranchSalesPage implements OnInit {
+export class BranchSalesPage implements OnInit, AfterViewInit, OnDestroy {
   private readonly api = inject(BranchesService);
   protected readonly i18n = inject(I18nService);
   protected readonly motion = inject(MotionService);
+  private readonly slot = inject(HeaderSlotService);
+
+  /** The period tabs live in the breadcrumb row at the top of the page; this page hands them over. */
+  @ViewChild('periodBar', { static: true }) private periodBar!: TemplateRef<unknown>;
 
   protected readonly tsh = tsh;
   protected readonly periods: Period[] = ['week', 'month', 'quarter', 'year'];
@@ -51,6 +56,14 @@ export class BranchSalesPage implements OnInit {
 
   ngOnInit(): void {
     void this.choose('month');
+  }
+
+  ngAfterViewInit(): void {
+    queueMicrotask(() => this.slot.show(this.periodBar));
+  }
+
+  ngOnDestroy(): void {
+    this.slot.clear(this.periodBar);
   }
 
   protected async choose(p: Period): Promise<void> {

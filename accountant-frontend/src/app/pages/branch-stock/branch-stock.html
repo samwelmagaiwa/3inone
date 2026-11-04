@@ -2,11 +2,6 @@
 @for (k of [motion.tick()]; track k) {
 <div class="space-y-5 animate-fade-in-up">
 
-  <div class="page-header-card">
-    <h1 class="text-slate-900 font-black text-xl tracking-tight">{{ i18n.t('bs.title') }}</h1>
-    <p class="text-slate-500 text-sm mt-0.5">{{ i18n.t('bs.sub') }}</p>
-  </div>
-
   @if (loading() && !data()) {
     <div class="skeleton-box" style="height: 140px; border-radius: 14px;"></div>
   } @else if (error(); as message) {

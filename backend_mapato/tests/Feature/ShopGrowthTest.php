@@ -400,6 +400,9 @@ class ShopGrowthTest extends TestCase
         $r = $this->api($owner, 'GET', '/api/inventory/branch-sales?from=2026-11-01&to=2026-11-30')->assertOk()->json('data');
 
         $this->assertEquals(6000, $r['total']['sales']);
+        $this->assertEquals(6000, $r['total']['goods_sold']);
+        $this->assertEquals(0, $r['total']['services_sold']);
+        $this->assertEquals(0, $r['total']['service_profit'], 'no services were sold');
         $byBranch = collect($r['by_branch'])->keyBy('name');
         $this->assertEquals(3000, $byBranch['Kariakoo']['sales']);
         $this->assertEquals(2, $byBranch['Kariakoo']['sales_count']);

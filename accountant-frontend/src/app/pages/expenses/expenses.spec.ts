@@ -61,6 +61,22 @@ describe('expenses', () => {
     expect(text(byTestId(el, 'exp-row-3')!)).toContain('Waiting for approval');
   });
 
+  it('shows a bordered grid with a Showing bar, a per-page choice, and headers that sort', async () => {
+    const { fixture, el } = await open();
+
+    expect(text(byTestId(el, 'list-showing')!)).toBe('Showing 1–3 of 3');
+    expect(byTestId(el, 'list-size')).not.toBeNull();
+    expect(el.querySelector('table.grid-table')).not.toBeNull();
+    const amount = Array.from(el.querySelectorAll('.grid-sort')).find((b) => text(b as HTMLElement).startsWith('Amount')) as HTMLElement;
+    amount.click();
+    amount.click(); // biggest first
+    await settle(fixture);
+    expect(Array.from(el.querySelectorAll('[data-testid^="exp-row-"]')).map((r) => r.getAttribute('data-testid'))).toEqual(['exp-row-1', 'exp-row-2', 'exp-row-3']);
+    amount.click(); // smallest first
+    await settle(fixture);
+    expect(Array.from(el.querySelectorAll('[data-testid^="exp-row-"]')).map((r) => r.getAttribute('data-testid'))).toEqual(['exp-row-3', 'exp-row-2', 'exp-row-1']);
+  });
+
   it('a period button asks again for that period', async () => {
     const { h, fixture, el } = await open();
 

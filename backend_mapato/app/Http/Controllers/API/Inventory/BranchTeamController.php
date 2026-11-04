@@ -146,11 +146,24 @@ class BranchTeamController extends Controller
             })->sortByDesc('sales')->values()->all();
         };
 
+        // What the lines were: goods sold, and what the services brought in and left after the stylists' commission.
+        $lines = $base()->join('inventory_sale_items as si', 'si.sale_id', '=', 's.id')->first([
+            DB::raw('COALESCE(SUM(CASE WHEN si.is_service = 1 THEN 0 ELSE si.total END), 0) as goods'),
+            DB::raw('COALESCE(SUM(CASE WHEN si.is_service = 1 THEN si.total ELSE 0 END), 0) as services'),
+            DB::raw('COALESCE(SUM(CASE WHEN si.is_service = 1 THEN COALESCE(si.commission_amount, 0) ELSE 0 END), 0) as commission'),
+        ]);
+        $goodsSold = round((float) ($lines->goods ?? 0), 2);
+        $servicesSold = round((float) ($lines->services ?? 0), 2);
+
         return response()->json(['data' => [
             'from' => $from->toDateString(), 'to' => $to->toDateString(),
             'by_branch' => $finish($byBranch, 'staff'),
             'by_staff' => $finish($byStaff, 'branches'),
-            'total' => ['sales_count' => (int) $groups->sum('n'), 'sales' => round((float) $groups->sum('sales'), 2), 'paid' => round((float) $groups->sum('paid'), 2)],
+            'total' => [
+                'sales_count' => (int) $groups->sum('n'), 'sales' => round((float) $groups->sum('sales'), 2), 'paid' => round((float) $groups->sum('paid'), 2),
+                'goods_sold' => $goodsSold, 'services_sold' => $servicesSold,
+                'service_profit' => $seesProfit ? round($servicesSold - (float) ($lines->commission ?? 0), 2) : null,
+            ],
         ]]);
     }
 }

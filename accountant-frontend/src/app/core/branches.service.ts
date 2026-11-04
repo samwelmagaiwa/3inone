@@ -71,7 +71,7 @@ export interface BranchSales {
   to: string;
   by_branch: (SalesCell & { branch_id: number | null; name: string | null; staff: (SalesCell & { staff_id: string; name: string })[] })[];
   by_staff: (SalesCell & { staff_id: string; name: string; branches: (SalesCell & { branch_id: number | null; name: string | null })[] })[];
-  total: { sales_count: number; sales: number; paid: number };
+  total: { sales_count: number; sales: number; paid: number; goods_sold?: number; services_sold?: number; service_profit?: number | null };
 }
 
 /** The branch is remembered for ONE person in ONE service: another business signing in on this browser never inherits it. */

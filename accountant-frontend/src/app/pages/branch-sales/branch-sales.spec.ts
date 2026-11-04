@@ -13,7 +13,7 @@ function data(profit: boolean) {
       from: '2026-11-01', to: '2026-11-30',
       by_branch: [{ branch_id: 1, name: 'Kariakoo', ...cell(3000, profit ? 1200 : null), staff: [{ staff_id: 'u1', name: 'Asha', ...cell(3000, profit ? 1200 : null) }] }],
       by_staff: [{ staff_id: 'u1', name: 'Asha', ...cell(3000, profit ? 1200 : null), branches: [{ branch_id: 1, name: 'Kariakoo', ...cell(3000, profit ? 1200 : null) }] }],
-      total: { sales_count: 2, sales: 3000, paid: 3000 },
+      total: { sales_count: 2, sales: 3000, paid: 3000, goods_sold: 2500, services_sold: 500, service_profit: profit ? 450 : null },
     },
   };
 }
@@ -32,7 +32,8 @@ describe('sales by branch and by person', () => {
   it('shows the total, each branch with its people and each person with their branches, with profit', async () => {
     const { el } = await open(true);
 
-    expect(text(byTestId(el, 'bsl-total')!)).toContain('3,000');
+    expect(text(byTestId(el, 'bsl-goods')!)).toContain('2,500');
+    expect(text(byTestId(el, 'bsl-service-profit')!)).toContain('450');
     expect(text(byTestId(el, 'bsl-branch-1')!)).toContain('Kariakoo');
     expect(text(byTestId(el, 'bsl-branch-1')!)).toContain('Asha');
     expect(text(byTestId(el, 'bsl-branch-1')!)).toContain('profit');
@@ -42,6 +43,8 @@ describe('sales by branch and by person', () => {
   it('shows no profit when the server leaves it out', async () => {
     const { el } = await open(false);
 
+    expect(byTestId(el, 'bsl-service-profit')).toBeNull();
+    expect(text(byTestId(el, 'bsl-goods')!)).toContain('2,500');
     expect(text(byTestId(el, 'bsl-branch-1')!)).not.toContain('profit');
   });
 
@@ -49,6 +52,8 @@ describe('sales by branch and by person', () => {
     const { fixture, el } = await open(true);
 
     expect(el.querySelector('table.grid-table')).not.toBeNull();
+    expect(el.querySelectorAll('section.section-card').length).toBe(1);
+    expect(el.querySelectorAll('table.grid-table').length).toBe(2);
     expect(el.querySelector('.page-header-card')).toBeNull();
     const head = el.querySelector('table.grid-table th .grid-sort') as HTMLElement;
     head.click();
@@ -63,7 +68,7 @@ describe('sales by branch and by person', () => {
   it('asks again for another period', async () => {
     const { h, fixture, el } = await open(true);
 
-    (byTestId(el, 'bsl-period-week') as HTMLElement).click();
+    (fixture.componentInstance as unknown as { choose(p: string): void }).choose('week');
     h.http.expectOne((r) => r.url === `${API}/inventory/branch-sales`).flush(data(true));
     await settle(fixture);
   });

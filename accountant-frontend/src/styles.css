@@ -1599,3 +1599,4 @@ app-book-ward-table, app-book-summaries, app-table-toolbar, app-table-pagination
 .list-pager .pg:hover:not(:disabled) { background: #eef2ff; }
 .list-pager .pg:disabled { color: #94a3b8; background: #f8fafc; cursor: not-allowed; }
 .list-pager .pg.is-current { color: #fff; background: #1a2f6e; border-color: #1a2f6e; }
+.list-size { padding: 6px 10px; border-radius: 8px; font-size: 14px; font-weight: 700; color: #1a2f6e; background: #fff; border: 1px solid #cfd9f3; cursor: pointer; }

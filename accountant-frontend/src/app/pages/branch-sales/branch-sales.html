@@ -2,12 +2,6 @@
 @for (k of [motion.tick()]; track k) {
 <div class="space-y-5 animate-fade-in-up">
 
-  <div class="flex flex-wrap gap-2" role="tablist">
-    @for (p of periods; track p) {
-      <button type="button" role="tab" class="pill-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="choose(p)" [attr.data-testid]="'bsl-period-' + p">{{ i18n.t('crr.period.' + p) }}</button>
-    }
-  </div>
-
   @if (loading() && !data()) {
     <div class="skeleton-box" style="height: 130px; border-radius: 14px;"></div>
   } @else if (error(); as message) {
@@ -16,10 +10,19 @@
       <button type="button" class="btn-primary" (click)="retry()">{{ i18n.t('common.retry') }}</button>
     </div>
   } @else if (data(); as d) {
-    <div class="kpi-card">
-      <p class="label-eyebrow">{{ i18n.t('bsl.total') }}</p>
-      <h3 class="text-2xl font-black tracking-tight mt-2" style="color: #1a2f6e;" data-testid="bsl-total">{{ tsh(d.total.sales) }}</h3>
-      <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('crr.kpi.purchases', d.total.sales_count) }} · {{ i18n.t('bsl.paid', tsh(d.total.paid)) }}</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="kpi-card">
+        <p class="label-eyebrow">{{ i18n.t('bsl.goods') }}</p>
+        <h3 class="text-2xl font-black tracking-tight mt-2" style="color: #1a2f6e;" data-testid="bsl-goods">{{ tsh(d.total.goods_sold ?? 0) }}</h3>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('bsl.goods.sub', tsh(d.total.sales), d.total.sales_count) }} · {{ i18n.t('bsl.paid', tsh(d.total.paid)) }}</p>
+      </div>
+      @if (d.total.service_profit !== null && d.total.service_profit !== undefined) {
+        <div class="kpi-card">
+          <p class="label-eyebrow">{{ i18n.t('bsl.svc') }}</p>
+          <h3 class="text-2xl font-black tracking-tight mt-2" [style.color]="d.total.service_profit < 0 ? '#dc2626' : '#059669'" data-testid="bsl-service-profit">{{ tsh(d.total.service_profit) }}</h3>
+          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('bsl.svc.sub', tsh(d.total.services_sold ?? 0)) }}</p>
+        </div>
+      }
     </div>
 
     <section class="section-card overflow-hidden">
@@ -56,10 +59,8 @@
       } @else {
         <p class="px-5 py-6 text-sm text-slate-400" data-testid="bsl-empty">{{ i18n.t('bsl.empty') }}</p>
       }
-    </section>
 
-    <section class="section-card overflow-hidden">
-      <div class="list-bar"><h3 class="list-bar-count font-black text-slate-900">{{ i18n.t('bsl.by.staff') }}</h3><span class="text-sm font-semibold text-slate-500">{{ d.by_staff.length }}</span></div>
+      <div class="list-bar" style="border-top: 1px solid #e2e8f4;"><h3 class="list-bar-count font-black text-slate-900">{{ i18n.t('bsl.by.staff') }}</h3><span class="text-sm font-semibold text-slate-500">{{ d.by_staff.length }}</span></div>
       @if (d.by_staff.length) {
         <div class="table-scroll-container" style="border: 0; border-radius: 0;">
           <table class="grid-table">
@@ -96,3 +97,12 @@
   }
 </div>
 }
+
+<!-- The period tabs, shown in the breadcrumb row at the top of the page -->
+<ng-template #periodBar>
+  <div class="flex flex-wrap gap-2" role="tablist">
+    @for (p of periods; track p) {
+      <button type="button" role="tab" class="pill-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="choose(p)" [attr.data-testid]="'bsl-period-' + p">{{ i18n.t('crr.period.' + p) }}</button>
+    }
+  </div>
+</ng-template>
