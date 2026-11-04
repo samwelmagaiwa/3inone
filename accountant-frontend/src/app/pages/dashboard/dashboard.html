@@ -42,9 +42,10 @@
     </div>
   } @else if (report(); as r) {
 
-    <!-- Better or worse than last month -->
+    <!-- Better or worse than last month, and the profit target: one row of bordered cards -->
+    <div class="top-row">
     @if (!r.is_future) {
-      <section class="section-card p-5 flex items-center gap-4 headline" [class.headline--up]="r.overall.direction === 'up'" [class.headline--down]="r.overall.direction === 'down'" data-testid="headline">
+      <section class="section-card p-5 flex items-center gap-4 headline bordered" [class.headline--up]="r.overall.direction === 'up'" [class.headline--down]="r.overall.direction === 'down'" data-testid="headline">
         <div class="headline-icon">
           @if (r.overall.direction === 'up') { <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg> }
           @else if (r.overall.direction === 'down') { <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/></svg> }
@@ -63,7 +64,7 @@
 
     <!-- Profit target -->
     @if (r.target; as t) {
-      <section class="section-card p-5" data-testid="target">
+      <section class="section-card p-5 bordered" [style.border-color]="t.status === 'behind' || t.status === 'missed' ? '#dc2626' : '#16a34a'" data-testid="target">
         <div class="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <p class="label-eyebrow">{{ i18n.t('target.title') }}</p>
@@ -84,7 +85,7 @@
       </section>
     } @else if (!r.is_future || canSetTarget()) {
       @if (r.is_current || r.is_future) {
-        <section class="section-card p-5 flex items-center justify-between gap-3 flex-wrap">
+        <section class="section-card p-5 flex items-center justify-between gap-3 flex-wrap bordered" style="border-color:#3b61e2">
           <div>
             <p class="font-black text-slate-900">{{ i18n.t('target.none.title') }}</p>
             <p class="text-sm text-slate-500">{{ i18n.t('target.none.hint') }}</p>
@@ -94,10 +95,12 @@
       }
     }
 
-    <!-- The four figures -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4">
+    </div>
+
+    <!-- The four figures, in one row, each with a border in its own colour -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       @for (k of kpis(); track k.label) {
-        <div class="kpi-card">
+        <div class="kpi-card bordered" [style.border-color]="toneColor(k.tone)">
           <div class="flex justify-between items-start gap-3">
             <div class="flex-1 min-w-0">
               <p class="label-eyebrow">{{ k.label }}</p>
@@ -288,6 +291,10 @@
   .headline-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: #eef2ff; color: #1a2f6e; flex: none; }
   .headline--up .headline-icon { background: #d1fae5; color: #047857; }
   .headline--down .headline-icon { background: #fee2e2; color: #b91c1c; }
+  .top-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; }
+  .bordered { border: 2px solid #cbd5e1; }
+  .headline--up.bordered { border-color: #16a34a; }
+  .headline--down.bordered { border-color: #dc2626; }
   .status-chip { padding: 4px 12px; border-radius: 99px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; background: #e2e8f0; color: #475569; }
   .status-chip.status-good { background: #d1fae5; color: #047857; }
   .status-chip.status-bad { background: #fee2e2; color: #b91c1c; }

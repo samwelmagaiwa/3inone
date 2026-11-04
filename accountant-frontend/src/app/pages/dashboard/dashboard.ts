@@ -49,6 +49,11 @@ export class DashboardPage implements OnInit {
 
   protected readonly Math = Math;
   protected readonly tsh = tsh;
+
+  /** The colour of a card's border: one per kind of figure. */
+  protected toneColor(tone: string): string {
+    return { primary: '#3b61e2', success: '#16a34a', warning: '#f59e0b', danger: '#dc2626', purple: '#7c3aed' }[tone] ?? '#cbd5e1';
+  }
   protected readonly shortMoney = shortMoney;
   protected readonly dayLabel = dayLabel;
 
