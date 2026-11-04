@@ -2,34 +2,6 @@
 @for (k of [motion.tick()]; track k) {
 <div class="space-y-5 animate-fade-in-up">
 
-  <!-- Welcome + month -->
-  <div class="page-header-card flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-    <div class="min-w-0">
-      <div class="flex flex-wrap items-center gap-2 mb-1.5">
-        <span class="px-2.5 py-0.5 bg-[#eef2ff] text-[#1a2f6e] font-black text-[9px] uppercase tracking-widest" style="border-radius: 99px;">{{ auth.user()?.roleLabel }}</span>
-        @if (auth.user()?.business) {
-          <span class="px-2.5 py-0.5 bg-blue-50 text-[#1a2f6e] border border-blue-100 font-black text-[9px] uppercase tracking-widest" style="border-radius: 99px;">{{ auth.user()?.business }}</span>
-        }
-      </div>
-      <h1 class="text-slate-900 font-black text-xl tracking-tight">{{ greeting() }}, {{ auth.user()?.name }}</h1>
-      <p class="text-slate-500 text-sm mt-0.5">{{ i18n.t('dash.sub') }}</p>
-    </div>
-
-    <div class="flex flex-wrap items-center gap-3 shrink-0">
-      <!-- Month: big, clear arrows -->
-      <div class="flex items-center gap-1 bg-white border border-slate-300 p-1" style="border-radius: 10px;">
-        <button type="button" (click)="move(-1)" [disabled]="loading()" class="month-arrow" [attr.aria-label]="i18n.t('month.prev')" [title]="i18n.t('month.prev')">‹</button>
-        <span class="px-3 min-w-40 text-center font-black text-slate-900 text-sm" data-testid="month-title">{{ monthTitle() }}</span>
-        <button type="button" (click)="move(1)" [disabled]="loading() || !canNext()" class="month-arrow" [attr.aria-label]="i18n.t('month.next')" [title]="i18n.t('month.next')">›</button>
-      </div>
-      <button (click)="load()" [disabled]="loading()"
-        class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-xs flex items-center gap-2 border border-slate-300 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed" style="border-radius: 8px;">
-        <svg class="w-4 h-4" [class.animate-spin]="loading()" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-        {{ loading() ? i18n.t('common.loading') : i18n.t('common.refresh') }}
-      </button>
-    </div>
-  </div>
-
   @if (loading() && !report()) {
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       @for (i of [1,2,3,4]; track i) { <div class="skeleton-box" style="height: 130px; border-radius: 14px;"></div> }
@@ -42,26 +14,8 @@
     </div>
   } @else if (report(); as r) {
 
-    <!-- Better or worse than last month, and the profit target: one row of bordered cards -->
+    <!-- The profit target -->
     <div class="top-row">
-    @if (!r.is_future) {
-      <section class="section-card p-5 flex items-center gap-4 headline bordered" [class.headline--up]="r.overall.direction === 'up'" [class.headline--down]="r.overall.direction === 'down'" data-testid="headline">
-        <div class="headline-icon">
-          @if (r.overall.direction === 'up') { <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg> }
-          @else if (r.overall.direction === 'down') { <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/></svg> }
-          @else { <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg> }
-        </div>
-        <div class="min-w-0">
-          <p class="text-lg font-black text-slate-900">{{ headline(r) }}</p>
-          <p class="text-sm text-slate-600 font-semibold">
-            {{ i18n.t('headline.profit', tsh(r.compare.net_profit.now), tsh(r.compare.net_profit.before)) }}
-            @if (r.previous.like_for_like) { · {{ i18n.t('headline.samedays') }} }
-          </p>
-          @if (r.is_current) { <p class="text-xs text-slate-400 font-bold mt-0.5">{{ i18n.t('headline.inprogress', r.days_elapsed, r.days_in_month) }}</p> }
-        </div>
-      </section>
-    }
-
     <!-- Profit target -->
     @if (r.target; as t) {
       <section class="section-card p-5 bordered" [style.border-color]="t.status === 'behind' || t.status === 'missed' ? '#dc2626' : '#16a34a'" data-testid="target">
@@ -285,16 +239,8 @@
   .month-arrow { width: 36px; height: 34px; font-size: 22px; font-weight: 900; line-height: 1; color: #1a2f6e; border-radius: 8px; cursor: pointer; }
   .month-arrow:hover:not(:disabled) { background: #eef2ff; }
   .month-arrow:disabled { opacity: .35; cursor: not-allowed; }
-  .headline { border-left: 6px solid #94a3b8; }
-  .headline--up { border-left-color: #10b981; background: linear-gradient(90deg, #ecfdf5, #fff 60%); }
-  .headline--down { border-left-color: #ef4444; background: linear-gradient(90deg, #fef2f2, #fff 60%); }
-  .headline-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: #eef2ff; color: #1a2f6e; flex: none; }
-  .headline--up .headline-icon { background: #d1fae5; color: #047857; }
-  .headline--down .headline-icon { background: #fee2e2; color: #b91c1c; }
   .top-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; }
   .bordered { border: 2px solid #cbd5e1; }
-  .headline--up.bordered { border-color: #16a34a; }
-  .headline--down.bordered { border-color: #dc2626; }
   .status-chip { padding: 4px 12px; border-radius: 99px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; background: #e2e8f0; color: #475569; }
   .status-chip.status-good { background: #d1fae5; color: #047857; }
   .status-chip.status-bad { background: #fee2e2; color: #b91c1c; }
@@ -310,3 +256,23 @@
   .advice--warning { border-color: #fde68a; border-left-color: #f59e0b; background: #fffbeb; color: #d97706; }
   .advice--good { border-color: #a7f3d0; border-left-color: #10b981; background: #f0fdf9; color: #059669; }
 </style>
+
+<!-- Greeting and month, shown in the breadcrumb row at the top of the page -->
+<ng-template #headerBar>
+  <div class="flex flex-wrap items-center gap-x-4 gap-y-2" data-testid="dash-bar">
+    <div class="min-w-0 hidden lg:block text-right leading-tight">
+      <p class="text-slate-900 font-black text-sm">{{ greeting() }}, {{ auth.user()?.name }}</p>
+      <p class="text-slate-500 text-xs font-semibold">{{ auth.user()?.roleLabel }} · {{ i18n.t('dash.sub') }}</p>
+    </div>
+    <div class="flex items-center gap-1 bg-white border border-slate-300 p-0.5" style="border-radius: 10px;">
+      <button type="button" (click)="move(-1)" [disabled]="loading()" class="month-arrow" [attr.aria-label]="i18n.t('month.prev')" [title]="i18n.t('month.prev')">‹</button>
+      <span class="px-3 min-w-36 text-center font-black text-slate-900 text-sm" data-testid="month-title">{{ monthTitle() }}</span>
+      <button type="button" (click)="move(1)" [disabled]="loading() || !canNext()" class="month-arrow" [attr.aria-label]="i18n.t('month.next')" [title]="i18n.t('month.next')">›</button>
+    </div>
+    <button (click)="load()" [disabled]="loading()"
+      class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-xs flex items-center gap-2 border border-slate-300 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed" style="border-radius: 8px;">
+      <svg class="w-4 h-4" [class.animate-spin]="loading()" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      {{ loading() ? i18n.t('common.loading') : i18n.t('common.refresh') }}
+    </button>
+  </div>
+</ng-template>

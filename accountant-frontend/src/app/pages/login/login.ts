@@ -6,15 +6,17 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AccountantApi } from '../../core/accountant-api.service';
 import { AuthService } from '../../core/auth.service';
-import { offline, serverMessage } from '../../core/format';
+import { monthKey, monthName, offline, serverMessage, tsh } from '../../core/format';
+import { headlineText } from '../../core/headline';
 import { I18nService } from '../../core/i18n.service';
 import { ToastService } from '../../core/services/toast.service';
+import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
 
 type LoginView = 'login' | 'forgot' | 'forgot-sent' | 'reset';
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule],
+  imports: [FormsModule, ModalDialogComponent],
   templateUrl: './login.html',
 })
 export class LoginPage {
@@ -39,6 +41,9 @@ export class LoginPage {
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly showPassword = signal(false);
+
+  /** The accountant's message on signing in: how the month is going. Pressing OK goes on to the dashboard. */
+  protected readonly brief = signal<{ month: string; title: string; lines: string[] } | null>(null);
 
   protected togglePassword(): void {
     this.showPassword.update((v) => !v);
@@ -74,12 +79,35 @@ export class LoginPage {
     try {
       await this.auth.login(this.email.trim(), this.cleanPhone(), this.password);
       this.toastService.success(this.i18n.t('login.welcome', this.auth.user()?.name ?? ''), t('login.signed'));
-      await this.router.navigate(['/']);
+      if (!(await this.showBrief())) await this.router.navigate(['/']);
     } catch (err) {
       this.error.set(this.failure(err, 'login.failed'));
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** For an accountant: asks how this month compares with the last and shows it. False when there is nothing to show (or no signal). */
+  private async showBrief(): Promise<boolean> {
+    if (this.auth.user()?.role !== 'accountant') return false;
+    try {
+      const month = monthKey(new Date());
+      const r = await firstValueFrom(this.api.monthlyReport(month));
+      if (r.is_future) return false;
+      const lines = [this.i18n.t('headline.profit', tsh(r.compare.net_profit.now), tsh(r.compare.net_profit.before)) + (r.previous.like_for_like ? ` · ${this.i18n.t('headline.samedays')}` : '')];
+      if (r.is_current) lines.push(this.i18n.t('headline.inprogress', r.days_elapsed, r.days_in_month));
+      this.brief.set({ month: monthName(month, this.i18n.locale()), title: headlineText(r, this.i18n), lines });
+
+      return true;
+    } catch {
+      return false; // no message is better than a sign-in that waits on it
+    }
+  }
+
+  /** OK on the message: on to the dashboard. */
+  protected async proceed(): Promise<void> {
+    this.brief.set(null);
+    await this.router.navigate(['/']);
   }
 
   protected async onForgot(): Promise<void> {

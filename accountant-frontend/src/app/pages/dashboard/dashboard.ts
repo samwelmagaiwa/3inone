@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -8,6 +8,7 @@ import { AuthService } from '../../core/auth.service';
 import { dayLabel, monthKey, monthName, offline, parseAmount, serverMessage, shiftMonth, shortMoney, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
 import { Advice, Comparison, MonthlyReport } from '../../core/models';
+import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { MotionService } from '../../core/services/motion.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
@@ -24,12 +25,16 @@ import { MoneyDirective } from '../../shared/ui/money.directive';
   imports: [FormsModule, RouterLink, ModalDialogComponent, CountUpDirective, MoneyDirective],
   templateUrl: './dashboard.html',
 })
-export class DashboardPage implements OnInit {
+export class DashboardPage implements OnInit, AfterViewInit, OnDestroy {
   private readonly api = inject(AccountantApi);
   private readonly toast = inject(ToastService);
   protected readonly auth = inject(AuthService);
   protected readonly i18n = inject(I18nService);
   protected readonly motion = inject(MotionService);
+  private readonly slot = inject(HeaderSlotService);
+
+  /** The greeting and the month switch live in the breadcrumb row at the top of the page; this page hands them over. */
+  @ViewChild('headerBar', { static: true }) private headerBar!: TemplateRef<unknown>;
 
   protected readonly month = signal(monthKey(new Date()));
   protected readonly report = signal<MonthlyReport | null>(null);
@@ -73,6 +78,14 @@ export class DashboardPage implements OnInit {
     void this.load();
   }
 
+  ngAfterViewInit(): void {
+    queueMicrotask(() => this.slot.show(this.headerBar));
+  }
+
+  ngOnDestroy(): void {
+    this.slot.clear(this.headerBar);
+  }
+
   protected move(by: number): void {
     this.month.set(shiftMonth(this.month(), by));
     void this.load();
@@ -112,14 +125,6 @@ export class DashboardPage implements OnInit {
     if (c.direction === 'same') return this.i18n.t('trend.same');
     if (c.percent === null) return this.i18n.t('trend.new');
     return `${c.percent > 0 ? '+' : '-'}${Math.abs(c.percent).toFixed(Math.abs(c.percent) >= 10 ? 0 : 1)}%`;
-  }
-
-  protected headline(r: MonthlyReport): string {
-    const prev = monthName(r.previous.month, this.i18n.locale());
-    const p = r.overall.percent;
-    const pct = p === null ? '' : ` ${Math.abs(p).toFixed(Math.abs(p) >= 10 ? 0 : 1)}%`;
-    const key = r.overall.direction === 'up' ? 'headline.up' : r.overall.direction === 'down' ? 'headline.down' : 'headline.same';
-    return this.i18n.t(key, prev, pct);
   }
 
   protected categoryName(c: string): string {

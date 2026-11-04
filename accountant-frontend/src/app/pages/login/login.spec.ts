@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
 import { ToastService } from '../../core/services/toast.service';
-import { configure, settle, text, type } from '../../testing';
+import { byTestId, configure, settle, text, type } from '../../testing';
 import { LoginPage } from './login';
 
 async function open() {
@@ -17,6 +17,13 @@ async function open() {
 }
 
 const submit = (el: HTMLElement) => (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+
+const brief = {
+  month: '2026-11', is_current: true, is_future: false, days_elapsed: 4, days_in_month: 30,
+  previous: { month: '2026-10', like_for_like: true },
+  compare: { net_profit: { now: 120000, before: 80000, change: 40000, percent: 50, direction: 'up', good: true } },
+  overall: { direction: 'up', percent: 50 },
+};
 
 const loginAnswer = { status: 'success', message: 'ok', data: { token: 'T', user: { id: 1, name: 'Amina Hassan', email: 'a@shop.test', role: 'accountant', services: [{ service_type: 'inventory' }], effective_permissions: ['inv_view_reports'] } } };
 
@@ -52,9 +59,32 @@ describe('sign-in page', () => {
     expect(req.request.body).toEqual({ email: 'a@shop.test', phone_number: '0712345678', password: 'secret' });
     req.flush(loginAnswer);
     await settle(fixture);
+    // an accountant first sees how the month is going; OK takes them on
+    h.http.expectOne((r) => r.url === `${environment.apiUrl}/inventory/monthly-report`).flush({ data: brief });
+    await settle(fixture);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(text(byTestId(el, 'login-brief')!)).toContain('Profit TSH 120,000 against TSH 80,000');
+    expect(el.textContent).toContain('Better than');
+    byTestId(el, 'login-brief-ok')!.click();
+    await settle(fixture);
 
     expect(navigate).toHaveBeenCalledWith(['/']);
     expect(TestBed.inject(ToastService).toasts()[0].message).toBe('Welcome back, Amina Hassan.');
+  });
+
+  it('an accountant whose month cannot be read still gets in, and anyone else goes straight on', async () => {
+    const { h, navigate, fixture, el } = await open();
+    type(el, '#email', 'a@shop.test');
+    type(el, '#phone', '0712345678');
+    type(el, '#password', 'secret');
+    await settle(fixture);
+    submit(el);
+    h.http.expectOne(`${environment.apiUrl}/auth/login`).flush(loginAnswer);
+    await settle(fixture);
+    h.http.expectOne((r) => r.url === `${environment.apiUrl}/inventory/monthly-report`).error(new ProgressEvent('error'), { status: 0 });
+    await settle(fixture);
+
+    expect(navigate).toHaveBeenCalledWith(['/']);
   });
 
   it('shows the server\'s own words when sign-in fails, and plain words when the server cannot be reached', async () => {

@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
 import { monthKey, shiftMonth } from '../../core/format';
 import { Comparison } from '../../core/models';
-import { byTestId, configure, settle, text, type } from '../../testing';
+import { byTestId, configure, mountSlot, settle, text, type } from '../../testing';
 import { DashboardPage } from './dashboard';
 
 const cmp = (now: number, before: number, direction: Comparison['direction'], percent: number | null, good = true): Comparison => ({ now, before, change: now - before, percent, direction, good });
@@ -41,6 +41,7 @@ async function open(who = {}, answers: { report?: object; advice?: object } = {}
   h.http.expectOne((r) => r.url === `${environment.apiUrl}/inventory/monthly-report` && r.params.get('month') === month).flush({ data: answers.report ?? report(month) });
   await settle(fixture);
   h.http.expectOne((r) => r.url === `${environment.apiUrl}/inventory/advice`).flush({ data: answers.advice ?? advice });
+  await mountSlot(fixture);
   await settle(fixture);
 
   return { h, fixture, el: fixture.nativeElement as HTMLElement, month };
@@ -50,9 +51,8 @@ describe('dashboard (this month)', () => {
   it('asks for this month and shows the headline, the four figures and where the business stands', async () => {
     const { el } = await open();
 
-    expect(text(byTestId(el, 'headline')!)).toContain('Better than');
-    expect(text(byTestId(el, 'headline')!)).toContain('50%');
-    expect(text(byTestId(el, 'headline')!)).toContain('Profit TSH 120,000 against TSH 80,000');
+    expect(byTestId(el, 'headline')).toBeNull(); // the comparison is a message at sign-in now, not a card
+    expect(text(byTestId(el, 'dash-bar')!)).toContain('Amina');
     const cards = text(el);
     expect(cards).toContain('TSH 300,000');
     expect(cards).toContain('TSH 150,000');
@@ -207,7 +207,7 @@ describe('dashboard (this month)', () => {
     await settle(fixture);
     const all = text(fixture.nativeElement);
 
-    expect(all).toContain('Umefanya vizuri kuliko');
+    expect(all).toContain('Hakuna lengo la faida');
     expect(all).toContain('Biashara ilipo');
     expect(all).toContain('Mauzo');
     expect(all).not.toContain('Better than');
