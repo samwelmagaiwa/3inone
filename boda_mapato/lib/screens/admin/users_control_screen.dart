@@ -36,7 +36,7 @@ class _Roles {
 
   static String label(final String role, final bool sw) => switch (role) {
         'super_admin' => 'Super Admin',
-        'admin' || 'administrator' => sw ? 'Mmiliki wa biashara' : 'Business owner',
+        'admin' || 'administrator' => sw ? 'Msimamizi wa biashara' : 'Business admin',
         'landlord' => sw ? 'Mwenye nyumba' : 'Landlord',
         'manager' => sw ? 'Meneja' : 'Manager',
         'accountant' => sw ? 'Mhasibu' : 'Accountant',
@@ -213,7 +213,7 @@ class _UsersControlScreenState extends State<UsersControlScreen> {
         const SizedBox(width: 8),
         tile('uc_stat_active', (_sw ? 'Hai' : 'Active'), active, Icons.verified_rounded, ThemeConstants.successGreen),
         const SizedBox(width: 8),
-        tile('uc_stat_owners', (_sw ? 'Wamiliki' : 'Owners'), owners, Icons.storefront_rounded, const Color(0xFF8B5CF6)),
+        tile('uc_stat_owners', (_sw ? 'Wasimamizi' : 'Admins'), owners, Icons.storefront_rounded, const Color(0xFF8B5CF6)),
         const SizedBox(width: 8),
         tile('uc_stat_super', 'Super', supers, Icons.shield_rounded, const Color(0xFFF59E0B)),
       ]),
@@ -261,7 +261,7 @@ class _UsersControlScreenState extends State<UsersControlScreen> {
         child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.fromLTRB(14, 6, 6, 4), children: <Widget>[
           _chip('uc_role_all', (_sw ? 'Wote' : 'Everyone'), _roleFilter == _RoleFilter.all, () => setState(() => _roleFilter = _RoleFilter.all)),
           _chip('uc_role_super', 'Super Admin', _roleFilter == _RoleFilter.superAdmins, () => setState(() => _roleFilter = _RoleFilter.superAdmins)),
-          _chip('uc_role_owners', (_sw ? 'Wamiliki' : 'Owners'), _roleFilter == _RoleFilter.owners, () => setState(() => _roleFilter = _RoleFilter.owners)),
+          _chip('uc_role_owners', (_sw ? 'Wasimamizi' : 'Admins'), _roleFilter == _RoleFilter.owners, () => setState(() => _roleFilter = _RoleFilter.owners)),
           _chip('uc_role_staff', (_sw ? 'Wafanyakazi' : 'Staff'), _roleFilter == _RoleFilter.staff, () => setState(() => _roleFilter = _RoleFilter.staff)),
           const SizedBox(width: 6),
           _chip('uc_status_off', (_sw ? 'Waliozimwa' : 'Switched off'), _statusFilter == _StatusFilter.off, () => setState(() => _statusFilter = _statusFilter == _StatusFilter.off ? _StatusFilter.all : _StatusFilter.off)),
