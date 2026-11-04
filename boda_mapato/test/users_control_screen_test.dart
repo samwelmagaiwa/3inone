@@ -139,18 +139,41 @@ void main() {
     expect(_k('uc_empty'), findsOneWidget);
   });
 
-  testWidgets('a tapped filter chip scrolls to the middle so the hidden ones beside it can be reached', (WidgetTester t) async {
+  testWidgets('a tapped filter chip slides to the start of the row so the hidden ones after it can be reached', (WidgetTester t) async {
     await _open(t);
     t.view.physicalSize = const Size(420, 2400); // a phone: the chips do not all fit
     await t.pumpAndSettle();
 
-    final double before = t.getCenter(_k('uc_role_owners')).dx;
-    await t.tap(_k('uc_role_owners'));
+    final double before = t.getCenter(_k('uc_role_super')).dx;
+    await t.tap(_k('uc_role_super'));
     await t.pumpAndSettle();
-    final double after = t.getCenter(_k('uc_role_owners')).dx;
+    final double after = t.getCenter(_k('uc_role_super')).dx;
 
     expect(after, lessThan(before), reason: 'the row slid left');
-    expect((after - 210).abs(), lessThan(40), reason: 'and the chip now sits in the middle of the screen');
+    expect(t.getTopLeft(_k('uc_role_super')).dx, lessThan(60), reason: 'and the chip now sits at the start of the row');
+  });
+
+  testWidgets('Everyone clears every filter, so coming back to it always shows the people again', (WidgetTester t) async {
+    await _open(t);
+
+    await t.tap(_k('uc_status_off'));
+    await t.tap(_k('uc_svc_salon'));
+    await t.enterText(_k('uc_search'), 'zawadi');
+    await t.pumpAndSettle();
+    expect(_k('uc_empty'), findsOneWidget, reason: 'switched off AND salon AND "zawadi": nobody');
+
+    await t.tap(_k('uc_role_all'));
+    await t.pumpAndSettle();
+    expect(_k('uc_user_a1'), findsOneWidget);
+    expect(_k('uc_user_u2'), findsOneWidget);
+    expect(t.widget<TextField>(_k('uc_search')).controller!.text, isEmpty);
+
+    await t.tap(_k('uc_status_off'));
+    await t.enterText(_k('uc_search'), 'nobody');
+    await t.pumpAndSettle();
+    await t.tap(_k('uc_clear_filters'));
+    await t.pumpAndSettle();
+    expect(_k('uc_user_a1'), findsOneWidget, reason: 'the empty list offers the way back');
   });
 
   testWidgets('a person can be switched off, edited and given a new role', (WidgetTester t) async {

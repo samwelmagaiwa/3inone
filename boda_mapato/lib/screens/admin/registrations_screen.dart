@@ -12,6 +12,7 @@ import "../../utils/plan_text.dart";
 import "../../utils/server_message.dart";
 import "../../widgets/dial_date_picker.dart";
 import "../../widgets/scrolling_chip_row.dart";
+import '../../modules/inventory/screens/widgets/joined_sections.dart' show SectionGlowDivider;
 
 /// One page of registrations plus how many exist in each state.
 class RegistrationsPage {
@@ -252,6 +253,8 @@ class _RegistrationsScreenState extends State<RegistrationsScreen> {
                 _chip(BusinessRegistration.rejected, _sw ? "Zilizokataliwa" : "Rejected"),
               ],
             ),
+            const SectionGlowDivider(lift: false),
+            const SizedBox(height: 6),
             Expanded(child: _body()),
           ],
         ),
@@ -308,7 +311,8 @@ class _RegistrationsScreenState extends State<RegistrationsScreen> {
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
         itemCount: _page.items.length,
-        separatorBuilder: (final BuildContext _, final int __) => const SizedBox(height: 10),
+        // the same glowing line between one registration and the next
+        separatorBuilder: (final BuildContext _, final int __) => const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: SectionGlowDivider(lift: false)),
         itemBuilder: (final BuildContext _, final int i) => _card(_page.items[i]),
       ),
     );

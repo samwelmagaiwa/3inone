@@ -5,6 +5,7 @@ import '../../constants/theme_constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../services/localization_service.dart';
+import '../../widgets/scrolling_chip_row.dart';
 import '../../modules/inventory/screens/widgets/joined_sections.dart'
     show SectionGlowDivider;
 import '../../utils/server_message.dart';
@@ -118,7 +119,7 @@ enum _RoleFilter { all, superAdmins, owners, staff }
 
 enum _StatusFilter { all, active, off }
 
-class _UsersControlScreenState extends State<UsersControlScreen> {
+class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBindingObserver {
   late final ApiService _api = widget.api ?? ApiService();
   final TextEditingController _search = TextEditingController();
 
@@ -137,11 +138,19 @@ class _UsersControlScreenState extends State<UsersControlScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
+  }
+
+  /// Coming back to the app, the list is read again by itself, so it is never stale.
+  @override
+  void didChangeAppLifecycleState(final AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _load();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _search.dispose();
     super.dispose();
   }
@@ -355,9 +364,9 @@ class _UsersControlScreenState extends State<UsersControlScreen> {
         ),
       );
 
-  Widget _chip(final String key, final String label, final bool selected,
-          final VoidCallback onTap) =>
-      Padding(
+  /// A filter as a button: raised, with a clear edge. A tapped one slides to the start of the row, so the hidden ones after it
+  /// come into view.
+  Widget _chip(final String key, final String label, final bool selected, final VoidCallback onTap) => Padding(
         padding: const EdgeInsets.only(right: 8),
         child: Builder(
           builder: (BuildContext chipContext) => ChoiceChip(
@@ -366,40 +375,38 @@ class _UsersControlScreenState extends State<UsersControlScreen> {
             selected: selected,
             onSelected: (_) {
               onTap();
-              // After the list is redrawn, centre this chip: the hidden ones on either side come into view.
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (chipContext.mounted)
-                  Scrollable.ensureVisible(chipContext,
-                      alignment: 0.5,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOut);
+                if (chipContext.mounted) ScrollingChipRow.reveal(chipContext);
               });
             },
-            labelStyle: TextStyle(
-                color: selected ? Colors.white : Colors.white70,
-                fontWeight: FontWeight.w600,
-                fontSize: 12.5),
-            selectedColor: ThemeConstants.invAccent.withValues(alpha: 0.55),
-            backgroundColor: Colors.white.withValues(alpha: 0.07),
-            side: BorderSide(
-                color: selected ? ThemeConstants.invAccent : Colors.white12),
+            elevation: selected ? 4 : 2,
+            pressElevation: 0,
+            shadowColor: selected ? ThemeConstants.invAccent : Colors.black,
+            labelStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+            labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+            selectedColor: ThemeConstants.invAccent.withValues(alpha: 0.7),
+            backgroundColor: Colors.white.withValues(alpha: 0.14),
+            side: BorderSide(color: selected ? Colors.white : Colors.white38, width: selected ? 1.6 : 1.1),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             showCheckmark: false,
-            visualDensity: VisualDensity.compact,
           ),
         ),
       );
 
-  Widget _filters() => SizedBox(
-        height: 46,
-        child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(14, 6, 6, 4),
-            children: <Widget>[
-              _chip(
-                  'uc_role_all',
-                  (_sw ? 'Wote' : 'Everyone'),
-                  _roleFilter == _RoleFilter.all,
-                  () => setState(() => _roleFilter = _RoleFilter.all)),
+  bool get _filtered => _roleFilter != _RoleFilter.all || _statusFilter != _StatusFilter.all || _serviceFilter != null || _search.text.isNotEmpty;
+
+  /// Back to everyone: no role, status, service or search narrows the list.
+  void _clearFilters() => setState(() {
+        _roleFilter = _RoleFilter.all;
+        _statusFilter = _StatusFilter.all;
+        _serviceFilter = null;
+        _search.clear();
+      });
+
+  Widget _filters() => ScrollingChipRow(
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+        children: <Widget>[
+              _chip('uc_role_all', (_sw ? 'Wote' : 'Everyone'), !_filtered, _clearFilters),
               _chip(
                   'uc_role_super',
                   'Super Admin',
@@ -432,7 +439,7 @@ class _UsersControlScreenState extends State<UsersControlScreen> {
                     _serviceFilter == s,
                     () => setState(
                         () => _serviceFilter = _serviceFilter == s ? null : s)),
-            ]),
+        ],
       );
 
   String _serviceName(final String s) => switch (s) {
@@ -465,9 +472,19 @@ class _UsersControlScreenState extends State<UsersControlScreen> {
     final List<Map<String, dynamic>> shown = _shown;
     if (shown.isEmpty) {
       return Center(
-          child: Text((_sw ? 'Hakuna anayelingana.' : 'No one matches.'),
-              key: const Key('uc_empty'),
-              style: const TextStyle(color: Colors.white60)));
+        child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          Text((_sw ? 'Hakuna anayelingana.' : 'No one matches.'), key: const Key('uc_empty'), style: const TextStyle(color: Colors.white60)),
+          if (_filtered) ...<Widget>[
+            const SizedBox(height: 12),
+            FilledButton.tonalIcon(
+              key: const Key('uc_clear_filters'),
+              onPressed: _clearFilters,
+              icon: const Icon(Icons.filter_alt_off_rounded),
+              label: Text(_sw ? 'Ondoa vichujio' : 'Clear filters'),
+            ),
+          ],
+        ]),
+      );
     }
 
     return RefreshIndicator(
