@@ -139,11 +139,29 @@ void main() {
     expect(_k('uc_empty'), findsOneWidget);
   });
 
+  testWidgets('a tapped filter chip scrolls to the middle so the hidden ones beside it can be reached', (WidgetTester t) async {
+    await _open(t);
+    t.view.physicalSize = const Size(420, 2400); // a phone: the chips do not all fit
+    await t.pumpAndSettle();
+
+    final double before = t.getCenter(_k('uc_role_owners')).dx;
+    await t.tap(_k('uc_role_owners'));
+    await t.pumpAndSettle();
+    final double after = t.getCenter(_k('uc_role_owners')).dx;
+
+    expect(after, lessThan(before), reason: 'the row slid left');
+    expect((after - 210).abs(), lessThan(40), reason: 'and the chip now sits in the middle of the screen');
+  });
+
   testWidgets('a person can be switched off, edited and given a new role', (WidgetTester t) async {
     final _Api api = await _open(t);
 
     await _openActions(t, 'u1');
     await t.tap(_k('uc_act_toggle'));
+    await t.pumpAndSettle();
+    expect(_k('uc_confirm'), findsOneWidget, reason: 'switching off asks first, in a card');
+    expect(api.calls, isEmpty);
+    await t.tap(_k('uc_confirm_yes'));
     await t.pumpAndSettle();
     expect(api.calls.last, 'update:u1');
     expect(api.lastBody, <String, dynamic>{'is_active': false});

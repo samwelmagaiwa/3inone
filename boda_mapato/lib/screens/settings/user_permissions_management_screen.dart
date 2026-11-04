@@ -4,6 +4,7 @@ import '../../constants/theme_constants.dart';
 import '../../models/user_permissions.dart';
 import '../../services/api_service.dart';
 import '../../services/localization_service.dart';
+import '../../modules/inventory/screens/widgets/joined_sections.dart' show SectionGlowDivider;
 
 class UserPermissionsManagementScreen extends StatefulWidget {
   // rental, transport, inventory
@@ -272,122 +273,179 @@ class _UserPermissionsManagementScreenState
             ),
           ),
 
-          // ── Legend ────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-            child: Row(children: [
-              _legendDot(Colors.green, _loc.isSwahili ? 'Ruhusa ya Nafasi' : 'Role default'),
-              const SizedBox(width: 16),
-              _legendDot(Colors.cyanAccent, _loc.isSwahili ? 'Ziada' : 'Extra grant'),
-              const SizedBox(width: 16),
-              _legendDot(Colors.red.shade300, _loc.isSwahili ? 'Hakuna' : 'Not granted'),
-            ]),
-          ),
+          const SizedBox(height: 12),
+          const SectionGlowDivider(lift: false),
 
-          // ── Grid ──────────────────────────────────────────────────
+          // ── What is on, what is extra, what is off ─────────────────
+          _summary(perms),
+          const SectionGlowDivider(lift: false),
+
+          // ── One switch per right ───────────────────────────────────
           Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisExtent: 112,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               itemCount: perms.length,
-              itemBuilder: (context, index) {
-                final perm = perms[index];
-                final state = _permState(perm['id']!);
-                final isFromRole = state == _PermState.fromRole;
-                final isGranted = state != _PermState.denied;
-
-                return InkWell(
-                  onTap: isFromRole
-                      ? null // role defaults cannot be toggled here
-                      : () => _togglePermission(perm['id']!),
-                  borderRadius: BorderRadius.circular(18),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeInOut,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: isFromRole
-                            ? [Colors.green.withOpacity(0.18), Colors.green.withOpacity(0.04)]
-                            : state == _PermState.explicit
-                                ? [Colors.cyanAccent.withOpacity(0.18), Colors.cyanAccent.withOpacity(0.04)]
-                                : [Colors.red.withOpacity(0.12), Colors.red.withOpacity(0.03)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: isFromRole
-                            ? Colors.green.withOpacity(0.55)
-                            : state == _PermState.explicit
-                                ? Colors.cyanAccent.withOpacity(0.65)
-                                : Colors.red.withOpacity(0.25),
-                        width: 1.5,
-                      ),
-                      boxShadow: isGranted
-                          ? [BoxShadow(
-                              color: (isFromRole ? Colors.green : Colors.cyanAccent)
-                                  .withOpacity(0.12),
-                              blurRadius: 10, spreadRadius: 1,
-                            )]
-                          : [],
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // State icon
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 250),
-                          child: Icon(
-                            isFromRole
-                                ? Icons.lock
-                                : isGranted
-                                    ? Icons.add_circle
-                                    : Icons.remove_circle_outline,
-                            key: ValueKey(state),
-                            color: isFromRole
-                                ? Colors.green
-                                : isGranted
-                                    ? Colors.cyanAccent
-                                    : Colors.red.shade300,
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          perm['name']!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: ThemeConstants.textPrimary,
-                            fontSize: 12,
-                            fontWeight: isGranted ? FontWeight.bold : FontWeight.w400,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (isFromRole) ...[
-                          const SizedBox(height: 2),
-                          Text('role', style: TextStyle(
-                              fontSize: 9,
-                              color: Colors.green.withOpacity(0.8),
-                              fontWeight: FontWeight.w600)),
-                        ],
-                      ],
-                    ),
-                  ),
-                );
-              },
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (BuildContext context, int index) => _permRow(perms[index]),
             ),
           ),
         ],
       ),
     );
   }
+
+  static const Color _roleColor = Color(0xFF22C55E);
+  static const Color _extraColor = Colors.cyanAccent;
+  static const Color _offColor = Color(0xFF94A3B8);
+
+  /// How many rights come from the role, how many were added for this person, how many are off, with the quick actions.
+  Widget _summary(final List<Map<String, String>> perms) {
+    final int role = perms.where((Map<String, String> p) => _permState(p['id']!) == _PermState.fromRole).length;
+    final int extra = perms.where((Map<String, String> p) => _permState(p['id']!) == _PermState.explicit).length;
+    final int off = perms.length - role - extra;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+        Row(children: <Widget>[
+          _countPill('perm_count_role', role, _loc.isSwahili ? 'Kutoka wadhifa' : 'From role', _roleColor),
+          const SizedBox(width: 8),
+          _countPill('perm_count_extra', extra, _loc.isSwahili ? 'Ziada' : 'Extra', _extraColor),
+          const SizedBox(width: 8),
+          _countPill('perm_count_off', off, _loc.isSwahili ? 'Zimezimwa' : 'Off', _offColor),
+        ]),
+        const SizedBox(height: 6),
+        Row(children: <Widget>[
+          TextButton.icon(
+            key: const Key('perm_grant_all'),
+            onPressed: off == 0 ? null : () => _setAllExtras(perms, true),
+            icon: const Icon(Icons.done_all_rounded, size: 18),
+            label: Text(_loc.isSwahili ? 'Washa zote' : 'Turn all on'),
+          ),
+          TextButton.icon(
+            key: const Key('perm_clear_extras'),
+            onPressed: extra == 0 ? null : () => _setAllExtras(perms, false),
+            icon: const Icon(Icons.layers_clear_rounded, size: 18),
+            label: Text(_loc.isSwahili ? 'Ondoa ziada' : 'Remove extras'),
+          ),
+        ]),
+      ]),
+    );
+  }
+
+  Widget _countPill(final String key, final int n, final String label, final Color color) => Container(
+        key: Key(key),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20), border: Border.all(color: color.withValues(alpha: 0.45))),
+        child: Text('$n  $label', style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w700)),
+      );
+
+  /// Turns on (as extra grants) or removes every right that is not given by the role.
+  void _setAllExtras(final List<Map<String, String>> perms, final bool on) {
+    setState(() {
+      for (final Map<String, String> p in perms) {
+        final String id = p['id']!;
+        if (_roleDefaults.contains(id)) continue;
+        if (on) {
+          if (!_currentPermissions.contains(id)) _currentPermissions.add(id);
+        } else {
+          _currentPermissions.remove(id);
+        }
+      }
+    });
+  }
+
+  /// One right as a switch. Three looks: green and locked (the role gives it), cyan (added for this person), grey and off.
+  Widget _permRow(final Map<String, String> perm) {
+    final String id = perm['id']!;
+    final _PermState state = _permState(id);
+    final bool fromRole = state == _PermState.fromRole;
+    final bool on = state != _PermState.denied;
+    final Color color = fromRole ? _roleColor : (on ? _extraColor : _offColor);
+    final String label = fromRole
+        ? (_loc.isSwahili ? 'Kutoka wadhifa (imefungwa)' : 'Given by the role (locked)')
+        : on
+            ? (_loc.isSwahili ? 'Ziada kwa mtu huyu' : 'Extra for this person')
+            : (_loc.isSwahili ? 'Haijaruhusiwa' : 'Not allowed');
+
+    return AnimatedContainer(
+      key: Key('perm_$id'),
+      duration: const Duration(milliseconds: 220),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: on ? 0.10 : 0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+            // the colour of the state, down the left edge
+            Container(width: 4, color: color),
+            Expanded(
+              child: InkWell(
+                onTap: fromRole ? null : () => _togglePermission(id),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                  child: Row(children: <Widget>[
+                    Icon(_iconFor(perm['icon']), color: color, size: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+                        Text(perm['name']!, style: TextStyle(color: on ? ThemeConstants.textPrimary : Colors.white60, fontSize: 13.5, fontWeight: on ? FontWeight.w700 : FontWeight.w500)),
+                        const SizedBox(height: 2),
+                        Text(label, style: TextStyle(color: color.withValues(alpha: 0.9), fontSize: 10.5, fontWeight: FontWeight.w600)),
+                      ]),
+                    ),
+                    if (fromRole) Padding(padding: const EdgeInsets.only(right: 2), child: Icon(Icons.lock, size: 15, color: color)),
+                    Switch(
+                      key: Key('perm_switch_$id'),
+                      value: on,
+                      onChanged: fromRole ? null : (bool _) => _togglePermission(id),
+                      activeThumbColor: color,
+                      activeTrackColor: color.withValues(alpha: 0.35),
+                      inactiveThumbColor: _offColor,
+                      inactiveTrackColor: Colors.white10,
+                    ),
+                  ]),
+                ),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  /// The rights carry the name of a Material icon; this finds it.
+  IconData _iconFor(final String? name) => switch (name) {
+        'inventory_2' => Icons.inventory_2_rounded,
+        'add_box' => Icons.add_box_rounded,
+        'edit' => Icons.edit_rounded,
+        'track_changes' => Icons.track_changes_rounded,
+        'report_problem' => Icons.report_problem_rounded,
+        'point_of_sale' => Icons.point_of_sale_rounded,
+        'manage_accounts' => Icons.manage_accounts_rounded,
+        'credit_card' => Icons.credit_card_rounded,
+        'payments' => Icons.payments_rounded,
+        'inbox' => Icons.inbox_rounded,
+        'receipt_long' => Icons.receipt_long_rounded,
+        'edit_note' => Icons.edit_note_rounded,
+        'local_shipping' => Icons.local_shipping_rounded,
+        'bar_chart' => Icons.bar_chart_rounded,
+        'notifications' => Icons.notifications_rounded,
+        'settings' => Icons.settings_rounded,
+        'home_work' => Icons.home_work_rounded,
+        'house' => Icons.house_rounded,
+        'person_add' => Icons.person_add_rounded,
+        'handshake' => Icons.handshake_rounded,
+        'receipt' => Icons.receipt_rounded,
+        'build' => Icons.build_rounded,
+        'directions_car' => Icons.directions_car_rounded,
+        'person' => Icons.person_rounded,
+        'money_off' => Icons.money_off_rounded,
+        _ => Icons.tune_rounded,
+      };
 
   Widget _rolePill(String role) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -410,17 +468,6 @@ class _UserPermissionsManagementScreenState
     ),
     child: Text(label,
         style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
-  );
-
-  Widget _legendDot(Color color, String label) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Container(width: 10, height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-      const SizedBox(width: 4),
-      Text(label, style: TextStyle(color: ThemeConstants.textSecondary.withOpacity(0.8),
-          fontSize: 11)),
-    ],
   );
 }
 
