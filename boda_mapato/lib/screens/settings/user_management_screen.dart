@@ -77,10 +77,53 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   /// The roles a salon gives its people (the server and the app both know what each may do).
   static const List<String> _salonRoles = <String>['accountant', 'hair_stylist', 'nail_technician', 'lash_makeup_artist'];
 
-  List<DropdownMenuItem<String>> get _roleDropdownItems => _allRoleDropdownItems
-      .where((DropdownMenuItem<String> item) =>
-          _isSuperAdminUser || (item.value != 'admin' && item.value != 'landlord'))
-      .toList();
+  List<DropdownMenuItem<String>> get _roleDropdownItems => <DropdownMenuItem<String>>[
+        ..._allRoleDropdownItems.where((DropdownMenuItem<String> item) =>
+            _isSuperAdminUser || (item.value != 'admin' && item.value != 'landlord')),
+        // Only a super admin may make another one.
+        if (_isSuperAdminUser)
+          DropdownMenuItem<String>(
+            value: _superAdminRole,
+            child: const Text('Super Admin'),
+          ),
+      ];
+
+  static const String _superAdminRole = 'super_admin';
+
+  /// Changing an existing person's role never makes them a super admin: that is done only when creating the account
+  /// (with a confirmation).
+  List<DropdownMenuItem<String>> get _roleItemsForChange =>
+      _roleDropdownItems.where((DropdownMenuItem<String> item) => item.value != _superAdminRole).toList();
+
+  /// A super admin has full access to every business: ask before making one.
+  Future<bool> _confirmSuperAdmin(final String name) async {
+    final bool sw = _loc.isSwahili;
+    final bool? yes = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        key: const Key('confirm_super_admin'),
+        backgroundColor: ThemeConstants.primaryBlue,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(sw ? 'Kumfanya $name Super Admin?' : 'Make $name a Super Admin?', style: const TextStyle(color: ThemeConstants.textPrimary, fontSize: 16)),
+        content: Text(
+          sw
+              ? 'Mtu huyu atakuwa na ufikiaji kamili wa kila kitu: biashara zote, watumiaji, malipo na mipangilio ya jukwaa.'
+              : 'This person will have full access to everything: every business, user, payment and platform setting.',
+          style: const TextStyle(color: ThemeConstants.textSecondary),
+        ),
+        actions: <Widget>[
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(_loc.translate('no'), style: const TextStyle(color: ThemeConstants.textSecondary))),
+          TextButton(
+            key: const Key('confirm_super_admin_yes'),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(_loc.translate('yes'), style: const TextStyle(color: ThemeConstants.primaryOrange)),
+          ),
+        ],
+      ),
+    );
+
+    return yes == true;
+  }
 
   List<DropdownMenuItem<String>> get _allRoleDropdownItems {
     if (_isRental) {
@@ -423,6 +466,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         ? null
                         : () async {
                             if (!formKey.currentState!.validate()) return;
+                            if (role == _superAdminRole && !await _confirmSuperAdmin(name.text.trim())) return;
 
                             // Check if email already exists in current users list
                             final String emailToCheck = email.text.trim().toLowerCase();
@@ -810,7 +854,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
                       ),
                     ),
-                    items: _roleDropdownItems,
+                    items: _roleItemsForChange,
                     onChanged: (v) => setState(() => role = v ?? _defaultRole),
                   ),
                   const SizedBox(height: 16),
