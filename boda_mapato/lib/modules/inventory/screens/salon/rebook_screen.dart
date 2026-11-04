@@ -10,6 +10,7 @@ import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
 import 'client_history_screen.dart';
 import 'salon_text.dart';
+import '../widgets/glow_list_card.dart';
 
 /// "Come back" reminders. The owner switches them on, says after how many weeks a client is texted by default (a
 /// service can have its own number on its form), and sees who is due now and whether they were texted. The text
@@ -141,18 +142,17 @@ class _RebookScreenState extends State<RebookScreen> {
           message: sw ? 'Hakuna mteja anayetakiwa kurudi leo.' : 'No client is due to come back today.',
         )
       else
-        for (final RebookClient c in overview.clients) ...<Widget>[
-          _ClientCard(client: c, remindersOn: s.enabled, sw: sw),
-          SizedBox(height: 8.h),
-        ],
+        GlowListCard(
+          dividerKey: 'rebook_divider',
+          children: <Widget>[for (final RebookClient c in overview.clients) _ClientCard(client: c, remindersOn: s.enabled, sw: sw)],
+        ),
     ];
   }
 
-  Widget _settingsCard(RebookSettings s, bool sw) => Container(
+  Widget _settingsCard(RebookSettings s, bool sw) => GlowListCard(
         key: const ValueKey<String>('rebook_settings_card'),
-        decoration: ThemeConstants.glassCardDecoration,
         padding: EdgeInsets.all(12.w),
-        child: Column(
+        children: <Widget>[Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Row(
@@ -221,7 +221,7 @@ class _RebookScreenState extends State<RebookScreen> {
                 ),
               ),
           ],
-        ),
+        )],
       );
 }
 
@@ -249,14 +249,12 @@ class _ClientCard extends StatelessWidget {
 
     return InkWell(
       key: ValueKey<String>('rebook_client_${client.customerId}'),
-      borderRadius: BorderRadius.circular(20.r),
       onTap: () => Navigator.push<void>(
         context,
         MaterialPageRoute<void>(builder: (_) => ClientHistoryScreen(customerId: client.customerId, name: client.name)),
       ),
-      child: Container(
-        decoration: ThemeConstants.glassCardDecoration,
-        padding: EdgeInsets.all(12.w),
+      child: Padding(
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[

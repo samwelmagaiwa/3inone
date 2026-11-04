@@ -9,6 +9,7 @@ import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
 import 'salon_text.dart';
+import '../widgets/glow_list_card.dart';
 
 enum _Period { thisMonth, lastMonth, last7 }
 
@@ -153,7 +154,10 @@ class _ServicesReportScreenState extends State<ServicesReportScreen> {
       if (report.services.isEmpty)
         InvEmptyState(icon: Icons.content_cut_rounded, message: sw ? 'Hakuna huduma zilizouzwa kwa kipindi hiki.' : 'No services were sold in this period.')
       else
-        for (int i = 0; i < report.services.length; i++) ...<Widget>[
+        GlowListCard(
+          dividerKey: 'service_divider',
+          children: <Widget>[
+        for (int i = 0; i < report.services.length; i++)
           _ServiceCard(
             rank: i + 1,
             row: report.services[i],
@@ -165,8 +169,8 @@ class _ServicesReportScreenState extends State<ServicesReportScreen> {
               if (!_open.remove(id)) _open.add(id);
             }),
           ),
-          SizedBox(height: 8.h),
-        ],
+          ],
+        ),
     ];
   }
 }
@@ -187,12 +191,9 @@ class _ServiceCard extends StatelessWidget {
     final String name = row.name.trim().isEmpty ? (sw ? 'Huduma' : 'Service') : row.name;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(20.r),
       onTap: onTap,
-      child: Container(
+      child: KeyedSubtree(
         key: ValueKey<String>('service_${row.productId}'),
-        decoration: ThemeConstants.glassCardDecoration,
-        padding: EdgeInsets.all(12.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[

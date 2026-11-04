@@ -9,6 +9,7 @@ import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
 import 'salon_text.dart';
+import '../widgets/glow_list_card.dart';
 
 /// Every service behind one stylist's total: when, for whom, what it was worth, the discount it carried, what is left,
 /// what the stylist earns on it and how it was paid. The owner opens it from the Stylists page; a stylist sees only
@@ -132,10 +133,10 @@ class _StylistDetailScreenState extends State<StylistDetailScreen> {
       if (page.lines.isEmpty)
         InvEmptyState(icon: Icons.content_cut_rounded, message: sw ? 'Hakuna huduma kwa kipindi hiki.' : 'No services in this period.')
       else
-        for (int i = 0; i < page.lines.length; i++) ...<Widget>[
-          _LineCard(index: i, line: page.lines[i], sw: sw),
-          SizedBox(height: 8.h),
-        ],
+        GlowListCard(
+          dividerKey: 'stylist_line_divider',
+          children: <Widget>[for (int i = 0; i < page.lines.length; i++) _LineCard(index: i, line: page.lines[i], sw: sw)],
+        ),
     ];
   }
 }
@@ -163,10 +164,8 @@ class _LineCard extends StatelessWidget {
     final (String status, Color color) = _status();
     String hm(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
-    return Container(
+    return KeyedSubtree(
       key: ValueKey<String>('stylist_line_$index'),
-      decoration: ThemeConstants.glassCardDecoration,
-      padding: EdgeInsets.all(12.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[

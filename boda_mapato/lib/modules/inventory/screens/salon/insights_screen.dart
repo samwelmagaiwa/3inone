@@ -6,6 +6,7 @@ import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
 import 'salon_text.dart';
+import '../widgets/glow_list_card.dart';
 
 /// How the salon is doing over the months: takings and profit by month, new against returning clients, how many clients
 /// come back within 60 days, the best services, and the busiest days and hours. Owner, managers and the accountant.
@@ -98,41 +99,55 @@ class _InsightsScreenState extends State<InsightsScreen> {
                         ),
                     ]),
                     const SizedBox(height: 12),
-                    Text(sw ? 'Mapato kwa mwezi' : 'By month', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    for (final Map<String, dynamic> r in trend)
-                      ListTile(
-                        key: Key('ins_month_${r['month']}'),
-                        dense: true,
-                        title: Text('${r['month']}  ·  ${tsh((r['revenue'] as num?) ?? 0)}'),
-                        subtitle: Text('${sw ? 'Faida' : 'Profit'} ${tsh((r['net_profit'] as num?) ?? 0)} · ${sw ? 'ziara' : 'visits'} ${r['visits']} · ${sw ? 'wapya' : 'new'} ${r['new_clients']} · ${sw ? 'wanaorudi' : 'returning'} ${r['returning_clients']}'),
-                      ),
-                    const SizedBox(height: 12),
-                    Card(
-                      child: ListTile(
-                        key: const Key('ins_retention'),
-                        title: Text(ret['rate'] == null ? '—' : '${ret['rate']}%', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                        subtitle: Text(sw ? 'ya wateja wanarudi ndani ya siku ${ret['days'] ?? 60} (kati ya ${ret['eligible'] ?? 0})' : 'of clients come back within ${ret['days'] ?? 60} days (out of ${ret['eligible'] ?? 0})'),
-                      ),
+                    GlowCard(
+                      title: sw ? 'Mapato kwa mwezi' : 'By month',
+                      dividerKey: 'ins_month_divider',
+                      children: <Widget>[
+                        for (final Map<String, dynamic> r in trend)
+                          ListTile(
+                            key: Key('ins_month_${r['month']}'),
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text('${r['month']}  ·  ${tsh((r['revenue'] as num?) ?? 0)}'),
+                            subtitle: Text('${sw ? 'Faida' : 'Profit'} ${tsh((r['net_profit'] as num?) ?? 0)} · ${sw ? 'ziara' : 'visits'} ${r['visits']} · ${sw ? 'wapya' : 'new'} ${r['new_clients']} · ${sw ? 'wanaorudi' : 'returning'} ${r['returning_clients']}'),
+                          ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    Text(sw ? 'Siku zenye shughuli' : 'Busiest days', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    for (final Map<String, dynamic> r in days)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Row(children: <Widget>[
-                          SizedBox(width: 40, child: Text(dayName((r['day'] as num).toInt(), sw))),
-                          Expanded(child: LinearProgressIndicator(value: maxDay == 0 ? 0 : ((r['visits'] as num).toDouble() / maxDay), minHeight: 8)),
-                          SizedBox(width: 36, child: Text('${r['visits']}', textAlign: TextAlign.right)),
-                        ]),
+                    GlowCard(
+                      dividerKey: 'ins_retention_divider',
+                      children: <Widget>[
+                        ListTile(
+                          key: const Key('ins_retention'),
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(ret['rate'] == null ? '—' : '${ret['rate']}%', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                          subtitle: Text(sw ? 'ya wateja wanarudi ndani ya siku ${ret['days'] ?? 60} (kati ya ${ret['eligible'] ?? 0})' : 'of clients come back within ${ret['days'] ?? 60} days (out of ${ret['eligible'] ?? 0})'),
+                        ),
+                      ],
+                    ),
+                    GlowCard(
+                      title: sw ? 'Siku zenye shughuli' : 'Busiest days',
+                      dividerKey: 'ins_day_divider',
+                      children: <Widget>[
+                        for (final Map<String, dynamic> r in days)
+                          Row(children: <Widget>[
+                            SizedBox(width: 40, child: Text(dayName((r['day'] as num).toInt(), sw))),
+                            Expanded(child: LinearProgressIndicator(value: maxDay == 0 ? 0 : ((r['visits'] as num).toDouble() / maxDay), minHeight: 8)),
+                            SizedBox(width: 36, child: Text('${r['visits']}', textAlign: TextAlign.right)),
+                          ]),
+                      ],
+                    ),
+                    if (hours.isNotEmpty)
+                      GlowCard(
+                        title: sw ? 'Saa zenye shughuli' : 'Busiest hours',
+                        dividerKey: 'ins_hour_divider',
+                        children: <Widget>[Wrap(spacing: 8, children: <Widget>[for (final Map<String, dynamic> r in hours) Chip(label: Text('${r['hour']}:00 · ${r['visits']}'))])],
                       ),
-                    if (hours.isNotEmpty) ...<Widget>[
-                      const SizedBox(height: 12),
-                      Text(sw ? 'Saa zenye shughuli' : 'Busiest hours', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      Wrap(spacing: 8, children: <Widget>[for (final Map<String, dynamic> r in hours) Chip(label: Text('${r['hour']}:00 · ${r['visits']}'))]),
-                    ],
-                    const SizedBox(height: 12),
-                    Text(sw ? 'Huduma zinazoongoza' : 'Best services', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    for (final Map<String, dynamic> r in services) ListTile(dense: true, title: Text('${r['name']}'), subtitle: Text('${r['times']}×'), trailing: Text(tsh((r['total'] as num?) ?? 0))),
+                    GlowCard(
+                      title: sw ? 'Huduma zinazoongoza' : 'Best services',
+                      dividerKey: 'ins_service_divider',
+                      bottom: 0,
+                      children: <Widget>[for (final Map<String, dynamic> r in services) ListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text('${r['name']}'), subtitle: Text('${r['times']}×'), trailing: Text(tsh((r['total'] as num?) ?? 0)))],
+                    ),
                   ]),
                 ),
     );

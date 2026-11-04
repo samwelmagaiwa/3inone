@@ -9,6 +9,7 @@ import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
 import 'salon_text.dart';
+import '../widgets/glow_list_card.dart';
 
 /// When each person works: the weekdays and the hours (a booking outside them is refused unless the owner says book
 /// anyway), and their days off. For the owner and managers.
@@ -177,11 +178,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         style: ThemeConstants.captionStyle,
       ),
       SizedBox(height: 8.h),
-      for (final StaffProfile p in _people) ...<Widget>[
-        Container(
+      GlowListCard(
+        dividerKey: 'schedule_divider',
+        children: <Widget>[
+        for (final StaffProfile p in _people)
+        KeyedSubtree(
           key: ValueKey<String>('schedule_${p.staffId}'),
-          decoration: ThemeConstants.glassCardDecoration,
-          padding: EdgeInsets.all(12.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
@@ -235,9 +237,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             ],
           ),
         ),
-        SizedBox(height: 8.h),
-      ],
-      SizedBox(height: 8.h),
+        ],
+      ),
+      SizedBox(height: 12.h),
       Row(
         children: <Widget>[
           IconButton(key: const ValueKey<String>('dayoff_prev'), onPressed: () => _go(-1), icon: const Icon(Icons.chevron_left, color: Colors.white)),
@@ -250,6 +252,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       if (_daysOff.isEmpty)
         InvEmptyState(icon: Icons.beach_access_outlined, message: sw ? 'Hakuna mapumziko mwezi huu.' : 'No days off this month.')
       else
+        GlowListCard(
+          dividerKey: 'dayoff_divider',
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 2.h),
+          children: <Widget>[
         for (final DayOff d in _daysOff)
           ListTile(
             key: ValueKey<String>('dayoff_${d.id}'),
@@ -259,6 +265,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             subtitle: d.reason == null ? null : Text(d.reason!, style: ThemeConstants.captionStyle),
             trailing: IconButton(key: ValueKey<String>('dayoff_remove_${d.id}'), onPressed: _busy ? null : () => _run(() => _api.deleteDayOff(d.id)), icon: const Icon(Icons.delete_outline, color: Colors.white54, size: 20)),
           ),
+          ],
+        ),
     ];
   }
 }

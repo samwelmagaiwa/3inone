@@ -7,6 +7,7 @@ import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
+import '../widgets/glow_list_card.dart';
 import '../widgets/inventory_widgets.dart';
 import 'salon_text.dart';
 
@@ -222,11 +223,7 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
     ];
   }
 
-  Widget _card(final List<Widget> children) => Container(
-        decoration: ThemeConstants.glassCardDecoration,
-        padding: EdgeInsets.all(12.w),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
-      );
+  Widget _card(final List<Widget> children) => GlowCard(dividerKey: 'pl_divider', bottom: 0, children: children);
 
   Widget _line(final String label, final double? amount, {final bool bold = false, final bool muted = false, final Color? color, final String? key}) => Padding(
         key: key == null ? null : ValueKey<String>(key),

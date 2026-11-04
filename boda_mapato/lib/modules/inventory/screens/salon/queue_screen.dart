@@ -8,6 +8,7 @@ import '../../models/inv_product.dart';
 import '../../providers/inventory_provider.dart';
 import '../../services/salon_api.dart';
 import 'salon_input.dart';
+import '../widgets/glow_list_card.dart';
 
 /// Today's walk-in queue: clients who came without an appointment, in the order they arrived, with a rough wait (the time
 /// of the services ahead of them). Start serving, finish, or mark that someone left; a finished client stays finished.
@@ -105,7 +106,7 @@ class _QueueScreenState extends State<QueueScreen> {
                       key: const Key('queue_summary'),
                     ),
                     const SizedBox(height: 8),
-                    for (final Map<String, dynamic> q in _queue) _card(q, sw),
+                    if (_queue.isNotEmpty) GlowListCard(dividerKey: 'queue_divider', padding: const EdgeInsets.symmetric(horizontal: 4), children: <Widget>[for (final Map<String, dynamic> q in _queue) _card(q, sw)]),
                     if (_queue.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Hakuna anayesubiri leo.' : 'Nobody is waiting today.', textAlign: TextAlign.center)),
                   ]),
                 ),
@@ -117,7 +118,7 @@ class _QueueScreenState extends State<QueueScreen> {
     final int id = (q['id'] as num).toInt();
     final bool open = status == 'waiting' || status == 'serving';
 
-    return Card(
+    return KeyedSubtree(
       key: Key('queue_$id'),
       child: ListTile(
         title: Text('${q['position'] != null ? '#${q['position']}  ' : ''}${q['name']}', style: TextStyle(decoration: open ? null : TextDecoration.lineThrough)),

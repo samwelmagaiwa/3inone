@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:boda_mapato/modules/inventory/models/salon_models.dart';
 import 'package:boda_mapato/modules/inventory/screens/salon/stylists_screen.dart';
+import 'package:boda_mapato/modules/inventory/screens/widgets/joined_sections.dart';
 import 'package:boda_mapato/modules/inventory/services/salon_api.dart';
 import 'package:boda_mapato/services/api_service.dart';
 import 'package:boda_mapato/services/localization_service.dart';
@@ -90,6 +91,15 @@ void main() {
     expect(find.text('No stylist named'), findsOneWidget, reason: 'a line with nobody named is still shown, honestly');
     expect(t.getTopLeft(_key('stylist_u-asha')).dy, lessThan(t.getTopLeft(_key('stylist_u-bahati')).dy), reason: 'the best first');
     expect(t.getTopLeft(_key('stylist_u-bahati')).dy, lessThan(t.getTopLeft(_key('stylist_none')).dy));
+  });
+
+  testWidgets('the stylists are one card divided by the glowing line, not separate cards', (t) async {
+    await _open(t, _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha, _bahati, _nobody])));
+
+    expect(_key('stylist_divider_1'), findsOneWidget);
+    expect(_key('stylist_divider_2'), findsOneWidget);
+    expect(_key('stylist_divider_3'), findsNothing, reason: 'three stylists have two lines between them');
+    expect(find.byType(SectionGlowDivider), findsNWidgets(2));
   });
 
   testWidgets('shows what each stylist earned in commission, and says nothing when no service has a rate', (t) async {

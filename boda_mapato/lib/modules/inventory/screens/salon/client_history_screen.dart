@@ -10,6 +10,7 @@ import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
 import 'client_extras.dart';
 import 'salon_text.dart';
+import '../widgets/glow_list_card.dart';
 
 /// A client's page: how often they come, what they spend and like, when they are due back, what to remember about
 /// them (hair type, allergies) and whether they may be texted.
@@ -149,10 +150,9 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
     final NextVisit? next = h.nextVisit;
 
     return <Widget>[
-      Container(
-        decoration: ThemeConstants.glassCardDecoration,
+      GlowListCard(
         padding: EdgeInsets.all(12.w),
-        child: Row(
+        children: <Widget>[Row(
           children: <Widget>[
             Icon(Icons.person_outline, color: ThemeConstants.invAccent, size: 26.sp),
             SizedBox(width: 10.w),
@@ -166,7 +166,7 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
               ),
             ),
           ],
-        ),
+        )],
       ),
       SizedBox(height: 10.h),
       Row(
@@ -186,11 +186,10 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
       ),
       if (next != null) ...<Widget>[
         SizedBox(height: 10.h),
-        Container(
+        GlowListCard(
           key: const ValueKey<String>('client_next_visit'),
-          decoration: ThemeConstants.glassCardDecoration,
           padding: EdgeInsets.all(12.w),
-          child: Row(
+          children: <Widget>[Row(
             children: <Widget>[
               Icon(Icons.event_repeat_outlined, color: ThemeConstants.primaryCyan, size: 22.sp),
               SizedBox(width: 10.w),
@@ -203,14 +202,13 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
                 ),
               ),
             ],
-          ),
+          )],
         ),
       ],
       SizedBox(height: 10.h),
-      Container(
-        decoration: ThemeConstants.glassCardDecoration,
+      GlowListCard(
         padding: EdgeInsets.all(12.w),
-        child: Row(
+        children: <Widget>[Row(
           children: <Widget>[
             Expanded(
               child: Text(
@@ -226,7 +224,7 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
               activeTrackColor: ThemeConstants.warningAmber,
             ),
           ],
-        ),
+        )],
       ),
       SizedBox(height: 10.h),
       InvTextField(
@@ -246,15 +244,17 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
       SizedBox(height: 14.h),
       ClientExtras(key: ValueKey<int>(h.id), history: h, api: _api, picker: widget.picker),
       SizedBox(height: 14.h),
-      Text(sw ? 'Ziara za nyuma' : 'Past visits', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
-      SizedBox(height: 8.h),
-      if (h.visits.isEmpty)
-        InvEmptyState(icon: Icons.receipt_long_outlined, message: sw ? 'Bado hajawahi kununua.' : 'Nothing bought yet.')
-      else
-        for (final ClientVisit v in h.visits) ...<Widget>[
-          _VisitCard(visit: v, sw: sw),
-          SizedBox(height: 8.h),
-        ],
+      if (h.visits.isEmpty) ...<Widget>[
+        Center(child: Text(sw ? 'Ziara za nyuma' : 'Past visits', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFFFFD166)))),
+        SizedBox(height: 8.h),
+        InvEmptyState(icon: Icons.receipt_long_outlined, message: sw ? 'Bado hajawahi kununua.' : 'Nothing bought yet.'),
+      ] else
+        GlowCard(
+          title: sw ? 'Ziara za nyuma' : 'Past visits',
+          dividerKey: 'visit_divider',
+          bottom: 0,
+          children: <Widget>[for (final ClientVisit v in h.visits) _VisitCard(visit: v, sw: sw)],
+        ),
     ];
   }
 }
@@ -266,9 +266,8 @@ class _VisitCard extends StatelessWidget {
   final bool sw;
 
   @override
-  Widget build(BuildContext context) => Container(
-        decoration: ThemeConstants.glassCardDecoration,
-        padding: EdgeInsets.all(12.w),
+  Widget build(BuildContext context) => Padding(
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[

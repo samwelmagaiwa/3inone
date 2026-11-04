@@ -9,6 +9,7 @@ import '../../services/salon_api.dart';
 import 'salon_input.dart';
 import 'salon_text.dart';
 import '../widgets/inventory_widgets.dart';
+import '../widgets/glow_list_card.dart';
 
 /// The salon's equipment: what it owns and cost, whether it works, when it is next due for a service, and each service or
 /// repair with what it cost (that cost goes into the expenses once). Overdue and soon-due things stand out.
@@ -151,19 +152,25 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 96), children: <Widget>[
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Wrap(spacing: 24, runSpacing: 8, children: <Widget>[
+                    GlowListCard(
+                      padding: const EdgeInsets.all(16),
+                      children: <Widget>[
+                        Wrap(spacing: 24, runSpacing: 8, children: <Widget>[
                           _Stat(label: sw ? 'Vifaa' : 'Items', value: '${_totals['count'] ?? 0}'),
                           _Stat(label: sw ? 'Thamani' : 'Value', value: tsh((_totals['value'] as num?) ?? 0)),
                           _Stat(label: sw ? 'Vinatengenezwa' : 'In repair', value: '${_totals['in_repair'] ?? 0}'),
                           _Stat(label: sw ? 'Vinahitaji huduma' : 'Need a service', value: '${_totals['needs_attention'] ?? 0}'),
                         ]),
-                      ),
+                      ],
                     ),
+                    const SizedBox(height: 12),
+                    if (_items.isNotEmpty)
+                      GlowListCard(
+                        dividerKey: 'eq_divider',
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        children: <Widget>[
                     for (final Map<String, dynamic> e in _items)
-                      Card(
+                      KeyedSubtree(
                         key: Key('eq_${e['id']}'),
                         child: ListTile(
                           onTap: () => _open(e),
@@ -181,6 +188,8 @@ class _EquipmentScreenState extends State<EquipmentScreen> {
                                   ? Chip(label: Text(sw ? 'Karibu' : 'Due soon'), backgroundColor: Colors.orange.shade100)
                                   : null,
                         ),
+                      ),
+                        ],
                       ),
                     if (_items.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Hakuna kifaa bado.' : 'No equipment yet.', textAlign: TextAlign.center)),
                   ]),

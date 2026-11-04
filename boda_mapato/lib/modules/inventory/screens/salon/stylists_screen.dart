@@ -11,6 +11,7 @@ import '../widgets/inventory_widgets.dart';
 import 'salon_text.dart';
 import 'stylist_detail_screen.dart';
 import 'stylist_targets_sheet.dart';
+import '../widgets/glow_list_card.dart';
 
 enum _Period { thisMonth, lastMonth, last7 }
 
@@ -195,7 +196,10 @@ class _StylistsScreenState extends State<StylistsScreen> {
               : 'No services recorded for this period. Choose a stylist each time you sell a service.',
         )
       else
-        for (int i = 0; i < report.stylists.length; i++) ...<Widget>[
+        GlowListCard(
+          dividerKey: 'stylist_divider',
+          children: <Widget>[
+        for (int i = 0; i < report.stylists.length; i++)
           _StylistCard(
             rank: i + 1,
             row: report.stylists[i],
@@ -216,8 +220,8 @@ class _StylistsScreenState extends State<StylistsScreen> {
               ),
             ),
           ),
-          SizedBox(height: 8.h),
-        ],
+          ],
+        ),
     ];
   }
 }
@@ -352,12 +356,9 @@ class _StylistCard extends StatelessWidget {
     final String name = row.isUnassigned || row.name.trim().isEmpty ? (sw ? 'Hakutajwa mhudumu' : 'No stylist named') : row.name;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(20.r),
       onTap: onTap,
-      child: Container(
+      child: KeyedSubtree(
       key: ValueKey<String>('stylist_${row.staffId ?? 'none'}'),
-      decoration: ThemeConstants.glassCardDecoration,
-      padding: EdgeInsets.all(12.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[

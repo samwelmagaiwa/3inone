@@ -159,6 +159,8 @@ class _StylistTargetsSheetState extends State<StylistTargetsSheet> {
                                   prefixText: 'TSh ',
                                   prefixStyle: const TextStyle(color: Colors.white54),
                                   isDense: true,
+                                  filled: true,
+                                  fillColor: ThemeConstants.invFill,
                                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: const BorderSide(color: Colors.white24)),
                                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r), borderSide: const BorderSide(color: Colors.white70)),
                                 ),

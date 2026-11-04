@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
+import '../widgets/glow_list_card.dart';
 import 'salon_text.dart';
 
 /// The salon's reports on one page for a period: takings by service, stylist, way of payment and branch; spending by
@@ -124,21 +125,23 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
         _row(sw ? 'Mauzo / wateja' : 'Sales / clients', '${s['sales'] ?? 0} / ${s['clients'] ?? 0}'),
       ]),
       _section(sw ? 'Mapato kwa huduma' : 'Takings by service', 'service', <Widget>[
-        for (final Map<String, dynamic> r in _list(_d['by_service'])) ...<Widget>[
-          _row('${r['name']}  ×${r['times']}', _n(r['revenue'])),
-          _profitLine(sw, <String>[
-            if (((r['commission'] as num?) ?? 0) > 0) '${sw ? 'kamisheni' : 'commission'} ${_n(r['commission'])}',
-            if (((r['materials_cost'] as num?) ?? 0) > 0) '${sw ? 'bidhaa zilizotumika' : 'goods used'} ${_n(r['materials_cost'])}',
-          ], r['profit']),
-        ],
+        for (final Map<String, dynamic> r in _list(_d['by_service']))
+          Column(children: <Widget>[
+            _row('${r['name']}  ×${r['times']}', _n(r['revenue'])),
+            _profitLine(sw, <String>[
+              if (((r['commission'] as num?) ?? 0) > 0) '${sw ? 'kamisheni' : 'commission'} ${_n(r['commission'])}',
+              if (((r['materials_cost'] as num?) ?? 0) > 0) '${sw ? 'bidhaa zilizotumika' : 'goods used'} ${_n(r['materials_cost'])}',
+            ], r['profit']),
+          ]),
         if (_list(_d['by_service']).isEmpty) _none(sw),
       ]),
       if (_list(_d['goods_sold']).isNotEmpty)
         _section(sw ? 'Bidhaa zilizouzwa na faida yake' : 'Goods sold and what they earned', 'goods', <Widget>[
-          for (final Map<String, dynamic> r in _list(_d['goods_sold'])) ...<Widget>[
-            _row('${r['name']}  ×${r['qty']}', _n(r['revenue'])),
-            _profitLine(sw, <String>['${sw ? 'gharama' : 'cost'} ${_n(r['cost'])}'], r['profit']),
-          ],
+          for (final Map<String, dynamic> r in _list(_d['goods_sold']))
+            Column(children: <Widget>[
+              _row('${r['name']}  ×${r['qty']}', _n(r['revenue'])),
+              _profitLine(sw, <String>['${sw ? 'gharama' : 'cost'} ${_n(r['cost'])}'], r['profit']),
+            ]),
         ]),
       _section(sw ? 'Mapato kwa mhudumu' : 'Takings by stylist', 'stylist', <Widget>[
         for (final Map<String, dynamic> r in _list(_d['by_stylist'])) _row('${r['name']}  (${r['services']} · ${r['clients']} ${sw ? 'wateja' : 'clients'})', _n(r['revenue'])),
@@ -171,7 +174,7 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
         _row(sw ? 'Wanaorudi' : 'Returning', '${clients['returning'] ?? 0}'),
         _row(sw ? 'Hawajaja wiki ${clients['stopped_after_weeks'] ?? 8}+' : 'Not seen for ${clients['stopped_after_weeks'] ?? 8}+ weeks', '${clients['stopped_coming'] ?? 0}', key: 'sr_stopped'),
         _row(sw ? 'Siku ya kuzaliwa mwezi huu' : 'Birthdays this month', '${clients['birthdays_this_month'] ?? 0}'),
-        if (_list(clients['top_spenders']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(sw ? 'Wanaotumia zaidi' : 'Best spenders', style: const TextStyle(fontWeight: FontWeight.bold))),
+        if (_list(clients['top_spenders']).isNotEmpty) GlowTitle(sw ? 'Wanaotumia zaidi' : 'Best spenders'),
         for (final Map<String, dynamic> r in _list(clients['top_spenders'])) _row('${r['name']}  (${r['visits']})', _n(r['spent'])),
       ]),
       _section(sw ? 'Madeni ya wateja' : 'Owed by clients', 'owed', <Widget>[
@@ -189,7 +192,7 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
 
   /// Under a service or goods line: what came off it (commission, goods used, cost) and the profit that is left.
   Widget _profitLine(final bool sw, final List<String> takenOff, final dynamic profit) => Padding(
-        padding: const EdgeInsets.only(left: 12, bottom: 4),
+        padding: const EdgeInsets.only(left: 12, top: 2),
         child: Row(children: <Widget>[
           Expanded(child: Text(takenOff.isEmpty ? '' : '− ${takenOff.join(' · ')}', style: const TextStyle(fontSize: 12, color: Colors.white70))),
           Text('${sw ? 'faida' : 'profit'} ${_n(profit)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.lightGreenAccent)),
@@ -200,22 +203,12 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
 
   Widget _row(final String label, final String value, {final bool bold = false, final String? key}) => Padding(
         key: key == null ? null : Key(key),
-        padding: const EdgeInsets.symmetric(vertical: 3),
+        padding: EdgeInsets.zero,
         child: Row(children: <Widget>[
           Expanded(child: Text(label, style: TextStyle(fontWeight: bold ? FontWeight.bold : null))),
           Text(value, style: TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.w600)),
         ]),
       );
 
-  Widget _section(final String title, final String id, final List<Widget> children) => Card(
-        key: Key('sr_section_$id'),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-            const SizedBox(height: 6),
-            ...children,
-          ]),
-        ),
-      );
+  Widget _section(final String title, final String id, final List<Widget> children) => GlowCard(key: Key('sr_section_$id'), title: title, dividerKey: 'sr_divider_$id', children: children);
 }

@@ -16,6 +16,7 @@ import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
 import 'salon_access.dart';
 import 'salon_text.dart';
+import '../widgets/glow_list_card.dart';
 
 enum _Range { today, week, month, lastMonth }
 
@@ -205,7 +206,10 @@ class _SalonExpensesScreenState extends State<SalonExpensesScreen> {
       ] else if (_items.isEmpty)
         InvEmptyState(icon: Icons.receipt_long_outlined, message: sw ? 'Hakuna matumizi kwa kipindi hiki.' : 'No expenses in this period.')
       else
-        for (final SalonExpense e in _items) ...<Widget>[
+        GlowListCard(
+          dividerKey: 'expense_divider',
+          children: <Widget>[
+        for (final SalonExpense e in _items)
           _ExpenseCard(
             expense: e,
             sw: sw,
@@ -215,8 +219,8 @@ class _SalonExpensesScreenState extends State<SalonExpensesScreen> {
             onReject: () => _decide(e, false),
             onReceipt: () => _attach(e),
           ),
-          SizedBox(height: 8.h),
-        ],
+          ],
+        ),
     ];
   }
 }
@@ -237,10 +241,8 @@ class _ExpenseCard extends StatelessWidget {
     final SalonExpense e = expense;
     final Color statusColor = e.isPending ? ThemeConstants.warningAmber : ThemeConstants.errorRed;
 
-    return Container(
+    return KeyedSubtree(
       key: ValueKey<String>('expense_${e.id}'),
-      decoration: ThemeConstants.glassCardDecoration,
-      padding: EdgeInsets.all(12.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[

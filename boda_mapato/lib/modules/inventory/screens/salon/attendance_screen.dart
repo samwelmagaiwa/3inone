@@ -11,6 +11,7 @@ import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
 import 'salon_access.dart';
 import 'salon_text.dart';
+import '../widgets/glow_list_card.dart';
 
 /// Who is at work and for how long. Everyone starts and finishes their own day with one tap; the owner and managers
 /// also see everyone's days and hours for the month, and can start or finish someone's day for them.
@@ -144,11 +145,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     return <Widget>[
       if (now != null)
-        Container(
+        GlowListCard(
           key: const ValueKey<String>('attendance_status'),
-          decoration: ThemeConstants.glassCardDecoration,
           padding: EdgeInsets.all(14.w),
-          child: Row(
+          children: <Widget>[Row(
             children: <Widget>[
               Icon(now.atWork ? Icons.work_history_outlined : Icons.hotel_class_outlined, color: now.atWork ? ThemeConstants.successGreen : Colors.white70, size: 26.sp),
               SizedBox(width: 12.w),
@@ -165,7 +165,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 child: Text(now.atWork ? (sw ? 'Maliza kazi' : 'Finish work') : (sw ? 'Anza kazi' : 'Start work'), style: const TextStyle(color: Colors.white)),
               ),
             ],
-          ),
+          )],
         ),
       if (manager) ...<Widget>[
         SizedBox(height: 8.h),
@@ -195,11 +195,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       ] else if (_people.isEmpty)
         InvEmptyState(icon: Icons.event_busy_outlined, message: sw ? 'Hakuna aliyeanza kazi mwezi huu.' : 'Nobody has clocked in this month.')
       else
-        for (final AttendancePerson p in _people) ...<Widget>[
-          Container(
+        GlowListCard(
+          dividerKey: 'att_divider',
+          children: <Widget>[
+          for (final AttendancePerson p in _people)
+          KeyedSubtree(
             key: ValueKey<String>('att_${p.staffId}'),
-            decoration: ThemeConstants.glassCardDecoration,
-            padding: EdgeInsets.all(12.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
@@ -225,8 +226,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ],
             ),
           ),
-          SizedBox(height: 8.h),
-        ],
+          ],
+        ),
     ];
   }
 

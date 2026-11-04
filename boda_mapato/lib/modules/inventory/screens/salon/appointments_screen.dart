@@ -14,6 +14,7 @@ import '../widgets/inventory_widgets.dart';
 import 'appointment_form_screen.dart';
 import 'salon_access.dart';
 import 'salon_text.dart';
+import '../widgets/glow_list_card.dart';
 
 /// The salon's diary for one day: who is booked with which stylist, when, for what. The owner books, confirms,
 /// moves, finishes (and sells) or cancels from here; the text that reminds each client the day before goes out from
@@ -292,11 +293,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
         ),
       if (s != null) ...<Widget>[
         SizedBox(height: 10.h),
-        Container(
+        GlowListCard(
           key: const ValueKey<String>('appt_reminders_card'),
-          decoration: ThemeConstants.glassCardDecoration,
           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-          child: Row(
+          children: <Widget>[Row(
             children: <Widget>[
               Icon(Icons.sms_outlined, color: ThemeConstants.invAccent, size: 20.sp),
               SizedBox(width: 10.w),
@@ -314,17 +314,16 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 activeTrackColor: ThemeConstants.invAccent,
               ),
             ],
-          ),
+          )],
         ),
       ],
       // The owner's evening text: how the day went. (Only the owner and managers: it is the business's money.)
       if (s != null && canSeeSalonMoneyHere(context)) ...<Widget>[
         SizedBox(height: 8.h),
-        Container(
+        GlowListCard(
           key: const ValueKey<String>('daily_summary_card'),
-          decoration: ThemeConstants.glassCardDecoration,
           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-          child: Row(
+          children: <Widget>[Row(
             children: <Widget>[
               Icon(Icons.summarize_outlined, color: ThemeConstants.invAccent, size: 20.sp),
               SizedBox(width: 10.w),
@@ -337,7 +336,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
                 activeTrackColor: ThemeConstants.invAccent,
               ),
             ],
-          ),
+          )],
         ),
       ],
       SizedBox(height: 12.h),
@@ -364,10 +363,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> {
           style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700),
         ),
         SizedBox(height: 8.h),
-        for (final SalonAppointment a in _items) ...<Widget>[
-          _AppointmentCard(appointment: a, sw: sw, onTap: () => _actions(a, sw)),
-          SizedBox(height: 8.h),
-        ],
+        GlowListCard(
+          dividerKey: 'appt_divider',
+          children: <Widget>[for (final SalonAppointment a in _items) _AppointmentCard(appointment: a, sw: sw, onTap: () => _actions(a, sw))],
+        ),
       ],
     ];
   }
@@ -412,13 +411,11 @@ class _AppointmentCard extends StatelessWidget {
 
     return InkWell(
       key: ValueKey<String>('appt_${a.id}'),
-      borderRadius: BorderRadius.circular(20.r),
       onTap: onTap,
       child: Opacity(
         opacity: a.isActive || a.status == 'done' ? 1 : 0.6,
-        child: Container(
-          decoration: ThemeConstants.glassCardDecoration,
-          padding: EdgeInsets.all(12.w),
+        child: Padding(
+          padding: EdgeInsets.zero,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[

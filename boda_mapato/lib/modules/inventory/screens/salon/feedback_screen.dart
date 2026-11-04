@@ -6,6 +6,7 @@ import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
 import 'salon_input.dart';
+import '../widgets/glow_list_card.dart';
 
 /// What clients said after a visit: the average rating, each stylist's average (owner and managers), and the feedback
 /// list with open complaints first. A complaint is resolved with a note. A stylist sees only feedback about themselves.
@@ -90,11 +91,12 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
           ]),
         );
 
-    return Card(
+    // (An open complaint keeps its dark red, so it is not missed among the others.)
+    return Container(
       key: Key('fb_${f['id']}'),
       color: open ? const Color(0xFF7A2230) : null,
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
           Row(children: <Widget>[
             if (complaint) ...<Widget>[
@@ -144,23 +146,34 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(padding: const EdgeInsets.all(16), children: <Widget>[
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: <Widget>[
+                    GlowListCard(
+                      padding: const EdgeInsets.all(16),
+                      children: <Widget>[
+                        Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: <Widget>[
                           _Big(key: const Key('fb_average'), value: s['average'] == null ? '-' : '${s['average']} ★', label: sw ? 'Wastani' : 'Average'),
                           _Big(value: '${s['ratings'] ?? 0}', label: sw ? 'Alama' : 'Ratings'),
                           _Big(key: const Key('fb_open'), value: '${s['open_complaints'] ?? 0}', label: sw ? 'Malalamiko wazi' : 'Open complaints'),
                         ]),
-                      ),
+                      ],
                     ),
                     if (byStaff.isNotEmpty) ...<Widget>[
-                      Padding(padding: const EdgeInsets.only(top: 12, bottom: 4), child: Text(sw ? 'Kila mtumishi' : 'By stylist', style: const TextStyle(fontWeight: FontWeight.bold))),
-                      for (final Map<String, dynamic> r in byStaff)
-                        ListTile(dense: true, title: Text('${r['name'] ?? ''}'), trailing: Text('${r['average']} ★  (${r['ratings']})')),
+                      const SizedBox(height: 12),
+                      GlowCard(
+                        title: sw ? 'Kila mtumishi' : 'By stylist',
+                        dividerKey: 'fb_staff_divider',
+                        bottom: 0,
+                        children: <Widget>[for (final Map<String, dynamic> r in byStaff) ListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text('${r['name'] ?? ''}'), trailing: Text('${r['average']} ★  (${r['ratings']})'))],
+                      ),
                     ],
-                    Padding(padding: const EdgeInsets.only(top: 12, bottom: 4), child: Text(sw ? 'Maoni' : 'Feedback', style: const TextStyle(fontWeight: FontWeight.bold))),
-                    for (final Map<String, dynamic> f in _list(_data['feedback'])) _item(f, sw),
+                    if (_list(_data['feedback']).isNotEmpty) ...<Widget>[
+                      const SizedBox(height: 12),
+                      GlowCard(
+                        title: sw ? 'Maoni' : 'Feedback',
+                        dividerKey: 'fb_divider',
+                        bottom: 0,
+                        children: <Widget>[for (final Map<String, dynamic> f in _list(_data['feedback'])) _item(f, sw)],
+                      ),
+                    ],
                     if (_list(_data['feedback']).isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Hakuna maoni bado.' : 'No feedback yet.', textAlign: TextAlign.center)),
                   ]),
                 ),

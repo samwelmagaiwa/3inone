@@ -11,6 +11,7 @@ import '../../providers/inventory_provider.dart';
 import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
 import 'salon_text.dart';
+import '../widgets/glow_list_card.dart';
 
 /// What each person earns for a month and what has been paid: their salary, the commission they earned on their
 /// services, what was paid out and advanced, and what the salon still owes them. The owner records each payment here.
@@ -168,14 +169,17 @@ class _PayrollScreenState extends State<PayrollScreen> {
         if (r.staff.isEmpty)
           InvEmptyState(icon: Icons.people_outline, message: sw ? 'Hakuna wafanyakazi bado.' : 'No staff yet.')
         else
-          for (final PayrollRow row in r.staff) ...<Widget>[
-            _StaffCard(row: row, sw: sw, onPay: () => _pay(row), onEdit: () => _editProfile(row)),
-            SizedBox(height: 8.h),
-          ],
+          GlowListCard(
+            dividerKey: 'payroll_divider',
+            children: <Widget>[for (final PayrollRow row in r.staff) _StaffCard(row: row, sw: sw, onPay: () => _pay(row), onEdit: () => _editProfile(row))],
+          ),
         if (_payouts.isNotEmpty) ...<Widget>[
-          SizedBox(height: 8.h),
-          Text(sw ? 'Malipo ya mwezi huu' : 'Payments this month', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
-          SizedBox(height: 6.h),
+          SizedBox(height: 12.h),
+          GlowCard(
+            title: sw ? 'Malipo ya mwezi huu' : 'Payments this month',
+            dividerKey: 'payout_divider',
+            bottom: 0,
+            children: <Widget>[
           for (final Payout p in _payouts)
             ListTile(
               key: ValueKey<String>('payout_${p.id}'),
@@ -188,6 +192,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
                 IconButton(key: ValueKey<String>('payout_remove_${p.id}'), onPressed: () => _delete(p), icon: const Icon(Icons.delete_outline, color: Colors.white54, size: 20)),
               ]),
             ),
+            ],
+          ),
         ],
       ],
     ];
@@ -217,10 +223,8 @@ class _StaffCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool owing = row.owed > 0;
 
-    return Container(
+    return KeyedSubtree(
       key: ValueKey<String>('payroll_${row.staffId}'),
-      decoration: ThemeConstants.glassCardDecoration,
-      padding: EdgeInsets.all(12.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[

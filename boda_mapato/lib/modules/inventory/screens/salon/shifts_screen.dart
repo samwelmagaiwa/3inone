@@ -11,6 +11,7 @@ import '../../providers/inventory_provider.dart';
 import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
 import 'salon_text.dart';
+import '../widgets/glow_list_card.dart';
 
 /// Each person's cash for a shift: open it with the float in the till, and at the end count the cash and hand it over.
 /// The page says what the till SHOULD hold (the float plus the cash taken) so any difference is seen at once, and the
@@ -138,16 +139,15 @@ class _ShiftsScreenState extends State<ShiftsScreen> {
         Center(child: TextButton(key: const ValueKey<String>('shifts_retry'), onPressed: _load, child: Text(sw ? 'Jaribu tena' : 'Try again', style: const TextStyle(color: Colors.white)))),
       ] else ...<Widget>[
         if (mine == null)
-          Container(
+          GlowListCard(
             key: const ValueKey<String>('shift_none'),
-            decoration: ThemeConstants.glassCardDecoration,
             padding: EdgeInsets.all(14.w),
-            child: Row(
+            children: <Widget>[Row(
               children: <Widget>[
                 Expanded(child: Text(sw ? 'Huna zamu iliyo wazi.' : 'You have no shift open.', style: ThemeConstants.bodyStyle)),
                 ElevatedButton(key: const ValueKey<String>('shift_open'), onPressed: _busy ? null : _open, child: Text(sw ? 'Fungua zamu' : 'Open a shift')),
               ],
-            ),
+            )],
           )
         else
           _MyShiftCard(shift: mine, sw: sw, onClose: () => _close(mine)),
@@ -169,10 +169,7 @@ class _ShiftsScreenState extends State<ShiftsScreen> {
           if (r.shifts.isEmpty)
             InvEmptyState(icon: Icons.point_of_sale_outlined, message: sw ? 'Hakuna zamu mwezi huu.' : 'No shifts this month.')
           else
-            for (final SalonShift s in r.shifts) ...<Widget>[
-              _ShiftCard(shift: s, sw: sw),
-              SizedBox(height: 8.h),
-            ],
+            GlowListCard(dividerKey: 'shift_divider', children: <Widget>[for (final SalonShift s in r.shifts) _ShiftCard(shift: s, sw: sw)]),
         ],
       ],
     ];
@@ -190,11 +187,10 @@ class _MyShiftCard extends StatelessWidget {
   Widget build(BuildContext context) {
     String hm(final DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
-    return Container(
+    return GlowListCard(
       key: const ValueKey<String>('shift_open_card'),
-      decoration: ThemeConstants.glassCardDecoration.copyWith(border: Border.all(color: ThemeConstants.successGreen, width: 1.2)),
       padding: EdgeInsets.all(14.w),
-      child: Column(
+      children: <Widget>[Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(sw ? 'Zamu yako imefunguliwa ${hm(shift.openedAt)}' : 'Your shift opened at ${hm(shift.openedAt)}', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w800)),
@@ -213,7 +209,7 @@ class _MyShiftCard extends StatelessWidget {
             ],
           ),
         ],
-      ),
+      )],
     );
   }
 }
@@ -230,10 +226,8 @@ class _ShiftCard extends StatelessWidget {
     final double diff = shift.difference ?? 0;
     final bool diffs = shift.hasDifference;
 
-    return Container(
+    return KeyedSubtree(
       key: ValueKey<String>('shift_${shift.id}'),
-      decoration: ThemeConstants.glassCardDecoration,
-      padding: EdgeInsets.all(12.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[

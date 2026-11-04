@@ -1,6 +1,7 @@
 import 'package:boda_mapato/modules/inventory/screens/salon/salon_reports_screen.dart';
 import 'package:boda_mapato/modules/inventory/services/salon_api.dart';
 import 'package:boda_mapato/services/localization_service.dart';
+import 'package:boda_mapato/modules/inventory/screens/widgets/joined_sections.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -78,6 +79,19 @@ void main() {
     expect(find.text('Rehema  ·  5 days'), findsOneWidget);
     expect(find.descendant(of: find.byKey(const Key('sr_cost')), matching: find.text('TSH 12,000')), findsOneWidget);
     expect(find.text('Neema  (3)'), findsOneWidget);
+  });
+
+  testWidgets('each section is a card of lines divided by the glowing line, with its title centred above them', (t) async {
+    await _pump(t, _FakeSalon());
+
+    // The summary has eight figures under its title: nine rows, so eight lines between them.
+    expect(find.byKey(const Key('sr_divider_summary_8')), findsOneWidget);
+    expect(find.byKey(const Key('sr_divider_summary_9')), findsNothing);
+    expect(find.descendant(of: find.byKey(const Key('sr_section_summary')), matching: find.text('Summary')), findsOneWidget);
+    // A line and what came off it (commission, goods used, profit) are one row, not two.
+    expect(find.byKey(const Key('sr_divider_service_1')), findsOneWidget);
+    expect(find.byType(SectionGlowDivider), findsWidgets);
+    expect(find.byType(Card), findsNothing, reason: 'no plain card left');
   });
 
   testWidgets('the period chips ask for today, this week, this month and this year', (t) async {

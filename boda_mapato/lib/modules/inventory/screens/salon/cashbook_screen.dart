@@ -9,6 +9,7 @@ import '../../services/salon_api.dart';
 import 'salon_input.dart';
 import 'salon_text.dart';
 import '../widgets/inventory_widgets.dart';
+import '../widgets/glow_list_card.dart';
 
 /// The owner's cashbook: for cash, mobile money and bank, what was held at the start, what came in, what went out and
 /// what should be held now, day by day. The owner puts money in or takes it out here (and sets the opening balance once),
@@ -150,18 +151,26 @@ class _CashbookScreenState extends State<CashbookScreen> {
                       Expanded(child: OutlinedButton.icon(key: const Key('cb_count'), onPressed: _count, icon: const Icon(Icons.fact_check_outlined), label: Text(sw ? 'Hesabu' : 'Count'))),
                     ]),
                     const SizedBox(height: 8),
-                    for (final String p in places) _placeCard(p, sw),
+                    GlowListCard(dividerKey: 'cb_place_divider', padding: EdgeInsets.zero, children: <Widget>[for (final String p in places) _placeCard(p, sw)]),
                     if (moves.isNotEmpty) ...<Widget>[
-                      Padding(padding: const EdgeInsets.only(top: 12, bottom: 4), child: Text(sw ? 'Weka na toa za mmiliki' : 'Owner put in / took out', style: const TextStyle(fontWeight: FontWeight.bold))),
-                      for (final Map<String, dynamic> m in moves)
-                        ListTile(
-                          key: Key('cb_move_${m['id']}'),
-                          dense: true,
-                          title: Text('${_kindLabel('${m['kind']}', sw)} · ${placeLabel('${m['method']}', sw)}'),
-                          subtitle: Text('${m['moved_on']}${'${m['note'] ?? ''}'.isEmpty ? '' : ' · ${m['note']}'}'),
-                          trailing: Text(tsh((m['amount'] as num?) ?? 0)),
-                          onLongPress: () => _run(() => _api.deleteCashMove((m['id'] as num).toInt())),
-                        ),
+                      const SizedBox(height: 12),
+                      GlowCard(
+                        title: sw ? 'Weka na toa za mmiliki' : 'Owner put in / took out',
+                        dividerKey: 'cb_move_divider',
+                        bottom: 0,
+                        children: <Widget>[
+                          for (final Map<String, dynamic> m in moves)
+                            ListTile(
+                              key: Key('cb_move_${m['id']}'),
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              title: Text('${_kindLabel('${m['kind']}', sw)} · ${placeLabel('${m['method']}', sw)}'),
+                              subtitle: Text('${m['moved_on']}${'${m['note'] ?? ''}'.isEmpty ? '' : ' · ${m['note']}'}'),
+                              trailing: Text(tsh((m['amount'] as num?) ?? 0)),
+                              onLongPress: () => _run(() => _api.deleteCashMove((m['id'] as num).toInt())),
+                            ),
+                        ],
+                      ),
                     ],
                   ]),
                 ),
@@ -183,8 +192,10 @@ class _CashbookScreenState extends State<CashbookScreen> {
           if (r is Map) Map<String, dynamic>.from(r),
     ];
 
-    return Card(
+    return Theme(
       key: Key('cb_place_$p'),
+      // (the card's glowing lines divide the places: the tile draws none of its own)
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
         title: Text(placeLabel(p, sw), style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text('${sw ? 'Inapaswa kuwepo' : 'Should be held'}: ${tsh((d['closing'] as num?) ?? 0)}', key: Key('cb_closing_$p')),
