@@ -126,7 +126,10 @@ class BusinessMoneyController extends Controller
     #[OA\Get(path: '/inventory/monthly-report', summary: 'A month in full: profit, stock, debts, capital, spending, comparison and target', security: [['bearerAuth' => []]], tags: ['Inventory / Money'], parameters: [new OA\Parameter(name: 'month', in: 'query', schema: new OA\Schema(type: 'string'))], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function report(Request $request): JsonResponse
     {
-        return response()->json(['data' => MonthlyReport::build($this->month($request), \App\Support\Salon\SalonBranch::selected($request))]);
+        $report = MonthlyReport::build($this->month($request), \App\Support\Salon\SalonBranch::selected($request));
+
+        // Profit, the target and what the business is worth are the owner's: the accountant sees what was sold and spent.
+        return response()->json(['data' => self::mayAudit($request) ? $report : MonthlyReport::withoutOwnerFigures($report)]);
     }
 
     #[OA\Get(path: '/inventory/monthly-report/lists', summary: 'The whole sleeping-stock list and the whole list of who owes (the report shows the first few)', security: [['bearerAuth' => []]], tags: ['Inventory / Money'], responses: [new OA\Response(response: 200, description: 'Success')])]
@@ -138,6 +141,7 @@ class BusinessMoneyController extends Controller
     #[OA\Put(path: '/inventory/monthly-target', summary: 'Set (or clear, with 0) the profit target of a month', security: [['bearerAuth' => []]], tags: ['Inventory / Money'], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function setTarget(Request $request): JsonResponse
     {
+        abort_unless(self::mayAudit($request), 403, 'Lengo la faida ni la mmiliki. / The profit target is for the owner.');
         $data = $request->validate(['month' => ['required', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'], 'profit_target' => 'required|numeric|min:0|max:100000000000']);
         if ($data['month'] < MonthlyFigures::currentMonth()) {
             throw ValidationException::withMessages(['month' => ['Huwezi kuweka lengo la mwezi uliopita. / A target cannot be set for a month that has passed.']]);
@@ -229,10 +233,17 @@ class BusinessMoneyController extends Controller
     #[OA\Get(path: '/inventory/advice', summary: 'Where to do better: advice written from the month\'s numbers (by AI when it is switched on)', security: [['bearerAuth' => []]], tags: ['Inventory / Money'], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function advice(Request $request): JsonResponse
     {
+        abort_unless(self::mayAudit($request), 403, 'Ushauri wa biashara ni wa mmiliki. / Business advice is for the owner.');
         $lang = $request->query('lang') === 'sw' ? 'sw' : 'en';
         $result = BusinessAdvisor::advise($this->month($request), $lang, $request->boolean('refresh'));
         unset($result['facts']);
 
         return response()->json(['data' => $result + ['ai_available' => BusinessAdvisor::aiKey() !== '']]);
+    }
+
+    /** The owner's figures (profit, target, capital, advice): for whoever may change the business settings. */
+    private static function mayAudit(Request $request): bool
+    {
+        return (bool) $request->user()?->hasInventoryPermission('inv_manage_settings');
     }
 }

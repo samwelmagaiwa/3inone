@@ -181,6 +181,39 @@ class InventoryMoneyToolsTest extends TestCase
         $this->api($driver, 'PUT', '/api/inventory/monthly-target', ['month' => '2026-11', 'profit_target' => 5])->assertForbidden();
     }
 
+    public function test_an_accountant_sees_what_was_sold_and_spent_but_not_the_profit_target_capital_or_advice(): void
+    {
+        $this->now();
+        $owner = $this->shop();
+        $p = $this->product($owner, 'Soda', 100, 500, 1000);
+        $this->sell($owner, $p, 10, 1000, 500);                       // sales 10,000, cost 5,000
+        $this->expense($owner, 'rent', 1000, '2026-11-05')->assertCreated();
+        $this->api($owner, 'PUT', '/api/inventory/monthly-target', ['month' => '2026-11', 'profit_target' => 8000])->assertOk();
+        $accountant = $this->givenServices(User::factory()->create(['role' => 'accountant', 'is_active' => true, 'created_by' => $owner->id]), 'inventory');
+
+        $mine = $this->api($owner, 'GET', '/api/inventory/monthly-report?month=2026-11')->assertOk()->json('data');
+        $this->assertEquals(4000, $mine['figures']['net_profit']);
+        $this->assertNotNull($mine['target']);
+        $this->assertTrue($mine['owner_figures']);
+
+        $r = $this->api($accountant, 'GET', '/api/inventory/monthly-report?month=2026-11')->assertOk()->json('data');
+        $this->assertEquals(10000, $r['figures']['sales']);
+        $this->assertEquals(1000, $r['figures']['expenses']);
+        $this->assertEquals(0, $r['figures']['net_profit']);
+        $this->assertEquals(0, $r['figures']['gross_profit']);
+        $this->assertEquals(0, $r['figures']['cost_of_goods']);
+        $this->assertNull($r['figures']['margin_percent']);
+        $this->assertNull($r['target']);
+        $this->assertNull($r['position']);
+        $this->assertNull($r['capital_change']);
+        $this->assertSame([], $r['creditors']);
+        $this->assertFalse($r['owner_figures']);
+        $this->assertSame(0.0, (float) $r['top_products'][0]['profit']);
+
+        $this->api($accountant, 'GET', '/api/inventory/advice?month=2026-11')->assertForbidden();
+        $this->api($accountant, 'PUT', '/api/inventory/monthly-target', ['month' => '2026-11', 'profit_target' => 1])->assertForbidden();
+    }
+
     // ------------------------------------------------------------------ personal spending
 
     public function test_personal_spending_is_listed_but_never_lowers_the_profit(): void

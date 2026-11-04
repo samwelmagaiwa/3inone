@@ -83,7 +83,37 @@ final class MonthlyReport
             'debtors_count' => count($owing),
             'debtors_total' => round((float) array_sum(array_column($owing, 'owed')), 2),
             'creditors' => OpeningDebts::list(OpeningDebts::PAYABLE)->take(8)->all(),
+            'owner_figures' => true,
         ];
+    }
+
+    /**
+     * The report as a person without the owner's rights may see it: what was sold and spent, but not what the business earns or is
+     * worth. Profit, cost of goods, the profit target, where the business stands (stock, debts, capital) and what it owes are taken
+     * out. The structure stays the same (numbers are zero, the rest empty) so no screen breaks, and `owner_figures` says so.
+     *
+     * @param array<string, mixed> $r
+     * @return array<string, mixed>
+     */
+    public static function withoutOwnerFigures(array $r): array
+    {
+        $strip = fn (array $f): array => ['cost_of_goods' => 0.0, 'gross_profit' => 0.0, 'net_profit' => 0.0, 'margin_percent' => null] + $f;
+        $r['figures'] = $strip($r['figures']);
+        $r['previous']['figures'] = $strip($r['previous']['figures']);
+        $r['previous']['full'] = $strip($r['previous']['full']);
+        $none = MonthlyFigures::compare(0.0, 0.0) + ['good' => true];
+        $r['compare']['gross_profit'] = $none;
+        $r['compare']['net_profit'] = $none;
+        $r['overall'] = self::overall($none, $r['compare']['sales']);
+        $r['position'] = null;
+        $r['opening_position'] = null;
+        $r['capital_change'] = null;
+        $r['target'] = null;
+        $r['creditors'] = [];
+        $r['top_products'] = array_map(fn (array $p) => ['profit' => 0.0] + $p, $r['top_products']);
+        $r['owner_figures'] = false;
+
+        return $r;
     }
 
     /** The headline: did the month do better, the same, or worse than the one before, and by how much. */

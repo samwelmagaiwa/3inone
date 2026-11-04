@@ -620,11 +620,25 @@ final class DemoSalon
         }
         $ownerId = (string) $owner->id;
         $gone = 0;
+        // The rows of one business point at each other (a sale line at its product, a sale at its client): they all go, so the order does not matter.
+        Schema::disableForeignKeyConstraints();
         TenantContext::withoutScope(function () use ($ownerId, &$gone) {
-            foreach (TenantTables::INVENTORY as $table) {
-                if (Schema::hasTable($table) && Schema::hasColumn($table, TenantTables::OWNER_COLUMN)) {
-                    $gone += DB::table($table)->where(TenantTables::OWNER_COLUMN, $ownerId)->delete();
+            $pending = array_values(array_filter(TenantTables::INVENTORY, fn (string $t) => Schema::hasTable($t) && Schema::hasColumn($t, TenantTables::OWNER_COLUMN)));
+            // Where the database insists on the order (a sale line must go before its product), a table that refuses is tried again after the others.
+            for ($round = 0; $round < 12 && $pending !== []; $round++) {
+                foreach ($pending as $i => $table) {
+                    try {
+                        $gone += DB::table($table)->where(TenantTables::OWNER_COLUMN, $ownerId)->delete();
+                        unset($pending[$i]);
+                    } catch (\Illuminate\Database\QueryException $e) {
+                        if (!str_starts_with((string) $e->getCode(), '23')) {
+                            throw $e;
+                        }
+                    }
                 }
+            }
+            if ($pending !== []) {
+                throw new \RuntimeException('Could not take away: ' . implode(', ', $pending));
             }
             $people = User::query()->where('id', $ownerId)->orWhere('created_by', $ownerId)->pluck('id')->all();
             if ($people !== []) {
@@ -638,6 +652,7 @@ final class DemoSalon
                 $gone += DB::table('businesses')->where('owner_id', $ownerId)->delete();
             }
         });
+        Schema::enableForeignKeyConstraints();
 
         return $gone;
     }
