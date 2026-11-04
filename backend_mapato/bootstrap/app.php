@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role'     => \App\Http\Middleware\RoleMiddleware::class,
             'role_any' => \App\Http\Middleware\RoleAny::class,
             'inv_perm' => \App\Http\Middleware\CheckInventoryPermission::class,
+            'salon_module' => \App\Http\Middleware\EnsureSalonModule::class,
             'service'  => \App\Http\Middleware\EnsureServiceAccess::class,
         ]);
         

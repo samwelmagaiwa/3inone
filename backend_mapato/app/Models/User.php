@@ -24,6 +24,7 @@ class User extends Authenticatable
         'service_type',
         'full_access',
         'permissions',
+        'denied_permissions',
         'created_by',
         'device_id',
         'is_active',
@@ -57,6 +58,7 @@ class User extends Authenticatable
         'full_access' => 'boolean',
         'must_change_password' => 'boolean',
         'permissions' => 'array',
+        'denied_permissions' => 'array',
         'email_verified' => 'boolean',
         'phone_verified' => 'boolean',
         'two_factor_enabled' => 'boolean',
@@ -123,6 +125,9 @@ class User extends Authenticatable
         // report without full stock-management rights. Approving one still
         // requires inv_manage_stock (see routes/api.php write-offs group).
         'inv_report_damage',
+        // The salon's menu sections, each its own right (see App\Support\Access\Modules).
+        'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team',
+        'inv_salon_feedback', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_insights', 'inv_salon_money',
     ];
 
     /**
@@ -162,7 +167,7 @@ class User extends Authenticatable
     public function hasExplicitGrant(string $permission): bool
     {
         return $this->full_access
-            || (is_array($this->permissions) && in_array($permission, $this->permissions, true));
+            || (is_array($this->permissions) && in_array($permission, $this->permissions, true) && !in_array($permission, $this->deniedPermissions(), true));
     }
 
     /**
@@ -472,6 +477,7 @@ class User extends Authenticatable
             'inv_view_purchasing','inv_view_credit','inv_view_cash',
             'inv_view_crates','inv_view_reports','inv_view_expenses',
             'inv_manage_expenses','inv_manage_settings',
+            'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback','inv_salon_equipment','inv_salon_branch_stock','inv_salon_insights','inv_salon_money',
         ],
         'administrator'=> [
             'inv_view_products','inv_manage_products','inv_manage_stock',
@@ -479,6 +485,7 @@ class User extends Authenticatable
             'inv_view_purchasing','inv_view_credit','inv_view_cash',
             'inv_view_crates','inv_view_reports','inv_view_expenses',
             'inv_manage_expenses','inv_manage_settings',
+            'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback','inv_salon_equipment','inv_salon_branch_stock','inv_salon_insights','inv_salon_money',
         ],
         'manager'      => [
             'inv_view_products','inv_manage_products','inv_manage_stock',
@@ -486,6 +493,7 @@ class User extends Authenticatable
             'inv_view_purchasing','inv_view_credit','inv_view_cash',
             'inv_view_crates','inv_view_reports','inv_view_expenses',
             'inv_manage_expenses',
+            'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback','inv_salon_equipment','inv_salon_branch_stock','inv_salon_insights','inv_salon_money',
         ],
         // Point-of-sale only -- deliberately excludes catalog management,
         // physical stock control, sales management/returns, purchasing,
@@ -500,6 +508,7 @@ class User extends Authenticatable
             // counter without full stock-management rights -- approving
             // the report still needs inv_manage_stock, which they lack.
             'inv_report_damage',
+            'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback',
         ],
         'operator'     => [
             'inv_view_products','inv_manage_products',
@@ -508,14 +517,17 @@ class User extends Authenticatable
         // ---- The salon's roles: the owner (admin) runs everything; the accountant also keeps the till, books and the money;
         // the people who do the work see only their own. (Reception, cashier, manager and stock work were folded into these.)
         // Their own services, appointments and performance (the server shows them only their own); they flag damaged goods.
-        'hair_stylist' => ['inv_view_products','inv_create_sales','inv_view_reminders','inv_report_damage'],
-        'nail_technician' => ['inv_view_products','inv_create_sales','inv_view_reminders','inv_report_damage'],
-        'lash_makeup_artist' => ['inv_view_products','inv_create_sales','inv_view_reminders','inv_report_damage'],
+        'hair_stylist' => ['inv_view_products','inv_create_sales','inv_view_reminders','inv_report_damage', 'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback'],
+        'nail_technician' => ['inv_view_products','inv_create_sales','inv_view_reminders','inv_report_damage', 'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback'],
+        'lash_makeup_artist' => ['inv_view_products','inv_create_sales','inv_view_reminders','inv_report_damage', 'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback'],
         // The till and the books: sales, bookings, payments, receipts, returns, the daily cash, clients' credit, expenses,
         // financial reports and payroll.
+        // The sections it starts with are the books' own: bookings, the money pages, payroll and the trends. The owner can switch any of
+        // these off for one accountant, and switch on more (the stylists' results, equipment, the goods held by each branch ...).
         'accountant'   => [
-            'inv_view_products','inv_create_sales','inv_manage_sales','inv_view_credit','inv_view_cash',
+            'inv_view_products','inv_create_products','inv_create_sales','inv_manage_sales','inv_view_credit','inv_view_cash',
             'inv_view_reports','inv_view_expenses','inv_manage_expenses','inv_view_reminders',
+            'inv_salon_appointments','inv_salon_team','inv_salon_insights','inv_salon_money',
         ],
         'viewer'       => ['inv_view_products'],
     ];
@@ -536,6 +548,11 @@ class User extends Authenticatable
         $role = strtolower($this->role ?? '');
         if ($this->full_access || $role === 'super_admin') {
             return true;
+        }
+
+        // Taken back by the owner for this person: off, whatever the role or an earlier grant says.
+        if (in_array($permission, $this->deniedPermissions(), true)) {
+            return false;
         }
 
         // Explicit per-user grant
@@ -572,7 +589,19 @@ class User extends Authenticatable
         $defaults = self::$INV_ROLE_DEFAULTS[$role] ?? [];
         if ($defaults === null) return ['__all__'];
         $explicit = is_array($this->permissions) ? $this->permissions : [];
-        return array_values(array_unique(array_merge($defaults, $explicit)));
+        return array_values(array_diff(array_unique(array_merge($defaults, $explicit)), $this->deniedPermissions()));
+    }
+
+    /** What the owner has switched off for this one person (their role may give it, they do not have it). */
+    public function deniedPermissions(): array
+    {
+        return is_array($this->denied_permissions) ? array_values($this->denied_permissions) : [];
+    }
+
+    /** What a role starts with, before the owner adds to it or takes from it for one person. */
+    public static function roleDefaults(string $role): array
+    {
+        return self::$INV_ROLE_DEFAULTS[strtolower($role)] ?? [];
     }
 
     /**

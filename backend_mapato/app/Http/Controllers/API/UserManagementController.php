@@ -118,7 +118,7 @@ class UserManagementController extends Controller
             ->orderByDesc('created_at')
             ->skip(($page - 1) * $limit)
             ->take($limit)
-            ->get(['id', 'name', 'email', 'phone_number', 'role', 'is_active', 'service_type', 'full_access', 'permissions', 'created_by', 'created_at'])
+            ->get(['id', 'name', 'email', 'phone_number', 'role', 'is_active', 'service_type', 'full_access', 'permissions', 'denied_permissions', 'created_by', 'created_at'])
             ->each(function ($u) {
                 $u->service_types = $u->services->pluck('service_type')->all();
                 $u->created_by_name = $u->creator->name ?? null;
@@ -431,7 +431,8 @@ class UserManagementController extends Controller
 
     private function userPayload(User $user, ?array $serviceTypes = null): array
     {
-        $payload = $user->only(['id', 'name', 'email', 'phone_number', 'role', 'is_active', 'service_type', 'full_access', 'permissions']);
+        $payload = $user->only(['id', 'name', 'email', 'phone_number', 'role', 'is_active', 'service_type', 'full_access', 'permissions', 'denied_permissions']);
+        $payload['effective_permissions'] = $user->effectiveInventoryPermissions();
         $payload['service_types'] = $serviceTypes ?? $user->services()->pluck('service_type')->all();
         return $payload;
     }

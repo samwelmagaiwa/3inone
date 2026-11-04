@@ -154,6 +154,10 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
         Route::get('', [\App\Http\Controllers\API\UserManagementController::class, 'myUsers']); // fallback with created_by=me assumption
         Route::post('', [\App\Http\Controllers\API\UserManagementController::class, 'store']);
         Route::put('{id}', [\App\Http\Controllers\API\UserManagementController::class, 'update']);
+        // What this person may open, as switches the owner turns on and off (and puts back to the role's own).
+        Route::get('{id}/access', [\App\Http\Controllers\API\UserAccessController::class, 'show']);
+        Route::put('{id}/access', [\App\Http\Controllers\API\UserAccessController::class, 'update']);
+        Route::post('{id}/access/reset', [\App\Http\Controllers\API\UserAccessController::class, 'reset']);
         Route::put('{id}/services', [\App\Http\Controllers\API\UserManagementController::class, 'bindServices']); // super_admin only
         Route::put('{id}/assign-admin', [\App\Http\Controllers\API\UserManagementController::class, 'assignToAdmin']); // super_admin only
         Route::delete('{id}', [\App\Http\Controllers\API\UserManagementController::class, 'destroy']);
@@ -489,23 +493,23 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Equipment and its upkeep (the owner, managers and the stock manager: checked in the controller).
         // The owner's books and the walk-in queue, ready-made categories and the goods a service uses up.
         // Branches and the goods held in each work for a shop or depot too (the same controllers, without "salon" in the address).
-        Route::get('inventory/branch-stock',               [SalonBranchStockController::class, 'index']);
-        Route::post('inventory/branch-stock/transfer',     [SalonBranchStockController::class, 'transfer']);
-        Route::put('inventory/branch-stock/level',         [SalonBranchStockController::class, 'level']);
-        Route::get('inventory/branch-stock/transfers',     [SalonBranchStockController::class, 'transfers']);
-        Route::get('inventory/salon/branch-stock',         [SalonBranchStockController::class, 'index']);
-        Route::post('inventory/salon/branch-stock/transfer', [SalonBranchStockController::class, 'transfer']);
-        Route::put('inventory/salon/branch-stock/level',   [SalonBranchStockController::class, 'level']);
-        Route::get('inventory/salon/branch-stock/transfers', [SalonBranchStockController::class, 'transfers']);
+        Route::get('inventory/branch-stock',               [SalonBranchStockController::class, 'index'])->middleware('salon_module:inv_salon_branch_stock');
+        Route::post('inventory/branch-stock/transfer',     [SalonBranchStockController::class, 'transfer'])->middleware('salon_module:inv_salon_branch_stock');
+        Route::put('inventory/branch-stock/level',         [SalonBranchStockController::class, 'level'])->middleware('salon_module:inv_salon_branch_stock');
+        Route::get('inventory/branch-stock/transfers',     [SalonBranchStockController::class, 'transfers'])->middleware('salon_module:inv_salon_branch_stock');
+        Route::get('inventory/salon/branch-stock',         [SalonBranchStockController::class, 'index'])->middleware('salon_module:inv_salon_branch_stock');
+        Route::post('inventory/salon/branch-stock/transfer', [SalonBranchStockController::class, 'transfer'])->middleware('salon_module:inv_salon_branch_stock');
+        Route::put('inventory/salon/branch-stock/level',   [SalonBranchStockController::class, 'level'])->middleware('salon_module:inv_salon_branch_stock');
+        Route::get('inventory/salon/branch-stock/transfers', [SalonBranchStockController::class, 'transfers'])->middleware('salon_module:inv_salon_branch_stock');
         Route::get('inventory/salon/reports',              [SalonReportsController::class, 'index']);
-        Route::get('inventory/salon/cashbook',             [SalonBooksController::class, 'cashbook']);
-        Route::post('inventory/salon/cashbook/moves',      [SalonBooksController::class, 'storeMove']);
-        Route::delete('inventory/salon/cashbook/moves/{id}', [SalonBooksController::class, 'destroyMove']);
-        Route::post('inventory/salon/cashbook/counts',     [SalonBooksController::class, 'storeCount']);
-        Route::get('inventory/salon/analytics',            [SalonBooksController::class, 'analytics']);
-        Route::get('inventory/salon/queue',                [SalonQueueController::class, 'index']);
-        Route::post('inventory/salon/queue',               [SalonQueueController::class, 'store']);
-        Route::post('inventory/salon/queue/{id}/status',   [SalonQueueController::class, 'status']);
+        Route::get('inventory/salon/cashbook',             [SalonBooksController::class, 'cashbook'])->middleware('salon_module:inv_salon_money');
+        Route::post('inventory/salon/cashbook/moves',      [SalonBooksController::class, 'storeMove'])->middleware('salon_module:inv_salon_money');
+        Route::delete('inventory/salon/cashbook/moves/{id}', [SalonBooksController::class, 'destroyMove'])->middleware('salon_module:inv_salon_money');
+        Route::post('inventory/salon/cashbook/counts',     [SalonBooksController::class, 'storeCount'])->middleware('salon_module:inv_salon_money');
+        Route::get('inventory/salon/analytics',            [SalonBooksController::class, 'analytics'])->middleware('salon_module:inv_salon_insights');
+        Route::get('inventory/salon/queue',                [SalonQueueController::class, 'index'])->middleware('salon_module:inv_salon_walkins');
+        Route::post('inventory/salon/queue',               [SalonQueueController::class, 'store'])->middleware('salon_module:inv_salon_walkins');
+        Route::post('inventory/salon/queue/{id}/status',   [SalonQueueController::class, 'status'])->middleware('salon_module:inv_salon_walkins');
         Route::post('inventory/salon/category-presets',    [SalonSetupController::class, 'presets']);
         Route::get('inventory/salon/services/{id}/materials', [SalonSetupController::class, 'materials']);
         Route::put('inventory/salon/services/{id}/materials', [SalonSetupController::class, 'saveMaterials']);
@@ -522,37 +526,37 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('inventory/salon/branches',            [SalonBranchController::class, 'store']);
         Route::match(['put', 'patch'], 'inventory/salon/branches/{id}', [SalonBranchController::class, 'update']);
         Route::delete('inventory/salon/branches/{id}',     [SalonBranchController::class, 'destroy']);
-        Route::get('inventory/salon/equipment',            [SalonEquipmentController::class, 'index']);
-        Route::post('inventory/salon/equipment',           [SalonEquipmentController::class, 'store']);
-        Route::match(['put', 'patch'], 'inventory/salon/equipment/{id}', [SalonEquipmentController::class, 'update']);
-        Route::delete('inventory/salon/equipment/{id}',    [SalonEquipmentController::class, 'destroy']);
-        Route::get('inventory/salon/equipment/{id}/logs',  [SalonEquipmentController::class, 'logs']);
-        Route::post('inventory/salon/equipment/{id}/logs', [SalonEquipmentController::class, 'addLog']);
+        Route::get('inventory/salon/equipment',            [SalonEquipmentController::class, 'index'])->middleware('salon_module:inv_salon_equipment');
+        Route::post('inventory/salon/equipment',           [SalonEquipmentController::class, 'store'])->middleware('salon_module:inv_salon_equipment');
+        Route::match(['put', 'patch'], 'inventory/salon/equipment/{id}', [SalonEquipmentController::class, 'update'])->middleware('salon_module:inv_salon_equipment');
+        Route::delete('inventory/salon/equipment/{id}',    [SalonEquipmentController::class, 'destroy'])->middleware('salon_module:inv_salon_equipment');
+        Route::get('inventory/salon/equipment/{id}/logs',  [SalonEquipmentController::class, 'logs'])->middleware('salon_module:inv_salon_equipment');
+        Route::post('inventory/salon/equipment/{id}/logs', [SalonEquipmentController::class, 'addLog'])->middleware('salon_module:inv_salon_equipment');
         // Reports as a PDF or a CSV (the owner, managers and accountants: checked in the controller).
         Route::get('inventory/salon/export/{type}',        [SalonExportController::class, 'export']);
-        Route::get('inventory/salon/feedback',             [SalonFeedbackController::class, 'index']);
-        Route::post('inventory/salon/feedback',            [SalonFeedbackController::class, 'store']);
-        Route::post('inventory/salon/feedback/{id}/resolve', [SalonFeedbackController::class, 'resolve']);
+        Route::get('inventory/salon/feedback',             [SalonFeedbackController::class, 'index'])->middleware('salon_module:inv_salon_feedback');
+        Route::post('inventory/salon/feedback',            [SalonFeedbackController::class, 'store'])->middleware('salon_module:inv_salon_feedback');
+        Route::post('inventory/salon/feedback/{id}/resolve', [SalonFeedbackController::class, 'resolve'])->middleware('salon_module:inv_salon_feedback');
         Route::post('inventory/salon/campaigns',           [SalonClientController::class, 'sendCampaign']);
-        Route::get('inventory/salon/rebook/due',           [SalonController::class, 'rebookDue']);
+        Route::get('inventory/salon/rebook/due',           [SalonController::class, 'rebookDue'])->middleware('salon_module:inv_salon_rebook');
         // The diary: whoever may sell may look at it and book.
-        Route::get('inventory/salon/appointments',         [AppointmentController::class, 'index']);
-        Route::post('inventory/salon/appointments',        [AppointmentController::class, 'store']);
-        Route::match(['put', 'patch'], 'inventory/salon/appointments/{id}', [AppointmentController::class, 'update']);
-        Route::post('inventory/salon/appointments/{id}/status', [AppointmentController::class, 'status']);
+        Route::get('inventory/salon/appointments',         [AppointmentController::class, 'index'])->middleware('salon_module:inv_salon_appointments');
+        Route::post('inventory/salon/appointments',        [AppointmentController::class, 'store'])->middleware('salon_module:inv_salon_appointments');
+        Route::match(['put', 'patch'], 'inventory/salon/appointments/{id}', [AppointmentController::class, 'update'])->middleware('salon_module:inv_salon_appointments');
+        Route::post('inventory/salon/appointments/{id}/status', [AppointmentController::class, 'status'])->middleware('salon_module:inv_salon_appointments');
         // People at work: attendance, days off and the cash of each shift. A person sees only their own; the owner
         // and managers see everyone's (checked in the controller).
-        Route::get('inventory/salon/days-off',             [SalonStaffController::class, 'daysOff']);
-        Route::post('inventory/salon/days-off',            [SalonStaffController::class, 'storeDayOff']);
-        Route::delete('inventory/salon/days-off/{id}',     [SalonStaffController::class, 'destroyDayOff']);
-        Route::get('inventory/salon/attendance',           [SalonStaffController::class, 'attendance']);
-        Route::get('inventory/salon/attendance/today',     [SalonStaffController::class, 'attendanceToday']);
-        Route::post('inventory/salon/attendance/clock-in', [SalonStaffController::class, 'clockIn']);
-        Route::post('inventory/salon/attendance/clock-out', [SalonStaffController::class, 'clockOut']);
-        Route::get('inventory/salon/shifts',               [SalonStaffController::class, 'shifts']);
-        Route::get('inventory/salon/shifts/current',       [SalonStaffController::class, 'currentShift']);
-        Route::post('inventory/salon/shifts/open',         [SalonStaffController::class, 'openShift']);
-        Route::post('inventory/salon/shifts/{id}/close',   [SalonStaffController::class, 'closeShift']);
+        Route::get('inventory/salon/days-off',             [SalonStaffController::class, 'daysOff'])->middleware('salon_module:inv_salon_team');
+        Route::post('inventory/salon/days-off',            [SalonStaffController::class, 'storeDayOff'])->middleware('salon_module:inv_salon_team');
+        Route::delete('inventory/salon/days-off/{id}',     [SalonStaffController::class, 'destroyDayOff'])->middleware('salon_module:inv_salon_team');
+        Route::get('inventory/salon/attendance',           [SalonStaffController::class, 'attendance'])->middleware('salon_module:inv_salon_team');
+        Route::get('inventory/salon/attendance/today',     [SalonStaffController::class, 'attendanceToday'])->middleware('salon_module:inv_salon_team');
+        Route::post('inventory/salon/attendance/clock-in', [SalonStaffController::class, 'clockIn'])->middleware('salon_module:inv_salon_team');
+        Route::post('inventory/salon/attendance/clock-out', [SalonStaffController::class, 'clockOut'])->middleware('salon_module:inv_salon_team');
+        Route::get('inventory/salon/shifts',               [SalonStaffController::class, 'shifts'])->middleware('salon_module:inv_salon_team');
+        Route::get('inventory/salon/shifts/current',       [SalonStaffController::class, 'currentShift'])->middleware('salon_module:inv_salon_team');
+        Route::post('inventory/salon/shifts/open',         [SalonStaffController::class, 'openShift'])->middleware('salon_module:inv_salon_team');
+        Route::post('inventory/salon/shifts/{id}/close',   [SalonStaffController::class, 'closeShift'])->middleware('salon_module:inv_salon_team');
     });
     Route::middleware('inv_perm:inv_manage_products,inv_create_sales')->group(function () {
         // PUT as well as PATCH: the app's HTTP client has PUT, and this changes only the two fields it is given.
@@ -560,21 +564,21 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
     // Results per stylist: the owner and managers see everyone, a stylist only their own line.
     Route::middleware('inv_perm:inv_view_reports,inv_create_sales')->group(function () {
-        Route::get('inventory/salon/stylists',             [SalonController::class, 'stylists']);
-        Route::get('inventory/salon/stylists/{staffId}/transactions', [SalonController::class, 'stylistTransactions']);
+        Route::get('inventory/salon/stylists',             [SalonController::class, 'stylists'])->middleware('salon_module:inv_salon_stylists');
+        Route::get('inventory/salon/stylists/{staffId}/transactions', [SalonController::class, 'stylistTransactions'])->middleware('salon_module:inv_salon_stylists');
         Route::get('inventory/salon/services',             [SalonController::class, 'serviceSales']);
         // Profit and loss, the dashboard figures and payroll: the owner and managers only (checked in the controller too).
-        Route::get('inventory/salon/profit-loss',          [SalonMoneyController::class, 'profitLoss']);
+        Route::get('inventory/salon/profit-loss',          [SalonMoneyController::class, 'profitLoss'])->middleware('salon_module:inv_salon_money');
         Route::get('inventory/salon/overview',             [SalonMoneyController::class, 'overview']);
-        Route::get('inventory/salon/staff-profiles',       [SalonMoneyController::class, 'profiles']);
-        Route::get('inventory/salon/payroll',              [SalonMoneyController::class, 'payroll']);
-        Route::get('inventory/salon/payouts',              [SalonMoneyController::class, 'payouts']);
+        Route::get('inventory/salon/staff-profiles',       [SalonMoneyController::class, 'profiles'])->middleware('salon_module:inv_salon_team');
+        Route::get('inventory/salon/payroll',              [SalonMoneyController::class, 'payroll'])->middleware('salon_module:inv_salon_team');
+        Route::get('inventory/salon/payouts',              [SalonMoneyController::class, 'payouts'])->middleware('salon_module:inv_salon_team');
     });
     Route::middleware('inv_perm:inv_manage_settings')->group(function () {
         Route::put('inventory/salon/settings',             [SalonController::class, 'updateSettings']);
-        Route::match(['put', 'patch'], 'inventory/salon/staff-profiles/{staffId}', [SalonMoneyController::class, 'saveProfile']);
-        Route::post('inventory/salon/payouts',             [SalonMoneyController::class, 'storePayout']);
-        Route::delete('inventory/salon/payouts/{id}',      [SalonMoneyController::class, 'destroyPayout']);
+        Route::match(['put', 'patch'], 'inventory/salon/staff-profiles/{staffId}', [SalonMoneyController::class, 'saveProfile'])->middleware('salon_module:inv_salon_team');
+        Route::post('inventory/salon/payouts',             [SalonMoneyController::class, 'storePayout'])->middleware('salon_module:inv_salon_team');
+        Route::delete('inventory/salon/payouts/{id}',      [SalonMoneyController::class, 'destroyPayout'])->middleware('salon_module:inv_salon_team');
     });
 
     // ── Product units & pricing ───────────────────────────────────────────────
