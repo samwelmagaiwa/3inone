@@ -137,14 +137,12 @@ void main() {
 
     expect(api.asked.last, (DateTime(2026, 10), DateTime(2026, 10, 15)), reason: 'this month: the 1st to today');
 
-    await t.ensureVisible(find.text('Last month')); // the chips scroll sideways on a narrow phone
-    await t.tap(find.text('Last month'));
+    await _pickPeriod(t, 'Last month');
     await t.pump();
     await t.pump(const Duration(milliseconds: 50));
     expect(api.asked.last, (DateTime(2026, 9), DateTime(2026, 9, 30)), reason: 'all of September');
 
-    await t.ensureVisible(find.text('Last 7 days'));
-    await t.tap(find.text('Last 7 days'));
+    await _pickPeriod(t, 'Last 7 days');
     await t.pump();
     await t.pump(const Duration(milliseconds: 50));
     expect(api.asked.last, (DateTime(2026, 10, 9), DateTime(2026, 10, 15)), reason: 'today and the 6 days before');
@@ -170,8 +168,7 @@ void main() {
     await t.pump();
     await t.pump(const Duration(milliseconds: 50));
 
-    await t.ensureVisible(find.text('Last month')); // the chips scroll sideways on a narrow phone
-    await t.tap(find.text('Last month'));
+    await _pickPeriod(t, 'Last month');
     await t.pump();
     await t.pump(const Duration(milliseconds: 50));
 
@@ -213,10 +210,10 @@ void main() {
     });
     await _open(t, api);
 
-    await t.ensureVisible(find.text('Last month')); // the chips scroll sideways on a narrow phone
-    await t.tap(find.text('Last month')); // while this month is still loading
-    await t.pump();
-    await t.pump(const Duration(milliseconds: 50));
+    await _pickPeriod(t, 'Last month', settle: false); // while this month is still loading
+    for (int i = 0; i < 4; i++) {
+      await t.pump(const Duration(milliseconds: 100)); // the sheet closes, then the page asks again
+    }
     expect(find.text('Bahati'), findsOneWidget);
 
     slow.complete(_report(rows: <StylistRow>[_asha])); // the slow, old answer arrives late
@@ -230,9 +227,8 @@ void main() {
   testWidgets('in Swahili the labels are Swahili', (t) async {
     await _open(t, _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha, _nobody])), sw: true);
 
-    expect(find.text('Mwezi huu'), findsOneWidget);
-    expect(find.text('Mwezi uliopita'), findsOneWidget);
-    expect(find.text('Siku 7'), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('period_label')), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const ValueKey<String>('period_label'))).data, 'Mwezi huu', reason: 'the button says which days, in Kiswahili');
     expect(find.text('Mapato'), findsOneWidget);
     expect(find.text('Hakutajwa mhudumu'), findsOneWidget);
     expect(find.text('Ziara'), findsWidgets);
@@ -445,40 +441,187 @@ void main() {
       expect(salonRange(SalonPeriod.lastMonth, DateTime(2027, 1, 10)), (DateTime(2026, 12), DateTime(2026, 12, 31)));
     });
 
-    test('two days picked are used as they are, the time of day dropped', () {
+    test('days picked are used as they are, the time of day dropped', () {
       final DateTimeRange picked = DateTimeRange(start: DateTime(2026, 8, 3, 14, 30), end: DateTime(2026, 8, 9, 23, 59));
 
       expect(salonRange(SalonPeriod.custom, today, custom: picked), (DateTime(2026, 8, 3), DateTime(2026, 8, 9)));
       expect(salonRange(SalonPeriod.custom, today), (DateTime(2026, 10, 9), DateTime(2026, 10, 15)), reason: 'nothing picked yet: the last seven days');
     });
 
-    test('the chips are in the order a person looks for them, in both languages', () {
-      expect(salonPeriodOptions(sw: false).values.toList(), <String>['Today', 'Yesterday', 'Last 7 days', 'This week', 'Last week', 'This month', 'Last month', 'This year', 'Pick dates']);
-      expect(salonPeriodOptions(sw: true).values.toList(), <String>['Leo', 'Jana', 'Siku 7', 'Wiki hii', 'Wiki iliyopita', 'Mwezi huu', 'Mwezi uliopita', 'Mwaka huu', 'Chagua tarehe']);
-      expect(salonPeriodOptions(sw: false, custom: DateTimeRange(start: DateTime(2026, 8, 3), end: DateTime(2026, 8, 9)))[SalonPeriod.custom], '3/8 - 9/8', reason: 'once picked, the chip says which days');
+    test('the button says the days in words a person can read, in both languages', () {
+      String say(DateTime a, DateTime b, {bool sw = false}) => salonRangeLabel(DateTimeRange(start: a, end: b), today, sw: sw);
+
+      expect(salonPeriodLabel(SalonPeriod.yesterday, null, today, sw: false), 'Yesterday');
+      expect(salonPeriodLabel(SalonPeriod.yesterday, null, today, sw: true), 'Jana');
+      expect(say(DateTime(2026, 9), DateTime(2026, 9, 30)), 'September 2026', reason: 'a whole month');
+      expect(say(DateTime(2026, 9), DateTime(2026, 9, 30), sw: true), 'Septemba 2026');
+      expect(say(DateTime(2026, 10), DateTime(2026, 10, 15)), 'October 2026', reason: 'this month so far');
+      expect(say(DateTime(2025), DateTime(2025, 12, 31)), '2025', reason: 'a whole year');
+      expect(say(DateTime(2026), DateTime(2026, 10, 15)), '2026', reason: 'this year so far');
+      expect(say(DateTime(2026, 10, 14), DateTime(2026, 10, 14)), '14/10/2026', reason: 'one day');
+      expect(say(DateTime(2026, 10, 5), DateTime(2026, 10, 11)), '05/10/2026 – 11/10/2026', reason: 'a week or any two dates');
+    });
+
+    testWidgets('one button says which days are shown, and the row of chips is gone', (t) async {
+      await _open(t, _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha])));
+
+      expect(find.byKey(const ValueKey<String>('period_button')), findsOneWidget);
+      expect(t.widget<Text>(find.byKey(const ValueKey<String>('period_label'))).data, 'This month');
+      expect(find.byType(ChoiceChip), findsNothing);
+      expect(find.text('Yesterday'), findsNothing, reason: 'nothing to scroll along: it is all behind the button');
+    });
+
+    testWidgets('the sheet opens with clear sections: the usual periods, a day, week, month or year, and two dates', (t) async {
+      await _open(t, _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha])));
+      t.view.physicalSize = const Size(900, 2600);
+      await t.pump();
+
+      await t.tap(find.byKey(const ValueKey<String>('period_button')));
+      await t.pumpAndSettle();
+
+      expect(find.text('Choose the days'), findsOneWidget);
+      for (final String title in <String>['Quick', 'A day, week, month or year', 'Between two dates']) {
+        expect(find.text(title), findsOneWidget, reason: title);
+      }
+      for (final String p in <String>['today', 'yesterday', 'last7', 'thisWeek', 'lastWeek', 'thisMonth', 'lastMonth', 'thisYear']) {
+        expect(find.byKey(ValueKey<String>('period_$p')), findsOneWidget, reason: p);
+      }
+      expect(t.widget<Text>(find.byKey(const ValueKey<String>('period_month_value'))).data, 'October 2026');
+      expect(t.widget<Text>(find.byKey(const ValueKey<String>('period_year_value'))).data, '2026');
+      expect(t.widget<Text>(find.byKey(const ValueKey<String>('period_week_value'))).data, '12 Oct – 18 Oct 2026', reason: 'Monday to Sunday');
     });
 
     testWidgets('Yesterday, Today, This week, Last week and This year each ask the server for their days', (t) async {
       final _FakeSalon api = _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha]));
       await _open(t, api);
 
-      Future<void> choose(String label) async {
-        await t.ensureVisible(find.text(label));
-        await t.tap(find.text(label));
-        await t.pump();
-        await t.pump(const Duration(milliseconds: 50));
+      await _pickPeriod(t, 'Yesterday');
+      expect(api.asked.last, (DateTime(2026, 10, 14), DateTime(2026, 10, 14)));
+      expect(t.widget<Text>(find.byKey(const ValueKey<String>('period_label'))).data, 'Yesterday');
+      await _pickPeriod(t, 'Today');
+      expect(api.asked.last, (DateTime(2026, 10, 15), DateTime(2026, 10, 15)));
+      await _pickPeriod(t, 'This week');
+      expect(api.asked.last, (DateTime(2026, 10, 12), DateTime(2026, 10, 15)));
+      await _pickPeriod(t, 'Last week');
+      expect(api.asked.last, (DateTime(2026, 10, 5), DateTime(2026, 10, 11)));
+      await _pickPeriod(t, 'This year');
+      expect(api.asked.last, (DateTime(2026), DateTime(2026, 10, 15)));
+    });
+
+    testWidgets('a month, a week, a day or a year can be stepped back to and shown', (t) async {
+      final _FakeSalon api = _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha]));
+      await _open(t, api);
+      t.view.physicalSize = const Size(900, 2600);
+      await t.pump();
+
+      Future<void> open() async {
+        await t.tap(find.byKey(const ValueKey<String>('period_button')));
+        await t.pumpAndSettle();
       }
 
-      await choose('Yesterday');
-      expect(api.asked.last, (DateTime(2026, 10, 14), DateTime(2026, 10, 14)));
-      await choose('Today');
-      expect(api.asked.last, (DateTime(2026, 10, 15), DateTime(2026, 10, 15)));
-      await choose('This week');
-      expect(api.asked.last, (DateTime(2026, 10, 12), DateTime(2026, 10, 15)));
-      await choose('Last week');
+      await open();
+      await t.tap(find.byKey(const ValueKey<String>('period_month_back')));
+      await t.tap(find.byKey(const ValueKey<String>('period_month_back')));
+      await t.pump();
+      expect(t.widget<Text>(find.byKey(const ValueKey<String>('period_month_value'))).data, 'August 2026');
+      await t.tap(find.byKey(const ValueKey<String>('period_month_show')));
+      await t.pumpAndSettle();
+      expect(api.asked.last, (DateTime(2026, 8), DateTime(2026, 8, 31)), reason: 'the whole of August');
+      expect(t.widget<Text>(find.byKey(const ValueKey<String>('period_label'))).data, 'August 2026');
+
+      await open();
+      await t.tap(find.byKey(const ValueKey<String>('period_year_back')));
+      await t.tap(find.byKey(const ValueKey<String>('period_year_show')));
+      await t.pumpAndSettle();
+      expect(api.asked.last, (DateTime(2025), DateTime(2025, 12, 31)), reason: 'the whole of last year');
+      expect(t.widget<Text>(find.byKey(const ValueKey<String>('period_label'))).data, '2025');
+
+      await open();
+      await t.tap(find.byKey(const ValueKey<String>('period_week_back')));
+      await t.tap(find.byKey(const ValueKey<String>('period_week_show')));
+      await t.pumpAndSettle();
       expect(api.asked.last, (DateTime(2026, 10, 5), DateTime(2026, 10, 11)));
-      await choose('This year');
-      expect(api.asked.last, (DateTime(2026), DateTime(2026, 10, 15)));
+
+      await open();
+      await t.tap(find.byKey(const ValueKey<String>('period_day_back')));
+      await t.tap(find.byKey(const ValueKey<String>('period_day_show')));
+      await t.pumpAndSettle();
+      expect(api.asked.last, (DateTime(2026, 10, 13), DateTime(2026, 10, 13)), reason: 'yesterday stepped back one day');
+    });
+
+    testWidgets('the steppers stop at today: nothing in the future can be shown, and a month so far ends today', (t) async {
+      final _FakeSalon api = _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha]));
+      await _open(t, api);
+      t.view.physicalSize = const Size(900, 2600);
+      await t.pump();
+
+      await t.tap(find.byKey(const ValueKey<String>('period_button')));
+      await t.pumpAndSettle();
+
+      expect(t.widget<IconButton>(find.byKey(const ValueKey<String>('period_month_forward'))).onPressed, isNull, reason: 'this month is the last');
+      expect(t.widget<IconButton>(find.byKey(const ValueKey<String>('period_year_forward'))).onPressed, isNull);
+      expect(t.widget<IconButton>(find.byKey(const ValueKey<String>('period_week_forward'))).onPressed, isNull);
+      expect(t.widget<IconButton>(find.byKey(const ValueKey<String>('period_day_forward'))).onPressed, isNotNull, reason: 'yesterday can go forward to today');
+
+      await t.tap(find.byKey(const ValueKey<String>('period_month_show')));
+      await t.pumpAndSettle();
+      expect(api.asked.last, (DateTime(2026, 10), DateTime(2026, 10, 15)), reason: 'this month so far, not the whole of October');
+    });
+
+    testWidgets('two dates are picked on a calendar, and Show is only possible with both', (t) async {
+      final _FakeSalon api = _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha]));
+      await _open(t, api);
+      t.view.physicalSize = const Size(900, 2600);
+      await t.pump();
+      await t.tap(find.byKey(const ValueKey<String>('period_button')));
+      await t.pumpAndSettle();
+      await t.ensureVisible(find.byKey(const ValueKey<String>('period_from')));
+      expect(t.widget<FilledButton>(find.byKey(const ValueKey<String>('period_range_show'))).onPressed, isNull, reason: 'no dates yet');
+
+      await t.tap(find.byKey(const ValueKey<String>('period_from')));
+      await t.pumpAndSettle();
+      await t.tap(find.text('5'));
+      await t.tap(find.text('OK'));
+      await t.pumpAndSettle();
+      expect(t.widget<FilledButton>(find.byKey(const ValueKey<String>('period_range_show'))).onPressed, isNull, reason: 'only the first date');
+
+      await t.tap(find.byKey(const ValueKey<String>('period_to')));
+      await t.pumpAndSettle();
+      await t.tap(find.text('9'));
+      await t.tap(find.text('OK'));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const ValueKey<String>('period_range_show')));
+      await t.pumpAndSettle();
+
+      expect(api.asked.last, (DateTime(2026, 10, 5), DateTime(2026, 10, 9)));
+      expect(t.widget<Text>(find.byKey(const ValueKey<String>('period_label'))).data, '05/10/2026 – 09/10/2026');
+    });
+
+    testWidgets('closing the sheet without choosing leaves the page as it was', (t) async {
+      final _FakeSalon api = _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha]));
+      await _open(t, api);
+      t.view.physicalSize = const Size(900, 2600);
+      await t.pump();
+      final int before = api.asked.length;
+
+      await t.tap(find.byKey(const ValueKey<String>('period_button')));
+      await t.pumpAndSettle();
+      await t.tapAt(const Offset(450, 60)); // outside the sheet
+      await t.pumpAndSettle();
+
+      expect(find.text('Choose the days'), findsNothing);
+      expect(api.asked.length, before);
+      expect(t.widget<Text>(find.byKey(const ValueKey<String>('period_label'))).data, 'This month');
+    });
+
+    testWidgets('choosing the period that is already shown does not ask the server again', (t) async {
+      final _FakeSalon api = _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha]));
+      await _open(t, api);
+      final int before = api.asked.length;
+
+      await _pickPeriod(t, 'This month');
+
+      expect(api.asked.length, before);
     });
 
     testWidgets('the page says which days the figures are for', (t) async {
@@ -490,24 +633,43 @@ void main() {
       expect(says, isNot(contains('–')), reason: 'a single day is not written as a range');
     });
 
-    testWidgets('"Pick dates" opens the calendar, and backing out leaves the page as it was', (t) async {
-      final _FakeSalon api = _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha]));
-      await _open(t, api);
-      final int before = api.asked.length;
-
-      t.view.physicalSize = const Size(900, 1600); // the calendar needs more room than the test phone's width
+    testWidgets('in Swahili the sheet is Swahili', (t) async {
+      await _open(t, _FakeSalon((_, __) async => _report(rows: <StylistRow>[_asha])), sw: true);
+      t.view.physicalSize = const Size(900, 2600);
       await t.pump();
-      await t.ensureVisible(find.text('Pick dates'));
-      await t.tap(find.text('Pick dates'));
-      await t.pumpAndSettle();
-      expect(find.byType(DateRangePickerDialog), findsOneWidget);
 
-      await t.tap(find.byIcon(Icons.close));
+      await t.tap(find.byKey(const ValueKey<String>('period_button')));
       await t.pumpAndSettle();
 
-      expect(find.byType(DateRangePickerDialog), findsNothing);
-      expect(api.asked.length, before, reason: 'nothing was chosen, so nothing is asked again');
-      expect(find.text('Pick dates'), findsOneWidget);
+      expect(find.text('Chagua siku'), findsOneWidget);
+      expect(find.text('Za haraka'), findsOneWidget);
+      expect(find.text('Jana'), findsOneWidget);
+      expect(find.text('Wiki iliyopita'), findsOneWidget);
+      expect(find.text('Kati ya tarehe mbili'), findsOneWidget);
+      expect(find.text('Onyesha'), findsWidgets);
     });
   });
+}
+
+/// Opens the period sheet and taps one of the usual periods in it (the page then asks the server again).
+Future<void> _pickPeriod(WidgetTester t, String label, {bool settle = true}) async {
+  // (While a page is still loading its spinner never stops, so there it only waits a little.)
+  Future<void> wait() async {
+    if (settle) {
+      await t.pumpAndSettle();
+    } else {
+      await t.pump(); // the sheet is built, then slides up
+      await t.pump(const Duration(milliseconds: 600));
+    }
+  }
+  const Map<String, String> keys = <String, String>{
+    'Today': 'today', 'Yesterday': 'yesterday', 'Last 7 days': 'last7', 'This week': 'thisWeek', 'Last week': 'lastWeek',
+    'This month': 'thisMonth', 'Last month': 'lastMonth', 'This year': 'thisYear',
+  };
+  t.view.physicalSize = const Size(900, 2600); // room for the sheet
+  await t.pump();
+  await t.tap(find.byKey(const ValueKey<String>('period_button')));
+  await wait();
+  await t.tap(find.byKey(ValueKey<String>('period_${keys[label]}')));
+  await wait();
 }

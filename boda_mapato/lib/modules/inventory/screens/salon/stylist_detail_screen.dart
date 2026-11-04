@@ -71,6 +71,7 @@ class _StylistDetailScreenState extends State<StylistDetailScreen> {
     final bool sw = context.watch<LocalizationService>().isSwahili;
 
     return ThemeConstants.buildScaffold(
+      flat: true,
       title: widget.title,
       body: RefreshIndicator(
         onRefresh: _load,

@@ -62,11 +62,14 @@ class ThemeConstants {
   );
 
   // Standard app bar theme
+  /// [flat] paints the bar in the plain dark teal of the inventory and salon pages ([primaryBlue]) instead of the near-black the dashboard's
+  /// gradient starts with.
   static AppBar buildAppBar(
     String title, {
     List<Widget>? actions,
     Widget? leading,
     bool automaticallyImplyLeading = true,
+    bool flat = false,
   }) =>
       AppBar(
         title: Text(
@@ -77,7 +80,7 @@ class ThemeConstants {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: bgTop,
+        backgroundColor: flat ? primaryBlue : bgTop,
         foregroundColor: textPrimary,
         elevation: 0,
         leading: leading,
@@ -215,19 +218,23 @@ class ThemeConstants {
     List<Widget>? actions,
     Widget? floatingActionButton,
     Widget? drawer,
+    bool flat = false,
   }) =>
       Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: buildAppBar(title, actions: actions),
-        body: Stack(
-          children: [
-            const DecoratedBox(
-              decoration: dashboardBackground,
-              child: SizedBox.expand(),
-            ),
-            SafeArea(child: body),
-          ],
-        ),
+        backgroundColor: flat ? primaryBlue : Colors.transparent,
+        appBar: buildAppBar(title, actions: actions, flat: flat),
+        // [flat]: one plain dark teal from top to bottom, the colour the inventory and salon pages sit on, with no near-black at the top.
+        body: flat
+            ? SafeArea(child: body)
+            : Stack(
+                children: [
+                  const DecoratedBox(
+                    decoration: dashboardBackground,
+                    child: SizedBox.expand(),
+                  ),
+                  SafeArea(child: body),
+                ],
+              ),
         floatingActionButton: floatingActionButton,
         drawer: drawer,
       );

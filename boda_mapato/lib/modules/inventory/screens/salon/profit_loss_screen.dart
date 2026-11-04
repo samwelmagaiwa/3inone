@@ -46,21 +46,13 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
   /// The two days the person picked (for the "Pick dates" chip).
   DateTimeRange? _custom;
 
-  /// A chip was tapped: "Pick dates" asks for the two days first (and again each time it is tapped), the others just change the period.
-  Future<void> _choose(final SalonPeriod p) async {
-    if (p == SalonPeriod.custom) {
-      final DateTimeRange? got = await pickSalonRange(context, _today, _custom);
-      if (got == null || !mounted) return;
-      setState(() {
-        _custom = got;
-        _period = p;
-      });
-      _load();
-
-      return;
-    }
-    if (p == _period) return;
-    setState(() => _period = p);
+  /// What was chosen on the sheet: one of the usual periods, or the exact days picked there.
+  void _apply(final SalonPeriodChoice c) {
+    if (c.period == _period && c.period != SalonPeriod.custom) return;
+    setState(() {
+      _period = c.period;
+      _custom = c.custom;
+    });
     _load();
   }
 
@@ -107,11 +99,7 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
           physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
           padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 24.h),
           children: <Widget>[
-            InvFilterChips<SalonPeriod>(
-              value: _period,
-              options: salonPeriodOptions(sw: sw, custom: _custom),
-              onSelected: _choose,
-            ),
+            SalonPeriodButton(period: _period, custom: _custom, today: _today, sw: sw, onChanged: _apply),
             SizedBox(height: 12.h),
             ..._body(sw),
           ],

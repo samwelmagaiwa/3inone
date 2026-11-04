@@ -294,6 +294,7 @@ class _AppointmentFormScreenState extends State<AppointmentFormScreen> {
     String hm(final DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
     return ThemeConstants.buildScaffold(
+      flat: true,
       title: _editing ? (sw ? 'Badilisha miadi' : 'Change appointment') : (sw ? 'Miadi mpya' : 'New appointment'),
       body: ListView(
         padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 24.h),

@@ -202,16 +202,13 @@ void main() {
       await _host(t, SalonExpensesScreen(api: api, today: _today));
 
       expect(api.expenseAsks.single, (DateTime(2026, 10), DateTime(2026, 10, 15)));
-      await t.ensureVisible(find.text('Last month'));
-      await t.tap(find.text('Last month'));
+      await _pickPeriod(t, 'Last month');
       await _settle(t);
       expect(api.expenseAsks.last, (DateTime(2026, 9), DateTime(2026, 9, 30)));
-      await t.ensureVisible(find.text('This week'));
-      await t.tap(find.text('This week'));
+      await _pickPeriod(t, 'This week');
       await _settle(t);
       expect(api.expenseAsks.last, (DateTime(2026, 10, 12), DateTime(2026, 10, 15)), reason: 'Monday to today');
-      await t.ensureVisible(find.text('Today'));
-      await t.tap(find.text('Today'));
+      await _pickPeriod(t, 'Today');
       await _settle(t);
       expect(api.expenseAsks.last, (DateTime(2026, 10, 15), DateTime(2026, 10, 15)));
     });
@@ -330,7 +327,7 @@ void main() {
       await _host(t, SalonExpensesScreen(api: api, today: _today), sw: true);
 
       expect(find.text('Andika matumizi'), findsOneWidget);
-      expect(find.text('Wiki hii'), findsOneWidget);
+      expect(t.widget<Text>(find.byKey(const ValueKey<String>('period_label'))).data, 'Mwezi huu', reason: 'the period button speaks Kiswahili');
       expect(find.text('Ongeza picha ya risiti'), findsOneWidget);
       expect(find.textContaining('Kodi ya fremu'), findsOneWidget);
     });
@@ -637,16 +634,13 @@ void main() {
       final _FakeSalon api = _FakeSalon()..pl = data();
       await _host(t, ProfitLossScreen(api: api, today: _today));
 
-      await t.ensureVisible(find.text('This year'));
-      await t.tap(find.text('This year'));
+      await _pickPeriod(t, 'This year');
       await _settle(t);
       expect(api.plAsks.last, (DateTime(2026), DateTime(2026, 10, 15)));
-      await t.ensureVisible(find.text('This week'));
-      await t.tap(find.text('This week'));
+      await _pickPeriod(t, 'This week');
       await _settle(t);
       expect(api.plAsks.last, (DateTime(2026, 10, 12), DateTime(2026, 10, 15)));
-      await t.ensureVisible(find.text('Today'));
-      await t.tap(find.text('Today'));
+      await _pickPeriod(t, 'Today');
       await _settle(t);
       expect(api.plAsks.last, (DateTime(2026, 10, 15), DateTime(2026, 10, 15)));
     });
@@ -655,15 +649,13 @@ void main() {
       final _FakeSalon api = _FakeSalon()..pl = data();
       await _host(t, ProfitLossScreen(api: api, today: _today));
 
-      await t.ensureVisible(find.text('Yesterday'));
-      await t.tap(find.text('Yesterday'));
+      await _pickPeriod(t, 'Yesterday');
       await _settle(t);
       expect(api.plAsks.last, (DateTime(2026, 10, 14), DateTime(2026, 10, 14)));
-      await t.ensureVisible(find.text('Last week'));
-      await t.tap(find.text('Last week'));
+      await _pickPeriod(t, 'Last week');
       await _settle(t);
       expect(api.plAsks.last, (DateTime(2026, 10, 5), DateTime(2026, 10, 11)));
-      expect(find.text('Pick dates'), findsOneWidget, reason: 'and the calendar chip is there');
+      expect(t.widget<Text>(find.byKey(const ValueKey<String>('period_label'))).data, 'Last week');
     });
 
     testWidgets('a failed load says why and can be retried; Swahili is Swahili', (t) async {
@@ -684,4 +676,18 @@ void main() {
       expect(find.text('Madeni ya wateja'), findsOneWidget);
     });
   });
+}
+
+/// Opens the period sheet and taps one of the usual periods in it (the page then asks the server again).
+Future<void> _pickPeriod(WidgetTester t, String label) async {
+  const Map<String, String> keys = <String, String>{
+    'Today': 'today', 'Yesterday': 'yesterday', 'Last 7 days': 'last7', 'This week': 'thisWeek', 'Last week': 'lastWeek',
+    'This month': 'thisMonth', 'Last month': 'lastMonth', 'This year': 'thisYear',
+  };
+  t.view.physicalSize = const Size(900, 2600); // room for the sheet
+  await t.pump();
+  await t.tap(find.byKey(const ValueKey<String>('period_button')));
+  await t.pumpAndSettle();
+  await t.tap(find.byKey(ValueKey<String>('period_${keys[label]}')));
+  await t.pumpAndSettle();
 }

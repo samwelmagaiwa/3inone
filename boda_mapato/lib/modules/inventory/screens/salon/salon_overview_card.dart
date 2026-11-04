@@ -124,7 +124,7 @@ class _SalonOverviewCardState extends State<SalonOverviewCard> {
               _ranked('ov_staff_$i', i + 1, d.topStaff[i].name.trim().isEmpty ? (sw ? 'Hakutajwa' : 'No stylist named') : d.topStaff[i].name, d.topStaff[i].revenue, d.topStaff.first.revenue,
                   muted: d.topStaff[i].name.trim().isEmpty),
             if (d.topStaff.length > _top)
-              _more('ov_staff_more', sw ? 'Zaidi' : 'More', () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => ThemeConstants.buildScaffold(title: sw ? 'Wahudumu' : 'Stylists', body: StylistsScreen(api: _api))))),
+              _more('ov_staff_more', sw ? 'Zaidi' : 'More', () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => ThemeConstants.buildScaffold(flat: true, title: sw ? 'Wahudumu' : 'Stylists', body: StylistsScreen(api: _api))))),
           ],
           if (d.topServices.isNotEmpty) ...<Widget>[
             _heading(Icons.content_cut_rounded, sw ? 'Huduma 3 zinazouza zaidi' : 'Best 3 selling services'),

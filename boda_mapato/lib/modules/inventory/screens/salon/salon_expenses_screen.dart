@@ -58,21 +58,13 @@ class _SalonExpensesScreenState extends State<SalonExpensesScreen> {
   /// The two days the person picked (for the "Pick dates" chip).
   DateTimeRange? _custom;
 
-  /// A chip was tapped: "Pick dates" asks for the two days first (and again each time it is tapped), the others just change the period.
-  Future<void> _choose(final SalonPeriod p) async {
-    if (p == SalonPeriod.custom) {
-      final DateTimeRange? got = await pickSalonRange(context, _today, _custom);
-      if (got == null || !mounted) return;
-      setState(() {
-        _custom = got;
-        _range = p;
-      });
-      _load();
-
-      return;
-    }
-    if (p == _range) return;
-    setState(() => _range = p);
+  /// What was chosen on the sheet: one of the usual periods, or the exact days picked there.
+  void _apply(final SalonPeriodChoice c) {
+    if (c.period == _range && c.period != SalonPeriod.custom) return;
+    setState(() {
+      _range = c.period;
+      _custom = c.custom;
+    });
     _load();
   }
 
@@ -181,11 +173,7 @@ class _SalonExpensesScreenState extends State<SalonExpensesScreen> {
     final int waiting = _items.where((SalonExpense e) => e.isPending).length;
 
     return <Widget>[
-      InvFilterChips<SalonPeriod>(
-        value: _range,
-        options: salonPeriodOptions(sw: sw, custom: _custom),
-        onSelected: _choose,
-      ),
+      SalonPeriodButton(period: _range, custom: _custom, today: _today, sw: sw, onChanged: _apply),
       SizedBox(height: 10.h),
       Row(
         children: <Widget>[

@@ -153,10 +153,23 @@ void main() {
     await t.pump(const Duration(milliseconds: 300));
 
     expect(api.askedServices.single, (DateTime(2026, 10), DateTime(2026, 10, 15)));
-    await t.ensureVisible(find.text('Last month'));
-    await t.tap(find.text('Last month'));
+    await _pickPeriod(t, 'Last month');
     await t.pump(const Duration(milliseconds: 300));
     expect(api.askedServices.last, (DateTime(2026, 9), DateTime(2026, 9, 30)));
     expect(find.text('Revenue'), findsOneWidget);
   });
+}
+
+/// Opens the period sheet and taps one of the usual periods in it (the page then asks the server again).
+Future<void> _pickPeriod(WidgetTester t, String label) async {
+  const Map<String, String> keys = <String, String>{
+    'Today': 'today', 'Yesterday': 'yesterday', 'Last 7 days': 'last7', 'This week': 'thisWeek', 'Last week': 'lastWeek',
+    'This month': 'thisMonth', 'Last month': 'lastMonth', 'This year': 'thisYear',
+  };
+  t.view.physicalSize = const Size(900, 2600); // room for the sheet
+  await t.pump();
+  await t.tap(find.byKey(const ValueKey<String>('period_button')));
+  await t.pumpAndSettle();
+  await t.tap(find.byKey(ValueKey<String>('period_${keys[label]}')));
+  await t.pumpAndSettle();
 }
