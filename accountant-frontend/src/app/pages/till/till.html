@@ -167,7 +167,8 @@
                         }
                       </div>
                     </div>
-                    <button type="button" class="link-btn" (click)="openGoods(l.key)" [attr.data-testid]="'goods-' + l.productId">{{ i18n.t('till.goods') }}</button>
+                    <span class="used-goods" [attr.data-testid]="'used-' + l.productId"><b>{{ i18n.t('till.goods') }}:</b> {{ materialsText(l) }}</span>
+                    <button type="button" class="link-btn" (click)="openGoods(l.key)" [attr.data-testid]="'goods-' + l.productId">{{ i18n.t('till.goods.change') }}</button>
                     @if (packagesFor(l.productId).length) {
                       <select class="modal-input unit-pick" [ngModel]="l.packageId ?? ''" (ngModelChange)="usePackage(l.key, $event)" [attr.aria-label]="i18n.t('till.package')">
                         <option value="">{{ i18n.t('till.package.none') }}</option>
@@ -324,6 +325,7 @@
             <div class="min-w-0">
               <p class="font-black text-slate-900">{{ l.name }}@if (l.optionLabel) { <span class="text-slate-400 font-bold"> · {{ l.optionLabel }}</span> }</p>
               <p class="text-xs font-semibold text-slate-500">{{ l.qty }} × {{ tsh(l.unitPrice) }}@if (l.unitName) { / {{ l.unitName }} }@if (l.staffName) { · {{ i18n.t('till.pv.by', l.staffName) }} }</p>
+              @if (l.isService && till.salon()) { <p class="text-xs font-semibold text-slate-500" [attr.data-testid]="'pv-used-' + l.productId">{{ i18n.t('till.goods') }}: {{ materialsText(l) }}</p> }
             </div>
             <p class="font-black text-slate-900 shrink-0">{{ tsh(l.qty * l.unitPrice) }}</p>
           </div>
@@ -399,7 +401,7 @@
 </app-modal-dialog>
 
 <!-- Goods used for a service -->
-<app-modal-dialog [show]="!!goodsFor()" [title]="i18n.t('till.goods.title')" [eyebrow]="i18n.t('till.goods')" size="md" (close)="goodsFor.set(null)">
+<app-modal-dialog [show]="!!goodsFor()" [title]="i18n.t('till.goods.title')" [eyebrow]="goodsFor_name()" size="md" (close)="goodsFor.set(null)">
   <div slot="body" class="space-y-3">
     <p class="text-sm text-slate-500">{{ i18n.t('till.goods.hint') }}</p>
     @for (g of goodsDraft(); track g.productId; let i = $index) {
@@ -514,6 +516,8 @@
   .good { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; border: 1px solid #e6ecfb; border-radius: 14px; background: #fff; cursor: pointer; transition: all .2s; }
   .good:hover:not(:disabled) { border-color: #93b0fb; transform: translateY(-2px); box-shadow: 0 14px 26px -16px rgba(59,97,226,.6); }
   .good:active:not(:disabled) { transform: translateY(0); }
+  .used-goods { display: block; width: 100%; font-size: 12px; font-weight: 600; color: #475a8f; }
+  .used-goods b { font-weight: 900; color: #1a2f6e; }
   .kind-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
   .kind-tabs .pill-tab { padding: 8px 18px; font-size: 13px; font-weight: 800; }
   .good-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }

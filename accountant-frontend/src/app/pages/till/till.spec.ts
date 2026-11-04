@@ -427,14 +427,28 @@ describe('the till in a salon', () => {
     expect((post.request.body as { items: Record<string, unknown>[] }).items[0]).toMatchObject({ product_id: 9, staff_id: '5' });
   });
 
-  it('a service line offers the goods used', async () => {
+  it('choosing a service asks at once which goods the visit used, with the usual ones filled in', async () => {
     const { h, fixture, el } = await open({}, [cut], true);
     byTestId(el, 'good-9')!.click();
     await settle(fixture);
-    byTestId(el, 'goods-9')!.click();
+
+    // the card opens by itself: the usual goods of the service, and the whole list of goods to add from
     h.http.expectOne((r) => r.url.endsWith('/salon/services/9/usual-goods')).flush({ data: [{ product_id: 2, name: 'Gel', quantity: 2 }] });
+    const goods = h.http.expectOne((r) => r.url.endsWith('/inventory/products') && r.params.get('is_service') === '0');
+    goods.flush({ data: [{ id: 2, name: 'Gel', selling_price: 5000, cost_price: 2500, quantity: 20, status: 'active', is_service: 0 }, { id: 3, name: 'Oil', selling_price: 9000, cost_price: 4000, quantity: 5, status: 'active', is_service: 0 }], meta: { last_page: 1 } });
     await settle(fixture);
     expect(text(el)).toContain('Gel');
+
+    const pick = el.querySelector('select[aria-label="goods"]') as HTMLSelectElement;
+    expect(Array.from(pick.options).map((o) => o.text.trim())).toContain('Oil'); // goods can be added although the list shows services
+    pick.value = '3';
+    pick.dispatchEvent(new Event('change', { bubbles: true }));
+    (Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Add') as HTMLButtonElement | undefined)?.click();
+    await settle(fixture);
+    (Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Save') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    expect(text(byTestId(el, 'used-9')!)).toContain('Gel ×2');
   });
 });
 

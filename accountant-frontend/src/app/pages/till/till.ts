@@ -84,10 +84,12 @@ export class TillPage implements OnInit, OnDestroy {
   }
 
   protected stepTitle(n: number): string {
+    if (this.till.salon() && n <= 2) return this.i18n.t(n === 1 ? 'till.step1.salon' : 'till.step2.salon');
     return this.i18n.t(['till.step1', 'till.step2', 'till.step3', 'till.step4', 'till.step5'][n - 1]);
   }
 
   protected stepName(n: number): string {
+    if (this.till.salon() && n === 1) return this.i18n.t('till.stepname1.salon');
     return this.i18n.t(['till.stepname1', 'till.stepname2', 'till.stepname3', 'till.stepname4', 'till.stepname5'][n - 1]);
   }
 
@@ -122,7 +124,9 @@ export class TillPage implements OnInit, OnDestroy {
   protected readonly reasonNeeded = computed(() => this.till.salon() && this.till.totalDiscount() > 0 && !this.till.voucher().code && this.till.pointsOff() <= 0);
   protected readonly needsCustomer = computed(() => this.till.mode() !== 'cash' && !this.till.customer());
   protected readonly showCrates = computed(() => this.crateTypes().length > 0 && this.caps.useCrates() && this.caps.inventoryType() !== 'retail');
-  protected readonly goodsOnly = computed(() => this.products().filter((p) => !p.isService && p.active));
+  /** The goods that can be said to have been used for a service: the whole list of goods, whichever tab the list is on. */
+  private readonly goodsCache = signal<Product[]>([]);
+  protected readonly goodsOnly = computed(() => (this.goodsCache().length ? this.goodsCache() : this.products()).filter((p) => !p.isService && p.active));
   protected readonly balanceDue = computed(() => {
     const t = this.till.totals().total;
     if (this.till.mode() === 'cash') return 0;
@@ -131,6 +135,8 @@ export class TillPage implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    // A salon starts with its services; the goods used for each one are asked after it is chosen.
+    if (this.till.salon()) this.fKind = 'service';
     void this.loadProducts();
     if (this.till.salon()) void this.loadSalon();
     void this.loadCrates();
@@ -239,8 +245,11 @@ export class TillPage implements OnInit, OnDestroy {
       this.toast.warning(this.i18n.t('till.nostock', p.name, String(p.quantity)), this.i18n.t('till.nostock.title'));
       return;
     }
+    const before = this.till.lines().length;
     const line = this.till.add(p, { unit, option });
     if (this.till.salon() && p.isService && !line.staffId && this.staff().length === 1) this.till.setStaff(line.key, { id: this.staff()[0].id, name: this.staff()[0].name });
+    // A salon sells the service first, then says which goods the client's visit used: asked at once, with the usual ones filled in.
+    if (this.till.salon() && p.isService && this.till.lines().length > before) void this.openGoods(line.key);
   }
 
   protected productOf(id: number): Product | undefined {
@@ -445,6 +454,7 @@ export class TillPage implements OnInit, OnDestroy {
     if (!l) return;
     this.goodsFor.set(key);
     this.addGoodId = '';
+    void this.loadGoodsCache();
     if (l.materials) return this.goodsDraft.set(l.materials.map((m) => ({ ...m })));
     try {
       const usual = await firstValueFrom(this.api.usualGoods(l.productId));
@@ -453,6 +463,27 @@ export class TillPage implements OnInit, OnDestroy {
       this.goodsDraft.set([]);
     }
   }
+
+  /** All the goods, once, for the list in the "goods used" card (the till's own list may be showing only services). */
+  private async loadGoodsCache(): Promise<void> {
+    if (this.goodsCache().length) return;
+    try {
+      this.goodsCache.set((await firstValueFrom(this.api.products('', 1, { category: '', brand: '', kind: 'goods' }))).items);
+    } catch {
+      // the list in the card then falls back to what the till already shows
+    }
+  }
+
+  /** What a service line used, in words: the goods and how many, "the usual goods" until it was changed, or nothing. */
+  protected materialsText(l: CartLine): string {
+    if (l.materials === null) return this.i18n.t('till.goods.usual');
+    const used = l.materials.filter((m) => m.qty > 0).map((m) => `${m.name} ×${m.qty}`);
+
+    return used.length ? used.join(', ') : this.i18n.t('till.goods.none');
+  }
+
+  /** The service whose goods are being chosen, for the card's title. */
+  protected readonly goodsFor_name = computed(() => this.till.lines().find((l) => l.key === this.goodsFor())?.name ?? '');
 
   protected draftQty(i: number, text: string): void {
     const n = Math.max(0, Math.floor(Number(text)) || 0);
