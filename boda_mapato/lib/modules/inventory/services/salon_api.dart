@@ -22,6 +22,19 @@ class SalonApi {
     return StylistReport.fromJson(_data(res));
   }
 
+  /// What each person is set to bring in for [month] (`2026-11`), and how they stand.
+  Future<StylistTargets> stylistTargets(final String month) async =>
+      StylistTargets.fromJson(_data(await _api.get('/inventory/salon/stylist-targets?month=$month')));
+
+  /// Sets the targets of the people named for [month] (0 removes one); the others are left as they are.
+  Future<StylistTargets> saveStylistTargets(final String month, final Map<String, double> targets) async => StylistTargets.fromJson(_data(await _api.put(
+        '/inventory/salon/stylist-targets',
+        <String, dynamic>{
+          'month': month,
+          'targets': <Map<String, dynamic>>[for (final MapEntry<String, double> e in targets.entries) <String, dynamic>{'staff_id': e.key, 'revenue_target': e.value}],
+        },
+      )));
+
   /// Every service behind one stylist's total for the period; [staffId] null = "nobody named".
   Future<StylistPage> stylistPage(final String? staffId, {final DateTime? from, final DateTime? to}) async {
     final List<String> q = <String>[if (from != null) 'from=${_day(from)}', if (to != null) 'to=${_day(to)}'];

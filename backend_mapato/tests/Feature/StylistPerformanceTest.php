@@ -202,6 +202,10 @@ class StylistPerformanceTest extends TestCase
         $this->assertNull($d['stylists'][0]['rank']);
         $this->assertEquals(70.0, $d['stylists'][0]['target']['percent'], 'their own target is theirs to see');
         $this->assertEquals(140000, $d['totals']['revenue'], 'the totals are of what they can see');
+        $this->assertFalse($d['sees_everyone']);
+        $this->assertFalse($d['can_set_targets']);
+        $this->assertTrue($this->results($owner)['can_set_targets']);
+        $this->assertTrue($this->results($owner)['sees_everyone']);
     }
 
     public function test_only_the_owner_sets_targets_while_the_accountant_and_a_stylist_may_not(): void

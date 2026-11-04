@@ -18,19 +18,73 @@ List<Map<String, dynamic>> _rows(final dynamic v) =>
 
 // ------------------------------------------------------------------ how each stylist did
 
-class StylistRow {
-  const StylistRow({required this.staffId, required this.name, required this.services, required this.revenue, required this.visits, required this.clients, this.commission = 0, this.discount = 0});
+double? _numOrNull(final dynamic v) => v == null ? null : (v is num ? v.toDouble() : double.tryParse('$v'));
 
-  factory StylistRow.fromJson(final Map<String, dynamic> j) => StylistRow(
-        staffId: j['staff_id'] == null ? null : _text(j['staff_id']),
-        name: _text(j['name']),
-        services: _int(j['services']),
-        revenue: _num(j['revenue']),
-        commission: _num(j['commission']),
-        discount: _num(j['discount']),
-        visits: _int(j['visits']),
-        clients: _int(j['clients']),
+/// What the owner expects one person to bring in for a month, how much they have brought in so far, and the pace: `reached`, `ahead`
+/// (more than the days gone say it should be), `on_track` (a little short) or `behind`.
+class StylistTarget {
+  const StylistTarget({required this.month, required this.amount, required this.achieved, required this.percent, required this.expectedPercent, required this.pace});
+
+  factory StylistTarget.fromJson(final Map<String, dynamic> j) => StylistTarget(
+        month: _text(j['month']),
+        amount: _num(j['amount']),
+        achieved: _num(j['achieved']),
+        percent: _num(j['percent']),
+        expectedPercent: _num(j['expected_percent']),
+        pace: _text(j['pace']),
       );
+
+  final String month;
+  final double amount;
+  final double achieved;
+  final double percent;
+  final double expectedPercent;
+  final String pace;
+}
+
+class StylistRow {
+  const StylistRow({
+    required this.staffId,
+    required this.name,
+    required this.services,
+    required this.revenue,
+    required this.visits,
+    required this.clients,
+    this.commission = 0,
+    this.discount = 0,
+    this.avgTicket = 0,
+    this.returnRate,
+    this.share = 0,
+    this.rank,
+    this.previousRevenue = 0,
+    this.revenueChange,
+    this.visitsChange,
+    this.target,
+  });
+
+  factory StylistRow.fromJson(final Map<String, dynamic> j) {
+    final Map<String, dynamic> previous = j['previous'] is Map ? Map<String, dynamic>.from(j['previous'] as Map) : <String, dynamic>{};
+    final Map<String, dynamic> change = j['change'] is Map ? Map<String, dynamic>.from(j['change'] as Map) : <String, dynamic>{};
+
+    return StylistRow(
+      staffId: j['staff_id'] == null ? null : _text(j['staff_id']),
+      name: _text(j['name']),
+      services: _int(j['services']),
+      revenue: _num(j['revenue']),
+      commission: _num(j['commission']),
+      discount: _num(j['discount']),
+      visits: _int(j['visits']),
+      clients: _int(j['clients']),
+      avgTicket: _num(j['avg_ticket']),
+      returnRate: _numOrNull(j['return_rate']),
+      share: _num(j['share']),
+      rank: j['rank'] == null ? null : _int(j['rank']),
+      previousRevenue: _num(previous['revenue']),
+      revenueChange: _numOrNull(change['revenue']),
+      visitsChange: _numOrNull(change['visits']),
+      target: j['target'] is Map ? StylistTarget.fromJson(Map<String, dynamic>.from(j['target'] as Map)) : null,
+    );
+  }
 
   /// The stylist's account id; null for the line "nobody was named" (a walk-in whose stylist was not picked).
   final String? staffId;
@@ -46,14 +100,53 @@ class StylistRow {
   final int visits;
   final int clients;
 
+  /// What one visit is worth on average.
+  final double avgTicket;
+
+  /// The percent of their named clients who had been before (null when no client was named).
+  final double? returnRate;
+
+  /// Their share of everything the stylists brought in, in percent.
+  final double share;
+
+  /// Their place among everyone (null when they work alone in the list, or brought nothing).
+  final int? rank;
+  final double previousRevenue;
+
+  /// Percent change of the revenue against the period just before; null when there was nothing before to compare with.
+  final double? revenueChange;
+  final double? visitsChange;
+  final StylistTarget? target;
+
   bool get isUnassigned => staffId == null;
 }
 
 class StylistReport {
-  const StylistReport({required this.from, required this.to, required this.stylists, required this.services, required this.revenue, required this.visits, this.commission = 0});
+  const StylistReport({
+    required this.from,
+    required this.to,
+    required this.stylists,
+    required this.services,
+    required this.revenue,
+    required this.visits,
+    this.commission = 0,
+    this.avgTicket = 0,
+    this.previousRevenue = 0,
+    this.revenueChange,
+    this.visitsChange,
+    this.avgTicketChange,
+    this.previousFrom,
+    this.previousTo,
+    this.targetMonth = '',
+    this.seesEveryone = false,
+    this.canSetTargets = false,
+  });
 
   factory StylistReport.fromJson(final Map<String, dynamic> j) {
     final Map<String, dynamic> totals = j['totals'] is Map ? Map<String, dynamic>.from(j['totals'] as Map) : <String, dynamic>{};
+    final Map<String, dynamic> previous = totals['previous'] is Map ? Map<String, dynamic>.from(totals['previous'] as Map) : <String, dynamic>{};
+    final Map<String, dynamic> change = totals['change'] is Map ? Map<String, dynamic>.from(totals['change'] as Map) : <String, dynamic>{};
+
     return StylistReport(
       from: _date(j['from']) ?? DateTime.now(),
       to: _date(j['to']) ?? DateTime.now(),
@@ -62,6 +155,16 @@ class StylistReport {
       revenue: _num(totals['revenue']),
       commission: _num(totals['commission']),
       visits: _int(totals['visits']),
+      avgTicket: _num(totals['avg_ticket']),
+      previousRevenue: _num(previous['revenue']),
+      revenueChange: _numOrNull(change['revenue']),
+      visitsChange: _numOrNull(change['visits']),
+      avgTicketChange: _numOrNull(change['avg_ticket']),
+      previousFrom: _date(j['previous_from']),
+      previousTo: _date(j['previous_to']),
+      targetMonth: _text(j['target_month']),
+      seesEveryone: _flag(j['sees_everyone']),
+      canSetTargets: _flag(j['can_set_targets']),
     );
   }
 
@@ -72,6 +175,57 @@ class StylistReport {
   final double revenue;
   final double commission;
   final int visits;
+  final double avgTicket;
+  final double previousRevenue;
+  final double? revenueChange;
+  final double? visitsChange;
+  final double? avgTicketChange;
+
+  /// The period just before, of the same length, that the changes are against.
+  final DateTime? previousFrom;
+  final DateTime? previousTo;
+
+  /// The month the targets are for (`2026-11`).
+  final String targetMonth;
+
+  /// Whether this person sees everyone (and so a ranking), or only their own line.
+  final bool seesEveryone;
+
+  /// Whether this person may set the targets (the owner).
+  final bool canSetTargets;
+}
+
+/// One person in the list of targets for a month: what was set (if anything) and how they stand.
+class TargetPerson {
+  const TargetPerson({required this.staffId, required this.name, required this.role, this.target});
+
+  factory TargetPerson.fromJson(final Map<String, dynamic> j) => TargetPerson(
+        staffId: _text(j['staff_id']),
+        name: _text(j['name']),
+        role: _text(j['role']),
+        target: j['target'] is Map ? StylistTarget.fromJson(Map<String, dynamic>.from(j['target'] as Map)) : null,
+      );
+
+  final String staffId;
+  final String name;
+  final String role;
+  final StylistTarget? target;
+}
+
+class StylistTargets {
+  const StylistTargets({required this.month, required this.canSet, required this.people});
+
+  factory StylistTargets.fromJson(final Map<String, dynamic> j) => StylistTargets(
+        month: _text(j['month']),
+        canSet: _flag(j['can_set']),
+        people: _rows(j['people']).map(TargetPerson.fromJson).toList(),
+      );
+
+  final String month;
+
+  /// Whether this person may change the targets (the owner), or only read them.
+  final bool canSet;
+  final List<TargetPerson> people;
 }
 
 // ------------------------------------------------------------------ "come back" reminders

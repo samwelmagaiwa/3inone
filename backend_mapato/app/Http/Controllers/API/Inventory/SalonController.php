@@ -74,6 +74,10 @@ class SalonController extends Controller
         $report['totals']['discount'] = self::money($report['totals']['discount']);
         $report['totals']['commission'] = (float) $report['totals']['commission'] == floor((float) $report['totals']['commission']) ? (int) $report['totals']['commission'] : (float) $report['totals']['commission'];
 
+        // What this person may do with it: see everyone (and so a ranking), and set the targets (the owner).
+        $report['sees_everyone'] = $sees;
+        $report['can_set_targets'] = \App\Support\Salon\SalonAccess::canConfigure($viewer);
+
         return response()->json(['data' => $report]);
     }
 
