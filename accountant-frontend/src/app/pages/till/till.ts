@@ -71,7 +71,17 @@ export class TillPage implements OnInit, OnDestroy {
   // ---- the steps of the popup: 1 find the goods, 2 what is bought, 3 who buys, 4 how they pay, 5 check everything and save
   protected readonly steps = [1, 2, 3, 4, 5];
   protected readonly step = signal(1);
-  protected readonly canNext = computed(() => this.till.lines().length > 0);
+  /** Services, goods or both (a salon sells both): chosen in plain sight above the list. */
+  protected readonly kinds = [
+    { value: '', label: 'till.kind.all' },
+    { value: 'service', label: 'till.filter.service' },
+    { value: 'goods', label: 'till.filter.goods' },
+  ];
+
+  protected setKind(value: string): void {
+    this.fKind = value;
+    this.setFilters();
+  }
 
   protected stepTitle(n: number): string {
     return this.i18n.t(['till.step1', 'till.step2', 'till.step3', 'till.step4', 'till.step5'][n - 1]);
@@ -567,11 +577,43 @@ export class TillPage implements OnInit, OnDestroy {
     if (yes) this.till.clear();
   }
 
+  /**
+   * What is wrong with the step being left, in words (null when it can be left). The same checks as saving, made one step at a time so
+   * the person is told where they are: nothing to sell, a price or quantity that is zero, a service with nobody chosen, a discount without
+   * a reason, and (on the last one) the customer, the reference and the credit limit.
+   */
+  private problemIn(step: number): { message: string; step: number } | null {
+    const lines = this.till.lines();
+    if (!lines.length) return { message: this.i18n.t('till.err.empty'), step: 1 };
+    if (step >= 2) {
+      const bad = lines.find((l) => l.packageId === null && (!(l.qty > 0) || !(l.unitPrice > 0)));
+      if (bad) return { message: this.i18n.t('till.err.price_required', bad.name), step: 2 };
+      const stylist = this.till.missingStylist();
+      if (stylist) return { message: this.i18n.t('till.err.stylist_required', stylist.name), step: 2 };
+    }
+    if (step >= 3 && this.reasonNeeded() && !this.till.discountReason().trim()) return { message: this.i18n.t('till.err.reason_required'), step: 3 };
+    if (step >= 4) {
+      const built = this.till.buildSale();
+      if (built.error) return { message: this.i18n.t(`till.err.${built.error}`, this.till.missingStylist()?.name ?? ''), step: built.error === 'customer_required' ? 3 : built.error === 'stylist_required' ? 2 : 4 };
+      const c = this.credit();
+      if (this.till.mode() !== 'cash' && c && (c.is_blocked || c.over_limit)) return { message: c.is_blocked ? this.i18n.t('till.err.blocked') : this.i18n.t('till.err.limit', tsh(c.credit_limit)), step: 3 };
+    }
+
+    return null;
+  }
+
   protected next(): void {
-    if (!this.canNext()) return;
+    const from = this.step();
+    const problem = this.problemIn(from);
+    if (problem) {
+      this.tried.set(true);
+      this.formError.set(problem.message);
+      this.step.set(problem.step);
+      return;
+    }
     this.formError.set('');
-    if (this.step() === 4) return this.review();
-    this.step.update((s) => Math.min(4, s + 1));
+    this.tried.set(false);
+    this.step.set(Math.min(5, from + 1));
   }
 
   protected back(): void {
@@ -589,24 +631,6 @@ export class TillPage implements OnInit, OnDestroy {
 
   protected closeWizard(): void {
     void this.router.navigateByUrl('/sales');
-  }
-
-  /** Step 4 -> 5: what is missing is said, and the person is taken to the step that needs it. */
-  private review(): void {
-    const built = this.till.buildSale();
-    if (built.error) {
-      this.tried.set(true);
-      const stylist = this.till.missingStylist();
-      this.formError.set(this.i18n.t(`till.err.${built.error}`, stylist?.name ?? ''));
-      this.step.set(built.error === 'customer_required' ? 3 : built.error === 'stylist_required' ? 2 : 4);
-      return;
-    }
-    const c = this.credit();
-    if (this.till.mode() !== 'cash' && c && (c.is_blocked || c.over_limit)) {
-      this.formError.set(c.is_blocked ? this.i18n.t('till.err.blocked') : this.i18n.t('till.err.limit', tsh(c.credit_limit)));
-      return;
-    }
-    this.step.set(5);
   }
 
   protected async charge(): Promise<void> {

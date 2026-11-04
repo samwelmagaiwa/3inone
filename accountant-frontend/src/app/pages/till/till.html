@@ -32,6 +32,13 @@
         <div class="search-wrap mt-2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="modal-input search-input" type="search" [ngModel]="query()" (ngModelChange)="setQuery($event)" (keydown.enter)="onEnter()" [placeholder]="i18n.t('till.search')" autocomplete="off" data-testid="till-search"></div>
         <p class="text-xs font-semibold text-slate-400 mt-2">{{ i18n.t('till.search.hint') }}</p>
+        @if (till.salon()) {
+          <div class="kind-tabs mt-2" role="tablist" data-testid="till-kind">
+            @for (k of kinds; track k.value) {
+              <button type="button" role="tab" class="pill-tab" [class.is-active]="fKind === k.value" [attr.aria-selected]="fKind === k.value" (click)="setKind(k.value)" [attr.data-testid]="'till-kind-' + (k.value || 'all')">{{ i18n.t(k.label) }}</button>
+            }
+          </div>
+        }
         <button type="button" class="filter-toggle mt-2" (click)="toggleFilters()" [attr.aria-expanded]="filtersOpen()" data-testid="till-filters-toggle">{{ i18n.t('till.filters') }}@if (filtered) { · {{ i18n.t('till.filters.on') }} }</button>
         @if (filtersOpen()) {
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2" data-testid="till-filters">
@@ -370,7 +377,7 @@
       @if (step() > 1) { <button type="button" class="bar-btn" (click)="back()" data-testid="till-back">{{ i18n.t('till.back') }}</button> }
       <p class="wz-total grow text-right" data-testid="till-running">{{ i18n.t('till.total') }}: <b>{{ tsh(till.totals().total) }}</b></p>
       @if (step() < 5) {
-        <button type="button" class="btn-primary big-btn" [disabled]="!canNext()" (click)="next()" data-testid="till-next">{{ i18n.t(step() === 4 ? 'till.review' : 'till.next') }}</button>
+        <button type="button" class="btn-primary big-btn" (click)="next()" data-testid="till-next">{{ i18n.t(step() === 4 ? 'till.review' : 'till.next') }}</button>
       }
     </div>
   </footer>
@@ -470,6 +477,7 @@
   .wz-dot.is-done b { color: #fff; background: #0f9d8a; border-color: transparent; }
   .wz-dot.is-current { color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); box-shadow: 0 10px 20px -12px rgba(26,47,110,.8); }
   .wz-dot.is-current b { color: #1a2f6e; border-color: transparent; }
+  .wizard-body .hidden { display: none !important; }
   .wizard-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 24px; overscroll-behavior: contain; }
   .wizard-body .panel { padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
   .wizard-foot { padding: 12px 24px 16px; border-top: 1px solid #e6ecfb; background: #fff; }
@@ -506,6 +514,8 @@
   .good { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; border: 1px solid #e6ecfb; border-radius: 14px; background: #fff; cursor: pointer; transition: all .2s; }
   .good:hover:not(:disabled) { border-color: #93b0fb; transform: translateY(-2px); box-shadow: 0 14px 26px -16px rgba(59,97,226,.6); }
   .good:active:not(:disabled) { transform: translateY(0); }
+  .kind-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .kind-tabs .pill-tab { padding: 8px 18px; font-size: 13px; font-weight: 800; }
   .good-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
   .good.is-out { opacity: .45; cursor: not-allowed; filter: grayscale(.6); }
   .avatar { display: inline-flex; flex: none; width: 42px; height: 42px; align-items: center; justify-content: center; border-radius: 13px; font-size: 17px; font-weight: 900; text-transform: uppercase; color: #2e4dbd; background: linear-gradient(145deg, #eaf0ff, #d6e2ff); }

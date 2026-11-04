@@ -84,10 +84,18 @@ describe('the till', () => {
       const { fixture, el } = await open();
 
       expect(text(byTestId(el, 'till-step-title')!)).toContain('1.');
-      expect((byTestId(el, 'till-next') as HTMLButtonElement).disabled).toBe(true);
+      byTestId(el, 'till-next')!.click(); // nothing to sell yet: it says so and stays on step 1
+      await settle(fixture);
+      expect(text(byTestId(el, 'till-error')!)).toContain('Add at least one item');
+      expect(text(byTestId(el, 'till-step-title')!)).toContain('1.');
       byTestId(el, 'good-1')!.click();
       await settle(fixture);
-      expect((byTestId(el, 'till-next') as HTMLButtonElement).disabled).toBe(false);
+      byTestId(el, 'till-next')!.click();
+      await settle(fixture);
+      expect(byTestId(el, 'till-error')).toBeNull();
+      expect(text(byTestId(el, 'till-step-title')!)).toContain('2.');
+      byTestId(el, 'till-back')!.click();
+      await settle(fixture);
       expect(text(byTestId(el, 'till-running')!)).toContain('TSH 1,000');
     });
 
@@ -166,6 +174,15 @@ describe('the till', () => {
 
       expect(h.http.expectOne((r) => r.url.endsWith('/inventory/sales') && r.method === 'POST').request.body).toMatchObject({ total: 1000 });
     });
+  });
+
+  it('a price of zero is stopped at step 2, and a salon has All / Services / Goods tabs in plain sight', async () => {
+    const { h, fixture, el } = await open({}, [soda], true);
+    expect(byTestId(el, 'till-kind-service')).not.toBeNull();
+    byTestId(el, 'till-kind-service')!.click();
+    await settle(fixture);
+    expect(h.http.expectOne((r) => r.url.endsWith('/inventory/products')).request.params.get('is_service')).toBe('1');
+    h.http.match((r) => r.url.endsWith('/inventory/products')).forEach((r) => r.flush({ data: [], meta: { last_page: 1 } }));
   });
 
   it('saves a cash sale, asks first, and shows the receipt choices', async () => {
