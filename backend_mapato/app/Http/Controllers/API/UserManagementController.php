@@ -527,6 +527,12 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             ], 403);
         }
 
+        $losesAccess = (array_key_exists('is_active', $data) && !$data['is_active'])
+            || (array_key_exists('role', $data) && $data['role'] !== 'super_admin');
+        if ($losesAccess && ($blocked = $this->superAdminProtection($auth, $user))) {
+            return $blocked;
+        }
+
         $before = ['is_active' => $user->is_active, 'role' => $user->role, 'name' => $user->name, 'permissions' => $user->permissions];
 
         $touchesServices = array_key_exists('service_types', $data) || array_key_exists('service_type', $data);
@@ -582,6 +588,22 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         ]);
     }
 
+    /**
+     * Nobody ends their own super admin access (delete, switch off, take the role away). Every change a super admin makes
+     * is made by an active super admin, so while that rule holds the platform always keeps at least one.
+     */
+    private function superAdminProtection(User $auth, User $target): ?\Illuminate\Http\JsonResponse
+    {
+        if (!$target->isSuperAdmin() || !$auth->is($target)) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Huwezi kufuta, kuzima au kushusha akaunti yako mwenyewe. / You cannot delete, switch off or demote your own account.',
+        ], 422);
+    }
+
     // Delete user
     #[OA\Delete(
         path: '/admin/users/{id}',
@@ -608,6 +630,10 @@ responses: [new OA\Response(response: 200, description: 'Success')],
                     'message' => 'Only a super admin can delete admin accounts.',
                 ], 403);
             }
+        }
+
+        if ($blocked = $this->superAdminProtection($auth, $user)) {
+            return $blocked;
         }
 
         $summary = "{$auth->name} deleted {$user->role} account \"{$user->name}\" ({$user->email})";
