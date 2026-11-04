@@ -1,12 +1,34 @@
 <!-- The till -->
-<div class="animate-fade-in-up">
+<div class="wizard-backdrop animate-fade-in-up">
+ <div class="wizard-card" role="dialog" aria-modal="true" [attr.aria-label]="i18n.t('till.title')" data-testid="till-wizard">
 
-  <div class="cols grid grid-cols-1 xl:grid-cols-12 gap-3">
+  <header class="wizard-head">
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <p class="wizard-eyebrow">{{ i18n.t('till.title') }}</p>
+        <h2 class="wizard-title" data-testid="till-step-title">{{ stepTitle(step()) }}</h2>
+      </div>
+      <button type="button" class="wizard-close" (click)="closeWizard()" [attr.aria-label]="i18n.t('common.close')" data-testid="till-close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <ol class="wizard-steps" data-testid="till-steps">
+      @for (n of steps; track n) {
+        <li>
+          <button type="button" class="wz-dot" [class.is-current]="step() === n" [class.is-done]="step() > n" [disabled]="n > step()" (click)="goStep(n)" [attr.aria-current]="step() === n ? 'step' : null" [attr.data-testid]="'till-step-' + n">
+            <b>{{ step() > n ? '✓' : n }}</b><span>{{ stepName(n) }}</span>
+          </button>
+        </li>
+      }
+    </ol>
+  </header>
+
+  <div class="wizard-body">
+  <div class="cols grid grid-cols-1 gap-3">
 
     <!-- 1. The goods -->
-    <section class="panel left xl:col-span-4">
+    <section class="panel left" [class.hidden]="step() !== 1">
       <div class="left-head">
-        <p class="step"><b>1</b>{{ i18n.t('till.step1') }}</p>
         <div class="search-wrap mt-2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="modal-input search-input" type="search" [ngModel]="query()" (ngModelChange)="setQuery($event)" (keydown.enter)="onEnter()" [placeholder]="i18n.t('till.search')" autocomplete="off" data-testid="till-search"></div>
         <p class="text-xs font-semibold text-slate-400 mt-2">{{ i18n.t('till.search.hint') }}</p>
@@ -57,10 +79,10 @@
     </section>
 
     <!-- 2. The cart, the customer and the payment -->
-    <section class="panel right xl:col-span-8 space-y-3" [class.attempted]="tried()">
-      <div>
+    <section class="panel right space-y-3" [class.hidden]="step() === 1" [class.attempted]="tried()">
+      <div [class.hidden]="step() !== 2">
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <p class="step"><b>2</b>{{ i18n.t('till.step2') }}@if (till.lines().length) { <span class="count-chip">{{ till.lines().length }}</span> }</p>
+          <p class="step">@if (till.lines().length) { <span class="count-chip">{{ till.lines().length }}</span> }</p>
           <div class="flex flex-wrap items-center gap-2">
             <button type="button" class="bar-btn" (click)="openParked()" data-testid="till-parked">{{ i18n.t('till.parked.open') }}</button>
             <button type="button" class="bar-btn" [disabled]="!till.lines().length" (click)="park()" data-testid="till-park">{{ i18n.t('till.park') }}</button>
@@ -161,8 +183,8 @@
       </div>
 
       <!-- Customer -->
-      <div id="till-customer-section" class="cust" [class.is-needed]="needsCustomer()">
-        <p class="step"><b>3</b>{{ i18n.t('till.step3') }}@if (needsCustomer()) { <span class="req-chip" data-testid="till-customer-required">{{ i18n.t('till.customer.required') }}</span> }</p>
+      <div id="till-customer-section" class="cust" [class.hidden]="step() !== 3" [class.is-needed]="needsCustomer()">
+        <p class="step">@if (needsCustomer()) { <span class="req-chip" data-testid="till-customer-required">{{ i18n.t('till.customer.required') }}</span> }</p>
         @if (till.customer(); as c) {
           <div class="customer-chip mt-2" data-testid="till-customer">
             <span class="avatar round">{{ c.name.charAt(0) }}</span>
@@ -205,7 +227,7 @@
 
       <!-- Salon: discount, voucher, points -->
       @if (till.salon() && till.lines().length) {
-        <div>
+        <div [class.hidden]="step() !== 3">
           <p class="step"><b>★</b>{{ i18n.t('till.perks') }}</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
             <div><label class="modal-label" for="disc">{{ i18n.t('till.discount') }}</label><input appMoney id="disc" class="modal-input" [placeholder]="i18n.t('ph.amount')" inputmode="numeric" [ngModel]="discountText" (ngModelChange)="setDiscount($event)" autocomplete="off" data-testid="till-discount"></div>
@@ -223,8 +245,7 @@
       }
 
       <!-- Payment -->
-      <div id="till-pay-section">
-        <p class="step"><b>4</b>{{ i18n.t('till.step4') }}</p>
+      <div id="till-pay-section" [class.hidden]="step() !== 4">
         <div class="mode-grid mt-2">
           @for (m of ['cash', 'partial', 'debt']; track m) {
             <button type="button" class="pill-tab big-tab mode-tab" [class.is-active]="till.mode() === m" (click)="setMode($any(m))" [attr.data-testid]="'mode-' + m">{{ i18n.t('till.mode.' + m) }}</button>
@@ -287,8 +308,46 @@
         }
       </div>
 
-      <!-- Totals, the message and the button: always in view at the bottom -->
-      <div class="checkout space-y-2">
+      <!-- 5. Everything that was filled in, to read through before saving -->
+      <div class="checkout space-y-3" [class.hidden]="step() !== 5">
+      <div class="preview" data-testid="till-preview">
+        <p class="pv-title">{{ i18n.t('till.pv.items') }}</p>
+        @for (l of till.lines(); track l.key) {
+          <div class="pv-line" [attr.data-testid]="'pv-line-' + l.productId">
+            <div class="min-w-0">
+              <p class="font-black text-slate-900">{{ l.name }}@if (l.optionLabel) { <span class="text-slate-400 font-bold"> · {{ l.optionLabel }}</span> }</p>
+              <p class="text-xs font-semibold text-slate-500">{{ l.qty }} × {{ tsh(l.unitPrice) }}@if (l.unitName) { / {{ l.unitName }} }@if (l.staffName) { · {{ i18n.t('till.pv.by', l.staffName) }} }</p>
+            </div>
+            <p class="font-black text-slate-900 shrink-0">{{ tsh(l.qty * l.unitPrice) }}</p>
+          </div>
+        }
+        <div class="pv-grid">
+          <div class="pv-box" data-testid="pv-customer">
+            <p class="pv-title">{{ i18n.t('till.pv.customer') }}</p>
+            <p class="font-black text-slate-900">{{ till.customer()?.name ?? (till.manualName().trim() || i18n.t('sales.walkin')) }}</p>
+            @if (till.customer()?.phone) { <p class="text-xs font-semibold text-slate-500">{{ till.customer()?.phone }}</p> }
+          </div>
+          <div class="pv-box" data-testid="pv-payment">
+            <p class="pv-title">{{ i18n.t('till.pv.payment') }}</p>
+            <p class="font-black text-slate-900">{{ i18n.t('till.mode.' + till.mode()) }}</p>
+            @if (till.mode() === 'cash') {
+              <p class="text-xs font-semibold text-slate-500">{{ channelName(till.channel()) }}@if (till.channel() !== 'cash' && till.reference().trim()) { · {{ i18n.t('till.ref') }}: {{ till.reference().trim() }} }</p>
+            } @else {
+              @if (till.mode() === 'partial') {
+                <p class="text-xs font-semibold text-slate-500">{{ i18n.t('till.paidnow') }}: {{ tsh(till.paid()) }} · {{ channelName(till.partialChannel()) }}@if (till.partialChannel() !== 'cash' && till.partialReference().trim()) { · {{ i18n.t('till.ref') }}: {{ till.partialReference().trim() }} }</p>
+              }
+              <p class="text-xs font-semibold text-slate-500">{{ i18n.t('till.pv.due', till.dueDays()) }}</p>
+            }
+          </div>
+          @if (till.totals().discount > 0) {
+            <div class="pv-box" data-testid="pv-discount">
+              <p class="pv-title">{{ i18n.t('till.discount') }}</p>
+              <p class="font-black text-slate-900">− {{ tsh(till.totals().discount) }}</p>
+              @if (till.discountReason().trim()) { <p class="text-xs font-semibold text-slate-500">{{ till.discountReason().trim() }}</p> }
+            </div>
+          }
+        </div>
+      </div>
       <div class="totals">
         <div class="row"><span>{{ i18n.t('till.sub') }}</span><span>{{ tsh(till.totals().subtotal) }}</span></div>
         @if (till.totals().discount > 0) { <div class="row"><span>{{ i18n.t('till.discount') }}</span><span>− {{ tsh(till.totals().discount) }}</span></div> }
@@ -297,13 +356,25 @@
         @if (till.mode() !== 'cash') { <div class="row"><span>{{ i18n.t('till.owing') }}</span><span data-testid="till-owing">{{ tsh(balanceDue()) }}</span></div> }
       </div>
 
-      @if (formError()) { <p class="form-error" role="alert" data-testid="till-error">{{ formError() }}</p> }
       <button type="button" class="btn-primary charge-btn w-full big-btn justify-center" [disabled]="saving() || !till.lines().length" (click)="charge()" data-testid="till-charge">
         {{ saving() ? i18n.t('common.saving') : i18n.t('till.charge', tsh(till.totals().total)) }}
       </button>
       </div>
     </section>
   </div>
+  </div>
+
+  <footer class="wizard-foot">
+    @if (formError()) { <p class="form-error" role="alert" data-testid="till-error">{{ formError() }}</p> }
+    <div class="flex items-center gap-3">
+      @if (step() > 1) { <button type="button" class="bar-btn" (click)="back()" data-testid="till-back">{{ i18n.t('till.back') }}</button> }
+      <p class="wz-total grow text-right" data-testid="till-running">{{ i18n.t('till.total') }}: <b>{{ tsh(till.totals().total) }}</b></p>
+      @if (step() < 5) {
+        <button type="button" class="btn-primary big-btn" [disabled]="!canNext()" (click)="next()" data-testid="till-next">{{ i18n.t(step() === 4 ? 'till.review' : 'till.next') }}</button>
+      }
+    </div>
+  </footer>
+ </div>
 </div>
 
 <!-- A product with several prices -->
@@ -381,13 +452,35 @@
   .bar-btn:hover:not(:disabled) { background: #f3f5ff; border-color: #93b0fb; }
   .bar-btn:disabled { opacity: .45; cursor: not-allowed; }
 
-  .cols { margin-top: -6px; }
-  @media (min-width: 1280px) {
-    .cols { height: calc(100vh - 14rem); min-height: 420px; grid-template-rows: minmax(0, 1fr); }
-    .panel.left, .panel.right { height: 100%; overflow-y: auto; overscroll-behavior: contain; }
-    .panel.left { display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
-    .panel.left .goods-list { flex: 1 1 auto; min-height: 0; max-height: none; }
-  }
+  /* The sale is made in a popup card, one step at a time (the steps share the page's panels; the others are hidden) */
+  .wizard-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(15, 23, 42, .55); backdrop-filter: blur(6px); }
+  .wizard-card { display: flex; flex-direction: column; width: 100%; max-width: 1040px; max-height: calc(100vh - 40px); background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 30px 70px -20px rgba(15, 23, 42, .45), 0 0 0 1px rgba(15, 23, 42, .08); }
+  .wizard-head { padding: 18px 24px 14px; border-bottom: 1px solid #e6ecfb; background: linear-gradient(180deg, #f5f8ff, #fff); }
+  .wizard-eyebrow { font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; color: #7d8fc4; }
+  .wizard-title { font-size: 20px; font-weight: 900; color: #1a2f6e; letter-spacing: -.01em; }
+  .wizard-close { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 10px; color: #475a8f; background: #fff; border: 1px solid #dbe4ff; cursor: pointer; }
+  .wizard-close:hover { background: #f3f5ff; }
+  .wizard-steps { display: flex; gap: 6px; margin-top: 14px; padding: 0; list-style: none; overflow-x: auto; }
+  .wizard-steps li { flex: 1 1 0; min-width: 0; }
+  .wz-dot { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border-radius: 12px; font-size: 12px; font-weight: 800; color: #7d8fc4; background: #f1f5ff; border: 1px solid transparent; cursor: pointer; text-align: left; }
+  .wz-dot b { display: inline-flex; flex: none; width: 24px; height: 24px; align-items: center; justify-content: center; border-radius: 50%; font-size: 12px; color: #475a8f; background: #fff; border: 1px solid #dbe4ff; }
+  .wz-dot span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wz-dot:disabled { cursor: default; opacity: .7; }
+  .wz-dot.is-done { color: #0f766e; background: #e6f7f4; }
+  .wz-dot.is-done b { color: #fff; background: #0f9d8a; border-color: transparent; }
+  .wz-dot.is-current { color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); box-shadow: 0 10px 20px -12px rgba(26,47,110,.8); }
+  .wz-dot.is-current b { color: #1a2f6e; border-color: transparent; }
+  .wizard-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 24px; overscroll-behavior: contain; }
+  .wizard-body .panel { padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+  .wizard-foot { padding: 12px 24px 16px; border-top: 1px solid #e6ecfb; background: #fff; }
+  .wizard-foot .form-error { margin-bottom: 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c; font-size: 13px; font-weight: 800; }
+  .wz-total { font-size: 13px; font-weight: 700; color: #475a8f; }
+  .wz-total b { font-size: 18px; font-weight: 900; color: #1a2f6e; }
+  .preview { border: 1px solid #e6ecfb; border-radius: 16px; padding: 14px 16px; background: #fbfcff; }
+  .pv-title { font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: #7d8fc4; margin-bottom: 4px; }
+  .pv-line { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed #dbe4ff; }
+  .pv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 12px; }
+  .pv-box { padding: 10px 12px; border-radius: 12px; background: #fff; border: 1px solid #e6ecfb; }
   .panel.left { display: flex; flex-direction: column; gap: 12px; }
   .panel { background: #fff; border: 1px solid #e6ecfb; border-radius: 22px; padding: 16px; box-shadow: 0 1px 2px rgba(26,47,110,.04), 0 18px 40px -26px rgba(26,47,110,.35); }
   .step { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; color: #1a2f6e; }
@@ -457,7 +550,6 @@
   .chip.is-on { color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); border-color: transparent; }
   .chip.is-on .chip-ic { color: #1a2f6e; background: #fff; }
   .modal-input.is-bad { border-color: #f87171; background: #fff7f7; }
-  .checkout { position: sticky; bottom: -16px; z-index: 5; margin: 0 -16px -16px; padding: 12px 16px 16px; background: linear-gradient(180deg, rgba(255,255,255,0), #fff 18px); }
   .customer-chip { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: #f5f8ff; border: 1px solid #e0e8fb; }
   .hits { position: absolute; z-index: 20; left: 0; right: 0; top: 100%; margin-top: 6px; background: #fff; border: 1px solid #dbe4ff; border-radius: 14px; box-shadow: 0 18px 36px rgba(26,47,110,.18); overflow: hidden; }
   .hits button { display: block; width: 100%; text-align: left; padding: 11px 14px; cursor: pointer; }

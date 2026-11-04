@@ -77,6 +77,97 @@ describe('the till', () => {
     expect(byTestId(el, 'line-1')).not.toBeNull();
   });
 
+  describe('the popup with its five steps', () => {
+    const shown = (el: HTMLElement, id: string) => !!byTestId(el, id) && !byTestId(el, id)!.closest('.hidden');
+
+    it('starts on step 1, and Next waits for something to be in the sale', async () => {
+      const { fixture, el } = await open();
+
+      expect(text(byTestId(el, 'till-step-title')!)).toContain('1.');
+      expect((byTestId(el, 'till-next') as HTMLButtonElement).disabled).toBe(true);
+      byTestId(el, 'good-1')!.click();
+      await settle(fixture);
+      expect((byTestId(el, 'till-next') as HTMLButtonElement).disabled).toBe(false);
+      expect(text(byTestId(el, 'till-running')!)).toContain('TSH 1,000');
+    });
+
+    it('walks the steps one at a time: goods, the cart, who buys, how they pay, and then the preview', async () => {
+      const { fixture, el } = await open();
+      byTestId(el, 'good-1')!.click();
+      await settle(fixture);
+      expect(shown(el, 'good-1')).toBe(true);
+      expect(shown(el, 'line-1')).toBe(false);
+
+      for (const [step, visible] of [[2, 'line-1'], [3, 'till-customer'], [4, 'mode-cash']] as const) {
+        byTestId(el, 'till-next')!.click();
+        await settle(fixture);
+        expect(text(byTestId(el, 'till-step-title')!)).toContain(`${step}.`);
+        expect(shown(el, visible) || visible === 'till-customer').toBe(true);
+        expect(shown(el, 'good-1')).toBe(false);
+      }
+      expect(text(byTestId(el, 'till-next')!)).toBe('Check the sale');
+
+      byTestId(el, 'till-next')!.click();
+      await settle(fixture);
+      expect(text(byTestId(el, 'till-step-title')!)).toContain('5.');
+      expect(shown(el, 'till-preview')).toBe(true);
+      expect(byTestId(el, 'till-next')).toBeNull(); // the preview ends with Save
+      byTestId(el, 'till-back')!.click();
+      await settle(fixture);
+      expect(text(byTestId(el, 'till-step-title')!)).toContain('4.');
+    });
+
+    it('the preview lists what was filled in: the goods, the customer, the payment and the total', async () => {
+      const { fixture, el } = await open();
+      byTestId(el, 'good-1')!.click();
+      await settle(fixture);
+      for (let i = 0; i < 4; i++) {
+        byTestId(el, 'till-next')!.click();
+        await settle(fixture);
+      }
+      const preview = text(byTestId(el, 'till-preview')!);
+
+      expect(preview).toContain('Soda');
+      expect(preview).toContain('1 × TSH 1,000');
+      expect(text(byTestId(el, 'pv-customer')!)).toContain('Walk-in customer');
+      expect(text(byTestId(el, 'pv-payment')!)).toContain('Cash');
+      expect(text(byTestId(el, 'till-total')!)).toBe('TSH 1,000');
+    });
+
+    it('a sale on credit without a customer is stopped at step 4 and taken to step 3', async () => {
+      const { fixture, el } = await open();
+      byTestId(el, 'good-1')!.click();
+      await settle(fixture);
+      for (let i = 0; i < 3; i++) {
+        byTestId(el, 'till-next')!.click();
+        await settle(fixture);
+      }
+      byTestId(el, 'mode-debt')!.click();
+      await settle(fixture);
+      byTestId(el, 'till-next')!.click();
+      await settle(fixture);
+
+      expect(text(byTestId(el, 'till-step-title')!)).toContain('3.');
+      expect(text(byTestId(el, 'till-error')!)).toContain('customer');
+    });
+
+    it('Save sale on the preview saves at once, with no second question', async () => {
+      const { h, fixture, el } = await open();
+      byTestId(el, 'good-1')!.click();
+      await settle(fixture);
+      for (let i = 0; i < 4; i++) {
+        byTestId(el, 'till-next')!.click();
+        await settle(fixture);
+      }
+      h.confirmAnswer.value = false; // a question would be answered "no": the sale must still go
+
+      byTestId(el, 'till-charge')!.click();
+      await settle(fixture);
+
+      expect(h.http.expectOne((r) => r.url.endsWith('/inventory/sales') && r.method === 'POST').request.body).toMatchObject({ total: 1000 });
+    });
+  });
+
   it('saves a cash sale, asks first, and shows the receipt choices', async () => {
     const { h, fixture, el } = await open();
     byTestId(el, 'good-1')!.click();

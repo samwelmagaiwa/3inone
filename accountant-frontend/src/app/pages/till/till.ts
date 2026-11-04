@@ -68,6 +68,19 @@ export class TillPage implements OnInit, OnDestroy {
   /** True once Save was pressed and something was missing: the empty required fields are then outlined in red. */
   protected readonly tried = signal(false);
 
+  // ---- the steps of the popup: 1 find the goods, 2 what is bought, 3 who buys, 4 how they pay, 5 check everything and save
+  protected readonly steps = [1, 2, 3, 4, 5];
+  protected readonly step = signal(1);
+  protected readonly canNext = computed(() => this.till.lines().length > 0);
+
+  protected stepTitle(n: number): string {
+    return this.i18n.t(['till.step1', 'till.step2', 'till.step3', 'till.step4', 'till.step5'][n - 1]);
+  }
+
+  protected stepName(n: number): string {
+    return this.i18n.t(['till.stepname1', 'till.stepname2', 'till.stepname3', 'till.stepname4', 'till.stepname5'][n - 1]);
+  }
+
   // ---- salon
   protected readonly staff = signal<StaffMember[]>([]);
   protected readonly packages = signal<ClientPackage[]>([]);
@@ -554,6 +567,48 @@ export class TillPage implements OnInit, OnDestroy {
     if (yes) this.till.clear();
   }
 
+  protected next(): void {
+    if (!this.canNext()) return;
+    this.formError.set('');
+    if (this.step() === 4) return this.review();
+    this.step.update((s) => Math.min(4, s + 1));
+  }
+
+  protected back(): void {
+    this.formError.set('');
+    this.step.update((s) => Math.max(1, s - 1));
+  }
+
+  /** Only steps already passed can be gone back to; the way forward is the Next button (it checks what was filled in). */
+  protected goStep(n: number): void {
+    if (n < this.step()) {
+      this.formError.set('');
+      this.step.set(n);
+    }
+  }
+
+  protected closeWizard(): void {
+    void this.router.navigateByUrl('/sales');
+  }
+
+  /** Step 4 -> 5: what is missing is said, and the person is taken to the step that needs it. */
+  private review(): void {
+    const built = this.till.buildSale();
+    if (built.error) {
+      this.tried.set(true);
+      const stylist = this.till.missingStylist();
+      this.formError.set(this.i18n.t(`till.err.${built.error}`, stylist?.name ?? ''));
+      this.step.set(built.error === 'customer_required' ? 3 : built.error === 'stylist_required' ? 2 : 4);
+      return;
+    }
+    const c = this.credit();
+    if (this.till.mode() !== 'cash' && c && (c.is_blocked || c.over_limit)) {
+      this.formError.set(c.is_blocked ? this.i18n.t('till.err.blocked') : this.i18n.t('till.err.limit', tsh(c.credit_limit)));
+      return;
+    }
+    this.step.set(5);
+  }
+
   protected async charge(): Promise<void> {
     const built = this.till.buildSale();
     if (built.error) {
@@ -568,7 +623,8 @@ export class TillPage implements OnInit, OnDestroy {
       this.formError.set(c.is_blocked ? this.i18n.t('till.err.blocked') : this.i18n.t('till.err.limit', tsh(c.credit_limit)));
       return;
     }
-    const yes = await this.confirm.ask({
+    // The preview (step 5) is the check: no second question there.
+    const yes = this.step() === 5 || await this.confirm.ask({
       title: this.i18n.t('till.confirm.title'),
       message: this.i18n.t('till.confirm.message', tsh(this.till.totals().total), this.till.customer()?.name ?? (this.till.manualName().trim() || this.i18n.t('sales.walkin'))),
       confirmLabel: this.i18n.t('till.confirm.yes'),
@@ -599,6 +655,7 @@ export class TillPage implements OnInit, OnDestroy {
 
   /** "Choose the customer": go to step 3 and put the cursor in the search box. */
   protected goToCustomer(): void {
+    this.step.set(3);
     this.custTab.set('find');
     this.reveal('till-customer-section');
     setTimeout(() => (document.querySelector('[data-testid=till-customer-search]') as HTMLInputElement | null)?.focus(), 150);
@@ -617,6 +674,7 @@ export class TillPage implements OnInit, OnDestroy {
 
   protected newSale(): void {
     this.done.set(null);
+    this.step.set(1);
   }
 
   protected seeSales(): void {

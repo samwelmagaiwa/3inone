@@ -68,14 +68,19 @@ describe('sales by branch and by person', () => {
   it('can be read by person instead of by branch: each person with the branches they sold in', async () => {
     const { fixture, el } = await open(true);
 
-    byTestId(el, 'bsl-by-staff')!.click();
+    const pick = (v: string) => {
+      const box = byTestId(el, 'bsl-group') as HTMLSelectElement;
+      box.value = v;
+      box.dispatchEvent(new Event('change'));
+    };
+    pick('staff');
     await settle(fixture);
 
     expect(el.querySelectorAll('table.grid-table').length).toBe(1);
     expect(text(byTestId(el, 'bsl-staff-u1')!)).toContain('Asha');
     expect(text(byTestId(el, 'bsl-staff-u1-b1')!)).toContain('Kariakoo');
     expect(text(el.querySelector('table.grid-table th .grid-sort') as HTMLElement)).toContain('Person');
-    byTestId(el, 'bsl-by-branch')!.click();
+    pick('branch');
     await settle(fixture);
     expect(byTestId(el, 'bsl-branch-b1')).not.toBeNull();
   });
