@@ -101,7 +101,7 @@ export class DashboardPage implements OnInit, AfterViewInit, OnDestroy {
       this.lastUpdated.set(new Date().toLocaleTimeString(this.i18n.locale(), { hour: '2-digit', minute: '2-digit' }));
       this.motion.tick.update((n) => n + 1);
       this.loading.set(false);
-      if (!r.is_future) void this.loadAdvice(false);
+      if (!r.is_future && this.ownerFigures(r)) void this.loadAdvice(false);
     } catch (err) {
       this.error.set(offline(err) ? this.i18n.t('error.offline') : (serverMessage(err) ?? this.i18n.t('error.generic')));
       this.loading.set(false);
@@ -137,6 +137,11 @@ export class DashboardPage implements OnInit, AfterViewInit, OnDestroy {
     return whole <= 0 ? 0 : Math.max(2, Math.min(100, (part / whole) * 100));
   }
 
+  /** Profit, the target, capital and advice are the owner's: the server leaves them out for anyone else. */
+  protected ownerFigures(r: MonthlyReport): boolean {
+    return r.owner_figures !== false;
+  }
+
   protected targetBar(r: MonthlyReport): number {
     return Math.max(0, Math.min(100, r.target?.progress_percent ?? 0));
   }
@@ -160,12 +165,15 @@ export class DashboardPage implements OnInit, AfterViewInit, OnDestroy {
     const r = this.report();
     if (!r) return [];
     const c = r.compare;
-    return [
+    const all = [
       { label: this.i18n.t('kpi.sales'), value: tsh(c.sales.now), cmp: c.sales, tone: 'primary', icon: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z', hint: this.i18n.t('kpi.sales.hint', r.figures.sales_count) },
       { label: this.i18n.t('kpi.gross'), value: tsh(c.gross_profit.now), cmp: c.gross_profit, tone: 'success', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6', hint: r.figures.margin_percent === null ? this.i18n.t('kpi.gross.hint') : this.i18n.t('kpi.margin', r.figures.margin_percent) },
       { label: this.i18n.t('kpi.expenses'), value: tsh(c.expenses.now), cmp: c.expenses, tone: 'warning', icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z', hint: this.i18n.t('kpi.expenses.hint') },
       { label: this.i18n.t('kpi.net'), value: tsh(c.net_profit.now), cmp: c.net_profit, tone: c.net_profit.now < 0 ? 'danger' : 'purple', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z', hint: this.i18n.t('kpi.net.hint') },
     ];
+
+    // Without the owner's rights only what was sold and spent is shown: no profit cards.
+    return r.owner_figures === false ? all.filter((_, i) => i === 0 || i === 2) : all;
   });
 
   protected adviceIcon(level: string): string {

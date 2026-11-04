@@ -49,11 +49,14 @@ class _MonthSummaryCardState extends State<MonthSummaryCard> {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     final Map<String, dynamic> f = _m(r['figures']);
     final Map<String, dynamic> o = _m(r['overall']);
+    // Profit is the owner's: without those rights the card shows the month's sales and how they compare.
+    final bool owner = r['owner_figures'] != false;
+    final num shown = owner ? _n(f['net_profit']) : _n(f['sales']);
     final String dir = '${o['direction']}';
     final num? pct = o['percent'] is num ? o['percent'] as num : null;
     final Color color = dir == 'up' ? ThemeConstants.successGreen : (dir == 'down' ? ThemeConstants.errorRed : Colors.blueGrey);
     final IconData icon = dir == 'up' ? Icons.trending_up_rounded : (dir == 'down' ? Icons.trending_down_rounded : Icons.trending_flat_rounded);
-    final Map<String, dynamic>? t = r['target'] is Map ? _m(r['target']) : null;
+    final Map<String, dynamic>? t = owner && r['target'] is Map ? _m(r['target']) : null;
     final String pctText = pct == null ? '' : '${pct > 0 ? '+' : '-'}${pct.abs().toStringAsFixed(pct.abs() >= 10 ? 0 : 1)}%';
 
     return Card(
@@ -71,7 +74,7 @@ class _MonthSummaryCardState extends State<MonthSummaryCard> {
             ]),
             const SizedBox(height: 4),
             Row(children: <Widget>[
-              Expanded(child: Text(tsh(_n(f['net_profit'])), key: const Key('month_profit'), style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: _n(f['net_profit']) < 0 ? ThemeConstants.errorText : Colors.white))),
+              Expanded(child: Text(tsh(shown), key: const Key('month_profit'), style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: shown < 0 ? ThemeConstants.errorText : Colors.white))),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(color: color.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(14)),
@@ -82,7 +85,7 @@ class _MonthSummaryCardState extends State<MonthSummaryCard> {
                 ]),
               ),
             ]),
-            Text(sw ? 'Faida ya mwezi huu · ${dir == 'up' ? 'mbele ya' : dir == 'down' ? 'nyuma ya' : 'sawa na'} mwezi uliopita' : 'Profit this month · ${dir == 'up' ? 'ahead of' : dir == 'down' ? 'behind' : 'level with'} last month', style: kMoneyCaption),
+            Text(sw ? '${owner ? 'Faida' : 'Mauzo'} ya mwezi huu · ${dir == 'up' ? 'mbele ya' : dir == 'down' ? 'nyuma ya' : 'sawa na'} mwezi uliopita' : '${owner ? 'Profit' : 'Sales'} this month · ${dir == 'up' ? 'ahead of' : dir == 'down' ? 'behind' : 'level with'} last month', style: kMoneyCaption),
             if (t != null) ...<Widget>[
               const SizedBox(height: 10),
               ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(key: const Key('month_target_bar'), value: (_n(t['progress_percent']) / 100).clamp(0.0, 1.0).toDouble(), minHeight: 7, backgroundColor: Colors.white12, valueColor: AlwaysStoppedAnimation<Color>('${t['status']}' == 'behind' || '${t['status']}' == 'missed' ? ThemeConstants.errorRed : ThemeConstants.successGreen))),

@@ -94,7 +94,9 @@ export class LoginPage {
       const month = monthKey(new Date());
       const r = await firstValueFrom(this.api.monthlyReport(month));
       if (r.is_future) return false;
-      const lines = [this.i18n.t('headline.profit', tsh(r.compare.net_profit.now), tsh(r.compare.net_profit.before)) + (r.previous.like_for_like ? ` · ${this.i18n.t('headline.samedays')}` : '')];
+      // Profit is the owner's: an accountant is told how the sales compare instead.
+      const ownerView = r.owner_figures !== false;
+      const lines = [(ownerView ? this.i18n.t('headline.profit', tsh(r.compare.net_profit.now), tsh(r.compare.net_profit.before)) : this.i18n.t('headline.sales', tsh(r.compare.sales.now), tsh(r.compare.sales.before))) + (r.previous.like_for_like ? ` · ${this.i18n.t('headline.samedays')}` : '')];
       if (r.is_current) lines.push(this.i18n.t('headline.inprogress', r.days_elapsed, r.days_in_month));
       this.brief.set({ month: monthName(month, this.i18n.locale()), title: headlineText(r, this.i18n), lines });
 

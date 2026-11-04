@@ -63,6 +63,33 @@ describe('dashboard (this month)', () => {
     expect(cards).toContain('Personal spending (not taken off the profit): TSH 7,000');
   });
 
+  it('for someone who is not the owner, profit, the target, what the business is worth and advice are not shown', async () => {
+    const h = configure({});
+    const fixture = TestBed.createComponent(DashboardPage);
+    fixture.detectChanges();
+    const month = monthKey(new Date());
+    h.http.expectOne((r) => r.url.endsWith('/monthly-report')).flush({
+      data: report(month, {
+        owner_figures: false, target: null, position: null, capital_change: null,
+        figures: { ...report(month).figures, gross_profit: 0, net_profit: 0, cost_of_goods: 0, margin_percent: null },
+      }),
+    });
+    await settle(fixture);
+    h.http.expectNone((r) => r.url.endsWith('/advice')); // no advice is asked for
+    const el = fixture.nativeElement as HTMLElement;
+    const all = text(el);
+
+    expect(all).toContain('TSH 300,000'); // what was sold
+    expect(all).toContain('TSH 30,000'); // what was spent
+    expect(all).not.toContain('Gross profit');
+    expect(all).not.toContain('Net profit');
+    expect(all).not.toContain('profit target');
+    expect(all).not.toContain('Where the business stands');
+    expect(all).not.toContain('Stock (at cost)');
+    expect(byTestId(el, 'target')).toBeNull();
+    expect(byTestId(el, 'advice-source')).toBeNull();
+  });
+
   it('names the products and the people behind the numbers', async () => {
     const { el } = await open();
     const all = text(el);

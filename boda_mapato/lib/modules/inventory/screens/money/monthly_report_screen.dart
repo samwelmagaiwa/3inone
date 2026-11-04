@@ -101,7 +101,8 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
         _r = r;
         _loading = false;
       });
-      _loadAdvice();
+      // Advice is written from the profit, so it is the owner's: the server refuses it to anyone else.
+      if (r['owner_figures'] != false) _loadAdvice();
     } on Exception catch (e) {
       if (!mounted) return;
       setState(() {
@@ -183,6 +184,8 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     final Map<String, dynamic> cmp = _m(_r['compare']);
     final Map<String, dynamic> pos = _r['position'] is Map ? _m(_r['position']) : <String, dynamic>{};
     final bool hasPos = _r['position'] is Map;
+    // Profit, the target, what the business is worth and advice are the owner's: the server leaves them out for anyone else.
+    final bool owner = _r['owner_figures'] != false;
     final bool future = _r['is_future'] == true;
     final bool current = _r['is_current'] == true;
     final List<Map<String, dynamic>> cats = _list(f['expenses_by_category']);
@@ -198,32 +201,41 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
 
     final List<Widget> sections = <Widget>[
       if (!future) _headline(sw, prevMonth),
-      if (_targetCard(sw) case final Widget target when target is! SizedBox) target,
+      if (owner)
+        if (_targetCard(sw) case final Widget target when target is! SizedBox) target,
       _flush(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
           _section(sw ? 'Hesabu za mwezi' : 'The month in numbers'),
-          _pair(
-            _figure('fig_sales', sw ? 'Mauzo' : 'Sales', _n(f['sales']), cmp['sales'] is Map ? _m(cmp['sales']) : null),
-            _figure('fig_cogs', sw ? 'Gharama ya bidhaa' : 'Cost of goods', _n(f['cost_of_goods']), null),
-          ),
-          const SectionGlowDivider(lift: false),
-          _pair(
-            _figure('fig_gross', sw ? 'Faida ya mauzo' : 'Gross profit', _n(f['gross_profit']), cmp['gross_profit'] is Map ? _m(cmp['gross_profit']) : null, note: f['margin_percent'] == null ? null : '${f['margin_percent']}%'),
-            _figure('fig_expenses', sw ? 'Matumizi ya biashara' : 'Business expenses', _n(f['expenses']), cmp['expenses'] is Map ? _m(cmp['expenses']) : null),
-          ),
-          const SectionGlowDivider(lift: false),
-          _figure('fig_net', sw ? 'Faida halisi' : 'Net profit', _n(f['net_profit']), cmp['net_profit'] is Map ? _m(cmp['net_profit']) : null, big: true),
-          // In plain words, for someone who does not keep books: how the profit is worked out.
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-            child: Text(
-              sw ? 'Faida halisi = Mauzo − Gharama ya bidhaa − Matumizi ya biashara. Matumizi binafsi hayaondolewi kwenye faida.' : 'Net profit = Sales − Cost of goods − Business expenses. Personal spending is not taken off the profit.',
-              key: const Key('hint_net'),
-              style: kMoneyCaption,
+          if (!owner)
+            _pair(
+              _figure('fig_sales', sw ? 'Mauzo' : 'Sales', _n(f['sales']), cmp['sales'] is Map ? _m(cmp['sales']) : null),
+              _figure('fig_expenses', sw ? 'Matumizi ya biashara' : 'Business expenses', _n(f['expenses']), cmp['expenses'] is Map ? _m(cmp['expenses']) : null),
+            )
+          else ...<Widget>[
+            _pair(
+              _figure('fig_sales', sw ? 'Mauzo' : 'Sales', _n(f['sales']), cmp['sales'] is Map ? _m(cmp['sales']) : null),
+              _figure('fig_cogs', sw ? 'Gharama ya bidhaa' : 'Cost of goods', _n(f['cost_of_goods']), null),
             ),
-          ),
+            const SectionGlowDivider(lift: false),
+            _pair(
+              _figure('fig_gross', sw ? 'Faida ya mauzo' : 'Gross profit', _n(f['gross_profit']), cmp['gross_profit'] is Map ? _m(cmp['gross_profit']) : null, note: f['margin_percent'] == null ? null : '${f['margin_percent']}%'),
+              _figure('fig_expenses', sw ? 'Matumizi ya biashara' : 'Business expenses', _n(f['expenses']), cmp['expenses'] is Map ? _m(cmp['expenses']) : null),
+            ),
+            const SectionGlowDivider(lift: false),
+            _figure('fig_net', sw ? 'Faida halisi' : 'Net profit', _n(f['net_profit']), cmp['net_profit'] is Map ? _m(cmp['net_profit']) : null, big: true),
+            // In plain words, for someone who does not keep books: how the profit is worked out.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              child: Text(
+                sw ? 'Faida halisi = Mauzo − Gharama ya bidhaa − Matumizi ya biashara. Matumizi binafsi hayaondolewi kwenye faida.' : 'Net profit = Sales − Cost of goods − Business expenses. Personal spending is not taken off the profit.',
+                key: const Key('hint_net'),
+                style: kMoneyCaption,
+              ),
+            ),
+          ],
         ]),
       ),
+      if (owner)
       _padded(
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
           _section(sw ? 'Biashara ilipo' : 'Where the business stands'),
@@ -263,7 +275,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
         _padded(
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
             _section(sw ? 'Bidhaa zilizoleta faida zaidi' : 'Products that earned the most'),
-            for (final Map<String, dynamic> p in _list(_r['top_products'])) _line('${p['name']}  ×${p['qty']}', tsh(_n(p['profit'])), key: 'top_${p['name']}'),
+            for (final Map<String, dynamic> p in _list(_r['top_products'])) _line('${p['name']}  ×${p['qty']}', tsh(_n(p[owner ? 'profit' : 'sales'])), key: 'top_${p['name']}'),
           ]),
         ),
       if (best.isNotEmpty)
@@ -289,8 +301,8 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
             if (owingCount > owing.length) _more('debtors_more', sw ? 'Zaidi ($owingCount)' : 'More ($owingCount)', _openDebtors),
           ]),
         ),
-      if (!future) _adviceHeader(sw),
-      if (!future) ..._adviceSections(sw),
+      if (!future && owner) _adviceHeader(sw),
+      if (!future && owner) ..._adviceSections(sw),
     ];
 
     return ListView(
@@ -421,7 +433,9 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     final Map<String, dynamic> o = _m(_r['overall']);
     final String dir = '${o['direction']}';
     final num? pct = o['percent'] is num ? o['percent'] as num : null;
-    final Map<String, dynamic> profit = _m(_m(_r['compare'])['net_profit']);
+    // Without the owner's rights the month is compared by sales: profit is not shown.
+    final bool owner = _r['owner_figures'] != false;
+    final Map<String, dynamic> profit = _m(_m(_r['compare'])[owner ? 'net_profit' : 'sales']);
     final bool inProgress = _r['is_current'] == true;
     final bool like = _m(_r['previous'])['like_for_like'] == true;
     final String prev = monthName(prevMonth, sw: sw);
@@ -447,7 +461,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
               Text(title, key: const Key('headline_text'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
               const SizedBox(height: 4),
               Text(
-                '${sw ? 'Faida' : 'Profit'}: ${tsh(_n(profit['now']))} ${sw ? 'dhidi ya' : 'against'} ${tsh(_n(profit['before']))}${inProgress && like ? (sw ? ' (siku zilezile za $prev)' : ' (same days of $prev)') : ''}',
+                '${owner ? (sw ? 'Faida' : 'Profit') : (sw ? 'Mauzo' : 'Sales')}: ${tsh(_n(profit['now']))} ${sw ? 'dhidi ya' : 'against'} ${tsh(_n(profit['before']))}${inProgress && like ? (sw ? ' (siku zilezile za $prev)' : ' (same days of $prev)') : ''}',
                 style: kMoneyCaption,
               ),
               if (inProgress) Text(sw ? 'Mwezi bado unaendelea.' : 'The month is still in progress.', style: kMoneyCaption),

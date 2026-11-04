@@ -123,6 +123,48 @@ Map<String, dynamic> _ai() => <String, dynamic>{
     };
 
 void main() {
+  group('for someone who is not the owner', () {
+    // What the server sends them: sales and spending, but profit, cost, the target, capital and advice are left out.
+    final Map<String, dynamic> stripped = <String, dynamic>{
+      'owner_figures': false,
+      'figures': <String, dynamic>{
+        'sales': 300000, 'sales_count': 12, 'cost_of_goods': 0, 'gross_profit': 0, 'margin_percent': null, 'expenses': 30000,
+        'expenses_by_category': <Map<String, dynamic>>[<String, dynamic>{'category': 'rent', 'total': 20000}],
+        'personal_spending': 0, 'write_offs': 0, 'net_profit': 0,
+      },
+      'compare': <String, dynamic>{'sales': _cmp(300000, 200000, 'up', 50), 'gross_profit': _cmp(0, 0, 'same', null), 'expenses': _cmp(30000, 20000, 'up', 50, good: false), 'net_profit': _cmp(0, 0, 'same', null)},
+      'overall': <String, dynamic>{'direction': 'up', 'percent': 50, 'based_on': 'sales'},
+      'position': null,
+      'capital_change': null,
+      'target': null,
+    };
+
+    testWidgets('the report shows sales and spending but no profit, target, capital or advice', (t) async {
+      final _FakeMoney api = _FakeMoney(extra: stripped);
+      await _open(t, api);
+
+      expect(_k('fig_sales'), findsOneWidget);
+      expect(_k('fig_expenses'), findsOneWidget);
+      expect(_k('fig_gross'), findsNothing);
+      expect(_k('fig_net'), findsNothing);
+      expect(_k('fig_cogs'), findsNothing);
+      expect(_k('hint_net'), findsNothing);
+      expect(_k('pos_capital'), findsNothing);
+      expect(_k('no_position'), findsNothing);
+      expect(_k('target_set'), findsNothing);
+      expect(_k('advice_source'), findsNothing);
+      expect(find.textContaining('Sales: TSH 300,000 against TSH 200,000'), findsOneWidget);
+      expect(find.text('Where the business stands'), findsNothing);
+    });
+
+    testWidgets('the owner still sees everything', (t) async {
+      await _open(t, _FakeMoney());
+
+      expect(_k('fig_net'), findsOneWidget);
+      expect(_k('pos_capital'), findsOneWidget);
+    });
+  });
+
   group('the headline', () {
     testWidgets('better than last month says so, with the percent and the two profits', (t) async {
       await _open(t, _FakeMoney());

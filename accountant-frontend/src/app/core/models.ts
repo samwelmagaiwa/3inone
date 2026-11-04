@@ -36,6 +36,8 @@ export interface Comparison {
 }
 
 export interface MonthlyReport {
+  /** False for someone who may not see what the business earns or is worth: profit, target, capital and advice are left out. */
+  owner_figures?: boolean;
   month: string;
   is_current: boolean;
   is_future: boolean;

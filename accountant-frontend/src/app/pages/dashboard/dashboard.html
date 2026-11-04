@@ -14,7 +14,8 @@
     </div>
   } @else if (report(); as r) {
 
-    <!-- The profit target -->
+    <!-- The profit target: the owner's figure -->
+    @if (ownerFigures(r)) {
     <div class="top-row">
     <!-- Profit target -->
     @if (r.target; as t) {
@@ -50,6 +51,7 @@
     }
 
     </div>
+    }
 
     <!-- The four figures, in one row, each with a border in its own colour -->
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -76,7 +78,8 @@
       }
     </div>
 
-    <!-- Where the business stands -->
+    <!-- Where the business stands: the owner's figures -->
+    @if (ownerFigures(r)) {
     <section class="section-card p-5">
       <div class="border-b border-slate-100 pb-3 mb-4">
         <p class="label-eyebrow">{{ i18n.t('pos.eyebrow') }}</p>
@@ -99,6 +102,7 @@
         <p class="text-sm text-slate-500">{{ i18n.t('pos.none') }}</p>
       }
     </section>
+    }
 
     <!-- Spending + best products -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -127,10 +131,10 @@
         </div>
         @if (r.top_products.length) {
           <table class="premium-table">
-            <thead><tr><th>{{ i18n.t('top.product') }}</th><th class="text-right">{{ i18n.t('top.qty') }}</th><th class="text-right">{{ i18n.t('top.profit') }}</th></tr></thead>
+            <thead><tr><th>{{ i18n.t('top.product') }}</th><th class="text-right">{{ i18n.t('top.qty') }}</th><th class="text-right">{{ ownerFigures(r) ? i18n.t('top.profit') : i18n.t('kpi.sales') }}</th></tr></thead>
             <tbody>
               @for (p of r.top_products; track p.name) {
-                <tr><td class="font-bold">{{ p.name }}</td><td class="text-right">{{ p.qty }}</td><td class="text-right font-black">{{ tsh(p.profit) }}</td></tr>
+                <tr><td class="font-bold">{{ p.name }}</td><td class="text-right">{{ p.qty }}</td><td class="text-right font-black">{{ tsh(ownerFigures(r) ? p.profit : p.sales) }}</td></tr>
               }
             </tbody>
           </table>
@@ -178,8 +182,8 @@
       </div>
     }
 
-    <!-- Where to improve -->
-    @if (!r.is_future) {
+    <!-- Where to improve: advice is written from the profit, so it is the owner's -->
+    @if (!r.is_future && ownerFigures(r)) {
       <section class="section-card p-5">
         <div class="border-b border-slate-100 pb-3 mb-4 flex items-center justify-between gap-3 flex-wrap">
           <div>
