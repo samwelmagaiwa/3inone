@@ -475,7 +475,8 @@ class _UsersControlScreenState extends State<UsersControlScreen> {
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(14, 6, 14, 96),
         itemCount: shown.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        // the glowing line of the inventory dashboard between one person and the next
+        separatorBuilder: (_, __) => const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: SectionGlowDivider(lift: false)),
         itemBuilder: (_, int i) => _card(shown[i]),
       ),
     );
