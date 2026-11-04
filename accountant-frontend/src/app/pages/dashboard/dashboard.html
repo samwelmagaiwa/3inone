@@ -264,10 +264,6 @@
 <!-- Greeting and month, shown in the breadcrumb row at the top of the page -->
 <ng-template #headerBar>
   <div class="flex flex-wrap items-center gap-x-4 gap-y-2" data-testid="dash-bar">
-    <div class="min-w-0 hidden lg:block text-right leading-tight">
-      <p class="text-slate-900 font-black text-sm">{{ greeting() }}, {{ auth.user()?.name }}</p>
-      <p class="text-slate-500 text-xs font-semibold">{{ auth.user()?.roleLabel }} · {{ i18n.t('dash.sub') }}</p>
-    </div>
     <div class="flex items-center gap-1 bg-white border border-slate-300 p-0.5" style="border-radius: 10px;">
       <button type="button" (click)="move(-1)" [disabled]="loading()" class="month-arrow" [attr.aria-label]="i18n.t('month.prev')" [title]="i18n.t('month.prev')">‹</button>
       <span class="px-3 min-w-36 text-center font-black text-slate-900 text-sm" data-testid="month-title">{{ monthTitle() }}</span>

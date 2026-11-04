@@ -52,7 +52,8 @@ describe('dashboard (this month)', () => {
     const { el } = await open();
 
     expect(byTestId(el, 'headline')).toBeNull(); // the comparison is a message at sign-in now, not a card
-    expect(text(byTestId(el, 'dash-bar')!)).toContain('Amina');
+    expect(text(byTestId(el, 'dash-bar')!)).not.toContain('Amina'); // the greeting is gone; only the month switch is left
+    expect(byTestId(el, 'month-title')).not.toBeNull();
     const cards = text(el);
     expect(cards).toContain('TSH 300,000');
     expect(cards).toContain('TSH 150,000');

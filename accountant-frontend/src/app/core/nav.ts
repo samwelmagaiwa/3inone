@@ -136,6 +136,8 @@ export function allowedPages(auth: AuthService): NavItem[] {
 
 /** Where a person lands: the first page they may open, or the "nothing here yet" page. */
 export function homePath(auth: AuthService): string {
+  // An accountant starts on the dashboard (the month), whatever else the menu offers first.
+  if (auth.user()?.role === 'accountant' && NAV.find((p) => p.key === 'dashboard')?.allowed(auth)) return '/dashboard';
   // (the assistant is for everyone, so it never counts as "their first page": someone with no page still lands on the explanation)
   return allowedPages(auth).find((p) => p.key !== 'assistant')?.path ?? '/welcome';
 }

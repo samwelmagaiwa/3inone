@@ -33,7 +33,7 @@ export class DashboardPage implements OnInit, AfterViewInit, OnDestroy {
   protected readonly motion = inject(MotionService);
   private readonly slot = inject(HeaderSlotService);
 
-  /** The greeting and the month switch live in the breadcrumb row at the top of the page; this page hands them over. */
+  /** The month switch lives in the breadcrumb row at the top of the page; this page hands them over. */
   @ViewChild('headerBar', { static: true }) private headerBar!: TemplateRef<unknown>;
 
   protected readonly month = signal(monthKey(new Date()));
@@ -68,11 +68,6 @@ export class DashboardPage implements OnInit, AfterViewInit, OnDestroy {
 
   protected readonly canSetTarget = computed(() => this.auth.can('inv_manage_settings'));
   protected readonly monthTitle = computed(() => monthName(this.month(), this.i18n.locale()));
-
-  protected readonly greeting = computed(() => {
-    const h = new Date().getHours();
-    return this.i18n.t(h < 12 ? 'greet.morning' : h < 17 ? 'greet.afternoon' : 'greet.evening');
-  });
 
   ngOnInit(): void {
     void this.load();
