@@ -60,58 +60,21 @@ class SalonController extends Controller
         $viewer = $request->user();
         $sees = \App\Support\Salon\SalonAccess::isManager($viewer);
 
-        $query = DB::table('inventory_sale_items as si')
-            ->join('inventory_sales as s', 's.id', '=', 'si.sale_id')
-            ->whereNull('s.cancelled_at')
-            ->where('si.is_service', true)
-            ->whereDate('s.created_at', '>=', $from)
-            ->whereDate('s.created_at', '<=', $to)
-            ->when(\App\Support\Salon\SalonBranch::selected($request) !== null, fn ($q) => $q->where('s.branch_id', \App\Support\Salon\SalonBranch::selected($request)));
-        if (!$sees) {
-            $query->where('si.staff_id', (string) $viewer->id);
-        }
+        // Each person's line, with the period before it, how it changed, what a visit is worth, how many clients come back, the ranking
+        // and the target for the month (see StylistPerformance).
+        $report = \App\Support\Salon\StylistPerformance::report($from, $to, $sees, (string) $viewer->id, \App\Support\Salon\SalonBranch::selected($request));
+        $report['stylists'] = array_map(function (array $r) {
+            $r['revenue'] = self::money($r['revenue']);
+            $r['discount'] = self::money($r['discount']);
+            $r['commission'] = (float) $r['commission'] == floor((float) $r['commission']) ? (int) $r['commission'] : (float) $r['commission'];
 
-        // (A server that has not run the migration yet has no commission to add up.)
-        $commission = \Illuminate\Support\Facades\Schema::hasColumn('inventory_sale_items', 'commission_amount') ? 'si.commission_amount' : '0';
+            return $r;
+        }, $report['stylists']);
+        $report['totals']['revenue'] = self::money($report['totals']['revenue']);
+        $report['totals']['discount'] = self::money($report['totals']['discount']);
+        $report['totals']['commission'] = (float) $report['totals']['commission'] == floor((float) $report['totals']['commission']) ? (int) $report['totals']['commission'] : (float) $report['totals']['commission'];
 
-        $rows = $query
-            ->groupBy('si.staff_id')
-            ->selectRaw(
-                'si.staff_id as staff_id,
-                 MAX(si.staff_name) as staff_name,
-                 SUM(COALESCE(si.unit_qty, si.quantity)) as services,
-                 COALESCE(SUM(si.total - COALESCE(s.discount * si.total / NULLIF(s.subtotal, 0), 0)), 0) as revenue,
-                 COALESCE(SUM(COALESCE(s.discount * si.total / NULLIF(s.subtotal, 0), 0)), 0) as discount,
-                 COALESCE(SUM(' . $commission . '), 0) as commission,
-                 COUNT(DISTINCT s.id) as visits,
-                 COUNT(DISTINCT s.customer_id) as clients'
-            )
-            ->orderByDesc('revenue')
-            ->get()
-            ->map(fn ($r) => [
-                'staff_id' => $r->staff_id,
-                'name' => $r->staff_name,
-                'services' => (int) $r->services,
-                'revenue' => self::money($r->revenue),
-                'discount' => self::money($r->discount),
-                'commission' => (float) $r->commission == floor((float) $r->commission) ? (int) $r->commission : (float) $r->commission,
-                'visits' => (int) $r->visits,
-                'clients' => (int) $r->clients,
-            ])
-            ->values();
-
-        return response()->json(['data' => [
-            'from' => $from,
-            'to' => $to,
-            'totals' => [
-                'services' => $rows->sum('services'),
-                'revenue' => $rows->sum('revenue'),
-                'commission' => $rows->sum('commission'),
-                'discount' => self::money($rows->sum('discount')),
-                'visits' => $rows->sum('visits'),
-            ],
-            'stylists' => $rows,
-        ]]);
+        return response()->json(['data' => $report]);
     }
 
     /**

@@ -565,6 +565,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Results per stylist: the owner and managers see everyone, a stylist only their own line.
     Route::middleware('inv_perm:inv_view_reports,inv_create_sales')->group(function () {
         Route::get('inventory/salon/stylists',             [SalonController::class, 'stylists'])->middleware('salon_module:inv_salon_stylists');
+        Route::get('inventory/salon/stylist-targets',      [\App\Http\Controllers\API\Inventory\StylistTargetController::class, 'show'])->middleware('salon_module:inv_salon_stylists');
+        Route::put('inventory/salon/stylist-targets',      [\App\Http\Controllers\API\Inventory\StylistTargetController::class, 'save'])->middleware('salon_module:inv_salon_stylists');
         Route::get('inventory/salon/stylists/{staffId}/transactions', [SalonController::class, 'stylistTransactions'])->middleware('salon_module:inv_salon_stylists');
         Route::get('inventory/salon/services',             [SalonController::class, 'serviceSales']);
         // Profit and loss, the dashboard figures and payroll: the owner and managers only (checked in the controller too).

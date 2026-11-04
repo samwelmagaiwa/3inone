@@ -167,15 +167,23 @@ class SalonExportController extends Controller
     private function stylists(Request $request, bool $sw): array
     {
         $d = app(SalonController::class)->stylists($request)->getData(true)['data'];
-        $rows = array_map(fn ($s) => [$s['name'] ?: ($sw ? 'Hakutajwa' : 'No stylist named'), $s['services'], $s['revenue'], $s['discount'], $s['commission'], $s['visits'], $s['clients']], $d['stylists']);
+        $pct = fn ($v) => $v === null ? '' : ($v > 0 ? '+' : '') . $v . '%';
+        $rows = array_map(fn ($s) => [
+            $s['rank'] ?? '',
+            $s['name'] ?: ($sw ? 'Hakutajwa' : 'No stylist named'),
+            $s['services'], $s['revenue'], $pct($s['change']['revenue'] ?? null), $s['visits'], $s['clients'],
+            $s['avg_ticket'], $s['return_rate'] === null ? '' : $s['return_rate'] . '%',
+            $s['commission'],
+            isset($s['target']) ? $s['target']['amount'] . ' (' . $s['target']['percent'] . '%)' : '',
+        ], $d['stylists']);
         $t = $d['totals'];
 
         return [
             $sw ? 'Matokeo ya wahudumu' : 'Stylists\' results',
-            $sw ? ['Mhudumu', 'Huduma', 'Mapato halisi', 'Punguzo', 'Kamisheni', 'Ziara', 'Wateja']
-                : ['Stylist', 'Services', 'Net revenue', 'Discount', 'Commission', 'Visits', 'Clients'],
+            $sw ? ['Nafasi', 'Mhudumu', 'Huduma', 'Mapato halisi', 'Mabadiliko', 'Ziara', 'Wateja', 'Wastani wa ziara', 'Waliorudi', 'Kamisheni', 'Lengo']
+                : ['Rank', 'Stylist', 'Services', 'Net revenue', 'Change', 'Visits', 'Clients', 'Avg per visit', 'Came back', 'Commission', 'Target'],
             $rows,
-            [$sw ? 'Jumla' : 'Total', $t['services'], $t['revenue'], $t['discount'], $t['commission'], $t['visits'], ''],
+            [$sw ? 'Jumla' : 'Total', '', $t['services'], $t['revenue'], $pct($t['change']['revenue'] ?? null), $t['visits'], '', $t['avg_ticket'], '', $t['commission'], ''],
         ];
     }
 

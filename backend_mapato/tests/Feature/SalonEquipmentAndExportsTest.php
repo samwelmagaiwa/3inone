@@ -255,7 +255,8 @@ class SalonEquipmentAndExportsTest extends TestCase
         $payroll = $csv('payroll');
         $this->assertSame(['Asha', '100000', '5500', '0', '0', '0', '105500'], array_slice($payroll[2], 0, 7), '10% commission on the 55,000 service');
         $stylists = $csv('stylists');
-        $this->assertSame(['Asha', '1', '50000', '5000', '5500'], array_slice($stylists[2], 0, 5), 'net of the 5,000 discount');
+        $this->assertSame(['1', 'Asha', '1', '50000'], array_slice($stylists[2], 0, 4), 'ranked first, net of the 5,000 discount');
+        $this->assertSame('5500', $stylists[2][9], 'and the commission it earned');
         $pl = collect($csv('profit-loss'))->mapWithKeys(fn ($r) => [$r[0] => $r[1] ?? null]);
         $this->assertSame('50000', $pl['Service revenue']);
         $this->assertSame('-30000', $pl['rent']);

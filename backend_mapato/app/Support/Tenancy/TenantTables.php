@@ -78,6 +78,7 @@ final class TenantTables
         'inventory_staff_days_off',
         'inventory_staff_payouts',
         'inventory_staff_profiles',
+        'inventory_staff_targets',
         'inventory_stock_count_lines',
         'inventory_stock_counts',
         'inventory_stock_movements',
