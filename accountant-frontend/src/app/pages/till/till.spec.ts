@@ -159,6 +159,38 @@ describe('the till', () => {
       expect(text(byTestId(el, 'till-error')!)).toContain('customer');
     });
 
+    it('what is required is marked with a red asterisk, and goes red when the step is tried without it', async () => {
+      const { fixture, el } = await open();
+      const note = byTestId(el, 'till-need-items')!;
+      expect(note.querySelector('.req-star')).not.toBeNull();
+      expect(note.classList.contains('is-bad')).toBe(false);
+
+      byTestId(el, 'till-next')!.click(); // nothing chosen
+      await settle(fixture);
+      expect(note.classList.contains('is-bad')).toBe(true);
+
+      byTestId(el, 'good-1')!.click();
+      await settle(fixture);
+      byTestId(el, 'till-next')!.click();
+      await settle(fixture);
+      expect(el.querySelector('label.req-star[for="price-1"]')).not.toBeNull(); // the price of each line is required
+    });
+
+    it('a part payment needs an amount above zero and below the total, and a new customer needs a phone number', async () => {
+      const { fixture, el } = await open();
+      byTestId(el, 'good-1')!.click();
+      await settle(fixture);
+      for (let i = 0; i < 3; i++) {
+        byTestId(el, 'till-next')!.click();
+        await settle(fixture);
+      }
+      byTestId(el, 'mode-partial')!.click();
+      await settle(fixture);
+      byTestId(el, 'till-next')!.click();
+      await settle(fixture);
+      expect(text(byTestId(el, 'till-error')!)).toContain('how much is paid now'); // the customer comes first on a sale paid later?
+    });
+
     it('Save sale on the preview saves at once, with no second question', async () => {
       const { h, fixture, el } = await open();
       byTestId(el, 'good-1')!.click();

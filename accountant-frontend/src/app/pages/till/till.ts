@@ -165,6 +165,11 @@ export class TillPage implements OnInit, OnDestroy {
     }
   }
 
+  /** A phone number is needed for every customer: at least nine digits (spaces and dashes do not count). */
+  protected phoneOk(): boolean {
+    return this.newPhone.replace(/\D/g, '').length >= 9;
+  }
+
   protected async toggleFilters(): Promise<void> {
     this.filtersOpen.update((o) => !o);
     if (this.filtersOpen() && !this.categories().length && !this.brands().length) {
@@ -330,6 +335,7 @@ export class TillPage implements OnInit, OnDestroy {
   protected async saveNewCustomer(): Promise<void> {
     const name = this.newName.trim();
     if (!name) return this.newError.set(this.i18n.t('till.cust.needname'));
+    if (!this.phoneOk()) return this.newError.set(this.i18n.t('till.cust.needphone'));
     try {
       const c = await firstValueFrom(this.api.createCustomer(name, this.newPhone.trim()));
       this.newName = '';
@@ -624,6 +630,7 @@ export class TillPage implements OnInit, OnDestroy {
     }
     if (step >= 3 && this.reasonNeeded() && !this.till.discountReason().trim()) return { message: this.i18n.t('till.err.reason_required'), step: 3 };
     if (step >= 4) {
+      if (this.till.mode() === 'partial' && !(this.till.paid() > 0 && this.till.paid() < this.till.totals().total)) return { message: this.i18n.t('till.err.paid_required'), step: 4 };
       const built = this.till.buildSale();
       if (built.error) return { message: this.i18n.t(`till.err.${built.error}`, this.till.missingStylist()?.name ?? ''), step: built.error === 'customer_required' ? 3 : built.error === 'stylist_required' ? 2 : 4 };
       const c = this.credit();

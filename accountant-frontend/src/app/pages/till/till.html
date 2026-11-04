@@ -29,6 +29,7 @@
     <!-- 1. The goods -->
     <section class="panel left" [class.hidden]="step() !== 1">
       <div class="left-head">
+        <p class="req-note" [class.is-bad]="tried() && !till.lines().length" data-testid="till-need-items"><span class="req-star"></span>{{ i18n.t('till.v.items') }}</p>
         <div class="search-wrap mt-2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="modal-input search-input" type="search" [ngModel]="query()" (ngModelChange)="setQuery($event)" (keydown.enter)="onEnter()" [placeholder]="i18n.t('till.search')" autocomplete="off" data-testid="till-search"></div>
         <p class="text-xs font-semibold text-slate-400 mt-2">{{ i18n.t('till.search.hint') }}</p>
@@ -117,8 +118,8 @@
                     } @else {
                       <!-- The price is filled in from the list; write another when the price is not fixed -->
                       <div class="flex flex-wrap items-center gap-2 mt-1">
-                        <label class="text-xs font-extrabold text-slate-400 uppercase tracking-wide" [attr.for]="'price-' + l.productId">{{ i18n.t('till.price') }}@if (l.unitName) { / {{ l.unitName }} }</label>
-                        <input appMoney [id]="'price-' + l.productId" class="modal-input price-box" inputmode="numeric" [ngModel]="l.unitPrice" (change)="writePrice(l.key, $any($event.target).value)" (keydown.enter)="writePrice(l.key, $any($event.target).value)" autocomplete="off" [attr.aria-label]="i18n.t('till.price.write')" [attr.data-testid]="'price-' + l.productId">
+                        <label class="text-xs font-extrabold text-slate-400 uppercase tracking-wide req-star" [attr.for]="'price-' + l.productId">{{ i18n.t('till.price') }}@if (l.unitName) { / {{ l.unitName }} }</label>
+                        <input appMoney [id]="'price-' + l.productId" class="modal-input price-box" [class.is-bad]="tried() && !(l.unitPrice > 0)" required inputmode="numeric" [ngModel]="l.unitPrice" (change)="writePrice(l.key, $any($event.target).value)" (keydown.enter)="writePrice(l.key, $any($event.target).value)" autocomplete="off" [attr.aria-label]="i18n.t('till.price.write')" [attr.data-testid]="'price-' + l.productId">
                         @if (l.priceWritten) {
                           <span class="status-chip" [attr.data-testid]="'price-changed-' + l.productId">{{ i18n.t('till.price.changed') }}</span>
                           @if (listPriceOf(l); as list) {
@@ -131,7 +132,8 @@
                   <p class="font-black text-slate-900 shrink-0">{{ tsh(l.qty * l.unitPrice) }}</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 mt-2">
-                  <div class="qty-box">
+                  <span class="stylists-label req-star">{{ i18n.t('till.qty') }}</span>
+                  <div class="qty-box" [class.is-bad]="tried() && !(l.qty > 0)">
                     <button type="button" (click)="till.setQty(l.key, l.qty - 1)" [attr.aria-label]="i18n.t('till.less')" [disabled]="l.qty <= 1">−</button>
                     <input type="number" min="1" [ngModel]="l.qty" (change)="setQty(l.key, l.productId, $any($event.target).value)" [attr.aria-label]="i18n.t('till.qty')" [attr.data-testid]="'qty-' + l.productId">
                     <button type="button" (click)="setQty(l.key, l.productId, '' + (l.qty + 1))" [attr.aria-label]="i18n.t('till.more')" [attr.data-testid]="'plus-' + l.productId">+</button>
@@ -192,7 +194,7 @@
 
       <!-- Customer -->
       <div id="till-customer-section" class="cust" [class.hidden]="step() !== 3" [class.is-needed]="needsCustomer()">
-        <p class="step">@if (needsCustomer()) { <span class="req-chip" data-testid="till-customer-required">{{ i18n.t('till.customer.required') }}</span> }</p>
+        <p class="step"><span [class.req-star]="needsCustomer()">{{ i18n.t('till.stepname3') }}</span>@if (needsCustomer()) { <span class="req-chip" data-testid="till-customer-required">{{ i18n.t('till.customer.required') }}</span> }</p>
         @if (till.customer(); as c) {
           <div class="customer-chip mt-2" data-testid="till-customer">
             <span class="avatar round">{{ c.name.charAt(0) }}</span>
@@ -218,8 +220,8 @@
             </div>
           } @else if (custTab() === 'new') {
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-              <div><label class="modal-label req" for="newName">{{ i18n.t('till.cust.name') }}</label><input id="newName" class="modal-input" required [(ngModel)]="newName" name="newName" [placeholder]="i18n.t('ph.person')" autocomplete="off" data-testid="till-newcustomer-name"></div>
-              <div><label class="modal-label" for="newPhone">{{ i18n.t('till.cust.phone') }}</label><input id="newPhone" class="modal-input" inputmode="tel" [(ngModel)]="newPhone" name="newPhone" [placeholder]="i18n.t('ph.phone')" autocomplete="off" data-testid="till-newcustomer-phone"></div>
+              <div><label class="modal-label req" for="newName">{{ i18n.t('till.cust.name') }}</label><input id="newName" class="modal-input" required [class.is-bad]="!!newError() && !newName.trim()" [(ngModel)]="newName" name="newName" [placeholder]="i18n.t('ph.person')" autocomplete="off" data-testid="till-newcustomer-name"></div>
+              <div><label class="modal-label req" for="newPhone">{{ i18n.t('till.cust.phone') }}</label><input id="newPhone" class="modal-input" required [class.is-bad]="!!newError() && !phoneOk()" inputmode="tel" [(ngModel)]="newPhone" name="newPhone" [placeholder]="i18n.t('ph.phone')" autocomplete="off" data-testid="till-newcustomer-phone"></div>
             </div>
             @if (newError()) { <p class="form-error mt-2" role="alert" data-testid="till-newcustomer-error">{{ newError() }}</p> }
             <button type="button" class="btn-primary mt-2" (click)="saveNewCustomer()" data-testid="till-newcustomer-save">{{ i18n.t('till.cust.save') }}</button>
@@ -272,7 +274,7 @@
         }
         @if (till.mode() === 'partial') {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-            <div><label class="modal-label req" for="paid">{{ i18n.t('till.paidnow') }}</label><input appMoney id="paid" class="modal-input" required [placeholder]="i18n.t('ph.amount')" inputmode="numeric" [ngModel]="paidText" (ngModelChange)="setPaid($event)" autocomplete="off" data-testid="till-paid"></div>
+            <div><label class="modal-label req" for="paid">{{ i18n.t('till.paidnow') }}</label><input appMoney id="paid" class="modal-input" required [class.is-bad]="tried() && !(till.paid() > 0 && till.paid() < till.totals().total)" [placeholder]="i18n.t('ph.amount')" inputmode="numeric" [ngModel]="paidText" (ngModelChange)="setPaid($event)" autocomplete="off" data-testid="till-paid"></div>
             <div><label class="modal-label" for="pchan">{{ i18n.t('till.channel') }}</label>
               <select id="pchan" class="modal-input" [ngModel]="till.partialChannel()" (ngModelChange)="till.partialChannel.set($event)">@for (c of channels; track c) { <option [value]="c">{{ channelName(c) }}</option> }</select></div>
             @if (till.partialChannel() !== 'cash') {
@@ -516,6 +518,10 @@
   .good { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; border: 1px solid #e6ecfb; border-radius: 14px; background: #fff; cursor: pointer; transition: all .2s; }
   .good:hover:not(:disabled) { border-color: #93b0fb; transform: translateY(-2px); box-shadow: 0 14px 26px -16px rgba(59,97,226,.6); }
   .good:active:not(:disabled) { transform: translateY(0); }
+  .req-note { display: flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 700; color: #64748b; }
+  .req-note.is-bad { color: #b91c1c; }
+  .req-note .req-star::after { margin-right: 4px; }
+  .qty-box.is-bad { border-color: #f87171; background: #fff7f7; }
   .used-goods { display: block; width: 100%; font-size: 12px; font-weight: 600; color: #475a8f; }
   .used-goods b { font-weight: 900; color: #1a2f6e; }
   .kind-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
