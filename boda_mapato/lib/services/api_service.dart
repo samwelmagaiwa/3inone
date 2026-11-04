@@ -1207,6 +1207,18 @@ class ApiService {
           String userId, List<String> permissions) async =>
       updateUser(userId, {'permissions': permissions});
 
+  /// What one person may open, as switches: each with whether it is on, whether the role gives it, and what the owner did.
+  Future<Map<String, dynamic>> getUserAccess(String userId) async =>
+      get('/admin/users/$userId/access');
+
+  /// Saves the switches left on; the server works out what to add to the role and what to take back.
+  Future<Map<String, dynamic>> saveUserAccess(String userId, List<String> on) async =>
+      put('/admin/users/$userId/access', <String, dynamic>{'on': on});
+
+  /// Puts the person back to exactly what their role gives.
+  Future<Map<String, dynamic>> resetUserAccess(String userId) async =>
+      post('/admin/users/$userId/access/reset', <String, dynamic>{});
+
   // Rental Module APIs
   Future<Map<String, dynamic>> getRentalProperties() async =>
       _get("/rental/properties");

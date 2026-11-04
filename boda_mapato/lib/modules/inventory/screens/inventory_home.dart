@@ -242,7 +242,7 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.event_available_outlined,
       color: ThemeConstants.warningAmber,
       pageBuilder: () => const AppointmentsScreen(),
-      visible: (UserPermissions p) => p.has('inv_create_sales'),
+      visible: (UserPermissions p) => p.has('inv_salon_appointments'),
     ),
     _InvMenuEntry(
       key: 'stylists',
@@ -250,8 +250,7 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.groups_2_outlined,
       color: ThemeConstants.successGreen,
       pageBuilder: () => const StylistsScreen(),
-      visible: (UserPermissions p) =>
-          p.has('inv_view_reports') || p.has('inv_create_sales'),
+      visible: (UserPermissions p) => p.has('inv_salon_stylists'),
     ),
     _InvMenuEntry(
       key: 'rebook',
@@ -259,7 +258,7 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.event_repeat_outlined,
       color: const Color(0xFF667eea),
       pageBuilder: () => const RebookScreen(),
-      visible: (UserPermissions p) => p.has('inv_create_sales'),
+      visible: (UserPermissions p) => p.has('inv_salon_rebook'),
     ),
     _InvMenuEntry(
       key: 'finance_hub',
@@ -286,8 +285,7 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.account_balance_wallet_outlined,
       color: ThemeConstants.successGreen,
       pageBuilder: () => const SalonFinanceHubScreen(),
-      visible: (UserPermissions p) =>
-          p.has('inv_view_reports') || p.has('inv_view_expenses'),
+      visible: (UserPermissions p) => p.has('inv_salon_money'),
     ),
     _InvMenuEntry(
       key: 'team',
@@ -295,8 +293,7 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.badge_outlined,
       color: const Color(0xFF8B5CF6),
       pageBuilder: () => const SalonTeamHubScreen(),
-      visible: (UserPermissions p) =>
-          p.has('inv_create_sales') || p.has('inv_view_reports'),
+      visible: (UserPermissions p) => p.has('inv_salon_team'),
     ),
     _InvMenuEntry(
       key: 'queue',
@@ -304,7 +301,7 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.groups_2_outlined,
       color: const Color(0xFF22C55E),
       pageBuilder: () => const _QueuePage(),
-      visible: (UserPermissions p) => p.has('inv_create_sales'),
+      visible: (UserPermissions p) => p.has('inv_salon_walkins'),
     ),
     _InvMenuEntry(
       key: 'insights',
@@ -312,7 +309,7 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.insights_outlined,
       color: const Color(0xFF6366F1),
       pageBuilder: () => const InsightsScreen(),
-      visible: (UserPermissions p) => p.has('inv_view_reports'),
+      visible: (UserPermissions p) => p.has('inv_salon_insights'),
     ),
     _InvMenuEntry(
       key: 'business',
@@ -344,8 +341,7 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.reviews_outlined,
       color: const Color(0xFFF59E0B),
       pageBuilder: () => const FeedbackScreen(),
-      visible: (UserPermissions p) =>
-          p.has('inv_create_sales') || p.has('inv_view_reports'),
+      visible: (UserPermissions p) => p.has('inv_salon_feedback'),
     ),
     _InvMenuEntry(
       key: 'equipment',
@@ -353,8 +349,7 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.handyman_outlined,
       color: const Color(0xFF14B8A6),
       pageBuilder: () => const EquipmentScreen(),
-      visible: (UserPermissions p) =>
-          p.has('inv_manage_settings') || p.has('inv_view_reports'),
+      visible: (UserPermissions p) => p.has('inv_salon_equipment'),
     ),
     _InvMenuEntry(
       key: 'branch_stock',
@@ -362,8 +357,7 @@ List<_InvMenuEntry> _salonEntries(LocalizationService loc) {
       icon: Icons.warehouse_outlined,
       color: const Color(0xFFF97316),
       pageBuilder: () => const BranchStockScreen(),
-      visible: (UserPermissions p) =>
-          p.has('inv_manage_settings') || p.has('inv_view_reports'),
+      visible: (UserPermissions p) => p.has('inv_salon_branch_stock'),
     ),
     _InvMenuEntry(
       key: 'branches',
@@ -594,13 +588,8 @@ class _InventoryHomeState extends State<InventoryHome> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final user = auth.user;
     if (user == null) return UserPermissions.empty();
-    return UserPermissions.fromUser(
-      userRole: user.role,
-      // user.permissions now holds effective_permissions from the server
-      // (role defaults ∪ explicit grants), or null if the server hasn't
-      // sent it yet — fromUser handles both cases correctly.
-      explicitGrants: user.permissions,
-    );
+    // The server's own list (the role's rights, plus what the owner added, minus what the owner took back) when it sent one.
+    return user.access;
   }
 
   Future<void> _openQuickMenu(BuildContext context) async {

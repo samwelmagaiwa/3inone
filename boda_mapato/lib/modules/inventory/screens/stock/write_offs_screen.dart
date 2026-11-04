@@ -54,10 +54,7 @@ class _WriteOffsScreenState extends State<WriteOffsScreen> {
     // sales_officer submit a write-off without inv_manage_stock, so this
     // button must stay hidden for them specifically (they can submit, not
     // approve).
-    final UserPermissions perms = UserPermissions.fromUser(
-      userRole: auth.user?.role ?? 'viewer',
-      explicitGrants: auth.user?.permissions,
-    );
+    final UserPermissions perms = auth.user?.access ?? UserPermissions.fromRole('viewer');
     final bool canApprove = perms.has('inv_manage_stock');
 
     final List<InvWriteOff> rows = _status == 'all'

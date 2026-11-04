@@ -172,10 +172,25 @@ describe('pages by rights', () => {
     expect(homePath(auth)).toBe('/customers');
   });
 
-  it('shop-only pages are not offered while working in the salon', () => {
+  it('in the salon the month, the clients and the debts are there too (the phone has them), and goods by branch needs its own right', () => {
     const { auth } = configure({ services: ['inventory', 'salon'] });
     auth.switchService('salon');
-    expect(keys(auth)).toEqual(['sales', 'expenses', 'branch_stock', 'branch_sales']);
+    expect(keys(auth)).toEqual(['dashboard', 'sales', 'credit', 'debts', 'expenses', 'branch_sales']);
+    expect(homePath(auth)).toBe('/dashboard');
+  });
+
+  it('in the salon, goods by branch is offered only to whoever the owner switched it on for', () => {
+    const { auth } = configure({ services: ['salon'], permissions: ['inv_view_reports', 'inv_salon_branch_stock'] });
+    expect(keys(auth)).toContain('branch_stock');
+
+    auth.user.set({ ...auth.user()!, permissions: ['inv_view_reports'] });
+    expect(keys(auth)).not.toContain('branch_stock');
+  });
+
+  it('a right the owner took back closes the page: the list the server sends is the whole truth', () => {
+    const { auth } = configure({ role: 'accountant', services: ['salon'], permissions: ['inv_view_credit', 'inv_view_expenses', 'inv_create_sales'] });
+    expect(keys(auth)).toEqual(['sales', 'credit', 'debts', 'expenses']);
+    expect(keys(auth)).not.toContain('dashboard'); // the role gives the reports, the owner took them back
   });
 
   it('the AI assistant is open to everyone signed in, even with no rights, but it is never where they land', () => {

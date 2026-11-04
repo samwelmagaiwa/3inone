@@ -38,6 +38,14 @@ class UserPermissions {
           explicitGrants ?? const [],
         );
 
+  /// The rights exactly as the server worked them out: the role's own, plus what the owner added, minus what the owner took back.
+  /// The role's defaults are NOT added again here, which would give back what was taken away.
+  const UserPermissions.fromEffective({
+    required String userRole,
+    required List<String> permissions,
+  })  : role = userRole,
+        _permissions = permissions;
+
   /// Merge two permission lists, deduplicating.
   static List<String> _merge(List<String> base, List<String> extra) {
     final Set<String> merged = {...base, ...extra};
@@ -132,6 +140,7 @@ class UserPermissions {
           'inv_view_purchasing', 'inv_view_credit', 'inv_view_cash',
           'inv_view_crates', 'inv_view_reports', 'inv_view_expenses',
           'inv_manage_expenses', 'inv_manage_settings',
+          'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_feedback', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_insights', 'inv_salon_money',
           'view_tenants', 'view_properties', 'view_rent_payments', 'view_arrears',
           'view_rental_reports', 'view_sms_history', 'view_maintenance',
           'manage_maintenance', 'view_vendors', 'manage_vendors',
@@ -154,6 +163,7 @@ class UserPermissions {
           'inv_view_purchasing', 'inv_view_credit', 'inv_view_cash',
           'inv_view_crates', 'inv_view_reports', 'inv_view_expenses',
           'inv_manage_expenses', 'inv_manage_settings',
+          'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_feedback', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_insights', 'inv_salon_money',
           'view_tenants', 'view_properties', 'view_rent_payments', 'view_arrears',
           'view_rental_reports', 'view_sms_history', 'view_maintenance',
           'manage_maintenance', 'view_vendors', 'manage_vendors',
@@ -185,6 +195,7 @@ class UserPermissions {
           'inv_view_reports',
           'inv_view_expenses',
           'inv_manage_expenses',
+          'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_feedback', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_insights', 'inv_salon_money',
           // Rental
           'view_tenants',
           'view_properties',
@@ -214,6 +225,7 @@ class UserPermissions {
           // Can flag damaged/expired/broken stock without full
           // stock-management rights; approving still needs inv_manage_stock.
           'inv_report_damage',
+          'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_feedback',
         ];
       case 'operator':
         return const [
@@ -234,11 +246,12 @@ class UserPermissions {
       case 'hair_stylist':
       case 'nail_technician':
       case 'lash_makeup_artist':
-        return const ['inv_view_products', 'inv_create_sales', 'inv_view_reminders', 'inv_report_damage'];
+        return const ['inv_view_products', 'inv_create_sales', 'inv_view_reminders', 'inv_report_damage', 'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_feedback'];
       case 'accountant':
         return const [
-          'inv_view_products', 'inv_create_sales', 'inv_manage_sales', 'inv_view_credit', 'inv_view_cash',
+          'inv_view_products', 'inv_create_products', 'inv_create_sales', 'inv_manage_sales', 'inv_view_credit', 'inv_view_cash',
           'inv_view_reports', 'inv_view_expenses', 'inv_manage_expenses', 'inv_view_reminders',
+          'inv_salon_appointments', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_insights', 'inv_salon_money',
         ];
       case 'viewer':
         return const [
@@ -278,6 +291,10 @@ extension UserDataPermissions on dynamic {
   UserPermissions get permissions {
     if (this is Map) {
       final String role = (this['role'] as String?) ?? '';
+      final dynamic resolved = this['effective_permissions'];
+      if (resolved is List && !resolved.contains('__all__')) {
+        return UserPermissions.fromEffective(userRole: role, permissions: List<String>.from(resolved.map((e) => e.toString())));
+      }
       final dynamic raw = this['permissions'];
       List<String>? explicit;
       if (raw is List) {

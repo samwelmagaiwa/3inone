@@ -89,10 +89,7 @@ class _InventoryCategoriesScreenState extends State<InventoryCategoriesScreen> {
     // inventory module -- there is no separate inv_manage_categories
     // permission on the backend). fromUser (not fromRole) also honours a
     // per-user explicit grant, not just the role default.
-    final canManage = UserPermissions.fromUser(
-      userRole: auth.user?.role ?? 'viewer',
-      explicitGrants: auth.user?.permissions,
-    ).has('inv_manage_products');
+    final canManage = (auth.user?.access ?? UserPermissions.fromRole('viewer')).has('inv_manage_products');
 
     final List<InvCategory> cats = inv.categories
         .where((c) =>

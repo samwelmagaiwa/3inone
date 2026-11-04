@@ -22,10 +22,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// The Salon service: its own entry on the service picker, its own home (the inventory shell with the salon's
 /// sections), and the sheet that says who served a client.
 class _Auth extends AuthProvider {
-  _Auth({this.services = const <String>['salon'], this.role = 'admin'});
+  _Auth({this.services = const <String>['salon'], this.role = 'admin', this.effective});
 
   final List<String> services;
   final String role;
+
+  /// The rights as the server worked them out (the role's own, plus what the owner added, minus what the owner took back).
+  final List<String>? effective;
 
   @override
   UserData? get user => UserData(
@@ -35,10 +38,12 @@ class _Auth extends AuthProvider {
         role: role,
         isActive: true,
         serviceTypes: services,
+        permissions: effective,
+        permissionsResolved: effective != null,
       );
 
   @override
-  UserPermissions get permissions => UserPermissions.fromRole(role);
+  UserPermissions get permissions => effective != null ? UserPermissions.fromEffective(userRole: role, permissions: effective!) : UserPermissions.fromRole(role);
 }
 
 class _Counting extends ApiService {
@@ -72,7 +77,7 @@ class _Counting extends ApiService {
   }
 }
 
-Future<(_Counting, InventoryProvider)> _openHome(WidgetTester t, {required bool salon, bool sw = false, int initialIndex = 0, String role = 'admin'}) async {
+Future<(_Counting, InventoryProvider)> _openHome(WidgetTester t, {required bool salon, bool sw = false, int initialIndex = 0, String role = 'admin', List<String>? effective}) async {
   final void Function(FlutterErrorDetails)? original = FlutterError.onError;
   FlutterError.onError = (FlutterErrorDetails d) {
     if (d.exceptionAsString().contains('overflowed')) return;
@@ -93,7 +98,7 @@ Future<(_Counting, InventoryProvider)> _openHome(WidgetTester t, {required bool 
         ChangeNotifierProvider<InventoryProvider>.value(value: inv),
         ChangeNotifierProvider<DepotProvider>(create: (_) => DepotProvider(api: server)),
         ChangeNotifierProvider<NotificationsProvider>(create: (_) => NotificationsProvider(api: server)),
-        ChangeNotifierProvider<AuthProvider>(create: (_) => _Auth(role: role)),
+        ChangeNotifierProvider<AuthProvider>(create: (_) => _Auth(role: role, effective: effective)),
         ChangeNotifierProvider<LocalizationService>.value(value: LocalizationService.instance),
       ],
       child: ScreenUtilInit(
@@ -155,6 +160,55 @@ void main() {
       expect(find.text('Product Profit Margins'), findsNothing, reason: 'a salon has services, not only products');
       expect(find.text('Stock Levels'), findsNothing);
       expect(find.text('Purchasing'), findsNothing);
+    });
+
+    group('the menu shows exactly what the owner switched on', () {
+      // What the server sends an accountant who has not been changed: the books, and no front desk, equipment or branch goods.
+      const List<String> accountant = <String>[
+        'inv_view_products', 'inv_create_products', 'inv_create_sales', 'inv_manage_sales', 'inv_view_credit', 'inv_view_cash',
+        'inv_view_reports', 'inv_view_expenses', 'inv_manage_expenses', 'inv_view_reminders',
+        'inv_salon_appointments', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_insights', 'inv_salon_money',
+      ];
+      const List<String> notForAccountant = <String>['Come back', 'Walk-ins', 'Feedback', 'Equipment', 'Goods by branch', 'Branches', 'Business profile', 'Salon settings'];
+
+      testWidgets('an accountant starts with the books and is not shown the rest', (t) async {
+        await _openHome(t, salon: true, role: 'accountant', effective: accountant);
+        await _openMenu(t);
+
+        for (final String label in <String>['Services & Goods', 'Sales', 'Appointments', 'Stylists', 'Reports', 'Money', 'Team', 'Insights', 'Clients & Credit', 'Settings']) {
+          expect(find.text(label), findsWidgets, reason: label);
+        }
+        for (final String label in notForAccountant) {
+          expect(find.text(label), findsNothing, reason: label);
+        }
+      });
+
+      testWidgets('switching a section on shows it, and only that one', (t) async {
+        await _openHome(t, salon: true, role: 'accountant', effective: <String>[...accountant, 'inv_salon_equipment']);
+        await _openMenu(t);
+
+        expect(find.text('Equipment'), findsOneWidget);
+        expect(find.text('Goods by branch'), findsNothing);
+        expect(find.text('Walk-ins'), findsNothing);
+      });
+
+      testWidgets('taking a section back hides it, though the role gives it', (t) async {
+        await _openHome(t, salon: true, role: 'accountant', effective: accountant.where((String k) => k != 'inv_salon_money' && k != 'inv_salon_insights').toList());
+        await _openMenu(t);
+
+        expect(find.text('Money'), findsNothing);
+        expect(find.text('Insights'), findsNothing);
+        expect(find.text('Team'), findsWidgets);
+      });
+
+      testWidgets('the owner sees every section', (t) async {
+        await _openHome(t, salon: true);
+        await _openMenu(t);
+
+        for (final String label in <String>['Appointments', 'Stylists', 'Come back', 'Walk-ins', 'Team', 'Insights', 'Feedback', 'Equipment', 'Goods by branch', 'Money']) {
+          expect(find.text(label), findsWidgets, reason: label);
+        }
+      });
     });
 
     testWidgets('its first page is the salon dashboard, without the value of the stock on the shelves', (t) async {

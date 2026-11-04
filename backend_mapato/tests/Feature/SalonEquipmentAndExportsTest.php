@@ -103,6 +103,9 @@ class SalonEquipmentAndExportsTest extends TestCase
         $this->dryer($owner, ['next_service_on' => 'soon'])->assertStatus(422);
         $this->dryer($asha)->assertStatus(403);
         $this->api($asha, 'GET', '/api/inventory/salon/equipment')->assertStatus(403);
+        // Equipment is a section of its own: the accountant does not start with it, and keeps it once the owner switches it on.
+        $this->dryer($accountant)->assertStatus(403);
+        $accountant->forceFill(['permissions' => ['inv_salon_equipment']])->save();
         $this->dryer($accountant)->assertCreated();
         $this->api($accountant, 'GET', '/api/inventory/salon/equipment')->assertOk();
     }

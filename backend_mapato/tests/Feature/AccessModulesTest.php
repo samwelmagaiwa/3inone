@@ -72,10 +72,10 @@ class AccessModulesTest extends TestCase
         $ivan = $this->person($owner, 'accountant');
         $have = $this->effective($ivan);
 
-        foreach (['inv_view_products', 'inv_create_products', 'inv_create_sales', 'inv_view_credit', 'inv_view_reports', 'inv_manage_expenses', 'inv_salon_money', 'inv_salon_team', 'inv_salon_insights', 'inv_salon_appointments'] as $key) {
+        foreach (['inv_view_products', 'inv_create_products', 'inv_create_sales', 'inv_view_credit', 'inv_view_reports', 'inv_manage_expenses', 'inv_salon_money', 'inv_salon_team', 'inv_salon_insights', 'inv_salon_appointments', 'inv_salon_stylists'] as $key) {
             $this->assertContains($key, $have, $key);
         }
-        foreach (['inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_feedback', 'inv_salon_stylists', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_manage_settings', 'inv_manage_products'] as $key) {
+        foreach (['inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_feedback', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_manage_settings', 'inv_manage_products'] as $key) {
             $this->assertNotContains($key, $have, $key);
         }
     }
@@ -245,5 +245,28 @@ class AccessModulesTest extends TestCase
         $this->assertNotNull($row);
         $this->assertContains('inv_salon_equipment', $row['after']['permissions']);
         $this->assertStringContainsString('Ivan Samwel', $row['summary']);
+    }
+
+    public function test_someone_given_a_shared_right_by_hand_keeps_what_it_used_to_open(): void
+    {
+        $owner = $this->salon();
+        $asha = $this->person($owner, 'hair_stylist', 'Asha');
+        $asha->forceFill(['permissions' => ['inv_view_reports']])->save();
+        $plain = $this->person($owner, 'hair_stylist', 'Plain');
+        $other = $this->person($owner, 'hair_stylist', 'Other');
+        $other->forceFill(['permissions' => ['inv_view_cash']])->save();
+
+        (require base_path('database/migrations/2026_11_21_000200_give_existing_grants_their_salon_sections.php'))->up();
+
+        $this->assertEqualsCanonicalizing(
+            ['inv_view_reports', 'inv_salon_money', 'inv_salon_insights', 'inv_salon_team', 'inv_salon_stylists', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_feedback'],
+            $asha->refresh()->permissions,
+        );
+        $this->assertContains('inv_salon_money', $this->effective($asha));
+        $this->assertSame(['inv_view_cash'], $other->refresh()->permissions, 'a right that opened none of the sections adds none');
+        $this->assertEmpty($plain->refresh()->permissions ?? []);
+
+        (require base_path('database/migrations/2026_11_21_000200_give_existing_grants_their_salon_sections.php'))->up();
+        $this->assertCount(8, $asha->refresh()->permissions, 'running it again adds nothing');
     }
 }

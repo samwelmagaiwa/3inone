@@ -560,10 +560,7 @@ class _InvTabScaffoldState extends State<InvTabScaffold>
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final user = auth.user;
       if (user == null) return UserPermissions.empty();
-      return UserPermissions.fromUser(
-        userRole: user.role,
-        explicitGrants: user.permissions,
-      );
+      return user.access;
     } catch (_) {
       return UserPermissions.empty();
     }

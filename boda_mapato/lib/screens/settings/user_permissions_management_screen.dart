@@ -5,6 +5,7 @@ import '../../models/user_permissions.dart';
 import '../../services/api_service.dart';
 import '../../services/localization_service.dart';
 import '../../modules/inventory/screens/widgets/joined_sections.dart' show SectionGlowDivider;
+import 'user_access_screen.dart';
 
 class UserPermissionsManagementScreen extends StatefulWidget {
   // rental, transport, inventory
@@ -185,8 +186,13 @@ class _UserPermissionsManagementScreenState
     return _PermState.denied;
   }
 
+  /// A shop, depot or salon person has their access as switches the owner turns on and off (see [UserAccessScreen]); rental and
+  /// transport keep the list of extra grants.
+  bool get _usesSwitches => widget.serviceType == 'inventory' || widget.serviceType == 'salon';
+
   @override
   Widget build(BuildContext context) {
+    if (_usesSwitches) return UserAccessScreen(user: widget.user, api: widget.api);
     final perms = _allPermissionGroups[widget.serviceType] ?? [];
     final String role = (widget.user['role'] as String?) ?? '';
 

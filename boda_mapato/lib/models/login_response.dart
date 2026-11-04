@@ -1,5 +1,6 @@
 import '../config/navigation_config.dart';
 import 'business.dart';
+import 'user_permissions.dart';
 
 class LoginResponse {
   LoginResponse({
@@ -69,6 +70,7 @@ class UserData {
     this.assignedDevice,
     this.avatarUrl,
     this.permissions,
+    this.permissionsResolved = false,
     this.fullAccess = false,
     this.mustChangePassword = false,
     this.serviceTypes = const <String>[],
@@ -99,6 +101,7 @@ class UserData {
         // Flexible avatar/profile image keys from backend
         avatarUrl: _pickAvatarUrl(json),
         permissions: _pickPermissions(json),
+        permissionsResolved: _resolved(json),
         fullAccess: (json["full_access"] as bool?) ?? false,
         mustChangePassword: (json["must_change_password"] as bool?) ?? false,
         serviceTypes: _pickServiceTypes(json),
@@ -120,6 +123,10 @@ class UserData {
   /// Per-user explicit grants stored in users.permissions (DB column).
   /// May be null when admin hasn't assigned any extras yet.
   final List<String>? permissions;
+
+  /// True when [permissions] is the list the server worked out (the role's own, plus what the owner added, minus what the owner took
+  /// back): then it is used as it is, and the role's defaults are not added again.
+  final bool permissionsResolved;
   final bool fullAccess;
   /// True while the account still uses an admin-issued default password.
   final bool mustChangePassword;
@@ -138,6 +145,7 @@ class UserData {
     if (isSuperAdmin || fullAccess) return true;
     if (role == 'tenant' && (permission == 'view_maintenance' || permission == 'view_vendors' || permission == 'tenant_self_service')) return true;
     if (role == 'vendor' && (permission == 'vendor_access' || permission == 'view_maintenance')) return true;
+    if (permissionsResolved) return (permissions ?? const <String>[]).contains(permission);
     if (permissions != null && permissions!.contains(permission)) return true;
     // Most accounts are never given an explicit permissions array (it's
     // null in the DB by default), so without this fallback every
@@ -145,6 +153,18 @@ class UserData {
     // fall back to the role's default set instead of treating "no array"
     // as "no permissions at all".
     return DefaultPermissions.getPermissionsForRole(role).contains(permission);
+  }
+
+  /// What this person may do: the server's own resolved list when there is one, else the role's defaults plus the explicit grants.
+  UserPermissions get access => permissionsResolved
+      ? UserPermissions.fromEffective(userRole: role, permissions: permissions ?? const <String>[])
+      : UserPermissions.fromUser(userRole: role, explicitGrants: permissions);
+
+  /// The server sent its resolved list (even an empty one: everything taken back is a real answer).
+  static bool _resolved(Map<String, dynamic> json) {
+    final dynamic raw = json['effective_permissions'];
+
+    return raw is List && !raw.contains('__all__');
   }
 
   bool get isSuperAdmin => role == "super_admin";
@@ -156,6 +176,9 @@ class UserData {
   /// Prefer server-resolved effective_permissions (role defaults ∪ explicit
   /// grants) when present; fall back to the raw explicit-only permissions list.
   static List<String>? _pickPermissions(Map<String, dynamic> json) {
+    if (_resolved(json)) {
+      return (json['effective_permissions'] as List).map((e) => e.toString()).toList();
+    }
     for (final String key in ['effective_permissions', 'permissions']) {
       final dynamic raw = json[key];
       if (raw is List && raw.isNotEmpty) {

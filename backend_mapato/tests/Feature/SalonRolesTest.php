@@ -207,6 +207,9 @@ class SalonRolesTest extends TestCase
         $this->sell($accountant, $braids, 40000)->assertCreated();
         $this->assertCount(2, $this->api($accountant, 'GET', '/api/inventory/sales')->json('data'));
         $this->api($accountant, 'GET', '/api/inventory/salon/cashbook')->assertOk();
+        // The walk-in queue is the front desk's: the accountant does not start with it, and has it once the owner switches it on.
+        $this->api($accountant, 'GET', '/api/inventory/salon/queue')->assertForbidden();
+        $accountant->forceFill(['permissions' => ['inv_salon_walkins']])->save();
         $this->api($accountant, 'GET', '/api/inventory/salon/queue')->assertOk();
     }
 

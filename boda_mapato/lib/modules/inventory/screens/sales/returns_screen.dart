@@ -83,10 +83,7 @@ class _ReturnsTab extends StatelessWidget {
     // from someone who legitimately holds inv_manage_sales without
     // inv_manage_stock. fromUser (not fromRole) also honours a per-user
     // explicit grant, not just the role default.
-    final bool canApprove = UserPermissions.fromUser(
-      userRole: auth.user?.role ?? 'viewer',
-      explicitGrants: auth.user?.permissions,
-    ).has('inv_manage_sales');
+    final bool canApprove = (auth.user?.access ?? UserPermissions.fromRole('viewer')).has('inv_manage_sales');
 
     return RefreshIndicator(
       onRefresh: onRefresh,

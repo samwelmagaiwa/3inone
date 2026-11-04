@@ -238,10 +238,7 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
     // ── Resolve effective permissions once ────────────────────────────────────
     final perms = user == null
         ? UserPermissions.empty()
-        : UserPermissions.fromUser(
-            userRole: user.role ?? '',
-            explicitGrants: user.permissions,
-          );
+        : user.access;
 
     final bool canViewProducts = perms.has('inv_view_products');
     final bool canCreateSales  = perms.has('inv_create_sales');

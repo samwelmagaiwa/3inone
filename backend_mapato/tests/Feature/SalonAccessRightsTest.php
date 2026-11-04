@@ -59,7 +59,8 @@ class SalonAccessRightsTest extends TestCase
         $this->give($owner, $asha, ['inv_view_cash'])->assertSuccessful();
         $this->api($asha, 'GET', '/api/inventory/salon/profit-loss')->assertForbidden();
 
-        $this->give($owner, $asha, ['inv_view_reports'])->assertSuccessful();
+        // The reports right opens the reports; each money page is its own section too (money, team, insights), which the owner switches on.
+        $this->give($owner, $asha, ['inv_view_reports', 'inv_salon_money', 'inv_salon_team', 'inv_salon_insights'])->assertSuccessful();
         foreach ($money as $uri) {
             $this->api($asha->refresh(), 'GET', $uri)->assertOk();
         }
@@ -94,10 +95,13 @@ class SalonAccessRightsTest extends TestCase
         $acc = $this->person($owner, 'accountant');
         $asha = $this->person($owner, 'hair_stylist');
 
-        foreach (['/api/inventory/salon/profit-loss', '/api/inventory/salon/cashbook', '/api/inventory/salon/branch-stock'] as $uri) {
+        foreach (['/api/inventory/salon/profit-loss', '/api/inventory/salon/cashbook'] as $uri) {
             $this->api($owner, 'GET', $uri)->assertOk();
             $this->api($acc, 'GET', $uri)->assertOk();
         }
+        // The goods held by each branch are the owner's to share: the accountant does not start with them.
+        $this->api($owner, 'GET', '/api/inventory/salon/branch-stock')->assertOk();
+        $this->api($acc, 'GET', '/api/inventory/salon/branch-stock')->assertForbidden();
         $this->api($asha, 'GET', '/api/inventory/salon/profit-loss')->assertForbidden();
         $this->api($asha, 'GET', '/api/inventory/salon/cashbook')->assertForbidden();
     }

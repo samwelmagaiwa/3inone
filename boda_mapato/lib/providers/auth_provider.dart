@@ -131,10 +131,7 @@ class AuthProvider extends ChangeNotifier {
   UserPermissions get permissions {
     final UserData? u = _user;
     if (u == null) return const UserPermissions.empty();
-    return UserPermissions.fromUser(
-      userRole: u.role,
-      explicitGrants: u.permissions,
-    );
+    return u.access;
   }
   bool get isAuthenticated => _isAuthenticated;
   bool get isLoading => _isLoading;

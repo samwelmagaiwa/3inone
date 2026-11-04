@@ -179,6 +179,9 @@ class SalonBranchesTest extends TestCase
         $stylist = $this->givenServices(User::factory()->create(['name' => 'S', 'role' => 'hair_stylist', 'is_active' => true, 'created_by' => $owner->id]), 'salon');
         $br = $this->api($owner, 'POST', '/api/inventory/salon/branches', ['name' => 'Main'])->assertCreated()->json('data.id');
         $p = $this->goods($owner, 5);
+        // The section is the owner's to share: a stylist does not start with it, and once given it is to look at, not to move.
+        $this->api($stylist, 'GET', '/api/inventory/salon/branch-stock')->assertForbidden();
+        $stylist->forceFill(['permissions' => ['inv_salon_branch_stock']])->save();
         $this->api($stylist, 'GET', '/api/inventory/salon/branch-stock')->assertOk();
         $this->api($stylist, 'POST', '/api/inventory/salon/branch-stock/transfer', ['product_id' => $p, 'to_branch_id' => $br, 'quantity' => 1])->assertForbidden();
 

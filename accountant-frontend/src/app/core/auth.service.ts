@@ -125,6 +125,11 @@ export class AuthService {
     return p.includes('__all__') || p.includes(permission);
   }
 
+  /** Working where things are sold and owed: a shop, depot or salon (the same sales engine, so the same pages). */
+  sells(): boolean {
+    return this.service() === 'inventory' || this.service() === 'salon';
+  }
+
   canAny(...permissions: string[]): boolean {
     return permissions.some((p) => this.can(p));
   }

@@ -2,7 +2,6 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../models/login_response.dart';
-import '../../../../models/user_permissions.dart';
 import '../../../../providers/auth_provider.dart';
 
 /// Who may see the salon's money: what the business earned and spent, and what each person is paid. Whoever holds the
@@ -13,7 +12,7 @@ bool canSeeSalonMoney(final UserData? user) {
   if (user == null) return false;
   if (user.isSuperAdmin || user.fullAccess) return true;
 
-  return UserPermissions.fromUser(userRole: user.role, explicitGrants: user.permissions).has('inv_view_reports');
+  return user.access.has('inv_view_reports');
 }
 
 /// [canSeeSalonMoney] for the person signed in, where there is one (a screen built without sign-in shows no money).
