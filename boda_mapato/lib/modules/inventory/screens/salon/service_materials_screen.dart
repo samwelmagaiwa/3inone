@@ -7,6 +7,7 @@ import '../../../../utils/server_message.dart';
 import '../../models/inv_product.dart';
 import '../../providers/inventory_provider.dart';
 import '../../services/salon_api.dart';
+import '../widgets/glow_list_card.dart';
 
 /// The goods one service uses up each time it is sold (a tube of dye for a colour, a towel pack for a wash). When the
 /// service is sold they leave the shelf by themselves and what they cost goes into the profit and loss; a service is never
@@ -109,8 +110,13 @@ class _ServiceMaterialsScreenState extends State<ServiceMaterialsScreen> {
               : ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 96), children: <Widget>[
                   Text(sw ? 'Kila huduma hii ikiuzwa, bidhaa hizi hutolewa kwenye stoo.' : 'Each time this service is sold, these goods leave the shelf.'),
                   const SizedBox(height: 8),
+                  if (_rows.isNotEmpty)
+                    GlowListCard(
+                      dividerKey: 'mat_divider',
+                      padding: EdgeInsets.zero,
+                      children: <Widget>[
                   for (final _Row r in _rows)
-                    Card(
+                    KeyedSubtree(
                       key: Key('mat_${r.productId}'),
                       child: ListTile(
                         title: Text(r.name),
@@ -121,6 +127,8 @@ class _ServiceMaterialsScreenState extends State<ServiceMaterialsScreen> {
                         ]),
                         trailing: IconButton(key: Key('mat_remove_${r.productId}'), icon: const Icon(Icons.delete_outline), onPressed: () => setState(() => _rows.remove(r))),
                       ),
+                    ),
+                      ],
                     ),
                   if (_rows.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Hakuna bidhaa bado.' : 'No goods yet.', textAlign: TextAlign.center)),
                   const SizedBox(height: 12),

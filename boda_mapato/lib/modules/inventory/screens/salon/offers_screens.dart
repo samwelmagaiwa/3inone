@@ -7,6 +7,7 @@ import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
 import 'salon_input.dart';
 import '../widgets/inventory_widgets.dart';
+import '../widgets/glow_list_card.dart';
 
 /// Vouchers and bulk texts to groups of clients, side by side.
 class OffersHubScreen extends StatelessWidget {
@@ -98,8 +99,13 @@ class _VouchersScreenState extends State<VouchersScreen> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 96), children: <Widget>[
+                    if (_rows.isNotEmpty)
+                      GlowListCard(
+                        dividerKey: 'voucher_divider',
+                        padding: EdgeInsets.zero,
+                        children: <Widget>[
                     for (final Map<String, dynamic> v in _rows)
-                      Card(
+                      KeyedSubtree(
                         key: Key('voucher_${v['id']}'),
                         child: ListTile(
                           title: Text('${v['code']}  ·  ${v['kind'] == 'percent' ? '${v['value']}%' : 'TSH ${v['value']}'}'),
@@ -115,6 +121,8 @@ class _VouchersScreenState extends State<VouchersScreen> {
                           ),
                           onLongPress: () => _run(() => _api.deleteVoucher((v['id'] as num).toInt())),
                         ),
+                      ),
+                        ],
                       ),
                     if (_rows.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(sw ? 'Hakuna kuponi bado.' : 'No vouchers yet.', textAlign: TextAlign.center)),
                   ]),

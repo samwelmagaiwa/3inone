@@ -10,6 +10,7 @@ import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
+import '../widgets/glow_list_card.dart';
 
 /// Hands a finished file to the person (share sheet by default; a test passes its own).
 typedef FileSaver = Future<void> Function(Uint8List bytes, String filename);
@@ -93,24 +94,38 @@ class _ExportScreenState extends State<ExportScreen> {
     final bool sw = context.watch<LocalizationService>().isSwahili;
 
     return ListView(padding: const EdgeInsets.all(16), children: <Widget>[
-      Text(sw ? 'Ripoti' : 'Report', style: const TextStyle(fontWeight: FontWeight.bold)),
-      Wrap(spacing: 8, children: <Widget>[
-        for (final String t in types) ChoiceChip(key: Key('exp_type_$t'), label: Text(typeLabel(t, sw)), selected: _type == t, onSelected: (_) => setState(() => _type = t)),
-      ]),
-      const SizedBox(height: 16),
-      Text(sw ? 'Kipindi' : 'Period', style: const TextStyle(fontWeight: FontWeight.bold)),
-      Wrap(spacing: 8, children: <Widget>[
-        ChoiceChip(key: const Key('exp_today'), label: Text(sw ? 'Leo' : 'Today'), selected: _period == 'today', onSelected: (_) => setState(() => _period = 'today')),
-        ChoiceChip(key: const Key('exp_month'), label: Text(sw ? 'Mwezi huu' : 'This month'), selected: _period == 'month', onSelected: (_) => setState(() => _period = 'month')),
-        ChoiceChip(key: const Key('exp_last'), label: Text(sw ? 'Mwezi uliopita' : 'Last month'), selected: _period == 'last', onSelected: (_) => setState(() => _period = 'last')),
-      ]),
-      const SizedBox(height: 16),
-      SegmentedButton<String>(
-        segments: const <ButtonSegment<String>>[ButtonSegment<String>(value: 'pdf', label: Text('PDF')), ButtonSegment<String>(value: 'csv', label: Text('CSV'))],
-        selected: <String>{_format},
-        onSelectionChanged: (Set<String> s) => setState(() => _format = s.first),
+      GlowCard(
+        title: sw ? 'Ripoti' : 'Report',
+        dividerKey: 'exp_type_divider',
+        children: <Widget>[
+          Wrap(spacing: 8, children: <Widget>[
+            for (final String t in types) ChoiceChip(key: Key('exp_type_$t'), label: Text(typeLabel(t, sw)), selected: _type == t, onSelected: (_) => setState(() => _type = t)),
+          ]),
+        ],
       ),
-      const SizedBox(height: 16),
+      GlowCard(
+        title: sw ? 'Kipindi' : 'Period',
+        dividerKey: 'exp_period_divider',
+        children: <Widget>[
+          Wrap(spacing: 8, children: <Widget>[
+            ChoiceChip(key: const Key('exp_today'), label: Text(sw ? 'Leo' : 'Today'), selected: _period == 'today', onSelected: (_) => setState(() => _period = 'today')),
+            ChoiceChip(key: const Key('exp_month'), label: Text(sw ? 'Mwezi huu' : 'This month'), selected: _period == 'month', onSelected: (_) => setState(() => _period = 'month')),
+            ChoiceChip(key: const Key('exp_last'), label: Text(sw ? 'Mwezi uliopita' : 'Last month'), selected: _period == 'last', onSelected: (_) => setState(() => _period = 'last')),
+          ]),
+        ],
+      ),
+      GlowCard(
+        title: sw ? 'Aina ya faili' : 'File type',
+        dividerKey: 'exp_format_divider',
+        children: <Widget>[
+          SegmentedButton<String>(
+            segments: const <ButtonSegment<String>>[ButtonSegment<String>(value: 'pdf', label: Text('PDF')), ButtonSegment<String>(value: 'csv', label: Text('CSV'))],
+            selected: <String>{_format},
+            onSelectionChanged: (Set<String> s) => setState(() => _format = s.first),
+          ),
+        ],
+      ),
+      const SizedBox(height: 6),
       FilledButton.icon(key: const Key('exp_go'), onPressed: _busy ? null : _go, icon: const Icon(Icons.ios_share), label: Text(sw ? 'Tengeneza na Shiriki' : 'Create and share')),
     ]);
   }

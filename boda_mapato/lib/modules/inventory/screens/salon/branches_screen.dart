@@ -10,6 +10,7 @@ import '../../../../widgets/place_picker.dart';
 import '../../services/salon_api.dart';
 import '../widgets/branch_form_dialog.dart';
 import 'salon_input.dart';
+import '../widgets/glow_list_card.dart';
 
 /// The business's branches (a salon's, a shop's or a depot's). Choosing one makes every figure, list and new record on the phone
 /// that branch's; "All branches" goes back to the whole business. The owner and managers add, rename and switch branches off.
@@ -108,6 +109,10 @@ class _BranchesScreenState extends State<BranchesScreen> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(padding: const EdgeInsets.all(16), children: <Widget>[
+                    GlowListCard(
+                      dividerKey: 'branch_divider',
+                      padding: EdgeInsets.zero,
+                      children: <Widget>[
                     RadioListTile<int?>(
                       key: const Key('branch_all'),
                       value: null,
@@ -139,6 +144,8 @@ class _BranchesScreenState extends State<BranchesScreen> {
                               )
                             : null,
                       ),
+                      ],
+                    ),
                     if (_rows.isEmpty)
                       Padding(
                         padding: const EdgeInsets.all(24),

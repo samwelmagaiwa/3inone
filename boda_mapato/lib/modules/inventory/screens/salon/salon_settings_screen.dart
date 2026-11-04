@@ -8,6 +8,7 @@ import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
 import 'salon_input.dart';
 import '../widgets/inventory_widgets.dart';
+import '../widgets/glow_list_card.dart';
 
 /// The salon's switches in one place: texts to clients (reminders, birthday offer, feedback link, come-back), the
 /// evening summary to the owner, the cancel/deposit window, the online booking page and the loyalty points. Each
@@ -141,7 +142,7 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
           : _error != null
               ? Center(child: Text(_error!))
               : ListView(padding: const EdgeInsets.all(16), children: <Widget>[
-                  _head(sw ? 'Ujumbe kwa wateja' : 'Texts to clients'),
+                  GlowCard(title: sw ? 'Ujumbe kwa wateja' : 'Texts to clients', dividerKey: 'set_divider', children: <Widget>[
                   _switch('set_rebook', 'rebook_enabled', sw ? 'Vikumbusho vya kurudi' : 'Come-back reminders', sw ? 'Mteja anakumbushwa baada ya muda' : 'Clients are reminded after a while'),
                   _switch('set_reminders', 'appointment_reminders', sw ? 'Kikumbusho cha miadi' : 'Appointment reminders', sw ? 'Siku moja kabla' : 'The day before'),
                   _switch('set_feedback', 'feedback_sms', sw ? 'Ombi la maoni' : 'Ask for feedback', sw ? 'Ujumbe wenye kiungo baada ya kuhudumiwa' : 'A text with a link after a visit'),
@@ -153,9 +154,11 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                       TextButton(key: const Key('set_birthday_save'), onPressed: () => _save(<String, dynamic>{'birthday_text': _birthdayText.text.trim()}), child: Text(sw ? 'Hifadhi' : 'Save')),
                     ]),
                   ),
-                  _head(sw ? 'Mmiliki' : 'Owner'),
+                  ]),
+                  GlowCard(title: sw ? 'Mmiliki' : 'Owner', dividerKey: 'set_divider', children: <Widget>[
                   _switch('set_summary', 'daily_summary', sw ? 'Muhtasari wa jioni' : 'Evening summary', sw ? 'Ujumbe wa jinsi siku ilivyokwenda' : 'A text on how the day went'),
-                  _head(sw ? 'Miadi na amana' : 'Appointments and deposits'),
+                  ]),
+                  GlowCard(title: sw ? 'Miadi na amana' : 'Appointments and deposits', dividerKey: 'set_divider', children: <Widget>[
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(children: <Widget>[
@@ -170,7 +173,8 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                       TextButton(key: const Key('set_cancel_save'), onPressed: () => _save(<String, dynamic>{'cancel_hours': int.tryParse(_cancel.text.trim()) ?? 0}), child: Text(sw ? 'Hifadhi' : 'Save')),
                     ]),
                   ),
-                  _head(sw ? 'Kuweka miadi mtandaoni' : 'Online booking'),
+                  ]),
+                  GlowCard(title: sw ? 'Kuweka miadi mtandaoni' : 'Online booking', dividerKey: 'set_divider', children: <Widget>[
                   _switch('set_online', 'online_booking', sw ? 'Wateja waweke miadi wenyewe' : 'Let clients book themselves', sw ? 'Ukurasa wa mtandaoni wa saluni yako' : 'A web page for your salon'),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -191,7 +195,8 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                         },
                       ),
                     ),
-                  _head(sw ? 'Makundi ya huduma' : 'Service categories'),
+                  ]),
+                  GlowCard(title: sw ? 'Makundi ya huduma' : 'Service categories', dividerKey: 'set_divider', children: <Widget>[
                   ListTile(
                     key: const Key('set_presets'),
                     leading: const Icon(Icons.category_outlined),
@@ -199,8 +204,9 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                     subtitle: Text(sw ? 'Nywele, kusuka, rangi, kucha, make-up, kope, ngozi, masaji, kinyozi… (yaliyopo hayarudiwi)' : 'Hair, braiding, colour, nails, makeup, lashes, skin, massage, barber… (existing ones are not repeated)'),
                     onTap: _presets,
                   ),
+                  ]),
                   if (_loyaltyKnown) ...<Widget>[
-                  _head(sw ? 'Pointi za uaminifu' : 'Loyalty points'),
+                  GlowCard(title: sw ? 'Pointi za uaminifu' : 'Loyalty points', dividerKey: 'set_divider', children: <Widget>[
                   SwitchListTile(
                     key: const Key('set_loyalty'),
                     value: _loyalty['on'] == true,
@@ -227,6 +233,7 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                       ),
                     ]),
                   ),
+                  ]),
                   ],
                 ]),
     );

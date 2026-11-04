@@ -11,6 +11,7 @@ import '../../../../utils/server_message.dart';
 import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
 import 'salon_input.dart';
+import '../widgets/glow_list_card.dart';
 
 /// Chooses a photo: its bytes and file name, or null when nothing was chosen.
 typedef PhotoPicker = Future<(Uint8List, String)?> Function();
@@ -154,10 +155,11 @@ class _ClientExtrasState extends State<ClientExtras> {
       'allergies': sw ? 'Mzio (allergies)' : 'Allergies',
     };
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+    return GlowListCard(
+      dividerKey: 'extras_divider',
+      padding: const EdgeInsets.all(12),
+      children: <Widget>[
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
           Wrap(spacing: 8, children: <Widget>[
             if (h.isReturning != null)
               Chip(key: const Key('client_kind'), label: Text(h.isReturning! ? (sw ? 'Mteja anayerudi' : 'Returning client') : (sw ? 'Mteja mpya' : 'New client'))),
@@ -170,7 +172,9 @@ class _ClientExtrasState extends State<ClientExtras> {
             alignment: Alignment.centerRight,
             child: TextButton(key: const Key('client_profile_save'), onPressed: _saving ? null : () => _save(sw), child: Text(sw ? 'Hifadhi' : 'Save')),
           ),
-          if (_packages.isNotEmpty) ...<Widget>[
+        ]),
+        if (_packages.isNotEmpty)
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
             Text(sw ? 'Vifurushi' : 'Packages', style: const TextStyle(fontWeight: FontWeight.bold)),
             for (final Map<String, dynamic> p in _packages)
               ListTile(
@@ -184,7 +188,8 @@ class _ClientExtrasState extends State<ClientExtras> {
                 ].where((String s) => s.isNotEmpty).join(' · ')),
                 trailing: Text('${p['sessions_left']}/${p['sessions_total']}'),
               ),
-          ],
+          ]),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
           Row(children: <Widget>[
             Expanded(child: Text(sw ? 'Picha za mitindo' : 'Style photos', style: const TextStyle(fontWeight: FontWeight.bold))),
             IconButton(key: const Key('client_photo_add'), tooltip: sw ? 'Ongeza picha' : 'Add photo', icon: const Icon(Icons.add_a_photo_outlined), onPressed: () => _addPhoto(sw)),
@@ -201,7 +206,7 @@ class _ClientExtrasState extends State<ClientExtras> {
                 ),
             ]),
         ]),
-      ),
+      ],
     );
   }
 }

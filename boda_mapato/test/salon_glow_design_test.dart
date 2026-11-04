@@ -8,6 +8,7 @@ const List<String> _converted = <String>[
   'salon_reports_screen', 'profit_loss_screen', 'payroll_screen', 'attendance_screen', 'shifts_screen', 'schedule_screen',
   'services_report_screen', 'salon_expenses_screen', 'stylists_screen', 'stylist_detail_screen', 'appointments_screen', 'rebook_screen',
   'queue_screen', 'equipment_screen', 'feedback_screen', 'insights_screen', 'cashbook_screen', 'client_history_screen',
+  'salon_settings_screen', 'offers_screens', 'export_screen', 'branches_screen', 'service_materials_screen', 'client_extras',
 ];
 
 String _source(String name) => File('lib/modules/inventory/screens/salon/$name.dart').readAsStringSync();
