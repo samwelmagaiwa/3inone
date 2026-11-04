@@ -1,6 +1,6 @@
 <!-- The till -->
 <div class="wizard-backdrop animate-fade-in-up">
- <div class="wizard-card" role="dialog" aria-modal="true" [attr.aria-label]="i18n.t('till.title')" data-testid="till-wizard">
+ <div class="wizard-card" [class.is-wide]="step() <= 2" role="dialog" aria-modal="true" [attr.aria-label]="i18n.t('till.title')" data-testid="till-wizard">
 
   <header class="wizard-head">
     <div class="flex items-center justify-between gap-3">
@@ -87,7 +87,7 @@
     </section>
 
     <!-- 2. The cart, the customer and the payment -->
-    <section class="panel right space-y-3" [class.hidden]="step() === 1" [class.attempted]="tried()">
+    <section class="panel right" [class.hidden]="step() === 1" [class.attempted]="tried()">
       <div [class.hidden]="step() !== 2">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <p class="step">@if (till.lines().length) { <span class="count-chip">{{ till.lines().length }}</span> }</p>
@@ -465,7 +465,10 @@
 
   /* The sale is made in a popup card, one step at a time (the steps share the page's panels; the others are hidden) */
   .wizard-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(15, 23, 42, .55); backdrop-filter: blur(6px); }
-  .wizard-card { display: flex; flex-direction: column; width: 100%; max-width: 1320px; height: calc(100vh - 40px); max-height: 940px; background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 30px 70px -20px rgba(15, 23, 42, .45), 0 0 0 1px rgba(15, 23, 42, .08); }
+  .wizard-card { display: flex; flex-direction: column; width: 100%; max-width: 1040px; height: auto; max-height: calc(100vh - 40px); background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 30px 70px -20px rgba(15, 23, 42, .45), 0 0 0 1px rgba(15, 23, 42, .08); }
+  /* The card is as big as what it holds: wide for the goods and the cart, narrower for the rest, and as tall as its fields (up to the window) */
+  .wizard-card.is-wide { max-width: 1320px; }
+  .panel.right { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 16px; align-items: start; }
   .wizard-head { padding: 12px 20px 10px; border-bottom: 1px solid #e6ecfb; background: linear-gradient(180deg, #f5f8ff, #fff); }
   .wizard-eyebrow { font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; color: #7d8fc4; }
   .wizard-title { font-size: 18px; font-weight: 900; color: #1a2f6e; letter-spacing: -.01em; }
