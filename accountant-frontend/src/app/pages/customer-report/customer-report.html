@@ -12,17 +12,12 @@
     </div>
   </div>
 
-  <div class="flex flex-wrap items-end gap-3">
-    <div class="flex flex-wrap gap-2" role="tablist">
-      @for (p of periods; track p) {
-        <button type="button" role="tab" class="pill-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="choose(p)" [attr.data-testid]="'crr-period-' + p">{{ i18n.t('crr.period.' + p) }}</button>
-      }
-    </div>
-    @if (period() === 'custom') {
+  @if (period() === 'custom') {
+    <div class="flex flex-wrap items-end gap-3">
       <div><label class="modal-label" for="crrFrom">{{ i18n.t('cr.from') }}</label><input id="crrFrom" name="crrFrom" type="date" class="modal-input" [(ngModel)]="from" (change)="load()" data-testid="crr-from"></div>
       <div><label class="modal-label" for="crrTo">{{ i18n.t('cr.to') }}</label><input id="crrTo" name="crrTo" type="date" class="modal-input" [(ngModel)]="to" (change)="load()" data-testid="crr-to"></div>
-    }
-  </div>
+    </div>
+  }
 
   @if (loading() && !report()) {
     <div class="skeleton-box" style="height: 130px; border-radius: 14px;"></div>
@@ -34,7 +29,7 @@
     </div>
   } @else if (report(); as r) {
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="crr-kpis grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="crr-kpis">
       <div class="kpi-card">
         <p class="label-eyebrow">{{ i18n.t('crr.kpi.bought') }}</p>
         <h3 class="text-2xl font-black tracking-tight mt-2" style="color: #1a2f6e;" data-testid="crr-sales">{{ tsh(r.totals.sales) }}</h3>
@@ -59,6 +54,7 @@
       </div>
     </div>
 
+    @if (r.by_period.length) {
     <section class="section-card overflow-hidden">
       <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-100">
         <div>
@@ -101,12 +97,13 @@
             </tbody>
           </table>
         </div>
-      } @else {
-        <div class="empty-state" data-testid="crr-none"><p class="empty-title">{{ i18n.t('crr.none') }}</p></div>
       }
     </section>
+    }
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    @if (r.top_products.length || r.recent_sales.length) {
+    <div class="grid grid-cols-1 gap-5" [class.lg-two]="r.top_products.length && r.recent_sales.length">
+      @if (r.top_products.length) {
       <section class="section-card overflow-hidden">
         <div class="px-5 pt-5 pb-3">
           <p class="label-eyebrow">{{ i18n.t('crr.top.eyebrow') }}</p>
@@ -137,11 +134,11 @@
               </tbody>
             </table>
           </div>
-        } @else {
-          <p class="text-sm text-slate-400 font-semibold px-5 pb-5">{{ i18n.t('crr.none') }}</p>
         }
       </section>
+      }
 
+      @if (r.recent_sales.length) {
       <section class="section-card overflow-hidden">
         <div class="px-5 pt-5 pb-3">
           <p class="label-eyebrow">{{ i18n.t('crr.recent.eyebrow') }}</p>
@@ -174,11 +171,11 @@
               </tbody>
             </table>
           </div>
-        } @else {
-          <p class="text-sm text-slate-400 font-semibold px-5 pb-5">{{ i18n.t('crr.none') }}</p>
         }
       </section>
+      }
     </div>
+    }
 
     <section class="section-card overflow-hidden" data-testid="crr-life">
       <div class="px-5 pt-5 pb-3">
@@ -211,3 +208,19 @@
   }
 </div>
 }
+
+<!-- The period tabs, shown in the breadcrumb row at the top of the page -->
+<ng-template #periodBar>
+  <div class="flex flex-wrap gap-2" role="tablist">
+    @for (p of periods; track p) {
+      <button type="button" role="tab" class="pill-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="choose(p)" [attr.data-testid]="'crr-period-' + p">{{ i18n.t('crr.period.' + p) }}</button>
+    }
+  </div>
+</ng-template>
+
+<style>
+  :host { display: block; }
+  /* The four figures stay put while the lists below them scroll. */
+  .crr-kpis { position: sticky; top: 0; z-index: 30; padding: 12px 0 10px; background: #f8fafc; }
+  @media (min-width: 1024px) { .lg-two { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>

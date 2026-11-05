@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -7,6 +7,7 @@ import { CreditApi } from '../../core/credit-api.service';
 import { CustomerReport } from '../../core/credit.models';
 import { dayLabel, dayOf, eatDay, monthName, offline, serverMessage, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
+import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { MotionService } from '../../core/services/motion.service';
 import { BsDateDirective } from '../../shared/ui/bs-date.directive';
 
@@ -23,11 +24,13 @@ type Group = 'day' | 'week' | 'month';
   imports: [FormsModule, RouterLink, BsDateDirective],
   templateUrl: './customer-report.html',
 })
-export class CustomerReportPage implements OnInit {
+export class CustomerReportPage implements OnInit, OnDestroy {
   private readonly api = inject(CreditApi);
   private readonly route = inject(ActivatedRoute);
   protected readonly i18n = inject(I18nService);
   protected readonly motion = inject(MotionService);
+  private readonly slot = inject(HeaderSlotService);
+  @ViewChild('periodBar', { static: true }) private periodBar!: TemplateRef<unknown>;
 
   protected readonly tsh = tsh;
   protected readonly eatDay = eatDay;
@@ -48,6 +51,11 @@ export class CustomerReportPage implements OnInit {
 
   ngOnInit(): void {
     this.choose('month');
+    queueMicrotask(() => this.slot.show(this.periodBar));
+  }
+
+  ngOnDestroy(): void {
+    this.slot.clear(this.periodBar);
   }
 
   /** A preset period: its days, and the grouping that reads best for it (days for a week, weeks for a month, months for more). */

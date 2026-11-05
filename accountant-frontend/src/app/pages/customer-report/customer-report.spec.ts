@@ -1,4 +1,6 @@
+import { ViewContainerRef } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
@@ -31,8 +33,20 @@ async function open(permissions: string[] = ['inv_view_credit', 'inv_view_report
   fixture.detectChanges();
   h.http.expectOne((r) => r.url === URL && r.params.get('group') === 'week').flush(answer);
   await settle(fixture);
+  showTabs(fixture as never);
 
   return { h, fixture, el: fixture.nativeElement as HTMLElement };
+}
+
+/** The period tabs live in the breadcrumb row of the shell: here the page's tab template is drawn next to the page so they can be clicked. */
+function showTabs(fixture: { componentRef: { injector: { get: <T>(t: unknown) => T } }; nativeElement: HTMLElement }): void {
+  const tpl = TestBed.inject(HeaderSlotService).template();
+  if (!tpl) return;
+  const host = document.createElement('div');
+  fixture.nativeElement.appendChild(host);
+  const view = fixture.componentRef.injector.get<ViewContainerRef>(ViewContainerRef).createEmbeddedView(tpl);
+  view.detectChanges();
+  host.append(...view.rootNodes);
 }
 
 const click = (el: HTMLElement, id: string) => (byTestId(el, id) as HTMLElement).click();
@@ -92,10 +106,13 @@ describe('a customer\'s report', () => {
     expect(text(byTestId(el, 'crr-row-2026-11-03')!)).toContain('03/11/2026');
   });
 
-  it('says plainly when nothing was bought in the days chosen', async () => {
+  it('shows no empty sections when nothing was bought in the days chosen, and the four figures stay', async () => {
     const { el } = await open(['inv_view_credit', 'inv_view_reports'], report({ by_period: [], top_products: [], recent_sales: [] }));
 
-    expect(byTestId(el, 'crr-none')).not.toBeNull();
+    expect(byTestId(el, 'crr-none')).toBeNull();
+    expect(el.querySelectorAll('table').length).toBe(1); // only the whole-history row
+    expect(byTestId(el, 'crr-kpis')).not.toBeNull();
+    expect(el.querySelector('.crr-kpis')).not.toBeNull();
   });
 
   it('shows the server message when it refuses', async () => {
