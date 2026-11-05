@@ -41,7 +41,7 @@ export class ModalDialogComponent implements OnChanges {
   @Input() show: boolean = false;
   @Input() title: string = '';
   @Input() eyebrow?: string;
-  @Input() size: 'sm' | 'md' | 'lg' = 'sm';
+  @Input() size: 'sm' | 'md' | 'lg' | 'xl' = 'sm';
   @Input() variant: 'primary' | 'indigo' | 'danger' | 'teal' = 'primary';
 
   @Output() close = new EventEmitter<void>();
@@ -58,6 +58,7 @@ export class ModalDialogComponent implements OnChanges {
   }
 
   get panelSizeClass(): string {
+    if (this.size === 'xl') return 'modal-panel-xl';
     if (this.size === 'lg') return 'modal-panel-lg';
     if (this.size === 'md') return 'modal-panel-md';
     return 'modal-panel-sm';

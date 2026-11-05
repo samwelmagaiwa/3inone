@@ -183,21 +183,28 @@
 }
 
 <!-- Add or change a product or service -->
-<app-modal-dialog [show]="formOpen()" [eyebrow]="i18n.t(salon() ? 'prod.title.salon' : 'prod.title')" [title]="i18n.t(editing() ? 'prod.edit' : (salon() ? 'prod.add.salon' : 'prod.add'))" size="lg" (close)="formOpen.set(false)">
-  <div slot="body" class="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="prod-form-grid">
-    <p class="text-sm text-slate-500 md:col-span-2">{{ i18n.t('prod.form.hint') }}</p>
+<app-modal-dialog [show]="formOpen()" [eyebrow]="i18n.t(salon() ? 'prod.title.salon' : 'prod.title')" [title]="i18n.t(editing() ? 'prod.edit' : (salon() ? 'prod.add.salon' : 'prod.add'))" size="xl" (close)="formOpen.set(false)">
+  <div slot="body" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="prod-form-grid">
+    <p class="text-sm text-slate-500 md:col-span-2 lg:col-span-3">{{ i18n.t('prod.form.hint') }}</p>
 
     @if (salon()) {
-      <label class="flex items-center gap-3 text-sm font-bold text-slate-700 cursor-pointer md:col-span-2">
+      <label class="flex items-center gap-3 text-sm font-bold text-slate-700 cursor-pointer md:col-span-2 lg:col-span-3">
         <input type="checkbox" name="fIsService" [(ngModel)]="fIsService" [disabled]="!!editing()" data-testid="prod-is-service">
         {{ i18n.t('prod.form.isservice') }}
       </label>
     }
 
-    <div class="md:col-span-2">
+    <div class="md:col-span-2 lg:col-span-2">
       <label class="modal-label req" for="pName">{{ i18n.t('prod.form.name') }}</label>
       <input id="pName" name="pName" class="modal-input" [(ngModel)]="fName" autocomplete="off" data-testid="prod-name" required [placeholder]="i18n.t('ph.prod.name')">
     </div>
+    <div>
+        <label class="modal-label" for="pStatus">{{ i18n.t('prod.form.status') }}</label>
+        <select id="pStatus" name="pStatus" class="modal-input" [(ngModel)]="fStatus">
+          <option value="active">{{ i18n.t('prod.active') }}</option>
+          <option value="inactive">{{ i18n.t('prod.inactive') }}</option>
+        </select>
+      </div>
 
     <div class="contents">
       <div>
@@ -215,7 +222,7 @@
         </select>
       </div>
     </div>
-    @if (fIsService) { <p class="text-xs font-semibold text-slate-500 -mt-2 md:col-span-2" data-testid="service-brand-hint">{{ i18n.t('prod.form.brand.service.hint') }}</p> }
+    @if (fIsService) { <p class="text-xs font-semibold text-slate-500 -mt-2 md:col-span-2 lg:col-span-3" data-testid="service-brand-hint">{{ i18n.t('prod.form.brand.service.hint') }}</p> }
 
     <div class="contents">
       @if (!fIsService) {
@@ -228,10 +235,16 @@
         <label class="modal-label" [class.req]="!fIsService" for="pPrice">{{ i18n.t(fIsService ? 'prod.form.price.service' : 'prod.form.price') }}</label>
         <input appMoney id="pPrice" name="pPrice" class="modal-input" inputmode="numeric" [(ngModel)]="fPrice" autocomplete="off" data-testid="prod-price" [required]="!fIsService" [placeholder]="i18n.t('ph.amount')">
       </div>
+      @if (!fIsService) {
+      <div>
+        <label class="modal-label" for="pVat">{{ i18n.t('prod.form.vat') }}</label>
+        <input id="pVat" name="pVat" class="modal-input" inputmode="decimal" [(ngModel)]="fVat" autocomplete="off" [placeholder]="i18n.t('prod.form.vat.hint')">
+      </div>
+      }
     </div>
 
     @if (!fIsService) {
-      <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="contents">
         <div>
           <label class="modal-label" for="pUnit">{{ i18n.t('prod.form.unit') }}</label>
           <input id="pUnit" name="pUnit" class="modal-input" list="pUnits" [(ngModel)]="fUnit" autocomplete="off" data-testid="prod-unit" [placeholder]="i18n.t('ph.unit')">
@@ -282,7 +295,7 @@
           </div>
         </div>
       }
-      <div class="md:col-span-2">
+      <div class="md:col-span-2 lg:col-span-3">
         <p class="modal-label">{{ i18n.t('prod.form.options') }}</p>
         <p class="text-xs text-slate-400 font-semibold mb-2">{{ i18n.t('prod.form.options.hint') }}</p>
         @for (o of fOptions(); track $index) {
@@ -297,7 +310,7 @@
     }
 
     @if (fIsService) {
-      <div class="md:col-span-2">
+      <div class="md:col-span-2 lg:col-span-3">
         <p class="modal-label">{{ i18n.t('prod.form.staff') }}</p>
         <p class="text-xs text-slate-400 font-semibold mb-2">{{ i18n.t('prod.form.staff.hint') }}</p>
         <div class="flex flex-wrap gap-2">
@@ -307,12 +320,13 @@
         </div>
       </div>
 
-      <div class="space-y-3 md:col-span-2">
+      <div class="space-y-3 md:col-span-2 lg:col-span-3">
         <label class="flex items-center gap-3 text-sm font-bold text-slate-700 cursor-pointer">
           <input type="checkbox" name="pIsPackage" [(ngModel)]="fIsPackage" data-testid="prod-is-package">
           <span>{{ i18n.t('prod.form.package') }}<span class="block text-xs font-semibold text-slate-400">{{ i18n.t('prod.form.package.hint') }}</span></span>
         </label>
         @if (fIsPackage) {
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label class="modal-label" for="pPkgService">{{ i18n.t('prod.form.package.service') }}</label>
             <select id="pPkgService" name="pPkgService" class="modal-input" [(ngModel)]="fPkgService" data-testid="prod-pkg-service">
@@ -330,38 +344,26 @@
               <input id="pPkgDays" name="pPkgDays" class="modal-input" inputmode="numeric" [(ngModel)]="fPkgDays" autocomplete="off" data-testid="prod-pkg-days" [placeholder]="i18n.t('ph.days')">
             </div>
           </div>
+          </div>
         }
       </div>
 
       @if (editing(); as svc) {
-        <button type="button" class="btn-outline md:col-span-2" (click)="openMaterials(svc)" data-testid="prod-materials">{{ i18n.t('prod.mat.open') }}</button>
+        <button type="button" class="btn-outline md:col-span-2 lg:col-span-3" (click)="openMaterials(svc)" data-testid="prod-materials">{{ i18n.t('prod.mat.open') }}</button>
       } @else {
-        <p class="text-xs text-slate-400 font-semibold md:col-span-2">{{ i18n.t('prod.mat.after') }}</p>
+        <p class="text-xs text-slate-400 font-semibold md:col-span-2 lg:col-span-3">{{ i18n.t('prod.mat.after') }}</p>
       }
     }
 
     <div class="contents">
-      @if (!fIsService) {
-      <div>
-        <label class="modal-label" for="pVat">{{ i18n.t('prod.form.vat') }}</label>
-        <input id="pVat" name="pVat" class="modal-input" inputmode="decimal" [(ngModel)]="fVat" autocomplete="off" [placeholder]="i18n.t('prod.form.vat.hint')">
-      </div>
-      }
-      <div>
-        <label class="modal-label" for="pStatus">{{ i18n.t('prod.form.status') }}</label>
-        <select id="pStatus" name="pStatus" class="modal-input" [(ngModel)]="fStatus">
-          <option value="active">{{ i18n.t('prod.active') }}</option>
-          <option value="inactive">{{ i18n.t('prod.inactive') }}</option>
-        </select>
-      </div>
     </div>
 
-    <div class="md:col-span-2">
+    <div class="md:col-span-2 lg:col-span-3">
       <label class="modal-label" for="pDesc">{{ i18n.t('prod.form.desc') }}</label>
       <textarea id="pDesc" name="pDesc" rows="2" class="modal-input" [(ngModel)]="fDesc" maxlength="1000" [placeholder]="i18n.t('ph.desc')"></textarea>
     </div>
 
-    @if (formError()) { <p class="form-error md:col-span-2" role="alert" data-testid="prod-error">{{ formError() }}</p> }
+    @if (formError()) { <p class="form-error md:col-span-2 lg:col-span-3" role="alert" data-testid="prod-error">{{ formError() }}</p> }
   </div>
   <div slot="footer" class="flex gap-2 justify-end">
     <button type="button" class="modal-cancel-btn" (click)="formOpen.set(false)">{{ i18n.t('common.cancel') }}</button>

@@ -617,6 +617,7 @@ textarea {
 .modal-panel-sm { max-width: 460px; }
 .modal-panel-md { max-width: 620px; }
 .modal-panel-lg { max-width: 820px; }
+.modal-panel-xl { max-width: 1060px; }
 
 .modal-header {
   position: relative;
