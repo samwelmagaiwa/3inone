@@ -27,6 +27,7 @@ interface Group extends Row {
  */
 @Component({
   selector: 'app-branch-sales',
+  imports: [TableToolbarComponent],
   templateUrl: './branch-sales.html',
 })
 export class BranchSalesPage implements OnInit {
