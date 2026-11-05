@@ -101,21 +101,20 @@
     </section>
     }
 
-    @if (r.top_products.length || r.recent_sales.length) {
-    <div class="grid grid-cols-1 gap-5" [class.lg-two]="r.top_products.length && r.recent_sales.length">
+    <!-- Goods, recent purchases and the whole history: one card, three grids, every detail in its own column -->
+    <section class="section-card overflow-hidden" data-testid="crr-details">
       @if (r.top_products.length) {
-      <section class="section-card overflow-hidden">
-        <div class="px-5 pt-5 pb-3">
-          <p class="label-eyebrow">{{ i18n.t('crr.top.eyebrow') }}</p>
-          <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.top.title') }}</h3>
-        </div>
-        @if (r.top_products.length) {
+        <div class="crr-block">
+          <div class="px-5 pt-5 pb-3">
+            <p class="label-eyebrow">{{ i18n.t('crr.top.eyebrow') }}</p>
+            <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.top.title') }}</h3>
+          </div>
           <div class="table-scroll-container" style="border: 0; border-radius: 0;">
-            <table class="grid-table">
+            <table class="grid-table crr-fixed">
               <thead>
                 <tr>
                   <th class="no-col">#</th>
-                  <th>{{ i18n.t('crr.col.product') }}</th>
+                  <th class="crr-wide">{{ i18n.t('crr.col.product') }}</th>
                   <th class="text-right">{{ i18n.t('crr.col.qty') }}</th>
                   <th class="text-right">{{ i18n.t('crr.col.sales') }}</th>
                   @if (profit()) { <th class="text-right">{{ i18n.t('crr.col.profit') }}</th> }
@@ -125,7 +124,7 @@
                 @for (p of r.top_products; track p.name; let i = $index) {
                   <tr data-testid="crr-product">
                     <td class="no-col">{{ i + 1 }}</td>
-                    <td class="font-bold text-slate-800">{{ p.name }}</td>
+                    <td class="crr-wide font-bold text-slate-800">{{ p.name }}</td>
                     <td class="text-right font-bold text-slate-600">{{ p.qty }}</td>
                     <td class="text-right font-black">{{ tsh(p.sales) }}</td>
                     @if (profit()) { <td class="text-right font-bold text-emerald-600">{{ p.profit !== null ? tsh(p.profit) : '—' }}</td> }
@@ -134,23 +133,21 @@
               </tbody>
             </table>
           </div>
-        }
-      </section>
+        </div>
       }
 
       @if (r.recent_sales.length) {
-      <section class="section-card overflow-hidden">
-        <div class="px-5 pt-5 pb-3">
-          <p class="label-eyebrow">{{ i18n.t('crr.recent.eyebrow') }}</p>
-          <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.recent.title') }}</h3>
-        </div>
-        @if (r.recent_sales.length) {
+        <div class="crr-block">
+          <div class="px-5 pt-5 pb-3">
+            <p class="label-eyebrow">{{ i18n.t('crr.recent.eyebrow') }}</p>
+            <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.recent.title') }}</h3>
+          </div>
           <div class="table-scroll-container" style="border: 0; border-radius: 0;">
-            <table class="grid-table">
+            <table class="grid-table crr-fixed">
               <thead>
                 <tr>
                   <th class="no-col">#</th>
-                  <th>{{ i18n.t('crr.col.number') }}</th>
+                  <th class="crr-wide">{{ i18n.t('crr.col.number') }}</th>
                   <th>{{ i18n.t('crr.col.date') }}</th>
                   <th>{{ i18n.t('crr.col.status') }}</th>
                   <th class="text-right">{{ i18n.t('crr.col.total') }}</th>
@@ -161,7 +158,7 @@
                 @for (s of r.recent_sales; track s.id; let i = $index) {
                   <tr>
                     <td class="no-col">{{ i + 1 }}</td>
-                    <td class="font-bold text-slate-800">{{ s.number }}</td>
+                    <td class="crr-wide font-bold text-slate-800">{{ s.number }}</td>
                     <td class="text-slate-600">{{ s.at }}</td>
                     <td class="text-slate-600">{{ s.status }}</td>
                     <td class="text-right font-black">{{ tsh(s.total) }}</td>
@@ -171,38 +168,36 @@
               </tbody>
             </table>
           </div>
-        }
-      </section>
+        </div>
       }
-    </div>
-    }
 
-    <section class="section-card overflow-hidden" data-testid="crr-life">
-      <div class="px-5 pt-5 pb-3">
-        <p class="label-eyebrow">{{ i18n.t('crr.life.eyebrow') }}</p>
-        <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.life.title') }}</h3>
-      </div>
-      <div class="table-scroll-container" style="border: 0; border-radius: 0;">
-        <table class="grid-table">
-          <thead>
-            <tr>
-              <th class="text-right">{{ i18n.t('crr.life.sales') }}</th>
-              <th class="text-right">{{ i18n.t('crr.col.count') }}</th>
-              @if (profit() && r.lifetime.profit !== null) { <th class="text-right">{{ i18n.t('crr.life.profit') }}</th> }
-              <th>{{ i18n.t('crr.life.first') }}</th>
-              <th>{{ i18n.t('crr.life.last') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="text-right font-black" data-testid="crr-life-sales">{{ tsh(r.lifetime.sales) }}</td>
-              <td class="text-right font-bold text-slate-600">{{ r.lifetime.purchases }}</td>
-              @if (profit() && r.lifetime.profit !== null) { <td class="text-right font-black text-emerald-600">{{ tsh(r.lifetime.profit) }}</td> }
-              <td class="font-bold text-slate-700">{{ r.lifetime.first_purchase || '—' }}</td>
-              <td class="font-bold text-slate-700">{{ r.lifetime.last_purchase || '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="crr-block" data-testid="crr-life">
+        <div class="px-5 pt-5 pb-3">
+          <p class="label-eyebrow">{{ i18n.t('crr.life.eyebrow') }}</p>
+          <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.life.title') }}</h3>
+        </div>
+        <div class="table-scroll-container" style="border: 0; border-radius: 0;">
+          <table class="grid-table crr-fixed">
+            <thead>
+              <tr>
+                <th class="text-right">{{ i18n.t('crr.life.sales') }}</th>
+                <th class="text-right">{{ i18n.t('crr.col.count') }}</th>
+                @if (profit() && r.lifetime.profit !== null) { <th class="text-right">{{ i18n.t('crr.life.profit') }}</th> }
+                <th>{{ i18n.t('crr.life.first') }}</th>
+                <th>{{ i18n.t('crr.life.last') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="text-right font-black" data-testid="crr-life-sales">{{ tsh(r.lifetime.sales) }}</td>
+                <td class="text-right font-bold text-slate-600">{{ r.lifetime.purchases }}</td>
+                @if (profit() && r.lifetime.profit !== null) { <td class="text-right font-black text-emerald-600">{{ tsh(r.lifetime.profit) }}</td> }
+                <td class="font-bold text-slate-700">{{ r.lifetime.first_purchase || '—' }}</td>
+                <td class="font-bold text-slate-700">{{ r.lifetime.last_purchase || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   }
@@ -222,5 +217,9 @@
   :host { display: block; }
   /* The four figures stay put while the lists below them scroll. */
   .crr-kpis { position: sticky; top: 0; z-index: 30; padding: 12px 0 10px; background: #f8fafc; }
-  @media (min-width: 1024px) { .lg-two { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  /* Same column widths in every grid of the card, so a figure sits under the same heading edge in each. */
+  .crr-fixed { table-layout: fixed; }
+  .crr-fixed th, .crr-fixed td { overflow-wrap: anywhere; }
+  .crr-fixed .no-col { width: 48px; }
+  .crr-block + .crr-block { border-top: 1px solid #e2e8f4; }
 </style>
