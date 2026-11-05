@@ -362,6 +362,7 @@ export class TillPage implements OnInit, OnDestroy {
   /** Open the list as soon as the box is clicked, so a customer can be picked without typing at all. */
   protected openCustList(): void {
     this.custOpen.set(true);
+    setTimeout(() => document.querySelector('[data-testid=till-customer-list]')?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }), 60);
     if (!this.customerHits().length && !this.custBusy()) void this.searchCustomers(this.customerQuery());
   }
 

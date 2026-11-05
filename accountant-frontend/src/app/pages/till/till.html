@@ -602,7 +602,8 @@
   .combo-input { padding-right: 42px; }
   .combo-toggle { position: absolute; right: 6px; top: 6px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9px; color: #1a2f6e; background: #f1f5ff; }
   .combo-toggle:hover { background: #dfe8ff; }
-  .hits { max-height: 280px; overflow-y: auto; }
+  /* The list opens in the flow of the page (not floating), so the wizard grows to hold it instead of cutting it off. */
+  .combo .hits { position: static; margin-top: 8px; max-height: 260px; overflow-y: auto; }
   .hits button.is-active { background: #e8eeff; }
   .hits-none { padding: 12px 14px; font-size: 13px; font-weight: 700; color: #94a3b8; }
   .perks-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 10px 12px; border-radius: 14px; background: #f5f8ff; border: 1px solid #e0e8fb; }
