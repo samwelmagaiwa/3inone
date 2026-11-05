@@ -842,7 +842,29 @@ export class TillPage implements OnInit, OnDestroy {
     }
     this.formError.set('');
     this.tried.set(false);
+    // In a salon, goods with no service in the sale is usually a forgotten service: ask before leaving the first step.
+    const goods = this.till.lines().filter((l) => !l.isService);
+    if (from === 1 && this.till.salon() && goods.length && goods.length === this.till.lines().length) {
+      void this.askGoodsWithoutService(goods.map((l) => l.name));
+      return;
+    }
     this.step.set(Math.min(5, from + 1));
+  }
+
+  /** "Sell {goods} without the service that was done?": yes goes on; no opens the services so one can be added. */
+  private async askGoodsWithoutService(names: string[]): Promise<void> {
+    const yes = await this.confirm.ask({
+      title: this.i18n.t('till.noservice.title'),
+      message: this.i18n.t('till.noservice.message', names.join(', ')),
+      confirmLabel: this.i18n.t('till.noservice.yes'),
+      cancelLabel: this.i18n.t('till.noservice.no'),
+    });
+    if (yes) {
+      this.step.set(2);
+      return;
+    }
+    this.setKind('service');
+    this.reveal('till-kind');
   }
 
   protected back(): void {

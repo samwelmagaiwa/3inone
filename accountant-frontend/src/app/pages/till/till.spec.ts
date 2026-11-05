@@ -840,4 +840,42 @@ describe('the till: where to choose the customer', () => {
     expect(byTestId(el, 'till-park')!.classList.contains('bar-park')).toBe(true);
     expect(back.compareDocumentPosition(byTestId(el, 'till-parked')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  it('in a salon, goods with no service ask first: yes goes on, no opens the services', async () => {
+    const { h, fixture, el } = await open({}, [soda, cut], true);
+    byTestId(el, 'good-1')!.click();
+    await settle(fixture);
+
+    h.confirmAnswer.value = false;
+    byTestId(el, 'till-next')!.click();
+    await settle(fixture);
+    expect(text(byTestId(el, 'till-step-title')!)).toContain('1.');
+    expect(byTestId(el, 'till-kind-service')!.classList.contains('is-active')).toBe(true);
+
+    h.confirmAnswer.value = true;
+    byTestId(el, 'till-next')!.click();
+    await settle(fixture);
+    expect(text(byTestId(el, 'till-step-title')!)).toContain('2.');
+  });
+
+  it('the question is not asked when a service is in the sale, and never in a shop', async () => {
+    const salon = await open({}, [soda, cut], true);
+    salon.h.confirmAnswer.value = false; // a question would stop the sale
+    byTestId(salon.el, 'good-1')!.click();
+    byTestId(salon.el, 'good-9')!.click();
+    await settle(salon.fixture);
+    byTestId(salon.el, 'till-next')!.click();
+    await settle(salon.fixture);
+    expect(text(byTestId(salon.el, 'till-step-title')!)).toContain('2.');
+  });
+
+  it('in a shop, goods alone go straight on', async () => {
+    const { h, fixture, el } = await open();
+    h.confirmAnswer.value = false;
+    byTestId(el, 'good-1')!.click();
+    await settle(fixture);
+    byTestId(el, 'till-next')!.click();
+    await settle(fixture);
+    expect(text(byTestId(el, 'till-step-title')!)).toContain('2.');
+  });
 });
