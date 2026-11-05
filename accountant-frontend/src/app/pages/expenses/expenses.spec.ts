@@ -218,6 +218,7 @@ describe('expenses', () => {
     h.http.match((r) => r.url.endsWith('/expenses/categories')).forEach((r) => r.flush({ data: [] }));
     h.http.expectOne((r) => r.url.endsWith('/expenses') && r.params.get('period') === 'custom').flush({ data: rows });
     h.http.expectOne((r) => r.url.endsWith('/expenses/summary')).flush({ data: summary });
+    await mountSlot(fixture);
     await settle(fixture);
     const all = text(fixture.nativeElement);
 

@@ -48,7 +48,7 @@ describe('debts', () => {
     await settle(fixture);
 
     expect(text(byTestId(el, 'debts-empty')!)).toContain('You have not written down anything you owe.');
-    expect(text(byTestId(el, 'debt-add')!)).toBe('Add what I owe');
+    expect(text(byTestId(el, 'debt-add')!)).toBe('+ Add what I owe');
   });
 
   it('searching narrows the list and says when nothing matches', async () => {
@@ -208,6 +208,7 @@ describe('debts', () => {
     fixture.detectChanges();
     h.http.expectOne((r) => r.params.get('kind') === 'receivable').flush(page('receivable', [debt()], 350000));
     h.http.expectOne((r) => r.params.get('kind') === 'payable').flush(page('payable', [], 0));
+    await mountSlot(fixture);
     await settle(fixture);
     const all = text(fixture.nativeElement);
 

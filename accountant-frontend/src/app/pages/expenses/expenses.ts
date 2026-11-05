@@ -146,7 +146,10 @@ export class ExpensesPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected statusText(e: Expense): string {
-    return this.i18n.t(e.status === 'pending' ? 'exp.pending' : e.status === 'rejected' ? 'exp.state.rejected' : 'exp.state.approved');
+    if (e.status === 'pending') return this.i18n.t('exp.pending');
+    if (e.status === 'rejected') return this.i18n.t('exp.state.rejected');
+
+    return this.i18n.t('exp.state.approved');
   }
 
   /** The list as it is on the page now (the period, the search, the order), with the totals: what is printed or saved. */
