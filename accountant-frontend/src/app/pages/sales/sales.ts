@@ -23,7 +23,6 @@ import { CountUpDirective } from '../../shared/ui/count-up.directive';
 import { StickyRowDirective } from '../../shared/ui/sticky-row.directive';
 import { MoneyDirective } from '../../shared/ui/money.directive';
 
-type Period = 'today' | 'week' | 'month' | 'year';
 type Status = '' | 'paid' | 'partial' | 'debt';
 
 /**
@@ -45,8 +44,9 @@ export class SalesPage implements OnInit {
   protected readonly motion = inject(MotionService);
 
 
-  protected readonly period = signal<Period>('today');
-  protected readonly periods: Period[] = ['today', 'week', 'month', 'year'];
+  /** The day shown (chosen with the date picker): today to begin with. */
+  protected readonly date = signal(dayOf(new Date()));
+  protected readonly todayIso = dayOf(new Date());
   protected readonly status = signal<Status>('');
   protected readonly statuses: Status[] = ['', 'paid', 'partial', 'debt'];
   protected readonly query = signal('');
@@ -73,6 +73,9 @@ export class SalesPage implements OnInit {
   protected readonly channels = PAYMENT_CHANNELS;
   protected readonly canSell = computed(() => this.auth.can('inv_create_sales'));
   protected readonly canManage = computed(() => this.auth.can('inv_manage_sales'));
+  /** Deleting a sale and taking goods back are the owner's rights; without them the person writes a request with a comment instead. */
+  protected readonly canCancel = computed(() => this.auth.can('inv_cancel_sales'));
+  protected readonly canReturn = computed(() => this.auth.can('inv_return_sales'));
 
   // ---- what can be done to a sale
   protected readonly payFor = signal<SaleRow | null>(null);
@@ -100,21 +103,8 @@ export class SalesPage implements OnInit {
     if (this.timer) clearTimeout(this.timer);
   }
 
-  private range(p: Period): { from: string; to: string } {
-    const now = new Date();
-    const to = dayOf(now);
-    if (p === 'today') return { from: to, to };
-    if (p === 'week') {
-      const monday = new Date(now);
-      monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-      return { from: dayOf(monday), to };
-    }
-    if (p === 'month') return { from: dayOf(new Date(now.getFullYear(), now.getMonth(), 1)), to };
-    return { from: dayOf(new Date(now.getFullYear(), 0, 1)), to };
-  }
-
-  protected setPeriod(p: Period): void {
-    this.period.set(p);
+  protected setDate(value: string): void {
+    this.date.set(/^\d{4}-\d{2}-\d{2}$/.test(value) ? value : dayOf(new Date()));
     this.page.set(1);
     void this.load();
   }
@@ -142,7 +132,7 @@ export class SalesPage implements OnInit {
     this.loading.set(true);
     this.error.set(null);
     this.open.set(null);
-    const filters = { ...this.range(this.period()), status: this.status(), q: this.query().trim() };
+    const filters = { from: this.date(), to: this.date(), status: this.status(), q: this.query().trim() };
     try {
       const [list, summary] = await Promise.all([firstValueFrom(this.api.sales({ ...filters, page: this.page() })), firstValueFrom(this.api.salesSummary(filters))]);
       this.rows.set(list.data);
@@ -235,13 +225,24 @@ export class SalesPage implements OnInit {
   protected async saveCancel(): Promise<void> {
     const s = this.cancelFor();
     if (!s) return;
-    if (!this.cancelReason.trim()) return this.actionError.set(this.i18n.t('sales.cancel.err'));
+    if (!this.cancelReason.trim()) return this.actionError.set(this.i18n.t(this.canCancel() ? 'sales.cancel.err' : 'sales.ask.err'));
+    if (!this.canCancel() && this.cancelReason.trim().length < 3) return this.actionError.set(this.i18n.t('sales.ask.err'));
     this.busy.set(true);
     try {
-      await firstValueFrom(this.till.cancelSale(s.id, this.cancelReason.trim()));
-      this.cancelFor.set(null);
-      this.toast.success(this.i18n.t('sales.cancel.done', s.number), this.i18n.t('common.done'));
-      await this.load();
+      if (this.canCancel()) {
+        await firstValueFrom(this.till.cancelSale(s.id, this.cancelReason.trim()));
+        this.cancelFor.set(null);
+        this.toast.success(this.i18n.t('sales.cancel.done', s.number), this.i18n.t('common.done'));
+        await this.load();
+      } else {
+        // Not theirs to delete: ask the owner for it, with the comment the owner will read on this sale.
+        const d = await firstValueFrom(this.till.sale(s.id));
+        const lines = d.items.map((i) => ({ product_id: i.product_id, quantity: i.qty ?? i.quantity, unit_price: i.unit_price, restock: true }));
+        await firstValueFrom(this.till.createReturn({ sale_id: s.id, type: 'cancellation', reason: this.cancelReason.trim(), lines }));
+        this.cancelFor.set(null);
+        this.toast.success(this.i18n.t('sales.ask.sent'), this.i18n.t('common.done'));
+        await this.loadReturns();
+      }
     } catch (err) {
       this.actionError.set(this.fail(err));
     } finally {
@@ -293,11 +294,12 @@ export class SalesPage implements OnInit {
       .filter((i) => (this.returnQty()[i.product_id] ?? 0) > 0)
       .map((i) => ({ product_id: i.product_id, quantity: this.returnQty()[i.product_id], unit_price: i.unit_price, restock: this.returnRestock }));
     if (!lines.length) return this.actionError.set(this.i18n.t('sales.return.err'));
+    if (!this.canReturn() && this.returnReason.trim().length < 3) return this.actionError.set(this.i18n.t('sales.ask.err'));
     this.busy.set(true);
     try {
       await firstValueFrom(this.till.createReturn({ sale_id: d.id, type: 'return', reason: this.returnReason.trim() || undefined, lines }));
       this.returnFor.set(null);
-      this.toast.success(this.i18n.t('sales.return.sent'), this.i18n.t('common.done'));
+      this.toast.success(this.i18n.t(this.canReturn() ? 'sales.return.sent' : 'sales.ask.sent'), this.i18n.t('common.done'));
       await this.loadReturns();
     } catch (err) {
       this.actionError.set(this.fail(err));
@@ -313,6 +315,23 @@ export class SalesPage implements OnInit {
     } catch {
       this.returns.set([]);
     }
+  }
+
+  /** May this person decide the request (each kind needs its own right)? */
+  protected mayDecide(r: SaleReturn): boolean {
+    return r.type === 'cancellation' ? this.canCancel() : this.canReturn();
+  }
+
+  /** What a request asks for, in words. */
+  protected requestKind(r: SaleReturn): string {
+    if (r.type === 'cancellation') return this.i18n.t('sales.request.cancel');
+
+    return this.i18n.t('sales.request.return');
+  }
+
+  /** The request waiting on a sale (its comment is shown on the sale), if there is one. */
+  protected requestFor(s: SaleRow): SaleReturn | undefined {
+    return this.returns().find((r) => r.sale_id === s.id);
   }
 
   protected async decide(r: SaleReturn, decision: 'approved' | 'rejected'): Promise<void> {

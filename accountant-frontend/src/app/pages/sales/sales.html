@@ -24,23 +24,18 @@
 
     <section class="panel overflow-clip" style="padding:0">
       <app-table-toolbar [compact]="true" [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('sales.search')" [count]="total()" [noun]="noun()">
-        <label class="filter-field">
-          <span>{{ i18n.t('sales.filter.status') }}</span>
-          <div class="flex gap-1.5">
-            @for (st of statuses; track st) {
-              <button type="button" class="status-btn" [class.is-on]="status() === st" (click)="setStatus(st)" [attr.data-testid]="'status-' + (st || 'all')">{{ i18n.t('sales.status.' + (st || 'all')) }}</button>
-            }
-          </div>
-        </label>
-        <!-- The period and the New sale button, on the same slim row as the search -->
-        <div class="flex flex-wrap items-center gap-2">
-          <div class="flex flex-wrap gap-2" role="tablist">
-            @for (p of periods; track p) {
-              <button type="button" role="tab" class="pill-tab slim-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="setPeriod(p)" [attr.data-testid]="'period-' + p">{{ i18n.t('period.' + p) }}</button>
-            }
-          </div>
-          @if (canSell()) { <a routerLink="/sales/new" class="bar-cta" data-testid="sales-new">+ {{ i18n.t('sales.new') }}</a> }
+        <!-- The state of payment, the day and the New sale button: one row, with the search -->
+        <div class="flex items-center gap-1.5">
+          <span class="slim-label">{{ i18n.t('sales.filter.status') }}</span>
+          @for (st of statuses; track st) {
+            <button type="button" class="status-btn" [class.is-on]="status() === st" (click)="setStatus(st)" [attr.data-testid]="'status-' + (st || 'all')">{{ i18n.t('sales.status.' + (st || 'all')) }}</button>
+          }
         </div>
+        <label class="flex items-center gap-1.5">
+          <span class="slim-label">{{ i18n.t('sales.date') }}</span>
+          <input type="date" class="slim-date" [value]="date()" [max]="todayIso" (change)="setDate($any($event.target).value)" data-testid="sales-date">
+        </label>
+        @if (canSell()) { <a routerLink="/sales/new" class="bar-cta" data-testid="sales-new">+ {{ i18n.t('sales.new') }}</a> }
       </app-table-toolbar>
 
       @if (loading() && !rows().length) {
@@ -97,12 +92,15 @@
                         }
                       </div>
                     </div>
+                    @if (requestFor(s); as req) {
+                      <p class="request-note" [attr.data-testid]="'request-' + s.id"><b>{{ requestKind(req) }}</b> · {{ i18n.t('sales.request.waiting', req.reason ?? '') }}@if (req.requested_by_name) { · {{ req.requested_by_name }} }</p>
+                    }
                     @if (!cancelled(s)) {
                       <div class="flex flex-wrap gap-2 pt-2 pb-1" data-testid="sale-actions">
                         @if (owing(s) > 0 && canSell()) { <button type="button" class="btn-primary" (click)="openPay(s)" [attr.data-testid]="'pay-' + s.id">{{ i18n.t('sales.pay') }} ({{ tsh(owing(s)) }})</button> }
                         <button type="button" class="modal-cancel-btn" (click)="receipt(s)">{{ i18n.t('till.print') }}</button>
-                        @if (canSell()) { <button type="button" class="modal-cancel-btn" (click)="openReturn(s)" [attr.data-testid]="'return-' + s.id">{{ i18n.t('sales.return') }}</button> }
-                        @if (canManage()) { <button type="button" class="modal-cancel-btn danger-btn" (click)="openCancel(s)" [attr.data-testid]="'cancel-' + s.id">{{ i18n.t('sales.cancel') }}</button> }
+                        @if (canSell()) { <button type="button" class="modal-cancel-btn" (click)="openReturn(s)" [attr.data-testid]="'return-' + s.id">{{ i18n.t(canReturn() ? 'sales.return' : 'sales.return.ask') }}</button> }
+                        @if (canSell() || canCancel()) { <button type="button" class="modal-cancel-btn danger-btn" (click)="openCancel(s)" [attr.data-testid]="'cancel-' + s.id">{{ i18n.t(canCancel() ? 'sales.cancel' : 'sales.cancel.ask') }}</button> }
                       </div>
                     }
                   </td></tr>
@@ -125,8 +123,8 @@
         <p class="label-eyebrow mb-2">{{ i18n.t('sales.returns.title') }}</p>
         @for (r of returns(); track r.id) {
           <div class="flex flex-wrap items-center gap-3 py-2 border-b border-slate-100">
-            <div class="grow min-w-0"><p class="font-black text-slate-900">{{ r.sale_number }} · {{ tsh(r.amount) }}</p><p class="text-xs font-semibold text-slate-400">{{ r.reason }} @if (r.requested_by_name) { · {{ r.requested_by_name }} }</p></div>
-            @if (canManage()) {
+            <div class="grow min-w-0"><p class="font-black text-slate-900">{{ requestKind(r) }} · {{ r.sale_number }} · {{ tsh(r.amount) }}</p><p class="text-xs font-semibold text-slate-400">{{ r.reason }} @if (r.requested_by_name) { · {{ r.requested_by_name }} }</p></div>
+            @if (mayDecide(r)) {
               <button type="button" class="btn-primary" (click)="decide(r, 'approved')" [attr.data-testid]="'approve-' + r.id">{{ i18n.t('sales.return.approve') }}</button>
               <button type="button" class="modal-cancel-btn" (click)="decide(r, 'rejected')">{{ i18n.t('sales.return.reject') }}</button>
             } @else { <span class="pill-inactive">{{ i18n.t('exp.pending') }}</span> }
@@ -156,37 +154,41 @@
 </app-modal-dialog>
 
 <!-- Cancel a sale -->
-<app-modal-dialog [show]="!!cancelFor()" [title]="i18n.t('sales.cancel')" [eyebrow]="cancelFor()?.number ?? ''" variant="danger" (close)="cancelFor.set(null)">
+<app-modal-dialog [show]="!!cancelFor()" [title]="i18n.t(canCancel() ? 'sales.cancel' : 'sales.cancel.ask')" [eyebrow]="cancelFor()?.number ?? ''" variant="danger" (close)="cancelFor.set(null)">
   <div slot="body" class="space-y-4">
-    <p class="text-sm text-slate-500">{{ i18n.t('sales.cancel.hint') }}</p>
-    <div><label class="modal-label req" for="creason">{{ i18n.t('sales.cancel.reason') }}</label><input id="creason" class="modal-input" [(ngModel)]="cancelReason" autocomplete="off" data-testid="cancel-reason" required [placeholder]="i18n.t('ph.reason')"></div>
+    <p class="text-sm text-slate-500">{{ i18n.t(canCancel() ? 'sales.cancel.hint' : 'sales.ask.hint') }}</p>
+    <div><label class="modal-label req" for="creason">{{ i18n.t(canCancel() ? 'sales.cancel.reason' : 'sales.ask.reason') }}</label><input id="creason" class="modal-input" [(ngModel)]="cancelReason" autocomplete="off" data-testid="cancel-reason" required [placeholder]="i18n.t('ph.reason')"></div>
     @if (actionError()) { <p class="form-error" role="alert">{{ actionError() }}</p> }
   </div>
   <div slot="footer" class="flex gap-2 justify-end">
     <button type="button" class="modal-cancel-btn" (click)="cancelFor.set(null)">{{ i18n.t('common.keep') }}</button>
-    <button type="button" class="btn-primary" [disabled]="busy()" (click)="saveCancel()" data-testid="cancel-save">{{ i18n.t('sales.cancel.yes') }}</button>
+    <button type="button" class="btn-primary" [disabled]="busy()" (click)="saveCancel()" data-testid="cancel-save">{{ i18n.t(canCancel() ? 'sales.cancel.yes' : 'sales.ask.send') }}</button>
   </div>
 </app-modal-dialog>
 
 <!-- Return goods -->
-<app-modal-dialog [show]="!!returnFor()" [title]="i18n.t('sales.return')" [eyebrow]="returnFor()?.number ?? ''" size="md" (close)="returnFor.set(null)">
+<app-modal-dialog [show]="!!returnFor()" [title]="i18n.t(canReturn() ? 'sales.return' : 'sales.return.ask')" [eyebrow]="returnFor()?.number ?? ''" size="md" (close)="returnFor.set(null)">
   <div slot="body" class="space-y-3">
     <p class="text-sm text-slate-500">{{ i18n.t('sales.return.hint') }}</p>
+    @if (!canReturn()) { <p class="text-sm font-semibold text-amber-700">{{ i18n.t('sales.ask.hint') }}</p> }
     @for (it of returnFor()?.items ?? []; track it.product_id) {
       <div class="flex items-center gap-3">
         <span class="grow font-bold text-slate-800">{{ it.product_name }} <small class="text-slate-400">×{{ it.qty }}</small></span>
         <input class="modal-input" style="width: 90px;" type="number" min="0" [max]="it.qty" [ngModel]="returnQty()[it.product_id]" (change)="setReturnQty(it.product_id, it.qty, $any($event.target).value)" [attr.data-testid]="'ret-qty-' + it.product_id">
       </div>
     }
-    <div><label class="modal-label" for="rreason">{{ i18n.t('sales.cancel.reason') }}</label><input id="rreason" class="modal-input" [(ngModel)]="returnReason" autocomplete="off" [placeholder]="i18n.t('ph.reason.optional')"></div>
+    <div><label class="modal-label" [class.req]="!canReturn()" for="rreason">{{ i18n.t(canReturn() ? 'sales.cancel.reason' : 'sales.ask.reason') }}</label><input id="rreason" class="modal-input" [required]="!canReturn()" [(ngModel)]="returnReason" autocomplete="off" [placeholder]="i18n.t(canReturn() ? 'ph.reason.optional' : 'sales.ask.reason')"></div>
     <label class="flex items-center gap-2 text-sm font-bold text-slate-700"><input type="checkbox" [(ngModel)]="returnRestock"> {{ i18n.t('sales.return.restock') }}</label>
     @if (actionError()) { <p class="form-error" role="alert">{{ actionError() }}</p> }
   </div>
   <div slot="footer" class="flex gap-2 justify-end">
     <button type="button" class="modal-cancel-btn" (click)="returnFor.set(null)">{{ i18n.t('common.cancel') }}</button>
-    <button type="button" class="btn-primary" [disabled]="busy()" (click)="saveReturn()" data-testid="ret-save">{{ i18n.t('sales.return.send') }}</button>
+    <button type="button" class="btn-primary" [disabled]="busy()" (click)="saveReturn()" data-testid="ret-save">{{ i18n.t(canReturn() ? 'sales.return.send' : 'sales.ask.send') }}</button>
   </div>
 </app-modal-dialog>
+
+<!-- Which paper the receipt is printed on -->
+<app-receipt-size [show]="!!printing()" (picked)="printOn($event)" (closed)="printing.set(null)" />
 
 <style>
   :host { display: block; }
@@ -205,6 +207,9 @@
   .stat { position: relative; overflow: hidden; padding: 18px 18px 18px 20px; border-radius: 20px; background: #fff; border: 1px solid #e6ecfb; box-shadow: 0 18px 36px -28px rgba(26,47,110,.5); transition: transform .2s, box-shadow .2s; }
   .stat:hover { transform: translateY(-3px); box-shadow: 0 22px 40px -24px rgba(26,47,110,.55); }
   .stat::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--accent, #3b61e2); }
+  .slim-label { font-size: 10.5px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: #7d8fc4; }
+  .slim-date { padding: 6px 10px; border-radius: 10px; border: 1px solid #dbe4ff; background: #fff; font-size: 12.5px; font-weight: 800; color: #1a2f6e; }
+  .request-note { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; color: #92400e; background: #fff7e6; border: 1px solid #fcd9a0; }
   .stat-slim { padding: 8px 16px 8px 18px; border-radius: 12px; }
   .stat-slim .stat-ic { display: none; }
   .stat-slim .stat-label { margin-top: 0; font-size: 10.5px; }

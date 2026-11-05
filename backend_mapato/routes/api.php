@@ -658,10 +658,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('inventory/returns',       [InventoryPosController::class, 'storeReturn']);
         Route::get('inventory/discount-check', [InventoryPosController::class, 'checkDiscount']);
     });
-    Route::middleware('inv_perm:inv_manage_sales')->group(function () {
+    // Deleting a sale is its own right (the owner's); the accountant asks for it with a comment instead (a request at inventory/returns).
+    Route::middleware('inv_perm:inv_cancel_sales')->group(function () {
         Route::post('inventory/sales/{id}/cancel',      [InventorySalesController::class, 'cancel']);
-        Route::put('inventory/sales/{id}',              [InventorySalesController::class, 'update']);
+    });
+    // Approving or turning down such a request: the right for what it asks (checked again in the controller).
+    Route::middleware('inv_perm:inv_cancel_sales,inv_return_sales')->group(function () {
         Route::post('inventory/returns/{id}/decide',    [InventoryPosController::class, 'decideReturn']);
+    });
+    Route::middleware('inv_perm:inv_manage_sales')->group(function () {
+        Route::put('inventory/sales/{id}',              [InventorySalesController::class, 'update']);
         Route::get('inventory/dispatches',              [InventoryDispatchController::class, 'index']);
         Route::get('inventory/dispatches/{id}',         [InventoryDispatchController::class, 'show']);
         Route::post('inventory/dispatches',             [InventoryDispatchController::class, 'store']);

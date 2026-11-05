@@ -88,13 +88,16 @@ describe('sales', () => {
     expect(byTestId(el, 'sale-row-2')).not.toBeNull();
   });
 
-  it('a period button changes the dates asked for', async () => {
+  it('the date picker changes the day asked for (today to begin with)', async () => {
     const { h, fixture, el } = await open();
-    await mountSlot(fixture);
+    const input = byTestId(el, 'sales-date') as HTMLInputElement;
+    expect(input.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(byTestId(el, 'period-today')).toBeNull(); // no week, month or year buttons any more
 
-    byTestId(el, 'period-year')!.click();
-    const list = h.http.expectOne((r) => r.url.endsWith('/inventory/sales') && r.params.get('from')?.endsWith('-01-01') === true);
-    expect(list.request.params.get('to')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    input.value = '2026-10-15';
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    const list = h.http.expectOne((r) => r.url.endsWith('/inventory/sales') && r.params.get('from') === '2026-10-15');
+    expect(list.request.params.get('to')).toBe('2026-10-15');
     list.flush({ data: [], meta: { total: 0 } });
     h.http.expectOne((r) => r.url.endsWith('/sales/summary')).flush({ data: { count: 0, total: 0, paid: 0, debt: 0 } });
     await settle(fixture);

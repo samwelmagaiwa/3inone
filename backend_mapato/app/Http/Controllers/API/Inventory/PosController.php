@@ -250,6 +250,16 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'lines.*.unit_id' => 'nullable|integer',
         ]);
 
+        // Whoever may not return goods or delete a sale themselves (the accountant) is asking the owner to: the comment says why, and the
+        // owner reads it on that sale before deciding, so it is not optional.
+        $needs = $data['type'] === 'cancellation' ? 'inv_cancel_sales' : 'inv_return_sales';
+        if (! $request->user()->hasInventoryPermission($needs) && mb_strlen(trim((string) ($data['reason'] ?? ''))) < 3) {
+            return response()->json([
+                'message' => 'Andika maelezo kwa mmiliki kwa nini unaomba hili. / Write a comment for the owner saying why you are asking.',
+                'errors' => ['reason' => ['required']],
+            ], 422);
+        }
+
         // A line may be returned in a selling unit (a kg, a crate); stock and the "never more than sold" check
         // always count BASE units, so a return of 2 kg is 2,000 g.
         $lineUnits = [];
@@ -386,6 +396,12 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         $data = $request->validate(['decision' => 'required|in:approved,rejected']);
         $userId = optional($request->user())->id;
+
+        // Each kind of request needs its own right: deleting a sale and taking goods back are the owner's to decide.
+        $needs = ($return->type ?? 'return') === 'cancellation' ? 'inv_cancel_sales' : 'inv_return_sales';
+        if (! $request->user()->hasInventoryPermission($needs)) {
+            return response()->json(['message' => 'Huna ruhusa ya kuamua hili. / You do not have the right to decide this.', 'code' => 'missing_permission'], 403);
+        }
 
         // Segregation of duties, matching write-off approval: the person
         // who requested the return cannot also approve it themselves.

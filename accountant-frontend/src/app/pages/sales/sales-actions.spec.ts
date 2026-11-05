@@ -8,7 +8,11 @@ const owed: SaleRow = {
   id: 2, number: 'S-2', total: 10000, paid_total: 4000, payment_status: 'partial', customer_name: 'Mama Neema', created_at: '2026-11-05 07:30:00', items: [], payments: [],
 };
 
-async function open(who = {}, returns: unknown[] = []) {
+/** The owner's rights over sales; the accountant has the rest but neither of the last two. */
+const OWNER = ['inv_create_sales', 'inv_manage_sales', 'inv_view_cash', 'inv_cancel_sales', 'inv_return_sales'];
+const ACCOUNTANT = ['inv_create_sales', 'inv_manage_sales', 'inv_view_cash'];
+
+async function open(who: object = { permissions: OWNER }, returns: unknown[] = []) {
   const h = configure(who);
   const fixture = TestBed.createComponent(SalesPage);
   fixture.detectChanges();
@@ -101,13 +105,63 @@ describe('what can be done to a sale', () => {
     const { fixture, el } = await open({ permissions: ['inv_create_sales'] });
     byTestId(el, 'sale-row-2')!.click();
     await settle(fixture);
-    expect(byTestId(el, 'cancel-2')).toBeNull();
+    expect(text(byTestId(el, 'cancel-2')!)).toBe('Ask to delete this sale'); // not a delete button: a request
     expect(byTestId(el, 'pay-2')).not.toBeNull();
+  });
+
+  describe('the accountant cannot delete a sale or return goods, but can ask the owner with a comment', () => {
+    it('the buttons say so, and nothing is deleted: a request goes to the owner with the comment', async () => {
+      const { h, fixture, el } = await open({ permissions: ACCOUNTANT });
+      byTestId(el, 'sale-row-2')!.click();
+      await settle(fixture);
+      expect(text(byTestId(el, 'cancel-2')!)).toBe('Ask to delete this sale');
+      expect(text(byTestId(el, 'return-2')!)).toBe('Ask to return goods');
+
+      byTestId(el, 'cancel-2')!.click();
+      await settle(fixture);
+      byTestId(el, 'cancel-save')!.click(); // no comment: not sent
+      await settle(fixture);
+      expect(text(el)).toContain('Write a comment for the owner first');
+      h.http.expectNone((r) => r.method === 'POST');
+
+      type(el, '[data-testid=cancel-reason]', 'The customer paid twice');
+      byTestId(el, 'cancel-save')!.click();
+      await settle(fixture);
+      h.http.expectOne((r) => r.url.endsWith('/inventory/sales/2')).flush({ data: { ...owed, items: [{ id: 1, product_id: 5, product_name: 'Gel', qty: 2, quantity: 2, unit_price: 5000, total: 10000 }], payments: [], subtotal: 10000, discount: 0, tax: 0, total: 10000, paid_total: 4000, customer_id: null, customer_phone: null, discount_reason: null, due_date: null } });
+      await settle(fixture);
+      const post = h.http.expectOne((r) => r.url.endsWith('/inventory/returns') && r.method === 'POST');
+      expect(post.request.body).toMatchObject({ sale_id: 2, type: 'cancellation', reason: 'The customer paid twice' });
+      h.http.expectNone((r) => r.url.endsWith('/inventory/sales/2/cancel'));
+      post.flush({});
+    });
+
+    it('a request waiting on a sale shows its comment there, and the accountant cannot approve it', async () => {
+      const pending = { id: 9, reference: 'R-9', sale_id: 2, sale_number: 'S-2', type: 'cancellation', amount: 10000, reason: 'The customer paid twice', status: 'pending', requested_by_name: 'Ivan', created_at: '' };
+      const { fixture, el } = await open({ permissions: ACCOUNTANT }, [pending]);
+      byTestId(el, 'sale-row-2')!.click();
+      await settle(fixture);
+      expect(text(byTestId(el, 'request-2')!)).toContain('The customer paid twice');
+      expect(byTestId(el, 'approve-9')).toBeNull();
+    });
+
+    it('the owner (with the right) sees the same request and can decide it', async () => {
+      const pending = { id: 9, reference: 'R-9', sale_id: 2, sale_number: 'S-2', type: 'cancellation', amount: 10000, reason: 'The customer paid twice', status: 'pending', requested_by_name: 'Ivan', created_at: '' };
+      const { el } = await open({ permissions: OWNER }, [pending]);
+      expect(byTestId(el, 'approve-9')).not.toBeNull();
+    });
+
+    it('a return request needs a comment too', async () => {
+      const { fixture, el } = await open({ permissions: ACCOUNTANT });
+      expect(byTestId(el, 'return-2')).toBeNull(); // the row is closed: opening it shows the buttons
+      byTestId(el, 'sale-row-2')!.click();
+      await settle(fixture);
+      expect(byTestId(el, 'return-2')).not.toBeNull();
+    });
   });
 
   it('lists returns waiting for approval, and a manager can approve one', async () => {
     const pending = { id: 9, reference: 'R-9', sale_id: 1, sale_number: 'S-1', type: 'return', amount: 3000, reason: 'Damaged', status: 'pending', requested_by_name: 'Juma', created_at: '' };
-    const { h, fixture, el } = await open({}, [pending]);
+    const { h, fixture, el } = await open({ permissions: OWNER }, [pending]);
     expect(text(byTestId(el, 'returns')!)).toContain('S-1');
     byTestId(el, 'approve-9')!.click();
     const post = h.http.expectOne((r) => r.url.endsWith('/inventory/returns/9/decide'));
