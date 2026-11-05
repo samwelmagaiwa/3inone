@@ -289,6 +289,9 @@ class SalonEquipmentAndExportsTest extends TestCase
         foreach (['hair_stylist', 'nail_technician', 'lash_makeup_artist'] as $role) {
             $this->api($this->person($owner, ucfirst($role), $role), 'GET', '/api/inventory/salon/export/sales')->assertStatus(403);
         }
+        // Export is off for an accountant until the owner switches it on.
+        $this->api($accountant, 'GET', '/api/inventory/salon/export/sales')->assertStatus(403);
+        $accountant->forceFill(['permissions' => ['inv_salon_export']])->save();
         $this->api($accountant, 'GET', '/api/inventory/salon/export/sales')->assertOk();
         $this->api($manager, 'GET', '/api/inventory/salon/export/sales')->assertOk();
         $this->api($owner, 'GET', '/api/inventory/salon/export/secrets')->assertStatus(404);

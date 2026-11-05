@@ -73,10 +73,10 @@ class SalonMoneyRightsTest extends TestCase
         [, $acc] = $this->scene();
         $have = $this->api($acc, 'GET', '/api/auth/user')->json('data.user.effective_permissions');
 
-        foreach (['inv_salon_money', 'inv_salon_export', 'inv_view_expenses'] as $key) {
+        foreach (['inv_salon_money', 'inv_view_expenses'] as $key) {
             $this->assertContains($key, $have, $key);
         }
-        foreach (['inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_schedule'] as $key) {
+        foreach (['inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_export', 'inv_salon_schedule'] as $key) {
             $this->assertNotContains($key, $have, $key);
         }
         $this->api($acc, 'GET', '/api/inventory/salon/reports')->assertForbidden()->assertJsonPath('code', 'module_not_allowed');
@@ -195,6 +195,10 @@ class SalonMoneyRightsTest extends TestCase
         [$owner, $acc] = $this->scene();
         $from = '?from=2026-11-01&to=2026-11-30&format=csv';
 
+        // Off by default; once the owner switches export on, each report still needs its own right.
+        $this->api($acc, 'GET', "/api/inventory/salon/export/sales{$from}")->assertForbidden()->assertJsonPath('code', 'module_not_allowed');
+        $this->give($owner, $acc, ['inv_salon_export']);
+
         foreach (['sales', 'expenses', 'tax', 'stylists'] as $type) {
             $this->api($acc, 'GET', "/api/inventory/salon/export/{$type}{$from}")->assertOk();
         }
@@ -239,7 +243,8 @@ class SalonMoneyRightsTest extends TestCase
             $this->assertNotSame('', $state[$key]['en']);
             $this->assertNotSame('', $state[$key]['sw']);
         }
-        $this->assertTrue($state['inv_salon_export']['on'], 'on for an accountant');
-        $this->assertFalse($state['inv_salon_payroll']['on']);
+        foreach (['inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_export', 'inv_salon_schedule'] as $key) {
+            $this->assertFalse($state[$key]['on'], "{$key} starts off");
+        }
     }
 }
