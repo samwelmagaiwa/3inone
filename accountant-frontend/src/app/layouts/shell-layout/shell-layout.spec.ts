@@ -103,8 +103,8 @@ describe('the frame', () => {
     both.h.http.expectOne(`${environment.apiUrl}/inventory/notifications`).flush({ data: [], meta: { unread_count: 0 } });
     await settle(both.fixture);
     expect(both.h.auth.service()).toBe('salon');
-    expect(nav(both.el)).toEqual(['Goods by branch', 'Sales by branch', 'Sales', 'Expenses']);
-    expect(both.navigate).toHaveBeenCalledWith(['/sales']);
+    expect(nav(both.el)).toEqual(['This month', 'Sales by branch', 'Sales', 'Customers & credit', 'Debts', 'Expenses']);
+    expect(both.navigate).toHaveBeenCalledWith(['/dashboard']);
   });
 
   it('the language button switches the menu between Swahili and English', async () => {

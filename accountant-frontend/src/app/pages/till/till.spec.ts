@@ -749,6 +749,9 @@ describe('the till: required fields', () => {
     const { fixture, el } = await open({}, [cut], true);
     byTestId(el, 'good-9')!.click();
     await settle(fixture);
+    expect(el.querySelector('#why')).toBeNull();
+    byTestId(el, 'till-perks-check')!.click();
+    await settle(fixture);
     const why = () => el.querySelector('#why') as HTMLInputElement;
     expect(why().required).toBe(false);
     type(el, '[data-testid=till-discount]', '1000');
@@ -771,5 +774,70 @@ describe('the till: where to choose the customer', () => {
     // it opens the search box of step 3
     expect(byTestId(el, 'till-customer-search')).not.toBeNull();
     expect(el.querySelector('#till-customer-section')).not.toBeNull();
+  });
+
+  it('the discount fields stay hidden until the box is ticked, and unticking it drops what was entered', async () => {
+    const { fixture, el } = await open({}, [cut], true);
+    byTestId(el, 'good-9')!.click();
+    await settle(fixture);
+    expect(byTestId(el, 'till-discount')).toBeNull();
+    expect((byTestId(el, 'till-perks-check') as HTMLInputElement).checked).toBe(false);
+
+    byTestId(el, 'till-perks-check')!.click();
+    await settle(fixture);
+    expect(byTestId(el, 'till-discount')).not.toBeNull();
+    type(el, '[data-testid=till-discount]', '1000');
+    await settle(fixture);
+    expect(text(byTestId(el, 'till-running')!)).toContain('TSH');
+
+    byTestId(el, 'till-perks-check')!.click();
+    await settle(fixture);
+    expect(byTestId(el, 'till-discount')).toBeNull();
+    byTestId(el, 'till-perks-check')!.click();
+    await settle(fixture);
+    expect((byTestId(el, 'till-discount') as HTMLInputElement).value).toBe('');
+  });
+
+  it('the customer box opens a list by itself on a click, and the toggle opens and closes it', async () => {
+    const { h, fixture, el } = await open();
+    byTestId(el, 'good-1')!.click();
+    expect(byTestId(el, 'till-customer-list')).toBeNull();
+    (byTestId(el, 'till-customer-search') as HTMLInputElement).click();
+    await settle(fixture);
+    h.http.expectOne((r) => r.url.endsWith('/inventory/customers') && r.method === 'GET').flush({ data: [{ id: 3, name: 'Asha', phone: '0711' }, { id: 7, name: 'Neema', phone: '0712' }] });
+    await settle(fixture);
+    expect(byTestId(el, 'till-customer-list')).not.toBeNull();
+    expect(byTestId(el, 'hit-3')).not.toBeNull();
+    expect(byTestId(el, 'hit-7')).not.toBeNull();
+
+    byTestId(el, 'till-customer-toggle')!.click();
+    await settle(fixture);
+    expect(byTestId(el, 'till-customer-list')).toBeNull();
+  });
+
+  it('the best match comes first: a name that starts with the word, then a word inside the name, then a phone', () => {
+    const rows = [
+      { id: 1, name: 'Mary Neema' },
+      { id: 2, name: 'Neema Joseph' },
+      { id: 3, name: 'Zawadi', phone: '+255712000111' },
+    ] as never[];
+    const ranked = (TillPage as unknown as { rankCustomers(r: unknown[], q: string): { id: number }[] }).rankCustomers(rows, 'neema');
+    expect(ranked.map((c) => c.id)).toEqual([2, 1, 3]);
+    const byPhone = (TillPage as unknown as { rankCustomers(r: unknown[], q: string): { id: number }[] }).rankCustomers(rows, '0712000');
+    expect(byPhone[0].id).toBe(3);
+  });
+
+  it('the footer has a clearly named Back button on the left, and the waiting and put-aside buttons on the right', async () => {
+    const { fixture, el } = await open();
+    expect(byTestId(el, 'till-back')).toBeNull();
+    byTestId(el, 'good-1')!.click();
+    byTestId(el, 'till-next')!.click();
+    await settle(fixture);
+    const back = byTestId(el, 'till-back')!;
+    expect(text(back)).toBe('Go back');
+    expect(back.classList.contains('bar-back')).toBe(true);
+    expect(byTestId(el, 'till-parked')!.classList.contains('bar-parked')).toBe(true);
+    expect(byTestId(el, 'till-park')!.classList.contains('bar-park')).toBe(true);
+    expect(back.compareDocumentPosition(byTestId(el, 'till-parked')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

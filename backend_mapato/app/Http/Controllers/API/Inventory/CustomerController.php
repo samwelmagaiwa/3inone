@@ -42,15 +42,29 @@ class CustomerController extends Controller
     )]
     public function index(Request $request)
     {
-        $q = $request->query('q');
+        $q = trim((string) $request->query('q', ''));
         $query = DB::table('inventory_customers');
-        if ($q) {
-            $query->where(function($w) use ($q) {
-                $w->where('name','like',"%$q%")
-                  ->orWhere('phone','like',"%$q%");
+        // Every word typed must be found in the name or the phone, in any order ("juma ali" finds "Ali Juma"); a phone is matched by its
+        // digits, so 0712 345 678, +255712345678 and 712345678 are the same number.
+        foreach (preg_split('/\s+/', $q, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $word) {
+            $like = '%' . addcslashes($word, '%_\\') . '%';
+            $digits = preg_replace('/\D+/', '', $word) ?? '';
+            if (strlen($digits) >= 3 && strlen($digits) >= strlen($word) - 2) {
+                $digits = preg_match('/^(255|0)(\d{6,})$/', $digits, $m) ? $m[2] : $digits;
+            } else {
+                $digits = '';
+            }
+            $query->where(function ($w) use ($like, $digits) {
+                $w->where('name', 'like', $like)->orWhere('phone', 'like', $like);
+                if ($digits !== '') {
+                    $w->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), '(', '') LIKE ?", ['%' . $digits . '%']);
+                }
             });
         }
-        $customers = $query->orderByDesc('id')->paginate(20);
+        // A person picking from a list wants it by name and long enough to scroll; everyone else keeps the newest first, twenty at a time.
+        $byName = $request->query('sort') === 'name';
+        $perPage = max(1, min(100, (int) $request->query('per_page', 20)));
+        $customers = ($byName ? $query->orderBy('name') : $query->orderByDesc('id'))->paginate($perPage);
         return response()->json([
             'data' => $customers->items(),
             'meta' => [

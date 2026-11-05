@@ -62,6 +62,13 @@ export class TillPage implements OnInit, OnDestroy {
   // ---- customer
   protected readonly customerQuery = signal('');
   protected readonly customerHits = signal<Customer[]>([]);
+  /** The list under the search box is open (it opens on a click or a key, and closes when the person chooses or leaves). */
+  protected readonly custOpen = signal(false);
+  protected readonly custActive = signal(-1);
+  protected readonly custBusy = signal(false);
+  private custSeq = 0;
+  /** The discount, voucher and points are asked for only when the person ticks the box. */
+  protected readonly perksOn = signal(false);
   protected readonly credit = signal<CreditCheck | null>(null);
   /** Which way of naming the customer is open: find one who is saved, write a new one, or no name at all. */
   protected readonly custTab = signal<'find' | 'new' | 'walkin'>('find');
@@ -314,18 +321,98 @@ export class TillPage implements OnInit, OnDestroy {
   // ------------------------------------------------------------------ customer
   protected async searchCustomers(q: string): Promise<void> {
     this.customerQuery.set(q);
-    if (q.trim().length < 2) return this.customerHits.set([]);
+    this.custOpen.set(true);
+    this.custActive.set(-1);
+    const seq = ++this.custSeq;
+    this.custBusy.set(true);
     try {
-      this.customerHits.set(await firstValueFrom(this.api.customers(q)));
+      const rows = await firstValueFrom(this.api.customers(q));
+      if (seq === this.custSeq) {
+        this.customerHits.set(TillPage.rankCustomers(rows, q));
+        this.custActive.set(rows.length && q.trim() ? 0 : -1);
+      }
     } catch {
-      this.customerHits.set([]);
+      if (seq === this.custSeq) this.customerHits.set([]);
+    } finally {
+      if (seq === this.custSeq) this.custBusy.set(false);
     }
+  }
+
+  /** Best matches first: a name that starts with what was typed, then a word that starts with it, then a phone that starts with it, then the rest. */
+  static rankCustomers(rows: Customer[], q: string): Customer[] {
+    const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length) return rows;
+    const digits = (s: string) => s.replace(/\D+/g, '');
+    const score = (c: Customer): number => {
+      const name = c.name.toLowerCase();
+      const phone = digits(c.phone ?? '').replace(/^(255|0)/, '');
+      let s = 0;
+      for (const w of words) {
+        const d = digits(w).replace(/^(255|0)/, '');
+        if (name.startsWith(w)) s += 4;
+        else if (name.split(/\s+/).some((p) => p.startsWith(w))) s += 3;
+        else if (d.length >= 3 && phone.startsWith(d)) s += 3;
+        else s += 1;
+      }
+      return s;
+    };
+    return [...rows].sort((a, b) => score(b) - score(a) || a.name.localeCompare(b.name));
+  }
+
+  /** Open the list as soon as the box is clicked, so a customer can be picked without typing at all. */
+  protected openCustList(): void {
+    this.custOpen.set(true);
+    if (!this.customerHits().length && !this.custBusy()) void this.searchCustomers(this.customerQuery());
+  }
+
+  protected toggleCustList(): void {
+    if (this.custOpen()) return this.custOpen.set(false);
+    this.openCustList();
+  }
+
+  /** Leaving the box closes the list a moment later, so a click on a name still lands. */
+  protected closeCustListSoon(): void {
+    setTimeout(() => this.custOpen.set(false), 180);
+  }
+
+  protected custKey(ev: KeyboardEvent): void {
+    const n = this.customerHits().length;
+    if (ev.key === 'ArrowDown') {
+      ev.preventDefault();
+      this.custOpen.set(true);
+      this.custActive.set(n ? (this.custActive() + 1) % n : -1);
+    } else if (ev.key === 'ArrowUp') {
+      ev.preventDefault();
+      this.custActive.set(n ? (this.custActive() - 1 + n) % n : -1);
+    } else if (ev.key === 'Enter' && this.custOpen() && this.custActive() >= 0) {
+      ev.preventDefault();
+      void this.chooseCustomer(this.customerHits()[this.custActive()] ?? null);
+    } else if (ev.key === 'Escape') {
+      this.custOpen.set(false);
+    }
+  }
+
+  /** Ticking the box shows the discount fields; clearing it puts them away AND drops any discount, voucher or points already entered. */
+  protected setPerks(on: boolean): void {
+    this.perksOn.set(on);
+    if (on) return;
+    this.setDiscount('');
+    this.till.discountReason.set('');
+    this.voucherCode = '';
+    this.till.voucher.set({ code: '', off: 0 });
+    this.voucherMessage.set('');
+    this.setPoints('');
+  }
+
+  protected perksShown(): boolean {
+    return this.perksOn() || this.till.discount() > 0 || !!this.till.voucher().code || this.till.pointsUsed() > 0;
   }
 
   protected async chooseCustomer(c: Customer | null): Promise<void> {
     this.till.customer.set(c);
     this.customerQuery.set('');
     this.customerHits.set([]);
+    this.custOpen.set(false);
     this.credit.set(null);
     this.packages.set([]);
     this.loyaltyBalance.set(0);
@@ -613,6 +700,7 @@ export class TillPage implements OnInit, OnDestroy {
   }
 
   private resetForm(): void {
+    this.perksOn.set(false);
     this.paidText = '';
     this.discountText = '';
     this.voucherCode = '';

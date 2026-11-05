@@ -128,8 +128,9 @@ export class TillApi {
       .pipe(map((r) => ({ items: (r.data ?? []).map(parseProduct), lastPage: r.meta?.last_page ?? 1 })));
   }
 
-  customers(q: string): Observable<Customer[]> {
-    let p = new HttpParams();
+  /** Customers matching what was typed (every word, in the name or the phone), by name; with nothing typed, the first of the list. */
+  customers(q: string, limit = 60): Observable<Customer[]> {
+    let p = new HttpParams().set('sort', 'name').set('per_page', String(limit));
     if (q.trim()) p = p.set('q', q.trim());
     return this.http.get<{ data: Record<string, unknown>[] }>(`${API}/inventory/customers`, { params: p }).pipe(map((r) => (r.data ?? []).map(parseCustomer)));
   }
