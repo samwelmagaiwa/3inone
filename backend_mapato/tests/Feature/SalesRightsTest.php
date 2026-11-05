@@ -93,6 +93,19 @@ class SalesRightsTest extends TestCase
         $this->assertCount(1, $pending);
         $this->assertSame('Customer paid twice, please delete', $pending[0]['reason']);
         $this->assertSame('cancellation', $pending[0]['type']);
+        // The owner sees the sale without opening it: who it was for, what was on it, who asked.
+        $this->assertSame('Braids x1', $pending[0]['items_summary']);
+        $this->assertSame('Ivan', $pending[0]['requested_by_name']);
+        $this->assertArrayHasKey('customer_name', $pending[0]);
+        $this->assertArrayHasKey('sale_date', $pending[0]);
+
+        // ...and was told when the request came in, in both languages, with the comment, and only the owner (who may decide it).
+        $note = \Illuminate\Support\Facades\DB::table('inventory_notifications')->where('type', 'return_pending')->get();
+        $this->assertCount(1, $note);
+        $this->assertSame((string) $owner->id, (string) $note[0]->user_id);
+        $this->assertStringContainsString('Ombi la kufuta mauzo', $note[0]->title);
+        $this->assertStringContainsString('Ivan', $note[0]->body);
+        $this->assertStringContainsString('Customer paid twice, please delete', $note[0]->body);
 
         // The accountant cannot approve it (not their right, and not their own request either); the owner can.
         $this->api($ivan, 'POST', "/api/inventory/returns/{$pending[0]['id']}/decide", ['decision' => 'approved'])->assertForbidden();

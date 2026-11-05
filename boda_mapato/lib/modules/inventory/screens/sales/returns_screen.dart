@@ -83,7 +83,9 @@ class _ReturnsTab extends StatelessWidget {
     // from someone who legitimately holds inv_manage_sales without
     // inv_manage_stock. fromUser (not fromRole) also honours a per-user
     // explicit grant, not just the role default.
-    final bool canApprove = (auth.user?.access ?? UserPermissions.fromRole('viewer')).has('inv_manage_sales');
+    final UserPermissions mine = auth.user?.access ?? UserPermissions.fromRole('viewer');
+    // Each kind of request needs its own right: deleting a sale and taking goods back are the owner's to decide.
+    bool canApproveType(String type) => mine.has(type == 'cancellation' ? 'inv_cancel_sales' : 'inv_return_sales');
 
     return RefreshIndicator(
       onRefresh: onRefresh,
@@ -109,7 +111,7 @@ class _ReturnsTab extends StatelessWidget {
               separatorBuilder: (_, __) => SizedBox(height: 8.h),
               itemBuilder: (BuildContext context, int i) => _ReturnCard(
                 saleReturn: rows[i],
-                canApprove: canApprove,
+                canApprove: canApproveType(rows[i].type),
                 onDecide: (bool approve) async {
                   await context
                       .read<DepotProvider>()
@@ -169,6 +171,14 @@ class _ReturnCard extends StatelessWidget {
             loc.translate('amount'):
                 'TSH ${saleReturn.amount.toStringAsFixed(0)}',
             loc.translate('reference'): saleReturn.reference,
+            if (saleReturn.requestedByName.isNotEmpty)
+              (loc.isSwahili ? 'Aliyeomba' : 'Asked by'): saleReturn.requestedByName,
+            if (saleReturn.customerName.isNotEmpty)
+              (loc.isSwahili ? 'Mteja' : 'Customer'): saleReturn.customerName,
+            if (saleReturn.saleDate != null)
+              (loc.isSwahili ? 'Tarehe ya mauzo' : 'Sale date'): '${saleReturn.saleDate!.day}/${saleReturn.saleDate!.month}/${saleReturn.saleDate!.year}',
+            if (saleReturn.itemsSummary.isNotEmpty)
+              (loc.isSwahili ? 'Vilivyouzwa' : 'Sold'): saleReturn.itemsSummary,
             if (saleReturn.reason.isNotEmpty)
               loc.translate('reason'): saleReturn.reason,
           }),

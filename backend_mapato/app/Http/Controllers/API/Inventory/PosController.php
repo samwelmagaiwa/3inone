@@ -200,13 +200,35 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         $query = DB::table('inventory_sale_returns as r')
             ->join('inventory_sales as s', 's.id', '=', 'r.sale_id')
             ->leftJoin('users as ru', 'ru.id', '=', 'r.requested_by')
-            ->select('r.*', 's.number as sale_number', 'ru.name as requested_by_name');
+            ->leftJoin('inventory_customers as c', 'c.id', '=', 's.customer_id')
+            ->select(
+                'r.*',
+                's.number as sale_number',
+                's.created_at as sale_date',
+                's.total as sale_total',
+                'ru.name as requested_by_name',
+                DB::raw('COALESCE(c.name, s.customer_name_override) as customer_name'),
+            );
 
         if ($status = $request->query('status')) {
             $query->where('r.status', $status);
         }
 
-        return response()->json(['data' => $query->orderByDesc('r.id')->limit(200)->get()]);
+        $rows = $query->orderByDesc('r.id')->limit(200)->get();
+
+        // What each sale was for, in a line ("Braids x1, Gel x2"), so whoever decides sees the sale without opening it.
+        $items = DB::table('inventory_sale_items as si')
+            ->leftJoin('inventory_products as p', 'p.id', '=', 'si.product_id')
+            ->whereIn('si.sale_id', $rows->pluck('sale_id')->unique()->all())
+            ->get(['si.sale_id', 'p.name', 'si.quantity'])
+            ->groupBy('sale_id');
+        $rows = $rows->map(function ($row) use ($items) {
+            $row->items_summary = ($items[$row->sale_id] ?? collect())->map(fn ($i) => trim(($i->name ?? '') . ' x' . (int) $i->quantity))->implode(', ');
+
+            return $row;
+        });
+
+        return response()->json(['data' => $rows]);
     }
 
     #[OA\Post(
@@ -349,12 +371,16 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         });
 
         $sale = DB::table('inventory_sales')->where('id', $data['sale_id'])->first(['number']);
+        // The owner is told who asked, for which sale, and why, in both languages: only those who hold the right to decide it.
+        $isDelete = $data['type'] === 'cancellation';
+        $who = optional($request->user())->name ?: '';
+        $comment = trim((string) ($data['reason'] ?? ''));
         $this->notifier->notifyByPermission(
-            permissions: ['inv_manage_sales'],
+            permissions: [$isDelete ? 'inv_cancel_sales' : 'inv_return_sales'],
             type: 'return_pending',
-            title: ucfirst($data['type']) . ' awaiting approval',
-            body: trim('Sale ' . ($sale->number ?? $data['sale_id']) . ' — ' . $reference),
-            data: ['sale_return_id' => (int) $id, 'reference' => $reference],
+            title: $isDelete ? 'Ombi la kufuta mauzo / Request to delete a sale' : 'Ombi la kurudisha bidhaa / Request to take goods back',
+            body: trim(($who !== '' ? $who . ' · ' : '') . ($sale->number ?? $data['sale_id']) . ($comment !== '' ? ': ' . $comment : '')),
+            data: ['sale_return_id' => (int) $id, 'reference' => $reference, 'sale_id' => (int) $data['sale_id'], 'type' => $data['type']],
             excludeUserId: $requestedBy,
         );
 

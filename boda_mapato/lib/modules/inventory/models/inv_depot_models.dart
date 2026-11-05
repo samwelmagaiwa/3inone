@@ -545,6 +545,9 @@ class InvSaleReturn {
     this.saleNumber = '',
     this.reason = '',
     this.requestedByName = '',
+    this.customerName = '',
+    this.itemsSummary = '',
+    this.saleDate,
   });
 
   factory InvSaleReturn.fromJson(Map<String, dynamic> j) => InvSaleReturn(
@@ -557,6 +560,9 @@ class InvSaleReturn {
         reason: _toStr(j['reason']),
         status: _toStr(j['status']).isEmpty ? 'pending' : _toStr(j['status']),
         requestedByName: _toStr(j['requested_by_name']),
+        customerName: _toStr(j['customer_name']),
+        itemsSummary: _toStr(j['items_summary']),
+        saleDate: DateTime.tryParse('${j['sale_date']}'),
         createdAt: DateTime.tryParse('${j['created_at']}') ?? DateTime.now(),
       );
 
@@ -569,6 +575,11 @@ class InvSaleReturn {
   final String reason;
   final String status;
   final String requestedByName;
+
+  /// What the sale was for, so whoever decides sees it without opening the sale.
+  final String customerName;
+  final String itemsSummary;
+  final DateTime? saleDate;
   final DateTime createdAt;
 
   bool get isPending => status == 'pending';

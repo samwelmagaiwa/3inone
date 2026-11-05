@@ -14,6 +14,7 @@ import '../../models/crates_owed.dart';
 import '../../models/inv_product.dart';
 import '../../models/inv_product_unit.dart';
 import '../../models/inv_customer.dart';
+import '../../models/inv_depot_models.dart';
 import '../../models/inv_sale.dart';
 import '../../providers/depot_provider.dart';
 import '../../providers/inventory_provider.dart';
@@ -76,6 +77,8 @@ class _SalesScreenState extends State<SalesScreen>
       inv.fetchSales(status: _status, from: _from, to: _to);
       inv.fetchSalesSummary(status: _status, from: _from, to: _to);
       final depot = context.read<DepotProvider>();
+      // The requests the accountant wrote (delete this sale, take goods back), shown on the sale they are about.
+      depot.fetchReturns();
       if (depot.crateTypes.isEmpty) {
         depot.fetchCrateTypes();
       }
@@ -1008,6 +1011,73 @@ class _SalesScreenState extends State<SalesScreen>
     );
   }
 
+  /// A request waiting on a sale: who asked, what for, and the comment; with Reject / Approve for whoever holds the right.
+  Widget _requestBanner(BuildContext context, InventoryProvider inv, InvSaleReturn req, LocalizationService loc,
+      {required bool canDecide, required VoidCallback refresh}) {
+    final bool sw = loc.isSwahili;
+    final bool cancel = req.type == 'cancellation';
+    final String what = cancel ? (sw ? 'Ombi la kufuta mauzo haya' : 'Request to delete this sale') : (sw ? 'Ombi la kurudisha bidhaa' : 'Request to take goods back');
+
+    Future<void> decide(bool approve) async {
+      final DepotProvider depot = context.read<DepotProvider>();
+      await depot.decideReturn(req.id, approve: approve);
+      refresh();
+    }
+
+    return Container(
+      key: ValueKey<String>('sale_request_${req.id}'),
+      margin: EdgeInsets.only(top: 8.h),
+      padding: EdgeInsets.all(10.w),
+      decoration: BoxDecoration(
+        color: ThemeConstants.warningAmber.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(color: ThemeConstants.warningAmber.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(children: <Widget>[
+            Icon(Icons.mark_chat_unread_outlined, color: ThemeConstants.warningAmber, size: 16.sp),
+            SizedBox(width: 6.w),
+            Expanded(child: Text(what, style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w800, color: ThemeConstants.warningAmber))),
+          ]),
+          if (req.requestedByName.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: 4.h),
+              child: Text(sw ? 'Imeombwa na ${req.requestedByName}' : 'Asked by ${req.requestedByName}', style: ThemeConstants.captionStyle),
+            ),
+          if (req.reason.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: 4.h),
+              child: Text('“${req.reason}”', key: ValueKey<String>('sale_request_reason_${req.id}'), style: ThemeConstants.bodyStyle),
+            ),
+          if (canDecide) ...<Widget>[
+            SizedBox(height: 8.h),
+            Row(children: <Widget>[
+              Expanded(
+                child: OutlinedButton(
+                  key: ValueKey<String>('sale_request_reject_${req.id}'),
+                  style: OutlinedButton.styleFrom(side: const BorderSide(color: ThemeConstants.errorRed)),
+                  onPressed: () => decide(false),
+                  child: Text(sw ? 'Kataa' : 'Reject', style: const TextStyle(color: ThemeConstants.errorText)),
+                ),
+              ),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: ElevatedButton(
+                  key: ValueKey<String>('sale_request_approve_${req.id}'),
+                  style: ElevatedButton.styleFrom(backgroundColor: ThemeConstants.successGreen),
+                  onPressed: () => decide(true),
+                  child: Text(cancel ? (sw ? 'Kubali: futa mauzo' : 'Approve: delete the sale') : (sw ? 'Kubali' : 'Approve'), style: const TextStyle(color: Colors.white)),
+                ),
+              ),
+            ]),
+          ],
+        ],
+      ),
+    );
+  }
+
   // ==========================================
   // TAB 2: SALES HISTORY & LEDGER TAB
   // ==========================================
@@ -1015,6 +1085,11 @@ class _SalesScreenState extends State<SalesScreen>
       BuildContext context, InventoryProvider inv, LocalizationService loc) {
     // Cancelling a sale is gated server-side by inv_manage_sales.
     final isManager = context.select<AuthProvider, UserPermissions>((AuthProvider a) => a.permissions).has('inv_manage_sales');
+    // Deleting a sale and taking goods back are rights of their own (the owner's); the accountant asks with a comment instead.
+    final UserPermissions perms = context.select<AuthProvider, UserPermissions>((AuthProvider a) => a.permissions);
+    final bool canCancel = perms.has('inv_cancel_sales');
+    final bool canReturn = perms.has('inv_return_sales');
+    final List<InvSaleReturn> waiting = context.watch<DepotProvider>().returns.where((InvSaleReturn r) => r.isPending).toList();
     final summary = inv.salesSummary;
 
     void _applyFilters() {
@@ -1294,6 +1369,9 @@ class _SalesScreenState extends State<SalesScreen>
                           ],
                         ),
                       ),
+                      // What the accountant asked for on this sale, in their words, with the owner's two buttons.
+                      for (final InvSaleReturn req in waiting.where((InvSaleReturn r) => r.saleId == s.id))
+                        _requestBanner(context, inv, req, loc, canDecide: req.type == 'cancellation' ? canCancel : canReturn, refresh: _applyFilters),
                       SizedBox(height: 4.h),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -1321,7 +1399,7 @@ class _SalesScreenState extends State<SalesScreen>
                               onPressed: () => _showEditSaleSheet(context, s),
                               icon: Icon(Icons.edit_outlined, color: Colors.white70, size: 19.sp),
                             ),
-                          if (isManager && !s.isCancelled)
+                          if (canCancel && !s.isCancelled)
                             IconButton(
                               tooltip: loc.translate('cancel_sale'),
                               onPressed: () => _showCancelSheet(context, s),
