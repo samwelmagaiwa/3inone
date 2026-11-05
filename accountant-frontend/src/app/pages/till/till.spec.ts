@@ -441,6 +441,36 @@ describe('the till', () => {
     await settle(fixture);
     expect(byTestId(el, 'till-empty')).not.toBeNull();
   });
+
+  it('is offered on the first step too, and keeps the step it stopped at', async () => {
+    const { h, fixture, el } = await open();
+    expect(byTestId(el, 'till-parked')).not.toBeNull();
+    expect(byTestId(el, 'till-park')).not.toBeNull();
+    byTestId(el, 'good-1')!.click();
+    await settle(fixture);
+    byTestId(el, 'till-next')!.click();
+    await settle(fixture);
+    byTestId(el, 'till-park')!.click();
+    const post = h.http.expectOne((r) => r.url.endsWith('/inventory/parked-sales') && r.method === 'POST');
+    expect((post.request.body as { note: string }).note).toContain('"step":2');
+  });
+
+  it('a waiting sale comes back at the step where it stopped', async () => {
+    const { h, fixture, el } = await open();
+    byTestId(el, 'till-parked')!.click();
+    h.http.expectOne((r) => r.url.endsWith('/inventory/parked-sales') && r.method === 'GET').flush({
+      data: [{ id: 7, reference: 'P-7', customer_id: null, customer_name: null, total: 1000, note: '#wz:{"step":4,"mode":"partial","paid":400}', parked_by_name: null, created_at: '' }],
+    });
+    await settle(fixture);
+    expect(text(byTestId(el, 'parked-7')!)).toContain('stopped at step 4');
+    (byTestId(el, 'parked-7')!.querySelector('button.btn-primary') as HTMLButtonElement).click();
+    h.http.expectOne((r) => r.url.endsWith('/inventory/parked-sales/7/resume')).flush({
+      data: { cart: [{ product_id: 1, name: 'Sugar', qty: 1, unit_price: 1000 }], customer_id: null },
+    });
+    await settle(fixture);
+    expect(text(byTestId(el, 'till-step-title')!)).toContain('4');
+    expect((el.querySelector('#paid') as HTMLInputElement).value.replace(/\D/g, '')).toBe('400');
+  });
 });
 
 describe('the till in a salon', () => {

@@ -22,6 +22,9 @@ import { MoneyDirective } from '../../shared/ui/money.directive';
  * The till: find goods, build the cart, say who is buying and how they pay, then save the sale. The same sale, with the same prices and
  * rules, as the mobile app's till (the arithmetic is in core/till-math.ts). Everything here is a plain step with plain words.
  */
+/** Starts the note of a sale put aside by this app: what follows is where the sale had got to. */
+const PROGRESS = '#wz:';
+
 @Component({
   selector: 'app-till',
   imports: [FormsModule, ModalDialogComponent, MoneyDirective],
@@ -537,12 +540,90 @@ export class TillPage implements OnInit, OnDestroy {
   protected async park(): Promise<void> {
     if (!this.till.lines().length) return;
     try {
-      await firstValueFrom(this.api.park(this.till.snapshot(), this.till.totals().total, this.till.customer()?.id ?? null, ''));
+      await firstValueFrom(this.api.park(this.till.snapshot(), this.till.totals().total, this.till.customer()?.id ?? null, this.progressNote()));
       this.till.clear();
+      this.resetForm();
+      this.step.set(1);
       this.toast.success(this.i18n.t('till.parked'), this.i18n.t('common.done'));
     } catch (err) {
       this.toast.error(this.fail(err), this.i18n.t('error.title'));
     }
+  }
+
+  /** Where the sale had got to, kept in the note of the parked sale so that resuming starts where it stopped. */
+  private progressNote(): string {
+    const t = this.till;
+    return PROGRESS + JSON.stringify({
+      step: this.step(),
+      mode: t.mode(),
+      channel: t.channel(),
+      partialChannel: t.partialChannel(),
+      reference: t.reference(),
+      partialReference: t.partialReference(),
+      paid: t.paid(),
+      dueDays: t.dueDays(),
+      discount: t.discount(),
+      discountReason: t.discountReason(),
+      manualName: t.manualName(),
+      manualPhone: t.manualPhone(),
+    });
+  }
+
+  /** The step a parked sale stopped at (null for one parked by the phone, which keeps no progress). */
+  protected parkedStep(p: ParkedSale): number | null {
+    const s = this.readProgress(p.note)?.['step'];
+    return typeof s === 'number' && s >= 1 && s <= 5 ? s : null;
+  }
+
+  private readProgress(note: string | null): Record<string, unknown> | null {
+    if (!note?.startsWith(PROGRESS)) return null;
+    try {
+      const j: unknown = JSON.parse(note.slice(PROGRESS.length));
+      return j && typeof j === 'object' ? (j as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private applyProgress(note: string | null): void {
+    const j = this.readProgress(note);
+    this.resetForm();
+    if (!j) {
+      this.step.set(this.till.lines().length ? 2 : 1);
+      return;
+    }
+    const t = this.till;
+    const str = (k: string, d = ''): string => (typeof j[k] === 'string' ? (j[k] as string) : d);
+    const num = (k: string, d = 0): number => (typeof j[k] === 'number' && Number.isFinite(j[k]) ? (j[k] as number) : d);
+    const mode = str('mode', 'cash');
+    t.mode.set(mode === 'debt' || mode === 'partial' ? mode : 'cash');
+    t.channel.set(str('channel', 'cash'));
+    t.partialChannel.set(str('partialChannel', 'cash'));
+    t.reference.set(str('reference'));
+    t.partialReference.set(str('partialReference'));
+    t.dueDays.set(num('dueDays', 7) || 7);
+    t.discountReason.set(str('discountReason'));
+    t.manualName.set(str('manualName'));
+    t.manualPhone.set(str('manualPhone'));
+    if (num('paid') > 0) this.setPaid(String(num('paid')));
+    if (num('discount') > 0) this.setDiscount(String(num('discount')));
+    const at = num('step', 1);
+    this.step.set(this.till.lines().length ? Math.min(Math.max(at, 1), 5) : 1);
+  }
+
+  private resetForm(): void {
+    this.paidText = '';
+    this.discountText = '';
+    this.voucherCode = '';
+    this.pointsText = '';
+    this.voucherMessage.set('');
+    this.till.paid.set(0);
+    this.till.discount.set(0);
+    this.till.discountReason.set('');
+    this.till.reference.set('');
+    this.till.partialReference.set('');
+    this.till.manualName.set('');
+    this.till.manualPhone.set('');
   }
 
   protected async openParked(): Promise<void> {
@@ -560,6 +641,7 @@ export class TillPage implements OnInit, OnDestroy {
       const r = await firstValueFrom(this.api.resume(p.id));
       const c = r.customer_id ? ({ id: r.customer_id, name: p.customer_name ?? '', phone: '' } as Customer) : null;
       this.till.restore(r.cart, c);
+      this.applyProgress(p.note);
       this.parkedOpen.set(false);
     } catch (err) {
       this.toast.error(this.fail(err), this.i18n.t('error.title'));

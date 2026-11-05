@@ -92,8 +92,6 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
           <p class="step">@if (till.lines().length) { <span class="count-chip">{{ till.lines().length }}</span> }</p>
           <div class="flex flex-wrap items-center gap-2">
-            <button type="button" class="bar-btn" (click)="openParked()" data-testid="till-parked">{{ i18n.t('till.parked.open') }}</button>
-            <button type="button" class="bar-btn" [disabled]="!till.lines().length" (click)="park()" data-testid="till-park">{{ i18n.t('till.park') }}</button>
             @if (caps.usesPriceLevels() && !till.salon()) {
               <div class="seg" role="group" [attr.aria-label]="i18n.t('till.level')" data-testid="till-level">
                 <span class="seg-label">{{ i18n.t('till.level') }}</span>
@@ -402,7 +400,9 @@
 
   <footer class="wizard-foot">
     @if (formError()) { <p class="form-error" role="alert" data-testid="till-error">{{ formError() }}</p> }
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center gap-3">
+      <button type="button" class="bar-btn" (click)="openParked()" data-testid="till-parked">{{ i18n.t('till.parked.open') }}</button>
+      <button type="button" class="bar-btn" [disabled]="!till.lines().length" (click)="park()" data-testid="till-park">{{ i18n.t('till.park') }}</button>
       @if (step() > 1) { <button type="button" class="bar-btn" (click)="back()" data-testid="till-back">{{ i18n.t('till.back') }}</button> }
       <p class="wz-total grow text-right" data-testid="till-running">{{ i18n.t('till.total') }}: <b>{{ tsh(till.totals().total) }}</b></p>
       @if (step() < 5) {
@@ -457,7 +457,7 @@
     <p class="text-sm text-slate-500">{{ i18n.t('till.parked.hint') }}</p>
     @for (p of parked(); track p.id) {
       <div class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg" [attr.data-testid]="'parked-' + p.id">
-        <div class="grow min-w-0"><p class="font-black text-slate-900">{{ p.reference }}</p><p class="text-xs font-semibold text-slate-400">{{ p.customer_name || i18n.t('sales.walkin') }} · {{ tsh(p.total) }}</p></div>
+        <div class="grow min-w-0"><p class="font-black text-slate-900">{{ p.reference }}</p><p class="text-xs font-semibold text-slate-400">{{ p.customer_name || i18n.t('sales.walkin') }} · {{ tsh(p.total) }}@if (parkedStep(p); as at) { · {{ i18n.t('till.parked.at', at) }} }</p></div>
         <button type="button" class="btn-primary" (click)="resume(p)">{{ i18n.t('till.resume') }}</button>
         <button type="button" class="link-btn danger" (click)="discard(p)">{{ i18n.t('common.delete') }}</button>
       </div>
