@@ -91,10 +91,23 @@ void main() {
     expect(find.textContaining('nisaidie kufuta hili'), findsOneWidget);
     expect(find.textContaining('ivan samwel'), findsOneWidget);
 
+    // A card asks first; saying no does nothing.
     await t.ensureVisible(_key('sale_request_approve_9'));
     await t.tap(_key('sale_request_approve_9'));
     await t.pumpAndSettle();
+    expect(_key('sale_request_confirm'), findsOneWidget);
+    expect(api.posted, isEmpty);
+    await t.tap(_key('sale_request_confirm_no'));
+    await t.pumpAndSettle();
+    expect(api.posted, isEmpty);
+
+    // Saying yes sends the decision.
+    await t.tap(_key('sale_request_approve_9'));
+    await t.pumpAndSettle();
+    await t.tap(_key('sale_request_confirm_yes'));
+    await t.pumpAndSettle();
     expect(api.posted, contains('/inventory/returns/9/decide approved'));
+    await t.pump(const Duration(seconds: 6)); // the "it was deleted" message goes away
   });
 
   testWidgets('the accountant sees the request waiting but has no buttons to decide it, and no delete button', (t) async {

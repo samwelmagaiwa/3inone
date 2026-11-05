@@ -5,8 +5,8 @@ import 'package:boda_mapato/services/localization_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// The phone reads the debts aloud by itself when the app is opened: once a day, until the owner switches it off, and only when there is
-/// something to read.
+/// The phone reads the debts aloud by itself when the app is opened: once a day, only after the business admin has switched it on (it starts
+/// off, on every phone), and only when there is something to read.
 class _Speech implements SpeechPort {
   bool hasVoice = true;
   final List<String> said = <String>[];
@@ -29,22 +29,47 @@ InvReminder _debt(int id, String name) => InvReminder(id: id, type: 'payment_due
 final DateTime _monday = DateTime(2026, 11, 2, 9);
 final DateTime _tuesday = DateTime(2026, 11, 3, 9);
 
-Future<void> _fresh({Map<String, Object> saved = const <String, Object>{}}) async {
+/// A phone where the business admin has switched the reading on (unless a test says what is saved).
+Future<void> _fresh({Map<String, Object> saved = const <String, Object>{'voice_auto_read': true}}) async {
   SharedPreferences.setMockInitialValues(saved);
   await LocalizationService.instance.changeLanguage('en');
 }
 
 void main() {
   group('the choice', () {
-    test('reading by itself is on until it is switched off', () async {
-      await _fresh();
-      expect(await VoiceSettings.autoRead(), isTrue);
-
-      await VoiceSettings.setAutoRead(false);
+    test('reading by itself is off until the business admin switches it on', () async {
+      await _fresh(saved: <String, Object>{});
       expect(await VoiceSettings.autoRead(), isFalse);
 
       await VoiceSettings.setAutoRead(true);
       expect(await VoiceSettings.autoRead(), isTrue);
+
+      await VoiceSettings.setAutoRead(false);
+      expect(await VoiceSettings.autoRead(), isFalse);
+    });
+
+    test('a phone that was never told to speak never speaks, however often the app is opened', () async {
+      await _fresh(saved: <String, Object>{});
+      final _Speech speech = _Speech();
+      int loads = 0;
+
+      for (int i = 0; i < 3; i++) {
+        final VoiceResult? r = await DailyDebtVoice.maybeRead(
+          load: () async {
+            loads++;
+
+            return <InvReminder>[_debt(1, 'Asha')];
+          },
+          owner: 'S',
+          sw: false,
+          voice: ReminderVoice(speech: speech),
+          now: _monday.add(Duration(days: i)),
+        );
+        expect(r, isNull);
+      }
+
+      expect(speech.said, isEmpty);
+      expect(loads, 0);
     });
 
     test('it is due until it has been read today, and due again tomorrow', () async {

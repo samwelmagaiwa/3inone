@@ -34,7 +34,7 @@ class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
   bool _loading = false;
   // The phone's own reader is shared with the one that reads when the app opens; a test brings its own.
   late final ReminderVoice _voice = widget.speech == null ? ReminderVoice.shared : ReminderVoice(speech: widget.speech);
-  bool _auto = true;
+  bool _auto = false; // starts off: only the business admin switches the voice on
 
   @override
   void dispose() {
@@ -43,6 +43,15 @@ class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
       _voice.dispose();
     }
     super.dispose();
+  }
+
+  /// Only the business admin chooses whether the phone speaks by itself, and which voice (nobody else even sees the switch).
+  bool _isAdmin() {
+    try {
+      return context.read<AuthProvider>().user?.access.isAdmin ?? false;
+    } on ProviderNotFoundException {
+      return true;
+    }
   }
 
   /// The owner's name for the greeting ('' when it is not known).
@@ -147,7 +156,8 @@ class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
                       ),
                       padding: EdgeInsets.all(12.w),
                       children: <Widget>[
-                        // Reading by itself when the app is opened (once a day): on until it is switched off here.
+                        // Reading by itself when the app is opened (once a day): off until the business admin switches it on here.
+                        if (_isAdmin())
                         Container(
                           margin: EdgeInsets.only(bottom: 10.h),
                           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
@@ -166,6 +176,7 @@ class _InventoryRemindersScreenState extends State<InventoryRemindersScreen> {
                           ),
                         ),
                         // The voice and how fast it speaks: every voice the phone has can be listened to, and the clearest one kept.
+                        if (_isAdmin())
                         Padding(
                           padding: EdgeInsets.only(bottom: 10.h),
                           child: InvActionButton(

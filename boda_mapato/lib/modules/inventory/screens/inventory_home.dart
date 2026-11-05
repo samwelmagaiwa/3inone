@@ -530,7 +530,8 @@ class _InventoryHomeState extends State<InventoryHome> {
   }
 
   Future<void> _readDebtsOnOpening() async {
-    if (_voiced || !mounted || !_perms(context).has('inv_view_reminders')) return;
+    // Only the business admin can switch the reading on (it starts off), so nobody else's phone ever speaks.
+    if (_voiced || !mounted || !_perms(context).has('inv_view_reminders') || !_perms(context).isAdmin) return;
     _voiced = true;
     final InventoryProvider inv = context.read<InventoryProvider>();
     final String owner = context.read<AuthProvider>().userDisplayName;

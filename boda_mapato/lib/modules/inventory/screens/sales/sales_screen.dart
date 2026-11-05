@@ -1018,9 +1018,58 @@ class _SalesScreenState extends State<SalesScreen>
     final bool cancel = req.type == 'cancellation';
     final String what = cancel ? (sw ? 'Ombi la kufuta mauzo haya' : 'Request to delete this sale') : (sw ? 'Ombi la kurudisha bidhaa' : 'Request to take goods back');
 
+    // Neither button acts at once: a card asks first (deleting a sale cannot be undone), then says how it went.
     Future<void> decide(bool approve) async {
+      final String title = approve
+          ? (cancel ? (sw ? 'Futa mauzo haya?' : 'Delete this sale?') : (sw ? 'Kubali kurudisha bidhaa?' : 'Approve taking the goods back?'))
+          : (sw ? 'Kataa ombi hili?' : 'Turn this request down?');
+      final String body = approve
+          ? (cancel
+              ? (sw ? 'Mauzo ${req.saleNumber} yatafutwa, bidhaa zitarudi stoo. Hili haliwezi kurudishwa nyuma.' : 'Sale ${req.saleNumber} will be deleted and its goods go back to stock. This cannot be undone.')
+              : (sw ? 'Bidhaa za ombi hili zitarudi stoo na jumla ya mauzo itapungua.' : 'The goods go back to stock and the sale total goes down.'))
+          : (sw ? 'Mauzo ${req.saleNumber} yatabaki kama yalivyo, na mhasibu ataarifiwa.' : 'Sale ${req.saleNumber} stays as it is, and the accountant is told.');
+      final bool? yes = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext dCtx) => AlertDialog(
+          key: const ValueKey<String>('sale_request_confirm'),
+          backgroundColor: ThemeConstants.primaryBlue,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+          title: Text(title, style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(body, style: ThemeConstants.captionStyle),
+              if (req.reason.isNotEmpty) ...<Widget>[
+                SizedBox(height: 8.h),
+                Text('“${req.reason}”', style: ThemeConstants.bodyStyle),
+              ],
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              key: const ValueKey<String>('sale_request_confirm_no'),
+              onPressed: () => Navigator.pop(dCtx, false),
+              child: Text(sw ? 'Hapana' : 'Cancel', style: const TextStyle(color: Colors.white70)),
+            ),
+            ElevatedButton(
+              key: const ValueKey<String>('sale_request_confirm_yes'),
+              style: ElevatedButton.styleFrom(backgroundColor: approve ? (cancel ? ThemeConstants.errorRed : ThemeConstants.successGreen) : ThemeConstants.warningAmber),
+              onPressed: () => Navigator.pop(dCtx, true),
+              child: Text(approve ? (cancel ? (sw ? 'Ndiyo, futa' : 'Yes, delete it') : (sw ? 'Kubali' : 'Approve')) : (sw ? 'Kataa' : 'Turn down'), style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+      if (yes != true || !context.mounted) return;
       final DepotProvider depot = context.read<DepotProvider>();
-      await depot.decideReturn(req.id, approve: approve);
+      final bool ok = await depot.decideReturn(req.id, approve: approve);
+      if (!context.mounted) return;
+      if (ok) {
+        ThemeConstants.showSuccessSnackBar(context, approve ? (cancel ? (sw ? 'Mauzo yamefutwa.' : 'The sale was deleted.') : (sw ? 'Imekubaliwa.' : 'Approved.')) : (sw ? 'Ombi limekataliwa.' : 'The request was turned down.'));
+      } else {
+        ThemeConstants.showErrorSnackBar(context, sw ? 'Haikufanikiwa. Jaribu tena.' : 'It did not work. Try again.');
+      }
       refresh();
     }
 

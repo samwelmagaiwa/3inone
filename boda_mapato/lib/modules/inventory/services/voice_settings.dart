@@ -7,8 +7,9 @@ class VoiceSettings {
   static const String _lastKey = 'voice_last_read_day';
   static const String _rateKey = 'voice_rate';
 
-  /// Reads the debts aloud when the app is opened, once a day. On until the owner switches it off.
-  static Future<bool> autoRead() async => (await SharedPreferences.getInstance()).getBool(_autoKey) ?? true;
+  /// Reads the debts aloud when the app is opened, once a day. OFF until the business admin switches it on: a phone that was never told to
+  /// speak never speaks (a fresh install, a signed-out phone and an emulator all start silent).
+  static Future<bool> autoRead() async => (await SharedPreferences.getInstance()).getBool(_autoKey) ?? false;
 
   static Future<void> setAutoRead(final bool on) async => (await SharedPreferences.getInstance()).setBool(_autoKey, on);
 

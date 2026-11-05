@@ -4,6 +4,7 @@ import 'package:boda_mapato/modules/inventory/providers/inventory_provider.dart'
 import 'package:boda_mapato/modules/inventory/screens/reminders/inventory_reminders_screen.dart';
 import 'package:boda_mapato/modules/inventory/services/daily_voice.dart';
 import 'package:boda_mapato/modules/inventory/services/reminder_voice.dart';
+import 'package:boda_mapato/models/login_response.dart';
 import 'package:boda_mapato/providers/auth_provider.dart';
 import 'package:boda_mapato/services/api_service.dart';
 import 'package:boda_mapato/services/localization_service.dart';
@@ -211,18 +212,60 @@ void main() {
     expect(api.puts.single, endsWith('/snooze'));
   });
 
+  group('only the business admin chooses the voice', () {
+    Future<void> openAs(WidgetTester t, String role) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      await LocalizationService.instance.changeLanguage('en');
+      t.view.physicalSize = const Size(800, 2400);
+      t.view.devicePixelRatio = 1.0;
+      addTearDown(t.view.reset);
+      await t.pumpWidget(
+        MultiProvider(
+          providers: <ChangeNotifierProvider<ChangeNotifier>>[
+            ChangeNotifierProvider<LocalizationService>.value(value: LocalizationService.instance),
+            ChangeNotifierProvider<InventoryProvider>(create: (_) => InventoryProvider(api: _Api())),
+            ChangeNotifierProvider<AuthProvider>(create: (_) => _RoleAuth(role)),
+          ],
+          child: ScreenUtilInit(designSize: const Size(390, 844), builder: (_, __) => MaterialApp(home: Scaffold(body: InventoryRemindersScreen(speech: _Speech())))),
+        ),
+      );
+      await t.pump();
+      await t.pump();
+      await t.pump();
+    }
+
+    testWidgets('the admin sees the switch (off) and the voice settings', (t) async {
+      await openAs(t, 'admin');
+      expect(t.widget<Switch>(find.byKey(const ValueKey<String>('voice_auto_switch'))).value, isFalse);
+      expect(find.byKey(const ValueKey<String>('voice_settings')), findsOneWidget);
+    });
+
+    testWidgets('an accountant sees neither: nothing for them to switch on', (t) async {
+      await openAs(t, 'accountant');
+      expect(find.byKey(const ValueKey<String>('voice_auto_switch')), findsNothing);
+      expect(find.byKey(const ValueKey<String>('voice_settings')), findsNothing);
+    });
+  });
+
   group('reading by itself when the app opens', () {
-    testWidgets('the switch is on at first and switching it off is remembered', (t) async {
+    testWidgets('the switch is off at first, and switching it on and off is remembered', (t) async {
       await open(t, speech: _Speech());
       await t.pump();
 
-      expect(t.widget<Switch>(find.byKey(const ValueKey<String>('voice_auto_switch'))).value, isTrue);
+      expect(t.widget<Switch>(find.byKey(const ValueKey<String>('voice_auto_switch'))).value, isFalse, reason: 'nothing speaks until the business admin switches it on');
+      expect(await VoiceSettings.autoRead(), isFalse);
 
       await t.tap(find.byKey(const ValueKey<String>('voice_auto_switch')));
       await t.pump();
+      await t.pump();
+      expect(t.widget<Switch>(find.byKey(const ValueKey<String>('voice_auto_switch'))).value, isTrue);
+      expect(await VoiceSettings.autoRead(), isTrue, reason: 'kept for the next time the app is opened');
 
+      await t.tap(find.byKey(const ValueKey<String>('voice_auto_switch')));
+      await t.pump();
+      await t.pump();
       expect(t.widget<Switch>(find.byKey(const ValueKey<String>('voice_auto_switch'))).value, isFalse);
-      expect(await VoiceSettings.autoRead(), isFalse, reason: 'kept for the next time the app is opened');
+      expect(await VoiceSettings.autoRead(), isFalse);
     });
 
     testWidgets('a choice made before is shown when the page opens', (t) async {
@@ -358,7 +401,7 @@ void main() {
 
     testWidgets('switching it OFF in the middle of a reading stops it that moment, and the rest is not read', (t) async {
       final _SlowSpeech speech = _SlowSpeech();
-      await open(t, speech: speech);
+      await open(t, speech: speech, saved: <String, Object>{'voice_auto_read': true});
       // it starts by itself, as if switched on
       await t.tap(find.byKey(const ValueKey<String>('read_all_aloud')));
       await t.pump();
@@ -390,4 +433,13 @@ void main() {
 class _Auth extends AuthProvider {
   @override
   String get userDisplayName => 'Samwel';
+}
+
+class _RoleAuth extends AuthProvider {
+  _RoleAuth(this.role);
+
+  final String role;
+
+  @override
+  UserData? get user => UserData(id: 'u1', name: 'Someone', email: 'u@example.test', role: role, isActive: true);
 }
