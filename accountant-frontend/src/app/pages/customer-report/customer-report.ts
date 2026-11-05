@@ -13,6 +13,7 @@ import { BsDateDirective } from '../../shared/ui/bs-date.directive';
 
 type Period = 'week' | 'month' | 'quarter' | 'year' | 'custom';
 type Group = 'day' | 'week' | 'month';
+type View = 'period' | 'products' | 'recent' | 'history';
 
 /**
  * One customer's story for any period, as in the mobile app: what they bought, paid, the profit they brought (shown only to people
@@ -43,6 +44,18 @@ export class CustomerReportPage implements OnInit, OnDestroy {
   protected from = '';
   protected to = '';
   protected readonly report = signal<CustomerReport | null>(null);
+  /** What the one card shows ("Sort by"): over time, goods, recent purchases or the whole history. Only the ones that have something. */
+  protected readonly view = signal<View>('period');
+  protected readonly groupOpen = signal(false);
+  protected readonly views = computed<View[]>(() => {
+    const r = this.report();
+    const out: View[] = [];
+    if (r?.by_period.length) out.push('period');
+    if (r?.top_products.length) out.push('products');
+    if (r?.recent_sales.length) out.push('recent');
+    out.push('history');
+    return out;
+  });
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
 
@@ -92,6 +105,7 @@ export class CustomerReportPage implements OnInit, OnDestroy {
     this.error.set(null);
     try {
       this.report.set(await firstValueFrom(this.api.report(this.id, this.from, this.to, this.group())));
+      if (!this.views().includes(this.view())) this.view.set(this.views()[0]);
     } catch (err) {
       this.error.set(offline(err) ? this.i18n.t('error.offline') : (serverMessage(err) ?? this.i18n.t('error.generic')));
     } finally {

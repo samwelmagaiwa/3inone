@@ -51,6 +51,15 @@ function showTabs(fixture: { componentRef: { injector: { get: <T>(t: unknown) =>
 
 const click = (el: HTMLElement, id: string) => (byTestId(el, id) as HTMLElement).click();
 
+/** "Sort by": pick which grid the one card shows. */
+async function view(fixture: { whenStable: () => Promise<unknown>; detectChanges: () => void }, el: HTMLElement, v: string): Promise<void> {
+  const select = byTestId(el, 'crr-view') as HTMLSelectElement;
+  select.value = v;
+  select.dispatchEvent(new Event('change'));
+  select.dispatchEvent(new Event('input'));
+  await settle(fixture as never);
+}
+
 describe('a customer\'s report', () => {
   it('starts on this month by week and shows what was bought, paid, the profit and what is owed, with commas', async () => {
     const { el } = await open();
@@ -65,14 +74,26 @@ describe('a customer\'s report', () => {
   });
 
   it('shows week by week with the Monday each week starts on, and the goods and latest purchases', async () => {
-    const { el } = await open();
+    const { fixture, el } = await open();
 
     expect(text(byTestId(el, 'crr-row-2026-11-02')!)).toContain('Week of 02/11/2026');
     expect(text(byTestId(el, 'crr-row-2026-11-02')!)).toContain('TSH 4,000,000');
     expect(text(byTestId(el, 'crr-row-2026-11-16')!)).toContain('TSH 2,000,000');
+    await view(fixture, el, 'products');
     expect(text(el)).toContain('Soda');
+    await view(fixture, el, 'recent');
     expect(text(el)).toContain('S-0007');
+    await view(fixture, el, 'history');
     expect(text(byTestId(el, 'crr-life-sales')!)).toBe('TSH 12,000,000');
+  });
+
+  it('is one card with a "Sort by" choice (over time, goods, latest, whole history) and no header card above the figures', async () => {
+    const { el } = await open();
+
+    expect(byTestId(el, 'crr-back')).toBeNull();
+    expect(Array.from((byTestId(el, 'crr-view') as HTMLSelectElement).options).map((o) => text(o))).toEqual(['Over time', 'Goods', 'Latest', 'Whole history']);
+    expect(el.querySelectorAll('table').length).toBe(1); // one grid at a time
+    expect(text(byTestId(el, 'crr-group-toggle')!)).toContain('Select date');
   });
 
   it('a person who may not see profit gets no profit column or figure anywhere', async () => {
@@ -100,6 +121,8 @@ describe('a customer\'s report', () => {
     await settle(fixture);
     expect(text(byTestId(el, 'crr-row-2026-11')!)).toContain('November 2026');
 
+    click(el, 'crr-group-toggle');
+    await settle(fixture);
     click(el, 'crr-group-day');
     h.http.expectOne((r) => r.url === URL && r.params.get('group') === 'day').flush(report({ group: 'day', by_period: [{ period: '2026-11-03', purchases: 1, sales: 1000, paid: 1000, profit: 400 }] }));
     await settle(fixture);
@@ -110,7 +133,8 @@ describe('a customer\'s report', () => {
     const { el } = await open(['inv_view_credit', 'inv_view_reports'], report({ by_period: [], top_products: [], recent_sales: [] }));
 
     expect(byTestId(el, 'crr-none')).toBeNull();
-    expect(el.querySelectorAll('table').length).toBe(1); // only the whole-history row
+    expect(el.querySelectorAll('table').length).toBe(1); // only the whole-history grid
+    expect(Array.from((byTestId(el, 'crr-view') as HTMLSelectElement).options).map((o) => text(o))).toEqual(['Whole history']);
     expect(byTestId(el, 'crr-kpis')).not.toBeNull();
     expect(el.querySelector('.crr-kpis')).not.toBeNull();
   });

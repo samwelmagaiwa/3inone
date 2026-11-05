@@ -2,16 +2,6 @@
 @for (k of [motion.tick()]; track k) {
 <div class="space-y-5 animate-fade-in-up">
 
-  <div class="page-header-card flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-    <div class="min-w-0">
-      <a routerLink="/customers" class="text-xs font-extrabold text-indigo-600 uppercase tracking-wide" data-testid="crr-back">&larr; {{ i18n.t('crr.back') }}</a>
-      <h1 class="text-slate-900 font-black text-xl tracking-tight mt-1" data-testid="crr-name">{{ report()?.customer?.name ?? i18n.t('crr.title') }}</h1>
-      @if (report(); as r) {
-        <p class="text-slate-500 text-sm mt-0.5">{{ r.customer.phone }}@if (r.customer.address) { · {{ r.customer.address }} }</p>
-      }
-    </div>
-  </div>
-
   @if (period() === 'custom') {
     <div class="flex flex-wrap items-end gap-3">
       <div><label class="modal-label" for="crrFrom">{{ i18n.t('cr.from') }}</label><input id="crrFrom" name="crrFrom" type="date" class="modal-input" [(ngModel)]="from" (change)="load()" data-testid="crr-from"></div>
@@ -54,61 +44,67 @@
       </div>
     </div>
 
-    @if (r.by_period.length) {
-    <section class="section-card overflow-hidden">
-      <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-100">
-        <div>
-          <p class="label-eyebrow">{{ i18n.t('crr.by.eyebrow') }}</p>
-          <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.by.' + r.group) }}</h3>
-        </div>
-        <div class="flex gap-2" role="group">
-          @for (g of groups; track g) {
-            <button type="button" class="pill-tab" [class.is-active]="group() === g" [attr.aria-pressed]="group() === g" (click)="setGroup(g)" [attr.data-testid]="'crr-group-' + g">{{ i18n.t('crr.group.' + g) }}</button>
-          }
-        </div>
-      </div>
-      @if (r.by_period.length) {
-        <div class="table-scroll-container" style="border: 0; border-radius: 0;">
-          <table class="grid-table">
-            <thead>
-              <tr>
-                <th class="no-col">#</th>
-                <th>{{ i18n.t('crr.col.period') }}</th>
-                <th class="text-right">{{ i18n.t('crr.col.count') }}</th>
-                <th class="text-right">{{ i18n.t('crr.col.sales') }}</th>
-                <th class="text-right">{{ i18n.t('crr.col.paid') }}</th>
-                @if (profit()) { <th class="text-right">{{ i18n.t('crr.col.profit') }}</th> }
-              </tr>
-            </thead>
-            <tbody>
-              @for (p of r.by_period; track p.period; let i = $index) {
-                <tr [attr.data-testid]="'crr-row-' + p.period">
-                  <td class="no-col">{{ i + 1 }}</td>
-                  <td>
-                    <div class="font-black text-slate-900">{{ periodName(p.period) }}</div>
-                    <div class="bar-track" style="max-width: 140px; margin-top: 4px;"><div class="bar-fill" [style.width.%]="barWidth(p.sales)"></div></div>
-                  </td>
-                  <td class="text-right font-bold text-slate-600">{{ p.purchases }}</td>
-                  <td class="text-right font-black">{{ tsh(p.sales) }}</td>
-                  <td class="text-right font-bold text-emerald-600">{{ tsh(p.paid) }}</td>
-                  @if (profit()) { <td class="text-right font-black">{{ tsh(p.profit ?? 0) }}</td> }
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-    </section>
-    }
-
-    <!-- Goods, recent purchases and the whole history: one card, three grids, every detail in its own column -->
+    <!-- One card for everything about the customer: pick what to look at with "Sort by", one grid at a time -->
     <section class="section-card overflow-hidden" data-testid="crr-details">
-      @if (r.top_products.length) {
-        <div class="crr-block">
-          <div class="px-5 pt-5 pb-3">
-            <p class="label-eyebrow">{{ i18n.t('crr.top.eyebrow') }}</p>
-            <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.top.title') }}</h3>
+      <div class="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-slate-100">
+        <div class="min-w-0 mr-auto">
+          <p class="text-slate-900 font-black text-base truncate" data-testid="crr-name">{{ r.customer.name }}</p>
+          <p class="text-xs font-semibold text-slate-400">{{ r.customer.phone }}@if (r.customer.address) { · {{ r.customer.address }} }</p>
+        </div>
+        <label class="crr-sort">
+          <span class="label-eyebrow">{{ i18n.t('crr.sort') }}</span>
+          <select class="modal-input crr-select" [ngModel]="view()" (ngModelChange)="view.set($event)" name="crrView" data-testid="crr-view">
+            @for (v of views(); track v) { <option [value]="v">{{ i18n.t('crr.view.' + v) }}</option> }
+          </select>
+        </label>
+        @if (view() === 'period') {
+          <div class="relative">
+            <button type="button" class="pill-tab is-active" [attr.aria-expanded]="groupOpen()" (click)="groupOpen.set(!groupOpen())" data-testid="crr-group-toggle">{{ i18n.t('crr.period.custom') }} &#9662;</button>
+            @if (groupOpen()) {
+              <div class="crr-backdrop" (click)="groupOpen.set(false)"></div>
+              <div class="crr-pop" role="menu">
+                @for (g of groups; track g) {
+                  <button type="button" role="menuitemradio" [attr.aria-checked]="group() === g" [class.is-on]="group() === g" (click)="setGroup(g); groupOpen.set(false)" [attr.data-testid]="'crr-group-' + g">{{ i18n.t('crr.group.' + g) }}@if (group() === g) { <span>&#10003;</span> }</button>
+                }
+              </div>
+            }
           </div>
+        }
+      </div>
+
+      @switch (view()) {
+        @case ('period') {
+          <div class="table-scroll-container" style="border: 0; border-radius: 0;">
+            <table class="grid-table crr-fixed">
+              <thead>
+                <tr>
+                  <th class="no-col">#</th>
+                  <th class="crr-wide">{{ i18n.t('crr.col.period') }}</th>
+                  <th class="text-right">{{ i18n.t('crr.col.count') }}</th>
+                  <th class="text-right">{{ i18n.t('crr.col.sales') }}</th>
+                  <th class="text-right">{{ i18n.t('crr.col.paid') }}</th>
+                  @if (profit()) { <th class="text-right">{{ i18n.t('crr.col.profit') }}</th> }
+                </tr>
+              </thead>
+              <tbody>
+                @for (p of r.by_period; track p.period; let i = $index) {
+                  <tr [attr.data-testid]="'crr-row-' + p.period">
+                    <td class="no-col">{{ i + 1 }}</td>
+                    <td class="crr-wide">
+                      <div class="font-black text-slate-900">{{ periodName(p.period) }}</div>
+                      <div class="bar-track" style="max-width: 140px; margin-top: 4px;"><div class="bar-fill" [style.width.%]="barWidth(p.sales)"></div></div>
+                    </td>
+                    <td class="text-right font-bold text-slate-600">{{ p.purchases }}</td>
+                    <td class="text-right font-black">{{ tsh(p.sales) }}</td>
+                    <td class="text-right font-bold text-emerald-600">{{ tsh(p.paid) }}</td>
+                    @if (profit()) { <td class="text-right font-black">{{ tsh(p.profit ?? 0) }}</td> }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        @case ('products') {
           <div class="table-scroll-container" style="border: 0; border-radius: 0;">
             <table class="grid-table crr-fixed">
               <thead>
@@ -133,15 +129,8 @@
               </tbody>
             </table>
           </div>
-        </div>
-      }
-
-      @if (r.recent_sales.length) {
-        <div class="crr-block">
-          <div class="px-5 pt-5 pb-3">
-            <p class="label-eyebrow">{{ i18n.t('crr.recent.eyebrow') }}</p>
-            <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.recent.title') }}</h3>
-          </div>
+        }
+        @case ('recent') {
           <div class="table-scroll-container" style="border: 0; border-radius: 0;">
             <table class="grid-table crr-fixed">
               <thead>
@@ -168,37 +157,32 @@
               </tbody>
             </table>
           </div>
-        </div>
+        }
+        @case ('history') {
+          <div class="table-scroll-container" style="border: 0; border-radius: 0;" data-testid="crr-life">
+            <table class="grid-table crr-fixed">
+              <thead>
+                <tr>
+                  <th class="text-right">{{ i18n.t('crr.life.sales') }}</th>
+                  <th class="text-right">{{ i18n.t('crr.col.count') }}</th>
+                  @if (profit() && r.lifetime.profit !== null) { <th class="text-right">{{ i18n.t('crr.life.profit') }}</th> }
+                  <th>{{ i18n.t('crr.life.first') }}</th>
+                  <th>{{ i18n.t('crr.life.last') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="text-right font-black" data-testid="crr-life-sales">{{ tsh(r.lifetime.sales) }}</td>
+                  <td class="text-right font-bold text-slate-600">{{ r.lifetime.purchases }}</td>
+                  @if (profit() && r.lifetime.profit !== null) { <td class="text-right font-black text-emerald-600">{{ tsh(r.lifetime.profit) }}</td> }
+                  <td class="font-bold text-slate-700">{{ r.lifetime.first_purchase || '—' }}</td>
+                  <td class="font-bold text-slate-700">{{ r.lifetime.last_purchase || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        }
       }
-
-      <div class="crr-block" data-testid="crr-life">
-        <div class="px-5 pt-5 pb-3">
-          <p class="label-eyebrow">{{ i18n.t('crr.life.eyebrow') }}</p>
-          <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.life.title') }}</h3>
-        </div>
-        <div class="table-scroll-container" style="border: 0; border-radius: 0;">
-          <table class="grid-table crr-fixed">
-            <thead>
-              <tr>
-                <th class="text-right">{{ i18n.t('crr.life.sales') }}</th>
-                <th class="text-right">{{ i18n.t('crr.col.count') }}</th>
-                @if (profit() && r.lifetime.profit !== null) { <th class="text-right">{{ i18n.t('crr.life.profit') }}</th> }
-                <th>{{ i18n.t('crr.life.first') }}</th>
-                <th>{{ i18n.t('crr.life.last') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td class="text-right font-black" data-testid="crr-life-sales">{{ tsh(r.lifetime.sales) }}</td>
-                <td class="text-right font-bold text-slate-600">{{ r.lifetime.purchases }}</td>
-                @if (profit() && r.lifetime.profit !== null) { <td class="text-right font-black text-emerald-600">{{ tsh(r.lifetime.profit) }}</td> }
-                <td class="font-bold text-slate-700">{{ r.lifetime.first_purchase || '—' }}</td>
-                <td class="font-bold text-slate-700">{{ r.lifetime.last_purchase || '—' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
     </section>
   }
 </div>
@@ -221,5 +205,10 @@
   .crr-fixed { table-layout: fixed; }
   .crr-fixed th, .crr-fixed td { overflow-wrap: anywhere; }
   .crr-fixed .no-col { width: 48px; }
-  .crr-block + .crr-block { border-top: 1px solid #e2e8f4; }
+  .crr-sort { display: inline-flex; align-items: center; gap: 8px; }
+  .crr-select { width: auto; min-width: 170px; padding-top: 8px; padding-bottom: 8px; font-weight: 800; }
+  .crr-backdrop { position: fixed; inset: 0; z-index: 35; }
+  .crr-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; min-width: 150px; padding: 6px; background: #fff; border: 1px solid #dbe4ff; border-radius: 14px; box-shadow: 0 18px 36px rgba(26,47,110,.18); }
+  .crr-pop button { display: flex; width: 100%; justify-content: space-between; padding: 9px 12px; border-radius: 10px; font-weight: 800; color: #1a2f6e; cursor: pointer; }
+  .crr-pop button:hover, .crr-pop button.is-on { background: #e8eeff; }
 </style>
