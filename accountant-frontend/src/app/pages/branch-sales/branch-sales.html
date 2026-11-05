@@ -10,14 +10,14 @@
       <button type="button" class="btn-primary" (click)="retry()">{{ i18n.t('common.retry') }}</button>
     </div>
   } @else if (data(); as d) {
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="kpi-card">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div class="kpi-card kpi-slim">
         <p class="label-eyebrow">{{ i18n.t('bsl.goods') }}</p>
         <h3 class="text-2xl font-black tracking-tight mt-2" style="color: #1a2f6e;" data-testid="bsl-goods">{{ tsh(d.total.goods_sold ?? 0) }}</h3>
         <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('bsl.goods.sub', tsh(d.total.sales), d.total.sales_count) }} · {{ i18n.t('bsl.paid', tsh(d.total.paid)) }}</p>
       </div>
       @if (d.total.service_profit !== null && d.total.service_profit !== undefined) {
-        <div class="kpi-card">
+        <div class="kpi-card kpi-slim">
           <p class="label-eyebrow">{{ i18n.t('bsl.svc') }}</p>
           <h3 class="text-2xl font-black tracking-tight mt-2" [style.color]="d.total.service_profit < 0 ? '#dc2626' : '#059669'" data-testid="bsl-service-profit">{{ tsh(d.total.service_profit) }}</h3>
           <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('bsl.svc.sub', tsh(d.total.services_sold ?? 0)) }}</p>
@@ -27,16 +27,21 @@
 
     <!-- Branches and the people who sold there, in one table -->
     <section class="section-card overflow-hidden">
-      <div class="list-bar">
-        <label class="list-bar-count flex flex-wrap items-center gap-2">
+      <app-table-toolbar [compact]="true" [searchable]="false" [count]="groups().length" [noun]="''">
+        <label class="flex flex-wrap items-center gap-2">
           <span class="text-sm font-bold text-slate-600">{{ i18n.t('bsl.sortby') }}</span>
           <select class="list-size" style="min-width: 160px;" [value]="group()" (change)="setGroup($any($event.target).value)" data-testid="bsl-group">
             <option value="branch" [selected]="group() === 'branch'">{{ i18n.t('bsl.by.branch') }}</option>
             <option value="staff" [selected]="group() === 'staff'">{{ i18n.t('bsl.by.staff') }}</option>
           </select>
         </label>
-        <span class="text-sm font-semibold text-slate-500">{{ groups().length }}</span>
-      </div>
+        <!-- The period, on the same slim row -->
+        <div class="flex flex-wrap gap-2" role="tablist">
+          @for (p of periods; track p) {
+            <button type="button" role="tab" class="pill-tab slim-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="choose(p)" [attr.data-testid]="'bsl-period-' + p">{{ i18n.t('crr.period.' + p) }}</button>
+          }
+        </div>
+      </app-table-toolbar>
       @if (d.by_branch.length) {
         <div class="table-scroll-container" style="border: 0; border-radius: 0;">
           <table class="grid-table">
@@ -80,15 +85,6 @@
   }
 </div>
 }
-
-<!-- The period tabs, shown in the breadcrumb row at the top of the page -->
-<ng-template #periodBar>
-  <div class="flex flex-wrap gap-2" role="tablist">
-    @for (p of periods; track p) {
-      <button type="button" role="tab" class="pill-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="choose(p)" [attr.data-testid]="'bsl-period-' + p">{{ i18n.t('crr.period.' + p) }}</button>
-    }
-  </div>
-</ng-template>
 
 <style>
   :host { display: block; }

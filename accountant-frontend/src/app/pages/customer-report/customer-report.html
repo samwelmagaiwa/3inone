@@ -19,25 +19,25 @@
     </div>
   } @else if (report(); as r) {
 
-    <div class="crr-kpis grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="crr-kpis">
-      <div class="kpi-card">
+    <div class="crr-kpis grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" data-testid="crr-kpis">
+      <div class="kpi-card kpi-slim">
         <p class="label-eyebrow">{{ i18n.t('crr.kpi.bought') }}</p>
         <h3 class="text-2xl font-black tracking-tight mt-2" style="color: #1a2f6e;" data-testid="crr-sales">{{ tsh(r.totals.sales) }}</h3>
         <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100" data-testid="crr-count">{{ i18n.t('crr.kpi.purchases', r.totals.purchases) }}</p>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card kpi-slim">
         <p class="label-eyebrow">{{ i18n.t('crr.kpi.paid') }}</p>
         <h3 class="text-2xl font-black tracking-tight mt-2 text-emerald-600" data-testid="crr-paid">{{ tsh(r.totals.paid) }}</h3>
         <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('crr.kpi.average', tsh(r.totals.average_purchase)) }}</p>
       </div>
       @if (profit()) {
-        <div class="kpi-card">
+        <div class="kpi-card kpi-slim">
           <p class="label-eyebrow">{{ i18n.t('crr.kpi.profit') }}</p>
           <h3 class="text-2xl font-black tracking-tight mt-2" [style.color]="(r.totals.profit ?? 0) < 0 ? '#dc2626' : '#059669'" data-testid="crr-profit">{{ tsh(r.totals.profit ?? 0) }}</h3>
           @if (r.totals.margin_percent !== null) { <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('crr.kpi.margin', r.totals.margin_percent) }}</p> }
         </div>
       }
-      <div class="kpi-card">
+      <div class="kpi-card kpi-slim">
         <p class="label-eyebrow">{{ i18n.t('crr.kpi.owes') }}</p>
         <h3 class="text-2xl font-black tracking-tight mt-2" [style.color]="r.debt.owes_now > 0 ? '#d97706' : '#1e293b'" data-testid="crr-owes">{{ tsh(r.debt.owes_now) }}</h3>
         @if (r.debt.from_before_app > 0) { <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('cr.old', tsh(r.debt.from_before_app)) }}</p> }

@@ -1605,3 +1605,16 @@ app-book-ward-table, app-book-summaries, app-table-toolbar, app-table-pagination
 .list-pager .pg:disabled { color: #94a3b8; background: #f8fafc; cursor: not-allowed; }
 .list-pager .pg.is-current { color: #fff; background: #1a2f6e; border-color: #1a2f6e; }
 .list-size { padding: 6px 10px; border-radius: 8px; font-size: 14px; font-weight: 700; color: #1a2f6e; background: #fff; border: 1px solid #cfd9f3; cursor: pointer; }
+
+/* ─── Slim figure cards and the slim controls row (the Debts look, used on every list page) ─────────── */
+.kpi-slim { padding: 8px 16px !important; }
+.kpi-slim .label-eyebrow { font-size: 10.5px; line-height: 1.3; }
+.kpi-slim h3 { margin-top: 1px !important; font-size: 20px !important; line-height: 1.25; letter-spacing: -.02em; }
+.kpi-slim > p[class*="border-t"], .kpi-slim div > p[class*="border-t"] { margin-top: 1px !important; padding-top: 0 !important; border-top: 0 !important; font-size: 10.5px; letter-spacing: 0; }
+.kpi-slim .w-12 { width: 34px !important; height: 34px !important; }
+.kpi-slim .w-12 svg { width: 17px; height: 17px; }
+.kpi-slim [class*="mt-4"][class*="border-t"] { margin-top: 4px !important; padding-top: 4px !important; }
+.kpi-hint { font-weight: 700; letter-spacing: 0; text-transform: none; color: #94a3b8; }
+.slim-tab { padding: 6px 12px !important; font-size: 12.5px !important; }
+.bar-cta { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 900; color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); box-shadow: 0 10px 20px -12px rgba(26,47,110,.8); cursor: pointer; }
+.kpi-row { position: sticky; top: 0; z-index: 30; padding: 10px 0 4px; background: #f8fafc; }

@@ -11,19 +11,19 @@
   } @else {
 
     <!-- The four figures stay in view while the page scrolls under them -->
-    <div appStickyRow class="stat-row grid grid-cols-2 xl:grid-cols-4 gap-4">
+    <div appStickyRow class="stat-row grid grid-cols-2 xl:grid-cols-4 gap-3">
       @if (summary(); as s) {
-        <div class="stat" style="--accent:#3b61e2"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10M9 12h10M9 19h10M4 5h.01M4 12h.01M4 19h.01"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.count') }}</p><h3 class="stat-value" [appCountUp]="'' + s.count" data-testid="sales-count">{{ s.count }}</h3></div>
-        <div class="stat" style="--accent:#1a2f6e"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l3 4v14H4V7l3-4zM4 7h16M9 12h6M9 16h4"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.billed') }}</p><h3 class="stat-value" [appCountUp]="tsh(s.total)" data-testid="sales-total">{{ tsh(s.total) }}</h3></div>
-        <div class="stat" style="--accent:#16a34a"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.paid') }}</p><h3 class="stat-value" style="color:#15803d" data-testid="sales-paid">{{ tsh(s.paid) }}</h3></div>
-        <div class="stat" [style.--accent]="s.debt > 0 ? '#dc2626' : '#94a3b8'"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.debt') }}</p><h3 class="stat-value" [class.text-red-600]="s.debt > 0" [class.text-slate-800]="s.debt === 0" data-testid="sales-debt">{{ tsh(s.debt) }}</h3></div>
+        <div class="stat stat-slim" style="--accent:#3b61e2"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10M9 12h10M9 19h10M4 5h.01M4 12h.01M4 19h.01"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.count') }}</p><h3 class="stat-value" [appCountUp]="'' + s.count" data-testid="sales-count">{{ s.count }}</h3></div>
+        <div class="stat stat-slim" style="--accent:#1a2f6e"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l3 4v14H4V7l3-4zM4 7h16M9 12h6M9 16h4"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.billed') }}</p><h3 class="stat-value" [appCountUp]="tsh(s.total)" data-testid="sales-total">{{ tsh(s.total) }}</h3></div>
+        <div class="stat stat-slim" style="--accent:#16a34a"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.paid') }}</p><h3 class="stat-value" style="color:#15803d" data-testid="sales-paid">{{ tsh(s.paid) }}</h3></div>
+        <div class="stat stat-slim" [style.--accent]="s.debt > 0 ? '#dc2626' : '#94a3b8'"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.debt') }}</p><h3 class="stat-value" [class.text-red-600]="s.debt > 0" [class.text-slate-800]="s.debt === 0" data-testid="sales-debt">{{ tsh(s.debt) }}</h3></div>
       } @else {
         @for (i of [1,2,3,4]; track i) { <div class="skeleton-box" style="height: 110px; border-radius: 14px;"></div> }
       }
     </div>
 
     <section class="panel overflow-clip" style="padding:0">
-      <app-table-toolbar [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('sales.search')" [count]="total()" [noun]="noun()">
+      <app-table-toolbar [compact]="true" [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('sales.search')" [count]="total()" [noun]="noun()">
         <label class="filter-field">
           <span>{{ i18n.t('sales.filter.status') }}</span>
           <div class="flex gap-1.5">
@@ -32,6 +32,15 @@
             }
           </div>
         </label>
+        <!-- The period and the New sale button, on the same slim row as the search -->
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex flex-wrap gap-2" role="tablist">
+            @for (p of periods; track p) {
+              <button type="button" role="tab" class="pill-tab slim-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="setPeriod(p)" [attr.data-testid]="'period-' + p">{{ i18n.t('period.' + p) }}</button>
+            }
+          </div>
+          @if (canSell()) { <a routerLink="/sales/new" class="bar-cta" data-testid="sales-new">+ {{ i18n.t('sales.new') }}</a> }
+        </div>
       </app-table-toolbar>
 
       @if (loading() && !rows().length) {
@@ -179,31 +188,14 @@
   </div>
 </app-modal-dialog>
 
-<!-- The period tabs and the New sale button, shown in the breadcrumb row at the top of the page -->
-<ng-template #periodBar>
-  <div class="flex flex-wrap items-center gap-2">
-    <div class="flex flex-wrap gap-2" role="tablist">
-      @for (p of periods; track p) {
-        <button type="button" role="tab" class="pill-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="setPeriod(p)" [attr.data-testid]="'period-' + p">{{ i18n.t('period.' + p) }}</button>
-      }
-    </div>
-    @if (canSell()) { <a routerLink="/sales/new" class="bar-cta" data-testid="sales-new">+ {{ i18n.t('sales.new') }}</a> }
-  </div>
-</ng-template>
-
-<!-- Which paper the receipt is printed on -->
-<app-receipt-size [show]="!!printing()" (picked)="printOn($event)" (closed)="printing.set(null)" />
-
 <style>
   :host { display: block; }
-  .stat-row { position: sticky; top: 0; z-index: 30; padding: 12px 0 10px; background: #f8fafc; }
   .topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 0 2px; }
   .topbar-title { font-size: 20px; font-weight: 900; letter-spacing: -.01em; color: #1a2f6e; }
   .topbar-sub { margin-top: 1px; font-size: 13px; font-weight: 600; color: #7d8fc4; }
   .bar-btn { padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 800; color: #1a2f6e; background: #fff; border: 1px solid #dbe4ff; cursor: pointer; transition: all .2s; }
   .bar-btn:hover:not(:disabled) { background: #f3f5ff; border-color: #93b0fb; }
   .bar-btn:disabled { opacity: .45; cursor: not-allowed; }
-  .bar-cta { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 900; color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); box-shadow: 0 10px 20px -12px rgba(26,47,110,.8); }
 
   .panel { background: #fff; border: 1px solid #e6ecfb; border-radius: 22px; padding: 22px; box-shadow: 0 1px 2px rgba(26,47,110,.04), 0 18px 40px -26px rgba(26,47,110,.35); }
   .seg-bar { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 5px; border-radius: 16px; background: #fff; border: 1px solid #e6ecfb; box-shadow: 0 10px 24px -20px rgba(26,47,110,.5); }
@@ -213,6 +205,10 @@
   .stat { position: relative; overflow: hidden; padding: 18px 18px 18px 20px; border-radius: 20px; background: #fff; border: 1px solid #e6ecfb; box-shadow: 0 18px 36px -28px rgba(26,47,110,.5); transition: transform .2s, box-shadow .2s; }
   .stat:hover { transform: translateY(-3px); box-shadow: 0 22px 40px -24px rgba(26,47,110,.55); }
   .stat::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--accent, #3b61e2); }
+  .stat-slim { padding: 8px 16px 8px 18px; border-radius: 12px; }
+  .stat-slim .stat-ic { display: none; }
+  .stat-slim .stat-label { margin-top: 0; font-size: 10.5px; }
+  .stat-slim .stat-value { margin-top: 1px; font-size: 20px; }
   .stat-ic { display: inline-flex; width: 38px; height: 38px; align-items: center; justify-content: center; border-radius: 12px; color: var(--accent, #3b61e2); background: color-mix(in srgb, var(--accent, #3b61e2) 12%, #fff); }
   .stat-ic svg { width: 20px; height: 20px; }
   .stat-label { margin-top: 12px; font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: #7d8fc4; }

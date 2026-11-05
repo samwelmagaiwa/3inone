@@ -19,7 +19,7 @@
       @if (d.low > 0) { <div class="advice advice--warning" data-testid="bs-low"><p class="font-black text-slate-900 text-sm">{{ i18n.t('bs.low', d.low) }}</p></div> }
 
       <section class="section-card overflow-hidden">
-        <app-table-toolbar [search]="query()" (searchChange)="query.set($event)" [placeholder]="i18n.t('prod.search')" [count]="rows().length" [noun]="noun()" />
+        <app-table-toolbar [compact]="true" [search]="query()" (searchChange)="query.set($event)" [placeholder]="i18n.t('prod.search')" [count]="rows().length" [noun]="noun()" />
         <div class="table-scroll-container">
           <table class="premium-table">
             <thead>

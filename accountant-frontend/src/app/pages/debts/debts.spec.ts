@@ -51,6 +51,23 @@ describe('debts', () => {
     expect(text(byTestId(el, 'debt-add')!)).toBe('+ Add what I owe');
   });
 
+  it('the three dots of a debt hold more than receiving a payment: its payments so far, and (only when nobody has paid on it) delete', async () => {
+    const { el } = await open();
+
+    byTestId(el, 'debt-menu-1')!.click(); // debt 1: paid nothing
+    TestBed.tick();
+    expect(byTestId(el, 'debt-pay-1')).not.toBeNull();
+    expect(byTestId(el, 'debt-history-1')).not.toBeNull();
+    expect(byTestId(el, 'debt-delete-1')).not.toBeNull();
+
+    byTestId(el, 'debt-menu-1')!.click(); // close it
+    TestBed.tick();
+    byTestId(el, 'debt-menu-2')!.click(); // debt 2: has payments
+    TestBed.tick();
+    expect(byTestId(el, 'debt-history-2')).not.toBeNull();
+    expect(byTestId(el, 'debt-delete-2')).toBeNull();
+  });
+
   it('searching narrows the list and says when nothing matches', async () => {
     const { fixture, el } = await open();
 

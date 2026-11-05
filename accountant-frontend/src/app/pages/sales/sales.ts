@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -11,7 +11,6 @@ import { I18nService } from '../../core/i18n.service';
 import { SaleRow } from '../../core/models';
 import { ReceiptSize, printReceipt, rememberReceiptSize } from '../../core/receipt';
 import { ReceiptSizeComponent } from '../../shared/components/receipt-size/receipt-size';
-import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { MotionService } from '../../core/services/motion.service';
 import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
 import { ToastService } from '../../core/services/toast.service';
@@ -36,7 +35,7 @@ type Status = '' | 'paid' | 'partial' | 'debt';
   imports: [FormsModule, RouterLink, ReceiptSizeComponent, ModalDialogComponent, TableToolbarComponent, ListBarComponent, CountUpDirective, MoneyDirective, StickyRowDirective],
   templateUrl: './sales.html',
 })
-export class SalesPage implements OnInit, AfterViewInit, OnDestroy {
+export class SalesPage implements OnInit {
   private readonly api = inject(AccountantApi);
   private readonly till = inject(TillApi);
   private readonly toast = inject(ToastService);
@@ -44,10 +43,7 @@ export class SalesPage implements OnInit, AfterViewInit, OnDestroy {
   private readonly caps = inject(CapabilitiesService);
   protected readonly i18n = inject(I18nService);
   protected readonly motion = inject(MotionService);
-  private readonly slot = inject(HeaderSlotService);
 
-  /** The period tabs and the New sale button live in the breadcrumb row; this page hands them over. */
-  @ViewChild('periodBar', { static: true }) private periodBar!: TemplateRef<unknown>;
 
   protected readonly period = signal<Period>('today');
   protected readonly periods: Period[] = ['today', 'week', 'month', 'year'];
@@ -99,12 +95,8 @@ export class SalesPage implements OnInit, AfterViewInit, OnDestroy {
     void this.loadReturns();
   }
 
-  ngAfterViewInit(): void {
-    queueMicrotask(() => this.slot.show(this.periodBar));
-  }
 
   ngOnDestroy(): void {
-    this.slot.clear(this.periodBar);
     if (this.timer) clearTimeout(this.timer);
   }
 

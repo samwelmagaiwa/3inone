@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 
@@ -11,7 +11,6 @@ import { PAYMENT_CHANNELS } from '../../core/till.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { CapabilitiesService } from '../../core/capabilities.service';
 import { ExportSheet } from '../../core/export';
-import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { MotionService } from '../../core/services/motion.service';
 import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
 import { ToastService } from '../../core/services/toast.service';
@@ -40,18 +39,15 @@ const PERSONAL_CATEGORIES = ['drawings', 'family'];
   imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, ListBarComponent, RowMenuComponent, ExportMenuComponent, StickyRowDirective, BsDateDirective, BsSelectDirective, CountUpDirective, MoneyDirective],
   templateUrl: './expenses.html',
 })
-export class ExpensesPage implements OnInit, AfterViewInit, OnDestroy {
+export class ExpensesPage implements OnInit {
   private readonly api = inject(AccountantApi);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   protected readonly auth = inject(AuthService);
   protected readonly i18n = inject(I18nService);
   protected readonly motion = inject(MotionService);
-  private readonly slot = inject(HeaderSlotService);
   private readonly caps = inject(CapabilitiesService);
 
-  /** The period, the export and the add button live in the breadcrumb row at the top of the page; this page hands them over. */
-  @ViewChild('headerBar', { static: true }) private headerBar!: TemplateRef<unknown>;
 
   protected readonly period = signal<Period>('month');
   protected readonly periods: Period[] = ['today', 'week', 'month', 'year'];
@@ -115,13 +111,7 @@ export class ExpensesPage implements OnInit, AfterViewInit, OnDestroy {
     void this.load();
   }
 
-  ngAfterViewInit(): void {
-    queueMicrotask(() => this.slot.show(this.headerBar));
-  }
 
-  ngOnDestroy(): void {
-    this.slot.clear(this.headerBar);
-  }
 
   // ------------------------------------------------------------------ the menu of a row, and the export
   protected menuFor(e: Expense): MenuItem[] {

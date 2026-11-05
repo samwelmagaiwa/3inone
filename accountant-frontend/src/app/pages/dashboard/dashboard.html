@@ -59,7 +59,7 @@
     <!-- The four figures, in one row, each with a border in its own colour -->
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       @for (k of kpis(); track k.label) {
-        <div class="kpi-card bordered" [style.border-color]="toneColor(k.tone)">
+        <div class="kpi-card kpi-slim bordered" [style.border-color]="toneColor(k.tone)">
           <div class="flex justify-between items-start gap-3">
             <div class="flex-1 min-w-0">
               <p class="label-eyebrow">{{ k.label }}</p>

@@ -97,11 +97,19 @@ export class DebtsPage implements OnInit {
 
   // ------------------------------------------------------------------ the menu of a row, and the export
   protected menuFor(d: Debt): MenuItem[] {
-    return [{ id: 'pay', label: this.i18n.t(this.kind() === 'receivable' ? 'debts.receive' : 'debts.pay'), primary: true, testid: 'debt-pay-' + d.id }];
+    const items: MenuItem[] = [
+      { id: 'pay', label: this.i18n.t(this.kind() === 'receivable' ? 'debts.receive' : 'debts.pay'), primary: true, disabled: d.left <= 0, testid: 'debt-pay-' + d.id },
+      { id: 'history', label: this.i18n.t('debts.payments'), testid: 'debt-history-' + d.id },
+    ];
+    // A debt nobody has paid on can still be taken away if it was a mistake; one with payments stays as a record.
+    if (d.paid === 0) items.push({ id: 'delete', label: this.i18n.t('debts.delete.menu'), danger: true, testid: 'debt-delete-' + d.id });
+
+    return items;
   }
 
   protected menuPicked(id: string, d: Debt): void {
-    if (id === 'pay') this.openPay(d);
+    if (id === 'delete') void this.remove(d);
+    else this.openPay(d);
   }
 
   /** The list as it is on the page now (the tab, the search), with the totals: what is printed or saved. */

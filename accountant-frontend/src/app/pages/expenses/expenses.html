@@ -1,16 +1,3 @@
-<!-- The period, the export and the add button, shown in the breadcrumb row at the top of the page -->
-<ng-template #headerBar>
-  <div class="flex flex-wrap items-center gap-2">
-    <div class="flex flex-wrap gap-2" role="tablist">
-      @for (p of periods; track p) {
-        <button type="button" role="tab" class="pill-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="setPeriod(p)" [attr.data-testid]="'period-' + p">{{ i18n.t('period.' + p) }}</button>
-      }
-    </div>
-    <app-export-menu [build]="sheet" />
-    @if (canAdd()) { <button type="button" class="bar-cta" (click)="openAdd()" data-testid="exp-add">+ {{ i18n.t('exp.add') }}</button> }
-  </div>
-</ng-template>
-
 <!-- Expenses -->
 @for (k of [motion.tick()]; track k) {
 <div class="space-y-2 animate-fade-in-up">
@@ -26,18 +13,18 @@
   } @else if (summary(); as s) {
 
     <!-- The three figures stay in view while the page scrolls under them -->
-    <div appStickyRow class="kpi-row grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div class="kpi-card">
+    <div appStickyRow class="kpi-row grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div class="kpi-card kpi-slim">
         <p class="label-eyebrow">{{ i18n.t('exp.kpi.business') }}</p>
         <h3 class="text-3xl font-black tracking-tight mt-2" style="color: #1a2f6e;" [appCountUp]="tsh(s.total_expenses)" data-testid="exp-business">{{ tsh(s.total_expenses) }}</h3>
         <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('exp.kpi.business.hint') }}</p>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card kpi-slim">
         <p class="label-eyebrow">{{ i18n.t('exp.kpi.personal') }}</p>
         <h3 class="text-2xl font-black tracking-tight mt-2 text-slate-800" data-testid="exp-personal">{{ tsh(s.personal_total) }}</h3>
         <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('exp.kpi.personal.hint') }}</p>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card kpi-slim">
         <p class="label-eyebrow">{{ i18n.t('exp.kpi.net') }}</p>
         <h3 class="text-2xl font-black tracking-tight mt-2" [style.color]="s.net_profit < 0 ? '#dc2626' : '#059669'" data-testid="exp-net">{{ tsh(s.net_profit) }}</h3>
         <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('exp.kpi.net.hint') }}</p>
@@ -60,7 +47,18 @@
     }
 
     <section class="section-card overflow-clip">
-      <app-table-toolbar [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('exp.search')" [count]="rows().length" [noun]="noun()" />
+      <app-table-toolbar [compact]="true" [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('exp.search')" [count]="rows().length" [noun]="noun()">
+        <!-- The period, the export and the add button, on the same slim row as the search -->
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="flex flex-wrap gap-2" role="tablist">
+            @for (p of periods; track p) {
+              <button type="button" role="tab" class="pill-tab slim-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="setPeriod(p)" [attr.data-testid]="'period-' + p">{{ i18n.t('period.' + p) }}</button>
+            }
+          </div>
+          <app-export-menu [build]="sheet" />
+          @if (canAdd()) { <button type="button" class="bar-cta" (click)="openAdd()" data-testid="exp-add">+ {{ i18n.t('exp.add') }}</button> }
+        </div>
+      </app-table-toolbar>
 
       @if (rows().length) {
         <app-list-bar [total]="rows().length" [page]="page()" [pageSize]="pageSize()" [pageSizes]="[10, 20, 50, 100]" (pageChange)="page.set($event)" (pageSizeChange)="pageSize.set($event); page.set(1)" />
@@ -183,7 +181,5 @@
   .icon-del { padding: 8px; border-radius: 8px; color: #94a3b8; cursor: pointer; }
   .status-ok { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; color: #fff; background: #059669; cursor: pointer; margin-right: 4px; }
   .icon-del:hover { color: #dc2626; background: #fef2f2; }
-  .bar-cta { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 900; color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); box-shadow: 0 10px 20px -12px rgba(26,47,110,.8); cursor: pointer; }
-  .kpi-row { position: sticky; top: 0; z-index: 30; padding: 12px 0 4px; background: #f8fafc; }
   .exp-table .no-col { width: 48px; text-align: center; color: #64748b; font-weight: 800; }
 </style>
