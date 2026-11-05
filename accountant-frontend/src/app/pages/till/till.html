@@ -23,7 +23,7 @@
     </ol>
   </header>
 
-  <div class="wizard-body">
+  <div class="wizard-body" (scroll)="placeCustList()">
   <div class="cols grid grid-cols-1 gap-3">
 
     <!-- 1. The goods -->
@@ -249,11 +249,11 @@
           </div>
 
           @if (custTab() === 'find') {
-            <div class="relative mt-2 combo">
-              <input class="modal-input combo-input" type="search" role="combobox" [attr.aria-expanded]="custOpen()" aria-autocomplete="list" [ngModel]="customerQuery()" (ngModelChange)="searchCustomers($event)" (focus)="openCustList()" (click)="openCustList()" (blur)="closeCustListSoon()" (keydown)="custKey($event)" [placeholder]="i18n.t('till.customer.search')" autocomplete="off" data-testid="till-customer-search">
-              <button type="button" class="combo-toggle" tabindex="-1" (mousedown)="$event.preventDefault()" (click)="toggleCustList()" [attr.aria-label]="i18n.t('till.cust.list')" data-testid="till-customer-toggle"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <div #combo class="relative mt-2 combo">
+              <input class="modal-input combo-input" type="search" role="combobox" [attr.aria-expanded]="custOpen()" aria-autocomplete="list" [ngModel]="customerQuery()" (ngModelChange)="searchCustomers($event)" (focus)="openCustList(combo)" (click)="openCustList(combo)" (blur)="closeCustListSoon()" (keydown)="custKey($event)" [placeholder]="i18n.t('till.customer.search')" autocomplete="off" data-testid="till-customer-search">
+              <button type="button" class="combo-toggle" tabindex="-1" (mousedown)="$event.preventDefault()" (click)="toggleCustList(combo)" [attr.aria-label]="i18n.t('till.cust.list')" data-testid="till-customer-toggle"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
               @if (custOpen()) {
-                <div class="hits" role="listbox" data-testid="till-customer-list" (mousedown)="$event.preventDefault()">
+                <div class="hits" role="listbox" data-testid="till-customer-list" [style.left.px]="custPos().left" [style.width.px]="custPos().width" [style.top.px]="custPos().top" [style.bottom.px]="custPos().bottom" [style.max-height.px]="custPos().maxHeight" (mousedown)="$event.preventDefault()">
                   @for (h of customerHits(); track h.id; let i = $index) { <button type="button" role="option" [class.is-active]="custActive() === i" (click)="chooseCustomer(h)" [attr.data-testid]="'hit-' + h.id"><b>{{ h.name }}</b> <small>{{ h.phone }}</small></button> }
                   @if (!customerHits().length) { <p class="hits-none">{{ custBusy() ? '…' : i18n.t('till.cust.none') }}</p> }
                   @if (customerQuery().trim()) { <button type="button" class="add" (click)="addNewCustomer()" data-testid="till-customer-new">+ {{ i18n.t('till.customer.new', customerQuery().trim()) }}</button> }
@@ -602,8 +602,8 @@
   .combo-input { padding-right: 42px; }
   .combo-toggle { position: absolute; right: 6px; top: 6px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9px; color: #1a2f6e; background: #f1f5ff; }
   .combo-toggle:hover { background: #dfe8ff; }
-  /* The list opens in the flow of the page (not floating), so the wizard grows to hold it instead of cutting it off. */
-  .combo .hits { position: static; margin-top: 8px; max-height: 260px; overflow-y: auto; }
+  /* The list floats over what is below or above the box, whichever side has the room, so the popup never grows to hold it. */
+  .combo .hits { position: fixed; z-index: 90; margin-top: 0; overflow-y: auto; }
   .hits button.is-active { background: #e8eeff; }
   .hits-none { padding: 12px 14px; font-size: 13px; font-weight: 700; color: #94a3b8; }
   .perks-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 10px 12px; border-radius: 14px; background: #f5f8ff; border: 1px solid #e0e8fb; }

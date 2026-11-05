@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -360,15 +360,32 @@ export class TillPage implements OnInit, OnDestroy {
   }
 
   /** Open the list as soon as the box is clicked, so a customer can be picked without typing at all. */
-  protected openCustList(): void {
+  protected openCustList(box?: HTMLElement): void {
+    if (box) this.comboBox = box;
+    this.placeCustList();
     this.custOpen.set(true);
-    setTimeout(() => document.querySelector('[data-testid=till-customer-list]')?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }), 60);
     if (!this.customerHits().length && !this.custBusy()) void this.searchCustomers(this.customerQuery());
   }
 
-  protected toggleCustList(): void {
+  protected toggleCustList(box?: HTMLElement): void {
     if (this.custOpen()) return this.custOpen.set(false);
-    this.openCustList();
+    this.openCustList(box);
+  }
+
+  /** Where the customer list floats: under the box when there is room for it, otherwise above it, never wider than the box. */
+  protected readonly custPos = signal<{ left: number; width: number; top: number | null; bottom: number | null; maxHeight: number }>({ left: 0, width: 0, top: 0, bottom: null, maxHeight: 280 });
+  private comboBox: HTMLElement | null = null;
+
+  @HostListener('window:resize')
+  protected placeCustList(): void {
+    const box = this.comboBox;
+    if (!box || typeof window === 'undefined') return;
+    const r = box.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom - 12;
+    const above = r.top - 12;
+    const down = below >= 220 || below >= above;
+    const maxHeight = Math.max(120, Math.min(320, down ? below : above));
+    this.custPos.set({ left: r.left, width: r.width, top: down ? r.bottom + 6 : null, bottom: down ? null : window.innerHeight - r.top + 6, maxHeight });
   }
 
   /** Leaving the box closes the list a moment later, so a click on a name still lands. */
