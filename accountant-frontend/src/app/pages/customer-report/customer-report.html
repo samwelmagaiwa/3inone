@@ -57,19 +57,19 @@
             @for (v of views(); track v) { <option [value]="v">{{ i18n.t('crr.view.' + v) }}</option> }
           </select>
         </label>
-        @if (view() === 'period') {
-          <div class="relative">
-            <button type="button" class="pill-tab is-active" [attr.aria-expanded]="groupOpen()" (click)="groupOpen.set(!groupOpen())" data-testid="crr-group-toggle">{{ i18n.t('crr.period.custom') }} &#9662;</button>
-            @if (groupOpen()) {
-              <div class="crr-backdrop" (click)="groupOpen.set(false)"></div>
-              <div class="crr-pop" role="menu">
-                @for (g of groups; track g) {
-                  <button type="button" role="menuitemradio" [attr.aria-checked]="group() === g" [class.is-on]="group() === g" (click)="setGroup(g); groupOpen.set(false)" [attr.data-testid]="'crr-group-' + g">{{ i18n.t('crr.group.' + g) }}@if (group() === g) { <span>&#10003;</span> }</button>
-                }
-              </div>
-            }
-          </div>
-        }
+        <div class="relative">
+          <button type="button" class="pill-tab is-active" [attr.aria-expanded]="groupOpen()" (click)="groupOpen.set(!groupOpen())" data-testid="crr-date-toggle">{{ i18n.t('crr.period.custom') }} &#9662;</button>
+          @if (groupOpen()) {
+            <div class="crr-backdrop" (click)="groupOpen.set(false)"></div>
+            <div class="crr-pop crr-cal" role="dialog" [attr.aria-label]="i18n.t('crr.period.custom')">
+              <label class="modal-label" for="crrCalFrom">{{ i18n.t('cr.from') }}</label>
+              <input id="crrCalFrom" name="crrCalFrom" type="date" class="modal-input" [(ngModel)]="from" [max]="to || ''" data-testid="crr-cal-from">
+              <label class="modal-label mt-2" for="crrCalTo">{{ i18n.t('cr.to') }}</label>
+              <input id="crrCalTo" name="crrCalTo" type="date" class="modal-input" [(ngModel)]="to" [min]="from || ''" data-testid="crr-cal-to">
+              <button type="button" class="btn-primary mt-3 w-full" (click)="applyDates()" data-testid="crr-cal-apply">{{ i18n.t('crr.apply') }}</button>
+            </div>
+          }
+        </div>
       </div>
 
       @switch (view()) {
@@ -209,6 +209,7 @@
   .crr-select { width: auto; min-width: 170px; padding-top: 8px; padding-bottom: 8px; font-weight: 800; }
   .crr-backdrop { position: fixed; inset: 0; z-index: 35; }
   .crr-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; min-width: 150px; padding: 6px; background: #fff; border: 1px solid #dbe4ff; border-radius: 14px; box-shadow: 0 18px 36px rgba(26,47,110,.18); }
-  .crr-pop button { display: flex; width: 100%; justify-content: space-between; padding: 9px 12px; border-radius: 10px; font-weight: 800; color: #1a2f6e; cursor: pointer; }
-  .crr-pop button:hover, .crr-pop button.is-on { background: #e8eeff; }
+  .crr-pop button:not(.btn-primary) { display: flex; width: 100%; justify-content: space-between; padding: 9px 12px; border-radius: 10px; font-weight: 800; color: #1a2f6e; cursor: pointer; }
+  .crr-cal { min-width: 240px; padding: 14px; }
+  .crr-cal .btn-primary { display: block; }
 </style>

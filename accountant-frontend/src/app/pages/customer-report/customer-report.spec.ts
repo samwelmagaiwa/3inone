@@ -93,7 +93,7 @@ describe('a customer\'s report', () => {
     expect(byTestId(el, 'crr-back')).toBeNull();
     expect(Array.from((byTestId(el, 'crr-view') as HTMLSelectElement).options).map((o) => text(o))).toEqual(['Over time', 'Goods', 'Latest', 'Whole history']);
     expect(el.querySelectorAll('table').length).toBe(1); // one grid at a time
-    expect(text(byTestId(el, 'crr-group-toggle')!)).toContain('Select date');
+    expect(text(byTestId(el, 'crr-date-toggle')!)).toContain('Select date');
   });
 
   it('a person who may not see profit gets no profit column or figure anywhere', async () => {
@@ -121,10 +121,17 @@ describe('a customer\'s report', () => {
     await settle(fixture);
     expect(text(byTestId(el, 'crr-row-2026-11')!)).toContain('November 2026');
 
-    click(el, 'crr-group-toggle');
+    click(el, 'crr-date-toggle');
     await settle(fixture);
-    click(el, 'crr-group-day');
-    h.http.expectOne((r) => r.url === URL && r.params.get('group') === 'day').flush(report({ group: 'day', by_period: [{ period: '2026-11-03', purchases: 1, sales: 1000, paid: 1000, profit: 400 }] }));
+    const from = byTestId(el, 'crr-cal-from') as HTMLInputElement;
+    const to = byTestId(el, 'crr-cal-to') as HTMLInputElement;
+    expect(from.type).toBe('date');
+    from.value = '2026-11-01';
+    from.dispatchEvent(new Event('input'));
+    to.value = '2026-11-05';
+    to.dispatchEvent(new Event('input'));
+    click(el, 'crr-cal-apply');
+    h.http.expectOne((r) => r.url === URL && r.params.get('group') === 'day' && r.params.get('from') === '2026-11-01' && r.params.get('to') === '2026-11-05').flush(report({ group: 'day', by_period: [{ period: '2026-11-03', purchases: 1, sales: 1000, paid: 1000, profit: 400 }] }));
     await settle(fixture);
     expect(text(byTestId(el, 'crr-row-2026-11-03')!)).toContain('03/11/2026');
   });

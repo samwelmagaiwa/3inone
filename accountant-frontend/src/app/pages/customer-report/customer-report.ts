@@ -91,6 +91,19 @@ export class CustomerReportPage implements OnInit, OnDestroy {
     void this.load();
   }
 
+  /** The two days picked on the calendar: they become the period, grouped by what reads best for their length. */
+  protected applyDates(): void {
+    if (!this.from || !this.to || this.from > this.to) {
+      this.error.set(this.i18n.t('crr.err.dates'));
+      return;
+    }
+    const days = (new Date(this.to).getTime() - new Date(this.from).getTime()) / 86_400_000 + 1;
+    this.period.set('custom');
+    this.group.set(days <= 14 ? 'day' : days <= 92 ? 'week' : 'month');
+    this.groupOpen.set(false);
+    void this.load();
+  }
+
   protected setGroup(g: Group): void {
     this.group.set(g);
     void this.load();
