@@ -264,6 +264,22 @@ describe('products and services', () => {
       expect(byTestId(el, 'prod-cost')).not.toBeNull();
     });
 
+    it('the form lays its fields out in two columns: the wide parts (name, hints, options, staff, notes) take both', async () => {
+      const { fixture, el } = await open(MANAGER, { service: 'salon' });
+
+      click(el, 'prod-add');
+      await settle(fixture);
+      const grid = byTestId(el, 'prod-form-grid') as HTMLElement;
+      expect(grid.className).toContain('md:grid-cols-2');
+      expect((byTestId(el, 'prod-name')!.parentElement as HTMLElement).className).toContain('md:col-span-2');
+      // the short fields (category, brand, price, time, ...) sit in a column each: they are direct cells of the grid, not full-width
+      for (const id of ['pCategory', 'pBrand', 'pPrice', 'pDuration', 'pRebook']) {
+        let cell = el.querySelector('#' + id) as HTMLElement;
+        while (cell.parentElement !== grid && cell.parentElement && !cell.parentElement.classList.contains('contents')) cell = cell.parentElement;
+        expect(cell.className, id).not.toContain('md:col-span-2');
+      }
+    });
+
     it('adds a service: a time, a commission, who does it and price options', async () => {
       const { h, fixture, el } = await open(MANAGER, { service: 'salon' });
 
