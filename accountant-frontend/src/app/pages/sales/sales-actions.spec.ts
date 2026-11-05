@@ -54,7 +54,7 @@ describe('what can be done to a sale', () => {
     reload(h);
   });
 
-  it('a payment by mobile money needs its reference number and sends it', async () => {
+  it('the reference of a mobile money payment is optional, and is sent when written', async () => {
     const { h, fixture, el } = await open();
     byTestId(el, 'sale-row-2')!.click();
     await settle(fixture);
@@ -67,11 +67,6 @@ describe('what can be done to a sale', () => {
     method.dispatchEvent(new Event('change', { bubbles: true }));
     await settle(fixture);
     type(el, '[data-testid=pay-amount]', '6000');
-    byTestId(el, 'pay-save')!.click();
-    await settle(fixture);
-    expect(text(el)).toContain('Write the reference number');
-    h.http.expectNone((r) => r.url.endsWith('/inventory/sales/2/payments'));
-
     type(el, '[data-testid=pay-ref]', 'QWE123');
     byTestId(el, 'pay-save')!.click();
     const post = h.http.expectOne((r) => r.url.endsWith('/inventory/sales/2/payments'));

@@ -297,8 +297,8 @@
             </select>
           </div>
           <div>
-            <label class="modal-label" [class.req]="method !== 'cash'" for="payRef">{{ i18n.t('cr.pay.reference') }}</label>
-            <input id="payRef" name="payRef" class="modal-input" [(ngModel)]="reference" maxlength="255" autocomplete="off" [placeholder]="i18n.t('cr.pay.reference.hint')" data-testid="pay-reference" [required]="method !== 'cash'">
+            <label class="modal-label" for="payRef">{{ i18n.t('cr.pay.reference') }}</label>
+            <input id="payRef" name="payRef" class="modal-input" [(ngModel)]="reference" maxlength="255" autocomplete="off" [placeholder]="i18n.t('cr.pay.reference.hint')" data-testid="pay-reference">
           </div>
         </div>
         <p class="text-sm font-black text-slate-800" data-testid="pay-total">{{ i18n.t('cr.pay.total', tsh(payTotal())) }}</p>

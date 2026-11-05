@@ -265,7 +265,6 @@ export class CreditPage implements OnInit {
     }
     const total = [...allocations, ...oldAllocations].reduce((s, a) => s + a.amount, 0);
 
-    if (this.method !== 'cash' && !this.reference.trim()) return this.payError.set(this.i18n.t('till.err.reference_required'));
 
     this.paySaving.set(true);
     this.payError.set('');

@@ -677,7 +677,7 @@ export class TillPage implements OnInit, OnDestroy {
       this.tried.set(true);
       const stylist = this.till.missingStylist();
       this.formError.set(this.i18n.t(`till.err.${built.error}`, stylist?.name ?? ''));
-      this.reveal(built.error === 'customer_required' ? 'till-customer-section' : built.error === 'reference_required' ? 'till-pay-section' : built.error === 'stylist_required' && stylist ? `line-${stylist.productId}` : null);
+      this.reveal(built.error === 'customer_required' ? 'till-customer-section' : built.error === 'stylist_required' && stylist ? `line-${stylist.productId}` : null);
       return;
     }
     const c = this.credit();

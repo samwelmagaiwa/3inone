@@ -209,10 +209,9 @@ export class SalesPage implements OnInit, OnDestroy {
     if (!s) return;
     if (Number.isNaN(amount) || amount <= 0) return this.actionError.set(this.i18n.t('sales.pay.err'));
     if (amount > this.owing(s)) return this.actionError.set(this.i18n.t('sales.pay.toomuch', tsh(this.owing(s))));
-    if (this.payMethod !== 'cash' && !this.payReference.trim()) return this.actionError.set(this.i18n.t('till.err.reference_required'));
     this.busy.set(true);
     try {
-      await firstValueFrom(this.till.recordPayment(s.id, amount, this.payMethod, this.payMethod === 'cash' ? undefined : this.payReference.trim()));
+      await firstValueFrom(this.till.recordPayment(s.id, amount, this.payMethod, this.payMethod === 'cash' ? undefined : this.payReference.trim() || undefined));
       this.payFor.set(null);
       this.toast.success(this.i18n.t('sales.pay.saved', tsh(amount)), this.i18n.t('common.done'));
       await this.load();

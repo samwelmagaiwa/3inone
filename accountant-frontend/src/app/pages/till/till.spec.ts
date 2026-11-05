@@ -535,7 +535,7 @@ describe('the till: other prices, payment codes and customers', () => {
     expect(text(byTestId(el, 'till-total')!)).toBe('TSH 40,000');
   });
 
-  it('a payment by mobile money needs its reference number, and sends it', async () => {
+  it('the reference number of a mobile money payment is optional: sent when written, left out when not', async () => {
     const { h, fixture, el } = await open();
     byTestId(el, 'good-1')!.click();
     await settle(fixture);
@@ -546,11 +546,7 @@ describe('the till: other prices, payment codes and customers', () => {
     chan.dispatchEvent(new Event('change', { bubbles: true }));
     await settle(fixture);
     expect(byTestId(el, 'till-ref')).not.toBeNull();
-
-    byTestId(el, 'till-charge')!.click();
-    await settle(fixture);
-    expect(text(byTestId(el, 'till-error')!)).toContain('Write the reference number');
-    h.http.expectNone((r) => r.url.endsWith('/inventory/sales') && r.method === 'POST');
+    expect(el.querySelector('label[for="ref"].req')).toBeNull(); // no red asterisk: it is not required
 
     type(el, '[data-testid=till-ref]', '  8K3J2L9X ');
     await settle(fixture);
@@ -558,6 +554,22 @@ describe('the till: other prices, payment codes and customers', () => {
     await settle(fixture);
     const post = h.http.expectOne((r) => r.url.endsWith('/inventory/sales') && r.method === 'POST');
     expect((post.request.body as { payments: Record<string, unknown>[] }).payments[0]).toMatchObject({ method: 'mpesa', reference: '8K3J2L9X' });
+  });
+
+  it('a mobile money payment with no reference still saves, with the reference empty', async () => {
+    const { h, fixture, el } = await open();
+    byTestId(el, 'good-1')!.click();
+    await settle(fixture);
+    const chan = el.querySelector('#chan') as HTMLSelectElement;
+    chan.value = 'mpesa';
+    chan.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle(fixture);
+
+    byTestId(el, 'till-charge')!.click();
+    await settle(fixture);
+
+    const post = h.http.expectOne((r) => r.url.endsWith('/inventory/sales') && r.method === 'POST');
+    expect((post.request.body as { payments: Record<string, unknown>[] }).payments[0]).toMatchObject({ method: 'mpesa', reference: null });
   });
 
   it('cash sends no reference at all', async () => {
@@ -570,7 +582,7 @@ describe('the till: other prices, payment codes and customers', () => {
     expect((post.request.body as { payments: Record<string, unknown>[] }).payments[0]).toMatchObject({ method: 'cash', reference: null });
   });
 
-  it('a part payment by bank also needs the reference of what was paid now', async () => {
+  it('a part payment by bank can also carry the reference of what was paid now', async () => {
     const { fixture, el } = await open();
     byTestId(el, 'good-1')!.click();
     byTestId(el, 'mode-partial')!.click();
@@ -664,7 +676,7 @@ describe('the till: required fields', () => {
     expect(byTestId(el, 'stylist-search')).toBeNull();
   });
 
-  it('marks what must be filled with a red asterisk, and outlines the empty ones after a failed save', async () => {
+  it('marks what must be filled with a red asterisk (not the reference, which is optional), and outlines the empty ones after a failed save', async () => {
     const { fixture, el } = await open();
     byTestId(el, 'good-1')!.click();
     const chan = () => el.querySelector('#chan') as HTMLSelectElement;
@@ -672,12 +684,13 @@ describe('the till: required fields', () => {
     chan().value = 'mpesa';
     chan().dispatchEvent(new Event('change', { bubbles: true }));
     await settle(fixture);
-    const label = el.querySelector('label[for=ref]') as HTMLElement;
-    expect(label.classList.contains('req')).toBe(true);
-    expect((el.querySelector('#ref') as HTMLInputElement).required).toBe(true);
+    expect((el.querySelector('label[for=ref]') as HTMLElement).classList.contains('req')).toBe(false);
+    expect((el.querySelector('#ref') as HTMLInputElement).required).toBe(false);
     expect((el.querySelector('#ref') as HTMLInputElement).placeholder).toBe('e.g. 8K3J2L9X');
     expect(el.querySelector('section.attempted')).toBeNull();
 
+    byTestId(el, 'mode-debt')!.click(); // a sale on credit with no customer: a real failure
+    await settle(fixture);
     byTestId(el, 'till-charge')!.click();
     await settle(fixture);
     expect(el.querySelector('section.attempted')).not.toBeNull();
