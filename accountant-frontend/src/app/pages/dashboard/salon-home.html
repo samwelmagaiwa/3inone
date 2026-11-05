@@ -3,19 +3,9 @@
 
   <!-- Who is here, today against yesterday and the quick links: one section, the links in one row -->
   <section class="home-card" style="--tone:#3b61e2" data-testid="home-welcome">
-    <div class="grid grid-cols-1 xl:grid-cols-5 gap-x-8 gap-y-5 items-center">
-      <div class="xl:col-span-2">
-        <div class="flex items-center gap-3 flex-wrap">
-          <span class="home-avatar" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span>
-          <div class="min-w-0 grow">
-            <p class="home-title">{{ i18n.t('home.welcome', name()) }}</p>
-            <p class="home-sub">{{ role() }}</p>
-          </div>
-          <span class="home-badge">{{ role() }}</span>
-        </div>
-      </div>
-      <div class="xl:col-span-3 home-today" data-testid="home-today">
-      <div class="flex items-center gap-3">
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-x-8 gap-y-5 items-center home-top">
+      <div class="xl:col-span-2" data-testid="home-today">
+        <div class="flex items-center gap-3">
           <span class="home-eyebrow">{{ i18n.t('home.today') }}</span>
           @if (versus(); as v) {
             <div class="home-track" role="progressbar" [attr.aria-valuenow]="v.pct" aria-valuemin="0" aria-valuemax="100"><div class="home-fill" [class.is-behind]="!v.ahead" [style.width.%]="v.pct"></div></div>
@@ -33,6 +23,7 @@
           </div>
         </div>
       </div>
+      <div class="xl:col-span-3 home-figures" data-testid="home-figures"><ng-content /></div>
     </div>
       @if (links().length) {
         <div class="home-links" data-testid="home-links">
@@ -99,8 +90,9 @@
   }
 
   <!-- The best stylists and services, the money received and the month's figures (projected by the page): one section -->
+  @if (overview(); as o) {
   <section class="home-card" style="--tone:#16a34a" data-testid="home-summary">
-    @if (overview(); as o) {
+    @if (o) {
       <div class="home-cols">
         @if (o.top_staff.length) {
           <div class="home-col" data-testid="home-top-staff">
@@ -140,8 +132,8 @@
         }
       </div>
     }
-    <div class="home-figures"><ng-content /></div>
   </section>
+  }
 </div>
 
 <style>
@@ -186,10 +178,10 @@
   .home-line b { color: #1a2f6e; font-weight: 900; }
   .home-links { display: flex; flex-wrap: nowrap; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #e6ecfb; overflow-x: auto; }
   .home-links .home-chip { flex: 0 0 auto; white-space: nowrap; }
-  .home-today { padding-left: 0; }
-  @media (min-width: 1280px) { .home-today { padding-left: 28px; border-left: 1px solid #e6ecfb; } }
   .home-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
   @media (min-width: 1024px) { .home-cols { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0; } .home-col + .home-col { padding-left: 28px; margin-left: 28px; border-left: 1px solid #e6ecfb; } }
-  .home-figures:not(:empty) { margin-top: 18px; padding-top: 16px; border-top: 1px solid #e6ecfb; }
   .home-figures:empty { display: none; }
+  /* the month's cards, projected by the page: two to a row here */
+  .home-figures ::ng-deep .grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  @media (min-width: 1280px) { .home-top .home-figures { padding-left: 28px; border-left: 1px solid #e6ecfb; } }
 </style>

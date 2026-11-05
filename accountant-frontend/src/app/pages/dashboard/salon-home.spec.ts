@@ -38,15 +38,15 @@ async function open(answers: { overview?: unknown | 'deny'; permissions?: string
 }
 
 describe('the salon home', () => {
-  it('welcomes the person and offers the places they may go', async () => {
+  it('has no greeting (name and role are in the page bar already) and offers the places the person may go', async () => {
     const { el } = await open();
-    expect(text(byTestId(el, 'home-welcome')!)).toContain('Welcome, ivan samwel');
-    expect(text(byTestId(el, 'home-welcome')!)).toContain('Accountant');
+    expect(text(byTestId(el, 'home-welcome')!)).not.toContain('Welcome');
+    expect(text(byTestId(el, 'home-welcome')!)).not.toContain('Accountant');
     expect(byTestId(el, 'home-link-/sales/new')).not.toBeNull();
     expect(byTestId(el, 'home-link-/customers')).not.toBeNull();
   });
 
-  it('puts who is here, today and the quick links in one section, the links in one row', async () => {
+  it('puts today, the figures of the month and the quick links in one section, the links in one row', async () => {
     const { el } = await open();
     const welcome = byTestId(el, 'home-welcome')!;
 
@@ -58,12 +58,13 @@ describe('the salon home', () => {
     expect(getComputedStyle(links).flexWrap).toBe('nowrap');
   });
 
-  it('puts the best services and the money received in one section with the figures of the month', async () => {
+  it('puts the best services and the money received in one section', async () => {
     const { el } = await open();
     const summary = byTestId(el, 'home-summary')!;
 
     expect(summary.contains(byTestId(el, 'home-top-services')!)).toBe(true);
     expect(summary.contains(byTestId(el, 'home-collections')!)).toBe(true);
+    expect(byTestId(el, 'home-welcome')!.contains(byTestId(el, 'home-figures')!)).toBe(true); // the figures of the month sit beside today, above
     expect(text(summary)).toContain('Knotless Braids');
     expect(text(summary)).toContain('TSH 300,000');
   });
