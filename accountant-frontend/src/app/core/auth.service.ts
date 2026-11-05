@@ -119,6 +119,26 @@ export class AuthService {
     write(SERVICE_KEY, this.service());
   }
 
+  /**
+   * Ask the server again what this person may do and read the new list at once: when the owner switches a right on or off, the open app
+   * follows without signing out and in. Anything that goes wrong leaves what is known as it was.
+   */
+  async refreshRights(): Promise<void> {
+    if (!this.token()) return;
+    try {
+      const res = await firstValueFrom(this.http.get<ApiEnvelope<{ user: LoginPayload['user']; role_display?: string }>>(`${environment.apiUrl}/auth/user`));
+      const now = toSessionUser({ token: this.token() ?? '', role_display: res.data.role_display, user: res.data.user });
+      const was = this.user();
+      if (!was || was.id !== now.id) return;
+      const next: SessionUser = { ...was, permissions: now.permissions, roleLabel: now.roleLabel, role: now.role };
+      if (JSON.stringify(next.permissions) === JSON.stringify(was.permissions) && next.role === was.role) return;
+      this.user.set(next);
+      write(USER_KEY, JSON.stringify(next));
+    } catch {
+      // offline or signed out meanwhile: keep what is known
+    }
+  }
+
   /** Does the signed-in person have this right? (`__all__` is the owner's "everything".) */
   can(permission: string): boolean {
     const p = this.user()?.permissions ?? [];

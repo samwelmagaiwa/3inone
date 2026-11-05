@@ -110,9 +110,13 @@ export class ShellLayout implements OnDestroy {
     });
     if (typeof window !== 'undefined') {
       void this.loadNotifications();
+      void this.auth.refreshRights();
       void this.loadSubscription();
       void this.loadBranches();
-      this.bellTimer = setInterval(() => void this.loadNotifications(), 60_000);
+      this.bellTimer = setInterval(() => {
+        void this.loadNotifications();
+        void this.auth.refreshRights();
+      }, 60_000);
       // while the business is held back for an unpaid plan, ask again now and then: the cover goes by itself once a payment is recorded
       this.payTimer = setInterval(() => {
         if (this.blocked()) void this.recheckPlan(false);

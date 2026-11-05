@@ -24,6 +24,23 @@ const accountantPayload = {
   },
 };
 
+describe('rights follow the owner', () => {
+  it('asking again reads the new list at once, and a failure leaves what was known', async () => {
+    const { auth, http } = configure({ id: '7', role: 'accountant', permissions: ['inv_view_products'] });
+
+    const asked = auth.refreshRights();
+    http.expectOne(`${environment.apiUrl}/auth/user`).flush({ data: { user: { ...accountantPayload.user, id: 7, effective_permissions: ['inv_view_products', 'inv_create_products'] } } });
+    await asked;
+    expect(auth.can('inv_create_products')).toBe(true);
+    expect(JSON.parse(localStorage.getItem('accountant_user') ?? '{}').permissions).toContain('inv_create_products');
+
+    const failed = auth.refreshRights();
+    http.expectOne(`${environment.apiUrl}/auth/user`).flush('no', { status: 500, statusText: 'x' });
+    await failed;
+    expect(auth.can('inv_create_products')).toBe(true);
+  });
+});
+
 describe('sign-in', () => {
   it('sends email, phone and password, then keeps the token, the person, their rights and the services the web app supports', async () => {
     const { auth, http } = configure(null);

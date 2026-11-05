@@ -19,7 +19,7 @@ const ROWS = [
 ];
 
 const SALES_OFFICER = ['inv_view_products', 'inv_create_products', 'inv_create_sales', 'inv_view_credit'];
-const ACCOUNTANT = ['inv_view_products', 'inv_create_sales', 'inv_manage_sales', 'inv_view_reports', 'inv_view_expenses', 'inv_manage_expenses'];
+const ACCOUNTANT = ['inv_view_products', 'inv_create_products', 'inv_create_sales', 'inv_manage_sales', 'inv_view_reports', 'inv_view_expenses', 'inv_manage_expenses'];
 const MANAGER = ['inv_view_products', 'inv_manage_products', 'inv_create_sales'];
 
 async function open(permissions: string[], over: { service?: 'inventory' | 'salon'; rows?: unknown[]; meta?: object } = {}) {
@@ -66,13 +66,21 @@ describe('products and services', () => {
       expect(byTestId(el, 'tab-brands')).not.toBeNull();
     });
 
-    it('an accountant only reads: no add, change or delete', async () => {
+    it('an accountant can add new goods (a right the owner can take back) but not change or delete', async () => {
       const { el } = await open(ACCOUNTANT);
 
       expect(text(el)).toContain('Soda');
-      expect(byTestId(el, 'prod-add')).toBeNull();
+      expect(byTestId(el, 'prod-add')).not.toBeNull();
       expect(byTestId(el, 'prod-edit-1')).toBeNull();
       expect(byTestId(el, 'prod-del-1')).toBeNull();
+    });
+
+    it('with the add right taken back the accountant only reads', async () => {
+      const { el } = await open(ACCOUNTANT.filter((p) => p !== 'inv_create_products'));
+
+      expect(text(el)).toContain('Soda');
+      expect(byTestId(el, 'prod-add')).toBeNull();
+      expect(byTestId(el, 'tab-categories')).toBeNull();
     });
 
     it('someone who manages the catalogue can add, change, delete and sees the tabs', async () => {
