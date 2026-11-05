@@ -141,6 +141,7 @@ class UserPermissions {
           'inv_view_crates', 'inv_view_reports', 'inv_view_expenses',
           'inv_manage_expenses', 'inv_manage_settings',
           'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_feedback', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_insights', 'inv_salon_money',
+          'inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_export', 'inv_salon_schedule',
           'view_tenants', 'view_properties', 'view_rent_payments', 'view_arrears',
           'view_rental_reports', 'view_sms_history', 'view_maintenance',
           'manage_maintenance', 'view_vendors', 'manage_vendors',
@@ -164,6 +165,7 @@ class UserPermissions {
           'inv_view_crates', 'inv_view_reports', 'inv_view_expenses',
           'inv_manage_expenses', 'inv_manage_settings',
           'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_feedback', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_insights', 'inv_salon_money',
+          'inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_export', 'inv_salon_schedule',
           'view_tenants', 'view_properties', 'view_rent_payments', 'view_arrears',
           'view_rental_reports', 'view_sms_history', 'view_maintenance',
           'manage_maintenance', 'view_vendors', 'manage_vendors',
@@ -196,6 +198,7 @@ class UserPermissions {
           'inv_view_expenses',
           'inv_manage_expenses',
           'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_feedback', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_insights', 'inv_salon_money',
+          'inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_export', 'inv_salon_schedule',
           // Rental
           'view_tenants',
           'view_properties',
@@ -251,7 +254,7 @@ class UserPermissions {
         return const [
           'inv_view_products', 'inv_create_products', 'inv_create_sales', 'inv_manage_sales', 'inv_view_credit', 'inv_view_cash',
           'inv_view_reports', 'inv_view_expenses', 'inv_manage_expenses', 'inv_view_reminders',
-          'inv_salon_appointments', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_insights', 'inv_salon_money',
+          'inv_salon_appointments', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_insights', 'inv_salon_money', 'inv_salon_export',
         ];
       case 'viewer':
         return const [

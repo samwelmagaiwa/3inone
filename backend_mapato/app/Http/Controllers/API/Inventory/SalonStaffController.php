@@ -88,7 +88,8 @@ class SalonStaffController extends Controller
     #[OA\Post(path: '/inventory/salon/days-off', summary: 'Give someone a day off', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 201, description: 'Created')])]
     public function storeDayOff(Request $request): JsonResponse
     {
-        $this->requireManager($request);
+        // Who is off, and when, is decided by whoever holds the schedule right (the owner by default), not by everyone who reads the reports.
+        abort_unless(SalonAccess::canSchedule($request->user()), 403, 'Ni mwenye ruhusa ya ratiba tu anayepanga mapumziko. / Only someone who sets the schedule can give days off.');
         $data = $request->validate(['staff_id' => 'required|string|max:64', 'off_on' => 'required|date_format:Y-m-d', 'reason' => 'nullable|string|max:120']);
         $member = $this->member($request, $data['staff_id']);
 
@@ -110,7 +111,7 @@ class SalonStaffController extends Controller
     #[OA\Delete(path: '/inventory/salon/days-off/{id}', summary: 'Take a day off back', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function destroyDayOff(Request $request, int $id): JsonResponse
     {
-        $this->requireManager($request);
+        abort_unless(SalonAccess::canSchedule($request->user()), 403, 'Ni mwenye ruhusa ya ratiba tu anayepanga mapumziko. / Only someone who sets the schedule can take back a day off.');
         abort_if(DB::table('inventory_staff_days_off')->where('id', $id)->doesntExist(), 404, 'Not found');
         DB::table('inventory_staff_days_off')->where('id', $id)->delete();
 

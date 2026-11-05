@@ -51,7 +51,10 @@ class SalonMoneyController extends Controller
         $from = isset($data['from']) ? Carbon::parse($data['from']) : $today->copy()->startOfMonth();
         $to = isset($data['to']) ? Carbon::parse($data['to']) : $today;
 
-        return response()->json(['data' => SalonFinance::summary($from, $to, \App\Support\Salon\SalonBranch::selected($request))]);
+        $summary = SalonFinance::summary($from, $to, \App\Support\Salon\SalonBranch::selected($request));
+
+        // The profit, and what staff are paid, are a right of their own: without it the page shows what came in and what was spent.
+        return response()->json(['data' => \App\Support\Salon\SalonAccess::seesProfit($request->user()) ? $summary : SalonFinance::withoutProfit($summary)]);
     }
 
     #[OA\Get(path: '/inventory/salon/overview', summary: 'The dashboard: today, week, month, year, top services and staff, bookings', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 200, description: 'Success')])]
@@ -68,6 +71,7 @@ class SalonMoneyController extends Controller
     public function profiles(Request $request): JsonResponse
     {
         $this->requireManager($request);
+        $sees = \App\Support\Salon\SalonAccess::can($request->user(), 'inv_salon_payroll');
         $profiles = DB::table('inventory_staff_profiles')->get()->keyBy('staff_id');
 
         $rows = User::query()
@@ -75,7 +79,7 @@ class SalonMoneyController extends Controller
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'role'])
-            ->map(function ($u) use ($profiles) {
+            ->map(function ($u) use ($profiles, $sees) {
                 $p = $profiles[(string) $u->id] ?? null;
 
                 return [
@@ -83,8 +87,9 @@ class SalonMoneyController extends Controller
                     'name' => $u->name,
                     'role' => $u->role,
                     'specialization' => $p->specialization ?? null,
-                    'monthly_salary' => SalonFinance::money($p->monthly_salary ?? 0),
-                    'commission_percent' => $p && $p->commission_percent !== null ? (float) $p->commission_percent : null,
+                    // What a person is paid is shown only to whoever holds the payroll right.
+                    'monthly_salary' => $sees ? SalonFinance::money($p->monthly_salary ?? 0) : null,
+                    'commission_percent' => $sees && $p && $p->commission_percent !== null ? (float) $p->commission_percent : null,
                     'branch_id' => isset($p->branch_id) ? (int) $p->branch_id : null,
                     'work_days' => array_values(array_filter(array_map('intval', explode(',', (string) ($p->work_days ?? ''))))),
                     'shift_start' => $p->shift_start ?? null,
@@ -101,6 +106,12 @@ class SalonMoneyController extends Controller
     {
         $this->requireManager($request);
         $this->memberOrFail($request, $staffId);
+        $me = $request->user();
+        $pays = \App\Support\Salon\SalonAccess::can($me, 'inv_salon_payroll');
+        $plans = \App\Support\Salon\SalonAccess::canSchedule($me);
+        // The pay (salary and commission) is the payroll's right to change, the days, hours and branch the schedule's.
+        abort_if($request->hasAny(['monthly_salary', 'commission_percent']) && !$pays, 403, 'Huna ruhusa ya mishahara. / You do not have the payroll right.');
+        abort_if($request->hasAny(['work_days', 'shift_start', 'shift_end', 'branch_id', 'specialization']) && !$plans, 403, 'Huna ruhusa ya kupanga ratiba. / You do not have the schedule right.');
         $data = $request->validate([
             'specialization' => 'nullable|string|max:60',
             'monthly_salary' => 'nullable|numeric|min:0|max:100000000',

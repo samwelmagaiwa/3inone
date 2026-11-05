@@ -17,6 +17,7 @@ final class Modules
     public const SALON = [
         'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team',
         'inv_salon_feedback', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_insights', 'inv_salon_money',
+        'inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_export', 'inv_salon_schedule',
     ];
 
     /**
@@ -47,15 +48,21 @@ final class Modules
             ['key' => 'inv_view_cash', 'group' => 'money', 'en' => 'Daily cash', 'sw' => 'Fedha ya kila siku', 'services' => $both],
             ['key' => 'inv_view_expenses', 'group' => 'money', 'en' => 'See spending', 'sw' => 'Kuona matumizi', 'services' => $both],
             ['key' => 'inv_manage_expenses', 'group' => 'money', 'en' => 'Record and approve spending', 'sw' => 'Kurekodi na kuidhinisha matumizi', 'services' => $both],
-            ['key' => 'inv_salon_money', 'group' => 'money', 'en' => 'Money pages: profit and loss, cashbook', 'sw' => 'Kurasa za fedha: faida na hasara, kitabu cha fedha', 'services' => $salon],
+            ['key' => 'inv_salon_money', 'group' => 'money', 'en' => 'Money pages: income, spending and money received', 'sw' => 'Kurasa za fedha: mapato, matumizi na pesa zilizopokelewa', 'services' => $salon],
+            ['key' => 'inv_salon_profit', 'group' => 'money', 'en' => 'See profit, commissions and salaries paid', 'sw' => 'Kuona faida, kamisheni na mishahara iliyolipwa', 'services' => $salon],
+            ['key' => 'inv_salon_payroll', 'group' => 'money', 'en' => 'Payroll: pay, commission and payments to staff', 'sw' => 'Mishahara: malipo, kamisheni na malipo kwa wafanyakazi', 'services' => $salon],
+            ['key' => 'inv_salon_cashbook', 'group' => 'money', 'en' => 'Cashbook', 'sw' => 'Kitabu cha pesa', 'services' => $salon],
+            ['key' => 'inv_salon_export', 'group' => 'money', 'en' => 'Export reports (only what the rights above allow)', 'sw' => 'Kuhamisha ripoti (zile tu ambazo haki zingine zinaruhusu)', 'services' => $salon],
             // ---- Reports and understanding the business
             ['key' => 'inv_view_reports', 'group' => 'reports', 'en' => 'Reports, profit and the monthly report', 'sw' => 'Ripoti, faida na ripoti ya mwezi', 'services' => $both],
             ['key' => 'inv_view_reminders', 'group' => 'reports', 'en' => 'Reminders', 'sw' => 'Vikumbusho', 'services' => $both],
+            ['key' => 'inv_salon_reports', 'group' => 'reports', 'en' => 'The Salon tab of Reports', 'sw' => 'Kichupo cha Saluni kwenye Ripoti', 'services' => $salon],
             ['key' => 'inv_salon_insights', 'group' => 'reports', 'en' => 'Insights (trends, best days and hours)', 'sw' => 'Mwenendo (siku na saa bora)', 'services' => $salon],
             ['key' => 'inv_salon_stylists', 'group' => 'reports', 'en' => 'How each stylist did', 'sw' => 'Matokeo ya kila mhudumu', 'services' => $salon],
             ['key' => 'inv_salon_feedback', 'group' => 'reports', 'en' => 'Client feedback', 'sw' => 'Maoni ya wateja', 'services' => $salon],
             // ---- People and the place
             ['key' => 'inv_salon_team', 'group' => 'people', 'en' => 'Team: attendance, days off, payroll', 'sw' => 'Timu: mahudhurio, siku za mapumziko, mishahara', 'services' => $salon],
+            ['key' => 'inv_salon_schedule', 'group' => 'people', 'en' => 'Set working days, hours and days off', 'sw' => 'Kupanga siku, saa za kazi na mapumziko', 'services' => $salon],
             ['key' => 'inv_salon_equipment', 'group' => 'people', 'en' => 'Equipment', 'sw' => 'Vifaa', 'services' => $salon],
             ['key' => 'inv_salon_branch_stock', 'group' => 'people', 'en' => 'Goods by branch', 'sw' => 'Bidhaa kwa tawi', 'services' => $salon],
             ['key' => 'inv_view_purchasing', 'group' => 'people', 'en' => 'Purchasing and suppliers', 'sw' => 'Manunuzi na wasambazaji', 'services' => ['inventory']],

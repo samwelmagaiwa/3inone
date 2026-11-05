@@ -107,6 +107,8 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
     final Map<String, dynamic> owed = _map(_d['owed']);
     final Map<String, dynamic> stock = _map(_d['stock']);
     final List<Map<String, dynamic>> branches = _list(_d['by_branch']);
+    // Without the profit right the server leaves the profit, commissions and costs out of the report altogether.
+    final bool hidden = _d['profit_hidden'] == true;
 
     return <Widget>[
       Wrap(spacing: 8, children: <Widget>[
@@ -120,15 +122,15 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
         _row(sw ? 'Bidhaa' : 'Goods', _n(s['goods_revenue'])),
         _row(sw ? 'Punguzo' : 'Discounts', _n(s['discounts'])),
         _row(sw ? 'Matumizi' : 'Expenses', _n(s['expenses'])),
-        _row(sw ? 'Kamisheni' : 'Commissions', _n(s['commissions'])),
-        _row(sw ? 'Faida halisi' : 'Net profit', _n(s['net_profit']), bold: true, key: 'sr_profit'),
+        if (!hidden) _row(sw ? 'Kamisheni' : 'Commissions', _n(s['commissions'])),
+        if (!hidden) _row(sw ? 'Faida halisi' : 'Net profit', _n(s['net_profit']), bold: true, key: 'sr_profit'),
         _row(sw ? 'Mauzo / wateja' : 'Sales / clients', '${s['sales'] ?? 0} / ${s['clients'] ?? 0}'),
       ]),
       _section(sw ? 'Mapato kwa huduma' : 'Takings by service', 'service', <Widget>[
         for (final Map<String, dynamic> r in _list(_d['by_service']))
           Column(children: <Widget>[
             _row('${r['name']}  ×${r['times']}', _n(r['revenue'])),
-            _profitLine(sw, <String>[
+            if (!hidden) _profitLine(sw, <String>[
               if (((r['commission'] as num?) ?? 0) > 0) '${sw ? 'kamisheni' : 'commission'} ${_n(r['commission'])}',
               if (((r['materials_cost'] as num?) ?? 0) > 0) '${sw ? 'bidhaa zilizotumika' : 'goods used'} ${_n(r['materials_cost'])}',
             ], r['profit']),
@@ -140,7 +142,7 @@ class _SalonReportsScreenState extends State<SalonReportsScreen> {
           for (final Map<String, dynamic> r in _list(_d['goods_sold']))
             Column(children: <Widget>[
               _row('${r['name']}  ×${r['qty']}', _n(r['revenue'])),
-              _profitLine(sw, <String>['${sw ? 'gharama' : 'cost'} ${_n(r['cost'])}'], r['profit']),
+              if (!hidden) _profitLine(sw, <String>['${sw ? 'gharama' : 'cost'} ${_n(r['cost'])}'], r['profit']),
             ]),
         ]),
       _section(sw ? 'Mapato kwa mhudumu' : 'Takings by stylist', 'stylist', <Widget>[

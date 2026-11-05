@@ -42,7 +42,7 @@ class FinanceReportsHubScreen extends StatelessWidget {
       // Reminders — anyone with reminders permission.
       tabPermissions: [
         (UserPermissions p) => p.has('inv_view_cash'),
-        if (salon) (UserPermissions p) => p.has('inv_view_reports'),
+        if (salon) (UserPermissions p) => p.has('inv_salon_reports'),
         (UserPermissions p) => p.has('inv_view_reports'),
         (UserPermissions p) => p.has('inv_view_products'),
         (UserPermissions p) => p.has('inv_view_reminders'),

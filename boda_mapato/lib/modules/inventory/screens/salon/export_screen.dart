@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../constants/theme_constants.dart';
+import '../../../../models/user_permissions.dart';
+import '../../../../providers/auth_provider.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../services/salon_api.dart';
@@ -43,6 +45,29 @@ class _ExportScreenState extends State<ExportScreen> {
   bool _busy = false;
 
   static const List<String> types = <String>['sales', 'expenses', 'payroll', 'stylists', 'profit-loss', 'tax', 'cashbook'];
+
+  /// The right each report needs (the same ones the server checks, so a chip is shown only when the file would be given).
+  static const Map<String, String> rights = <String, String>{
+    'sales': 'inv_salon_money',
+    'expenses': 'inv_view_expenses',
+    'payroll': 'inv_salon_payroll',
+    'stylists': 'inv_salon_stylists',
+    'profit-loss': 'inv_salon_profit',
+    'tax': 'inv_salon_money',
+    'cashbook': 'inv_salon_cashbook',
+  };
+
+  /// What this person may export (everything when no one is signed in, as in a test that fakes the server).
+  List<String> _allowed() {
+    try {
+      final user = Provider.of<AuthProvider>(context, listen: false).user;
+      if (user == null) return types;
+      final UserPermissions p = user.access;
+      return types.where((String t) => p.has(rights[t]!)).toList();
+    } catch (_) {
+      return types;
+    }
+  }
 
   static String typeLabel(final String t, final bool sw) {
     switch (t) {
@@ -92,6 +117,8 @@ class _ExportScreenState extends State<ExportScreen> {
   @override
   Widget build(BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
+    final List<String> allowed = _allowed();
+    if (allowed.isNotEmpty && !allowed.contains(_type)) _type = allowed.first;
 
     return ListView(padding: const EdgeInsets.all(16), children: <Widget>[
       GlowCard(
@@ -99,7 +126,7 @@ class _ExportScreenState extends State<ExportScreen> {
         dividerKey: 'exp_type_divider',
         children: <Widget>[
           Wrap(spacing: 8, children: <Widget>[
-            for (final String t in types) ChoiceChip(key: Key('exp_type_$t'), label: Text(typeLabel(t, sw)), selected: _type == t, onSelected: (_) => setState(() => _type = t)),
+            for (final String t in allowed) ChoiceChip(key: Key('exp_type_$t'), label: Text(typeLabel(t, sw)), selected: _type == t, onSelected: (_) => setState(() => _type = t)),
           ]),
         ],
       ),

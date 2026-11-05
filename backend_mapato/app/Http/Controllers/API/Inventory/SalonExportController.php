@@ -26,6 +26,12 @@ class SalonExportController extends Controller
 {
     public const TYPES = ['sales', 'expenses', 'payroll', 'stylists', 'profit-loss', 'tax', 'cashbook'];
 
+    /** The right each report needs (the same ones that open the page it comes from). */
+    public const RIGHTS = [
+        'sales' => 'inv_salon_money', 'expenses' => 'inv_view_expenses', 'payroll' => 'inv_salon_payroll', 'stylists' => 'inv_salon_stylists',
+        'profit-loss' => 'inv_salon_profit', 'tax' => 'inv_salon_money', 'cashbook' => 'inv_salon_cashbook',
+    ];
+
     /** A report longer than this is a mistake (or the whole history): ask for a shorter period. */
     private const MAX_ROWS = 20000;
 
@@ -34,6 +40,8 @@ class SalonExportController extends Controller
     {
         abort_unless(SalonAccess::isManager($request->user()), 403, 'Ni mmiliki, meneja au mhasibu tu. / Only the owner, a manager or an accountant.');
         abort_unless(in_array($type, self::TYPES, true), 404, 'Unknown report');
+        // Each report is the right of what it shows: nobody exports what they could not open on screen.
+        abort_unless(SalonAccess::can($request->user(), self::RIGHTS[$type]), 403, 'Huna ruhusa ya ripoti hii. / You do not have the right to this report.');
         $data = $request->validate([
             'format' => ['nullable', Rule::in(['csv', 'pdf'])],
             'lang' => ['nullable', Rule::in(['en', 'sw'])],

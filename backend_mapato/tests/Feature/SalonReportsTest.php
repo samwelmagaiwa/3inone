@@ -179,6 +179,9 @@ class SalonReportsTest extends TestCase
         $this->sell($owner, $braids, 10000)->assertCreated();
 
         $this->api($asha, 'GET', '/api/inventory/salon/reports')->assertForbidden();
+        // The Salon tab of Reports is a right of its own: the accountant starts without it and has it once the owner switches it on.
+        $this->api($acc, 'GET', '/api/inventory/salon/reports')->assertForbidden();
+        $acc->forceFill(['permissions' => ['inv_salon_reports']])->save();
         $this->assertEquals(10000, $this->api($acc, 'GET', '/api/inventory/salon/reports')->assertOk()->json('data.summary.revenue'));
         $this->assertEquals(0, $this->api($other, 'GET', '/api/inventory/salon/reports')->assertOk()->json('data.summary.revenue'));
         $this->assertSame([], $this->api($other, 'GET', '/api/inventory/salon/reports')->json('data.by_service'));

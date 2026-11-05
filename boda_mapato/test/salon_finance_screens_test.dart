@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:boda_mapato/models/login_response.dart';
 import 'package:boda_mapato/models/user_permissions.dart';
 import 'package:boda_mapato/modules/inventory/models/salon_models.dart';
+import 'package:boda_mapato/modules/inventory/screens/salon/export_screen.dart';
 import 'package:boda_mapato/modules/inventory/screens/salon/payroll_screen.dart';
 import 'package:boda_mapato/modules/inventory/screens/salon/profit_loss_screen.dart';
 import 'package:boda_mapato/modules/inventory/screens/salon/salon_expenses_screen.dart';
@@ -674,6 +675,48 @@ void main() {
       expect(find.text('Faida ya huduma'), findsOneWidget);
       expect(find.text('Pesa zilizopokelewa'), findsOneWidget);
       expect(find.text('Madeni ya wateja'), findsOneWidget);
+    });
+
+    testWidgets('without the profit right the page shows what came in and was spent, and no profit, commissions or salaries', (t) async {
+      final _FakeSalon api = _FakeSalon()
+        ..pl = ProfitLoss.fromJson(<String, dynamic>{
+          'from': '2026-10-01', 'to': '2026-10-15', 'service_revenue': 110000, 'goods_revenue': 16000, 'revenue': 126000, 'discounts': 0, 'expenses': 30000,
+          'expenses_by_category': <Map<String, dynamic>>[<String, dynamic>{'category': 'rent', 'total': 30000}], 'collections': <dynamic>[], 'collected': 126000,
+          'outstanding': 0, 'sales': 3, 'clients': 1, 'profit_hidden': true,
+        });
+      await _host(t, ProfitLossScreen(api: api, today: _today), role: 'accountant');
+
+      expect(find.text('Revenue'), findsOneWidget);
+      expect(find.text('TSH 126,000'), findsWidgets);
+      expect(find.text('Costs'), findsOneWidget);
+      expect(find.text('TSH 30,000'), findsWidgets);
+      for (final String k in <String>['pl_net', 'pl_salaries', 'pl_commissions', 'pl_gross', 'pl_goods_profit', 'pl_services_profit', 'pl_cogs']) {
+        expect(_key(k), findsNothing, reason: k);
+      }
+      expect(find.text('Profit'), findsNothing);
+      expect(find.text('Net profit'), findsNothing);
+      expect(find.text('Salaries paid'), findsNothing);
+      expect(find.text('Where does the profit come from?'), findsNothing);
+      expect(find.text('Money received'), findsOneWidget);
+    });
+  });
+
+  group('export follows the rights', () {
+    testWidgets('an accountant is offered only the reports its rights allow', (t) async {
+      await _host(t, ExportScreen(api: _FakeSalon(), today: _today), role: 'accountant');
+      for (final String k in <String>['sales', 'expenses', 'stylists', 'tax']) {
+        expect(find.byKey(Key('exp_type_$k')), findsOneWidget, reason: k);
+      }
+      for (final String k in <String>['payroll', 'profit-loss', 'cashbook']) {
+        expect(find.byKey(Key('exp_type_$k')), findsNothing, reason: k);
+      }
+    });
+
+    testWidgets('the owner is offered every report', (t) async {
+      await _host(t, ExportScreen(api: _FakeSalon(), today: _today));
+      for (final String k in <String>['sales', 'expenses', 'payroll', 'stylists', 'profit-loss', 'tax', 'cashbook']) {
+        expect(find.byKey(Key('exp_type_$k')), findsOneWidget, reason: k);
+      }
     });
   });
 }

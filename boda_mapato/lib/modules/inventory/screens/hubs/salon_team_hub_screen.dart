@@ -32,7 +32,7 @@ class SalonTeamHubScreen extends StatelessWidget {
       // The schedule is the owner's and managers' to set; attendance and shifts are for everyone.
       tabPermissions: <bool Function(UserPermissions)?>[
         null,
-        (UserPermissions p) => p.has('inv_view_reports'),
+        (UserPermissions p) => p.has('inv_salon_schedule'),
         null,
       ],
     );

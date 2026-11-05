@@ -179,6 +179,38 @@ final class SalonFinance
         ];
     }
 
+    /** The figures that are profit, or what staff are paid: shown only to those who hold the profit right. */
+    public const PROFIT_KEYS = ['cost_of_goods', 'goods_cost', 'goods_profit', 'services_profit', 'materials_cost', 'gross_profit', 'commissions', 'salaries', 'operating_costs', 'net_profit'];
+
+    /**
+     * The same figures without any profit, and without what staff are paid (the keys are removed wherever they are, not zeroed: a zero
+     * would read as "no profit"). `profit_hidden` tells the app why they are missing.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<int, string>  $also  more keys to drop (a report that names its own profit lines)
+     * @return array<string, mixed>
+     */
+    public static function withoutProfit(array $data, array $also = []): array
+    {
+        $drop = array_merge(self::PROFIT_KEYS, $also);
+        $strip = function (array $a) use (&$strip, $drop) {
+            foreach ($a as $k => $v) {
+                if (is_string($k) && in_array($k, $drop, true)) {
+                    unset($a[$k]);
+                } elseif (is_array($v)) {
+                    $a[$k] = $strip($v);
+                }
+            }
+
+            return $a;
+        };
+
+        // Collections and models inside the data are turned into plain arrays first, so nothing nested escapes the strip.
+        $plain = json_decode(json_encode($data), true);
+
+        return $strip($plain) + ['profit_hidden' => true];
+    }
+
     /**
      * What the dashboard shows: the same figures for today, this week, this month and this year, who earned the
      * most, what sells best, and the day's diary.

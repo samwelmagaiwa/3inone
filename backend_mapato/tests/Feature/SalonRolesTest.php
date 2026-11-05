@@ -182,10 +182,13 @@ class SalonRolesTest extends TestCase
         $owner = $this->salon();
         $uris = ['/api/inventory/salon/profit-loss', '/api/inventory/salon/payroll', '/api/inventory/salon/payouts', '/api/inventory/salon/overview', '/api/inventory/salon/staff-profiles'];
 
+        // Pay (payroll, payouts, who earns what) is a right of its own: the accountant starts with the money pages but not the pay.
+        $pay = ['/api/inventory/salon/payroll', '/api/inventory/salon/payouts', '/api/inventory/salon/staff-profiles'];
+
         foreach (['manager' => true, 'accountant' => true, 'hair_stylist' => false, 'nail_technician' => false, 'lash_makeup_artist' => false] as $role => $sees) {
             $user = $this->person($owner, ucfirst($role), $role);
             foreach ($uris as $uri) {
-                $this->api($user, 'GET', $uri)->assertStatus($sees ? 200 : 403);
+                $this->api($user, 'GET', $uri)->assertStatus($sees && !($role === 'accountant' && in_array($uri, $pay, true)) ? 200 : 403);
             }
         }
     }
@@ -206,6 +209,8 @@ class SalonRolesTest extends TestCase
         // The till: the accountant rings up a sale and sees it among everyone's.
         $this->sell($accountant, $braids, 40000)->assertCreated();
         $this->assertCount(2, $this->api($accountant, 'GET', '/api/inventory/sales')->json('data'));
+        $this->api($accountant, 'GET', '/api/inventory/salon/cashbook')->assertForbidden();
+        $accountant->forceFill(['permissions' => ['inv_salon_cashbook']])->save();
         $this->api($accountant, 'GET', '/api/inventory/salon/cashbook')->assertOk();
         // The walk-in queue is the front desk's: the accountant does not start with it, and has it once the owner switches it on.
         $this->api($accountant, 'GET', '/api/inventory/salon/queue')->assertForbidden();

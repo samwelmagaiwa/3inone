@@ -501,11 +501,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('inventory/salon/branch-stock/transfer', [SalonBranchStockController::class, 'transfer'])->middleware('salon_module:inv_salon_branch_stock');
         Route::put('inventory/salon/branch-stock/level',   [SalonBranchStockController::class, 'level'])->middleware('salon_module:inv_salon_branch_stock');
         Route::get('inventory/salon/branch-stock/transfers', [SalonBranchStockController::class, 'transfers'])->middleware('salon_module:inv_salon_branch_stock');
-        Route::get('inventory/salon/reports',              [SalonReportsController::class, 'index']);
-        Route::get('inventory/salon/cashbook',             [SalonBooksController::class, 'cashbook'])->middleware('salon_module:inv_salon_money');
-        Route::post('inventory/salon/cashbook/moves',      [SalonBooksController::class, 'storeMove'])->middleware('salon_module:inv_salon_money');
-        Route::delete('inventory/salon/cashbook/moves/{id}', [SalonBooksController::class, 'destroyMove'])->middleware('salon_module:inv_salon_money');
-        Route::post('inventory/salon/cashbook/counts',     [SalonBooksController::class, 'storeCount'])->middleware('salon_module:inv_salon_money');
+        Route::get('inventory/salon/reports',              [SalonReportsController::class, 'index'])->middleware('salon_module:inv_salon_reports');
+        Route::get('inventory/salon/cashbook',             [SalonBooksController::class, 'cashbook'])->middleware('salon_module:inv_salon_cashbook');
+        Route::post('inventory/salon/cashbook/moves',      [SalonBooksController::class, 'storeMove'])->middleware('salon_module:inv_salon_cashbook');
+        Route::delete('inventory/salon/cashbook/moves/{id}', [SalonBooksController::class, 'destroyMove'])->middleware('salon_module:inv_salon_cashbook');
+        Route::post('inventory/salon/cashbook/counts',     [SalonBooksController::class, 'storeCount'])->middleware('salon_module:inv_salon_cashbook');
         Route::get('inventory/salon/analytics',            [SalonBooksController::class, 'analytics'])->middleware('salon_module:inv_salon_insights');
         Route::get('inventory/salon/queue',                [SalonQueueController::class, 'index'])->middleware('salon_module:inv_salon_walkins');
         Route::post('inventory/salon/queue',               [SalonQueueController::class, 'store'])->middleware('salon_module:inv_salon_walkins');
@@ -533,7 +533,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('inventory/salon/equipment/{id}/logs',  [SalonEquipmentController::class, 'logs'])->middleware('salon_module:inv_salon_equipment');
         Route::post('inventory/salon/equipment/{id}/logs', [SalonEquipmentController::class, 'addLog'])->middleware('salon_module:inv_salon_equipment');
         // Reports as a PDF or a CSV (the owner, managers and accountants: checked in the controller).
-        Route::get('inventory/salon/export/{type}',        [SalonExportController::class, 'export']);
+        Route::get('inventory/salon/export/{type}',        [SalonExportController::class, 'export'])->middleware('salon_module:inv_salon_export');
         Route::get('inventory/salon/feedback',             [SalonFeedbackController::class, 'index'])->middleware('salon_module:inv_salon_feedback');
         Route::post('inventory/salon/feedback',            [SalonFeedbackController::class, 'store'])->middleware('salon_module:inv_salon_feedback');
         Route::post('inventory/salon/feedback/{id}/resolve', [SalonFeedbackController::class, 'resolve'])->middleware('salon_module:inv_salon_feedback');
@@ -572,15 +572,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Profit and loss, the dashboard figures and payroll: the owner and managers only (checked in the controller too).
         Route::get('inventory/salon/profit-loss',          [SalonMoneyController::class, 'profitLoss'])->middleware('salon_module:inv_salon_money');
         Route::get('inventory/salon/overview',             [SalonMoneyController::class, 'overview']);
-        Route::get('inventory/salon/staff-profiles',       [SalonMoneyController::class, 'profiles'])->middleware('salon_module:inv_salon_team');
-        Route::get('inventory/salon/payroll',              [SalonMoneyController::class, 'payroll'])->middleware('salon_module:inv_salon_team');
-        Route::get('inventory/salon/payouts',              [SalonMoneyController::class, 'payouts'])->middleware('salon_module:inv_salon_team');
+        Route::get('inventory/salon/staff-profiles',       [SalonMoneyController::class, 'profiles'])->middleware('salon_module:inv_salon_schedule,inv_salon_payroll');
+        Route::get('inventory/salon/payroll',              [SalonMoneyController::class, 'payroll'])->middleware('salon_module:inv_salon_payroll');
+        Route::get('inventory/salon/payouts',              [SalonMoneyController::class, 'payouts'])->middleware('salon_module:inv_salon_payroll');
     });
     Route::middleware('inv_perm:inv_manage_settings')->group(function () {
         Route::put('inventory/salon/settings',             [SalonController::class, 'updateSettings']);
-        Route::match(['put', 'patch'], 'inventory/salon/staff-profiles/{staffId}', [SalonMoneyController::class, 'saveProfile'])->middleware('salon_module:inv_salon_team');
-        Route::post('inventory/salon/payouts',             [SalonMoneyController::class, 'storePayout'])->middleware('salon_module:inv_salon_team');
-        Route::delete('inventory/salon/payouts/{id}',      [SalonMoneyController::class, 'destroyPayout'])->middleware('salon_module:inv_salon_team');
+        Route::match(['put', 'patch'], 'inventory/salon/staff-profiles/{staffId}', [SalonMoneyController::class, 'saveProfile'])->middleware('salon_module:inv_salon_schedule,inv_salon_payroll');
+        Route::post('inventory/salon/payouts',             [SalonMoneyController::class, 'storePayout'])->middleware('salon_module:inv_salon_payroll');
+        Route::delete('inventory/salon/payouts/{id}',      [SalonMoneyController::class, 'destroyPayout'])->middleware('salon_module:inv_salon_payroll');
     });
 
     // ── Product units & pricing ───────────────────────────────────────────────

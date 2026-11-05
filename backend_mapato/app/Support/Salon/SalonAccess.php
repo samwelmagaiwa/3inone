@@ -25,6 +25,24 @@ final class SalonAccess
         return $user->seesAllAccounts() || $user->hasInventoryPermission('inv_manage_settings');
     }
 
+    /** Does this person hold this section's own right? (The platform owner always does.) */
+    public static function can(User $user, string $right): bool
+    {
+        return $user->seesAllAccounts() || $user->hasInventoryPermission($right);
+    }
+
+    /** May see the profit and what staff are paid: a right of its own, so the owner can show the takings without showing the profit. */
+    public static function seesProfit(User $user): bool
+    {
+        return self::can($user, 'inv_salon_profit');
+    }
+
+    /** Sets other people's working days and days off. */
+    public static function canSchedule(User $user): bool
+    {
+        return self::can($user, 'inv_salon_schedule');
+    }
+
     /** Hair stylists, nail technicians, lash and makeup artists: they see only their own diary, results and pay. */
     public static function isStylist(User $user): bool
     {

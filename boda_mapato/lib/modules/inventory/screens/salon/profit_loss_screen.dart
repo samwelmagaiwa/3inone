@@ -122,18 +122,20 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
     if (d == null) return <Widget>[];
 
     final bool profit = d.netProfit >= 0;
+    final bool hidden = d.profitHidden;
 
     return <Widget>[
       Row(
         children: <Widget>[
           Expanded(child: InvStatTile(label: sw ? 'Mapato' : 'Revenue', value: tsh(d.revenue), icon: Icons.payments_outlined, accent: ThemeConstants.successGreen)),
           SizedBox(width: 8.w),
-          Expanded(child: InvStatTile(label: sw ? 'Matumizi' : 'Costs', value: tsh(d.operatingCosts + d.costOfGoods), icon: Icons.receipt_long_outlined, accent: ThemeConstants.warningAmber)),
-          SizedBox(width: 8.w),
-          Expanded(child: InvStatTile(label: profit ? (sw ? 'Faida' : 'Profit') : (sw ? 'Hasara' : 'Loss'), value: tsh(d.netProfit), icon: profit ? Icons.trending_up : Icons.trending_down, accent: profit ? ThemeConstants.successGreen : ThemeConstants.errorRed)),
+          Expanded(child: InvStatTile(label: sw ? 'Matumizi' : 'Costs', value: tsh(hidden ? d.expenses : d.operatingCosts + d.costOfGoods), icon: Icons.receipt_long_outlined, accent: ThemeConstants.warningAmber)),
+          if (!hidden) SizedBox(width: 8.w),
+          if (!hidden) Expanded(child: InvStatTile(label: profit ? (sw ? 'Faida' : 'Profit') : (sw ? 'Hasara' : 'Loss'), value: tsh(d.netProfit), icon: profit ? Icons.trending_up : Icons.trending_down, accent: profit ? ThemeConstants.successGreen : ThemeConstants.errorRed)),
         ],
       ),
       SizedBox(height: 12.h),
+      if (!hidden) ...<Widget>[
       _card(<Widget>[
         _line(sw ? 'Mapato ya huduma' : 'Service revenue', d.serviceRevenue, key: 'pl_service_revenue'),
         _line(sw ? 'Mauzo ya bidhaa' : 'Goods sold', d.goodsRevenue, key: 'pl_goods_revenue'),
@@ -161,16 +163,19 @@ class _ProfitLossScreenState extends State<ProfitLossScreen> {
         if (d.servicesProfit != d.serviceRevenue) _line(sw ? 'Bidhaa zilizotumika na kamisheni' : 'Goods used and stylists\' commission', d.servicesProfit - d.serviceRevenue, key: 'pl_kind_service_costs'),
         _line(sw ? 'Faida ya huduma' : 'Profit on services', d.servicesProfit, bold: true, color: d.servicesProfit >= 0 ? ThemeConstants.successGreen : ThemeConstants.errorText, key: 'pl_services_profit'),
       ]),
+      ],
       SizedBox(height: 10.h),
       _card(<Widget>[
         Text(sw ? 'Gharama za uendeshaji' : 'Running costs', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
         SizedBox(height: 6.h),
         for (final ExpenseGroup g in d.expensesByCategory) _line(expenseCategoryLabel(sw: sw, category: g.category), -g.total, key: 'pl_exp_${g.category}'),
         if (d.expensesByCategory.isEmpty) _line(sw ? 'Matumizi' : 'Expenses', 0, key: 'pl_expenses'),
+        if (!hidden) ...<Widget>[
         _line(sw ? 'Kamisheni za wahudumu' : 'Stylists commission', -d.commissions, key: 'pl_commissions'),
         _line(sw ? 'Mishahara iliyolipwa' : 'Salaries paid', -d.salaries, key: 'pl_salaries'),
         const Divider(color: Colors.white24),
         _line(profit ? (sw ? 'Faida halisi' : 'Net profit') : (sw ? 'Hasara halisi' : 'Net loss'), d.netProfit, bold: true, color: profit ? ThemeConstants.successGreen : ThemeConstants.errorText, key: 'pl_net'),
+        ],
       ]),
       SizedBox(height: 10.h),
       _card(<Widget>[

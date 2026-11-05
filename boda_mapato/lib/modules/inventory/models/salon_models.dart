@@ -754,6 +754,7 @@ class ProfitLoss {
     this.goodsCost = 0,
     this.goodsProfit = 0,
     this.servicesProfit = 0,
+    this.profitHidden = false,
   });
 
   factory ProfitLoss.fromJson(final Map<String, dynamic> j) {
@@ -787,8 +788,12 @@ class ProfitLoss {
       vatByRate: j['vat'] is Map ? _rows((j['vat'] as Map)['by_rate']).map(VatRate.fromJson).toList() : const <VatRate>[],
       otherIncome: _num(j['other_income']),
       depositsHeld: _num(j['deposits_held']),
+      profitHidden: j['profit_hidden'] == true,
     );
   }
+
+  /// The server leaves the profit, commissions and salaries out when this person does not hold the profit right.
+  final bool profitHidden;
 
   /// VAT collected in the period (in total and by rate), income that is not a sale (deposits kept after a no-show) and
   /// deposits still held for coming visits (not income yet).

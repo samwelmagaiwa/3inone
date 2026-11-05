@@ -42,12 +42,12 @@ class SalonFinanceHubScreen extends StatelessWidget {
         TrashScreen(),
       ],
       tabPermissions: <bool Function(UserPermissions)?>[
-        (UserPermissions p) => p.has('inv_view_reports'),
+        (UserPermissions p) => p.has('inv_salon_money'),
         (UserPermissions p) => p.has('inv_view_expenses'),
         (UserPermissions p) => p.has('inv_view_reports'),
-        (UserPermissions p) => p.has('inv_view_reports'),
-        (UserPermissions p) => p.has('inv_view_reports'),
-        (UserPermissions p) => p.has('inv_view_reports'),
+        (UserPermissions p) => p.has('inv_salon_payroll'),
+        (UserPermissions p) => p.has('inv_salon_cashbook'),
+        (UserPermissions p) => p.has('inv_salon_export'),
         (UserPermissions p) => p.has('inv_manage_settings'),
       ],
     );

@@ -90,7 +90,7 @@ class SalonReportsController extends Controller
             }
         }
 
-        return response()->json(['data' => [
+        $data = [
             'from' => $f,
             'to' => $t,
             'summary' => [
@@ -108,7 +108,15 @@ class SalonReportsController extends Controller
             'clients' => $this->clients($from, $to, $today, $hasBranch ? $branch : null),
             'owed' => $this->owed($today, $hasBranch ? $branch : null),
             'stock' => $this->stock(),
-        ]]);
+        ];
+
+        // Without the profit right the report still says what came in and what was spent, but not the profit, the commissions or what each
+        // service and each item of goods earned after its costs.
+        if (!SalonAccess::seesProfit($request->user())) {
+            $data = SalonFinance::withoutProfit($data, ['profit', 'commission', 'cost']);
+        }
+
+        return response()->json(['data' => $data]);
     }
 
     /** How the diary went: what was booked for the period and how each booking ended. */
