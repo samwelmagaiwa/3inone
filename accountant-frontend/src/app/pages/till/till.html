@@ -1,6 +1,6 @@
 <!-- The till -->
 <div class="wizard-backdrop animate-fade-in-up">
- <div class="wizard-card" [class.is-wide]="step() <= 2" role="dialog" aria-modal="true" [attr.aria-label]="i18n.t('till.title')" data-testid="till-wizard">
+ <div class="wizard-card" [class.is-wide]="step() <= 2 || step() === 5" role="dialog" aria-modal="true" [attr.aria-label]="i18n.t('till.title')" data-testid="till-wizard">
 
   <header class="wizard-head">
     <div class="flex items-center justify-between gap-3">
@@ -321,43 +321,68 @@
       <!-- 5. Everything that was filled in, to read through before saving -->
       <div class="checkout space-y-3" [class.hidden]="step() !== 5">
       <div class="preview" data-testid="till-preview">
-        <p class="pv-title">{{ i18n.t('till.pv.items') }}</p>
-        @for (l of till.lines(); track l.key) {
-          <div class="pv-line" [attr.data-testid]="'pv-line-' + l.productId">
-            <div class="min-w-0">
-              <p class="font-black text-slate-900">{{ l.name }}@if (l.optionLabel) { <span class="text-slate-400 font-bold"> · {{ l.optionLabel }}</span> }</p>
-              <p class="text-xs font-semibold text-slate-500">{{ l.qty }} × {{ tsh(l.unitPrice) }}@if (l.unitName) { / {{ l.unitName }} }@if (l.staffName) { · {{ i18n.t('till.pv.by', l.staffName) }} }</p>
-              @if (l.isService && till.salon()) { <p class="text-xs font-semibold text-slate-500" [attr.data-testid]="'pv-used-' + l.productId">{{ i18n.t('till.goods') }}: {{ materialsText(l) }}</p> }
-            </div>
-            <p class="font-black text-slate-900 shrink-0">{{ tsh(l.qty * l.unitPrice) }}</p>
-          </div>
-        }
-        <div class="pv-grid">
-          <div class="pv-box" data-testid="pv-customer">
-            <p class="pv-title">{{ i18n.t('till.pv.customer') }}</p>
-            <p class="font-black text-slate-900">{{ till.customer()?.name ?? (till.manualName().trim() || i18n.t('sales.walkin')) }}</p>
-            @if (till.customer()?.phone) { <p class="text-xs font-semibold text-slate-500">{{ till.customer()?.phone }}</p> }
-          </div>
-          <div class="pv-box" data-testid="pv-payment">
-            <p class="pv-title">{{ i18n.t('till.pv.payment') }}</p>
-            <p class="font-black text-slate-900">{{ i18n.t('till.mode.' + till.mode()) }}</p>
-            @if (till.mode() === 'cash') {
-              <p class="text-xs font-semibold text-slate-500">{{ channelName(till.channel()) }}@if (till.channel() !== 'cash' && till.reference().trim()) { · {{ i18n.t('till.ref') }}: {{ till.reference().trim() }} }</p>
-            } @else {
-              @if (till.mode() === 'partial') {
-                <p class="text-xs font-semibold text-slate-500">{{ i18n.t('till.paidnow') }}: {{ tsh(till.paid()) }} · {{ channelName(till.partialChannel()) }}@if (till.partialChannel() !== 'cash' && till.partialReference().trim()) { · {{ i18n.t('till.ref') }}: {{ till.partialReference().trim() }} }</p>
+        <!-- What is being sold: one row per item, with its type, who served, the goods used and the amounts -->
+        <div class="pv-scroll">
+          <table class="grid-table pv-table" data-testid="pv-items">
+            <thead>
+              <tr>
+                <th class="pv-no">#</th>
+                <th>{{ i18n.t('till.pv.col.type') }}</th>
+                <th>{{ i18n.t('till.pv.col.item') }}</th>
+                <th>{{ i18n.t('till.pv.col.stylist') }}</th>
+                <th>{{ i18n.t('till.pv.col.used') }}</th>
+                <th class="text-right">{{ i18n.t('till.pv.col.qty') }}</th>
+                <th class="text-right">{{ i18n.t('till.pv.col.service') }}</th>
+                <th class="text-right">{{ i18n.t('till.pv.col.goods') }}</th>
+                <th class="text-right">{{ i18n.t('till.pv.col.billed') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (l of till.lines(); track l.key; let i = $index) {
+                <tr [attr.data-testid]="'pv-line-' + l.productId">
+                  <td class="pv-no">{{ i + 1 }}</td>
+                  <td><span class="pv-type" [class.is-service]="l.isService">{{ i18n.t(l.isService ? 'till.service' : 'till.pv.type.goods') }}</span></td>
+                  <td class="font-black text-slate-900">{{ l.name }}@if (l.unitName) { <span class="text-slate-400 font-bold"> / {{ l.unitName }}</span> }</td>
+                  <td>{{ l.staffName || '—' }}</td>
+                  <td [attr.data-testid]="'pv-used-' + l.productId">@if (l.isService && till.salon()) { {{ materialsText(l) }} } @else { — }</td>
+                  <td class="text-right">{{ l.qty }} × {{ tsh(l.unitPrice) }}</td>
+                  <td class="text-right">{{ l.isService ? tsh(l.qty * l.unitPrice) : '—' }}</td>
+                  <td class="text-right" [class.pv-muted]="l.isService">@if (l.isService) { {{ goodsValue(l) === null ? '—' : tsh(goodsValue(l)!) }} } @else { {{ tsh(l.qty * l.unitPrice) }} }</td>
+                  <td class="text-right font-black">{{ tsh(l.qty * l.unitPrice) }}</td>
+                </tr>
               }
-              <p class="text-xs font-semibold text-slate-500">{{ i18n.t('till.pv.due', till.dueDays()) }}</p>
-            }
-          </div>
-          @if (till.totals().discount > 0) {
-            <div class="pv-box" data-testid="pv-discount">
-              <p class="pv-title">{{ i18n.t('till.discount') }}</p>
-              <p class="font-black text-slate-900">− {{ tsh(till.totals().discount) }}</p>
-              @if (till.discountReason().trim()) { <p class="text-xs font-semibold text-slate-500">{{ till.discountReason().trim() }}</p> }
-            </div>
-          }
+            </tbody>
+          </table>
         </div>
+        <p class="pv-note">{{ i18n.t('till.pv.note') }}</p>
+
+        <!-- Who, how it is paid, and what is owed -->
+        <table class="grid-table pv-table pv-facts mt-3" data-testid="pv-facts">
+          <tbody>
+            <tr>
+              <th>{{ i18n.t('till.pv.customer') }}</th><td data-testid="pv-customer">{{ till.customer()?.name ?? (till.manualName().trim() || i18n.t('sales.walkin')) }}</td>
+              <th>{{ i18n.t('till.cust.phone') }}</th><td>{{ till.customer()?.phone || till.manualPhone().trim() || '—' }}</td>
+            </tr>
+            <tr>
+              <th>{{ i18n.t('till.pv.payment') }}</th><td data-testid="pv-payment">{{ i18n.t('till.mode.' + till.mode()) }}</td>
+              <th>{{ i18n.t('till.channel') }}</th><td>{{ payChannel() }}</td>
+            </tr>
+            <tr>
+              <th>{{ i18n.t('till.ref') }}</th><td>{{ payReference() || '—' }}</td>
+              <th>{{ i18n.t('till.paidnow') }}</th><td class="font-black">{{ tsh(paidNow()) }}</td>
+            </tr>
+            <tr>
+              <th>{{ i18n.t('till.owing') }}</th><td class="font-black" [class.text-red-600]="balanceDue() > 0">{{ tsh(balanceDue()) }}</td>
+              <th>{{ i18n.t('till.pv.duelabel') }}</th><td>{{ till.mode() === 'cash' ? '—' : i18n.t('till.pv.due', till.dueDays()) }}</td>
+            </tr>
+            @if (till.totals().discount > 0) {
+              <tr data-testid="pv-discount">
+                <th>{{ i18n.t('till.discount') }}</th><td>− {{ tsh(till.totals().discount) }}</td>
+                <th>{{ i18n.t('till.discount.reason') }}</th><td>{{ till.discountReason().trim() || (till.voucher().code ? till.voucher().code : '—') }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
       <div class="totals">
         <div class="row"><span>{{ i18n.t('till.sub') }}</span><span>{{ tsh(till.totals().subtotal) }}</span></div>
@@ -491,11 +516,21 @@
   .wizard-foot .form-error { margin-bottom: 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c; font-size: 13px; font-weight: 800; }
   .wz-total { font-size: 13px; font-weight: 700; color: #475a8f; }
   .wz-total b { font-size: 18px; font-weight: 900; color: #1a2f6e; }
-  .preview { border: 1px solid #e6ecfb; border-radius: 16px; padding: 14px 16px; background: #fbfcff; }
-  .pv-title { font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: #7d8fc4; margin-bottom: 4px; }
-  .pv-line { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed #dbe4ff; }
-  .pv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 12px; }
-  .pv-box { padding: 10px 12px; border-radius: 12px; background: #fff; border: 1px solid #e6ecfb; }
+  .preview { border: 0; padding: 0; background: transparent; }
+  .pv-scroll { overflow-x: auto; border: 1px solid #cfd9f3; border-radius: 12px; }
+  .pv-table { font-size: 13px; }
+  .pv-scroll .pv-table { border: 0; }
+  .pv-table thead th { font-size: 12px; padding: 8px 10px; white-space: nowrap; }
+  .pv-table tbody td { padding: 8px 10px; font-size: 13px; vertical-align: top; }
+  .pv-no { width: 38px; text-align: center; }
+  .pv-type { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 900; color: #2e4dbd; background: #eaf0ff; }
+  .pv-type.is-service { color: #0f766e; background: #e0f7f4; }
+  .pv-muted { color: #64748b; font-style: italic; }
+  .pv-note { margin-top: 6px; font-size: 11px; font-weight: 600; color: #64748b; }
+  .pv-facts { border: 1px solid #cfd9f3; }
+  .pv-facts th { width: 16%; padding: 8px 10px; font-size: 12px; font-weight: 800; text-align: left; color: #1a2f6e; background: #e8eefc; border: 1px solid #cfd9f3; }
+  .pv-facts td { width: 34%; padding: 8px 10px; border: 1px solid #e2e8f4; background: #fff; font-weight: 700; }
+  .totals { border-radius: 0 !important; }
   .panel.left { display: flex; flex-direction: column; gap: 12px; }
   .panel { background: #fff; border: 1px solid #e6ecfb; border-radius: 22px; padding: 16px; box-shadow: 0 1px 2px rgba(26,47,110,.04), 0 18px 40px -26px rgba(26,47,110,.35); }
   .step { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; color: #1a2f6e; }

@@ -133,12 +133,19 @@ describe('the till', () => {
         byTestId(el, 'till-next')!.click();
         await settle(fixture);
       }
-      const preview = text(byTestId(el, 'till-preview')!);
+      const items = byTestId(el, 'pv-items') as HTMLElement;
+      const row = text(byTestId(el, 'pv-line-1')!);
 
-      expect(preview).toContain('Soda');
-      expect(preview).toContain('1 × TSH 1,000');
-      expect(text(byTestId(el, 'pv-customer')!)).toContain('Walk-in customer');
-      expect(text(byTestId(el, 'pv-payment')!)).toContain('Cash');
+      expect(items.tagName).toBe('TABLE'); // a table with grid lines, not loose text
+      expect(Array.from(items.querySelectorAll('th')).map((h) => text(h as HTMLElement))).toEqual(['#', 'Type', 'Item', 'Stylist', 'Goods used', 'Qty × price', 'Service amount', 'Goods amount', 'Billed']);
+      expect(row).toContain('Goods');
+      expect(row).toContain('Soda');
+      expect(row).toContain('1 × TSH 1,000');
+      expect(row).toContain('TSH 1,000');
+      expect(text(byTestId(el, 'pv-customer')!)).toBe('Walk-in customer');
+      expect(text(byTestId(el, 'pv-payment')!)).toBe('Pays in full');
+      expect(text(byTestId(el, 'pv-facts')!)).toContain('Cash');
+      expect(text(byTestId(el, 'pv-facts')!)).toContain('TSH 1,000'); // paid now
       expect(text(byTestId(el, 'till-total')!)).toBe('TSH 1,000');
     });
 

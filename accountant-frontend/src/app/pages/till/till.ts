@@ -78,6 +78,26 @@ export class TillPage implements OnInit, OnDestroy {
     { value: 'goods', label: 'till.filter.goods' },
   ];
 
+  /** The goods used by a service line, worth what they sell for (null when the usual goods are used and not listed here). */
+  protected goodsValue(l: CartLine): number | null {
+    if (l.materials === null) return null;
+    const all = [...this.goodsCache(), ...this.products()];
+
+    return l.materials.reduce((sum, m) => sum + m.qty * (all.find((p) => p.id === m.productId)?.sellingPrice ?? 0), 0) * l.qty;
+  }
+
+  protected paidNow(): number {
+    return this.till.mode() === 'cash' ? this.till.totals().total : this.till.mode() === 'partial' ? Math.min(this.till.paid(), this.till.totals().total) : 0;
+  }
+
+  protected payChannel(): string {
+    return this.till.mode() === 'cash' ? this.channelName(this.till.channel()) : this.till.mode() === 'partial' ? this.channelName(this.till.partialChannel()) : '—';
+  }
+
+  protected payReference(): string {
+    return (this.till.mode() === 'cash' && this.till.channel() !== 'cash' ? this.till.reference() : this.till.mode() === 'partial' && this.till.partialChannel() !== 'cash' ? this.till.partialReference() : '').trim();
+  }
+
   protected setKind(value: string): void {
     this.fKind = value;
     this.setFilters();
