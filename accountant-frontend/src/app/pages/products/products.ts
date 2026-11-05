@@ -138,7 +138,6 @@ export class ProductsPage implements OnInit {
   protected sortBy(key: string): void {
     this.sort.set(nextSort(this.sort(), key));
   }
-  protected readonly total = computed(() => this.data()?.total ?? 0);
   protected readonly hasFilters = computed(() => !!(this.query() || this.status() || this.kind() || this.lowStock() || this.categoryId()));
   protected readonly noun = computed(() => this.i18n.t(this.total() === 1 ? 'prod.noun.one' : 'prod.noun.many'));
   protected readonly namedList = computed(() => (this.tab() === 'brands' ? this.brands() : this.categories()));
