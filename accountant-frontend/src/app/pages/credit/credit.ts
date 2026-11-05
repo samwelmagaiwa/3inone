@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -42,7 +43,7 @@ const METHODS: Method[] = ['cash', 'mobile_money', 'bank_transfer', 'cheque'];
  */
 @Component({
   selector: 'app-credit',
-  imports: [FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, ListBarComponent, BsDateDirective, MoneyDirective, StickyRowDirective],
+  imports: [NgTemplateOutlet, FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, ListBarComponent, BsDateDirective, MoneyDirective, StickyRowDirective],
   templateUrl: './credit.html',
 })
 export class CreditPage implements OnInit {

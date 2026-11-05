@@ -1,6 +1,13 @@
+<ng-template #tabsTpl>
+<div class="flex flex-wrap gap-2" role="tablist">
+      <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="tab() === 'customers'" [attr.aria-selected]="tab() === 'customers'" (click)="tab.set('customers')" data-testid="cr-tab-customers">{{ i18n.t('cr.tab.customers') }}</button>
+      <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="tab() === 'ageing'" [attr.aria-selected]="tab() === 'ageing'" (click)="tab.set('ageing')" data-testid="cr-tab-ageing">{{ i18n.t('cr.tab.ageing') }}</button>
+    </div>
+</ng-template>
+
 <!-- Customers & credit -->
 @for (k of [motion.tick()]; track k) {
-<div class="space-y-5 animate-fade-in-up">
+<div class="space-y-2 animate-fade-in-up">
 
   @if (loading() && !customers().length) {
     <div class="skeleton-box" style="height: 130px; border-radius: 14px;"></div>
@@ -31,11 +38,6 @@
       </div>
     </div>
 
-    <div class="flex flex-wrap gap-2" role="tablist">
-      <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="tab() === 'customers'" [attr.aria-selected]="tab() === 'customers'" (click)="tab.set('customers')" data-testid="cr-tab-customers">{{ i18n.t('cr.tab.customers') }}</button>
-      <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="tab() === 'ageing'" [attr.aria-selected]="tab() === 'ageing'" (click)="tab.set('ageing')" data-testid="cr-tab-ageing">{{ i18n.t('cr.tab.ageing') }}</button>
-    </div>
-
     @if (tab() === 'customers') {
       <section class="section-card overflow-clip">
         <app-table-toolbar [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('cr.search')" [count]="rows().length" [noun]="noun()">
@@ -47,6 +49,7 @@
               <option value="limit">{{ i18n.t('cr.filter.limit') }}</option>
             </select>
           </label>
+          <ng-container *ngTemplateOutlet="tabsTpl" />
         </app-table-toolbar>
 
         @if (rows().length) {
@@ -106,6 +109,7 @@
         }
       </section>
     } @else {
+      <div class="flex flex-wrap items-center gap-2"><ng-container *ngTemplateOutlet="tabsTpl" /></div>
       @if (ageing(); as a) {
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="kpi-card"><p class="label-eyebrow">{{ i18n.t('cr.age.current') }}</p><h3 class="text-xl font-black mt-2 text-slate-800" data-testid="age-current">{{ tsh(a.totals.current) }}</h3></div>
@@ -326,7 +330,7 @@
 
 <style>
   .big-tab { padding: 12px 22px; font-size: 14px; font-weight: 800; }
-  .kpi-row { position: sticky; top: 0; z-index: 30; padding: 12px 0 10px; background: #f8fafc; }
+  .kpi-row { position: sticky; top: 0; z-index: 30; padding: 12px 0 4px; background: #f8fafc; }
   .cr-table .no-col { width: 48px; text-align: center; color: #64748b; font-weight: 800; }
   .dots-btn { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 10px; color: #475a8f; background: #fff; border: 1px solid #dbe4ff; cursor: pointer; }
   .dots-btn:hover { background: #f3f5ff; border-color: #93b0fb; }
