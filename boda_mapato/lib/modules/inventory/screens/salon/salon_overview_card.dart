@@ -8,6 +8,9 @@ import '../../../../services/localization_service.dart';
 import '../../models/salon_models.dart';
 import '../../services/salon_api.dart';
 import '../../../../widgets/live_refresh.dart';
+import 'cashbook_screen.dart';
+import 'payment_references_screen.dart';
+import 'salon_access.dart';
 import 'salon_text.dart';
 import 'services_report_screen.dart';
 import 'stylists_screen.dart';
@@ -133,16 +136,20 @@ class _SalonOverviewCardState extends State<SalonOverviewCard> {
             if (d.topServices.length > _top)
               _more('ov_service_more', sw ? 'Zaidi' : 'More', () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => ServicesReportScreen(api: _api)))),
           ],
-          if (d.collections.isNotEmpty) ...<Widget>[
+          if (d.collections.isNotEmpty && canSeeMoneyReceivedHere(context)) ...<Widget>[
             _heading(Icons.account_balance_wallet_outlined, sw ? 'Pesa zilizopokelewa mwezi huu' : 'Money received this month'),
-            Row(
-              children: <Widget>[
-                for (int i = 0; i < d.collections.length; i++) ...<Widget>[
-                  if (i > 0) SizedBox(width: 8.w),
-                  Expanded(child: _collection(d.collections[i], sw)),
+            // Two to a row, so a name and an amount are read in full; each opens the details of that way of paying.
+            LayoutBuilder(builder: (BuildContext context, BoxConstraints box) {
+              final double w = (box.maxWidth - 8.w) / 2;
+
+              return Wrap(
+                spacing: 8.w,
+                runSpacing: 8.h,
+                children: <Widget>[
+                  for (final Collection c in d.collections) SizedBox(width: w, child: _collection(c, sw, () => _openMethod(c.method, sw))),
                 ],
-              ],
-            ),
+              );
+            }),
           ],
         ],
       ),
@@ -266,25 +273,50 @@ class _SalonOverviewCardState extends State<SalonOverviewCard> {
       );
 
   /// How the money came in: the way it was paid with its picture, and the amount under it.
-  Widget _collection(final Collection c, final bool sw) {
+  /// A tile opens the full list for that way of paying: the cashbook for cash, the payments with their references for the others.
+  void _openMethod(final String method, final bool sw) {
+    final bool cash = method == 'cash';
+    final String channel = method == 'bank' ? 'bank_transfer' : method;
+    final String title = channelLabel(sw: sw, channel: method);
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => ThemeConstants.buildScaffold(
+          flat: true,
+          title: title,
+          body: cash ? CashbookScreen() : PaymentReferencesScreen(api: _api, channel: channel),
+        ),
+      ),
+    );
+  }
+
+  Widget _collection(final Collection c, final bool sw, final VoidCallback onTap) {
     final String m = c.method;
     final IconData icon = m == 'cash' ? Icons.payments_outlined : (m == 'bank_transfer' || m == 'bank' ? Icons.account_balance_outlined : Icons.smartphone_rounded);
 
-    return Container(
+    return Material(
       key: ValueKey<String>('ov_col_$m'),
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12.r)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(children: <Widget>[
-            Icon(icon, size: 15.sp, color: Colors.white70),
-            SizedBox(width: 4.w),
-            Expanded(child: Text(channelLabel(sw: sw, channel: m), maxLines: 1, overflow: TextOverflow.ellipsis, style: ThemeConstants.captionStyle.copyWith(fontSize: 11.sp))),
-          ]),
-          SizedBox(height: 2.h),
-          Text(tsh(c.amount), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13.sp)),
-        ],
+      color: Colors.white.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(12.r),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12.r),
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(children: <Widget>[
+                Icon(icon, size: 16.sp, color: Colors.white70),
+                SizedBox(width: 6.w),
+                Expanded(child: Text(channelLabel(sw: sw, channel: m), maxLines: 1, overflow: TextOverflow.ellipsis, style: ThemeConstants.captionStyle.copyWith(fontSize: 12.sp))),
+                Icon(Icons.chevron_right_rounded, size: 18.sp, color: Colors.white54),
+              ]),
+              SizedBox(height: 4.h),
+              Text(tsh(c.amount), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14.sp)),
+            ],
+          ),
+        ),
       ),
     );
   }

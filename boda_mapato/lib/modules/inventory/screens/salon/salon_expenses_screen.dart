@@ -14,7 +14,6 @@ import '../../models/salon_models.dart';
 import '../../providers/inventory_provider.dart';
 import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
-import 'salon_access.dart';
 import 'salon_text.dart';
 import '../widgets/glow_list_card.dart';
 import 'salon_period.dart';

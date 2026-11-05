@@ -1453,6 +1453,8 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
               children: <Widget>[
                 // The value of the stock on the shelves is a shop's figure: a salon sells time, not shelves.
                 // A salon's owner sees the business at a glance instead: takings, profit, bookings, who and what earns most.
+                // The owner's month in one card (profit, against last month, the target); a tap opens the whole report, as in a shop.
+                if (inv.salonMode && canSeeSalonProfitHere(context)) Padding(padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 0), child: MonthSummaryCard(key: ValueKey<int?>(ApiService.activeBranch))),
                 if (inv.salonMode && canSeeSalonMoneyHere(context)) ...<Widget>[SalonOverviewCard(key: ValueKey<int?>(ApiService.activeBranch)), _sectionDivider()],
                 if (canViewReports && !inv.salonMode) ...<Widget>[const MonthSummaryCard(), SizedBox(height: 12.h)],
                 if (canViewReports && !inv.salonMode) _buildInventoryValuationContent(loc, inv),

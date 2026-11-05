@@ -1,4 +1,7 @@
+import 'package:boda_mapato/models/login_response.dart';
 import 'package:boda_mapato/modules/inventory/models/salon_models.dart';
+import 'package:boda_mapato/modules/inventory/screens/salon/payment_references_screen.dart';
+import 'package:boda_mapato/providers/auth_provider.dart';
 import 'package:boda_mapato/modules/inventory/screens/salon/salon_overview_card.dart';
 import 'package:boda_mapato/modules/inventory/services/salon_api.dart';
 import 'package:boda_mapato/services/api_service.dart';
@@ -15,6 +18,14 @@ class _FakeSalon extends SalonApi {
   _FakeSalon(this.data);
 
   SalonOverview data;
+  final List<String?> referenceAsks = <String?>[];
+
+  @override
+  Future<PaymentReferencePage> paymentReferences({final DateTime? from, final DateTime? to, final String? query, final String? channel, final int page = 1}) async {
+    referenceAsks.add(channel);
+
+    return const PaymentReferencePage(rows: <PaymentReference>[], count: 0, amount: 0, page: 1, lastPage: 1);
+  }
   Object? fail;
   int calls = 0;
 
@@ -43,7 +54,16 @@ SalonOverview _overview({double monthProfit = 51000, double outstanding = 20000,
       bookingsUpcoming: 5,
     );
 
-Future<void> _host(WidgetTester t, SalonApi api, {bool sw = false}) async {
+class _Auth extends AuthProvider {
+  _Auth(this.role);
+
+  final String role;
+
+  @override
+  UserData? get user => UserData(id: 'u1', name: 'Someone', email: 's@example.test', role: role, isActive: true, serviceTypes: const <String>['salon']);
+}
+
+Future<void> _host(WidgetTester t, SalonApi api, {bool sw = false, String? role}) async {
   final void Function(FlutterErrorDetails)? original = FlutterError.onError;
   FlutterError.onError = (FlutterErrorDetails d) {
     if (d.exceptionAsString().contains('overflowed')) return;
@@ -57,8 +77,11 @@ Future<void> _host(WidgetTester t, SalonApi api, {bool sw = false}) async {
   t.view.devicePixelRatio = 1.0;
   addTearDown(t.view.reset);
   await t.pumpWidget(
-    ChangeNotifierProvider<LocalizationService>.value(
-      value: LocalizationService.instance,
+    MultiProvider(
+      providers: <ChangeNotifierProvider<ChangeNotifier>>[
+        ChangeNotifierProvider<LocalizationService>.value(value: LocalizationService.instance),
+        if (role != null) ChangeNotifierProvider<AuthProvider>(create: (_) => _Auth(role)),
+      ],
       child: ScreenUtilInit(designSize: const Size(411, 1800), minTextAdapt: true, builder: (_, __) => MaterialApp(home: Scaffold(body: SingleChildScrollView(child: SalonOverviewCard(api: api))))),
     ),
   );
@@ -134,6 +157,27 @@ void main() {
 
     expect(find.descendant(of: _key('ov_col_mpesa'), matching: find.text('TSH 90,000')), findsOneWidget);
     expect(find.descendant(of: _key('ov_col_cash'), matching: find.text('TSH 16,000')), findsOneWidget);
+  });
+
+  testWidgets('how the money came in is for the owner: an accountant (without the cashbook right) does not see it', (t) async {
+    await _host(t, _FakeSalon(_overview()), role: 'accountant');
+
+    expect(find.text('Money received this month'), findsNothing);
+    expect(_key('ov_col_mpesa'), findsNothing);
+  });
+
+  testWidgets('the owner taps a way of paying and is taken to its payments, with that way already chosen', (t) async {
+    final _FakeSalon api = _FakeSalon(_overview());
+    await _host(t, api, role: 'admin');
+
+    await t.ensureVisible(_key('ov_col_mpesa'));
+    await t.tap(_key('ov_col_mpesa'));
+    for (int i = 0; i < 6; i++) {
+      await t.pump(const Duration(milliseconds: 150));
+    }
+
+    expect(find.byType(PaymentReferencesScreen), findsOneWidget);
+    expect(api.referenceAsks.last, 'mpesa');
   });
 
   testWidgets('a failed load says so quietly and can be retried', (t) async {

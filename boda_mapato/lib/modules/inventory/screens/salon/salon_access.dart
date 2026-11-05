@@ -24,6 +24,32 @@ bool canSeeSalonMoneyHere(final BuildContext context) {
   }
 }
 
+/// May the person signed in see how the money came in (cash, mobile money, bank) on the dashboard? A right of its own (the cashbook's), on
+/// for the owner and off for an accountant until the owner gives it. A screen built without sign-in (a test) shows it.
+bool canSeeMoneyReceivedHere(final BuildContext context) {
+  try {
+    final UserData? user = context.watch<AuthProvider>().user;
+    if (user == null) return false;
+
+    return user.isSuperAdmin || user.fullAccess || user.access.has('inv_salon_cashbook');
+  } on ProviderNotFoundException {
+    return true;
+  }
+}
+
+/// May the person signed in see the salon's profit (the month's report with its target)? The profit right: the owner's, given to an
+/// accountant only if the owner switches it on.
+bool canSeeSalonProfitHere(final BuildContext context) {
+  try {
+    final UserData? user = context.watch<AuthProvider>().user;
+    if (user == null) return false;
+
+    return user.isSuperAdmin || user.fullAccess || user.access.has('inv_salon_profit');
+  } on ProviderNotFoundException {
+    return false;
+  }
+}
+
 /// The people who do the work themselves: hair stylists, nail technicians, lash and makeup artists. They see their own
 /// diary and income; booking is for the reception and the owner. (The server enforces it; this decides what is shown.)
 bool isStylistRole(final UserData? user) =>

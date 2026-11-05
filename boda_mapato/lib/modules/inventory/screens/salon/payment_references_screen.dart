@@ -18,7 +18,10 @@ enum _When { today, thisMonth, lastMonth, all }
 /// was paid, how much, and who for. Tapping one opens the whole sale behind it. The owner reads these to check them against the phone or
 /// the bank statement; a sale paid by mobile money cannot be saved without its reference.
 class PaymentReferencesScreen extends StatefulWidget {
-  const PaymentReferencesScreen({super.key, this.api, this.today});
+  const PaymentReferencesScreen({super.key, this.api, this.today, this.channel = ''});
+
+  /// Start on one way of paying (the dashboard's money-received tiles open the list for the one that was tapped).
+  final String channel;
 
   /// The server calls (a fake in tests).
   final SalonApi? api;
@@ -34,7 +37,7 @@ class _PaymentReferencesScreenState extends State<PaymentReferencesScreen> {
   late final SalonApi _api = widget.api ?? SalonApi();
 
   _When _when = _When.thisMonth;
-  String _channel = '';
+  late String _channel = widget.channel;
   String _query = '';
   PaymentReferencePage? _page;
   final List<PaymentReference> _rows = <PaymentReference>[];
