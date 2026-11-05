@@ -195,6 +195,29 @@ describe('products and services', () => {
     h.http.expectOne((r) => r.url === LIST && r.method === 'GET').flush({ data: ROWS, meta: { current_page: 1, last_page: 1, total: 2 } });
   });
 
+  it('the unit box is a styled list (not the browser one): opens on a click, filters as you type, and a pick fills it', async () => {
+    const { fixture, el } = await open(MANAGER);
+
+    click(el, 'prod-add');
+    await settle(fixture);
+    expect(el.querySelector('datalist')).toBeNull();
+    expect(byTestId(el, 'prod-unit-list')).toBeNull();
+    click(el, 'prod-unit-toggle');
+    await settle(fixture);
+    expect(byTestId(el, 'prod-unit-list')).not.toBeNull();
+    expect(text(byTestId(el, 'unit-kg')!)).toContain('kilogram');
+
+    type(el, '[data-testid="prod-unit"]', 'bot');
+    await settle(fixture);
+    expect(byTestId(el, 'unit-bottle')).not.toBeNull();
+    expect(byTestId(el, 'unit-kg')).toBeNull();
+
+    click(el, 'unit-bottle');
+    await settle(fixture);
+    expect((byTestId(el, 'prod-unit') as HTMLInputElement).value).toBe('bottle');
+    expect(byTestId(el, 'prod-unit-list')).toBeNull();
+  });
+
   it('changing a product fills the form and saves with PUT', async () => {
     const { h, fixture, el } = await open(MANAGER);
 

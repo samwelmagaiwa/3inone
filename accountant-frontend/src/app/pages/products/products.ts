@@ -46,6 +46,41 @@ export class ProductsPage implements OnInit {
 
   protected readonly tsh = tsh;
   protected readonly units = UNITS;
+  protected readonly unitOpen = signal(false);
+  protected readonly unitActive = signal(-1);
+
+  /** The units that match what is typed (all of them when the box is empty or already holds a whole unit). */
+  protected unitsShown(): string[] {
+    const q = this.fUnit.trim().toLowerCase();
+    if (!q || UNITS.includes(q)) return UNITS;
+    return UNITS.filter((u) => u.includes(q) || this.i18n.t('unit.' + u).toLowerCase().includes(q));
+  }
+
+  protected pickUnit(u: string): void {
+    this.fUnit = u;
+    this.unitOpen.set(false);
+    this.unitActive.set(-1);
+  }
+
+  /** Leaving the box closes the list a moment later, so a click on a unit still lands. */
+  protected unitCloseSoon(): void {
+    setTimeout(() => this.unitOpen.set(false), 180);
+  }
+
+  protected unitKey(ev: KeyboardEvent): void {
+    const list = this.unitsShown();
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+      ev.preventDefault();
+      this.unitOpen.set(true);
+      const n = list.length;
+      this.unitActive.set(n ? (this.unitActive() + (ev.key === 'ArrowDown' ? 1 : -1) + n) % n : -1);
+    } else if (ev.key === 'Enter' && this.unitOpen() && this.unitActive() >= 0) {
+      ev.preventDefault();
+      this.pickUnit(list[this.unitActive()]);
+    } else if (ev.key === 'Escape') {
+      this.unitOpen.set(false);
+    }
+  }
 
   // ---- who may do what (the mobile app's rule, and the server's)
   protected readonly canManage = computed(() => this.auth.can('inv_manage_products'));

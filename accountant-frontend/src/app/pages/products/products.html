@@ -247,8 +247,19 @@
       <div class="contents">
         <div>
           <label class="modal-label" for="pUnit">{{ i18n.t('prod.form.unit') }}</label>
-          <input id="pUnit" name="pUnit" class="modal-input" list="pUnits" [(ngModel)]="fUnit" autocomplete="off" data-testid="prod-unit" [placeholder]="i18n.t('ph.unit')">
-          <datalist id="pUnits">@for (u of units; track u) { <option [value]="u"></option> }</datalist>
+          <div class="unit-combo">
+            <input id="pUnit" name="pUnit" class="modal-input unit-input" role="combobox" [attr.aria-expanded]="unitOpen()" aria-autocomplete="list" [(ngModel)]="fUnit" (ngModelChange)="unitOpen.set(true); unitActive.set(-1)" (focus)="unitOpen.set(true)" (click)="unitOpen.set(true)" (blur)="unitCloseSoon()" (keydown)="unitKey($event)" autocomplete="off" data-testid="prod-unit" [placeholder]="i18n.t('ph.unit')">
+            <button type="button" class="unit-toggle" tabindex="-1" (mousedown)="$event.preventDefault()" (click)="unitOpen.set(!unitOpen())" [attr.aria-label]="i18n.t('prod.form.unit')" data-testid="prod-unit-toggle"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            @if (unitOpen()) {
+              <div class="unit-list" role="listbox" data-testid="prod-unit-list" (mousedown)="$event.preventDefault()">
+                @for (u of unitsShown(); track u; let i = $index) {
+                  <button type="button" role="option" class="unit-opt" [class.is-active]="unitActive() === i" [class.is-on]="fUnit === u" (click)="pickUnit(u)" [attr.data-testid]="'unit-' + u"><b>{{ u }}</b><small>{{ i18n.t('unit.' + u) }}</small></button>
+                } @empty {
+                  <p class="unit-none">{{ i18n.t('unit.custom', fUnit) }}</p>
+                }
+              </div>
+            }
+          </div>
         </div>
         <div>
           <label class="modal-label" for="pQty">{{ i18n.t('prod.form.qty') }}</label>
@@ -438,6 +449,17 @@
 </style>
 
 <style>
+  .unit-combo { position: relative; }
+  .unit-input { padding-right: 44px; }
+  .unit-toggle { position: absolute; right: 6px; top: 6px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9px; color: #1a2f6e; background: #f1f5ff; }
+  .unit-toggle:hover { background: #dfe8ff; }
+  .unit-list { position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 6px); max-height: 240px; overflow-y: auto; padding: 6px; background: #fff; border: 1px solid #dbe4ff; border-radius: 14px; box-shadow: 0 18px 36px rgba(26,47,110,.18); }
+  .unit-opt { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 10px; text-align: left; color: #1a2f6e; cursor: pointer; }
+  .unit-opt b { font-weight: 800; }
+  .unit-opt small { color: #8a9ac9; font-weight: 700; }
+  .unit-opt:hover, .unit-opt.is-active { background: #e8eeff; }
+  .unit-opt.is-on { background: #dfe8ff; }
+  .unit-none { padding: 10px 12px; font-size: 13px; font-weight: 700; color: #7d8fc4; }
   /* one price option: the name takes what is left, the price a fixed small box, then the remove button */
   .opt-row { display: grid; grid-template-columns: minmax(0, 1fr) 9rem 2rem; gap: 8px; align-items: center; margin-bottom: 8px; }
   @media (max-width: 480px) { .opt-row { grid-template-columns: minmax(0, 1fr) 7rem 2rem; } }
