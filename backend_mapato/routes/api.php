@@ -415,6 +415,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // create-only grant (sales_officer); edit/delete stay manage-only below.
     Route::middleware('inv_perm:inv_manage_products,inv_create_products')->group(function () {
         Route::post('inventory/products',        [InventoryProductController::class, 'store']);
+        // A new category or brand is part of adding goods, so the same narrow grant allows it; changing or deleting stays manage-only.
+        Route::post('inventory/categories',      [InventoryCategoryController::class, 'store']);
+        Route::post('inventory/brands',          [InventoryBrandController::class, 'store']);
     });
 
     Route::middleware('inv_perm:inv_manage_products')->group(function () {
@@ -422,10 +425,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // More sizes / colours for an existing product (each a stock item of its own).
         Route::post('inventory/products/{id}/variants', [InventoryProductController::class, 'addVariants']);
         Route::delete('inventory/products/{id}', [InventoryProductController::class, 'destroy']);
-        Route::post('inventory/categories',        [InventoryCategoryController::class, 'store']);
         Route::put('inventory/categories/{id}',    [InventoryCategoryController::class, 'update']);
         Route::delete('inventory/categories/{id}', [InventoryCategoryController::class, 'destroy']);
-        Route::post('inventory/brands',        [InventoryBrandController::class, 'store']);
         Route::put('inventory/brands/{id}',    [InventoryBrandController::class, 'update']);
         Route::delete('inventory/brands/{id}', [InventoryBrandController::class, 'destroy']);
         Route::get('inventory/customers/duplicates', [InventoryCustomerController::class, 'duplicates']);

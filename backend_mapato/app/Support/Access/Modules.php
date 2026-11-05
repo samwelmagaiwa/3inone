@@ -33,7 +33,7 @@ final class Modules
         return [
             // ---- Goods and services
             ['key' => 'inv_view_products', 'group' => 'goods', 'en' => 'See services and goods', 'sw' => 'Kuona huduma na bidhaa', 'services' => $both],
-            ['key' => 'inv_create_products', 'group' => 'goods', 'en' => 'Add new services and goods', 'sw' => 'Kuongeza huduma na bidhaa mpya', 'services' => $both],
+            ['key' => 'inv_create_products', 'group' => 'goods', 'en' => 'Add new services, goods, categories and brands', 'sw' => 'Kuongeza huduma, bidhaa, makundi na chapa mpya', 'services' => $both],
             ['key' => 'inv_manage_products', 'group' => 'goods', 'en' => 'Change and delete services and goods, prices', 'sw' => 'Kubadilisha na kufuta huduma na bidhaa, bei', 'services' => $both],
             ['key' => 'inv_manage_stock', 'group' => 'goods', 'en' => 'Stock: receive, count, approve damages', 'sw' => 'Stoo: kupokea, kuhesabu, kuidhinisha hasara', 'services' => $both],
             ['key' => 'inv_report_damage', 'group' => 'goods', 'en' => 'Report damaged goods', 'sw' => 'Kuripoti bidhaa zilizoharibika', 'services' => $both],

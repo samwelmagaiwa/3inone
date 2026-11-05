@@ -120,6 +120,25 @@ class AccessModulesTest extends TestCase
         $this->assertFalse($this->modules($owner, $ivan)['inv_create_products']['taken_back'], 'switching it on again clears the denial');
     }
 
+    public function test_an_accountant_can_add_goods_a_category_and_a_brand_but_not_change_or_delete_them(): void
+    {
+        $owner = $this->salon();
+        $ivan = $this->person($owner, 'accountant');
+
+        $category = $this->api($ivan, 'POST', '/api/inventory/categories', ['name' => 'Wigs']);
+        $category->assertCreated();
+        $brand = $this->api($ivan, 'POST', '/api/inventory/brands', ['name' => 'Outre']);
+        $brand->assertCreated();
+
+        $this->api($ivan, 'PUT', '/api/inventory/categories/' . $category->json('data.id'), ['name' => 'Other'])->assertForbidden();
+        $this->api($ivan, 'DELETE', '/api/inventory/brands/' . $brand->json('data.id'))->assertForbidden();
+
+        // Taking the right back closes all three together.
+        $this->save($owner, $ivan, $this->allOn($owner, $ivan, [], ['inv_create_products']))->assertOk();
+        $this->api($ivan, 'POST', '/api/inventory/categories', ['name' => 'Oils'])->assertForbidden();
+        $this->api($ivan, 'POST', '/api/inventory/brands', ['name' => 'Mielle'])->assertForbidden();
+    }
+
     public function test_taking_back_the_reports_closes_the_monthly_report(): void
     {
         $owner = $this->salon();

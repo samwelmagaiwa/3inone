@@ -8,7 +8,7 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
         {{ i18n.t(salon() ? 'prod.add.salon' : 'prod.add') }}
       </button>
-    } @else if (tab() !== 'products' && canManage()) {
+    } @else if (tab() !== 'products' && canAdd()) {
       @if (salon() && tab() === 'categories') {
         <button type="button" class="btn-outline shrink-0" (click)="addPresets()" data-testid="cat-presets">{{ i18n.t('cat.presets') }}</button>
       }
@@ -20,7 +20,7 @@
   </div>
 
   <!-- Categories and brands are for those who manage the catalogue -->
-  @if (canManage()) {
+  @if (canAdd()) {
     <div class="flex flex-wrap gap-2" role="tablist">
       <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="tab() === 'products'" [attr.aria-selected]="tab() === 'products'" (click)="setTab('products')" data-testid="tab-products">{{ i18n.t(salon() ? 'prod.tab.salon' : 'prod.tab.products') }}</button>
       <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="tab() === 'categories'" [attr.aria-selected]="tab() === 'categories'" (click)="setTab('categories')" data-testid="tab-categories">{{ i18n.t('prod.tab.categories') }}</button>
@@ -76,24 +76,32 @@
           <button type="button" class="btn-primary" (click)="load()">{{ i18n.t('common.retry') }}</button>
         </div>
       } @else if (rows().length) {
-        <div class="table-scroll-container">
-          <table class="premium-table">
+        <app-list-bar [total]="total()" [page]="page()" [pageSize]="perPage" (pageChange)="goTo($event)"></app-list-bar>
+        <div class="table-scroll-container" style="border: 0; border-radius: 0;">
+          <table class="grid-table prod-table">
             <thead>
               <tr>
-                <th>{{ i18n.t('prod.col.name') }}</th>
-                <th class="text-right">{{ i18n.t('prod.col.stock') }}</th>
-                <th class="text-right">{{ i18n.t('prod.col.price') }}</th>
-                <th>{{ i18n.t('prod.col.status') }}</th>
-                <th class="text-right"></th>
+                <th class="no-col">#</th>
+                <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'name'" (click)="sortBy('name')" [attr.title]="i18n.t('table.sort', i18n.t('prod.col.name'))">{{ i18n.t('prod.col.name') }} <span class="arrow">{{ arrow(sort(), 'name') }}</span></button></th>
+                <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'code'" (click)="sortBy('code')" [attr.title]="i18n.t('table.sort', i18n.t('prod.col.code'))">{{ i18n.t('prod.col.code') }} <span class="arrow">{{ arrow(sort(), 'code') }}</span></button></th>
+                <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'type'" (click)="sortBy('type')" [attr.title]="i18n.t('table.sort', i18n.t('prod.col.type'))">{{ i18n.t('prod.col.type') }} <span class="arrow">{{ arrow(sort(), 'type') }}</span></button></th>
+                <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'category'" (click)="sortBy('category')" [attr.title]="i18n.t('table.sort', i18n.t('prod.col.category'))">{{ i18n.t('prod.col.category') }} <span class="arrow">{{ arrow(sort(), 'category') }}</span></button></th>
+                <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'brand'" (click)="sortBy('brand')" [attr.title]="i18n.t('table.sort', i18n.t('prod.col.brand'))">{{ i18n.t('prod.col.brand') }} <span class="arrow">{{ arrow(sort(), 'brand') }}</span></button></th>
+                <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'stock'" (click)="sortBy('stock')" [attr.title]="i18n.t('table.sort', i18n.t('prod.col.stock'))">{{ i18n.t('prod.col.stock') }} <span class="arrow">{{ arrow(sort(), 'stock') }}</span></button></th>
+                <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'price'" (click)="sortBy('price')" [attr.title]="i18n.t('table.sort', i18n.t('prod.col.price'))">{{ i18n.t('prod.col.price') }} <span class="arrow">{{ arrow(sort(), 'price') }}</span></button></th>
+                <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'status'" (click)="sortBy('status')" [attr.title]="i18n.t('table.sort', i18n.t('prod.col.status'))">{{ i18n.t('prod.col.status') }} <span class="arrow">{{ arrow(sort(), 'status') }}</span></button></th>
+                @if (canManage()) { <th class="text-right">{{ i18n.t('prod.col.actions') }}</th> }
               </tr>
             </thead>
             <tbody>
-              @for (p of rows(); track p.id) {
+              @for (p of shown(); track p.id; let i = $index) {
                 <tr [attr.data-testid]="'prod-row-' + p.id">
-                  <td>
-                    <div class="font-black text-slate-900">{{ p.name }}</div>
-                    <div class="text-xs font-semibold text-slate-400">{{ subline(p) }}</div>
-                  </td>
+                  <td class="no-col">{{ (page() - 1) * perPage + i + 1 }}</td>
+                  <td class="font-black text-slate-900">{{ p.name }}</td>
+                  <td>{{ p.sku || '—' }}</td>
+                  <td>{{ i18n.t(p.is_service ? 'prod.kind.service' : 'prod.kind.good') }}@if (p.is_service && p.duration_minutes) { <span class="text-xs text-slate-400 font-semibold"> · {{ i18n.t('prod.minutes', p.duration_minutes) }}</span> }</td>
+                  <td>{{ p.category_name ? localized(p.category_name) : '—' }}</td>
+                  <td>{{ p.brand_name || '—' }}</td>
                   <td class="text-right font-bold text-slate-700">
                     @if (p.is_service) { <span class="text-slate-400">—</span> } @else {
                       {{ p.quantity }} <span class="text-xs text-slate-400 font-semibold">{{ p.unit }}</span>
@@ -102,26 +110,19 @@
                   </td>
                   <td class="text-right font-black text-slate-800">{{ tsh(p.selling_price) }}</td>
                   <td><span [class]="p.status === 'active' ? 'status-ok' : 'pill-inactive'">{{ i18n.t(activeKey(p.status)) }}</span></td>
-                  <td class="text-right">
-                    @if (canManage()) {
+                  @if (canManage()) {
+                    <td class="text-right">
                       <button type="button" class="icon-del" (click)="openEdit(p)" [title]="i18n.t('prod.edit')" [attr.aria-label]="i18n.t('prod.edit')" [attr.data-testid]="'prod-edit-' + p.id">&#9998;</button>
                       <button type="button" class="icon-del" (click)="remove(p)" [title]="i18n.t('common.delete')" [attr.aria-label]="i18n.t('common.delete')" [attr.data-testid]="'prod-del-' + p.id">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                       </button>
-                    }
-                  </td>
+                    </td>
+                  }
                 </tr>
               }
             </tbody>
           </table>
         </div>
-        @if ((data()?.lastPage ?? 1) > 1) {
-          <div class="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-100">
-            <button type="button" class="btn-outline" [disabled]="page() <= 1 || loading()" (click)="goTo(page() - 1)" data-testid="prod-prev">{{ i18n.t('prod.prev') }}</button>
-            <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wide" data-testid="prod-page">{{ i18n.t('prod.page', page(), data()!.lastPage) }}</span>
-            <button type="button" class="btn-outline" [disabled]="page() >= data()!.lastPage || loading()" (click)="goTo(page() + 1)" data-testid="prod-next">{{ i18n.t('prod.next') }}</button>
-          </div>
-        }
       } @else {
         <div class="empty-state" data-testid="prod-empty">
           <span class="empty-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg></span>
@@ -136,31 +137,35 @@
   } @else {
     <section class="section-card overflow-hidden">
       @if (namedList().length) {
-        <div class="table-scroll-container">
-          <table class="premium-table">
+        <app-list-bar [total]="namedList().length" [page]="1" [pageSize]="namedList().length || 1"></app-list-bar>
+        <div class="table-scroll-container" style="border: 0; border-radius: 0;">
+          <table class="grid-table prod-table">
             <thead>
               <tr>
+                <th class="no-col">#</th>
                 <th>{{ i18n.t('prod.col.name') }}</th>
+                <th>{{ i18n.t('prod.col.description') }}</th>
                 <th class="text-right">{{ i18n.t('prod.noun.many') }}</th>
                 <th>{{ i18n.t('prod.col.status') }}</th>
-                <th class="text-right"></th>
+                @if (canManage()) { <th class="text-right">{{ i18n.t('prod.col.actions') }}</th> }
               </tr>
             </thead>
             <tbody>
-              @for (n of namedList(); track n.id) {
+              @for (n of namedList(); track n.id; let i = $index) {
                 <tr [attr.data-testid]="'named-row-' + n.id">
-                  <td>
-                    <div class="font-black text-slate-900">{{ tab() === 'categories' ? localized(n.name) : n.name }}</div>
-                    @if (n.description) { <div class="text-xs font-semibold text-slate-400">{{ n.description }}</div> }
-                  </td>
+                  <td class="no-col">{{ i + 1 }}</td>
+                  <td class="font-black text-slate-900">{{ tab() === 'categories' ? localized(n.name) : n.name }}</td>
+                  <td>{{ n.description || '—' }}</td>
                   <td class="text-right font-bold text-slate-700">{{ n.products_count }}</td>
                   <td><span [class]="n.status === 'active' ? 'status-ok' : 'pill-inactive'">{{ i18n.t(activeKey(n.status)) }}</span></td>
-                  <td class="text-right">
-                    <button type="button" class="icon-del" (click)="openNamed(n)" [title]="i18n.t('prod.edit')" [attr.aria-label]="i18n.t('prod.edit')" [attr.data-testid]="'named-edit-' + n.id">&#9998;</button>
-                    <button type="button" class="icon-del" (click)="removeNamed(n)" [title]="i18n.t('common.delete')" [attr.aria-label]="i18n.t('common.delete')" [attr.data-testid]="'named-del-' + n.id">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                    </button>
-                  </td>
+                  @if (canManage()) {
+                    <td class="text-right">
+                      <button type="button" class="icon-del" (click)="openNamed(n)" [title]="i18n.t('prod.edit')" [attr.aria-label]="i18n.t('prod.edit')" [attr.data-testid]="'named-edit-' + n.id">&#9998;</button>
+                      <button type="button" class="icon-del" (click)="removeNamed(n)" [title]="i18n.t('common.delete')" [attr.aria-label]="i18n.t('common.delete')" [attr.data-testid]="'named-del-' + n.id">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                      </button>
+                    </td>
+                  }
                 </tr>
               }
             </tbody>

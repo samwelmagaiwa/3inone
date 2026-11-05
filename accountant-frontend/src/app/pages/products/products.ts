@@ -8,9 +8,11 @@ import { I18nService } from '../../core/i18n.service';
 import { ProductsApi } from '../../core/products-api.service';
 import { Named, NamedKind, PriceOption, Product, ProductBody, ProductFilters, ProductPage, ServiceMaterial, StaffMember } from '../../core/products.models';
 import { ConfirmService } from '../../core/services/confirm.service';
+import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
 import { MotionService } from '../../core/services/motion.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { ListBarComponent } from '../../shared/components/list-bar/list-bar';
 import { TableToolbarComponent } from '../../shared/components/table-toolbar/table-toolbar';
 import { MoneyDirective } from '../../shared/ui/money.directive';
 
@@ -31,7 +33,7 @@ const UNITS = ['pcs', 'kg', 'g', 'litre', 'ml', 'bottle', 'crate', 'carton', 'ba
  */
 @Component({
   selector: 'app-products',
-  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, MoneyDirective],
+  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, ListBarComponent, MoneyDirective],
   templateUrl: './products.html',
 })
 export class ProductsPage implements OnInit {
@@ -121,6 +123,21 @@ export class ProductsPage implements OnInit {
   /** The services a package can be made of (not packages themselves, not this one). */
   protected readonly packageTargets = computed(() => this.rows().filter((p) => p.is_service && !p.package_sessions && p.status === 'active' && p.id !== this.editing()?.id));
   protected readonly rows = computed(() => this.data()?.items ?? []);
+  protected readonly total = computed(() => this.data()?.total ?? 0);
+  protected readonly perPage = 20;
+
+  // The page in view can be sorted by any column header; the server still decides which items are on the page.
+  protected readonly sort = signal<SortState | null>(null);
+  protected readonly arrow = sortArrow;
+  protected readonly shown = computed(() =>
+    sorted(this.rows(), this.sort(), (p, k) =>
+      k === 'name' ? p.name : k === 'code' ? p.sku : k === 'type' ? (p.is_service ? 1 : 0) : k === 'category' ? (p.category_name ?? '') : k === 'brand' ? (p.brand_name ?? '') : k === 'stock' ? (p.is_service ? -1 : p.quantity) : k === 'price' ? p.selling_price : p.status
+    ),
+  );
+
+  protected sortBy(key: string): void {
+    this.sort.set(nextSort(this.sort(), key));
+  }
   protected readonly total = computed(() => this.data()?.total ?? 0);
   protected readonly hasFilters = computed(() => !!(this.query() || this.status() || this.kind() || this.lowStock() || this.categoryId()));
   protected readonly noun = computed(() => this.i18n.t(this.total() === 1 ? 'prod.noun.one' : 'prod.noun.many'));

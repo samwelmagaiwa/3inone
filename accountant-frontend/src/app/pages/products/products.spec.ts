@@ -56,13 +56,14 @@ describe('products and services', () => {
   });
 
   describe('who may do what, as on the mobile app', () => {
-    it('a sales officer can add but not change or delete, and has no categories or brands tabs', async () => {
+    it('a sales officer can add goods, a category and a brand, but not change or delete', async () => {
       const { el } = await open(SALES_OFFICER);
 
       expect(byTestId(el, 'prod-add')).not.toBeNull();
       expect(byTestId(el, 'prod-edit-1')).toBeNull();
       expect(byTestId(el, 'prod-del-1')).toBeNull();
-      expect(byTestId(el, 'tab-categories')).toBeNull();
+      expect(byTestId(el, 'tab-categories')).not.toBeNull();
+      expect(byTestId(el, 'tab-brands')).not.toBeNull();
     });
 
     it('an accountant only reads: no add, change or delete', async () => {
@@ -105,13 +106,13 @@ describe('products and services', () => {
 
   it('pages through a long list', async () => {
     const { h, fixture, el } = await open(MANAGER, { meta: { current_page: 1, last_page: 3, total: 50 } });
-    expect(text(byTestId(el, 'prod-page')!)).toBe('Page 1 of 3');
+    expect(text(byTestId(el, 'list-showing')!)).toBe('Showing 1–20 of 50');
 
-    click(el, 'prod-next');
+    click(el, 'page-2');
     h.http.expectOne((r) => r.url === LIST && r.params.get('page') === '2').flush({ data: [ROWS[0]], meta: { current_page: 2, last_page: 3, total: 50 } });
     await settle(fixture);
 
-    expect(text(byTestId(el, 'prod-page')!)).toBe('Page 2 of 3');
+    expect(text(byTestId(el, 'list-showing')!)).toBe('Showing 21–40 of 50');
   });
 
   describe('adding', () => {
