@@ -1,21 +1,3 @@
-<!-- The two views, the add button and the export, shown in the breadcrumb row at the top of the page -->
-<ng-template #headerBar>
-  <div class="flex flex-wrap items-center gap-2">
-    <div class="flex flex-wrap gap-2" role="tablist">
-      <button type="button" role="tab" class="pill-tab" [class.is-active]="kind() === 'receivable'" [attr.aria-selected]="kind() === 'receivable'" (click)="setKind('receivable')" data-testid="tab-owed">
-        {{ i18n.t('debts.tab.owed') }}
-        @if (data().receivable; as d) { <span class="tab-total">{{ tsh(d.total) }}</span> }
-      </button>
-      <button type="button" role="tab" class="pill-tab" [class.is-active]="kind() === 'payable'" [attr.aria-selected]="kind() === 'payable'" (click)="setKind('payable')" data-testid="tab-owe">
-        {{ i18n.t('debts.tab.owe') }}
-        @if (data().payable; as d) { <span class="tab-total">{{ tsh(d.total) }}</span> }
-      </button>
-    </div>
-    <app-export-menu [build]="sheet" />
-    <button type="button" class="bar-cta" (click)="openAdd()" data-testid="debt-add">+ {{ i18n.t(kind() === 'receivable' ? 'debts.add.owed' : 'debts.add.owe') }}</button>
-  </div>
-</ng-template>
-
 <!-- Debts -->
 @for (k of [motion.tick()]; track k) {
 <div class="space-y-2 animate-fade-in-up">
@@ -31,26 +13,38 @@
   } @else if (current(); as c) {
 
     <!-- The three figures stay in view while the page scrolls under them -->
-    <div appStickyRow class="kpi-row grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div class="kpi-card">
+    <div appStickyRow class="kpi-row grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div class="kpi-card kpi-slim">
         <p class="label-eyebrow">{{ i18n.t(kind() === 'receivable' ? 'debts.total.owed' : 'debts.total.owe') }}</p>
-        <h3 class="text-3xl font-black tracking-tight mt-2" style="color: #1a2f6e;" [appCountUp]="tsh(c.total)" data-testid="debts-total">{{ tsh(c.total) }}</h3>
+        <h3 class="kpi-num" style="color: #1a2f6e;" [appCountUp]="tsh(c.total)" data-testid="debts-total">{{ tsh(c.total) }}</h3>
       </div>
-      <div class="kpi-card">
-        <p class="label-eyebrow">{{ i18n.t('debts.old') }}</p>
-        <h3 class="text-2xl font-black tracking-tight mt-2 text-slate-800" data-testid="debts-old">{{ tsh(c.old) }}</h3>
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('debts.old.hint') }}</p>
+      <div class="kpi-card kpi-slim">
+        <p class="label-eyebrow">{{ i18n.t('debts.old') }} <span class="kpi-hint">· {{ i18n.t('debts.old.hint') }}</span></p>
+        <h3 class="kpi-num" data-testid="debts-old">{{ tsh(c.old) }}</h3>
       </div>
-      <div class="kpi-card">
-        <p class="label-eyebrow">{{ i18n.t(kind() === 'receivable' ? 'debts.fromsales' : 'debts.frominvoices') }}</p>
-        <h3 class="text-2xl font-black tracking-tight mt-2 text-slate-800">{{ tsh(c.from_records) }}</h3>
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('debts.records.hint') }}</p>
+      <div class="kpi-card kpi-slim">
+        <p class="label-eyebrow">{{ i18n.t(kind() === 'receivable' ? 'debts.fromsales' : 'debts.frominvoices') }} <span class="kpi-hint">· {{ i18n.t('debts.records.hint') }}</span></p>
+        <h3 class="kpi-num">{{ tsh(c.from_records) }}</h3>
       </div>
     </div>
 
     <!-- The list -->
     <section class="section-card overflow-clip">
-      <app-table-toolbar [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('debts.search')" [count]="rows().length" [noun]="noun()" />
+      <app-table-toolbar [compact]="true" [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('debts.search')" [count]="rows().length" [noun]="noun()">
+        <!-- The two views, the export and the add button, on the same slim row as the search -->
+        <div class="flex flex-wrap items-center gap-2" role="tablist">
+          <button type="button" role="tab" class="pill-tab slim-tab" [class.is-active]="kind() === 'receivable'" [attr.aria-selected]="kind() === 'receivable'" (click)="setKind('receivable')" data-testid="tab-owed">
+            {{ i18n.t('debts.tab.owed') }}
+            @if (data().receivable; as d) { <span class="tab-total">{{ tsh(d.total) }}</span> }
+          </button>
+          <button type="button" role="tab" class="pill-tab slim-tab" [class.is-active]="kind() === 'payable'" [attr.aria-selected]="kind() === 'payable'" (click)="setKind('payable')" data-testid="tab-owe">
+            {{ i18n.t('debts.tab.owe') }}
+            @if (data().payable; as d) { <span class="tab-total">{{ tsh(d.total) }}</span> }
+          </button>
+          <app-export-menu [build]="sheet" />
+          <button type="button" class="bar-cta" (click)="openAdd()" data-testid="debt-add">+ {{ i18n.t(kind() === 'receivable' ? 'debts.add.owed' : 'debts.add.owe') }}</button>
+        </div>
+      </app-table-toolbar>
 
       @if (rows().length) {
         <app-list-bar [total]="rows().length" [page]="page()" [pageSize]="pageSize()" [pageSizes]="[10, 20, 50, 100]" (pageChange)="page.set($event)" (pageSizeChange)="pageSize.set($event); page.set(1)" />
@@ -193,10 +187,15 @@
 </app-modal-dialog>
 
 <style>
-  .bar-cta { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 900; color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); box-shadow: 0 10px 20px -12px rgba(26,47,110,.8); cursor: pointer; }
+  .bar-cta { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 900; color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); box-shadow: 0 10px 20px -12px rgba(26,47,110,.8); cursor: pointer; }
   .pill-tab { display: inline-flex; align-items: center; gap: 8px; }
   .tab-total { font-size: 11px; font-weight: 900; padding: 1px 9px; border-radius: 99px; background: rgba(26,47,110,.1); }
   .pill-tab.is-active .tab-total { background: rgba(255,255,255,.22); }
-  .kpi-row { position: sticky; top: 0; z-index: 30; padding: 12px 0 4px; background: #f8fafc; }
+  .kpi-row { position: sticky; top: 0; z-index: 30; padding: 10px 0 4px; background: #f8fafc; }
+  .kpi-slim { padding: 8px 16px; }
+  .kpi-slim .label-eyebrow { font-size: 10.5px; line-height: 1.3; }
+  .kpi-hint { font-weight: 700; letter-spacing: 0; text-transform: none; color: #94a3b8; }
+  .kpi-num { margin-top: 1px; font-size: 20px; font-weight: 900; letter-spacing: -.02em; color: #1e293b; }
+  .slim-tab { padding: 6px 12px; font-size: 12.5px; }
   .debts-table .no-col { width: 48px; text-align: center; color: #64748b; font-weight: 800; }
 </style>

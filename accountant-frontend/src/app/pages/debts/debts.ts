@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 
@@ -9,7 +9,6 @@ import { Debt, DebtKind, DebtPayment, DebtsListing } from '../../core/models';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { CapabilitiesService } from '../../core/capabilities.service';
 import { ExportSheet } from '../../core/export';
-import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
 import { MotionService } from '../../core/services/motion.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -33,17 +32,13 @@ import { MoneyDirective } from '../../shared/ui/money.directive';
   imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, ListBarComponent, RowMenuComponent, ExportMenuComponent, StickyRowDirective, BsDateDirective, CountUpDirective, MoneyDirective],
   templateUrl: './debts.html',
 })
-export class DebtsPage implements OnInit, AfterViewInit, OnDestroy {
+export class DebtsPage implements OnInit {
   private readonly api = inject(AccountantApi);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   protected readonly i18n = inject(I18nService);
   protected readonly motion = inject(MotionService);
-  private readonly slot = inject(HeaderSlotService);
   private readonly caps = inject(CapabilitiesService);
-
-  /** The two views, the add button and the export live in the breadcrumb row at the top of the page; this page hands them over. */
-  @ViewChild('headerBar', { static: true }) private headerBar!: TemplateRef<unknown>;
 
   protected readonly kind = signal<DebtKind>('receivable');
   protected readonly data = signal<Partial<Record<DebtKind, DebtsListing>>>({});
@@ -98,14 +93,6 @@ export class DebtsPage implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     void this.load();
-  }
-
-  ngAfterViewInit(): void {
-    queueMicrotask(() => this.slot.show(this.headerBar));
-  }
-
-  ngOnDestroy(): void {
-    this.slot.clear(this.headerBar);
   }
 
   // ------------------------------------------------------------------ the menu of a row, and the export
