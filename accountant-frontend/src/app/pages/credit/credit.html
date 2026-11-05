@@ -2,11 +2,6 @@
 @for (k of [motion.tick()]; track k) {
 <div class="space-y-5 animate-fade-in-up">
 
-  <div class="page-header-card">
-    <h1 class="text-slate-900 font-black text-xl tracking-tight">{{ i18n.t('cr.title') }}</h1>
-    <p class="text-slate-500 text-sm mt-0.5">{{ i18n.t('cr.sub') }}</p>
-  </div>
-
   @if (loading() && !customers().length) {
     <div class="skeleton-box" style="height: 130px; border-radius: 14px;"></div>
   } @else if (error(); as message) {
@@ -17,7 +12,8 @@
     </div>
   } @else {
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <!-- The three figures stay in view while the page scrolls under them -->
+    <div class="kpi-row grid grid-cols-1 sm:grid-cols-3 gap-4">
       <div class="kpi-card">
         <p class="label-eyebrow">{{ i18n.t('cr.kpi.owed') }}</p>
         <h3 class="text-3xl font-black tracking-tight mt-2" style="color: #1a2f6e;" data-testid="cr-total">{{ tsh(totalOwed()) }}</h3>
@@ -54,55 +50,54 @@
         </app-table-toolbar>
 
         @if (rows().length) {
-          <div class="table-scroll-container">
-            <table class="premium-table">
+          <app-list-bar [total]="rows().length" [page]="page()" [pageSize]="pageSize()" [pageSizes]="[10, 20, 50, 100]" (pageChange)="page.set($event)" (pageSizeChange)="pageSize.set($event); page.set(1)" />
+          <div class="table-scroll-container" style="border: 0; border-radius: 0;">
+            <table class="grid-table cr-table">
               <thead>
                 <tr>
-                  <th>{{ i18n.t('cr.col.customer') }}</th>
-                  <th class="text-right">{{ i18n.t('cr.col.owes') }}</th>
-                  <th>{{ i18n.t('cr.col.limit') }}</th>
-                  <th>{{ i18n.t('cr.col.status') }}</th>
-                  <th class="text-right"></th>
+                  <th class="no-col">#</th>
+                  <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'name'" (click)="sortBy('name')" [attr.title]="i18n.t('table.sort', i18n.t('cr.col.customer'))">{{ i18n.t('cr.col.customer') }} <span class="arrow">{{ arrow(sort(), 'name') }}</span></button></th>
+                  <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'phone'" (click)="sortBy('phone')" [attr.title]="i18n.t('table.sort', i18n.t('cr.col.phone'))">{{ i18n.t('cr.col.phone') }} <span class="arrow">{{ arrow(sort(), 'phone') }}</span></button></th>
+                  <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'owes'" (click)="sortBy('owes')" [attr.title]="i18n.t('table.sort', i18n.t('cr.col.owes'))">{{ i18n.t('cr.col.owes') }} <span class="arrow">{{ arrow(sort(), 'owes') }}</span></button></th>
+                  <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'limit'" (click)="sortBy('limit')" [attr.title]="i18n.t('table.sort', i18n.t('cr.col.limit'))">{{ i18n.t('cr.col.limit') }} <span class="arrow">{{ arrow(sort(), 'limit') }}</span></button></th>
+                  <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'terms'" (click)="sortBy('terms')" [attr.title]="i18n.t('table.sort', i18n.t('cr.col.terms'))">{{ i18n.t('cr.col.terms') }} <span class="arrow">{{ arrow(sort(), 'terms') }}</span></button></th>
+                  <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'status'" (click)="sortBy('status')" [attr.title]="i18n.t('table.sort', i18n.t('cr.col.status'))">{{ i18n.t('cr.col.status') }} <span class="arrow">{{ arrow(sort(), 'status') }}</span></button></th>
+                  <th class="text-right">{{ i18n.t('prod.col.actions') }}</th>
                 </tr>
               </thead>
               <tbody>
-                @for (c of pageRows(); track c.id) {
+                @for (c of pageRows(); track c.id; let i = $index) {
                   <tr [attr.data-testid]="'cr-row-' + c.id">
-                    <td>
-                      <div class="font-black text-slate-900">{{ c.name }}</div>
-                      <div class="text-xs font-semibold text-slate-400">{{ c.phone }}</div>
-                    </td>
+                    <td class="no-col">{{ (page() - 1) * pageSize() + i + 1 }}</td>
+                    <td class="font-black text-slate-900">{{ c.name }}</td>
+                    <td>{{ c.phone || '—' }}</td>
                     <td class="text-right">
                       <div class="font-black" [class.text-slate-800]="c.balance > 0" [class.text-slate-400]="c.balance <= 0">{{ tsh(c.balance) }}</div>
                       @if (c.old_balance > 0) { <div class="text-xs font-semibold text-slate-400">{{ i18n.t('cr.old', tsh(c.old_balance)) }}</div> }
                     </td>
-                    <td>
+                    <td class="text-right">
                       @if (c.credit_limit > 0) {
-                        <div class="text-sm font-bold text-slate-700">{{ tsh(c.credit_limit) }}</div>
-                        <div class="bar-track" style="max-width: 120px;"><div class="bar-fill" [style.width.%]="used(c)"></div></div>
+                        <div class="font-bold text-slate-700">{{ tsh(c.credit_limit) }}</div>
+                        <div class="bar-track" style="max-width: 120px; margin-left: auto;"><div class="bar-fill" [style.width.%]="used(c)"></div></div>
                       } @else {
                         <span class="text-xs font-semibold text-slate-400">{{ i18n.t('cr.nolimit') }}</span>
                       }
-                      <div class="text-xs font-semibold text-slate-400 mt-1">{{ i18n.t('cr.terms', c.payment_terms_days) }}</div>
                     </td>
+                    <td>{{ i18n.t('cr.terms', c.payment_terms_days) }}</td>
                     <td>
                       <span [class]="state(c) === 'ok' ? 'status-ok' : (state(c) === 'near' ? 'pill-inactive' : 'pill-critical')" [attr.data-testid]="'cr-state-' + c.id">{{ i18n.t('cr.state.' + state(c)) }}</span>
                       @if (c.is_blocked && c.block_reason) { <div class="text-xs font-semibold text-slate-400 mt-1">{{ c.block_reason }}</div> }
                     </td>
-                    <td class="text-right whitespace-nowrap">
-                      <a class="btn-outline" [routerLink]="['/customers', c.id, 'report']" [attr.data-testid]="'cr-report-' + c.id">{{ i18n.t('cr.report') }}</a>
-                      <button type="button" class="btn-outline" (click)="openStatement(c)" [attr.data-testid]="'cr-statement-' + c.id">{{ i18n.t('cr.statement') }}</button>
-                      <button type="button" class="btn-outline" (click)="openSettings(c)" [attr.data-testid]="'cr-settings-' + c.id">{{ i18n.t('cr.settings') }}</button>
-                      @if (canReceive()) {
-                        <button type="button" class="btn-primary" (click)="openPay(c)" [disabled]="c.balance <= 0" [attr.data-testid]="'cr-pay-' + c.id">{{ i18n.t('cr.receive') }}</button>
-                      }
+                    <td class="text-right">
+                      <button type="button" class="dots-btn" (click)="toggleMenu(c, $event)" [attr.aria-label]="i18n.t('prod.col.actions')" aria-haspopup="menu" [attr.aria-expanded]="menu()?.c?.id === c.id" [attr.data-testid]="'cr-menu-' + c.id">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+                      </button>
                     </td>
                   </tr>
                 }
               </tbody>
             </table>
           </div>
-          <app-table-pagination [totalItems]="rows().length" [page]="page()" [pageSize]="pageSize()" (pageChange)="page.set($event)" (pageSizeChange)="pageSize.set($event); page.set(1)" />
         } @else {
           <div class="empty-state" data-testid="cr-empty">
             <p class="empty-title">{{ i18n.t(query() || only() !== 'all' ? 'cr.empty.search' : 'cr.empty') }}</p>
@@ -316,6 +311,29 @@
   </div>
 </app-modal-dialog>
 
+<!-- The actions of one customer, opened by the three dots of its row -->
+@if (menu(); as m) {
+  <div class="menu-backdrop" (click)="menu.set(null)"></div>
+  <div class="row-menu" role="menu" [style.top.px]="m.top" [style.bottom.px]="m.bottom" [style.right.px]="m.right" data-testid="cr-menu">
+    <a role="menuitem" class="row-menu-item" [routerLink]="['/customers', m.c.id, 'report']" (click)="menu.set(null)" [attr.data-testid]="'cr-report-' + m.c.id">{{ i18n.t('cr.report') }}</a>
+    <button type="button" role="menuitem" class="row-menu-item" (click)="pickMenu('statement')" [attr.data-testid]="'cr-statement-' + m.c.id">{{ i18n.t('cr.statement') }}</button>
+    <button type="button" role="menuitem" class="row-menu-item" (click)="pickMenu('settings')" [attr.data-testid]="'cr-settings-' + m.c.id">{{ i18n.t('cr.settings') }}</button>
+    @if (canReceive()) {
+      <button type="button" role="menuitem" class="row-menu-item is-primary" [disabled]="m.c.balance <= 0" (click)="pickMenu('pay')" [attr.data-testid]="'cr-pay-' + m.c.id">{{ i18n.t('cr.receive') }}</button>
+    }
+  </div>
+}
+
 <style>
   .big-tab { padding: 12px 22px; font-size: 14px; font-weight: 800; }
+  .kpi-row { position: sticky; top: 0; z-index: 20; padding: 12px 0 10px; background: #f8fafc; }
+  .cr-table .no-col { width: 48px; text-align: center; color: #64748b; font-weight: 800; }
+  .dots-btn { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 10px; color: #475a8f; background: #fff; border: 1px solid #dbe4ff; cursor: pointer; }
+  .dots-btn:hover { background: #f3f5ff; border-color: #93b0fb; }
+  .menu-backdrop { position: fixed; inset: 0; z-index: 70; }
+  .row-menu { position: fixed; z-index: 71; min-width: 190px; padding: 6px; border-radius: 14px; background: #fff; border: 1px solid #dbe4ff; box-shadow: 0 18px 40px -16px rgba(26, 47, 110, .45); display: flex; flex-direction: column; }
+  .row-menu-item { display: block; width: 100%; padding: 10px 14px; border-radius: 10px; text-align: left; font-size: 13px; font-weight: 800; color: #1a2f6e; background: transparent; border: 0; cursor: pointer; }
+  .row-menu-item:hover:not(:disabled) { background: #f1f5ff; }
+  .row-menu-item.is-primary { color: #15803d; }
+  .row-menu-item:disabled { opacity: .45; cursor: not-allowed; }
 </style>

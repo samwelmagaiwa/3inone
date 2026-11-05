@@ -8,10 +8,11 @@ import { CreditApi } from '../../core/credit-api.service';
 import { DebtSummary, AgeingListing, CreditCustomer, CreditSettingsBody, CreditState, Statement, StatementSale, creditState } from '../../core/credit.models';
 import { dayLabel, dayOf, eatDay, offline, parseAmount, serverMessage, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
+import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
 import { MotionService } from '../../core/services/motion.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
-import { TablePaginationComponent } from '../../shared/components/table-pagination/table-pagination';
+import { ListBarComponent } from '../../shared/components/list-bar/list-bar';
 import { TableToolbarComponent } from '../../shared/components/table-toolbar/table-toolbar';
 import { BsDateDirective } from '../../shared/ui/bs-date.directive';
 import { MoneyDirective } from '../../shared/ui/money.directive';
@@ -40,7 +41,7 @@ const METHODS: Method[] = ['cash', 'mobile_money', 'bank_transfer', 'cheque'];
  */
 @Component({
   selector: 'app-credit',
-  imports: [FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, TablePaginationComponent, BsDateDirective, MoneyDirective],
+  imports: [FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, ListBarComponent, BsDateDirective, MoneyDirective],
   templateUrl: './credit.html',
 })
 export class CreditPage implements OnInit {
@@ -83,8 +84,42 @@ export class CreditPage implements OnInit {
     const size = this.pageSize();
     const start = (this.page() - 1) * size;
 
-    return this.rows().slice(start, start + size);
+    return this.ordered().slice(start, start + size);
   });
+
+  // Any column header sorts the customers; the rows are then cut into pages.
+  protected readonly sort = signal<SortState | null>(null);
+  protected readonly arrow = sortArrow;
+  private readonly ordered = computed(() =>
+    sorted(this.rows(), this.sort(), (c, k) =>
+      k === 'name' ? c.name : k === 'phone' ? c.phone : k === 'owes' ? c.balance : k === 'limit' ? c.credit_limit : k === 'terms' ? c.payment_terms_days : creditState(c)
+    ),
+  );
+
+  protected sortBy(key: string): void {
+    this.sort.set(nextSort(this.sort(), key));
+    this.page.set(1);
+  }
+
+  // The three dots of a row: one menu at a time, drawn where the button is (so a scrolling table never clips it).
+  protected readonly menu = signal<{ c: CreditCustomer; top: number | null; bottom: number | null; right: number } | null>(null);
+
+  protected toggleMenu(c: CreditCustomer, ev: Event): void {
+    if (this.menu()?.c.id === c.id) return this.menu.set(null);
+    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    const up = typeof window !== 'undefined' && r.bottom + 190 > window.innerHeight;
+    const width = typeof window !== 'undefined' ? window.innerWidth : 0;
+    this.menu.set({ c, top: up ? null : r.bottom + 4, bottom: up ? window.innerHeight - r.top + 4 : null, right: Math.max(8, width - r.right) });
+  }
+
+  protected pickMenu(action: 'statement' | 'settings' | 'pay'): void {
+    const c = this.menu()?.c;
+    this.menu.set(null);
+    if (!c) return;
+    if (action === 'statement') void this.openStatement(c);
+    else if (action === 'settings') this.openSettings(c);
+    else this.openPay(c);
+  }
   protected readonly noun = computed(() => this.i18n.t(this.rows().length === 1 ? 'cr.noun.one' : 'cr.noun.many'));
   protected readonly totalOwed = computed(() => this.customers().reduce((sum, c) => sum + c.balance, 0));
   protected readonly owingCount = computed(() => this.customers().filter((c) => c.balance > 0).length);

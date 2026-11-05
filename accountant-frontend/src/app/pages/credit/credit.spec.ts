@@ -38,7 +38,11 @@ async function open(permissions: string[], rows: unknown[] = ROWS) {
   return { h, fixture, el: fixture.nativeElement as HTMLElement };
 }
 
-const click = (el: HTMLElement, id: string) => (byTestId(el, id) as HTMLElement).click();
+const click = (el: HTMLElement, id: string) => {
+  (byTestId(el, id) as HTMLElement).click();
+  // The three dots open a menu: draw it before the next click looks for an item in it.
+  if (id.startsWith('cr-menu-')) TestBed.tick();
+};
 
 const STATEMENT = {
   data: {
@@ -99,10 +103,12 @@ describe('customers & credit', () => {
 
   it('receiving money needs the cash right, as on the server; reading the account does not', async () => {
     const withCash = await open(SALES_OFFICER);
+    click(withCash.el, 'cr-menu-1');
     expect(byTestId(withCash.el, 'cr-pay-1')).not.toBeNull();
 
     TestBed.resetTestingModule();
     const without = await open(WITHOUT_CASH);
+    click(without.el, 'cr-menu-1');
     expect(byTestId(without.el, 'cr-pay-1')).toBeNull();
     expect(byTestId(without.el, 'cr-statement-1')).not.toBeNull();
     expect(byTestId(without.el, 'cr-settings-1')).not.toBeNull();
@@ -122,6 +128,7 @@ describe('customers & credit', () => {
     it('asks for the days chosen and shows where the account started, moved and stands', async () => {
       const { h, fixture, el } = await open(SALES_OFFICER);
 
+      click(el, 'cr-menu-1');
       click(el, 'cr-statement-1');
       const req = h.http.expectOne((r) => r.url === `${CUSTOMERS}/1/statement`);
       expect(req.request.params.get('from')).toMatch(/^\d{4}-\d{2}-01$/);
@@ -140,6 +147,7 @@ describe('customers & credit', () => {
     it('saves the limit, the days to pay and a block with its reason', async () => {
       const { h, fixture, el } = await open(SALES_OFFICER);
 
+      click(el, 'cr-menu-5');
       click(el, 'cr-settings-5');
       await settle(fixture);
       type(el, '[data-testid="cs-limit"]', '250,000');
@@ -161,6 +169,7 @@ describe('customers & credit', () => {
     it('refuses a limit that is not a number, without sending anything', async () => {
       const { h, fixture, el } = await open(SALES_OFFICER);
 
+      click(el, 'cr-menu-1');
       click(el, 'cr-settings-1');
       await settle(fixture);
       type(el, '[data-testid="cs-limit"]', 'plenty');
@@ -176,6 +185,7 @@ describe('customers & credit', () => {
   describe('receiving a payment', () => {
     async function openPay() {
       const o = await open(SALES_OFFICER);
+      click(o.el, 'cr-menu-1');
       click(o.el, 'cr-pay-1');
       const req = o.h.http.expectOne((r) => r.url === `${CUSTOMERS}/1/statement`);
       expect(req.request.params.get('from')).toBe('2000-01-01');
@@ -238,6 +248,7 @@ describe('customers & credit', () => {
     it('says so when the customer has no unpaid sale', async () => {
       const { h, fixture, el } = await open(SALES_OFFICER);
 
+      click(el, 'cr-menu-1');
       click(el, 'cr-pay-1');
       h.http.expectOne((r) => r.url === `${CUSTOMERS}/1/statement`).flush({ data: { ...STATEMENT.data, sales: [STATEMENT.data.sales[2]] } });
       await settle(fixture);
@@ -261,7 +272,8 @@ describe('customers & credit', () => {
 
       async function openOld() {
         const o = await open(SALES_OFFICER);
-        click(o.el, 'cr-pay-1');
+        click(o.el, 'cr-menu-1');
+      click(o.el, 'cr-pay-1');
         o.h.http.expectOne((r) => r.url === `${CUSTOMERS}/1/statement`).flush(WITH_OLD);
         await settle(o.fixture);
 
