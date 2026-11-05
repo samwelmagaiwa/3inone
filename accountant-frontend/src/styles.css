@@ -355,7 +355,8 @@ body {
 }
 
 .animate-fade-in-up {
-  animation: fadeInUp 0.35s ease both;
+  /* `backwards`, not `both`: a kept final transform would make this the containing block of every fixed menu and dialog inside the page (the row menus would then open far off screen). */
+  animation: fadeInUp 0.35s ease backwards;
 }
 
 @keyframes shimmer {
