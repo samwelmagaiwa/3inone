@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { SaleRow } from '../../core/models';
-import { byTestId, configure, settle, text, type } from '../../testing';
+import { byTestId, configure, mountSlot, settle, text, type } from '../../testing';
 import { SalesPage } from './sales';
 
 const sale = (over: Partial<SaleRow> = {}): SaleRow => ({
@@ -90,6 +90,7 @@ describe('sales', () => {
 
   it('a period button changes the dates asked for', async () => {
     const { h, fixture, el } = await open();
+    await mountSlot(fixture);
 
     byTestId(el, 'period-year')!.click();
     const list = h.http.expectOne((r) => r.url.endsWith('/inventory/sales') && r.params.get('from')?.endsWith('-01-01') === true);

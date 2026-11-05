@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -10,6 +10,7 @@ import { dayOf, eatDateTime, offline, parseAmount, serverMessage, tsh } from '..
 import { I18nService } from '../../core/i18n.service';
 import { SaleRow } from '../../core/models';
 import { printReceipt } from '../../core/receipt';
+import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { MotionService } from '../../core/services/motion.service';
 import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
 import { ToastService } from '../../core/services/toast.service';
@@ -33,7 +34,7 @@ type Status = '' | 'paid' | 'partial' | 'debt';
   imports: [FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, ListBarComponent, CountUpDirective, MoneyDirective],
   templateUrl: './sales.html',
 })
-export class SalesPage implements OnInit, OnDestroy {
+export class SalesPage implements OnInit, AfterViewInit, OnDestroy {
   private readonly api = inject(AccountantApi);
   private readonly till = inject(TillApi);
   private readonly toast = inject(ToastService);
@@ -41,6 +42,10 @@ export class SalesPage implements OnInit, OnDestroy {
   private readonly caps = inject(CapabilitiesService);
   protected readonly i18n = inject(I18nService);
   protected readonly motion = inject(MotionService);
+  private readonly slot = inject(HeaderSlotService);
+
+  /** The period tabs and the New sale button live in the breadcrumb row; this page hands them over. */
+  @ViewChild('periodBar', { static: true }) private periodBar!: TemplateRef<unknown>;
 
   protected readonly period = signal<Period>('today');
   protected readonly periods: Period[] = ['today', 'week', 'month', 'year'];
@@ -92,7 +97,12 @@ export class SalesPage implements OnInit, OnDestroy {
     void this.loadReturns();
   }
 
+  ngAfterViewInit(): void {
+    queueMicrotask(() => this.slot.show(this.periodBar));
+  }
+
   ngOnDestroy(): void {
+    this.slot.clear(this.periodBar);
     if (this.timer) clearTimeout(this.timer);
   }
 

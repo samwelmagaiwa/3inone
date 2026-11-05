@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { SaleRow } from '../../core/models';
-import { byTestId, configure, settle, text, type } from '../../testing';
+import { byTestId, configure, mountSlot, settle, text, type } from '../../testing';
 import { SalesPage } from './sales';
 
 const owed: SaleRow = {
@@ -27,9 +27,11 @@ function reload(h: ReturnType<typeof configure>) {
 describe('what can be done to a sale', () => {
   it('someone who may sell sees the New sale button; someone who may not does not', async () => {
     const yes = await open();
+    await mountSlot(yes.fixture);
     expect(byTestId(yes.el, 'sales-new')).not.toBeNull();
     TestBed.resetTestingModule();
     const no = await open({ permissions: ['inv_view_reports'] });
+    await mountSlot(no.fixture);
     expect(byTestId(no.el, 'sales-new')).toBeNull();
   });
 
