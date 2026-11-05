@@ -441,8 +441,7 @@
       <p class="text-sm text-slate-400">{{ i18n.t('till.goods.none') }}</p>
     }
     <div class="flex gap-2">
-      <select class="modal-input grow" [(ngModel)]="addGoodId" aria-label="goods"><option value="">{{ i18n.t('till.goods.add') }}</option>@for (p of goodsOnly(); track p.id) { <option [value]="p.id">{{ p.name }}</option> }</select>
-      <button type="button" class="modal-cancel-btn" (click)="draftAdd()">{{ i18n.t('till.goods.addbtn') }}</button>
+      <select #goodsPick class="modal-input grow" (change)="draftAdd(goodsPick.value); goodsPick.value = ''" aria-label="goods" data-testid="goods-add"><option value="">{{ i18n.t('till.goods.add') }}</option>@for (p of goodsOnly(); track p.id) { <option [value]="p.id">{{ p.name }}</option> }</select>
     </div>
   </div>
   <div slot="footer" class="flex gap-2 justify-end">

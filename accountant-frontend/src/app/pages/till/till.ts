@@ -523,8 +523,9 @@ export class TillPage implements OnInit, OnDestroy {
     this.goodsDraft.update((d) => d.filter((_, x) => x !== i));
   }
 
-  protected draftAdd(): void {
-    const p = this.goodsOnly().find((x) => String(x.id) === this.addGoodId);
+  /** Choosing goods in the list adds them at once, with a quantity of 1 to change. */
+  protected draftAdd(id: string): void {
+    const p = this.goodsOnly().find((x) => String(x.id) === id);
     if (!p) return;
     this.goodsDraft.update((d) => (d.some((g) => g.productId === p.id) ? d : [...d, { productId: p.id, name: p.name, qty: 1 }]));
     this.addGoodId = '';
