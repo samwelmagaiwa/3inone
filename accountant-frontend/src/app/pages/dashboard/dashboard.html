@@ -3,7 +3,11 @@
 <div class="space-y-5 animate-fade-in-up">
 
   <!-- A salon opens with what the mobile app's dashboard shows -->
-  @if (auth.service() === 'salon') { <app-salon-home /> }
+  @if (auth.service() === 'salon') {
+    <app-salon-home>
+      @if (report()) { <ng-container [ngTemplateOutlet]="figures" /> }
+    </app-salon-home>
+  }
 
   @if (loading() && !report()) {
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -56,30 +60,7 @@
     </div>
     }
 
-    <!-- The four figures, in one row, each with a border in its own colour -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-      @for (k of kpis(); track k.label) {
-        <div class="kpi-card kpi-slim bordered" [style.border-color]="toneColor(k.tone)">
-          <div class="flex justify-between items-start gap-3">
-            <div class="flex-1 min-w-0">
-              <p class="label-eyebrow">{{ k.label }}</p>
-              <h3 class="text-2xl font-black tracking-tight mt-2 break-words" [style.color]="k.cmp.now < 0 ? '#dc2626' : '#1a2f6e'" [appCountUp]="k.value">{{ k.value }}</h3>
-            </div>
-            <div class="w-12 h-12 flex items-center justify-center shrink-0" style="border-radius: 12px !important;"
-              [class.kpi-icon-primary]="k.tone === 'primary'" [class.kpi-icon-success]="k.tone === 'success'" [class.kpi-icon-warning]="k.tone === 'warning'"
-              [class.kpi-icon-danger]="k.tone === 'danger'" [class.kpi-icon-purple]="k.tone === 'purple'">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" [attr.d]="k.icon"/></svg>
-            </div>
-          </div>
-          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wide truncate">{{ k.hint }}</span>
-            @if (k.cmp.direction !== 'same') {
-              <span class="text-xs font-black shrink-0" [style.color]="k.cmp.good ? '#059669' : '#dc2626'">{{ k.cmp.direction === 'up' ? '▲' : '▼' }} {{ percent(k.cmp) }}</span>
-            }
-          </div>
-        </div>
-      }
-    </div>
+    @if (auth.service() !== 'salon') { <ng-container [ngTemplateOutlet]="figures" /> }
 
     <!-- Where the business stands: the owner's figures -->
     @if (ownerFigures(r)) {
@@ -278,4 +259,32 @@
       {{ loading() ? i18n.t('common.loading') : i18n.t('common.refresh') }}
     </button>
   </div>
+</ng-template>
+
+<!-- The month's four figures: in the salon home's summary section, or on their own -->
+<ng-template #figures>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      @for (k of kpis(); track k.label) {
+        <div class="kpi-card kpi-slim bordered" [style.border-color]="toneColor(k.tone)">
+          <div class="flex justify-between items-start gap-3">
+            <div class="flex-1 min-w-0">
+              <p class="label-eyebrow">{{ k.label }}</p>
+              <h3 class="text-2xl font-black tracking-tight mt-2 break-words" [style.color]="k.cmp.now < 0 ? '#dc2626' : '#1a2f6e'" [appCountUp]="k.value">{{ k.value }}</h3>
+            </div>
+            <div class="w-12 h-12 flex items-center justify-center shrink-0" style="border-radius: 12px !important;"
+              [class.kpi-icon-primary]="k.tone === 'primary'" [class.kpi-icon-success]="k.tone === 'success'" [class.kpi-icon-warning]="k.tone === 'warning'"
+              [class.kpi-icon-danger]="k.tone === 'danger'" [class.kpi-icon-purple]="k.tone === 'purple'">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" [attr.d]="k.icon"/></svg>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wide truncate">{{ k.hint }}</span>
+            @if (k.cmp.direction !== 'same') {
+              <span class="text-xs font-black shrink-0" [style.color]="k.cmp.good ? '#059669' : '#dc2626'">{{ k.cmp.direction === 'up' ? '▲' : '▼' }} {{ percent(k.cmp) }}</span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
 </ng-template>

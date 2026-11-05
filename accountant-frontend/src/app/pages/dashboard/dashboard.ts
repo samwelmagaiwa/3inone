@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -23,7 +24,7 @@ import { MoneyDirective } from '../../shared/ui/money.directive';
  */
 @Component({
   selector: 'app-dashboard',
-  imports: [FormsModule, RouterLink, ModalDialogComponent, CountUpDirective, MoneyDirective, SalonHomeComponent],
+  imports: [NgTemplateOutlet, FormsModule, RouterLink, ModalDialogComponent, CountUpDirective, MoneyDirective, SalonHomeComponent],
   templateUrl: './dashboard.html',
 })
 export class DashboardPage implements OnInit, AfterViewInit, OnDestroy {

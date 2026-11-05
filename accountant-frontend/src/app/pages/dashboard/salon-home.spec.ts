@@ -46,6 +46,28 @@ describe('the salon home', () => {
     expect(byTestId(el, 'home-link-/customers')).not.toBeNull();
   });
 
+  it('puts who is here, today and the quick links in one section, the links in one row', async () => {
+    const { el } = await open();
+    const welcome = byTestId(el, 'home-welcome')!;
+
+    expect(welcome.contains(byTestId(el, 'home-today')!)).toBe(true);
+    expect(welcome.contains(byTestId(el, 'home-today-sales')!)).toBe(true);
+    const links = byTestId(el, 'home-links')!;
+    expect(welcome.contains(links)).toBe(true);
+    expect(links.querySelectorAll('a').length).toBeGreaterThan(1);
+    expect(getComputedStyle(links).flexWrap).toBe('nowrap');
+  });
+
+  it('puts the best services and the money received in one section with the figures of the month', async () => {
+    const { el } = await open();
+    const summary = byTestId(el, 'home-summary')!;
+
+    expect(summary.contains(byTestId(el, 'home-top-services')!)).toBe(true);
+    expect(summary.contains(byTestId(el, 'home-collections')!)).toBe(true);
+    expect(text(summary)).toContain('Knotless Braids');
+    expect(text(summary)).toContain('TSH 300,000');
+  });
+
   it("shows today's sales and number of sales, and how today stands against yesterday", async () => {
     const { el } = await open();
     expect(text(byTestId(el, 'home-today-sales')!)).toBe('TSH 50,000');

@@ -1,19 +1,41 @@
 <!-- The salon home: what the mobile app's dashboard shows, arranged for a wide screen -->
 <div class="home space-y-4" data-testid="salon-home">
 
-  <!-- Who is here, and today against yesterday -->
-  <div class="grid grid-cols-1 xl:grid-cols-5 gap-4">
-    <section class="home-card xl:col-span-2" style="--tone:#3b61e2" data-testid="home-welcome">
-      <div class="flex items-center gap-3 flex-wrap">
-        <span class="home-avatar" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span>
-        <div class="min-w-0 grow">
-          <p class="home-title">{{ i18n.t('home.welcome', name()) }}</p>
-          <p class="home-sub">{{ role() }}</p>
+  <!-- Who is here, today against yesterday and the quick links: one section, the links in one row -->
+  <section class="home-card" style="--tone:#3b61e2" data-testid="home-welcome">
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-x-8 gap-y-5 items-center">
+      <div class="xl:col-span-2">
+        <div class="flex items-center gap-3 flex-wrap">
+          <span class="home-avatar" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span>
+          <div class="min-w-0 grow">
+            <p class="home-title">{{ i18n.t('home.welcome', name()) }}</p>
+            <p class="home-sub">{{ role() }}</p>
+          </div>
+          <span class="home-badge">{{ role() }}</span>
         </div>
-        <span class="home-badge">{{ role() }}</span>
       </div>
+      <div class="xl:col-span-3 home-today" data-testid="home-today">
+      <div class="flex items-center gap-3">
+          <span class="home-eyebrow">{{ i18n.t('home.today') }}</span>
+          @if (versus(); as v) {
+            <div class="home-track" role="progressbar" [attr.aria-valuenow]="v.pct" aria-valuemin="0" aria-valuemax="100"><div class="home-fill" [class.is-behind]="!v.ahead" [style.width.%]="v.pct"></div></div>
+            <span class="home-vs" [class.is-behind]="!v.ahead" data-testid="home-vs" [attr.title]="i18n.t('home.vs')">{{ v.label }}</span>
+          }
+        </div>
+        <div class="grid grid-cols-2 gap-4 mt-4">
+          <div class="home-stat">
+            <p class="home-label"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l3 4v14H4V7l3-4zM4 7h16M9 12h6M9 16h4"/></svg>{{ i18n.t('home.sales') }}</p>
+            <p class="home-value" data-testid="home-today-sales">{{ tsh(todaySales()) }}</p>
+          </div>
+          <div class="home-stat">
+            <p class="home-label"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2l2.4 11h11l2-8H6"/></svg>{{ i18n.t('home.count') }}</p>
+            <p class="home-value" data-testid="home-today-count">{{ todayCount() ?? '—' }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
       @if (links().length) {
-        <div class="flex flex-wrap gap-2 mt-4">
+        <div class="home-links" data-testid="home-links">
           @for (l of links(); track l.to) {
             <a class="home-chip" [routerLink]="l.to" [attr.data-testid]="'home-link-' + l.to">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path [attr.d]="l.icon"/></svg>
@@ -22,28 +44,7 @@
           }
         </div>
       }
-    </section>
-
-    <section class="home-card xl:col-span-3" style="--tone:#16a34a" data-testid="home-today">
-      <div class="flex items-center gap-3">
-        <span class="home-eyebrow">{{ i18n.t('home.today') }}</span>
-        @if (versus(); as v) {
-          <div class="home-track" role="progressbar" [attr.aria-valuenow]="v.pct" aria-valuemin="0" aria-valuemax="100"><div class="home-fill" [class.is-behind]="!v.ahead" [style.width.%]="v.pct"></div></div>
-          <span class="home-vs" [class.is-behind]="!v.ahead" data-testid="home-vs" [attr.title]="i18n.t('home.vs')">{{ v.label }}</span>
-        }
-      </div>
-      <div class="grid grid-cols-2 gap-4 mt-4">
-        <div class="home-stat">
-          <p class="home-label"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l3 4v14H4V7l3-4zM4 7h16M9 12h6M9 16h4"/></svg>{{ i18n.t('home.sales') }}</p>
-          <p class="home-value" data-testid="home-today-sales">{{ tsh(todaySales()) }}</p>
-        </div>
-        <div class="home-stat">
-          <p class="home-label"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2l2.4 11h11l2-8H6"/></svg>{{ i18n.t('home.count') }}</p>
-          <p class="home-value" data-testid="home-today-count">{{ todayCount() ?? '—' }}</p>
-        </div>
-      </div>
-    </section>
-  </div>
+  </section>
 
   <!-- Cash, credit, expenses, the catalogue and what is running low -->
   <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -95,46 +96,52 @@
       </div>
     </section>
 
-    <!-- The best stylists and services, and the money received -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      @if (o.top_staff.length) {
-        <section class="home-card" style="--tone:#f59e0b" data-testid="home-top-staff">
-          <p class="home-title">{{ i18n.t('home.top.staff') }}</p>
-          <div class="mt-3 space-y-3">
-            @for (s of top(o.top_staff); track $index; let i = $index) {
-              <div [attr.data-testid]="'ov-staff-' + i">
-                <div class="flex items-baseline justify-between gap-2"><p class="home-rank"><b>{{ i + 1 }}</b> <span [class.is-muted]="!s.name.trim()">{{ s.name.trim() || i18n.t('home.nostylist') }}</span></p><p class="home-amount">{{ tsh(s.revenue) }}</p></div>
-                <div class="home-track thick"><div class="home-fill" [style.width.%]="bar(s.revenue, o.top_staff[0].revenue)"></div></div>
-              </div>
-            }
-          </div>
-        </section>
-      }
-      @if (o.top_services.length) {
-        <section class="home-card" style="--tone:#ec4899" data-testid="home-top-services">
-          <p class="home-title">{{ i18n.t('home.top.services') }}</p>
-          <div class="mt-3 space-y-3">
-            @for (s of top(o.top_services); track $index; let i = $index) {
-              <div [attr.data-testid]="'ov-service-' + i">
-                <div class="flex items-baseline justify-between gap-2"><p class="home-rank"><b>{{ i + 1 }}</b> {{ s.name }} <span class="home-times">· {{ i18n.t('home.times', s.times ?? 0) }}</span></p><p class="home-amount">{{ tsh(s.revenue) }}</p></div>
-                <div class="home-track thick"><div class="home-fill" [style.width.%]="bar(s.revenue, o.top_services[0].revenue)"></div></div>
-              </div>
-            }
-          </div>
-        </section>
-      }
-      @if (o.month.collections.length) {
-        <section class="home-card" style="--tone:#16a34a" data-testid="home-collections">
-          <p class="home-title">{{ i18n.t('home.received') }}</p>
-          <div class="mt-3 space-y-2">
-            @for (c of o.month.collections; track c.method) {
-              <div class="home-line" [attr.data-testid]="'ov-collect-' + c.method"><span>{{ channel(c.method) }}</span><b>{{ tsh(c.amount) }}</b></div>
-            }
-          </div>
-        </section>
-      }
-    </div>
   }
+
+  <!-- The best stylists and services, the money received and the month's figures (projected by the page): one section -->
+  <section class="home-card" style="--tone:#16a34a" data-testid="home-summary">
+    @if (overview(); as o) {
+      <div class="home-cols">
+        @if (o.top_staff.length) {
+          <div class="home-col" data-testid="home-top-staff">
+            <p class="home-title">{{ i18n.t('home.top.staff') }}</p>
+            <div class="mt-3 space-y-3">
+              @for (s of top(o.top_staff); track $index; let i = $index) {
+                <div [attr.data-testid]="'ov-staff-' + i">
+                  <div class="flex items-baseline justify-between gap-2"><p class="home-rank"><b>{{ i + 1 }}</b> <span [class.is-muted]="!s.name.trim()">{{ s.name.trim() || i18n.t('home.nostylist') }}</span></p><p class="home-amount">{{ tsh(s.revenue) }}</p></div>
+                  <div class="home-track thick" style="--tone:#f59e0b"><div class="home-fill" [style.width.%]="bar(s.revenue, o.top_staff[0].revenue)"></div></div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+        @if (o.top_services.length) {
+          <div class="home-col" data-testid="home-top-services">
+            <p class="home-title">{{ i18n.t('home.top.services') }}</p>
+            <div class="mt-3 space-y-3">
+              @for (s of top(o.top_services); track $index; let i = $index) {
+                <div [attr.data-testid]="'ov-service-' + i">
+                  <div class="flex items-baseline justify-between gap-2"><p class="home-rank"><b>{{ i + 1 }}</b> {{ s.name }} <span class="home-times">· {{ i18n.t('home.times', s.times ?? 0) }}</span></p><p class="home-amount">{{ tsh(s.revenue) }}</p></div>
+                  <div class="home-track thick" style="--tone:#ec4899"><div class="home-fill" [style.width.%]="bar(s.revenue, o.top_services[0].revenue)"></div></div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+        @if (o.month.collections.length) {
+          <div class="home-col" data-testid="home-collections">
+            <p class="home-title">{{ i18n.t('home.received') }}</p>
+            <div class="mt-3 space-y-2">
+              @for (c of o.month.collections; track c.method) {
+                <div class="home-line" [attr.data-testid]="'ov-collect-' + c.method"><span>{{ channel(c.method) }}</span><b>{{ tsh(c.amount) }}</b></div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+    <div class="home-figures"><ng-content /></div>
+  </section>
 </div>
 
 <style>
@@ -177,4 +184,12 @@
   .home-amount { font-size: 14px; font-weight: 900; color: #1a2f6e; white-space: nowrap; }
   .home-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 12px; background: #f6f8ff; font-size: 14px; font-weight: 700; color: #334155; }
   .home-line b { color: #1a2f6e; font-weight: 900; }
+  .home-links { display: flex; flex-wrap: nowrap; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #e6ecfb; overflow-x: auto; }
+  .home-links .home-chip { flex: 0 0 auto; white-space: nowrap; }
+  .home-today { padding-left: 0; }
+  @media (min-width: 1280px) { .home-today { padding-left: 28px; border-left: 1px solid #e6ecfb; } }
+  .home-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  @media (min-width: 1024px) { .home-cols { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0; } .home-col + .home-col { padding-left: 28px; margin-left: 28px; border-left: 1px solid #e6ecfb; } }
+  .home-figures:not(:empty) { margin-top: 18px; padding-top: 16px; border-top: 1px solid #e6ecfb; }
+  .home-figures:empty { display: none; }
 </style>
