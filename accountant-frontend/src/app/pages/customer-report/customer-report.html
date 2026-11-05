@@ -72,10 +72,11 @@
         </div>
       </div>
       @if (r.by_period.length) {
-        <div class="table-scroll-container">
-          <table class="premium-table">
+        <div class="table-scroll-container" style="border: 0; border-radius: 0;">
+          <table class="grid-table">
             <thead>
               <tr>
+                <th class="no-col">#</th>
                 <th>{{ i18n.t('crr.col.period') }}</th>
                 <th class="text-right">{{ i18n.t('crr.col.count') }}</th>
                 <th class="text-right">{{ i18n.t('crr.col.sales') }}</th>
@@ -84,8 +85,9 @@
               </tr>
             </thead>
             <tbody>
-              @for (p of r.by_period; track p.period) {
+              @for (p of r.by_period; track p.period; let i = $index) {
                 <tr [attr.data-testid]="'crr-row-' + p.period">
+                  <td class="no-col">{{ i + 1 }}</td>
                   <td>
                     <div class="font-black text-slate-900">{{ periodName(p.period) }}</div>
                     <div class="bar-track" style="max-width: 140px; margin-top: 4px;"><div class="bar-fill" [style.width.%]="barWidth(p.sales)"></div></div>
@@ -105,41 +107,105 @@
     </section>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-      <section class="section-card p-5">
-        <p class="label-eyebrow">{{ i18n.t('crr.top.eyebrow') }}</p>
-        <h3 class="text-slate-900 font-black text-base mb-2">{{ i18n.t('crr.top.title') }}</h3>
-        @for (p of r.top_products; track p.name) {
-          <div class="flex items-start justify-between gap-3 py-2 border-t border-slate-100 first:border-t-0" data-testid="crr-product">
-            <div class="min-w-0"><p class="font-bold text-slate-800">{{ p.name }}</p><p class="text-xs font-semibold text-slate-400">{{ p.qty }}</p></div>
-            <div class="text-right"><p class="font-black text-slate-800">{{ tsh(p.sales) }}</p>@if (profit() && p.profit !== null) { <p class="text-xs font-semibold text-emerald-600">{{ i18n.t('crr.profit.of', tsh(p.profit)) }}</p> }</div>
+      <section class="section-card overflow-hidden">
+        <div class="px-5 pt-5 pb-3">
+          <p class="label-eyebrow">{{ i18n.t('crr.top.eyebrow') }}</p>
+          <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.top.title') }}</h3>
+        </div>
+        @if (r.top_products.length) {
+          <div class="table-scroll-container" style="border: 0; border-radius: 0;">
+            <table class="grid-table">
+              <thead>
+                <tr>
+                  <th class="no-col">#</th>
+                  <th>{{ i18n.t('crr.col.product') }}</th>
+                  <th class="text-right">{{ i18n.t('crr.col.qty') }}</th>
+                  <th class="text-right">{{ i18n.t('crr.col.sales') }}</th>
+                  @if (profit()) { <th class="text-right">{{ i18n.t('crr.col.profit') }}</th> }
+                </tr>
+              </thead>
+              <tbody>
+                @for (p of r.top_products; track p.name; let i = $index) {
+                  <tr data-testid="crr-product">
+                    <td class="no-col">{{ i + 1 }}</td>
+                    <td class="font-bold text-slate-800">{{ p.name }}</td>
+                    <td class="text-right font-bold text-slate-600">{{ p.qty }}</td>
+                    <td class="text-right font-black">{{ tsh(p.sales) }}</td>
+                    @if (profit()) { <td class="text-right font-bold text-emerald-600">{{ p.profit !== null ? tsh(p.profit) : '—' }}</td> }
+                  </tr>
+                }
+              </tbody>
+            </table>
           </div>
-        } @empty {
-          <p class="text-sm text-slate-400 font-semibold">{{ i18n.t('crr.none') }}</p>
+        } @else {
+          <p class="text-sm text-slate-400 font-semibold px-5 pb-5">{{ i18n.t('crr.none') }}</p>
         }
       </section>
 
-      <section class="section-card p-5">
-        <p class="label-eyebrow">{{ i18n.t('crr.recent.eyebrow') }}</p>
-        <h3 class="text-slate-900 font-black text-base mb-2">{{ i18n.t('crr.recent.title') }}</h3>
-        @for (s of r.recent_sales; track s.id) {
-          <div class="flex items-start justify-between gap-3 py-2 border-t border-slate-100 first:border-t-0">
-            <div class="min-w-0"><p class="font-bold text-slate-800">{{ s.number }}</p><p class="text-xs font-semibold text-slate-400">{{ s.at }} · {{ s.status }}</p></div>
-            <div class="text-right"><p class="font-black text-slate-800">{{ tsh(s.total) }}</p><p class="text-xs font-semibold text-slate-400">{{ i18n.t('cr.st.paid', tsh(s.paid)) }}</p></div>
+      <section class="section-card overflow-hidden">
+        <div class="px-5 pt-5 pb-3">
+          <p class="label-eyebrow">{{ i18n.t('crr.recent.eyebrow') }}</p>
+          <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.recent.title') }}</h3>
+        </div>
+        @if (r.recent_sales.length) {
+          <div class="table-scroll-container" style="border: 0; border-radius: 0;">
+            <table class="grid-table">
+              <thead>
+                <tr>
+                  <th class="no-col">#</th>
+                  <th>{{ i18n.t('crr.col.number') }}</th>
+                  <th>{{ i18n.t('crr.col.date') }}</th>
+                  <th>{{ i18n.t('crr.col.status') }}</th>
+                  <th class="text-right">{{ i18n.t('crr.col.total') }}</th>
+                  <th class="text-right">{{ i18n.t('crr.col.paid') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (s of r.recent_sales; track s.id; let i = $index) {
+                  <tr>
+                    <td class="no-col">{{ i + 1 }}</td>
+                    <td class="font-bold text-slate-800">{{ s.number }}</td>
+                    <td class="text-slate-600">{{ s.at }}</td>
+                    <td class="text-slate-600">{{ s.status }}</td>
+                    <td class="text-right font-black">{{ tsh(s.total) }}</td>
+                    <td class="text-right font-bold text-emerald-600">{{ tsh(s.paid) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
           </div>
-        } @empty {
-          <p class="text-sm text-slate-400 font-semibold">{{ i18n.t('crr.none') }}</p>
+        } @else {
+          <p class="text-sm text-slate-400 font-semibold px-5 pb-5">{{ i18n.t('crr.none') }}</p>
         }
       </section>
     </div>
 
-    <section class="section-card p-5" data-testid="crr-life">
-      <p class="label-eyebrow">{{ i18n.t('crr.life.eyebrow') }}</p>
-      <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.life.title') }}</h3>
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3 text-sm">
-        <div><p class="label-eyebrow">{{ i18n.t('crr.life.sales') }}</p><p class="font-black text-slate-800" data-testid="crr-life-sales">{{ tsh(r.lifetime.sales) }}</p><p class="text-xs text-slate-400 font-semibold">{{ i18n.t('crr.kpi.purchases', r.lifetime.purchases) }}</p></div>
-        @if (profit() && r.lifetime.profit !== null) { <div><p class="label-eyebrow">{{ i18n.t('crr.life.profit') }}</p><p class="font-black text-emerald-600">{{ tsh(r.lifetime.profit) }}</p></div> }
-        @if (r.lifetime.first_purchase) { <div><p class="label-eyebrow">{{ i18n.t('crr.life.first') }}</p><p class="font-bold text-slate-700">{{ r.lifetime.first_purchase }}</p></div> }
-        @if (r.lifetime.last_purchase) { <div><p class="label-eyebrow">{{ i18n.t('crr.life.last') }}</p><p class="font-bold text-slate-700">{{ r.lifetime.last_purchase }}</p></div> }
+    <section class="section-card overflow-hidden" data-testid="crr-life">
+      <div class="px-5 pt-5 pb-3">
+        <p class="label-eyebrow">{{ i18n.t('crr.life.eyebrow') }}</p>
+        <h3 class="text-slate-900 font-black text-base">{{ i18n.t('crr.life.title') }}</h3>
+      </div>
+      <div class="table-scroll-container" style="border: 0; border-radius: 0;">
+        <table class="grid-table">
+          <thead>
+            <tr>
+              <th class="text-right">{{ i18n.t('crr.life.sales') }}</th>
+              <th class="text-right">{{ i18n.t('crr.col.count') }}</th>
+              @if (profit() && r.lifetime.profit !== null) { <th class="text-right">{{ i18n.t('crr.life.profit') }}</th> }
+              <th>{{ i18n.t('crr.life.first') }}</th>
+              <th>{{ i18n.t('crr.life.last') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-right font-black" data-testid="crr-life-sales">{{ tsh(r.lifetime.sales) }}</td>
+              <td class="text-right font-bold text-slate-600">{{ r.lifetime.purchases }}</td>
+              @if (profit() && r.lifetime.profit !== null) { <td class="text-right font-black text-emerald-600">{{ tsh(r.lifetime.profit) }}</td> }
+              <td class="font-bold text-slate-700">{{ r.lifetime.first_purchase || '—' }}</td>
+              <td class="font-bold text-slate-700">{{ r.lifetime.last_purchase || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
   }
