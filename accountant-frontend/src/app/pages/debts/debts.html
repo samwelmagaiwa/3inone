@@ -1,29 +1,24 @@
+<!-- The two views, the add button and the export, shown in the breadcrumb row at the top of the page -->
+<ng-template #headerBar>
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="flex flex-wrap gap-2" role="tablist">
+      <button type="button" role="tab" class="pill-tab" [class.is-active]="kind() === 'receivable'" [attr.aria-selected]="kind() === 'receivable'" (click)="setKind('receivable')" data-testid="tab-owed">
+        {{ i18n.t('debts.tab.owed') }}
+        @if (data().receivable; as d) { <span class="tab-total">{{ tsh(d.total) }}</span> }
+      </button>
+      <button type="button" role="tab" class="pill-tab" [class.is-active]="kind() === 'payable'" [attr.aria-selected]="kind() === 'payable'" (click)="setKind('payable')" data-testid="tab-owe">
+        {{ i18n.t('debts.tab.owe') }}
+        @if (data().payable; as d) { <span class="tab-total">{{ tsh(d.total) }}</span> }
+      </button>
+    </div>
+    <app-export-menu [build]="sheet" />
+    <button type="button" class="bar-cta" (click)="openAdd()" data-testid="debt-add">+ {{ i18n.t(kind() === 'receivable' ? 'debts.add.owed' : 'debts.add.owe') }}</button>
+  </div>
+</ng-template>
+
 <!-- Debts -->
 @for (k of [motion.tick()]; track k) {
-<div class="space-y-5 animate-fade-in-up">
-
-  <div class="page-header-card flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-    <div class="min-w-0">
-      <h1 class="text-slate-900 font-black text-xl tracking-tight">{{ i18n.t('debts.title') }}</h1>
-      <p class="text-slate-500 text-sm mt-0.5">{{ i18n.t('debts.sub') }}</p>
-    </div>
-    <button type="button" class="btn-primary big-btn shrink-0" (click)="openAdd()" data-testid="debt-add">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-      {{ i18n.t(kind() === 'receivable' ? 'debts.add.owed' : 'debts.add.owe') }}
-    </button>
-  </div>
-
-  <!-- Two tabs, large and plain -->
-  <div class="flex flex-wrap gap-2" role="tablist">
-    <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="kind() === 'receivable'" [attr.aria-selected]="kind() === 'receivable'" (click)="setKind('receivable')" data-testid="tab-owed">
-      {{ i18n.t('debts.tab.owed') }}
-      @if (data().receivable; as d) { <span class="tab-total">{{ tsh(d.total) }}</span> }
-    </button>
-    <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="kind() === 'payable'" [attr.aria-selected]="kind() === 'payable'" (click)="setKind('payable')" data-testid="tab-owe">
-      {{ i18n.t('debts.tab.owe') }}
-      @if (data().payable; as d) { <span class="tab-total">{{ tsh(d.total) }}</span> }
-    </button>
-  </div>
+<div class="space-y-2 animate-fade-in-up">
 
   @if (loading() && !current()) {
     <div class="skeleton-box" style="height: 130px; border-radius: 14px;"></div>
@@ -35,8 +30,8 @@
     </div>
   } @else if (current(); as c) {
 
-    <!-- Totals -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <!-- The three figures stay in view while the page scrolls under them -->
+    <div appStickyRow class="kpi-row grid grid-cols-1 sm:grid-cols-3 gap-4">
       <div class="kpi-card">
         <p class="label-eyebrow">{{ i18n.t(kind() === 'receivable' ? 'debts.total.owed' : 'debts.total.owe') }}</p>
         <h3 class="text-3xl font-black tracking-tight mt-2" style="color: #1a2f6e;" [appCountUp]="tsh(c.total)" data-testid="debts-total">{{ tsh(c.total) }}</h3>
@@ -54,33 +49,37 @@
     </div>
 
     <!-- The list -->
-    <section class="section-card overflow-hidden">
+    <section class="section-card overflow-clip">
       <app-table-toolbar [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('debts.search')" [count]="rows().length" [noun]="noun()" />
 
       @if (rows().length) {
-        <div class="table-scroll-container">
-          <table class="premium-table">
+        <app-list-bar [total]="rows().length" [page]="page()" [pageSize]="pageSize()" [pageSizes]="[10, 20, 50, 100]" (pageChange)="page.set($event)" (pageSizeChange)="pageSize.set($event); page.set(1)" />
+        <div class="table-scroll-container fit-page" style="border: 0; border-radius: 0;">
+          <table class="grid-table debts-table">
             <thead>
               <tr>
-                <th>{{ i18n.t('debts.col.name') }}</th>
-                <th class="text-right">{{ i18n.t('debts.col.amount') }}</th>
-                <th style="min-width: 150px;">{{ i18n.t('debts.col.left') }}</th>
-                <th>{{ i18n.t('debts.col.when') }}</th>
-                <th class="text-right">{{ i18n.t('debts.col.action') }}</th>
+                <th class="no-col">#</th>
+                <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'name'" (click)="sortBy('name')" [attr.title]="i18n.t('table.sort', i18n.t('debts.col.name'))">{{ i18n.t('debts.col.name') }} <span class="arrow">{{ arrow(sort(), 'name') }}</span></button></th>
+                <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'phone'" (click)="sortBy('phone')" [attr.title]="i18n.t('table.sort', i18n.t('debts.col.phone'))">{{ i18n.t('debts.col.phone') }} <span class="arrow">{{ arrow(sort(), 'phone') }}</span></button></th>
+                <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'amount'" (click)="sortBy('amount')" [attr.title]="i18n.t('table.sort', i18n.t('debts.col.amount'))">{{ i18n.t('debts.col.amount') }} <span class="arrow">{{ arrow(sort(), 'amount') }}</span></button></th>
+                <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'left'" (click)="sortBy('left')" [attr.title]="i18n.t('table.sort', i18n.t('debts.col.left'))">{{ i18n.t('debts.col.left') }} <span class="arrow">{{ arrow(sort(), 'left') }}</span></button></th>
+                <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'when'" (click)="sortBy('when')" [attr.title]="i18n.t('table.sort', i18n.t('debts.col.when'))">{{ i18n.t('debts.col.when') }} <span class="arrow">{{ arrow(sort(), 'when') }}</span></button></th>
+                <th class="text-right">{{ i18n.t('prod.col.actions') }}</th>
               </tr>
             </thead>
             <tbody>
-              @for (d of pageRows(); track d.id) {
+              @for (d of pageRows(); track d.id; let i = $index) {
                 <tr [attr.data-testid]="'debt-row-' + d.id">
+                  <td class="no-col">{{ (page() - 1) * pageSize() + i + 1 }}</td>
                   <td>
                     <div class="font-black text-slate-900">{{ d.name }}</div>
-                    @if (d.phone) { <div class="text-xs font-semibold text-slate-400">{{ d.phone }}</div> }
                     @if (d.note) { <div class="text-xs text-slate-500 mt-0.5">{{ d.note }}</div> }
                   </td>
+                  <td>{{ d.phone || '—' }}</td>
                   <td class="text-right font-bold">{{ tsh(d.amount) }}</td>
-                  <td>
+                  <td class="text-right">
                     <div class="font-black text-slate-900">{{ tsh(d.left) }}</div>
-                    <div class="mt-1 h-1.5 rounded-full bg-slate-200 overflow-hidden"><div class="h-full rounded-full" style="background:#10b981;" [style.width.%]="paidShare(d)"></div></div>
+                    <div class="mt-1 h-1.5 rounded-full bg-slate-200 overflow-hidden ml-auto" style="max-width: 120px;"><div class="h-full rounded-full" style="background:#10b981;" [style.width.%]="paidShare(d)"></div></div>
                   </td>
                   <td>
                     @if (late(d)) {
@@ -92,14 +91,13 @@
                     }
                   </td>
                   <td class="text-right">
-                    <button type="button" class="btn-primary row-btn" (click)="openPay(d)" [attr.data-testid]="'debt-pay-' + d.id">{{ i18n.t(kind() === 'receivable' ? 'debts.receive' : 'debts.pay') }}</button>
+                    <app-row-menu [items]="menuFor(d)" [testid]="'debt-menu-' + d.id" (picked)="menuPicked($event, d)" />
                   </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
-        <app-table-pagination [totalItems]="rows().length" [page]="page()" [pageSize]="pageSize()" (pageChange)="page.set($event)" (pageSizeChange)="pageSize.set($event); page.set(1)" />
       } @else {
         <div class="empty-state" data-testid="debts-empty">
           <span class="empty-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg></span>
@@ -195,9 +193,10 @@
 </app-modal-dialog>
 
 <style>
-  .big-btn { padding: 12px 22px; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
-  .big-tab { padding: 12px 22px; font-size: 14px; font-weight: 800; display: inline-flex; align-items: center; gap: 10px; }
-  .tab-total { font-size: 12px; font-weight: 900; padding: 2px 10px; border-radius: 99px; background: rgba(26,47,110,.1); }
+  .bar-cta { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 900; color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); box-shadow: 0 10px 20px -12px rgba(26,47,110,.8); cursor: pointer; }
+  .pill-tab { display: inline-flex; align-items: center; gap: 8px; }
+  .tab-total { font-size: 11px; font-weight: 900; padding: 1px 9px; border-radius: 99px; background: rgba(26,47,110,.1); }
   .pill-tab.is-active .tab-total { background: rgba(255,255,255,.22); }
-  .row-btn { padding: 8px 16px; font-size: 12px; }
+  .kpi-row { position: sticky; top: 0; z-index: 30; padding: 12px 0 4px; background: #f8fafc; }
+  .debts-table .no-col { width: 48px; text-align: center; color: #64748b; font-weight: 800; }
 </style>

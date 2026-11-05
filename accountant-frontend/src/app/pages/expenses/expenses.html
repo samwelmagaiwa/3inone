@@ -1,26 +1,19 @@
+<!-- The period, the export and the add button, shown in the breadcrumb row at the top of the page -->
+<ng-template #headerBar>
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="flex flex-wrap gap-2" role="tablist">
+      @for (p of periods; track p) {
+        <button type="button" role="tab" class="pill-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="setPeriod(p)" [attr.data-testid]="'period-' + p">{{ i18n.t('period.' + p) }}</button>
+      }
+    </div>
+    <app-export-menu [build]="sheet" />
+    @if (canAdd()) { <button type="button" class="bar-cta" (click)="openAdd()" data-testid="exp-add">+ {{ i18n.t('exp.add') }}</button> }
+  </div>
+</ng-template>
+
 <!-- Expenses -->
 @for (k of [motion.tick()]; track k) {
-<div class="space-y-5 animate-fade-in-up">
-
-  <div class="flex flex-wrap items-center justify-between gap-3">
-    <div class="min-w-0">
-      <h1 class="text-slate-900 font-black text-xl tracking-tight">{{ i18n.t('exp.title') }}</h1>
-      <p class="text-slate-500 text-sm mt-0.5">{{ i18n.t('exp.sub') }}</p>
-    </div>
-    @if (canAdd()) {
-      <button type="button" class="btn-primary big-btn shrink-0" (click)="openAdd()" data-testid="exp-add">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-        {{ i18n.t('exp.add') }}
-      </button>
-    }
-  </div>
-
-  <!-- Period -->
-  <div class="flex flex-wrap gap-2" role="tablist">
-    @for (p of periods; track p) {
-      <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="period() === p" [attr.aria-selected]="period() === p" (click)="setPeriod(p)" [attr.data-testid]="'period-' + p">{{ i18n.t('period.' + p) }}</button>
-    }
-  </div>
+<div class="space-y-2 animate-fade-in-up">
 
   @if (loading() && !summary()) {
     <div class="skeleton-box" style="height: 130px; border-radius: 14px;"></div>
@@ -32,7 +25,8 @@
     </div>
   } @else if (summary(); as s) {
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <!-- The three figures stay in view while the page scrolls under them -->
+    <div appStickyRow class="kpi-row grid grid-cols-1 sm:grid-cols-3 gap-4">
       <div class="kpi-card">
         <p class="label-eyebrow">{{ i18n.t('exp.kpi.business') }}</p>
         <h3 class="text-3xl font-black tracking-tight mt-2" style="color: #1a2f6e;" [appCountUp]="tsh(s.total_expenses)" data-testid="exp-business">{{ tsh(s.total_expenses) }}</h3>
@@ -65,48 +59,44 @@
       </section>
     }
 
-    <section class="section-card overflow-hidden">
+    <section class="section-card overflow-clip">
       <app-table-toolbar [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('exp.search')" [count]="rows().length" [noun]="noun()" />
 
       @if (rows().length) {
         <app-list-bar [total]="rows().length" [page]="page()" [pageSize]="pageSize()" [pageSizes]="[10, 20, 50, 100]" (pageChange)="page.set($event)" (pageSizeChange)="pageSize.set($event); page.set(1)" />
-        <div class="table-scroll-container" style="border: 0; border-radius: 0;">
-          <table class="grid-table">
+        <div class="table-scroll-container fit-page" style="border: 0; border-radius: 0;">
+          <table class="grid-table exp-table">
             <thead>
               <tr>
+                <th class="no-col">#</th>
                 <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'date'" (click)="sortBy('date')" [attr.title]="i18n.t('table.sort', i18n.t('exp.col.date'))">{{ i18n.t('exp.col.date') }} <span class="arrow">{{ arrow(sort(), 'date') }}</span></button></th>
                 <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'what'" (click)="sortBy('what')" [attr.title]="i18n.t('table.sort', i18n.t('exp.col.what'))">{{ i18n.t('exp.col.what') }} <span class="arrow">{{ arrow(sort(), 'what') }}</span></button></th>
+                <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'by'" (click)="sortBy('by')" [attr.title]="i18n.t('table.sort', i18n.t('exp.col.by'))">{{ i18n.t('exp.col.by') }} <span class="arrow">{{ arrow(sort(), 'by') }}</span></button></th>
                 <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'category'" (click)="sortBy('category')" [attr.title]="i18n.t('table.sort', i18n.t('exp.col.category'))">{{ i18n.t('exp.col.category') }} <span class="arrow">{{ arrow(sort(), 'category') }}</span></button></th>
                 <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'amount'" (click)="sortBy('amount')" [attr.title]="i18n.t('table.sort', i18n.t('exp.col.amount'))">{{ i18n.t('exp.col.amount') }} <span class="arrow">{{ arrow(sort(), 'amount') }}</span></button></th>
-                <th class="text-right"></th>
+                <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'status'" (click)="sortBy('status')" [attr.title]="i18n.t('table.sort', i18n.t('exp.col.status'))">{{ i18n.t('exp.col.status') }} <span class="arrow">{{ arrow(sort(), 'status') }}</span></button></th>
+                <th class="text-right">{{ i18n.t('prod.col.actions') }}</th>
               </tr>
             </thead>
             <tbody>
-              @for (e of pageRows(); track e.id) {
+              @for (e of pageRows(); track e.id; let i = $index) {
                 <tr [attr.data-testid]="'exp-row-' + e.id">
+                  <td class="no-col">{{ (page() - 1) * pageSize() + i + 1 }}</td>
                   <td class="font-bold text-slate-600">{{ dayLabel(e.expense_date) }}</td>
-                  <td>
-                    <div class="font-black text-slate-900">{{ e.description }}</div>
-                    @if (e.created_by_name) { <div class="text-xs font-semibold text-slate-400">{{ e.created_by_name }}</div> }
-                  </td>
+                  <td class="font-black text-slate-900">{{ e.description }}</td>
+                  <td>{{ e.created_by_name || '—' }}</td>
                   <td>
                     <span class="font-bold text-slate-700">{{ categoryName(e.category) }}</span>
                     @if (isPersonal(e)) { <span class="pill-inactive ml-2">{{ i18n.t('exp.personal.tag') }}</span> }
-                    @if (e.status === 'pending') { <span class="pill-critical ml-2">{{ i18n.t('exp.pending') }}</span> }
                   </td>
                   <td class="text-right font-black">{{ tsh(e.amount) }}</td>
+                  <td>
+                    @if (e.status === 'pending') { <span class="pill-critical">{{ i18n.t('exp.pending') }}</span> }
+                    @else if (e.status === 'rejected') { <span class="pill-critical">{{ i18n.t('exp.state.rejected') }}</span> }
+                    @else { <span class="status-ok">{{ i18n.t('exp.state.approved') }}</span> }
+                  </td>
                   <td class="text-right">
-                    @if (e.receipt_url) { <a class="icon-del" [href]="e.receipt_url" target="_blank" rel="noopener" [title]="i18n.t('exp.receipt.view')" [attr.aria-label]="i18n.t('exp.receipt.view')">&#128206;</a> }
-                    @if (e.status === 'pending' && canDecide()) {
-                      <button type="button" class="status-ok" (click)="decide(e, 'approve')" [attr.data-testid]="'exp-approve-' + e.id">{{ i18n.t('exp.approve') }}</button>
-                      <button type="button" class="icon-del" (click)="decide(e, 'reject')" [attr.data-testid]="'exp-reject-' + e.id">{{ i18n.t('exp.reject') }}</button>
-                    }
-                    @if (canAdd()) {
-                      <button type="button" class="icon-del" (click)="openEdit(e)" [title]="i18n.t('exp.edit')" [attr.aria-label]="i18n.t('exp.edit')" [attr.data-testid]="'exp-edit-' + e.id">&#9998;</button>
-                      <button type="button" class="icon-del" (click)="remove(e)" [title]="i18n.t('common.delete')" [attr.aria-label]="i18n.t('common.delete')" [attr.data-testid]="'exp-del-' + e.id">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                      </button>
-                    }
+                    @if (menuFor(e).length) { <app-row-menu [items]="menuFor(e)" [testid]="'exp-menu-' + e.id" (picked)="menuPicked($event, e)" /> }
                   </td>
                 </tr>
               }
@@ -193,4 +183,7 @@
   .icon-del { padding: 8px; border-radius: 8px; color: #94a3b8; cursor: pointer; }
   .status-ok { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; color: #fff; background: #059669; cursor: pointer; margin-right: 4px; }
   .icon-del:hover { color: #dc2626; background: #fef2f2; }
+  .bar-cta { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 900; color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); box-shadow: 0 10px 20px -12px rgba(26,47,110,.8); cursor: pointer; }
+  .kpi-row { position: sticky; top: 0; z-index: 30; padding: 12px 0 4px; background: #f8fafc; }
+  .exp-table .no-col { width: 48px; text-align: center; color: #64748b; font-weight: 800; }
 </style>

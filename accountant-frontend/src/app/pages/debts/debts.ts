@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 
@@ -7,10 +7,17 @@ import { dayLabel, offline, parseAmount, serverMessage, today, tsh } from '../..
 import { I18nService } from '../../core/i18n.service';
 import { Debt, DebtKind, DebtPayment, DebtsListing } from '../../core/models';
 import { ConfirmService } from '../../core/services/confirm.service';
+import { CapabilitiesService } from '../../core/capabilities.service';
+import { ExportSheet } from '../../core/export';
+import { HeaderSlotService } from '../../core/services/header-slot.service';
+import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
 import { MotionService } from '../../core/services/motion.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
-import { TablePaginationComponent } from '../../shared/components/table-pagination/table-pagination';
+import { ExportMenuComponent } from '../../shared/components/export-menu/export-menu';
+import { ListBarComponent } from '../../shared/components/list-bar/list-bar';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
+import { StickyRowDirective } from '../../shared/ui/sticky-row.directive';
 import { TableToolbarComponent } from '../../shared/components/table-toolbar/table-toolbar';
 import { BsDateDirective } from '../../shared/ui/bs-date.directive';
 import { CountUpDirective } from '../../shared/ui/count-up.directive';
@@ -23,15 +30,20 @@ import { MoneyDirective } from '../../shared/ui/money.directive';
  */
 @Component({
   selector: 'app-debts',
-  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, TablePaginationComponent, BsDateDirective, CountUpDirective, MoneyDirective],
+  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, ListBarComponent, RowMenuComponent, ExportMenuComponent, StickyRowDirective, BsDateDirective, CountUpDirective, MoneyDirective],
   templateUrl: './debts.html',
 })
-export class DebtsPage implements OnInit {
+export class DebtsPage implements OnInit, AfterViewInit, OnDestroy {
   private readonly api = inject(AccountantApi);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   protected readonly i18n = inject(I18nService);
   protected readonly motion = inject(MotionService);
+  private readonly slot = inject(HeaderSlotService);
+  private readonly caps = inject(CapabilitiesService);
+
+  /** The two views, the add button and the export live in the breadcrumb row at the top of the page; this page hands them over. */
+  @ViewChild('headerBar', { static: true }) private headerBar!: TemplateRef<unknown>;
 
   protected readonly kind = signal<DebtKind>('receivable');
   protected readonly data = signal<Partial<Record<DebtKind, DebtsListing>>>({});
@@ -49,8 +61,17 @@ export class DebtsPage implements OnInit {
   protected readonly rows = computed(() => {
     const q = this.query().toLowerCase().trim();
     const all = this.current()?.debts ?? [];
-    return q ? all.filter((d) => `${d.name} ${d.phone ?? ''} ${d.note ?? ''}`.toLowerCase().includes(q)) : all;
+    const found = q ? all.filter((d) => `${d.name} ${d.phone ?? ''} ${d.note ?? ''}`.toLowerCase().includes(q)) : all;
+
+    return sorted(found, this.sort(), (d, k) => (k === 'name' ? d.name : k === 'phone' ? (d.phone ?? '') : k === 'amount' ? d.amount : k === 'left' ? d.left : d.due_on ?? d.started_on));
   });
+  protected readonly sort = signal<SortState | null>(null);
+  protected readonly arrow = sortArrow;
+
+  protected sortBy(key: string): void {
+    this.sort.update((c) => nextSort(c, key));
+    this.page.set(1);
+  }
   protected readonly pageRows = computed(() => {
     const size = this.pageSize();
     const start = (this.page() - 1) * size;
@@ -78,6 +99,58 @@ export class DebtsPage implements OnInit {
   ngOnInit(): void {
     void this.load();
   }
+
+  ngAfterViewInit(): void {
+    queueMicrotask(() => this.slot.show(this.headerBar));
+  }
+
+  ngOnDestroy(): void {
+    this.slot.clear(this.headerBar);
+  }
+
+  // ------------------------------------------------------------------ the menu of a row, and the export
+  protected menuFor(d: Debt): MenuItem[] {
+    return [{ id: 'pay', label: this.i18n.t(this.kind() === 'receivable' ? 'debts.receive' : 'debts.pay'), primary: true, testid: 'debt-pay-' + d.id }];
+  }
+
+  protected menuPicked(id: string, d: Debt): void {
+    if (id === 'pay') this.openPay(d);
+  }
+
+  /** The list as it is on the page now (the tab, the search), with the totals: what is printed or saved. */
+  protected readonly sheet = (): ExportSheet => {
+    const owed = this.kind() === 'receivable';
+    const c = this.current();
+    const rows = this.rows();
+    const status = (d: Debt): string => (this.late(d) ? this.i18n.t('debts.late', d.days_late) : d.due_on ? this.i18n.t('debts.due', dayLabel(d.due_on)) : this.i18n.t('debts.since', dayLabel(d.started_on)));
+    const sum = (f: (d: Debt) => number): number => rows.reduce((n, d) => n + f(d), 0);
+
+    return {
+      business: this.caps.receiptHeader().business,
+      title: this.i18n.t(owed ? 'debts.tab.owed' : 'debts.tab.owe'),
+      facts: [
+        this.i18n.t('export.date', dayLabel(today())),
+        `${this.i18n.t(owed ? 'debts.total.owed' : 'debts.total.owe')}: ${tsh(c?.total ?? 0)}`,
+        `${this.i18n.t('debts.old')}: ${tsh(c?.old ?? 0)}`,
+        `${rows.length} ${this.noun()}`,
+      ],
+      columns: [
+        { label: '#', align: 'center', width: 6 },
+        { label: this.i18n.t('debts.col.name'), width: 28 },
+        { label: this.i18n.t('debts.col.phone'), width: 16 },
+        { label: this.i18n.t('debts.form.note'), width: 28 },
+        { label: this.i18n.t('debts.form.started'), width: 14 },
+        { label: this.i18n.t('debts.form.due'), width: 14 },
+        { label: this.i18n.t('debts.col.amount'), type: 'money', align: 'right', width: 16 },
+        { label: this.i18n.t('debts.col.paid'), type: 'money', align: 'right', width: 16 },
+        { label: this.i18n.t('debts.col.left'), type: 'money', align: 'right', width: 16 },
+        { label: this.i18n.t('debts.col.when'), width: 20 },
+      ],
+      rows: rows.map((d, i) => [i + 1, d.name, d.phone ?? '', d.note ?? '', dayLabel(d.started_on), d.due_on ? dayLabel(d.due_on) : '', d.amount, d.amount - d.left, d.left, status(d)]),
+      totals: [null, this.i18n.t('export.total'), null, null, null, null, sum((d) => d.amount), sum((d) => d.amount - d.left), sum((d) => d.left), null],
+      footer: this.caps.receiptHeader().business,
+    };
+  };
 
   protected async load(): Promise<void> {
     this.loading.set(true);

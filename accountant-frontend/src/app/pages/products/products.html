@@ -280,11 +280,17 @@
           <input id="pRebook" name="pRebook" class="modal-input" inputmode="numeric" [(ngModel)]="fRebook" autocomplete="off" [placeholder]="i18n.t('ph.days')">
         </div>
       </div>
+    }
+
+    @if (fIsService) {
+      <!-- Two sides: what is paid (commission, price options) on the left, who does it and the package on the right -->
+      <div class="md:col-span-2 lg:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5" data-testid="prod-service-sides">
+        <div class="space-y-4" data-testid="prod-side-left">
       <label class="flex items-center gap-3 text-sm font-bold text-slate-700 cursor-pointer">
         <input type="checkbox" name="pCommissionOn" [(ngModel)]="fCommissionOn" data-testid="prod-commission-on"> {{ i18n.t('prod.form.commission.on') }}
       </label>
       @if (fCommissionOn) {
-        <div class="contents">
+        <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="modal-label" for="pCommission">{{ i18n.t('prod.form.commission') }}</label>
             <input id="pCommission" name="pCommission" class="modal-input" inputmode="decimal" [(ngModel)]="fCommission" autocomplete="off" data-testid="prod-commission" [placeholder]="i18n.t('ph.percent')">
@@ -295,22 +301,21 @@
           </div>
         </div>
       }
-      <div class="md:col-span-2 lg:col-span-3">
+      <div>
         <p class="modal-label">{{ i18n.t('prod.form.options') }}</p>
         <p class="text-xs text-slate-400 font-semibold mb-2">{{ i18n.t('prod.form.options.hint') }}</p>
         @for (o of fOptions(); track $index) {
-          <div class="flex gap-2 mb-2">
-            <input class="modal-input flex-1" [attr.data-testid]="'opt-label-' + $index" [ngModel]="o.label" (ngModelChange)="setOption($index, 'label', $event)" [placeholder]="i18n.t('prod.form.options.label')" autocomplete="off">
-            <input appMoney class="modal-input w-36" [attr.data-testid]="'opt-price-' + $index" inputmode="numeric" [ngModel]="o.price" (ngModelChange)="setOption($index, 'price', $event)" [placeholder]="i18n.t('prod.form.options.price')" autocomplete="off">
+          <div class="opt-row">
+            <input class="modal-input" [attr.data-testid]="'opt-label-' + $index" [ngModel]="o.label" (ngModelChange)="setOption($index, 'label', $event)" [placeholder]="i18n.t('prod.form.options.label')" autocomplete="off">
+            <input appMoney class="modal-input" [attr.data-testid]="'opt-price-' + $index" inputmode="numeric" [ngModel]="o.price" (ngModelChange)="setOption($index, 'price', $event)" [placeholder]="i18n.t('prod.form.options.price')" autocomplete="off">
             <button type="button" class="icon-del" (click)="removeOption($index)" [attr.aria-label]="i18n.t('common.delete')">&times;</button>
           </div>
         }
         @if (fOptions().length < 10) { <button type="button" class="btn-outline" (click)="addOption()" data-testid="prod-add-option">{{ i18n.t('prod.form.options.add') }}</button> }
       </div>
-    }
-
-    @if (fIsService) {
-      <div class="md:col-span-2 lg:col-span-3">
+        </div>
+        <div class="space-y-4" data-testid="prod-side-right">
+      <div>
         <p class="modal-label">{{ i18n.t('prod.form.staff') }}</p>
         <p class="text-xs text-slate-400 font-semibold mb-2">{{ i18n.t('prod.form.staff.hint') }}</p>
         <div class="flex flex-wrap gap-2">
@@ -320,14 +325,14 @@
         </div>
       </div>
 
-      <div class="space-y-3 md:col-span-2 lg:col-span-3">
+      <div class="space-y-3">
         <label class="flex items-center gap-3 text-sm font-bold text-slate-700 cursor-pointer">
           <input type="checkbox" name="pIsPackage" [(ngModel)]="fIsPackage" data-testid="prod-is-package">
           <span>{{ i18n.t('prod.form.package') }}<span class="block text-xs font-semibold text-slate-400">{{ i18n.t('prod.form.package.hint') }}</span></span>
         </label>
         @if (fIsPackage) {
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
+          <div class="grid grid-cols-2 gap-3">
+          <div class="col-span-2">
             <label class="modal-label" for="pPkgService">{{ i18n.t('prod.form.package.service') }}</label>
             <select id="pPkgService" name="pPkgService" class="modal-input" [(ngModel)]="fPkgService" data-testid="prod-pkg-service">
               <option value="">{{ i18n.t('prod.form.none') }}</option>
@@ -348,6 +353,9 @@
         }
       </div>
 
+        </div>
+      </div>
+
       @if (editing(); as svc) {
         <button type="button" class="btn-outline md:col-span-2 lg:col-span-3" (click)="openMaterials(svc)" data-testid="prod-materials">{{ i18n.t('prod.mat.open') }}</button>
       } @else {
@@ -355,10 +363,7 @@
       }
     }
 
-    <div class="contents">
-    </div>
-
-    <div class="md:col-span-2 lg:col-span-3">
+        <div class="md:col-span-2 lg:col-span-3">
       <label class="modal-label" for="pDesc">{{ i18n.t('prod.form.desc') }}</label>
       <textarea id="pDesc" name="pDesc" rows="2" class="modal-input" [(ngModel)]="fDesc" maxlength="1000" [placeholder]="i18n.t('ph.desc')"></textarea>
     </div>
@@ -440,4 +445,10 @@
 <style>
   .big-btn { padding: 12px 22px; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
   .big-tab { padding: 12px 22px; font-size: 14px; font-weight: 800; }
+</style>
+
+<style>
+  /* one price option: the name takes what is left, the price a fixed small box, then the remove button */
+  .opt-row { display: grid; grid-template-columns: minmax(0, 1fr) 9rem 2rem; gap: 8px; align-items: center; margin-bottom: 8px; }
+  @media (max-width: 480px) { .opt-row { grid-template-columns: minmax(0, 1fr) 7rem 2rem; } }
 </style>

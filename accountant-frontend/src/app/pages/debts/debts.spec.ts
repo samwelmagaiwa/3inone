@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../../environments/environment';
 import { Debt, DebtKind } from '../../core/models';
-import { byTestId, configure, settle, text, toasts, type } from '../../testing';
+import { byTestId, configure, mountSlot, settle, text, toasts, type } from '../../testing';
 import { DebtsPage } from './debts';
 
 const debt = (over: Partial<Debt> = {}): Debt => ({
@@ -18,6 +18,7 @@ async function open(who = {}) {
   const owed = [debt(), debt({ id: 2, name: 'Baba Juma', phone: null, amount: 20000, paid: 10000, left: 10000, due_on: null, days_late: 0, note: null })];
   h.http.expectOne((r) => r.url.endsWith('/opening-debts') && r.params.get('kind') === 'receivable').flush(page('receivable', owed, 460000, 360000));
   h.http.expectOne((r) => r.url.endsWith('/opening-debts') && r.params.get('kind') === 'payable').flush(page('payable', [], 0));
+  await mountSlot(fixture);
   await settle(fixture);
 
   return { h, fixture, el: fixture.nativeElement as HTMLElement };
@@ -130,6 +131,8 @@ describe('debts', () => {
   describe('taking a payment', () => {
     async function openPay(id: number) {
       const o = await open();
+      byTestId(o.el, `debt-menu-${id}`)!.click();
+      TestBed.tick();
       byTestId(o.el, `debt-pay-${id}`)!.click();
       o.h.http.expectOne((r) => r.url.endsWith(`/opening-debts/${id}/payments`)).flush({ data: id === 2 ? [{ id: 9, amount: 10000, method: 'cash', paid_on: '2026-10-15' }] : [] });
       await settle(o.fixture);

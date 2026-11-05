@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { Expense, ExpenseSummary } from '../../core/models';
-import { byTestId, configure, settle, text, toasts, type } from '../../testing';
+import { byTestId, configure, mountSlot, settle, text, toasts, type } from '../../testing';
 import { ExpensesPage } from './expenses';
 
 const rows: Expense[] = [
@@ -22,6 +22,7 @@ async function open(who = {}) {
   h.http.expectOne((r) => r.url.endsWith('/expenses/categories')).flush({ data: ['rent', 'transport', 'drawings', 'family', 'other'] });
   h.http.expectOne((r) => r.url.endsWith('/expenses') && r.params.get('period') === 'custom').flush({ data: rows });
   h.http.expectOne((r) => r.url.endsWith('/expenses/summary')).flush({ data: summary });
+  await mountSlot(fixture);
   await settle(fixture);
 
   return { h, fixture, el: fixture.nativeElement as HTMLElement };
@@ -172,15 +173,36 @@ describe('expenses', () => {
     expect(byTestId(el, 'exp-row-1')).not.toBeNull();
   });
 
+  it('exports the list: print opens a page with every expense and the total', async () => {
+    const { fixture, el } = await open();
+    let html = '';
+    const win = { document: { write: (h: string) => (html += h), close: () => undefined } };
+    const spy = vi.spyOn(window, 'open').mockReturnValue(win as unknown as Window);
+    byTestId(el, 'export-menu')!.click();
+    TestBed.tick();
+    byTestId(el, 'export-print')!.click();
+    await settle(fixture);
+    spy.mockRestore();
+
+    expect(html).toContain('Shop rent');
+    expect(html).toContain('Expenses');
+    expect(html).toContain('class="total"');
+    expect(html).toContain('TSH 160,000'); // 100,000 + 40,000 + 20,000
+  });
+
   it('delete asks first; the server\'s refusal (not your own expense) is shown as a message', async () => {
     const { h, fixture, el } = await open();
 
     h.confirmAnswer.value = false;
+    byTestId(el, 'exp-menu-1')!.click();
+    TestBed.tick();
     byTestId(el, 'exp-del-1')!.click();
     await settle(fixture);
     h.http.expectNone((r) => r.method === 'DELETE');
 
     h.confirmAnswer.value = true;
+    byTestId(el, 'exp-menu-1')!.click();
+    TestBed.tick();
     byTestId(el, 'exp-del-1')!.click();
     await settle(fixture);
     h.http.expectOne((r) => r.method === 'DELETE' && r.url.endsWith('/expenses/1')).flush({ message: 'You can only delete your own expenses.' }, { status: 403, statusText: 'Forbidden' });

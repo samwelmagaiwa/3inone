@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 
@@ -9,11 +9,17 @@ import { I18nService } from '../../core/i18n.service';
 import { Expense, ExpenseSummary } from '../../core/models';
 import { PAYMENT_CHANNELS } from '../../core/till.service';
 import { ConfirmService } from '../../core/services/confirm.service';
+import { CapabilitiesService } from '../../core/capabilities.service';
+import { ExportSheet } from '../../core/export';
+import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { MotionService } from '../../core/services/motion.service';
 import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
 import { ToastService } from '../../core/services/toast.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { ExportMenuComponent } from '../../shared/components/export-menu/export-menu';
 import { ListBarComponent } from '../../shared/components/list-bar/list-bar';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
+import { StickyRowDirective } from '../../shared/ui/sticky-row.directive';
 import { TableToolbarComponent } from '../../shared/components/table-toolbar/table-toolbar';
 import { BsDateDirective } from '../../shared/ui/bs-date.directive';
 import { BsSelectDirective } from '../../shared/ui/bs-select.directive';
@@ -31,16 +37,21 @@ const PERSONAL_CATEGORIES = ['drawings', 'family'];
  */
 @Component({
   selector: 'app-expenses',
-  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, ListBarComponent, BsDateDirective, BsSelectDirective, CountUpDirective, MoneyDirective],
+  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, ListBarComponent, RowMenuComponent, ExportMenuComponent, StickyRowDirective, BsDateDirective, BsSelectDirective, CountUpDirective, MoneyDirective],
   templateUrl: './expenses.html',
 })
-export class ExpensesPage implements OnInit {
+export class ExpensesPage implements OnInit, AfterViewInit, OnDestroy {
   private readonly api = inject(AccountantApi);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   protected readonly auth = inject(AuthService);
   protected readonly i18n = inject(I18nService);
   protected readonly motion = inject(MotionService);
+  private readonly slot = inject(HeaderSlotService);
+  private readonly caps = inject(CapabilitiesService);
+
+  /** The period, the export and the add button live in the breadcrumb row at the top of the page; this page hands them over. */
+  @ViewChild('headerBar', { static: true }) private headerBar!: TemplateRef<unknown>;
 
   protected readonly period = signal<Period>('month');
   protected readonly periods: Period[] = ['today', 'week', 'month', 'year'];
@@ -68,7 +79,7 @@ export class ExpensesPage implements OnInit {
     const all = this.rowsAll();
     const found = q ? all.filter((e) => `${e.description} ${this.categoryName(e.category)} ${e.created_by_name ?? ''}`.toLowerCase().includes(q)) : all;
 
-    return sorted(found, this.sort(), (e, k) => (k === 'date' ? e.expense_date : k === 'what' ? e.description : k === 'category' ? this.categoryName(e.category) : e.amount));
+    return sorted(found, this.sort(), (e, k) => (k === 'date' ? e.expense_date : k === 'what' ? e.description : k === 'by' ? (e.created_by_name ?? '') : k === 'category' ? this.categoryName(e.category) : k === 'status' ? (e.status ?? 'approved') : e.amount));
   });
   protected readonly sort = signal<SortState | null>(null);
   protected readonly arrow = sortArrow;
@@ -103,6 +114,71 @@ export class ExpensesPage implements OnInit {
     void this.loadCategories();
     void this.load();
   }
+
+  ngAfterViewInit(): void {
+    queueMicrotask(() => this.slot.show(this.headerBar));
+  }
+
+  ngOnDestroy(): void {
+    this.slot.clear(this.headerBar);
+  }
+
+  // ------------------------------------------------------------------ the menu of a row, and the export
+  protected menuFor(e: Expense): MenuItem[] {
+    const items: MenuItem[] = [];
+    if (e.receipt_url) items.push({ id: 'receipt', label: this.i18n.t('exp.receipt.view'), href: e.receipt_url, testid: 'exp-receipt-' + e.id });
+    if (e.status === 'pending' && this.canDecide()) {
+      items.push({ id: 'approve', label: this.i18n.t('exp.approve'), primary: true, testid: 'exp-approve-' + e.id });
+      items.push({ id: 'reject', label: this.i18n.t('exp.reject'), danger: true, testid: 'exp-reject-' + e.id });
+    }
+    if (this.canAdd()) {
+      items.push({ id: 'edit', label: this.i18n.t('exp.edit'), testid: 'exp-edit-' + e.id });
+      items.push({ id: 'delete', label: this.i18n.t('common.delete'), danger: true, testid: 'exp-del-' + e.id });
+    }
+
+    return items;
+  }
+
+  protected menuPicked(id: string, e: Expense): void {
+    if (id === 'approve' || id === 'reject') void this.decide(e, id);
+    else if (id === 'edit') this.openEdit(e);
+    else if (id === 'delete') void this.remove(e);
+  }
+
+  protected statusText(e: Expense): string {
+    return this.i18n.t(e.status === 'pending' ? 'exp.pending' : e.status === 'rejected' ? 'exp.state.rejected' : 'exp.state.approved');
+  }
+
+  /** The list as it is on the page now (the period, the search, the order), with the totals: what is printed or saved. */
+  protected readonly sheet = (): ExportSheet => {
+    const rows = this.rows();
+    const s = this.summary();
+    const [from, to] = this.range(this.period());
+
+    return {
+      business: this.caps.receiptHeader().business,
+      title: this.i18n.t('exp.title'),
+      facts: [
+        `${this.i18n.t('period.' + this.period())}: ${dayLabel(from)} – ${dayLabel(to)}`,
+        `${this.i18n.t('exp.kpi.business')}: ${tsh(s?.total_expenses ?? 0)}`,
+        `${this.i18n.t('exp.kpi.personal')}: ${tsh(s?.personal_total ?? 0)}`,
+        `${rows.length} ${this.noun()}`,
+      ],
+      columns: [
+        { label: '#', align: 'center', width: 6 },
+        { label: this.i18n.t('exp.col.date'), width: 13 },
+        { label: this.i18n.t('exp.col.what'), width: 34 },
+        { label: this.i18n.t('exp.col.by'), width: 20 },
+        { label: this.i18n.t('exp.col.category'), width: 18 },
+        { label: this.i18n.t('exp.col.type'), width: 12 },
+        { label: this.i18n.t('exp.col.status'), width: 16 },
+        { label: this.i18n.t('exp.col.amount'), type: 'money', align: 'right', width: 16 },
+      ],
+      rows: rows.map((e, i) => [i + 1, dayLabel(e.expense_date), e.description, e.created_by_name ?? '', this.categoryName(e.category), this.i18n.t(this.isPersonal(e) ? 'exp.personal.tag' : 'exp.business.tag'), this.statusText(e), e.amount]),
+      totals: [null, this.i18n.t('export.total'), null, null, null, null, null, rows.reduce((n, e) => n + e.amount, 0)],
+      footer: this.caps.receiptHeader().business,
+    };
+  };
 
   /** The dates the period covers, on this computer's calendar. */
   private range(p: Period): [string, string] {
