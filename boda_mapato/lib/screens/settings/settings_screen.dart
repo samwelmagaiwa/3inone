@@ -45,10 +45,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isSuperAdmin = user?.isSuperAdmin ?? false;
     final isAdmin = user?.isAdmin ?? false;
     final loc = _localizationService;
-    // Staff and owners belong to a business and see its details; drivers, tenants and fundis are the
-    // business's customers and have no use for them here.
+    // The business's details and its subscription (plan, payments) are the owner's: staff, accountants included, do not see them here.
     final belongsToBusiness = user?.business != null &&
-        !const <String>['driver', 'tenant', 'vendor'].contains(user!.role);
+        user!.isBusinessOwner &&
+        !const <String>['driver', 'tenant', 'vendor'].contains(user.role);
 
     return Scaffold(
       backgroundColor: ThemeConstants.primaryBlue,
@@ -60,7 +60,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Profile Card ───────────────────────────────────────────
-              ThemeConstants.buildGlassCard(
+              SizedBox(
+                width: double.infinity,
+                child: ThemeConstants.buildGlassCard(
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
@@ -191,6 +193,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
+              ),
               ),
 
               // ── The business this person works for ──────────────────────
