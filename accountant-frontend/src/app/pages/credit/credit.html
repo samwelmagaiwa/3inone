@@ -1,3 +1,4 @@
+<!-- The two views, shown in the breadcrumb row at the top of the page -->
 <ng-template #tabsTpl>
 <div class="flex flex-wrap gap-2" role="tablist">
       <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="tab() === 'customers'" [attr.aria-selected]="tab() === 'customers'" (click)="tab.set('customers')" data-testid="cr-tab-customers">{{ i18n.t('cr.tab.customers') }}</button>
@@ -19,24 +20,26 @@
     </div>
   } @else {
 
-    <!-- The three figures stay in view while the page scrolls under them -->
-    <div appStickyRow class="kpi-row grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div class="kpi-card">
-        <p class="label-eyebrow">{{ i18n.t('cr.kpi.owed') }}</p>
-        <h3 class="text-3xl font-black tracking-tight mt-2" style="color: #1a2f6e;" data-testid="cr-total">{{ tsh(totalOwed()) }}</h3>
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('cr.kpi.owed.hint') }}</p>
+    @if (tab() === 'customers') {
+      <!-- The three figures stay in view while the page scrolls under them -->
+      <div appStickyRow class="kpi-row grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="kpi-card">
+          <p class="label-eyebrow">{{ i18n.t('cr.kpi.owed') }}</p>
+          <h3 class="text-3xl font-black tracking-tight mt-2" style="color: #1a2f6e;" data-testid="cr-total">{{ tsh(totalOwed()) }}</h3>
+          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('cr.kpi.owed.hint') }}</p>
+        </div>
+        <div class="kpi-card">
+          <p class="label-eyebrow">{{ i18n.t('cr.kpi.owing') }}</p>
+          <h3 class="text-2xl font-black tracking-tight mt-2 text-slate-800" data-testid="cr-owing">{{ owingCount() }}</h3>
+          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('cr.kpi.owing.hint') }}</p>
+        </div>
+        <div class="kpi-card">
+          <p class="label-eyebrow">{{ i18n.t('cr.kpi.watch') }}</p>
+          <h3 class="text-2xl font-black tracking-tight mt-2" [style.color]="watchCount() ? '#dc2626' : '#059669'" data-testid="cr-watch">{{ watchCount() }}</h3>
+          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('cr.kpi.watch.hint') }}</p>
+        </div>
       </div>
-      <div class="kpi-card">
-        <p class="label-eyebrow">{{ i18n.t('cr.kpi.owing') }}</p>
-        <h3 class="text-2xl font-black tracking-tight mt-2 text-slate-800" data-testid="cr-owing">{{ owingCount() }}</h3>
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('cr.kpi.owing.hint') }}</p>
-      </div>
-      <div class="kpi-card">
-        <p class="label-eyebrow">{{ i18n.t('cr.kpi.watch') }}</p>
-        <h3 class="text-2xl font-black tracking-tight mt-2" [style.color]="watchCount() ? '#dc2626' : '#059669'" data-testid="cr-watch">{{ watchCount() }}</h3>
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('cr.kpi.watch.hint') }}</p>
-      </div>
-    </div>
+    }
 
     @if (tab() === 'customers') {
       <section class="section-card overflow-clip">
@@ -49,7 +52,6 @@
               <option value="limit">{{ i18n.t('cr.filter.limit') }}</option>
             </select>
           </label>
-          <ng-container *ngTemplateOutlet="tabsTpl" />
         </app-table-toolbar>
 
         @if (rows().length) {
@@ -109,9 +111,9 @@
         }
       </section>
     } @else {
-      <div class="flex flex-wrap items-center gap-2"><ng-container *ngTemplateOutlet="tabsTpl" /></div>
       @if (ageing(); as a) {
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- The four ages stay in view while the page scrolls under them -->
+        <div appStickyRow class="kpi-row grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="kpi-card"><p class="label-eyebrow">{{ i18n.t('cr.age.current') }}</p><h3 class="text-xl font-black mt-2 text-slate-800" data-testid="age-current">{{ tsh(a.totals.current) }}</h3></div>
           <div class="kpi-card"><p class="label-eyebrow">{{ i18n.t('cr.age.31') }}</p><h3 class="text-xl font-black mt-2 text-slate-800">{{ tsh(a.totals.days_31_60) }}</h3></div>
           <div class="kpi-card"><p class="label-eyebrow">{{ i18n.t('cr.age.61') }}</p><h3 class="text-xl font-black mt-2 text-slate-800">{{ tsh(a.totals.days_61_90) }}</h3></div>
@@ -119,26 +121,28 @@
         </div>
         <section class="section-card overflow-clip">
           @if (a.rows.length) {
-            <div class="table-scroll-container">
-              <table class="premium-table">
+            <app-list-bar [total]="a.rows.length" [page]="1" [pageSize]="a.rows.length" />
+            <div class="table-scroll-container fit-page" style="border: 0; border-radius: 0;">
+              <table class="grid-table cr-table">
                 <thead>
                   <tr>
-                    <th>{{ i18n.t('cr.col.customer') }}</th>
-                    <th class="text-right">{{ i18n.t('cr.age.current') }}</th>
-                    <th class="text-right">{{ i18n.t('cr.age.31') }}</th>
-                    <th class="text-right">{{ i18n.t('cr.age.61') }}</th>
-                    <th class="text-right">{{ i18n.t('cr.age.90') }}</th>
-                    <th class="text-right">{{ i18n.t('cr.age.total') }}</th>
-                    <th class="text-right">{{ i18n.t('cr.age.oldest') }}</th>
+                    <th class="no-col">#</th>
+                    <th><button type="button" class="grid-sort" [class.is-sorted]="ageSort()?.key === 'name'" (click)="ageSortBy('name')" [attr.title]="i18n.t('table.sort', i18n.t('cr.col.customer'))">{{ i18n.t('cr.col.customer') }} <span class="arrow">{{ arrow(ageSort(), 'name') }}</span></button></th>
+                    <th><button type="button" class="grid-sort" [class.is-sorted]="ageSort()?.key === 'phone'" (click)="ageSortBy('phone')" [attr.title]="i18n.t('table.sort', i18n.t('cr.col.phone'))">{{ i18n.t('cr.col.phone') }} <span class="arrow">{{ arrow(ageSort(), 'phone') }}</span></button></th>
+                    <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="ageSort()?.key === 'current'" (click)="ageSortBy('current')" [attr.title]="i18n.t('table.sort', i18n.t('cr.age.current'))">{{ i18n.t('cr.age.current') }} <span class="arrow">{{ arrow(ageSort(), 'current') }}</span></button></th>
+                    <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="ageSort()?.key === 'd31'" (click)="ageSortBy('d31')" [attr.title]="i18n.t('table.sort', i18n.t('cr.age.31'))">{{ i18n.t('cr.age.31') }} <span class="arrow">{{ arrow(ageSort(), 'd31') }}</span></button></th>
+                    <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="ageSort()?.key === 'd61'" (click)="ageSortBy('d61')" [attr.title]="i18n.t('table.sort', i18n.t('cr.age.61'))">{{ i18n.t('cr.age.61') }} <span class="arrow">{{ arrow(ageSort(), 'd61') }}</span></button></th>
+                    <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="ageSort()?.key === 'd90'" (click)="ageSortBy('d90')" [attr.title]="i18n.t('table.sort', i18n.t('cr.age.90'))">{{ i18n.t('cr.age.90') }} <span class="arrow">{{ arrow(ageSort(), 'd90') }}</span></button></th>
+                    <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="ageSort()?.key === 'total'" (click)="ageSortBy('total')" [attr.title]="i18n.t('table.sort', i18n.t('cr.age.total'))">{{ i18n.t('cr.age.total') }} <span class="arrow">{{ arrow(ageSort(), 'total') }}</span></button></th>
+                    <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="ageSort()?.key === 'oldest'" (click)="ageSortBy('oldest')" [attr.title]="i18n.t('table.sort', i18n.t('cr.age.oldest'))">{{ i18n.t('cr.age.oldest') }} <span class="arrow">{{ arrow(ageSort(), 'oldest') }}</span></button></th>
                   </tr>
                 </thead>
                 <tbody>
-                  @for (r of a.rows; track r.customer_id) {
+                  @for (r of ageRows(); track r.customer_id; let i = $index) {
                     <tr [attr.data-testid]="'age-row-' + r.customer_id">
-                      <td>
-                        <div class="font-black text-slate-900">{{ r.customer_name }}</div>
-                        <div class="text-xs font-semibold text-slate-400">{{ r.customer_phone }}</div>
-                      </td>
+                      <td class="no-col">{{ i + 1 }}</td>
+                      <td class="font-black text-slate-900">{{ r.customer_name }}</td>
+                      <td>{{ r.customer_phone || '—' }}</td>
                       <td class="text-right">{{ tsh(r.current) }}</td>
                       <td class="text-right">{{ tsh(r.days_31_60) }}</td>
                       <td class="text-right">{{ tsh(r.days_61_90) }}</td>

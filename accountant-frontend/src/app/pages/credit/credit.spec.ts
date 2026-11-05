@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../../environments/environment';
-import { byTestId, configure, settle, text, type } from '../../testing';
+import { byTestId, configure, mountSlot, settle, text, type } from '../../testing';
 import { CreditPage } from './credit';
 
 const API = environment.apiUrl;
@@ -33,6 +33,7 @@ async function open(permissions: string[], rows: unknown[] = ROWS) {
   fixture.detectChanges();
   h.http.expectOne({ method: 'GET', url: CUSTOMERS }).flush({ data: rows });
   h.http.expectOne({ method: 'GET', url: `${API}/inventory/credit/debtors-ageing` }).flush(AGEING);
+  await mountSlot(fixture);
   await settle(fixture);
 
   return { h, fixture, el: fixture.nativeElement as HTMLElement };
@@ -114,12 +115,22 @@ describe('customers & credit', () => {
     expect(byTestId(without.el, 'cr-settings-1')).not.toBeNull();
   });
 
+  it('keeps the two views in the breadcrumb row and the customer figures in the customers view only', async () => {
+    const { fixture, el } = await open(SALES_OFFICER);
+    expect(byTestId(el, 'cr-total')).not.toBeNull();
+    expect(byTestId(el, 'cr-tab-customers')).not.toBeNull();
+    click(el, 'cr-tab-customers');
+    await settle(fixture);
+    expect(byTestId(el, 'cr-total')).not.toBeNull();
+  });
+
   it('shows the debts by age', async () => {
     const { fixture, el } = await open(SALES_OFFICER);
 
     click(el, 'cr-tab-ageing');
     await settle(fixture);
 
+    expect(byTestId(el, 'cr-total')).toBeNull(); // the three customer figures belong to the customers view
     expect(text(byTestId(el, 'age-90')!)).toBe('TSH 250,000');
     expect(text(byTestId(el, 'age-row-1')!)).toContain('200 days');
   });

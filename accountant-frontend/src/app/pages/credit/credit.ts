@@ -1,5 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
+import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -10,6 +9,7 @@ import { DebtSummary, AgeingListing, CreditCustomer, CreditSettingsBody, CreditS
 import { dayLabel, dayOf, eatDay, offline, parseAmount, serverMessage, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
 import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
+import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { MotionService } from '../../core/services/motion.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
@@ -43,15 +43,19 @@ const METHODS: Method[] = ['cash', 'mobile_money', 'bank_transfer', 'cheque'];
  */
 @Component({
   selector: 'app-credit',
-  imports: [NgTemplateOutlet, FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, ListBarComponent, BsDateDirective, MoneyDirective, StickyRowDirective],
+  imports: [FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, ListBarComponent, BsDateDirective, MoneyDirective, StickyRowDirective],
   templateUrl: './credit.html',
 })
-export class CreditPage implements OnInit {
+export class CreditPage implements OnInit, AfterViewInit, OnDestroy {
   private readonly api = inject(CreditApi);
   private readonly toast = inject(ToastService);
   protected readonly auth = inject(AuthService);
   protected readonly i18n = inject(I18nService);
   protected readonly motion = inject(MotionService);
+  private readonly slot = inject(HeaderSlotService);
+
+  /** The two views (customers, debts by age) live in the breadcrumb row at the top of the page; this page hands them over. */
+  @ViewChild('tabsTpl', { static: true }) private tabsTpl!: TemplateRef<unknown>;
 
   protected readonly tsh = tsh;
   protected readonly dayLabel = dayLabel;
@@ -158,6 +162,26 @@ export class CreditPage implements OnInit {
 
   ngOnInit(): void {
     void this.load();
+  }
+
+  ngAfterViewInit(): void {
+    queueMicrotask(() => this.slot.show(this.tabsTpl));
+  }
+
+  ngOnDestroy(): void {
+    this.slot.clear(this.tabsTpl);
+  }
+
+  // The debts by age can be sorted by any column header too.
+  protected readonly ageSort = signal<SortState | null>(null);
+  protected readonly ageRows = computed(() =>
+    sorted(this.ageing()?.rows ?? [], this.ageSort(), (r, k) =>
+      k === 'name' ? r.customer_name : k === 'phone' ? r.customer_phone : k === 'current' ? r.current : k === 'd31' ? r.days_31_60 : k === 'd61' ? r.days_61_90 : k === 'd90' ? r.days_90_plus : k === 'total' ? r.total : r.oldest_days
+    ),
+  );
+
+  protected ageSortBy(key: string): void {
+    this.ageSort.set(nextSort(this.ageSort(), key));
   }
 
   protected state(c: CreditCustomer): CreditState {
