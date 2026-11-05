@@ -107,7 +107,7 @@ class SalonAccessRightsTest extends TestCase
         $this->api($asha, 'GET', '/api/inventory/salon/cashbook')->assertForbidden();
     }
 
-    public function test_spending_is_approved_by_whoever_holds_the_reports_right(): void
+    public function test_spending_is_approved_by_whoever_holds_the_approve_right(): void
     {
         $owner = $this->salon();
         $helper = $this->person($owner, 'hair_stylist', ['inv_view_expenses', 'inv_manage_expenses']);
@@ -115,7 +115,11 @@ class SalonAccessRightsTest extends TestCase
 
         $this->api($helper, 'POST', '/api/inventory/expenses', $body)->assertCreated()->assertJsonPath('data.status', 'pending');
 
+        // Seeing the reports does not approve spending: that is its own right.
         $this->give($owner, $helper, ['inv_view_expenses', 'inv_manage_expenses', 'inv_view_reports'])->assertSuccessful();
+        $this->api($helper->refresh(), 'POST', '/api/inventory/expenses', $body)->assertCreated()->assertJsonPath('data.status', 'pending');
+
+        $this->give($owner, $helper, ['inv_view_expenses', 'inv_manage_expenses', 'inv_approve_expenses'])->assertSuccessful();
         $this->api($helper->refresh(), 'POST', '/api/inventory/expenses', $body)->assertCreated()->assertJsonPath('data.status', 'approved');
     }
 

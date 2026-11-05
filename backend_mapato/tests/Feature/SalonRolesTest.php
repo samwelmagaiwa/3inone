@@ -202,7 +202,10 @@ class SalonRolesTest extends TestCase
         $this->sell($asha, $braids, 40000, $asha)->assertCreated();
 
         $made = $this->api($accountant, 'POST', '/api/inventory/expenses', ['category' => 'rent', 'description' => 'Rent', 'amount' => 1000, 'expense_date' => '2026-10-01'])->assertCreated();
-        $made->assertJsonPath('data.status', 'approved');
+        // The accountant records spending, but approving is the owner's: what the accountant records waits.
+        $made->assertJsonPath('data.status', 'pending');
+        $this->api($accountant, 'POST', '/api/inventory/expenses/' . $made->json('data.id') . '/approval', ['decision' => 'approve'])->assertForbidden();
+        $this->api($owner, 'POST', '/api/inventory/expenses/' . $made->json('data.id') . '/approval', ['decision' => 'approve'])->assertOk()->assertJsonPath('data.status', 'approved');
         $this->api($asha, 'POST', '/api/inventory/expenses', ['category' => 'rent', 'description' => 'Nope', 'amount' => 1000, 'expense_date' => '2026-10-01'])->assertStatus(403);
         // How each stylist did is a right of its own: the accountant starts without it and has it once the owner switches it on.
         $this->api($accountant, 'GET', '/api/inventory/salon/stylists')->assertForbidden();

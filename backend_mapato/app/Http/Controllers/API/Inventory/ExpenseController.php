@@ -17,6 +17,21 @@ class ExpenseController extends Controller
     /** Spending that is the owner's own, not the business's: listed, never taken off the profit. */
     private const PERSONAL_CATEGORIES = ['drawings', 'family'];
 
+    /**
+     * May this person approve spending, and need their own spending no approval? In a salon that is a right of its own (the owner and managers
+     * have it, an accountant does not unless the owner switches it on); the shop keeps deciding by role.
+     */
+    private function canApprove(Request $request): bool
+    {
+        if (\App\Support\Tenancy\TenantContext::service() === 'salon') {
+            $user = $request->user();
+
+            return $user->seesAllAccounts() || $user->hasInventoryPermission('inv_approve_expenses');
+        }
+
+        return $this->isManager($request);
+    }
+
     /** Is the signed-in person the owner or a manager (who may approve, and whose own spending needs no approval)? */
     private function isManager(Request $request): bool
     {
@@ -112,7 +127,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         $hasExtras = \Illuminate\Support\Facades\Schema::hasColumn('inventory_expenses', 'status');
         // In a salon, what the owner or a manager spends is approved at once; what anyone else records waits for them.
-        $status = \App\Support\Tenancy\TenantContext::service() === 'salon' && !$this->isManager($request) ? 'pending' : 'approved';
+        $status = \App\Support\Tenancy\TenantContext::service() === 'salon' && !$this->canApprove($request) ? 'pending' : 'approved';
 
         $id = DB::table('inventory_expenses')->insertGetId((\Illuminate\Support\Facades\Schema::hasColumn('inventory_expenses', 'is_personal') ? ['is_personal' => $personal] : []) + (\Illuminate\Support\Facades\Schema::hasColumn('inventory_expenses', 'branch_id') ? ['branch_id' => \App\Support\Salon\SalonBranch::forNew($request)] : []) + [
             'category'     => $data['category'],
@@ -133,7 +148,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         // Spending that waits tells the people who can approve it (never the one who recorded it).
         if ($status === 'pending') {
             app(\App\Services\Inventory\InventoryNotifier::class)->notifyByPermission(
-                ['inv_view_reports'],
+                ['inv_approve_expenses'],
                 'salon_expense_pending',
                 'Matumizi yanasubiri idhini / An expense is waiting for approval',
                 "{$data['description']}: " . number_format((float) $data['amount']) . ' TSh',
@@ -202,7 +217,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         // What was approved and then changed by someone who is not a manager (an amount, a date) needs approving again.
         $extra = [];
-        if (\App\Support\Tenancy\TenantContext::service() === 'salon' && !$this->isManager($request) && array_intersect_key($data, array_flip(['amount', 'category', 'expense_date']))) {
+        if (\App\Support\Tenancy\TenantContext::service() === 'salon' && !$this->canApprove($request) && array_intersect_key($data, array_flip(['amount', 'category', 'expense_date']))) {
             $extra = ['status' => 'pending', 'approved_by' => null, 'approved_at' => null];
         }
 
@@ -325,7 +340,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     )]
     public function approval(Request $request, int $id)
     {
-        if (!$this->isManager($request)) {
+        if (!$this->canApprove($request)) {
             return response()->json(['message' => 'Ni mmiliki au meneja tu anayeweza kuidhinisha. / Only the owner or a manager can approve.'], 403);
         }
         $data = $request->validate(['decision' => 'required|in:approve,reject']);

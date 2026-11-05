@@ -67,7 +67,8 @@ export class ExpensesPage implements OnInit {
 
   protected readonly canAdd = computed(() => this.auth.can('inv_manage_expenses'));
   /** The owner, a manager or the accountant decide what others recorded (the server checks this too). */
-  protected readonly canDecide = computed(() => this.auth.canAny('inv_manage_settings', 'inv_manage_sales') || this.auth.can('__all__'));
+  /** In a salon approving is a right of its own (the owner and managers; an accountant only when the owner switches it on). */
+  protected readonly canDecide = computed(() => (this.auth.service() === 'salon' ? this.auth.can('inv_approve_expenses') : this.auth.canAny('inv_manage_settings', 'inv_manage_sales')) || this.auth.can('__all__'));
   protected readonly channels = PAYMENT_CHANNELS;
 
   protected readonly rows = computed(() => {
@@ -75,7 +76,7 @@ export class ExpensesPage implements OnInit {
     const all = this.rowsAll();
     const found = q ? all.filter((e) => `${e.description} ${this.categoryName(e.category)} ${e.created_by_name ?? ''}`.toLowerCase().includes(q)) : all;
 
-    return sorted(found, this.sort(), (e, k) => (k === 'date' ? e.expense_date : k === 'what' ? e.description : k === 'by' ? (e.created_by_name ?? '') : k === 'category' ? this.categoryName(e.category) : k === 'status' ? (e.status ?? 'approved') : e.amount));
+    return sorted(found, this.sort(), (e, k) => (k === 'date' ? e.expense_date : k === 'what' ? e.description : k === 'by' ? (e.created_by_name ?? '') : k === 'category' ? this.categoryName(e.category) : k === 'status' ? (e.status ?? 'approved') : k === 'share' ? (this.share(e) ?? -1) : e.amount));
   });
   protected readonly sort = signal<SortState | null>(null);
   protected readonly arrow = sortArrow;
@@ -226,6 +227,19 @@ export class ExpensesPage implements OnInit {
 
   protected isPersonal(e: Expense): boolean {
     return e.is_personal === true || e.is_personal === 1;
+  }
+
+  /** What part of the period's business spending this one is, in percent (only approved business spending counts, so others have none). */
+  protected share(e: Expense): number | null {
+    const total = this.summary()?.total_expenses ?? 0;
+    if (this.isPersonal(e) || (e.status ?? 'approved') !== 'approved' || total <= 0) return null;
+
+    return Math.round((e.amount / total) * 1000) / 10;
+  }
+
+  /** Green while small, amber from a fifth of the spending, red from two fifths: the big spends are the ones to look at. */
+  protected shareTone(p: number): 'low' | 'mid' | 'high' {
+    return p >= 40 ? 'high' : p >= 20 ? 'mid' : 'low';
   }
 
   protected barWidth(part: number, whole: number): number {

@@ -264,4 +264,31 @@ describe('the expense form: required fields', () => {
     await settle(fixture);
     expect(el.querySelector('.modal-panel.attempted')).toBeNull();
   });
+
+  it('has no "where did the money go" section, and a Share column after the amount with each approved business spend as a part of the total', async () => {
+    const { el } = await open();
+
+    expect(text(el)).not.toContain('Where did the money go');
+    const heads = Array.from(el.querySelectorAll('th')).map((h) => text(h as HTMLElement));
+    expect(heads.findIndex((h) => h.startsWith('Share'))).toBe(heads.findIndex((h) => h.startsWith('Amount')) + 1);
+    expect(text(byTestId(el, 'exp-share-1')!)).toContain('83.3%'); // 100,000 of 120,000
+    expect(byTestId(el, 'exp-share-1')!.querySelector('.is-high')).not.toBeNull();
+    expect(text(byTestId(el, 'exp-share-2')!)).toBe('—'); // the owner's own spending
+    expect(text(byTestId(el, 'exp-share-3')!)).toBe('—'); // still waiting for approval
+  });
+
+  describe('who approves in a salon', () => {
+    const decide = (fixture: { componentInstance: unknown }) => (fixture.componentInstance as { menuFor(e: Expense): { id: string }[] }).menuFor(rows[2]).map((m) => m.id);
+
+    it('the accountant records spending but cannot approve it', async () => {
+      const { fixture } = await open({ services: ['salon'], permissions: ['inv_view_expenses', 'inv_manage_expenses', 'inv_manage_sales'] });
+      expect(decide(fixture)).not.toContain('approve');
+      expect(decide(fixture)).not.toContain('reject');
+    });
+
+    it('the owner and managers (who hold the approve right) can', async () => {
+      const { fixture } = await open({ services: ['salon'], permissions: ['inv_view_expenses', 'inv_manage_expenses', 'inv_approve_expenses'] });
+      expect(decide(fixture)).toEqual(expect.arrayContaining(['approve', 'reject']));
+    });
+  });
 });

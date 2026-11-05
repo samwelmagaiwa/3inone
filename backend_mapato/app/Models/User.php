@@ -130,6 +130,11 @@ class User extends Authenticatable
         'inv_salon_feedback', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_insights', 'inv_salon_money',
         // The money pages and what is shown in them: each can be given or taken back on its own.
         'inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_export', 'inv_salon_schedule',
+        // Approving what others spend in a salon: the owner and managers; the accountant records spending that then waits for them.
+        'inv_approve_expenses',
+        // Cancelling a sale and approving goods taken back: the owner's. A person without them (the accountant) writes a request with a
+        // comment instead, which the owner reads on that sale and decides.
+        'inv_cancel_sales', 'inv_return_sales',
     ];
 
     /**
@@ -480,7 +485,8 @@ class User extends Authenticatable
             'inv_view_crates','inv_view_reports','inv_view_expenses',
             'inv_manage_expenses','inv_manage_settings',
             'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback','inv_salon_equipment','inv_salon_branch_stock','inv_salon_insights','inv_salon_money',
-            'inv_salon_reports','inv_salon_profit','inv_salon_payroll','inv_salon_cashbook','inv_salon_export','inv_salon_schedule',
+            'inv_salon_reports','inv_salon_profit','inv_salon_payroll','inv_salon_cashbook','inv_salon_export','inv_salon_schedule','inv_approve_expenses',
+            'inv_cancel_sales','inv_return_sales',
         ],
         'administrator'=> [
             'inv_view_products','inv_manage_products','inv_manage_stock',
@@ -489,7 +495,8 @@ class User extends Authenticatable
             'inv_view_crates','inv_view_reports','inv_view_expenses',
             'inv_manage_expenses','inv_manage_settings',
             'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback','inv_salon_equipment','inv_salon_branch_stock','inv_salon_insights','inv_salon_money',
-            'inv_salon_reports','inv_salon_profit','inv_salon_payroll','inv_salon_cashbook','inv_salon_export','inv_salon_schedule',
+            'inv_salon_reports','inv_salon_profit','inv_salon_payroll','inv_salon_cashbook','inv_salon_export','inv_salon_schedule','inv_approve_expenses',
+            'inv_cancel_sales','inv_return_sales',
         ],
         'manager'      => [
             'inv_view_products','inv_manage_products','inv_manage_stock',
@@ -498,7 +505,8 @@ class User extends Authenticatable
             'inv_view_crates','inv_view_reports','inv_view_expenses',
             'inv_manage_expenses',
             'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback','inv_salon_equipment','inv_salon_branch_stock','inv_salon_insights','inv_salon_money',
-            'inv_salon_reports','inv_salon_profit','inv_salon_payroll','inv_salon_cashbook','inv_salon_export','inv_salon_schedule',
+            'inv_salon_reports','inv_salon_profit','inv_salon_payroll','inv_salon_cashbook','inv_salon_export','inv_salon_schedule','inv_approve_expenses',
+            'inv_cancel_sales','inv_return_sales',
         ],
         // Point-of-sale only -- deliberately excludes catalog management,
         // physical stock control, sales management/returns, purchasing,
@@ -566,6 +574,11 @@ class User extends Authenticatable
             return true;
         }
 
+        // Someone who was given sales management by hand (not through a role) held cancelling and returns with it: they keep them.
+        if (in_array($permission, ['inv_cancel_sales', 'inv_return_sales'], true) && in_array('inv_manage_sales', $explicit, true)) {
+            return true;
+        }
+
         // Role defaults
         $defaults = self::$INV_ROLE_DEFAULTS[$role] ?? [];
         if ($defaults === null) return true; // unrestricted role
@@ -594,6 +607,9 @@ class User extends Authenticatable
         $defaults = self::$INV_ROLE_DEFAULTS[$role] ?? [];
         if ($defaults === null) return ['__all__'];
         $explicit = is_array($this->permissions) ? $this->permissions : [];
+        if (in_array('inv_manage_sales', $explicit, true)) {
+            $explicit = array_merge($explicit, ['inv_cancel_sales', 'inv_return_sales']);
+        }
         return array_values(array_diff(array_unique(array_merge($defaults, $explicit)), $this->deniedPermissions()));
     }
 

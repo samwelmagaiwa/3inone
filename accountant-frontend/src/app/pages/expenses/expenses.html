@@ -31,21 +31,6 @@
       </div>
     </div>
 
-    @if (s.by_category.length) {
-      <section class="section-card p-5">
-        <div class="border-b border-slate-100 pb-3 mb-3">
-          <p class="label-eyebrow">{{ i18n.t('exp.cat.eyebrow') }}</p>
-          <h3 class="text-slate-900 font-black text-base">{{ i18n.t('exp.cat.title') }}</h3>
-        </div>
-        @for (c of s.by_category; track c.category) {
-          <div class="mb-3">
-            <div class="flex justify-between text-sm font-bold text-slate-700 mb-1"><span>{{ categoryName(c.category) }}</span><span>{{ tsh(c.total) }}</span></div>
-            <div class="bar-track"><div class="bar-fill" [style.width.%]="barWidth(c.total, s.total_expenses)"></div></div>
-          </div>
-        }
-      </section>
-    }
-
     <section class="section-card overflow-clip">
       <app-table-toolbar [compact]="true" [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('exp.search')" [count]="rows().length" [noun]="noun()">
         <!-- The period, the export and the add button, on the same slim row as the search -->
@@ -72,6 +57,7 @@
                 <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'by'" (click)="sortBy('by')" [attr.title]="i18n.t('table.sort', i18n.t('exp.col.by'))">{{ i18n.t('exp.col.by') }} <span class="arrow">{{ arrow(sort(), 'by') }}</span></button></th>
                 <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'category'" (click)="sortBy('category')" [attr.title]="i18n.t('table.sort', i18n.t('exp.col.category'))">{{ i18n.t('exp.col.category') }} <span class="arrow">{{ arrow(sort(), 'category') }}</span></button></th>
                 <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'amount'" (click)="sortBy('amount')" [attr.title]="i18n.t('table.sort', i18n.t('exp.col.amount'))">{{ i18n.t('exp.col.amount') }} <span class="arrow">{{ arrow(sort(), 'amount') }}</span></button></th>
+                <th class="text-right"><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'share'" (click)="sortBy('share')" [attr.title]="i18n.t('exp.share.hint')">{{ i18n.t('exp.col.share') }} <span class="arrow">{{ arrow(sort(), 'share') }}</span></button></th>
                 <th><button type="button" class="grid-sort" [class.is-sorted]="sort()?.key === 'status'" (click)="sortBy('status')" [attr.title]="i18n.t('table.sort', i18n.t('exp.col.status'))">{{ i18n.t('exp.col.status') }} <span class="arrow">{{ arrow(sort(), 'status') }}</span></button></th>
                 <th class="text-right">{{ i18n.t('prod.col.actions') }}</th>
               </tr>
@@ -88,6 +74,12 @@
                     @if (isPersonal(e)) { <span class="pill-inactive ml-2">{{ i18n.t('exp.personal.tag') }}</span> }
                   </td>
                   <td class="text-right font-black">{{ tsh(e.amount) }}</td>
+                  <td class="text-right share-cell" [attr.data-testid]="'exp-share-' + e.id">
+                    @if (share(e); as p) {
+                      <span class="share-pill" [class]="'share-pill is-' + shareTone(p)">{{ p }}%</span>
+                      <span class="share-bar"><span [class]="'is-' + shareTone(p)" [style.width.%]="p"></span></span>
+                    } @else { <span class="text-slate-300 font-bold">—</span> }
+                  </td>
                   <td>
                     @if (e.status === 'pending') { <span class="pill-critical">{{ i18n.t('exp.pending') }}</span> }
                     @else if (e.status === 'rejected') { <span class="pill-critical">{{ i18n.t('exp.state.rejected') }}</span> }
@@ -182,4 +174,17 @@
   .status-ok { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; color: #fff; background: #059669; cursor: pointer; margin-right: 4px; }
   .icon-del:hover { color: #dc2626; background: #fef2f2; }
   .exp-table .no-col { width: 48px; text-align: center; color: #64748b; font-weight: 800; }
+</style>
+
+<style>
+  .share-cell { min-width: 110px; }
+  .share-pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 900; }
+  .share-pill.is-low { color: #047857; background: #d1fae5; }
+  .share-pill.is-mid { color: #b45309; background: #fef3c7; }
+  .share-pill.is-high { color: #b91c1c; background: #fee2e2; }
+  .share-bar { display: block; height: 5px; margin-top: 5px; border-radius: 999px; background: #e8eefc; overflow: hidden; }
+  .share-bar span { display: block; height: 100%; border-radius: 999px; min-width: 3px; }
+  .share-bar .is-low { background: #10b981; }
+  .share-bar .is-mid { background: #f59e0b; }
+  .share-bar .is-high { background: #ef4444; }
 </style>

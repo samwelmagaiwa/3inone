@@ -151,7 +151,8 @@ class _SalonExpensesScreenState extends State<SalonExpensesScreen> {
   @override
   Widget build(BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
-    final bool manager = canSeeSalonMoney(context.watch<AuthProvider>().user);
+    // Approving what others spent is a right of its own: the owner and managers have it, an accountant only when the owner switches it on.
+    final bool manager = context.watch<AuthProvider>().user?.access.has('inv_approve_expenses') ?? false;
 
     return Material(
       color: ThemeConstants.primaryBlue,

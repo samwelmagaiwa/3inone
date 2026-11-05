@@ -221,6 +221,13 @@ void main() {
       expect(_key('expense_reject_2'), findsNothing);
     });
 
+    testWidgets('an accountant records spending but does not approve it (approving is its own right, off for an accountant)', (t) async {
+      final _FakeSalon api = _FakeSalon()..expenseRows = <SalonExpense>[_exp(2, 'Taxi', 20000, category: 'transport', status: 'pending')];
+      await _host(t, SalonExpensesScreen(api: api, today: _today), role: 'accountant');
+      expect(_key('expense_approve_2'), findsNothing);
+      expect(_key('expense_reject_2'), findsNothing);
+    });
+
     testWidgets('approving sends the decision and the list then says approved', (t) async {
       final _FakeSalon api = _FakeSalon()..expenseRows = <SalonExpense>[_exp(2, 'Taxi', 20000, category: 'transport', status: 'pending')];
       await _host(t, SalonExpensesScreen(api: api, today: _today));
