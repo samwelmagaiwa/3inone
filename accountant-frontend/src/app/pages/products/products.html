@@ -2,32 +2,6 @@
 @for (k of [motion.tick()]; track k) {
 <div class="space-y-5 animate-fade-in-up">
 
-  <div class="flex flex-wrap items-center justify-end gap-2 empty:hidden">
-    @if (tab() === 'products' && canAdd()) {
-      <button type="button" class="btn-primary big-btn shrink-0" (click)="openAdd()" data-testid="prod-add">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-        {{ i18n.t(salon() ? 'prod.add.salon' : 'prod.add') }}
-      </button>
-    } @else if (tab() !== 'products' && canAdd()) {
-      @if (salon() && tab() === 'categories') {
-        <button type="button" class="btn-outline shrink-0" (click)="addPresets()" data-testid="cat-presets">{{ i18n.t('cat.presets') }}</button>
-      }
-      <button type="button" class="btn-primary big-btn shrink-0" (click)="openNamed(null)" data-testid="named-add">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-        {{ i18n.t(tab() === 'brands' ? 'brand.add' : 'cat.add') }}
-      </button>
-    }
-  </div>
-
-  <!-- Categories and brands are for those who manage the catalogue -->
-  @if (canAdd()) {
-    <div class="flex flex-wrap gap-2" role="tablist">
-      <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="tab() === 'products'" [attr.aria-selected]="tab() === 'products'" (click)="setTab('products')" data-testid="tab-products">{{ i18n.t(salon() ? 'prod.tab.salon' : 'prod.tab.products') }}</button>
-      <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="tab() === 'categories'" [attr.aria-selected]="tab() === 'categories'" (click)="setTab('categories')" data-testid="tab-categories">{{ i18n.t('prod.tab.categories') }}</button>
-      <button type="button" role="tab" class="pill-tab big-tab" [class.is-active]="tab() === 'brands'" [attr.aria-selected]="tab() === 'brands'" (click)="setTab('brands')" data-testid="tab-brands">{{ i18n.t('prod.tab.brands') }}</button>
-    </div>
-  }
-
   @if (tab() === 'products') {
     <section class="section-card overflow-hidden">
       <app-table-toolbar [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('prod.search')" [count]="loading() ? null : total()" [noun]="noun()" [showClear]="hasFilters()" (cleared)="clearFilters()">
@@ -67,6 +41,8 @@
         </label>
       </app-table-toolbar>
 
+      <app-list-bar [total]="total()" [page]="page()" [pageSize]="perPage" (pageChange)="goTo($event)"><ng-container [ngTemplateOutlet]="rowActions" /></app-list-bar>
+
       @if (loading() && !data()) {
         <div class="skeleton-box m-5" style="height: 160px; border-radius: 14px;"></div>
       } @else if (error(); as message) {
@@ -76,7 +52,6 @@
           <button type="button" class="btn-primary" (click)="load()">{{ i18n.t('common.retry') }}</button>
         </div>
       } @else if (rows().length) {
-        <app-list-bar [total]="total()" [page]="page()" [pageSize]="perPage" (pageChange)="goTo($event)"></app-list-bar>
         <div class="table-scroll-container" style="border: 0; border-radius: 0;">
           <table class="grid-table prod-table">
             <thead>
@@ -136,8 +111,8 @@
     </section>
   } @else {
     <section class="section-card overflow-hidden">
+      <app-list-bar [total]="namedList().length" [page]="1" [pageSize]="namedList().length || 1"><ng-container [ngTemplateOutlet]="rowActions" /></app-list-bar>
       @if (namedList().length) {
-        <app-list-bar [total]="namedList().length" [page]="1" [pageSize]="namedList().length || 1"></app-list-bar>
         <div class="table-scroll-container" style="border: 0; border-radius: 0;">
           <table class="grid-table prod-table">
             <thead>
@@ -181,6 +156,33 @@
   }
 </div>
 }
+
+<!-- The page's own controls, shown in the row of the list ("Showing 1–20 of 27 ... Previous"): the three views and the add button -->
+<ng-template #rowActions>
+  <div class="prod-actions" data-testid="prod-actions">
+    @if (canAdd()) {
+      <div class="flex flex-wrap gap-2" role="tablist">
+        <button type="button" role="tab" class="pill-tab" [class.is-active]="tab() === 'products'" [attr.aria-selected]="tab() === 'products'" (click)="setTab('products')" data-testid="tab-products">{{ i18n.t(salon() ? 'prod.tab.salon' : 'prod.tab.products') }}</button>
+        <button type="button" role="tab" class="pill-tab" [class.is-active]="tab() === 'categories'" [attr.aria-selected]="tab() === 'categories'" (click)="setTab('categories')" data-testid="tab-categories">{{ i18n.t('prod.tab.categories') }}</button>
+        <button type="button" role="tab" class="pill-tab" [class.is-active]="tab() === 'brands'" [attr.aria-selected]="tab() === 'brands'" (click)="setTab('brands')" data-testid="tab-brands">{{ i18n.t('prod.tab.brands') }}</button>
+      </div>
+    }
+    @if (tab() === 'products' && canAdd()) {
+      <button type="button" class="btn-primary add-btn shrink-0" (click)="openAdd()" data-testid="prod-add">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        {{ i18n.t(salon() ? 'prod.add.salon' : 'prod.add') }}
+      </button>
+    } @else if (tab() !== 'products' && canAdd()) {
+      @if (salon() && tab() === 'categories') {
+        <button type="button" class="btn-outline shrink-0" (click)="addPresets()" data-testid="cat-presets">{{ i18n.t('cat.presets') }}</button>
+      }
+      <button type="button" class="btn-primary add-btn shrink-0" (click)="openNamed(null)" data-testid="named-add">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        {{ i18n.t(tab() === 'brands' ? 'brand.add' : 'cat.add') }}
+      </button>
+    }
+  </div>
+</ng-template>
 
 <!-- Add or change a product or service -->
 <app-modal-dialog [show]="formOpen()" [eyebrow]="i18n.t(salon() ? 'prod.title.salon' : 'prod.title')" [title]="i18n.t(editing() ? 'prod.edit' : (salon() ? 'prod.add.salon' : 'prod.add'))" size="xl" (close)="formOpen.set(false)">
@@ -463,4 +465,10 @@
   /* one price option: the name takes what is left, the price a fixed small box, then the remove button */
   .opt-row { display: grid; grid-template-columns: minmax(0, 1fr) 9rem 2rem; gap: 8px; align-items: center; margin-bottom: 8px; }
   @media (max-width: 480px) { .opt-row { grid-template-columns: minmax(0, 1fr) 7rem 2rem; } }
+</style>
+
+<style>
+  .prod-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-left: auto; }
+  .prod-actions .pill-tab { padding: 7px 14px; font-size: 13px; font-weight: 800; }
+  .prod-actions .add-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px; }
 </style>

@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -33,7 +34,7 @@ const UNITS = ['pcs', 'kg', 'g', 'litre', 'ml', 'bottle', 'crate', 'carton', 'ba
  */
 @Component({
   selector: 'app-products',
-  imports: [FormsModule, ModalDialogComponent, TableToolbarComponent, ListBarComponent, MoneyDirective],
+  imports: [FormsModule, NgTemplateOutlet, ModalDialogComponent, TableToolbarComponent, ListBarComponent, MoneyDirective],
   templateUrl: './products.html',
 })
 export class ProductsPage implements OnInit {
