@@ -413,8 +413,12 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         }
 
         try {
-            DB::transaction(function () use ($return, $data, $userId, $id) {
-                if ($data['decision'] === 'approved') {
+            // Approving a request to delete a sale deletes it (goods back on the shelf, points and packages back) below; only a return of
+            // some goods is done here.
+            $isCancellation = ($return->type ?? 'return') === 'cancellation';
+
+            DB::transaction(function () use ($return, $data, $userId, $id, $isCancellation) {
+                if ($data['decision'] === 'approved' && ! $isCancellation) {
                     $lines = DB::table('inventory_sale_return_lines')
                         ->where('sale_return_id', $id)->get();
 
@@ -459,6 +463,16 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             });
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        if ($data['decision'] === 'approved' && $isCancellation) {
+            // The owner read the comment and agreed: the sale is cancelled exactly as if the owner had cancelled it.
+            $sub = Request::create('/', 'POST', ['reason' => mb_substr((string) ($return->reason ?: $return->reference), 0, 255)]);
+            $sub->setUserResolver(fn () => $request->user());
+            $cancelled = app(SalesController::class)->cancel($sub, (int) $return->sale_id);
+            if ($cancelled->getStatusCode() >= 400 && $cancelled->getStatusCode() !== 422) {
+                return $cancelled;
+            }
         }
 
         $this->audit->record($request, 'sale_return', $id, $data['decision'], null, null, $return->reference);

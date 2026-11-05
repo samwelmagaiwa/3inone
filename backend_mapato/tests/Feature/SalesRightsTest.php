@@ -97,6 +97,10 @@ class SalesRightsTest extends TestCase
         // The accountant cannot approve it (not their right, and not their own request either); the owner can.
         $this->api($ivan, 'POST', "/api/inventory/returns/{$pending[0]['id']}/decide", ['decision' => 'approved'])->assertForbidden();
         $this->api($owner, 'POST', "/api/inventory/returns/{$pending[0]['id']}/decide", ['decision' => 'approved'])->assertSuccessful();
+
+        // Approving a request to delete a sale deletes it: that is how the owner, who works on the phone, does it after reading the comment.
+        $this->assertNotNull(\Illuminate\Support\Facades\DB::table('inventory_sales')->where('id', $sale)->value('cancelled_at'));
+        $this->assertSame('Customer paid twice, please delete', \Illuminate\Support\Facades\DB::table('inventory_sales')->where('id', $sale)->value('cancellation_reason'));
     }
 
     public function test_the_owner_can_switch_either_right_on_for_the_accountant(): void
