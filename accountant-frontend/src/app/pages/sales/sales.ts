@@ -20,6 +20,7 @@ import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal
 import { ListBarComponent } from '../../shared/components/list-bar/list-bar';
 import { TableToolbarComponent } from '../../shared/components/table-toolbar/table-toolbar';
 import { CountUpDirective } from '../../shared/ui/count-up.directive';
+import { StickyRowDirective } from '../../shared/ui/sticky-row.directive';
 import { MoneyDirective } from '../../shared/ui/money.directive';
 
 type Period = 'today' | 'week' | 'month' | 'year';
@@ -31,7 +32,7 @@ type Status = '' | 'paid' | 'partial' | 'debt';
  */
 @Component({
   selector: 'app-sales',
-  imports: [FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, ListBarComponent, CountUpDirective, MoneyDirective],
+  imports: [FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, ListBarComponent, CountUpDirective, MoneyDirective, StickyRowDirective],
   templateUrl: './sales.html',
 })
 export class SalesPage implements OnInit, AfterViewInit, OnDestroy {

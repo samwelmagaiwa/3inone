@@ -15,6 +15,7 @@ import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal
 import { ListBarComponent } from '../../shared/components/list-bar/list-bar';
 import { TableToolbarComponent } from '../../shared/components/table-toolbar/table-toolbar';
 import { BsDateDirective } from '../../shared/ui/bs-date.directive';
+import { StickyRowDirective } from '../../shared/ui/sticky-row.directive';
 import { MoneyDirective } from '../../shared/ui/money.directive';
 
 type Tab = 'customers' | 'ageing';
@@ -41,7 +42,7 @@ const METHODS: Method[] = ['cash', 'mobile_money', 'bank_transfer', 'cheque'];
  */
 @Component({
   selector: 'app-credit',
-  imports: [FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, ListBarComponent, BsDateDirective, MoneyDirective],
+  imports: [FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, ListBarComponent, BsDateDirective, MoneyDirective, StickyRowDirective],
   templateUrl: './credit.html',
 })
 export class CreditPage implements OnInit {

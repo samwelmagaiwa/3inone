@@ -1583,6 +1583,10 @@ app-book-ward-table, app-book-summaries, app-table-toolbar, app-table-pagination
   background: #e8eefc !important; border: 1px solid #cfd9f3 !important; box-shadow: none;
 }
 .grid-table thead th.text-right { text-align: right; }
+/* A grid on a page whose figure cards stay at the top: the page scrolls (not the table), and the header stops right under the cards. */
+.table-scroll-container.fit-page { max-height: none; overflow: clip; }
+.fit-page thead, .fit-page thead tr { position: static; }
+.fit-page .grid-table thead th { top: var(--stick-top, 0px); }
 .grid-table tbody td { padding: 10px 14px; font-size: 14px; color: #1e293b; border: 1px solid #e2e8f4; vertical-align: middle; }
 .grid-table tbody tr:nth-child(odd) { background: #fff; }
 .grid-table tbody tr:nth-child(even) { background: #f4f7ff; }

@@ -13,7 +13,7 @@
   } @else {
 
     <!-- The three figures stay in view while the page scrolls under them -->
-    <div class="kpi-row grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div appStickyRow class="kpi-row grid grid-cols-1 sm:grid-cols-3 gap-4">
       <div class="kpi-card">
         <p class="label-eyebrow">{{ i18n.t('cr.kpi.owed') }}</p>
         <h3 class="text-3xl font-black tracking-tight mt-2" style="color: #1a2f6e;" data-testid="cr-total">{{ tsh(totalOwed()) }}</h3>
@@ -37,7 +37,7 @@
     </div>
 
     @if (tab() === 'customers') {
-      <section class="section-card overflow-hidden">
+      <section class="section-card overflow-clip">
         <app-table-toolbar [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('cr.search')" [count]="rows().length" [noun]="noun()">
           <label class="filter-field">
             <span>{{ i18n.t('cr.filter') }}</span>
@@ -51,7 +51,7 @@
 
         @if (rows().length) {
           <app-list-bar [total]="rows().length" [page]="page()" [pageSize]="pageSize()" [pageSizes]="[10, 20, 50, 100]" (pageChange)="page.set($event)" (pageSizeChange)="pageSize.set($event); page.set(1)" />
-          <div class="table-scroll-container" style="border: 0; border-radius: 0;">
+          <div class="table-scroll-container fit-page" style="border: 0; border-radius: 0;">
             <table class="grid-table cr-table">
               <thead>
                 <tr>
@@ -113,7 +113,7 @@
           <div class="kpi-card"><p class="label-eyebrow">{{ i18n.t('cr.age.61') }}</p><h3 class="text-xl font-black mt-2 text-slate-800">{{ tsh(a.totals.days_61_90) }}</h3></div>
           <div class="kpi-card"><p class="label-eyebrow">{{ i18n.t('cr.age.90') }}</p><h3 class="text-xl font-black mt-2" style="color: #dc2626;" data-testid="age-90">{{ tsh(a.totals.days_90_plus) }}</h3></div>
         </div>
-        <section class="section-card overflow-hidden">
+        <section class="section-card overflow-clip">
           @if (a.rows.length) {
             <div class="table-scroll-container">
               <table class="premium-table">
@@ -326,7 +326,7 @@
 
 <style>
   .big-tab { padding: 12px 22px; font-size: 14px; font-weight: 800; }
-  .kpi-row { position: sticky; top: 0; z-index: 20; padding: 12px 0 10px; background: #f8fafc; }
+  .kpi-row { position: sticky; top: 0; z-index: 30; padding: 12px 0 10px; background: #f8fafc; }
   .cr-table .no-col { width: 48px; text-align: center; color: #64748b; font-weight: 800; }
   .dots-btn { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 10px; color: #475a8f; background: #fff; border: 1px solid #dbe4ff; cursor: pointer; }
   .dots-btn:hover { background: #f3f5ff; border-color: #93b0fb; }
