@@ -1,0 +1,180 @@
+<!-- The salon home: what the mobile app's dashboard shows, arranged for a wide screen -->
+<div class="home space-y-4" data-testid="salon-home">
+
+  <!-- Who is here, and today against yesterday -->
+  <div class="grid grid-cols-1 xl:grid-cols-5 gap-4">
+    <section class="home-card xl:col-span-2" style="--tone:#3b61e2" data-testid="home-welcome">
+      <div class="flex items-center gap-3 flex-wrap">
+        <span class="home-avatar" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span>
+        <div class="min-w-0 grow">
+          <p class="home-title">{{ i18n.t('home.welcome', name()) }}</p>
+          <p class="home-sub">{{ role() }}</p>
+        </div>
+        <span class="home-badge">{{ role() }}</span>
+      </div>
+      @if (links().length) {
+        <div class="flex flex-wrap gap-2 mt-4">
+          @for (l of links(); track l.to) {
+            <a class="home-chip" [routerLink]="l.to" [attr.data-testid]="'home-link-' + l.to">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path [attr.d]="l.icon"/></svg>
+              {{ i18n.t(l.label) }}
+            </a>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="home-card xl:col-span-3" style="--tone:#16a34a" data-testid="home-today">
+      <div class="flex items-center gap-3">
+        <span class="home-eyebrow">{{ i18n.t('home.today') }}</span>
+        @if (versus(); as v) {
+          <div class="home-track" role="progressbar" [attr.aria-valuenow]="v.pct" aria-valuemin="0" aria-valuemax="100"><div class="home-fill" [class.is-behind]="!v.ahead" [style.width.%]="v.pct"></div></div>
+          <span class="home-vs" [class.is-behind]="!v.ahead" data-testid="home-vs" [attr.title]="i18n.t('home.vs')">{{ v.label }}</span>
+        }
+      </div>
+      <div class="grid grid-cols-2 gap-4 mt-4">
+        <div class="home-stat">
+          <p class="home-label"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l3 4v14H4V7l3-4zM4 7h16M9 12h6M9 16h4"/></svg>{{ i18n.t('home.sales') }}</p>
+          <p class="home-value" data-testid="home-today-sales">{{ tsh(todaySales()) }}</p>
+        </div>
+        <div class="home-stat">
+          <p class="home-label"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2l2.4 11h11l2-8H6"/></svg>{{ i18n.t('home.count') }}</p>
+          <p class="home-value" data-testid="home-today-count">{{ todayCount() ?? '—' }}</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Cash, credit, expenses, the catalogue and what is running low -->
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+    @if (kpis(); as k) {
+      @if (auth.can('inv_view_cash')) {
+        <div class="home-card is-small" style="--tone:#16a34a" data-testid="home-cash"><p class="home-label">{{ i18n.t('home.cash') }}</p><p class="home-value sm">{{ tsh(k.cash) }}</p></div>
+      }
+      @if (auth.can('inv_view_credit')) {
+        <div class="home-card is-small" style="--tone:#3b82f6" data-testid="home-credit"><p class="home-label">{{ i18n.t('home.credit') }}</p><p class="home-value sm">{{ tsh(k.outstanding_debt) }}</p></div>
+      }
+      @if (auth.can('inv_view_expenses')) {
+        <div class="home-card is-small" style="--tone:#f59e0b" data-testid="home-expenses"><p class="home-label">{{ i18n.t('home.expenses') }}</p><p class="home-value sm">{{ tsh(k.expenses) }}</p></div>
+      }
+    }
+    @if (services() !== null && goods() !== null) {
+      <div class="home-card is-small" style="--tone:#06b6d4" data-testid="home-catalogue"><p class="home-label">{{ i18n.t('home.catalogue') }}</p><p class="home-value sm">{{ i18n.t('home.catalogue.value', services()!, goods()!) }}</p></div>
+    }
+    @if (low() !== null) {
+      <div class="home-card is-small" [style.--tone]="low() ? '#f59e0b' : '#16a34a'" data-testid="home-low"><p class="home-label">{{ i18n.t('home.low') }}</p><p class="home-value sm">{{ i18n.t('home.items', low()!) }}</p></div>
+    }
+  </div>
+
+  <!-- Business overview -->
+  @if (overview(); as o) {
+    <section class="home-card" style="--tone:#7c3aed" data-testid="home-overview">
+      <p class="home-title">{{ i18n.t('home.overview') }}</p>
+
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+        @for (p of periods(); track p.key) {
+          <div class="home-tile" [attr.data-testid]="'ov-' + p.key">
+            <p class="home-label">{{ i18n.t(p.key) }}</p>
+            <p class="home-value tone">{{ tsh(p.f.revenue) }}</p>
+            @if (p.f.net_profit !== null && p.f.net_profit !== undefined) {
+              <p class="home-profit" [class.is-loss]="p.f.net_profit < 0">{{ i18n.t(p.f.net_profit < 0 ? 'home.loss' : 'home.profit') }} {{ tsh(p.f.net_profit) }}</p>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+        <div class="home-fact" data-testid="ov-bookings-today"><span class="home-fact-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M9 16l2 2 4-4"/></svg></span><div><p class="home-value sm">{{ o.bookings.today }}</p><p class="home-label">{{ i18n.t('home.bookings.today') }}</p></div></div>
+        <div class="home-fact" data-testid="ov-bookings-upcoming"><span class="home-fact-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M8 15h8"/></svg></span><div><p class="home-value sm">{{ o.bookings.upcoming }}</p><p class="home-label">{{ i18n.t('home.bookings.next') }}</p></div></div>
+        <div class="home-fact" data-testid="ov-clients"><span class="home-fact-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5M17 4.5a3.5 3.5 0 010 7M22 20c0-2.5-1.7-4.3-4-5"/></svg></span><div><p class="home-value sm">{{ o.periods.month.clients }}</p><p class="home-label">{{ i18n.t('home.clients') }}</p></div></div>
+        @if (o.month.outstanding > 0) {
+          <div class="home-fact is-warn" data-testid="ov-outstanding"><span class="home-fact-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12M6 22h12M7 2c0 5 5 6 5 10s-5 5-5 10M17 2c0 5-5 6-5 10s5 5 5 10"/></svg></span><div><p class="home-value sm">{{ tsh(o.month.outstanding) }}</p><p class="home-label">{{ i18n.t('home.owed') }}</p></div></div>
+        } @else {
+          <div class="home-fact is-ok" data-testid="ov-no-debt"><span class="home-fact-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><div><p class="home-value sm">{{ i18n.t('home.none') }}</p><p class="home-label">{{ i18n.t('home.owed') }}</p></div></div>
+        }
+      </div>
+    </section>
+
+    <!-- The best stylists and services, and the money received -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      @if (o.top_staff.length) {
+        <section class="home-card" style="--tone:#f59e0b" data-testid="home-top-staff">
+          <p class="home-title">{{ i18n.t('home.top.staff') }}</p>
+          <div class="mt-3 space-y-3">
+            @for (s of top(o.top_staff); track $index; let i = $index) {
+              <div [attr.data-testid]="'ov-staff-' + i">
+                <div class="flex items-baseline justify-between gap-2"><p class="home-rank"><b>{{ i + 1 }}</b> <span [class.is-muted]="!s.name.trim()">{{ s.name.trim() || i18n.t('home.nostylist') }}</span></p><p class="home-amount">{{ tsh(s.revenue) }}</p></div>
+                <div class="home-track thick"><div class="home-fill" [style.width.%]="bar(s.revenue, o.top_staff[0].revenue)"></div></div>
+              </div>
+            }
+          </div>
+        </section>
+      }
+      @if (o.top_services.length) {
+        <section class="home-card" style="--tone:#ec4899" data-testid="home-top-services">
+          <p class="home-title">{{ i18n.t('home.top.services') }}</p>
+          <div class="mt-3 space-y-3">
+            @for (s of top(o.top_services); track $index; let i = $index) {
+              <div [attr.data-testid]="'ov-service-' + i">
+                <div class="flex items-baseline justify-between gap-2"><p class="home-rank"><b>{{ i + 1 }}</b> {{ s.name }} <span class="home-times">· {{ i18n.t('home.times', s.times ?? 0) }}</span></p><p class="home-amount">{{ tsh(s.revenue) }}</p></div>
+                <div class="home-track thick"><div class="home-fill" [style.width.%]="bar(s.revenue, o.top_services[0].revenue)"></div></div>
+              </div>
+            }
+          </div>
+        </section>
+      }
+      @if (o.month.collections.length) {
+        <section class="home-card" style="--tone:#16a34a" data-testid="home-collections">
+          <p class="home-title">{{ i18n.t('home.received') }}</p>
+          <div class="mt-3 space-y-2">
+            @for (c of o.month.collections; track c.method) {
+              <div class="home-line" [attr.data-testid]="'ov-collect-' + c.method"><span>{{ channel(c.method) }}</span><b>{{ tsh(c.amount) }}</b></div>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  }
+</div>
+
+<style>
+  :host { display: block; }
+  .home-card { position: relative; padding: 18px 20px; border-radius: 20px; background: #fff; border: 2px solid var(--tone, #cbd5e1); box-shadow: 0 18px 36px -28px rgba(26, 47, 110, .5); }
+  .home-card.is-small { padding: 14px 16px; }
+  .home-avatar { display: inline-flex; width: 48px; height: 48px; align-items: center; justify-content: center; border-radius: 16px; color: #3b61e2; background: #eaf0ff; }
+  .home-title { font-size: 17px; font-weight: 900; letter-spacing: -.01em; color: #1a2f6e; }
+  .home-sub { font-size: 12px; font-weight: 700; color: #7d8fc4; }
+  .home-badge { padding: 5px 14px; border-radius: 999px; font-size: 12px; font-weight: 900; color: #0f766e; background: #e0f7f4; border: 1px solid #99e0d6; }
+  .home-chip { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 800; color: #1a2f6e; background: #f3f6ff; border: 1px solid #dbe4ff; transition: all .15s; }
+  .home-chip:hover { background: #e4ecff; border-color: #93b0fb; transform: translateY(-1px); }
+  .home-eyebrow { font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; color: #7d8fc4; }
+  .home-track { flex: 1 1 auto; height: 5px; border-radius: 999px; background: #e6ecfb; overflow: hidden; }
+  .home-track.thick { height: 7px; margin-top: 5px; }
+  .home-fill { height: 100%; border-radius: 999px; background: #22c55e; }
+  .home-fill.is-behind { background: #f59e0b; }
+  .home-track.thick .home-fill { background: var(--tone); }
+  .home-vs { font-size: 12px; font-weight: 900; color: #16a34a; }
+  .home-vs.is-behind { color: #d97706; }
+  .home-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; letter-spacing: .02em; color: #7d8fc4; }
+  .home-value { margin-top: 4px; font-size: 26px; font-weight: 900; letter-spacing: -.02em; color: #1a2f6e; }
+  .home-value.sm { font-size: 19px; }
+  .home-value.tone { font-size: 20px; color: #3b61e2; }
+  .home-tile { padding: 12px 14px; border-radius: 14px; background: #f6f8ff; border: 1px solid #e6ecfb; }
+  .home-profit { margin-top: 2px; font-size: 12px; font-weight: 800; color: #16a34a; }
+  .home-profit.is-loss { color: #dc2626; }
+  .home-fact { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #f6f8ff; border: 1px solid #e6ecfb; }
+  .home-fact .home-value { margin-top: 0; }
+  .home-fact-ic { display: inline-flex; width: 40px; height: 40px; align-items: center; justify-content: center; border-radius: 12px; color: #3b61e2; background: #eaf0ff; }
+  .home-fact.is-warn { background: #fff7e6; border-color: #fde2a8; }
+  .home-fact.is-warn .home-fact-ic { color: #d97706; background: #ffefcc; }
+  .home-fact.is-warn .home-value { color: #b45309; }
+  .home-fact.is-ok { background: #effaf3; border-color: #bfe8cf; }
+  .home-fact.is-ok .home-fact-ic { color: #16a34a; background: #d9f4e3; }
+  .home-rank { font-size: 14px; font-weight: 800; color: #1e293b; min-width: 0; }
+  .home-rank b { display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; margin-right: 6px; border-radius: 999px; font-size: 12px; color: #fff; background: #1a2f6e; }
+  .home-rank .is-muted { color: #94a3b8; font-weight: 700; }
+  .home-times { font-size: 12px; font-weight: 700; color: #94a3b8; }
+  .home-amount { font-size: 14px; font-weight: 900; color: #1a2f6e; white-space: nowrap; }
+  .home-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 12px; background: #f6f8ff; font-size: 14px; font-weight: 700; color: #334155; }
+  .home-line b { color: #1a2f6e; font-weight: 900; }
+</style>

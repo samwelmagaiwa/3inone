@@ -2,6 +2,9 @@
 @for (k of [motion.tick()]; track k) {
 <div class="space-y-5 animate-fade-in-up">
 
+  <!-- A salon opens with what the mobile app's dashboard shows -->
+  @if (auth.service() === 'salon') { <app-salon-home /> }
+
   @if (loading() && !report()) {
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       @for (i of [1,2,3,4]; track i) { <div class="skeleton-box" style="height: 130px; border-radius: 14px;"></div> }

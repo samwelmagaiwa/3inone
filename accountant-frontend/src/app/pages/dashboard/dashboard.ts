@@ -12,6 +12,7 @@ import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { MotionService } from '../../core/services/motion.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { SalonHomeComponent } from './salon-home';
 import { CountUpDirective } from '../../shared/ui/count-up.directive';
 import { MoneyDirective } from '../../shared/ui/money.directive';
 
@@ -22,7 +23,7 @@ import { MoneyDirective } from '../../shared/ui/money.directive';
  */
 @Component({
   selector: 'app-dashboard',
-  imports: [FormsModule, RouterLink, ModalDialogComponent, CountUpDirective, MoneyDirective],
+  imports: [FormsModule, RouterLink, ModalDialogComponent, CountUpDirective, MoneyDirective, SalonHomeComponent],
   templateUrl: './dashboard.html',
 })
 export class DashboardPage implements OnInit, AfterViewInit, OnDestroy {
