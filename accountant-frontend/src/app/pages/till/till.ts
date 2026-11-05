@@ -404,6 +404,11 @@ export class TillPage implements OnInit, OnDestroy {
     this.setPoints('');
   }
 
+  /** Salon services in the cart that still have no stylist (the preview says how many are left). */
+  protected missingStylists(): number {
+    return this.till.lines().filter((l) => l.isService && !l.staffId).length;
+  }
+
   protected perksShown(): boolean {
     return this.perksOn() || this.till.discount() > 0 || !!this.till.voucher().code || this.till.pointsUsed() > 0;
   }

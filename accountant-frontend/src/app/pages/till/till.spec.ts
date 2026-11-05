@@ -878,4 +878,25 @@ describe('the till: where to choose the customer', () => {
     await settle(fixture);
     expect(text(byTestId(el, 'till-step-title')!)).toContain('2.');
   });
+
+  it('the cart step has a live summary beside the fields: each line, its stylist, the total, and what is still missing', async () => {
+    const { fixture, el } = await open({}, [soda, cut], true);
+    byTestId(el, 'good-9')!.click();
+    await settle(fixture);
+    byTestId(el, 'till-next')!.click();
+    await settle(fixture);
+
+    expect(text(byTestId(el, 'cp-total')!)).toBe('TSH 10,000');
+    expect(byTestId(el, 'cp-line-9')).not.toBeNull();
+    expect(byTestId(el, 'cp-missing-9')).not.toBeNull();
+    expect(text(byTestId(el, 'cp-status')!)).toContain('1 still without a stylist');
+
+    byTestId(el, 'stylist-btn-9')!.click();
+    await settle(fixture);
+    byTestId(el, 'stylist-9-4')!.click();
+    await settle(fixture);
+    expect(byTestId(el, 'cp-missing-9')).toBeNull();
+    expect(text(byTestId(el, 'cp-line-9')!)).toContain('Rehema');
+    expect(text(byTestId(el, 'cp-status')!)).toContain('Ready to continue');
+  });
 });

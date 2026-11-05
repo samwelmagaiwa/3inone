@@ -105,7 +105,8 @@
           </div>
         </div>
         @if (till.lines().length) {
-          <div class="mt-2 grid grid-cols-1 xl:grid-cols-2 gap-2 items-start">
+          <div class="cart-split mt-2">
+          <div class="cart-fill">
             @for (l of till.lines(); track l.key) {
               <div class="cart-line" [attr.data-testid]="'line-' + l.productId">
                 <div class="flex items-start justify-between gap-3">
@@ -180,6 +181,47 @@
                 </div>
               </div>
             }
+          </div>
+
+          <!-- The sale as it will read: updates as the left side is filled in -->
+          <aside class="cart-preview" data-testid="till-cartview" [attr.aria-label]="i18n.t('till.cart.preview')">
+            <div class="cp-head">
+              <span class="cp-title">{{ i18n.t('till.cart.preview') }}</span>
+              <span class="count-chip">{{ till.lines().length }}</span>
+            </div>
+            <ol class="cp-lines">
+              @for (l of till.lines(); track l.key; let i = $index) {
+                <li class="cp-line" [attr.data-testid]="'cp-line-' + l.productId">
+                  <span class="cp-no">{{ i + 1 }}</span>
+                  <div class="cp-main">
+                    <div class="cp-row">
+                      <span class="cp-name">{{ l.name }}</span>
+                      <span class="cp-amount">{{ tsh(l.qty * l.unitPrice) }}</span>
+                    </div>
+                    <p class="cp-sub">{{ l.qty }} × {{ tsh(l.unitPrice) }}@if (l.unitName) { · {{ l.unitName }} }</p>
+                    @if (till.salon() && l.isService) {
+                      <div class="cp-tags">
+                        @if (l.staffId) { <span class="cp-tag is-ok"><span class="chip-ic">{{ initials(l.staffName ?? '') }}</span>{{ l.staffName }}</span> }
+                        @else { <span class="cp-tag is-missing" [attr.data-testid]="'cp-missing-' + l.productId">{{ i18n.t('till.stylist.pick') }}</span> }
+                      </div>
+                      <p class="cp-goods"><b>{{ i18n.t('till.goods') }}:</b> {{ materialsText(l) }}</p>
+                    }
+                  </div>
+                </li>
+              }
+            </ol>
+            <div class="cp-totals">
+              <div class="row"><span>{{ i18n.t('till.sub') }}</span><span>{{ tsh(till.totals().subtotal) }}</span></div>
+              @if (till.totals().discount > 0) { <div class="row"><span>{{ i18n.t('till.discount') }}</span><span>− {{ tsh(till.totals().discount) }}</span></div> }
+              @if (till.totals().tax > 0) { <div class="row"><span>{{ i18n.t('till.vat') }}</span><span>{{ tsh(till.totals().tax) }}</span></div> }
+              <div class="cp-total"><span>{{ i18n.t('till.total') }}</span><b data-testid="cp-total">{{ tsh(till.totals().total) }}</b></div>
+            </div>
+            @if (till.salon() && missingStylists() > 0) {
+              <p class="cp-status is-todo" data-testid="cp-status">{{ i18n.t('till.cart.missing', missingStylists()) }}</p>
+            } @else {
+              <p class="cp-status is-ready" data-testid="cp-status">&#10003; {{ i18n.t('till.cart.ready') }}</p>
+            }
+          </aside>
           </div>
         } @else {
           <div class="empty-state" data-testid="till-empty">
@@ -520,6 +562,35 @@
   .wizard-body .panel { padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
   .wizard-foot { padding: 10px 20px 12px; border-top: 1px solid #e6ecfb; background: #fff; }
   .wizard-foot .form-error { margin-bottom: 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c; font-size: 13px; font-weight: 800; }
+  .cart-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (min-width: 960px) { .cart-split { grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr); } }
+  .cart-fill { display: flex; flex-direction: column; gap: 10px; }
+  .cart-preview { position: sticky; top: 4px; padding: 16px; border-radius: 20px; border: 1px solid #dbe4ff; background: linear-gradient(180deg, #f7f9ff 0%, #eef3ff 100%); box-shadow: 0 18px 40px -26px rgba(26,47,110,.45); }
+  @media (max-width: 959px) { .cart-preview { position: static; } }
+  .cp-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; margin-bottom: 8px; border-bottom: 1px dashed #c5d3f5; }
+  .cp-title { font-size: 12px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; color: #1a2f6e; }
+  .cp-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 46vh; overflow-y: auto; }
+  .cp-line { display: flex; gap: 10px; padding: 9px 4px; border-bottom: 1px solid #e3eaff; }
+  .cp-line:last-child { border-bottom: 0; }
+  .cp-no { flex: none; width: 22px; height: 22px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); }
+  .cp-main { min-width: 0; flex: 1; }
+  .cp-row { display: flex; justify-content: space-between; gap: 10px; }
+  .cp-name { font-weight: 900; color: #0f1d4a; font-size: 14px; overflow-wrap: anywhere; }
+  .cp-amount { font-weight: 900; color: #1a2f6e; font-size: 14px; white-space: nowrap; }
+  .cp-sub { font-size: 12px; font-weight: 700; color: #7d8fc4; margin-top: 1px; }
+  .cp-tags { margin-top: 5px; }
+  .cp-tag { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 3px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+  .cp-tag.is-ok { color: #065f46; background: #dcfce7; border: 1px solid #a7f0c4; }
+  .cp-tag.is-missing { padding: 3px 10px; color: #b91c1c; background: #fef2f2; border: 1px dashed #f5a3a3; }
+  .cp-goods { margin-top: 4px; font-size: 12px; font-weight: 600; color: #475a8f; overflow-wrap: anywhere; }
+  .cp-goods b { font-weight: 900; color: #1a2f6e; }
+  .cp-totals { margin-top: 8px; padding-top: 10px; border-top: 1px dashed #c5d3f5; display: flex; flex-direction: column; gap: 4px; }
+  .cp-totals .row { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #475a8f; }
+  .cp-total { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding: 10px 14px; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); font-weight: 800; }
+  .cp-total b { font-size: 20px; font-weight: 900; }
+  .cp-status { margin-top: 10px; padding: 8px 12px; border-radius: 12px; font-size: 12px; font-weight: 800; text-align: center; }
+  .cp-status.is-ready { color: #065f46; background: #dcfce7; }
+  .cp-status.is-todo { color: #92400e; background: #fff4de; border: 1px solid #fcd9a0; }
   .bar-btn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 800; border: 1px solid transparent; cursor: pointer; transition: all .2s; }
   .bar-btn:disabled { opacity: .45; cursor: not-allowed; }
   .bar-back { color: #1a2f6e; background: #e8eeff; border-color: #b9c9fb; }
