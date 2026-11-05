@@ -499,6 +499,9 @@
   </div>
 </app-modal-dialog>
 
+<!-- Which paper the receipt is printed on -->
+<app-receipt-size [show]="!!printing()" (picked)="printOn($event)" (closed)="printing.set(null)" />
+
 <!-- Parked sales -->
 <app-modal-dialog [show]="parkedOpen()" [title]="i18n.t('till.parked.title')" [eyebrow]="i18n.t('till.title')" size="md" (close)="parkedOpen.set(false)">
   <div slot="body" class="space-y-2">

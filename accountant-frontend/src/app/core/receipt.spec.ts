@@ -117,3 +117,24 @@ describe('the printed receipt', () => {
     expect(hidden.business).toBe('Shop');
   });
 });
+
+describe('the receipt on a thermal roll', () => {
+  it('is cut to the paper: 80 mm or 58 mm wide, and A4 only when asked for', () => {
+    expect(receiptHtml(sale(), header, t, 'thermal80')).toContain('size:80mm auto');
+    expect(receiptHtml(sale(), header, t, 'thermal58')).toContain('size:58mm auto');
+    expect(receiptHtml(sale(), header, t)).toContain('size:A4');
+    expect(receiptHtml(sale(), header, t, 'thermal80')).not.toContain('size:A4');
+  });
+
+  it('says the same things in a narrow roll: business, number, customer, items with who served, totals, what is owed, payments and thanks', () => {
+    const html = receiptHtml(sale(), header, t, 'thermal80');
+    for (const part of ['Glow Salon', 'TIN: 123-456-789', 'S-20261029-0027', 'john mpya · 0712000111', 'Part paid', 'Knotless Braids', 'Served by: Rehema', '2 x TSH 27,500', 'TSH 55,000', 'Discount (Regular client)', '-TSH 34,999', 'TSH 42,001', 'Still owed', 'TSH 12,001', 'To be paid by: 05/11/2026', 'M-Pesa · Ref QWE123', 'Thank you!', 'Goods sold are not returned.']) expect(html).toContain(part);
+  });
+
+  it('stamps a cancelled sale and shows no owing or due date, and escapes what people typed', () => {
+    const html = receiptHtml(sale({ cancelled_at: '2026-10-30 08:00:00', customer_name: '<b>Mama</b>' }), header, t, 'thermal58');
+    expect(html).toContain('class="stamp"');
+    expect(html).not.toContain('To be paid by');
+    expect(html).toContain('&lt;b&gt;Mama&lt;/b&gt;');
+  });
+});

@@ -9,7 +9,8 @@ import { CapabilitiesService } from '../../core/capabilities.service';
 import { dayOf, eatDateTime, offline, parseAmount, serverMessage, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
 import { SaleRow } from '../../core/models';
-import { printReceipt } from '../../core/receipt';
+import { ReceiptSize, printReceipt, rememberReceiptSize } from '../../core/receipt';
+import { ReceiptSizeComponent } from '../../shared/components/receipt-size/receipt-size';
 import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { MotionService } from '../../core/services/motion.service';
 import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
@@ -32,7 +33,7 @@ type Status = '' | 'paid' | 'partial' | 'debt';
  */
 @Component({
   selector: 'app-sales',
-  imports: [FormsModule, RouterLink, ModalDialogComponent, TableToolbarComponent, ListBarComponent, CountUpDirective, MoneyDirective, StickyRowDirective],
+  imports: [FormsModule, RouterLink, ReceiptSizeComponent, ModalDialogComponent, TableToolbarComponent, ListBarComponent, CountUpDirective, MoneyDirective, StickyRowDirective],
   templateUrl: './sales.html',
 })
 export class SalesPage implements OnInit, AfterViewInit, OnDestroy {
@@ -256,9 +257,20 @@ export class SalesPage implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  protected async receipt(s: SaleRow): Promise<void> {
+  /** The sale whose receipt is being printed: the paper is asked first. */
+  protected readonly printing = signal<SaleRow | null>(null);
+
+  protected receipt(s: SaleRow): void {
+    this.printing.set(s);
+  }
+
+  protected async printOn(size: ReceiptSize): Promise<void> {
+    const s = this.printing();
+    this.printing.set(null);
+    if (!s) return;
+    rememberReceiptSize(size);
     try {
-      printReceipt(await firstValueFrom(this.till.sale(s.id)), this.caps.receiptHeader(), (k) => this.i18n.t(k));
+      printReceipt(await firstValueFrom(this.till.sale(s.id)), this.caps.receiptHeader(), (k) => this.i18n.t(k), size);
     } catch (err) {
       this.toast.error(this.fail(err), this.i18n.t('error.title'));
     }

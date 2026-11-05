@@ -191,6 +191,9 @@
   </div>
 </ng-template>
 
+<!-- Which paper the receipt is printed on -->
+<app-receipt-size [show]="!!printing()" (picked)="printOn($event)" (closed)="printing.set(null)" />
+
 <style>
   :host { display: block; }
   .stat-row { position: sticky; top: 0; z-index: 30; padding: 12px 0 10px; background: #f8fafc; }

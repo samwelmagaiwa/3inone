@@ -3,6 +3,30 @@ import { SaleDetail } from './till-api.service';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
 
+/** The paper a receipt is printed on: a full A4 page, or a thermal roll 80 mm or 58 mm wide. */
+export type ReceiptSize = 'a4' | 'thermal80' | 'thermal58';
+export const RECEIPT_SIZES: ReceiptSize[] = ['a4', 'thermal80', 'thermal58'];
+
+const SIZE_KEY = 'receipt_size';
+
+/** The size chosen last time (A4 the first time), kept in this browser. */
+export function lastReceiptSize(): ReceiptSize {
+  try {
+    const v = localStorage.getItem(SIZE_KEY);
+    return v === 'thermal80' || v === 'thermal58' ? v : 'a4';
+  } catch {
+    return 'a4';
+  }
+}
+
+export function rememberReceiptSize(size: ReceiptSize): void {
+  try {
+    localStorage.setItem(SIZE_KEY, size);
+  } catch {
+    // the choice is simply not kept
+  }
+}
+
 /** The line every shop's receipt carries by default: it does not belong on a salon's. */
 export const SHOP_RETURN_LINE = 'Bidhaa zilizouzwa haziruhusiwi kurudishwa bila risiti.';
 
@@ -45,7 +69,7 @@ function day(value: string | null | undefined): string {
  * The receipt as a printable page: who sold, to whom, what, how it was paid and what is still owed. Narrow like a till roll, and it
  * prints as well on a sheet of paper. `t` turns a key into words in the person's language.
  */
-export function receiptHtml(sale: SaleDetail, header: ReceiptHeader | string, t: (key: string) => string): string {
+export function receiptHtml(sale: SaleDetail, header: ReceiptHeader | string, t: (key: string) => string, size: ReceiptSize = 'a4'): string {
   const h: ReceiptHeader = typeof header === 'string' ? { business: header, tagline: '', address: '', phone: '', email: '', website: '', tin: '', footer: '' } : header;
   const word = (key: string, raw: string): string => {
     const v = t(key);
@@ -80,6 +104,71 @@ export function receiptHtml(sale: SaleDetail, header: ReceiptHeader | string, t:
   const contact = [h.phone ? `${esc(t('receipt.tel'))} ${esc(h.phone)}` : '', h.email ? esc(h.email) : '', h.website ? esc(h.website) : ''].filter(Boolean).join(' · ');
   const phone = sale.customer_phone ? ` · ${esc(sale.customer_phone)}` : '';
   const state = cancelled ? 'cancelled' : sale.payment_status;
+
+  if (size !== 'a4') {
+    const narrow = size === 'thermal58';
+    const stacked = sale.items
+      .map((i) => {
+        const qty = i.qty ?? i.quantity;
+        const extra = [i.unit_name ? esc(i.unit_name) : '', i.staff_name ? `${esc(t('receipt.served'))}: ${esc(i.staff_name)}` : ''].filter(Boolean).join(' · ');
+        return `<div class="it"><div class="nm">${esc(i.product_name)}</div>${extra ? `<div class="sm">${extra}</div>` : ''}<div class="rw"><span>${qty} x ${tsh(i.unit_price)}</span><b>${tsh(i.total)}</b></div></div>`;
+      })
+      .join('');
+    const rows = (pairs: [string, string, string?][]) => pairs.filter((p) => p[1] !== '').map(([k, v, c]) => `<div class="rw ${c ?? ''}"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
+    const sums = rows([
+      [t('till.sub'), tsh(sale.subtotal)],
+      [t('till.discount') + (sale.discount_reason ? ` (${sale.discount_reason})` : ''), sale.discount > 0 ? '-' + tsh(sale.discount) : ''],
+      [t('till.vat'), sale.tax > 0 ? tsh(sale.tax) : ''],
+      [t('till.total'), tsh(sale.total), 'grand'],
+      [t('till.paid'), tsh(sale.paid_total)],
+      [t('till.owing'), owing > 0 ? tsh(owing) : '', 'owing'],
+    ]);
+    const paid = (sale.payments ?? [])
+      .map((p) => `<div class="rw"><span>${esc(word(`pay.${p.method ?? 'cash'}`, p.method ?? ''))}${p.reference ? ` · ${esc(t('receipt.ref'))} ${esc(p.reference)}` : ''}</span><b>${tsh(p.amount)}</b></div>`)
+      .join('');
+
+    return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(sale.number)}</title>
+<style>
+@page{size:${narrow ? '58mm' : '80mm'} auto;margin:2mm}
+*{box-sizing:border-box}
+body{font:${narrow ? '11px' : '12.5px'}/1.4 "Courier New",Courier,monospace;width:${narrow ? '52mm' : '74mm'};margin:0 auto;padding:4px;color:#000}
+.c{text-align:center}
+h1{font-size:${narrow ? '14px' : '17px'};margin:0 0 2px;text-transform:uppercase}
+p{margin:1px 0}
+.hr{border-top:1px dashed #000;margin:6px 0}
+.title{text-align:center;font-weight:700;letter-spacing:1px;margin:2px 0}
+.rw{display:flex;justify-content:space-between;gap:6px}
+.rw b{white-space:nowrap}
+.it{margin:4px 0}
+.nm{font-weight:700}
+.sm{font-size:${narrow ? '9.5px' : '10.5px'};color:#333}
+.grand{font-size:${narrow ? '13px' : '15px'};border-top:1px solid #000;margin-top:3px;padding-top:3px}
+.owing{font-weight:700}
+.stamp{border:2px solid #000;text-align:center;font-weight:700;letter-spacing:2px;padding:2px;margin:6px 0}
+.bar{text-align:center;padding-bottom:6px}
+.bar button{padding:6px 12px;border:1px solid #000;border-radius:6px;background:#fff;font-weight:700;cursor:pointer}
+@media print{.bar{display:none}body{padding:0}}
+</style></head><body>
+<div class="bar"><button onclick="window.print()">${esc(t('receipt.print'))}</button></div>
+<div class="c"><h1>${esc(h.business)}</h1>${h.tagline ? `<p>${esc(h.tagline)}</p>` : ''}${h.address ? `<p>${esc(h.address)}</p>` : ''}${contact ? `<p>${contact}</p>` : ''}${h.tin ? `<p>${esc(t('receipt.tin'))}: ${esc(h.tin)}</p>` : ''}</div>
+<div class="hr"></div>
+<div class="title">${esc(t('receipt.title'))}</div>
+<div class="rw"><span>${esc(t('receipt.no'))}</span><b>${esc(sale.number)}</b></div>
+<div class="rw"><span>${esc(t('receipt.date'))}</span><b>${esc(eatDateTime(sale.created_at))}</b></div>
+<div class="rw"><span>${esc(t('receipt.customer'))}</span><b>${sale.customer_name ? esc(sale.customer_name) + phone : esc(t('sales.walkin'))}</b></div>
+<div class="rw"><span></span><b>${esc(status)}</b></div>
+${cancelled ? `<div class="stamp">${esc(t('sales.cancelled'))}</div>` : ''}
+<div class="hr"></div>
+${stacked}
+<div class="hr"></div>
+${sums}
+${paid ? `<div class="hr"></div><div class="title">${esc(t('receipt.payments'))}</div>${paid}` : ''}
+${owing > 0 && sale.due_date && !cancelled ? `<p class="owing">${esc(t('receipt.due'))}: ${esc(day(sale.due_date))}</p>` : ''}
+<div class="hr"></div>
+<div class="c">${h.footer ? `<p>${esc(h.footer)}</p>` : ''}<p><b>${esc(t('till.thanks'))}</b></p><p class="sm">${esc(t('receipt.printed'))} ${esc(eatDateTime(new Date().toISOString()))}</p></div>
+<script>window.onload=function(){setTimeout(function(){window.print()},250)}</script></body></html>`;
+  }
+
 
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(sale.number)}</title>
 <style>
@@ -150,9 +239,9 @@ ${cancelled ? `<div class="stamp">${esc(t('sales.cancelled'))}</div>` : ''}
 <script>window.onload=function(){setTimeout(function(){window.print()},250)}</script></body></html>`;
 }
 
-export function printReceipt(sale: SaleDetail, header: ReceiptHeader | string, t: (key: string) => string): void {
-  const w = window.open('', '_blank', 'width=980,height=900');
+export function printReceipt(sale: SaleDetail, header: ReceiptHeader | string, t: (key: string) => string, size: ReceiptSize = 'a4'): void {
+  const w = window.open('', '_blank', size === 'a4' ? 'width=980,height=900' : 'width=420,height=760');
   if (!w) return;
-  w.document.write(receiptHtml(sale, header, t));
+  w.document.write(receiptHtml(sale, header, t, size));
   w.document.close();
 }

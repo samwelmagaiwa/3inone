@@ -9,7 +9,8 @@ import { localizedName, offline, parseAmount, serverMessage, tsh } from '../../c
 import { I18nService } from '../../core/i18n.service';
 import { Named } from '../../core/products.models';
 import { ProductsApi } from '../../core/products-api.service';
-import { printReceipt } from '../../core/receipt';
+import { ReceiptSize, printReceipt, rememberReceiptSize } from '../../core/receipt';
+import { ReceiptSizeComponent } from '../../shared/components/receipt-size/receipt-size';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { ToastService } from '../../core/services/toast.service';
 import { activeUnits, CartLine, Customer, PriceOption, Product, SellingUnit } from '../../core/till.models';
@@ -27,7 +28,7 @@ const PROGRESS = '#wz:';
 
 @Component({
   selector: 'app-till',
-  imports: [FormsModule, ModalDialogComponent, MoneyDirective],
+  imports: [FormsModule, ReceiptSizeComponent, ModalDialogComponent, MoneyDirective],
   templateUrl: './till.html',
 })
 export class TillPage implements OnInit, OnDestroy {
@@ -966,8 +967,19 @@ export class TillPage implements OnInit, OnDestroy {
     el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
   }
 
+  /** The sale whose receipt is about to be printed: the paper is asked first. */
+  protected readonly printing = signal<SaleDetail | null>(null);
+
   protected print(sale: SaleDetail): void {
-    printReceipt(sale, this.caps.receiptHeader(), (k) => this.i18n.t(k));
+    this.printing.set(sale);
+  }
+
+  protected printOn(size: ReceiptSize): void {
+    const sale = this.printing();
+    this.printing.set(null);
+    if (!sale) return;
+    rememberReceiptSize(size);
+    printReceipt(sale, this.caps.receiptHeader(), (k) => this.i18n.t(k), size);
   }
 
   protected newSale(): void {
