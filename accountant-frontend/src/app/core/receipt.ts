@@ -56,10 +56,10 @@ export function receiptHtml(sale: SaleDetail, header: ReceiptHeader | string, t:
   const status = cancelled ? t('sales.cancelled') : t(`sales.status.${sale.payment_status}`);
 
   const items = sale.items
-    .map((i) => {
+    .map((i, n) => {
       const qty = i.qty ?? i.quantity;
       const extra = [i.unit_name ? esc(i.unit_name) : '', i.staff_name ? `${esc(t('receipt.served'))}: ${esc(i.staff_name)}` : ''].filter(Boolean).join(' · ');
-      return `<tr><td class="name">${esc(i.product_name)}${extra ? `<small>${extra}</small>` : ''}</td><td class="c">${qty}</td><td class="r">${tsh(i.unit_price)}</td><td class="r">${tsh(i.total)}</td></tr>`;
+      return `<tr><td class="no">${n + 1}</td><td class="name">${esc(i.product_name)}${extra ? `<small>${extra}</small>` : ''}</td><td class="c">${qty}</td><td class="r">${tsh(i.unit_price)}</td><td class="r">${tsh(i.total)}</td></tr>`;
     })
     .join('');
 
@@ -74,63 +74,84 @@ export function receiptHtml(sale: SaleDetail, header: ReceiptHeader | string, t:
   ].join('');
 
   const payments = (sale.payments ?? [])
-    .map((p) => `<tr><td>${esc(eatDateTime(p.paid_at))}<small>${esc(word(`pay.${p.method ?? 'cash'}`, p.method ?? ''))}${p.reference ? ` · ${esc(t('receipt.ref'))} ${esc(p.reference)}` : ''}</small></td><td class="r">${tsh(p.amount)}</td></tr>`)
+    .map((p) => `<tr><td>${esc(eatDateTime(p.paid_at))}</td><td>${esc(word(`pay.${p.method ?? 'cash'}`, p.method ?? ''))}${p.reference ? ` · ${esc(t('receipt.ref'))} ${esc(p.reference)}` : ''}</td><td class="r">${tsh(p.amount)}</td></tr>`)
     .join('');
 
   const contact = [h.phone ? `${esc(t('receipt.tel'))} ${esc(h.phone)}` : '', h.email ? esc(h.email) : '', h.website ? esc(h.website) : ''].filter(Boolean).join(' · ');
   const phone = sale.customer_phone ? ` · ${esc(sale.customer_phone)}` : '';
+  const state = cancelled ? 'cancelled' : sale.payment_status;
 
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(sale.number)}</title>
 <style>
-@page{margin:8mm}
-*{box-sizing:border-box}
-body{font:12.5px/1.45 Arial,Helvetica,sans-serif;max-width:340px;margin:0 auto;padding:14px;color:#111}
-.head{text-align:center;padding-bottom:8px;border-bottom:2px solid #111}
-.head h1{font-size:18px;margin:0 0 2px;letter-spacing:.3px}
-.head p{margin:1px 0;color:#333}
-.title{text-align:center;font-weight:700;letter-spacing:2px;margin:10px 0 6px;font-size:12px}
-.meta{width:100%;border-collapse:collapse}
-.meta td{padding:1px 0;vertical-align:top}
-.meta td:first-child{color:#555;width:38%}
-.status{display:inline-block;padding:1px 8px;border:1px solid #111;border-radius:3px;font-weight:700;font-size:11px;text-transform:uppercase}
-.status.cancelled{border-color:#b00;color:#b00}
-table.lines{width:100%;border-collapse:collapse;margin-top:8px}
-table.lines th{text-align:left;font-size:11px;color:#555;border-bottom:1px solid #111;padding:3px 0}
-table.lines th.c,table.lines td.c{text-align:center}
-table.lines th.r,table.lines td.r,.tot td.r,.pay td.r{text-align:right}
-table.lines td{padding:4px 0;border-bottom:1px dotted #bbb;vertical-align:top}
-td.name small,.pay small{display:block;color:#666;font-size:11px}
-.tot,.pay{width:100%;border-collapse:collapse;margin-top:8px}
-.tot td{padding:2px 0}
-.tot tr.grand td{font-size:15px;font-weight:700;border-top:1px dashed #111;padding-top:6px}
-.tot tr.owing td{font-weight:700;border-top:1px solid #111;padding-top:4px}
-h2{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;margin:12px 0 2px;border-bottom:1px solid #ccc;padding-bottom:2px;color:#444}
-.pay td{padding:2px 0;vertical-align:top}
-.due{margin-top:6px;font-weight:700}
-.foot{text-align:center;margin-top:14px;padding-top:8px;border-top:1px dashed #111}
+@page{size:A4;margin:12mm}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font:13px/1.5 "Segoe UI",Arial,Helvetica,sans-serif;max-width:190mm;margin:0 auto;padding:18px;color:#1e293b;background:#fff}
+.top{display:flex;justify-content:space-between;gap:24px;padding-bottom:14px;border-bottom:3px solid #1a2f6e}
+.biz h1{font-size:24px;margin:0 0 2px;color:#1a2f6e;letter-spacing:-.2px}
+.biz p{margin:1px 0;color:#475569}
+.doc{text-align:right}
+.doc .title{font-size:20px;font-weight:800;letter-spacing:2px;color:#1a2f6e}
+.doc .no{margin-top:4px;font-size:15px;font-weight:700}
+.doc .when{color:#475569}
+.status{display:inline-block;margin-top:6px;padding:3px 12px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#fff;background:#16a34a}
+.status.partial{background:#d97706}
+.status.debt,.status.cancelled{background:#dc2626}
+.parties{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.box{border:1px solid #cfd9f3;border-radius:8px;padding:10px 14px;background:#f6f8ff}
+.box h2{margin:0 0 4px;font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:#64748b}
+.box p{margin:0;font-weight:700;font-size:14px}
+table{width:100%;border-collapse:collapse}
+table.lines{margin-top:16px;border:1px solid #cfd9f3}
+table.lines th{background:#1a2f6e;color:#fff;text-align:left;font-size:11.5px;letter-spacing:.4px;padding:8px 10px;border:1px solid #1a2f6e}
+table.lines td{padding:8px 10px;border:1px solid #dbe4f7;vertical-align:top}
+table.lines tbody tr:nth-child(even){background:#f6f8ff}
+table.lines .no{width:34px;text-align:center;color:#64748b}
+table.lines .c,table.lines th.c{text-align:center;width:60px}
+table.lines .r,table.lines th.r{text-align:right;white-space:nowrap}
+td.name{font-weight:700}
+td.name small{display:block;color:#64748b;font-weight:400;font-size:11.5px}
+.sum{display:grid;grid-template-columns:1.1fr 1fr;gap:20px;margin-top:16px;align-items:start}
+.sum h3{margin:0 0 4px;font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:#64748b}
+table.pay td{padding:6px 8px;border:1px solid #dbe4f7;font-size:12px}
+table.pay .r{text-align:right;font-weight:700}
+table.tot{border:1px solid #cfd9f3}
+table.tot td{padding:6px 12px}
+table.tot td.r{text-align:right}
+table.tot tr.grand td{font-size:16px;font-weight:800;background:#e8eefc;color:#1a2f6e;border-top:1px solid #cfd9f3}
+table.tot tr.owing td{font-weight:800;color:#dc2626;border-top:1px solid #cfd9f3}
+.due{margin-top:10px;font-weight:700;color:#b45309}
+.stamp{margin:12px auto 0;width:max-content;color:#dc2626;border:3px solid #dc2626;font-weight:800;letter-spacing:4px;padding:4px 18px;transform:rotate(-4deg);border-radius:6px}
+.signs{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:38px}
+.signs div{border-top:1px solid #94a3b8;padding-top:4px;text-align:center;font-size:11.5px;color:#64748b}
+.foot{text-align:center;margin-top:22px;padding-top:10px;border-top:2px solid #1a2f6e}
 .foot p{margin:2px 0}
-.foot .small{color:#666;font-size:10.5px}
-.stamp{text-align:center;color:#b00;border:2px solid #b00;font-weight:700;letter-spacing:3px;padding:3px;margin-top:8px;transform:rotate(-3deg)}
+.foot .small{color:#94a3b8;font-size:10.5px}
+.bar{display:flex;gap:8px;justify-content:flex-end;padding-bottom:10px}
+.bar button{padding:8px 16px;border:1px solid #1a2f6e;border-radius:8px;background:#1a2f6e;color:#fff;font-weight:700;cursor:pointer}
+@media print{.bar{display:none}body{padding:0}}
 </style></head><body>
-<div class="head"><h1>${esc(h.business)}</h1>${h.tagline ? `<p>${esc(h.tagline)}</p>` : ''}${h.address ? `<p>${esc(h.address)}</p>` : ''}${contact ? `<p>${contact}</p>` : ''}${h.tin ? `<p>${esc(t('receipt.tin'))}: ${esc(h.tin)}</p>` : ''}</div>
-<div class="title">${esc(t('receipt.title'))}</div>
-<table class="meta">
-<tr><td>${esc(t('receipt.no'))}</td><td><b>${esc(sale.number)}</b></td></tr>
-<tr><td>${esc(t('receipt.date'))}</td><td>${esc(eatDateTime(sale.created_at))}</td></tr>
-<tr><td>${esc(t('receipt.customer'))}</td><td>${sale.customer_name ? esc(sale.customer_name) + phone : esc(t('sales.walkin'))}</td></tr>
-<tr><td></td><td><span class="status${cancelled ? ' cancelled' : ''}">${esc(status)}</span></td></tr>
-</table>
+<div class="bar"><button onclick="window.print()">${esc(t('receipt.print'))}</button></div>
+<div class="top">
+<div class="biz"><h1>${esc(h.business)}</h1>${h.tagline ? `<p>${esc(h.tagline)}</p>` : ''}${h.address ? `<p>${esc(h.address)}</p>` : ''}${contact ? `<p>${contact}</p>` : ''}${h.tin ? `<p>${esc(t('receipt.tin'))}: ${esc(h.tin)}</p>` : ''}</div>
+<div class="doc"><div class="title">${esc(t('receipt.title'))}</div><div class="no">${esc(t('receipt.no'))} <b>${esc(sale.number)}</b></div><div class="when">${esc(eatDateTime(sale.created_at))}</div><span class="status ${state}">${esc(status)}</span></div>
+</div>
+<div class="parties">
+<div class="box"><h2>${esc(t('receipt.customer'))}</h2><p>${sale.customer_name ? esc(sale.customer_name) + phone : esc(t('sales.walkin'))}</p></div>
+<div class="box"><h2>${esc(t('receipt.date'))}</h2><p>${esc(eatDateTime(sale.created_at))}</p></div>
+</div>
 ${cancelled ? `<div class="stamp">${esc(t('sales.cancelled'))}</div>` : ''}
-<table class="lines"><thead><tr><th>${esc(t('receipt.item'))}</th><th class="c">${esc(t('receipt.qty'))}</th><th class="r">${esc(t('receipt.price'))}</th><th class="r">${esc(t('receipt.amount'))}</th></tr></thead><tbody>${items}</tbody></table>
+<table class="lines"><thead><tr><th class="no">#</th><th>${esc(t('receipt.item'))}</th><th class="c">${esc(t('receipt.qty'))}</th><th class="r">${esc(t('receipt.price'))}</th><th class="r">${esc(t('receipt.amount'))}</th></tr></thead><tbody>${items}</tbody></table>
+<div class="sum">
+<div>${payments ? `<h3>${esc(t('receipt.payments'))}</h3><table class="pay">${payments}</table>` : ''}${owing > 0 && sale.due_date && !cancelled ? `<p class="due">${esc(t('receipt.due'))}: ${esc(day(sale.due_date))}</p>` : ''}</div>
 <table class="tot">${totals}</table>
-${payments ? `<h2>${esc(t('receipt.payments'))}</h2><table class="pay">${payments}</table>` : ''}
-${owing > 0 && sale.due_date && !cancelled ? `<p class="due">${esc(t('receipt.due'))}: ${esc(day(sale.due_date))}</p>` : ''}
+</div>
+<div class="signs"><div>${esc(t('receipt.sign.seller'))}</div><div>${esc(t('receipt.sign.customer'))}</div></div>
 <div class="foot">${h.footer ? `<p>${esc(h.footer)}</p>` : ''}<p><b>${esc(t('till.thanks'))}</b></p><p class="small">${esc(t('receipt.printed'))} ${esc(eatDateTime(new Date().toISOString()))}</p></div>
-<script>window.onload=function(){window.print()}</script></body></html>`;
+<script>window.onload=function(){setTimeout(function(){window.print()},250)}</script></body></html>`;
 }
 
 export function printReceipt(sale: SaleDetail, header: ReceiptHeader | string, t: (key: string) => string): void {
-  const w = window.open('', '_blank', 'width=420,height=720');
+  const w = window.open('', '_blank', 'width=980,height=900');
   if (!w) return;
   w.document.write(receiptHtml(sale, header, t));
   w.document.close();
