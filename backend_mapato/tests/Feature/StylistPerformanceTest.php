@@ -230,6 +230,8 @@ class StylistPerformanceTest extends TestCase
         $this->api($asha, 'PUT', '/api/inventory/salon/stylist-targets', $body)->assertForbidden();
         $this->api($owner, 'PUT', '/api/inventory/salon/stylist-targets', $body)->assertOk()->assertJsonPath('data.can_set', true);
 
+        $this->api($accountant, 'GET', '/api/inventory/salon/stylist-targets?month=2026-11')->assertForbidden();
+        $accountant->forceFill(['permissions' => ['inv_salon_stylists']])->save();
         $read = $this->api($accountant, 'GET', '/api/inventory/salon/stylist-targets?month=2026-11')->assertOk();
         $read->assertJsonPath('data.can_set', false);
         $this->assertEquals(150000, collect($read->json('data.people'))->firstWhere('name', 'Asha')['target']['amount']);

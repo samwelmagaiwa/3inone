@@ -72,10 +72,10 @@ class AccessModulesTest extends TestCase
         $ivan = $this->person($owner, 'accountant');
         $have = $this->effective($ivan);
 
-        foreach (['inv_view_products', 'inv_create_products', 'inv_create_sales', 'inv_view_credit', 'inv_view_reports', 'inv_manage_expenses', 'inv_salon_money', 'inv_salon_team', 'inv_salon_insights', 'inv_salon_appointments', 'inv_salon_stylists'] as $key) {
+        foreach (['inv_view_products', 'inv_create_products', 'inv_create_sales', 'inv_view_credit', 'inv_view_reports', 'inv_manage_expenses', 'inv_salon_money', 'inv_salon_team', 'inv_salon_insights', 'inv_salon_appointments'] as $key) {
             $this->assertContains($key, $have, $key);
         }
-        foreach (['inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_feedback', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_manage_settings', 'inv_manage_products'] as $key) {
+        foreach (['inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_feedback', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_manage_settings', 'inv_manage_products'] as $key) {
             $this->assertNotContains($key, $have, $key);
         }
     }

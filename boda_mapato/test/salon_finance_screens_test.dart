@@ -704,10 +704,10 @@ void main() {
   group('export follows the rights', () {
     testWidgets('an accountant is offered only the reports its rights allow', (t) async {
       await _host(t, ExportScreen(api: _FakeSalon(), today: _today), role: 'accountant');
-      for (final String k in <String>['sales', 'expenses', 'stylists', 'tax']) {
+      for (final String k in <String>['sales', 'expenses', 'tax']) {
         expect(find.byKey(Key('exp_type_$k')), findsOneWidget, reason: k);
       }
-      for (final String k in <String>['payroll', 'profit-loss', 'cashbook']) {
+      for (final String k in <String>['stylists', 'payroll', 'profit-loss', 'cashbook']) {
         expect(find.byKey(Key('exp_type_$k')), findsNothing, reason: k);
       }
     });

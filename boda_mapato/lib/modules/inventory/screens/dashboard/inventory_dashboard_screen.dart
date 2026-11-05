@@ -807,9 +807,10 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
                       value: '${_filteredSalesCount(inv)}',
                       icon: Icons.shopping_cart_rounded,
                       iconColor: Colors.greenAccent.shade200,
-                      divider: true,
+                      divider: _canSeeProfit(inv),
                     ),
                   ),
+                  if (_canSeeProfit(inv))
                   Expanded(
                     child: _salesMiniTile(
                       label: loc.translate('profit'),
@@ -1034,6 +1035,17 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
     );
   }
 
+  /// In a salon the profit is its own right (the owner gives it or takes it back); the shop keeps what it had.
+  bool _canSeeProfit(InventoryProvider inv) {
+    if (!inv.salonMode) return true;
+    try {
+      final user = Provider.of<AuthProvider>(context, listen: false).user;
+      return user != null && user.access.has('inv_salon_profit');
+    } catch (_) {
+      return false;
+    }
+  }
+
   Widget _buildStatsCards(LocalizationService loc, InventoryProvider inv) {
     final int totalProducts = inv.products.length;
     final int lowStock = inv.lowStockCount;
@@ -1052,7 +1064,8 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
                 true,
               ),
             ),
-            ResponsiveHelper.horizontalSpace(4),
+            if (_canSeeProfit(inv)) ResponsiveHelper.horizontalSpace(4),
+            if (_canSeeProfit(inv))
             Expanded(
               child: _buildStatCard(
                 loc.translate('profit'),

@@ -81,6 +81,23 @@ void main() {
     expect(find.descendant(of: _key('ov_year'), matching: find.text('TSH 900,000')), findsOneWidget);
   });
 
+  testWidgets('without the profit right the periods show takings only', (t) async {
+    final SalonOverview base = _overview();
+    await _host(
+      t,
+      _FakeSalon(SalonOverview(
+        today: base.today, week: base.week, month: base.month, year: base.year, collections: base.collections, outstanding: base.outstanding,
+        topServices: base.topServices, topStaff: const <RankedItem>[], bookingsToday: 2, bookingsUpcoming: 5, profitHidden: true,
+      )),
+    );
+
+    expect(find.descendant(of: _key('ov_week'), matching: find.text('TSH 126,000')), findsOneWidget);
+    expect(find.textContaining('Profit'), findsNothing);
+    expect(find.textContaining('Loss'), findsNothing);
+    expect(find.text('Top 3 stylists this month'), findsNothing);
+    expect(find.text('Best 3 selling services'), findsOneWidget);
+  });
+
   testWidgets('a month at a loss says loss', (t) async {
     await _host(t, _FakeSalon(_overview(monthProfit: -4000)));
 

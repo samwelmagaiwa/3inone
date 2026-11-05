@@ -204,7 +204,11 @@ class SalonRolesTest extends TestCase
         $made = $this->api($accountant, 'POST', '/api/inventory/expenses', ['category' => 'rent', 'description' => 'Rent', 'amount' => 1000, 'expense_date' => '2026-10-01'])->assertCreated();
         $made->assertJsonPath('data.status', 'approved');
         $this->api($asha, 'POST', '/api/inventory/expenses', ['category' => 'rent', 'description' => 'Nope', 'amount' => 1000, 'expense_date' => '2026-10-01'])->assertStatus(403);
+        // How each stylist did is a right of its own: the accountant starts without it and has it once the owner switches it on.
+        $this->api($accountant, 'GET', '/api/inventory/salon/stylists')->assertForbidden();
+        $accountant->forceFill(['permissions' => ['inv_salon_stylists']])->save();
         $this->assertCount(1, $this->api($accountant, 'GET', '/api/inventory/salon/stylists')->json('data.stylists'));
+        $accountant->forceFill(['permissions' => []])->save();
 
         // The till: the accountant rings up a sale and sees it among everyone's.
         $this->sell($accountant, $braids, 40000)->assertCreated();

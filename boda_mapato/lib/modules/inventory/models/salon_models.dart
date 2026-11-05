@@ -1005,6 +1005,7 @@ class SalonOverview {
     required this.topStaff,
     required this.bookingsToday,
     required this.bookingsUpcoming,
+    this.profitHidden = false,
   });
 
   factory SalonOverview.fromJson(final Map<String, dynamic> j) {
@@ -1022,8 +1023,12 @@ class SalonOverview {
       topStaff: _rows(j['top_staff']).map(RankedItem.fromJson).toList(),
       bookingsToday: _int(bookings['today']),
       bookingsUpcoming: _int(bookings['upcoming']),
+      profitHidden: j['profit_hidden'] == true,
     );
   }
+
+  /// The server leaves the profit out when this person does not hold the profit right.
+  final bool profitHidden;
 
   final PeriodFigures today;
   final PeriodFigures week;

@@ -199,10 +199,10 @@ class SalonMoneyRightsTest extends TestCase
         $this->api($acc, 'GET', "/api/inventory/salon/export/sales{$from}")->assertForbidden()->assertJsonPath('code', 'module_not_allowed');
         $this->give($owner, $acc, ['inv_salon_export']);
 
-        foreach (['sales', 'expenses', 'tax', 'stylists'] as $type) {
+        foreach (['sales', 'expenses', 'tax'] as $type) {
             $this->api($acc, 'GET', "/api/inventory/salon/export/{$type}{$from}")->assertOk();
         }
-        foreach (['payroll', 'profit-loss', 'cashbook'] as $type) {
+        foreach (['stylists', 'payroll', 'profit-loss', 'cashbook'] as $type) {
             $this->api($acc, 'GET', "/api/inventory/salon/export/{$type}{$from}")->assertForbidden();
         }
 
@@ -246,5 +246,31 @@ class SalonMoneyRightsTest extends TestCase
         foreach (['inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_export', 'inv_salon_schedule'] as $key) {
             $this->assertFalse($state[$key]['on'], "{$key} starts off");
         }
+    }
+
+    public function test_the_dashboard_overview_hides_profit_and_the_top_stylists_without_their_rights(): void
+    {
+        [$owner, $acc] = $this->scene();
+
+        $mine = $this->api($acc, 'GET', '/api/inventory/salon/overview')->assertOk()->json('data');
+        $this->assertTrue($mine['profit_hidden']);
+        foreach (['today', 'week', 'month', 'year'] as $p) {
+            $this->assertArrayNotHasKey('net_profit', $mine['periods'][$p]);
+            $this->assertArrayHasKey('revenue', $mine['periods'][$p]);
+        }
+        $this->assertSame([], $mine['top_staff']);
+        $this->assertNotEmpty($mine['top_services']);
+
+        $full = $this->api($owner, 'GET', '/api/inventory/salon/overview')->assertOk()->json('data');
+        $this->assertArrayNotHasKey('profit_hidden', $full);
+        $this->assertArrayHasKey('net_profit', $full['periods']['month']);
+        $this->assertNotEmpty($full['top_staff']);
+
+        $this->give($owner, $acc, ['inv_salon_profit', 'inv_salon_stylists']);
+        $now = $this->api($acc, 'GET', '/api/inventory/salon/overview')->assertOk()->json('data');
+        $this->assertArrayHasKey('net_profit', $now['periods']['month']);
+        $this->assertNotEmpty($now['top_staff']);
+        // The stylist picker on a sale is not the performance report: it still lists the staff.
+        $this->api($acc, 'GET', '/api/inventory/salon/staff')->assertOk();
     }
 }

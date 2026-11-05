@@ -254,7 +254,7 @@ class UserPermissions {
         return const [
           'inv_view_products', 'inv_create_products', 'inv_create_sales', 'inv_manage_sales', 'inv_view_credit', 'inv_view_cash',
           'inv_view_reports', 'inv_view_expenses', 'inv_manage_expenses', 'inv_view_reminders',
-          'inv_salon_appointments', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_insights', 'inv_salon_money',
+          'inv_salon_appointments', 'inv_salon_team', 'inv_salon_insights', 'inv_salon_money',
         ];
       case 'viewer':
         return const [

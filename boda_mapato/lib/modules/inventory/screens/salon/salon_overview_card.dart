@@ -87,17 +87,17 @@ class _SalonOverviewCardState extends State<SalonOverviewCard> {
           SizedBox(height: 10.h),
           Row(
             children: <Widget>[
-              Expanded(child: _tile('today', sw ? 'Leo' : 'Today', d.today, sw)),
+              Expanded(child: _tile('today', sw ? 'Leo' : 'Today', d.today, sw, d.profitHidden)),
               SizedBox(width: 8.w),
-              Expanded(child: _tile('week', sw ? 'Wiki' : 'Week', d.week, sw)),
+              Expanded(child: _tile('week', sw ? 'Wiki' : 'Week', d.week, sw, d.profitHidden)),
             ],
           ),
           SizedBox(height: 8.h),
           Row(
             children: <Widget>[
-              Expanded(child: _tile('month', sw ? 'Mwezi' : 'Month', d.month, sw)),
+              Expanded(child: _tile('month', sw ? 'Mwezi' : 'Month', d.month, sw, d.profitHidden)),
               SizedBox(width: 8.w),
-              Expanded(child: _tile('year', sw ? 'Mwaka' : 'Year', d.year, sw)),
+              Expanded(child: _tile('year', sw ? 'Mwaka' : 'Year', d.year, sw, d.profitHidden)),
             ],
           ),
           SizedBox(height: 12.h),
@@ -169,7 +169,7 @@ class _SalonOverviewCardState extends State<SalonOverviewCard> {
         ),
       );
 
-  Widget _tile(final String key, final String label, final PeriodFigures f, final bool sw) {
+  Widget _tile(final String key, final String label, final PeriodFigures f, final bool sw, final bool hideProfit) {
     final bool profit = f.netProfit >= 0;
 
     return Container(
@@ -182,7 +182,8 @@ class _SalonOverviewCardState extends State<SalonOverviewCard> {
           Text(label, style: ThemeConstants.captionStyle),
           SizedBox(height: 2.h),
           Text(tsh(f.revenue), style: TextStyle(color: ThemeConstants.invAccent, fontWeight: FontWeight.w800, fontSize: 15.sp)),
-          SizedBox(height: 2.h),
+          if (!hideProfit) SizedBox(height: 2.h),
+          if (!hideProfit)
           Text(
             '${profit ? (sw ? 'Faida' : 'Profit') : (sw ? 'Hasara' : 'Loss')} ${tsh(f.netProfit)}',
             style: ThemeConstants.captionStyle.copyWith(color: profit ? ThemeConstants.successGreen : ThemeConstants.errorText),

@@ -62,7 +62,17 @@ class SalonMoneyController extends Controller
     {
         $this->requireManager($request);
 
-        return response()->json(['data' => SalonFinance::overview($this->today(), \App\Support\Salon\SalonBranch::selected($request))]);
+        $data = SalonFinance::overview($this->today(), \App\Support\Salon\SalonBranch::selected($request));
+        $me = $request->user();
+        // Profit is its own right, and who earned the most is the stylists' report's: without them the dashboard leaves them out.
+        if (!\App\Support\Salon\SalonAccess::seesProfit($me)) {
+            $data = SalonFinance::withoutProfit($data);
+        }
+        if (!\App\Support\Salon\SalonAccess::can($me, 'inv_salon_stylists')) {
+            $data['top_staff'] = [];
+        }
+
+        return response()->json(['data' => $data]);
     }
 
     // ------------------------------------------------------------------ who earns what
