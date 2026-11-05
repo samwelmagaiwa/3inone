@@ -259,16 +259,6 @@
           <input id="pMin" name="pMin" class="modal-input" inputmode="numeric" [(ngModel)]="fMin" autocomplete="off" data-testid="prod-min" [placeholder]="i18n.t('ph.qty')">
         </div>
       </div>
-      <div class="contents">
-        <div>
-          <label class="modal-label" for="pBarcode">{{ i18n.t('prod.form.barcode') }}</label>
-          <input id="pBarcode" name="pBarcode" class="modal-input" [(ngModel)]="fBarcode" autocomplete="off" [placeholder]="i18n.t('ph.barcode')">
-        </div>
-        <div>
-          <label class="modal-label" for="pSku">{{ i18n.t('prod.form.sku') }}</label>
-          <input id="pSku" name="pSku" class="modal-input" [(ngModel)]="fSku" autocomplete="off" [placeholder]="i18n.t('prod.form.sku.hint')">
-        </div>
-      </div>
     } @else {
       <div class="contents">
         <div>

@@ -180,6 +180,21 @@ describe('products and services', () => {
     });
   });
 
+  it('the form has no barcode or product code box, yet a change keeps the code the product already has', async () => {
+    const { h, fixture, el } = await open(MANAGER);
+
+    click(el, 'prod-edit-1');
+    await settle(fixture);
+    expect(el.querySelector('#pBarcode')).toBeNull();
+    expect(el.querySelector('#pSku')).toBeNull();
+    click(el, 'prod-save');
+    const req = h.http.expectOne({ method: 'PUT', url: `${LIST}/1` });
+    expect(req.request.body.sku).toBe('SKU1');
+    req.flush({ message: 'Updated' });
+    await settle(fixture);
+    h.http.expectOne((r) => r.url === LIST && r.method === 'GET').flush({ data: ROWS, meta: { current_page: 1, last_page: 1, total: 2 } });
+  });
+
   it('changing a product fills the form and saves with PUT', async () => {
     const { h, fixture, el } = await open(MANAGER);
 
