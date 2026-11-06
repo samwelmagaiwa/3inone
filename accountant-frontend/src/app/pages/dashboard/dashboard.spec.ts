@@ -102,6 +102,19 @@ describe('dashboard (this month)', () => {
     expect(all).toContain('Transport');
   });
 
+  it('draws the best earners as coloured bars with a trend line, profit for the owner', async () => {
+    const { el } = await open({}, { report: report(monthKey(new Date()), { top_products: [{ name: 'Soda', qty: 40, sales: 100000, profit: 40000 }, { name: 'Rice', qty: 10, sales: 60000, profit: 15000 }] }) });
+
+    const chart = byTestId(el, 'top-chart')!;
+    expect(chart.querySelectorAll('[data-testid=top-chart-bar]').length).toBe(2);
+    expect(chart.querySelectorAll('[data-testid=top-chart-bar]')[0].getAttribute('fill')).toBe('#007bff');
+    expect(chart.querySelectorAll('[data-testid=top-chart-bar]')[1].getAttribute('fill')).toBe('#17a2b8');
+    expect(text(chart)).toContain('40.0K');
+    expect(text(chart)).toContain('Profit (TSH)');
+    expect(text(chart)).toContain('Trend line');
+    expect(chart.querySelector('path[stroke="#003580"]')).not.toBeNull();
+  });
+
   it('shows advice, marked as coming from the AI, each in its own colour', async () => {
     const { el } = await open();
     expect(text(byTestId(el, 'advice-source')!)).toBe('AI');

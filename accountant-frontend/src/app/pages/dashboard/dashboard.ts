@@ -14,6 +14,7 @@ import { MotionService } from '../../core/services/motion.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
 import { SalonHomeComponent } from './salon-home';
+import { ChartItem, TopChartComponent } from '../../shared/components/top-chart/top-chart';
 import { CountUpDirective } from '../../shared/ui/count-up.directive';
 import { MoneyDirective } from '../../shared/ui/money.directive';
 
@@ -24,7 +25,7 @@ import { MoneyDirective } from '../../shared/ui/money.directive';
  */
 @Component({
   selector: 'app-dashboard',
-  imports: [NgTemplateOutlet, FormsModule, RouterLink, ModalDialogComponent, CountUpDirective, MoneyDirective, SalonHomeComponent],
+  imports: [NgTemplateOutlet, FormsModule, RouterLink, ModalDialogComponent, CountUpDirective, MoneyDirective, SalonHomeComponent, TopChartComponent],
   templateUrl: './dashboard.html',
 })
 export class DashboardPage implements OnInit, AfterViewInit, OnDestroy {
@@ -135,6 +136,13 @@ export class DashboardPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /** Profit, the target, capital and advice are the owner's: the server leaves them out for anyone else. */
+  /** The best earners as bars: profit for the owner, sales for those who may not see profit (the same figure the table shows). */
+  protected topItems(r: MonthlyReport): ChartItem[] {
+    const owner = this.ownerFigures(r);
+
+    return r.top_products.map((p) => ({ name: p.name, value: Number(owner ? p.profit : p.sales) || 0 })).filter((i) => i.value > 0);
+  }
+
   protected ownerFigures(r: MonthlyReport): boolean {
     return r.owner_figures !== false;
   }

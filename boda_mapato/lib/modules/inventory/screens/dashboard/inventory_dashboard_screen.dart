@@ -32,14 +32,19 @@ import '../salon/salon_overview_card.dart';
 import '../money/month_summary_card.dart';
 import '../widgets/inventory_widgets.dart';
 import '../widgets/profit_by_product_table.dart';
+import '../widgets/top_items_chart.dart';
+import '../../services/money_api.dart';
 
 /// Inventory dashboard styled to match the Transport (Modern) dashboard:
 /// hero balance card, glass stat cards, month strip + line chart.
 class InventoryDashboardScreen extends StatefulWidget {
-  const InventoryDashboardScreen({super.key, this.salonApi});
+  const InventoryDashboardScreen({super.key, this.salonApi, this.moneyApi});
 
   /// The salon's server calls (a fake in tests); used for the list of branches in the period sheet.
   final SalonApi? salonApi;
+
+  /// The server calls of the monthly report (a fake in tests).
+  final MoneyApi? moneyApi;
 
   @override
   State<InventoryDashboardScreen> createState() =>
@@ -60,6 +65,15 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
 
   int _selectedMonth = DateTime.now().month;
   bool _chartLoading = false;
+
+  // ── The second graph: what earned most this month, as coloured bars (the first is sales day by day) ─
+  bool _showBars = false;
+  List<TopItem> _topItems = const <TopItem>[];
+  bool _topProfit = false;
+  bool _topLoading = false;
+
+  /// False once the server refuses the month's report (a person without the reports right): the choice between the graphs is then not offered.
+  bool _topAvailable = true;
 
   // ── Date filter state ─────────────────────────────────────────────────────
   _DateFilter _filter = _DateFilter.today;
@@ -87,6 +101,7 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
       if (mounted) {
         _chartAnimationController.forward();
         _loadChartForMonth(_selectedMonth);
+        _loadTopItems(_selectedMonth);
       }
     });
     // InventoryProvider.bootstrap() (which fetches this) runs once at
@@ -105,6 +120,40 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
         context.read<InventoryProvider>().fetchSalesOfficers();
       }
     });
+  }
+
+  /// The month's best earners (the monthly report's list: profit for the owner, sales for those who may not see profit).
+  Future<void> _loadTopItems(final int month) async {
+    if (!mounted) return;
+    setState(() => _topLoading = true);
+    try {
+      final DateTime now = DateTime.now();
+      final Map<String, dynamic> r = await (widget.moneyApi ?? MoneyApi()).monthlyReport('${now.year}-${month.toString().padLeft(2, '0')}');
+      final bool owner = r['owner_figures'] != false;
+      final List<TopItem> items = <TopItem>[];
+      if (r['top_products'] is List) {
+        for (final dynamic row in r['top_products'] as List<dynamic>) {
+          if (row is! Map) continue;
+          final num? v = (owner ? row['profit'] : row['sales']) is num ? (owner ? row['profit'] : row['sales']) as num : null;
+          if (v != null && v > 0) items.add(TopItem(name: '${row['name']}', value: v.toDouble()));
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _topItems = items;
+        _topProfit = owner;
+        _topAvailable = true;
+        _topLoading = false;
+      });
+    } on Exception {
+      if (!mounted) return;
+      setState(() {
+        _topItems = const <TopItem>[];
+        _topAvailable = false;
+        _showBars = false;
+        _topLoading = false;
+      });
+    }
   }
 
   Future<void> _loadChartForMonth(int month) async {
@@ -1193,8 +1242,14 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              _buildMonthSelector(),
+              Row(children: <Widget>[
+                Expanded(child: _buildMonthSelector()),
+                if (_topAvailable) ...<Widget>[const SizedBox(width: 8), _graphToggle(loc)],
+              ]),
               const SizedBox(height: 24),
+              if (_showBars && _topAvailable)
+                _buildTopItemsGraph(loc, inv)
+              else
               SizedBox(
                 height: MediaQuery.of(context).size.height < 700 ? 200 : 240,
                 child: _chartLoading
@@ -1360,6 +1415,60 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
         );
 
   // Opens on the current month (scrolled into view); earlier months are a swipe away.
+  /// Two small buttons beside the months: the day-by-day line, and the bars of what earned most. The one showing is lit.
+  Widget _graphToggle(final LocalizationService loc) {
+    Widget button(final String key, final IconData icon, final bool on, final String tip, final VoidCallback onTap) => Tooltip(
+          message: tip,
+          child: InkWell(
+            key: ValueKey<String>(key),
+            borderRadius: BorderRadius.circular(10),
+            onTap: onTap,
+            child: Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(color: on ? Colors.white.withOpacity(0.22) : Colors.transparent, borderRadius: BorderRadius.circular(10)),
+              child: Icon(icon, size: 20, color: on ? Colors.white : Colors.white54),
+            ),
+          ),
+        );
+
+    return Container(
+      key: const ValueKey<String>('graph_toggle'),
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(color: Colors.black.withOpacity(0.18), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white24)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+        button('graph_line', Icons.show_chart_rounded, !_showBars, loc.isSwahili ? 'Mauzo kwa siku' : 'Sales by day', () => setState(() => _showBars = false)),
+        button('graph_bars', Icons.bar_chart_rounded, _showBars, loc.isSwahili ? 'Zilizoleta faida zaidi' : 'Top earners', () {
+          setState(() => _showBars = true);
+          if (_topItems.isEmpty && !_topLoading) _loadTopItems(_selectedMonth);
+        }),
+      ]),
+    );
+  }
+
+  /// The second graph: the month's best earning services (or goods) as coloured bars with a trend line through them.
+  Widget _buildTopItemsGraph(final LocalizationService loc, final InventoryProvider inv) {
+    final bool sw = loc.isSwahili;
+    if (_topLoading) {
+      return const SizedBox(height: 240, child: Center(child: CircularProgressIndicator(color: Colors.white54, strokeWidth: 2)));
+    }
+    if (_topItems.isEmpty) {
+      return SizedBox(height: 200, child: Center(child: Text(loc.translate('no_chart_data'), style: const TextStyle(color: Colors.white70))));
+    }
+    final String what = inv.salonMode ? (sw ? 'Huduma na bidhaa' : 'Services and goods') : (sw ? 'Bidhaa' : 'Products');
+    final String figure = _topProfit ? (sw ? 'Faida (TSH)' : 'Profit (TSH)') : (sw ? 'Mauzo (TSH)' : 'Sales (TSH)');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(sw ? '$what zilizoleta ${_topProfit ? 'faida' : 'mauzo'} zaidi' : 'Top earning ${what.toLowerCase()}', style: TextStyle(color: textPrimary, fontSize: ResponsiveHelper.bodyL, fontWeight: FontWeight.bold)),
+        ),
+        TopItemsChart(items: _topItems, legend: figure, trendLabel: sw ? 'Mwelekeo' : 'Trend line'),
+      ],
+    );
+  }
+
   Widget _buildMonthSelector() => MonthSelector(
         months: months,
         selectedMonth: _selectedMonth,
@@ -1368,6 +1477,7 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
         onSelected: (int month) {
           setState(() => _selectedMonth = month);
           _loadChartForMonth(month);
+          _loadTopItems(month);
         },
       );
 

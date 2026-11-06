@@ -114,6 +114,8 @@
           <h3 class="text-slate-900 font-black text-base">{{ i18n.t('top.title') }}</h3>
         </div>
         @if (r.top_products.length) {
+          <!-- The same figures as bars: one colour each, the figure above, and a trend line through the tops -->
+          <app-top-chart [items]="topItems(r)" [legend]="i18n.t(ownerFigures(r) ? 'chart.profit' : 'chart.sales')" [trendLabel]="i18n.t('chart.trend')" class="mb-4" />
           <table class="premium-table">
             <thead><tr><th>{{ i18n.t('top.product') }}</th><th class="text-right">{{ i18n.t('top.qty') }}</th><th class="text-right">{{ ownerFigures(r) ? i18n.t('top.profit') : i18n.t('kpi.sales') }}</th></tr></thead>
             <tbody>
