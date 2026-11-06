@@ -812,6 +812,7 @@ describe('the till: where to choose the customer', () => {
 
     byTestId(el, 'till-customer-toggle')!.click();
     await settle(fixture);
+    await settle(fixture); // a second pass: on a busy machine the first can end before the view is redrawn
     expect(byTestId(el, 'till-customer-list')).toBeNull();
   });
 

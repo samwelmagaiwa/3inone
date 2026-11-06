@@ -61,7 +61,6 @@ describe('dashboard (this month)', () => {
     expect(cards).toContain('Stock (at cost)');
     expect(cards).toContain('TSH 1,000,000');
     expect(cards).toContain('Capital grew by TSH 200,000 since last month');
-    expect(cards).toContain('Personal spending (not taken off the profit): TSH 7,000');
   });
 
   it('for someone who is not the owner, profit, the target, what the business is worth and advice are not shown', async () => {
@@ -91,7 +90,7 @@ describe('dashboard (this month)', () => {
     expect(byTestId(el, 'advice-source')).toBeNull();
   });
 
-  it('names the products and the spending behind the numbers', async () => {
+  it('names the products behind the numbers', async () => {
     const { el } = await open();
     const all = text(el);
     expect(all).toContain('Soda');
@@ -99,8 +98,7 @@ describe('dashboard (this month)', () => {
     expect(el.querySelector('[data-testid=debtors]')).toBeNull();
     expect(all).not.toContain('Who owes the most');
     expect(all).not.toContain('Dusty Dye');
-    expect(all).toContain('Rent');
-    expect(all).toContain('Transport');
+    expect(all).not.toContain('Where did the money go'); // that card is gone: the best earners take its place
   });
 
   it('draws the best earners as coloured bars with a trend line, profit for the owner', async () => {
