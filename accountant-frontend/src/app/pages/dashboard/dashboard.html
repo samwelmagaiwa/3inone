@@ -90,23 +90,33 @@
 
     <!-- The best earners (where the money went is on the Expenses page) -->
     <div class="grid grid-cols-1 gap-5">
-      <section class="section-card p-5">
-        <div class="border-b border-slate-100 pb-3 mb-3">
-          <p class="label-eyebrow">{{ i18n.t('top.eyebrow') }}</p>
-          <h3 class="text-slate-900 font-black text-base">{{ i18n.t('top.title') }}</h3>
-        </div>
+      <section class="section-card p-5" data-testid="top-section">
         @if (r.top_products.length) {
-          <!-- The same figures as bars: one colour each, the figure above, and a trend line through the tops -->
-          <app-top-chart [items]="topItems(r)" [legend]="i18n.t(ownerFigures(r) ? 'chart.profit' : 'chart.sales')" [trendLabel]="i18n.t('chart.trend')" class="mb-4" />
-          <table class="premium-table">
-            <thead><tr><th>{{ i18n.t('top.product') }}</th><th class="text-right">{{ i18n.t('top.qty') }}</th><th class="text-right">{{ ownerFigures(r) ? i18n.t('top.profit') : i18n.t('kpi.sales') }}</th></tr></thead>
-            <tbody>
-              @for (p of r.top_products; track p.name) {
-                <tr><td class="font-bold">{{ p.name }}</td><td class="text-right">{{ p.qty }}</td><td class="text-right font-black">{{ tsh(ownerFigures(r) ? p.profit : p.sales) }}</td></tr>
-              }
-            </tbody>
-          </table>
+          <!-- On the left the heading and the bars (one colour each, the figure above, a trend line through the tops); on the right the same figures as a table -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5 items-start">
+            <div data-testid="top-left">
+              <div class="border-b border-slate-100 pb-3 mb-3">
+                <p class="label-eyebrow">{{ i18n.t('top.eyebrow') }}</p>
+                <h3 class="text-slate-900 font-black text-base">{{ i18n.t('top.title') }}</h3>
+              </div>
+              <app-top-chart [items]="topItems(r)" [legend]="i18n.t(ownerFigures(r) ? 'chart.profit' : 'chart.sales')" [trendLabel]="i18n.t('chart.trend')" />
+            </div>
+            <div data-testid="top-right" class="overflow-x-auto">
+              <table class="premium-table">
+                <thead><tr><th>{{ i18n.t('top.product') }}</th><th class="text-right">{{ i18n.t('top.qty') }}</th><th class="text-right">{{ ownerFigures(r) ? i18n.t('top.profit') : i18n.t('kpi.sales') }}</th></tr></thead>
+                    <tbody>
+                  @for (p of r.top_products; track p.name) {
+                        <tr><td class="font-bold">{{ p.name }}</td><td class="text-right">{{ p.qty }}</td><td class="text-right font-black">{{ tsh(ownerFigures(r) ? p.profit : p.sales) }}</td></tr>
+                  }
+                    </tbody>
+              </table>
+            </div>
+          </div>
         } @else {
+          <div class="border-b border-slate-100 pb-3 mb-3">
+            <p class="label-eyebrow">{{ i18n.t('top.eyebrow') }}</p>
+            <h3 class="text-slate-900 font-black text-base">{{ i18n.t('top.title') }}</h3>
+          </div>
           <div class="empty-state"><p class="empty-title">{{ i18n.t('top.empty') }}</p></div>
         }
       </section>

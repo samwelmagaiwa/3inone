@@ -101,6 +101,18 @@ describe('dashboard (this month)', () => {
     expect(all).not.toContain('Where did the money go'); // that card is gone: the best earners take its place
   });
 
+  it('puts the heading and the bars on the left and the table on the right, in one row', async () => {
+    const { el } = await open();
+
+    const left = byTestId(el, 'top-left')!;
+    const right = byTestId(el, 'top-right')!;
+    expect(left.parentElement).toBe(right.parentElement);
+    expect(left.querySelector('[data-testid=top-chart]')).not.toBeNull();
+    expect(text(left)).toContain('Products that earned the most');
+    expect(right.querySelector('table')).not.toBeNull();
+    expect(left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('draws the best earners as coloured bars with a trend line, profit for the owner', async () => {
     const { el } = await open({}, { report: report(monthKey(new Date()), { top_products: [{ name: 'Soda', qty: 40, sales: 100000, profit: 40000 }, { name: 'Rice', qty: 10, sales: 60000, profit: 15000 }] }) });
 
