@@ -91,13 +91,14 @@ describe('dashboard (this month)', () => {
     expect(byTestId(el, 'advice-source')).toBeNull();
   });
 
-  it('names the products and the people behind the numbers', async () => {
+  it('names the products and the spending behind the numbers', async () => {
     const { el } = await open();
     const all = text(el);
     expect(all).toContain('Soda');
-    expect(all).toContain('Baba Juma');
-    expect(all).toContain('200 days');
-    expect(all).toContain('Dusty Dye');
+    // who owes and the sleeping stock are not on the dashboard any more (debts have their own page)
+    expect(el.querySelector('[data-testid=debtors]')).toBeNull();
+    expect(all).not.toContain('Who owes the most');
+    expect(all).not.toContain('Dusty Dye');
     expect(all).toContain('Rent');
     expect(all).toContain('Transport');
   });

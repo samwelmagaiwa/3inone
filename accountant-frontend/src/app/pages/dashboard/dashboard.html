@@ -130,44 +130,6 @@
       </section>
     </div>
 
-    <!-- Who owes me + sleeping stock -->
-    @if (r.debtors.length || r.slow_stock.length) {
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <section class="section-card p-5">
-          <div class="border-b border-slate-100 pb-3 mb-3 flex items-center justify-between">
-            <div>
-              <p class="label-eyebrow">{{ i18n.t('debtors.eyebrow') }}</p>
-              <h3 class="text-slate-900 font-black text-base">{{ i18n.t('debtors.title') }}</h3>
-            </div>
-            @if (auth.can('inv_view_credit')) { <a routerLink="/debts" class="text-xs font-black text-[#1a2f6e] hover:underline">{{ i18n.t('common.seeall') }} →</a> }
-          </div>
-          @for (d of r.debtors; track d.name) {
-            <div class="flex justify-between items-center py-2 border-b border-slate-50 text-sm">
-              <span class="font-bold text-slate-800">{{ d.name }} <span class="text-xs font-semibold text-slate-400">· {{ i18n.t('debtors.days', d.days) }}</span></span>
-              <span class="font-black">{{ tsh(d.owed) }}</span>
-            </div>
-          } @empty {
-            <div class="empty-state"><p class="empty-title">{{ i18n.t('debtors.empty') }}</p></div>
-          }
-        </section>
-
-        <section class="section-card p-5">
-          <div class="border-b border-slate-100 pb-3 mb-3">
-            <p class="label-eyebrow">{{ i18n.t('slow.eyebrow') }}</p>
-            <h3 class="text-slate-900 font-black text-base">{{ i18n.t('slow.title') }}</h3>
-          </div>
-          @for (s of r.slow_stock; track s.name) {
-            <div class="flex justify-between items-center py-2 border-b border-slate-50 text-sm">
-              <span class="font-bold text-slate-800">{{ s.name }} <span class="text-xs font-semibold text-slate-400">× {{ s.quantity }}</span></span>
-              <span class="font-black">{{ tsh(s.value) }}</span>
-            </div>
-          } @empty {
-            <div class="empty-state"><p class="empty-title">{{ i18n.t('slow.empty') }}</p></div>
-          }
-        </section>
-      </div>
-    }
-
     <!-- Where to improve: advice is written from the profit, so it is the owner's -->
     @if (!r.is_future && ownerFigures(r)) {
       <section class="section-card p-5">
