@@ -144,6 +144,10 @@ Route::prefix('public/salon')->middleware('throttle:120,1,public-salon')->group(
     Route::get('book/{slug}', [SalonPublicBookingController::class, 'catalog']);
     Route::get('book/{slug}/slots', [SalonPublicBookingController::class, 'slots']);
     Route::post('book/{slug}', [SalonPublicBookingController::class, 'book'])->middleware('throttle:10,1,salon-book');
+    // A client's own page (from a private link): what is coming up, points, packages, history; cancel their own appointment; ask for the link by phone.
+    Route::get('me/{token}', [\App\Http\Controllers\API\Inventory\SalonPortalController::class, 'show']);
+    Route::post('me/{token}/appointments/{id}/cancel', [\App\Http\Controllers\API\Inventory\SalonPortalController::class, 'cancel'])->middleware('throttle:20,1,salon-portal-cancel');
+    Route::post('book/{slug}/my-link', [\App\Http\Controllers\API\Inventory\SalonPortalController::class, 'requestLink'])->middleware('throttle:5,1,salon-my-link');
 });
 
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
@@ -439,14 +443,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // at the POS, sell on credit), so it must work for anyone who can create
     // sales -- not only those who manage the catalogue. Editing/deleting a
     // customer stays inv_manage_products (above).
-    Route::middleware('inv_perm:inv_manage_products,inv_create_sales,inv_view_credit')->group(function () {
+    Route::middleware('inv_perm:inv_manage_products,inv_create_sales,inv_view_credit,inv_salon_appointments')->group(function () {
         Route::get('inventory/customers',          [InventoryCustomerController::class, 'index']);
         Route::get('customers',                    [InventoryCustomerController::class, 'index']);
     });
-    Route::middleware('inv_perm:inv_manage_products,inv_create_sales,inv_view_credit')->group(function () {
+    Route::middleware('inv_perm:inv_manage_products,inv_create_sales,inv_view_credit,inv_salon_appointments')->group(function () {
         Route::get('inventory/customers/lookup', [InventoryCustomerController::class, 'lookup']);
     });
-    Route::middleware('inv_perm:inv_manage_products,inv_create_sales')->group(function () {
+    Route::middleware('inv_perm:inv_manage_products,inv_create_sales,inv_salon_appointments')->group(function () {
         Route::post('inventory/customers',         [InventoryCustomerController::class, 'store']);
     });
 
@@ -471,8 +475,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // ── Salon: stylists, client history, "come back" reminders (see SalonController). It runs on the sales
     // engine, so these use the same permissions: whoever may sell may look a client up and note them down.
-    Route::middleware('inv_perm:inv_manage_products,inv_create_sales,inv_view_credit')->group(function () {
+    Route::middleware('inv_perm:inv_manage_products,inv_create_sales,inv_view_credit,inv_salon_appointments')->group(function () {
         Route::get('inventory/salon/staff',                [SalonController::class, 'staff']);
+        Route::post('inventory/salon/clients/{id}/link',   [\App\Http\Controllers\API\Inventory\SalonPortalController::class, 'link']);
         Route::get('inventory/salon/services/{id}/usual-goods', [SalonSetupController::class, 'usualGoods']);
         Route::get('inventory/salon/settings',             [SalonController::class, 'settings']);
         Route::get('inventory/salon/clients/overview',     [SalonClientController::class, 'overview']);
@@ -547,6 +552,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('inventory/salon/appointments/{id}/status', [AppointmentController::class, 'status'])->middleware('salon_module:inv_salon_appointments');
         // People at work: attendance, days off and the cash of each shift. A person sees only their own; the owner
         // and managers see everyone's (checked in the controller).
+        Route::get('inventory/salon/days-off/requests',    [SalonStaffController::class, 'dayOffRequests'])->middleware('salon_module:inv_salon_team');
+        Route::post('inventory/salon/days-off/requests',   [SalonStaffController::class, 'requestDayOff'])->middleware('salon_module:inv_salon_team');
+        Route::post('inventory/salon/days-off/requests/{id}/decision', [SalonStaffController::class, 'decideDayOffRequest'])->middleware('salon_module:inv_salon_team');
         Route::get('inventory/salon/days-off',             [SalonStaffController::class, 'daysOff'])->middleware('salon_module:inv_salon_team');
         Route::post('inventory/salon/days-off',            [SalonStaffController::class, 'storeDayOff'])->middleware('salon_module:inv_salon_team');
         Route::delete('inventory/salon/days-off/{id}',     [SalonStaffController::class, 'destroyDayOff'])->middleware('salon_module:inv_salon_team');
@@ -559,12 +567,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('inventory/salon/shifts/open',         [SalonStaffController::class, 'openShift'])->middleware('salon_module:inv_salon_team');
         Route::post('inventory/salon/shifts/{id}/close',   [SalonStaffController::class, 'closeShift'])->middleware('salon_module:inv_salon_team');
     });
-    Route::middleware('inv_perm:inv_manage_products,inv_create_sales')->group(function () {
+    Route::middleware('inv_perm:inv_manage_products,inv_create_sales,inv_salon_appointments')->group(function () {
         // PUT as well as PATCH: the app's HTTP client has PUT, and this changes only the two fields it is given.
         Route::match(['put', 'patch'], 'inventory/salon/clients/{id}', [SalonController::class, 'updateClient']);
     });
     // Results per stylist: the owner and managers see everyone, a stylist only their own line.
-    Route::middleware('inv_perm:inv_view_reports,inv_create_sales')->group(function () {
+    Route::middleware('inv_perm:inv_view_reports,inv_create_sales,inv_salon_stylists')->group(function () {
         Route::get('inventory/salon/stylists',             [SalonController::class, 'stylists'])->middleware('salon_module:inv_salon_stylists');
         Route::get('inventory/salon/stylist-targets',      [\App\Http\Controllers\API\Inventory\StylistTargetController::class, 'show'])->middleware('salon_module:inv_salon_stylists');
         Route::put('inventory/salon/stylist-targets',      [\App\Http\Controllers\API\Inventory\StylistTargetController::class, 'save'])->middleware('salon_module:inv_salon_stylists');

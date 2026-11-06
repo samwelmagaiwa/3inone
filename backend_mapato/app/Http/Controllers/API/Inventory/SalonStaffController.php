@@ -118,6 +118,75 @@ class SalonStaffController extends Controller
         return response()->json(['message' => 'Deleted']);
     }
 
+    // ------------------------------------------------------------------ asking for a day off
+
+    #[OA\Post(path: '/inventory/salon/days-off/requests', summary: 'Ask for a day off', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 201, description: 'Created')])]
+    public function requestDayOff(Request $request): JsonResponse
+    {
+        $me = $request->user();
+        $data = $request->validate(['off_on' => 'required|date_format:Y-m-d|after_or_equal:today', 'reason' => 'nullable|string|max:120']);
+        $mine = (string) $me->id;
+        if (DB::table('inventory_staff_days_off')->where('staff_id', $mine)->where('off_on', $data['off_on'])->exists()
+            || DB::table('inventory_day_off_requests')->where('staff_id', $mine)->where('off_on', $data['off_on'])->whereIn('status', ['pending', 'approved'])->exists()) {
+            throw ValidationException::withMessages(['off_on' => ['Siku hiyo ni ya mapumziko au imeombwa tayari. / That day is already a day off or already asked for.']]);
+        }
+        $id = DB::table('inventory_day_off_requests')->insertGetId([
+            'staff_id' => $mine,
+            'staff_name' => $me->name,
+            'off_on' => $data['off_on'],
+            'reason' => !empty($data['reason']) ? trim($data['reason']) : null,
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        // Whoever sets the schedule is told, never the one who asked.
+        app(\App\Services\Inventory\InventoryNotifier::class)->notifyByPermission(
+            ['inv_salon_schedule'],
+            'salon_dayoff_request',
+            'Ombi la siku ya mapumziko / A day off is asked for',
+            "{$me->name}: {$data['off_on']}" . (!empty($data['reason']) ? " ({$data['reason']})" : ''),
+            ['request_id' => (int) $id],
+            excludeUserId: $mine,
+        );
+
+        return response()->json(['message' => 'Asked', 'data' => ['id' => (int) $id]], 201);
+    }
+
+    #[OA\Get(path: '/inventory/salon/days-off/requests', summary: 'Days off asked for: your own, or everyone\'s for whoever sets the schedule', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 200, description: 'Success')])]
+    public function dayOffRequests(Request $request): JsonResponse
+    {
+        $me = $request->user();
+        $all = SalonAccess::canSchedule($me);
+        $rows = DB::table('inventory_day_off_requests')
+            ->when(!$all, fn ($q) => $q->where('staff_id', (string) $me->id))
+            ->where('off_on', '>=', now()->subDays(30)->toDateString())
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
+            ->orderBy('off_on')
+            ->limit(100)
+            ->get()
+            ->map(fn ($r) => ['id' => (int) $r->id, 'staff_id' => $r->staff_id, 'staff_name' => $r->staff_name, 'off_on' => substr((string) $r->off_on, 0, 10), 'reason' => $r->reason, 'status' => $r->status])
+            ->values();
+
+        return response()->json(['data' => ['can_decide' => $all, 'requests' => $rows]]);
+    }
+
+    #[OA\Post(path: '/inventory/salon/days-off/requests/{id}/decision', summary: 'Approve or turn down a day off that was asked for', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success')])]
+    public function decideDayOffRequest(Request $request, int $id): JsonResponse
+    {
+        abort_unless(SalonAccess::canSchedule($request->user()), 403, 'Ni mwenye ruhusa ya ratiba tu anayeamua. / Only someone who sets the schedule can decide.');
+        $data = $request->validate(['decision' => 'required|in:approve,reject']);
+        $row = DB::table('inventory_day_off_requests')->find($id);
+        abort_if(!$row, 404, 'Not found');
+        abort_if($row->status !== 'pending', 422, 'Ombi hili limeshaamuliwa. / This one is already decided.');
+        $approve = $data['decision'] === 'approve';
+        DB::table('inventory_day_off_requests')->where('id', $id)->update(['status' => $approve ? 'approved' : 'rejected', 'decided_by' => (string) $request->user()->id, 'decided_at' => now(), 'updated_at' => now()]);
+        if ($approve && !DB::table('inventory_staff_days_off')->where('staff_id', $row->staff_id)->where('off_on', $row->off_on)->exists()) {
+            DB::table('inventory_staff_days_off')->insert(['staff_id' => $row->staff_id, 'off_on' => $row->off_on, 'reason' => $row->reason, 'created_by' => (string) $request->user()->id, 'created_at' => now(), 'updated_at' => now()]);
+        }
+
+        return response()->json(['message' => $approve ? 'Approved' : 'Rejected']);
+    }
+
     // ------------------------------------------------------------------ attendance
 
     #[OA\Post(path: '/inventory/salon/attendance/clock-in', summary: 'Start work', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 201, description: 'Created')])]

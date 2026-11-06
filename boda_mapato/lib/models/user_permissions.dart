@@ -251,7 +251,8 @@ class UserPermissions {
       case 'hair_stylist':
       case 'nail_technician':
       case 'lash_makeup_artist':
-        return const ['inv_view_products', 'inv_create_sales', 'inv_view_reminders', 'inv_report_damage', 'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_feedback'];
+        // Selling at the counter and seeing what clients said about oneself start switched off: the owner gives them on the access screen.
+        return const ['inv_view_products', 'inv_view_reminders', 'inv_report_damage', 'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team'];
       case 'accountant':
         return const [
           'inv_view_products', 'inv_create_products', 'inv_create_sales', 'inv_manage_sales', 'inv_view_credit', 'inv_view_cash',

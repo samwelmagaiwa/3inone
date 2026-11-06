@@ -87,6 +87,18 @@ class _FakeSalon extends SalonApi {
   @override
   Future<void> deleteDayOff(int id) async => offDeleted.add(id);
 
+  List<DayOffRequest> requestsAsked = <DayOffRequest>[];
+  final List<(int, bool)> decisions = <(int, bool)>[];
+
+  @override
+  Future<(bool, List<DayOffRequest>)> dayOffRequests() async => (true, requestsAsked);
+
+  @override
+  Future<void> decideDayOffRequest(int id, {required bool approve}) async {
+    decisions.add((id, approve));
+    requestsAsked = <DayOffRequest>[];
+  }
+
   @override
   Future<SalonShift?> currentShift() async => current;
 
@@ -299,6 +311,24 @@ void main() {
   });
 
   group('the schedule', () {
+    testWidgets('days off a stylist asked for wait here for the owner: approve or reject, then they are gone from the list', (t) async {
+      final _FakeSalon api = _FakeSalon()
+        ..profiles = <StaffProfile>[const StaffProfile(staffId: 'u1', name: 'Asha', role: 'hair_stylist', monthlySalary: 0)]
+        ..requestsAsked = <DayOffRequest>[DayOffRequest(id: 5, staffId: 'u1', staffName: 'Asha', offOn: DateTime(2026, 10, 20), status: 'pending', reason: 'Family')];
+      await _host(t, ScheduleScreen(api: api, today: _today));
+
+      expect(find.text('Days off asked for'), findsOneWidget);
+      expect(find.byKey(const ValueKey<String>('dayoff_ask_5')), findsOneWidget);
+      expect(find.text('Family'), findsOneWidget);
+      await t.ensureVisible(find.byKey(const ValueKey<String>('dayoff_approve_5')));
+      await t.tap(find.byKey(const ValueKey<String>('dayoff_approve_5')));
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 300));
+
+      expect(api.decisions, <(int, bool)>[(5, true)]);
+      expect(find.byKey(const ValueKey<String>('dayoff_ask_5')), findsNothing);
+    });
+
     StaffProfile profile(String id, String name, {List<int> days = const <int>[], String? from, String? to, String? spec}) =>
         StaffProfile(staffId: id, name: name, role: 'hair_stylist', monthlySalary: 0, workDays: days, shiftStart: from, shiftEnd: to, specialization: spec);
 

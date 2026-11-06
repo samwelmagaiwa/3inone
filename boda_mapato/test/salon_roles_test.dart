@@ -64,9 +64,9 @@ class _Server extends ApiService {
 void main() {
   group('what each role may do', () {
     const Map<String, Map<String, bool>> table = <String, Map<String, bool>>{
-      'hair_stylist': <String, bool>{'inv_create_sales': true, 'inv_report_damage': true, 'inv_view_reports': false, 'inv_view_expenses': false, 'inv_view_cash': false, 'inv_manage_settings': false, 'inv_manage_stock': false},
-      'nail_technician': <String, bool>{'inv_create_sales': true, 'inv_report_damage': true, 'inv_view_reports': false, 'inv_manage_products': false},
-      'lash_makeup_artist': <String, bool>{'inv_create_sales': true, 'inv_report_damage': true, 'inv_view_reports': false, 'inv_manage_products': false},
+      'hair_stylist': <String, bool>{'inv_create_sales': false, 'inv_salon_feedback': false, 'inv_salon_appointments': true, 'inv_report_damage': true, 'inv_view_reports': false, 'inv_view_expenses': false, 'inv_view_cash': false, 'inv_manage_settings': false, 'inv_manage_stock': false},
+      'nail_technician': <String, bool>{'inv_create_sales': false, 'inv_report_damage': true, 'inv_view_reports': false, 'inv_manage_products': false},
+      'lash_makeup_artist': <String, bool>{'inv_create_sales': false, 'inv_report_damage': true, 'inv_view_reports': false, 'inv_manage_products': false},
       'accountant': <String, bool>{'inv_create_sales': true, 'inv_manage_sales': true, 'inv_view_cash': true, 'inv_view_credit': true, 'inv_view_reports': true, 'inv_view_expenses': true, 'inv_manage_expenses': true, 'inv_manage_stock': false, 'inv_manage_products': false, 'inv_manage_settings': false},
     };
 

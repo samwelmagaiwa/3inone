@@ -66,7 +66,8 @@ class CustomerController extends Controller
         $perPage = max(1, min(100, (int) $request->query('per_page', 20)));
         $customers = ($byName ? $query->orderBy('name') : $query->orderByDesc('id'))->paginate($perPage);
         return response()->json([
-            'data' => $customers->items(),
+            // A client's private link secret never leaves the server in a list.
+            'data' => array_map(function ($c) { unset($c->portal_token); return $c; }, $customers->items()),
             'meta' => [
                 'current_page' => $customers->currentPage(),
                 'last_page' => $customers->lastPage(),

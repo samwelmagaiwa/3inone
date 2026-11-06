@@ -35,6 +35,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   List<StaffProfile> _people = <StaffProfile>[];
   List<DayOff> _daysOff = <DayOff>[];
+  // Days off the staff asked for that wait for a decision.
+  List<DayOffRequest> _asked = <DayOffRequest>[];
   // What is being edited, per person: their weekdays and hours before saving.
   final Map<String, Set<int>> _days = <String, Set<int>>{};
   final Map<String, String?> _from = <String, String?>{};
@@ -60,10 +62,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     try {
       final List<StaffProfile> people = await _api.staffProfiles();
       final List<DayOff> off = await _api.daysOff(asked);
+      List<DayOffRequest> waiting = <DayOffRequest>[];
+      try {
+        waiting = (await _api.dayOffRequests()).$2.where((DayOffRequest r) => r.isPending).toList();
+      } on Exception {
+        // the requests are a bonus: the schedule still works without them
+      }
       if (!mounted || asked != _month) return;
       setState(() {
         _people = people;
         _daysOff = off;
+        _asked = waiting;
         for (final StaffProfile p in people) {
           _days[p.staffId] = p.workDays.toSet();
           _from[p.staffId] = p.shiftStart;
@@ -239,6 +248,43 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ),
         ],
       ),
+      if (_asked.isNotEmpty) ...<Widget>[
+        SizedBox(height: 12.h),
+        Text(sw ? 'Maombi ya mapumziko' : 'Days off asked for', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
+        SizedBox(height: 6.h),
+        GlowListCard(
+          dividerKey: 'dayoff_ask_divider',
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
+          children: <Widget>[
+            for (final DayOffRequest r in _asked)
+              Padding(
+                key: ValueKey<String>('dayoff_ask_${r.id}'),
+                padding: EdgeInsets.symmetric(vertical: 4.h),
+                child: Row(children: <Widget>[
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+                      Text('${r.staffName ?? ''} • ${dayLabel(r.offOn)}', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
+                      if (r.reason != null) Text(r.reason!, style: ThemeConstants.captionStyle),
+                    ]),
+                  ),
+                  OutlinedButton(
+                    key: ValueKey<String>('dayoff_reject_${r.id}'),
+                    style: OutlinedButton.styleFrom(side: const BorderSide(color: ThemeConstants.errorRed), padding: EdgeInsets.symmetric(horizontal: 10.w)),
+                    onPressed: _busy ? null : () => _run(() => _api.decideDayOffRequest(r.id, approve: false)),
+                    child: Text(sw ? 'Kataa' : 'Reject', style: const TextStyle(color: ThemeConstants.errorText)),
+                  ),
+                  SizedBox(width: 6.w),
+                  ElevatedButton(
+                    key: ValueKey<String>('dayoff_approve_${r.id}'),
+                    style: ElevatedButton.styleFrom(backgroundColor: ThemeConstants.successGreen, padding: EdgeInsets.symmetric(horizontal: 10.w)),
+                    onPressed: _busy ? null : () => _run(() => _api.decideDayOffRequest(r.id, approve: true)),
+                    child: Text(sw ? 'Kubali' : 'Approve', style: const TextStyle(color: Colors.white)),
+                  ),
+                ]),
+              ),
+          ],
+        ),
+      ],
       SizedBox(height: 12.h),
       Row(
         children: <Widget>[

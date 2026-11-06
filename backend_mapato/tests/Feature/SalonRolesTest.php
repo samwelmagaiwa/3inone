@@ -116,9 +116,9 @@ class SalonRolesTest extends TestCase
     {
         $owner = $this->salon();
         $expect = [
-            'hair_stylist' => ['inv_create_sales' => true, 'inv_report_damage' => true, 'inv_view_reports' => false, 'inv_view_expenses' => false, 'inv_view_cash' => false, 'inv_manage_settings' => false, 'inv_manage_stock' => false],
-            'nail_technician' => ['inv_create_sales' => true, 'inv_report_damage' => true, 'inv_view_reports' => false, 'inv_manage_products' => false],
-            'lash_makeup_artist' => ['inv_create_sales' => true, 'inv_report_damage' => true, 'inv_view_reports' => false, 'inv_manage_products' => false],
+            'hair_stylist' => ['inv_create_sales' => false, 'inv_salon_feedback' => false, 'inv_salon_appointments' => true, 'inv_report_damage' => true, 'inv_view_reports' => false, 'inv_view_expenses' => false, 'inv_view_cash' => false, 'inv_manage_settings' => false, 'inv_manage_stock' => false],
+            'nail_technician' => ['inv_create_sales' => false, 'inv_report_damage' => true, 'inv_view_reports' => false, 'inv_manage_products' => false],
+            'lash_makeup_artist' => ['inv_create_sales' => false, 'inv_report_damage' => true, 'inv_view_reports' => false, 'inv_manage_products' => false],
             // The accountant keeps the till and the books: sells, takes payment, handles returns, sees the daily cash and every
             // report, records spending. The owner alone changes the goods, the stock and the settings.
             'accountant' => ['inv_create_sales' => true, 'inv_manage_sales' => true, 'inv_view_cash' => true, 'inv_view_credit' => true, 'inv_view_reports' => true, 'inv_view_expenses' => true, 'inv_manage_expenses' => true, 'inv_manage_stock' => false, 'inv_manage_products' => false, 'inv_manage_settings' => false],
@@ -165,6 +165,9 @@ class SalonRolesTest extends TestCase
         $asha = $this->person($owner, 'Asha', 'hair_stylist');
         $bahati = $this->person($owner, 'Bahati', 'nail_technician');
         $cashier = $this->person($owner, 'Acc', 'accountant');
+        foreach ([$asha, $bahati] as $w) {
+            $w->forceFill(['permissions' => ['inv_create_sales']])->save(); // the owner gave them the till
+        }
         $braids = $this->api($owner, 'POST', '/api/inventory/products', ['name' => 'Braids', 'is_service' => true, 'quantity' => 0, 'min_stock' => 0, 'status' => 'active', 'cost_price' => 0, 'selling_price' => 40000, 'commission_percent' => 10])->json('data.id');
         $this->sell($asha, $braids, 40000, $asha)->assertCreated();
         $this->sell($bahati, $braids, 40000, $bahati)->assertCreated();
@@ -198,6 +201,7 @@ class SalonRolesTest extends TestCase
         $owner = $this->salon();
         $accountant = $this->person($owner, 'Acc', 'accountant');
         $asha = $this->person($owner, 'Asha', 'hair_stylist');
+        $asha->forceFill(['permissions' => ['inv_create_sales']])->save(); // the owner gave her the till
         $braids = $this->service($owner, 'Braids', 40000);
         $this->sell($asha, $braids, 40000, $asha)->assertCreated();
 
@@ -235,7 +239,7 @@ class SalonRolesTest extends TestCase
         $res->assertSuccessful();
         $asha->refresh();
         $this->assertTrue($asha->hasInventoryPermission('inv_view_cash'), 'the extra right is honoured');
-        $this->assertTrue($asha->hasInventoryPermission('inv_create_sales'), 'and the role keeps its own');
+        $this->assertTrue($asha->hasInventoryPermission('inv_view_products'), 'and the role keeps its own');
         $this->assertFalse($asha->hasInventoryPermission('inv_view_reports'));
     }
 }

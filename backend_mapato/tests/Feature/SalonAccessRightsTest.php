@@ -128,6 +128,9 @@ class SalonAccessRightsTest extends TestCase
         $owner = $this->salon();
         $asha = $this->person($owner, 'hair_stylist');
         $bahati = $this->person($owner, 'nail_technician');
+        foreach ([$asha, $bahati] as $who) {
+            $who->forceFill(['permissions' => ['inv_create_sales']])->save(); // the owner gave them the till
+        }
         $svc = $this->api($owner, 'POST', '/api/inventory/products', ['name' => 'Braids', 'is_service' => true, 'quantity' => 0, 'min_stock' => 0, 'status' => 'active', 'cost_price' => 0, 'selling_price' => 10000, 'duration_minutes' => 60])->assertCreated()->json('data.id');
         foreach ([$asha, $bahati] as $who) {
             $this->api($who, 'POST', '/api/inventory/sales', [
@@ -137,7 +140,7 @@ class SalonAccessRightsTest extends TestCase
         }
 
         $this->assertCount(1, $this->api($asha, 'GET', '/api/inventory/sales')->json('data'));
-        $this->give($owner, $asha, ['inv_view_reports'])->assertSuccessful();
+        $this->give($owner, $asha, ['inv_view_reports', 'inv_create_sales'])->assertSuccessful();
         $this->assertCount(2, $this->api($asha->refresh(), 'GET', '/api/inventory/sales')->json('data'));
     }
 

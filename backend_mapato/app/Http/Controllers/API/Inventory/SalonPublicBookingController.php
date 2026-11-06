@@ -88,6 +88,11 @@ class SalonPublicBookingController extends Controller
 <h1>{$name}</h1>
 <p>Weka miadi yako / Book your appointment</p>
 <div id="mine"></div>
+<details id="mylink"><summary>Tayari ni mteja? Tazama miadi, pointi na historia yako / Already a client? See your visits, points and history</summary>
+  <input id="lphone" placeholder="Simu / Phone (07…)" inputmode="tel" maxlength="30">
+  <button type="button" id="lsend">Nitumie kiungo / Text me my link</button>
+  <p id="lnote" role="status"></p>
+</details>
 <button id="install" type="button" hidden>Weka kwenye simu / Install on your phone</button>
 <p id="ios" hidden>iPhone: bonyeza Share kisha "Add to Home Screen". / iPhone: tap Share, then Add to Home Screen.</p>
 <form id="f" autocomplete="off">
@@ -163,6 +168,15 @@ document.getElementById('f').onsubmit = function (e) {
     note.textContent = msg(x); btn.disabled = false; if (x.j && x.j.errors && x.j.errors.starts_at) { loadSlots(); }
   }).catch(function () { note.textContent = 'Hakuna mtandao / No connection'; btn.disabled = false; });
 };
+document.getElementById('lsend').addEventListener('click', function () {
+  var note = document.getElementById('lnote'), phone = document.getElementById('lphone').value;
+  if (!phone) { return; }
+  this.disabled = true;
+  var btn = this;
+  fetch('/api/public/salon/book/' + encodeURIComponent(slug) + '/my-link', {method: 'POST', headers: {'Content-Type': 'application/json', 'Accept': 'application/json'}, body: JSON.stringify({phone: phone})})
+    .then(function (r) { return r.json(); }).then(function (j) { note.textContent = (j && j.message) || ''; btn.disabled = false; })
+    .catch(function () { note.textContent = 'Hakuna mtandao. / No connection.'; btn.disabled = false; });
+});
 </script>
 HTML;
 

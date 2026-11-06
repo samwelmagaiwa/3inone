@@ -41,9 +41,12 @@ class SalonStaffTest extends TestCase
         return $owner;
     }
 
+    /** A member of the team. A stylist here has been given the till (selling starts switched off for the people who do the work). */
     private function person(User $owner, string $name, string $role = 'hair_stylist'): User
     {
-        return $this->givenServices(User::factory()->create(['name' => $name, 'role' => $role, 'is_active' => true, 'created_by' => $owner->id]), 'salon');
+        $user = $this->givenServices(User::factory()->create(['name' => $name, 'role' => $role, 'is_active' => true, 'created_by' => $owner->id, 'permissions' => in_array($role, ['hair_stylist', 'nail_technician', 'lash_makeup_artist'], true) ? ['inv_create_sales'] : null]), 'salon');
+
+        return $user;
     }
 
     private function api(User $as, string $method, string $uri, array $body = [])

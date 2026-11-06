@@ -530,9 +530,9 @@ class User extends Authenticatable
         // ---- The salon's roles: the owner (admin) runs everything; the accountant also keeps the till, books and the money;
         // the people who do the work see only their own. (Reception, cashier, manager and stock work were folded into these.)
         // Their own services, appointments and performance (the server shows them only their own); they flag damaged goods.
-        'hair_stylist' => ['inv_view_products','inv_create_sales','inv_view_reminders','inv_report_damage', 'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback'],
-        'nail_technician' => ['inv_view_products','inv_create_sales','inv_view_reminders','inv_report_damage', 'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback'],
-        'lash_makeup_artist' => ['inv_view_products','inv_create_sales','inv_view_reminders','inv_report_damage', 'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback'],
+        'hair_stylist' => ['inv_view_products','inv_view_reminders','inv_report_damage', 'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team'],
+        'nail_technician' => ['inv_view_products','inv_view_reminders','inv_report_damage', 'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team'],
+        'lash_makeup_artist' => ['inv_view_products','inv_view_reminders','inv_report_damage', 'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team'],
         // The till and the books: sales, bookings, payments, receipts, returns, the daily cash, clients' credit, expenses,
         // financial reports and payroll.
         // The sections it starts with are the books' own: bookings, the money pages, payroll and the trends. The owner can switch any of

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
@@ -52,6 +53,23 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
   void dispose() {
     _notes.dispose();
     super.dispose();
+  }
+
+  /// Make the client's private link: copy it, or text it to them.
+  Future<void> _link({required final bool send}) async {
+    final bool sw = context.read<LocalizationService>().isSwahili;
+    try {
+      final ({String url, bool sent}) r = await _api.clientLink(widget.customerId, send: send);
+      if (!mounted) return;
+      if (send) {
+        ThemeConstants.showSuccessSnackBar(context, sw ? 'Kiungo kimetumwa kwa SMS.' : 'The link was texted.');
+      } else {
+        await Clipboard.setData(ClipboardData(text: r.url));
+        if (mounted) ThemeConstants.showSuccessSnackBar(context, sw ? 'Kiungo kimenakiliwa.' : 'Link copied.');
+      }
+    } on Exception catch (e) {
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
+    }
   }
 
   Future<void> _load() async {
@@ -233,6 +251,24 @@ class _ClientHistoryScreenState extends State<ClientHistoryScreen> {
         hint: sw ? 'mfano: ngozi ina mzio wa rangi ya amonia' : 'e.g. allergic to ammonia dye',
         maxLines: 3,
         isOptional: false,
+      ),
+      SizedBox(height: 10.h),
+      GlowCard(
+        title: sw ? 'Ukurasa wa mteja' : "The client's own page",
+        dividerKey: 'client_link_divider',
+        bottom: 0,
+        children: <Widget>[
+          Text(
+            sw ? 'Kiungo cha faragha kinachoonyesha miadi, pointi, vifurushi na historia yake. Anaweza kufuta miadi yake mwenyewe.' : 'A private link showing their appointments, points, packages and history. They can cancel their own appointment.',
+            style: ThemeConstants.captionStyle,
+          ),
+          SizedBox(height: 8.h),
+          Row(children: <Widget>[
+            Expanded(child: OutlinedButton.icon(key: const ValueKey<String>('client_link_copy'), onPressed: () => _link(send: false), icon: const Icon(Icons.copy_rounded, size: 18, color: Colors.white), label: Text(sw ? 'Nakili kiungo' : 'Copy link', style: const TextStyle(color: Colors.white)))),
+            SizedBox(width: 8.w),
+            Expanded(child: ElevatedButton.icon(key: const ValueKey<String>('client_link_send'), onPressed: () => _link(send: true), icon: const Icon(Icons.sms_outlined, size: 18), label: Text(sw ? 'Tuma kwa SMS' : 'Text it'))),
+          ]),
+        ],
       ),
       SizedBox(height: 8.h),
       InvPrimaryButton(

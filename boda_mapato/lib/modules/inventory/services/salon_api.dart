@@ -222,6 +222,36 @@ class SalonApi {
     ];
   }
 
+  /// The client's own private link (their page: visits, points, packages, what they owe). With [send] it is texted to them too.
+  Future<({String url, bool sent})> clientLink(final int customerId, {final bool send = false}) async {
+    final Map<String, dynamic> data = _data(await _api.post('/inventory/salon/clients/$customerId/link', <String, dynamic>{if (send) 'send': true}));
+
+    return (url: '${data['url'] ?? ''}', sent: data['sent'] == true);
+  }
+
+  /// The days off asked for: my own, or everyone's when I may decide them. [canDecide] says which.
+  Future<(bool, List<DayOffRequest>)> dayOffRequests() async {
+    final Map<String, dynamic> data = _data(await _api.get('/inventory/salon/days-off/requests'));
+    final dynamic rows = data['requests'];
+
+    return (
+      data['can_decide'] == true,
+      <DayOffRequest>[
+        if (rows is List)
+          for (final dynamic r in rows)
+            if (r is Map) DayOffRequest.fromJson(Map<String, dynamic>.from(r)),
+      ],
+    );
+  }
+
+  Future<void> requestDayOff(final DateTime day, {final String? reason}) async {
+    await _api.post('/inventory/salon/days-off/requests', <String, dynamic>{'off_on': _day(day), if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim()});
+  }
+
+  Future<void> decideDayOffRequest(final int id, {required final bool approve}) async {
+    await _api.post('/inventory/salon/days-off/requests/$id/decision', <String, dynamic>{'decision': approve ? 'approve' : 'reject'});
+  }
+
   Future<void> addDayOff(final String staffId, final DateTime day, {final String? reason}) async {
     await _api.post('/inventory/salon/days-off', <String, dynamic>{'staff_id': staffId, 'off_on': _day(day), if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim()});
   }

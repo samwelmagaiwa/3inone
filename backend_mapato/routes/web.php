@@ -41,6 +41,15 @@ Route::get('/f/{token}', [\App\Http\Controllers\API\Inventory\SalonFeedbackContr
         \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
     ]);
 
+// A client's own page (visits, points, packages, history): the link the salon texts them. No sign-in, no session; the secret is in the link.
+Route::get('/me/{token}', [\App\Http\Controllers\API\Inventory\SalonPortalController::class, 'page'])
+    ->middleware('throttle:60,1,salon-portal-page')
+    ->withoutMiddleware([
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+    ]);
+
 // The salon's app for a client's phone: its manifest, icon and service worker (the page is installable and opens offline).
 Route::get('/book/{slug}/manifest.webmanifest', [\App\Http\Controllers\API\Inventory\SalonPublicBookingController::class, 'manifest'])
     ->middleware('throttle:60,1,salon-booking-assets')

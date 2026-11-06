@@ -1099,6 +1099,30 @@ class AttendanceNow {
   final DateTime? since;
 }
 
+/// A day off a stylist asked for (pending until whoever sets the schedule decides).
+class DayOffRequest {
+  const DayOffRequest({required this.id, required this.staffId, required this.offOn, required this.status, this.staffName, this.reason});
+
+  factory DayOffRequest.fromJson(final Map<String, dynamic> j) => DayOffRequest(
+        id: _int(j['id']),
+        staffId: _text(j['staff_id']),
+        staffName: j['staff_name'] == null ? null : _text(j['staff_name']),
+        offOn: _date(j['off_on']) ?? DateTime.now(),
+        reason: j['reason'] == null || _text(j['reason']).isEmpty ? null : _text(j['reason']),
+        status: _text(j['status']).isEmpty ? 'pending' : _text(j['status']),
+      );
+
+  final int id;
+  final String staffId;
+  final String? staffName;
+  final DateTime offOn;
+  final String? reason;
+
+  /// pending | approved | rejected
+  final String status;
+  bool get isPending => status == 'pending';
+}
+
 class DayOff {
   const DayOff({required this.id, required this.staffId, required this.offOn, this.staffName, this.reason});
 

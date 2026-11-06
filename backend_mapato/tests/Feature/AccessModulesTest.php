@@ -211,10 +211,11 @@ class AccessModulesTest extends TestCase
         $asha = $this->person($owner, 'hair_stylist', 'Asha');
         $have = $this->effective($asha);
 
-        foreach (['inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_feedback'] as $key) {
+        foreach (['inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team'] as $key) {
             $this->assertContains($key, $have, $key);
         }
-        foreach (['inv_salon_money', 'inv_salon_insights', 'inv_salon_equipment', 'inv_view_reports'] as $key) {
+        // Selling at the counter and seeing what clients said about oneself start switched off: the owner gives them.
+        foreach (['inv_salon_money', 'inv_salon_insights', 'inv_salon_equipment', 'inv_view_reports', 'inv_create_sales', 'inv_salon_feedback'] as $key) {
             $this->assertNotContains($key, $have, $key);
         }
         $this->api($asha, 'GET', '/api/inventory/salon/queue')->assertOk();

@@ -40,6 +40,8 @@ import 'hubs/salon_team_hub_screen.dart';
 import 'salon/appointments_screen.dart';
 import 'salon/rebook_screen.dart';
 import 'salon/stylists_screen.dart';
+import 'salon/salon_access.dart';
+import 'salon/stylist_home_screen.dart';
 import '../providers/depot_provider.dart';
 import '../providers/inventory_provider.dart';
 import '../providers/notifications_provider.dart';
@@ -746,7 +748,8 @@ class _InventoryHomeState extends State<InventoryHome> {
         .toList();
 
     final pages = visible
-        .map((e) => SalonEmbedded(child: e.pageBuilder()))
+        // A stylist's dashboard is their own day (diary, queue, what they earned, days off), not the salon's figures.
+        .map((e) => SalonEmbedded(child: widget.salon && e.key == 'dashboard' && isStylistHere(context) ? const StylistHomeScreen() : e.pageBuilder()))
         .toList(growable: false);
     final titles = visible.map((e) => e.title(loc)).toList(growable: false);
     final int salesIndex = visible.indexWhere((e) => e.key == 'sales_hub');

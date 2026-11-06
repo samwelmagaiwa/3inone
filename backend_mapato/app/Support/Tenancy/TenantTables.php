@@ -75,6 +75,7 @@ final class TenantTables
         'inventory_service_materials',
         'inventory_service_usage',
         'inventory_settings',
+        'inventory_day_off_requests',
         'inventory_staff_days_off',
         'inventory_staff_payouts',
         'inventory_staff_profiles',

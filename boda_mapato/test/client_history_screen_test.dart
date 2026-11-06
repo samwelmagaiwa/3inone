@@ -31,6 +31,14 @@ class _FakeSalon extends SalonApi {
   }
 
   final List<Map<String, dynamic>> profileSaves = <Map<String, dynamic>>[];
+  final List<(int, bool)> links = <(int, bool)>[];
+
+  @override
+  Future<({String url, bool sent})> clientLink(int customerId, {bool send = false}) async {
+    links.add((customerId, send));
+
+    return (url: 'https://3inone.example/me/abc', sent: send);
+  }
   final List<(int, String)> adjusts = <(int, String)>[];
 
   @override
@@ -136,6 +144,20 @@ void main() {
     expect(find.text('TSH 133,000'), findsOneWidget);
     expect(find.text('20/09/2026'), findsWidgets, reason: 'last visit');
     expect(find.text('Braids'), findsWidgets, reason: 'favourite service');
+  });
+
+  testWidgets("the client's own page: the link is copied or texted, each with one tap", (t) async {
+    final _FakeSalon api = _FakeSalon(_neema());
+    await _open(t, api);
+
+    await t.ensureVisible(find.byKey(const ValueKey<String>('client_link_copy')));
+    await t.tap(find.byKey(const ValueKey<String>('client_link_copy')));
+    await t.pump(const Duration(milliseconds: 200));
+    await t.tap(find.byKey(const ValueKey<String>('client_link_send')));
+    await t.pump(const Duration(milliseconds: 200));
+
+    expect(api.links, <(int, bool)>[(api.history.id, false), (api.history.id, true)]);
+    await t.pump(const Duration(seconds: 6));
   });
 
   testWidgets('says when the client is due back, and why: the wait and the service', (t) async {
