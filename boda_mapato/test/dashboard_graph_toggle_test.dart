@@ -100,4 +100,12 @@ void main() {
 
     expect(find.byKey(const ValueKey<String>('graph_toggle')), findsNothing);
   });
+
+  testWidgets('in a salon the graphs come first and the list of services below them', (t) async {
+    await _open(t, _Money());
+
+    final double graphs = t.getTopLeft(find.byKey(const ValueKey<String>('graph_toggle'))).dy;
+    final double services = t.getTopLeft(find.text('Services Overview')).dy;
+    expect(graphs, lessThan(services));
+  });
 }

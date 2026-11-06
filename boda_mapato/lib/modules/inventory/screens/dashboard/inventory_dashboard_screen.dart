@@ -1569,9 +1569,17 @@ class _InventoryDashboardScreenState extends State<InventoryDashboardScreen>
                 if (canViewReports && !inv.salonMode) ...<Widget>[const MonthSummaryCard(), SizedBox(height: 12.h)],
                 if (canViewReports && !inv.salonMode) _buildInventoryValuationContent(loc, inv),
                 if (canViewReports && !inv.salonMode) _sectionDivider(),
-                if (canViewProducts) _buildProductsOverviewContent(loc, inv),
-                if (canViewProducts && canViewSalesChart) _sectionDivider(),
-                if (canViewSalesChart) _buildChartSectionContent(loc, inv),
+                // A salon opens on its graphs (sales by day, what earned most) and keeps the list of its services below them;
+                // a shop keeps its products first.
+                if (inv.salonMode) ...<Widget>[
+                  if (canViewSalesChart) _buildChartSectionContent(loc, inv),
+                  if (canViewProducts && canViewSalesChart) _sectionDivider(),
+                  if (canViewProducts) _buildProductsOverviewContent(loc, inv),
+                ] else ...<Widget>[
+                  if (canViewProducts) _buildProductsOverviewContent(loc, inv),
+                  if (canViewProducts && canViewSalesChart) _sectionDivider(),
+                  if (canViewSalesChart) _buildChartSectionContent(loc, inv),
+                ],
               ],
             ),
           ),
