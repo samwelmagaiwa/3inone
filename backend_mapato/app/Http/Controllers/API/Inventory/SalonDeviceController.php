@@ -262,7 +262,8 @@ class SalonDeviceController extends Controller
     {
         $required = $partial ? 'sometimes' : 'required';
         $data = $request->validate([
-            'name' => "{$required}|string|min:2|max:120",
+            'branch_id' => 'nullable|integer',
+            'name' => ($partial ? 'sometimes' : 'required_without:branch_id') . '|nullable|string|min:2|max:120',
             'address' => 'nullable|string|max:200',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
@@ -274,6 +275,15 @@ class SalonDeviceController extends Controller
             abort(422, 'Weka latitudo na longitudo ili kuhitaji eneo. / Give the office a latitude and longitude to require location.');
         }
 
-        return array_filter($data, fn ($v, $k) => $v !== null || in_array($k, ['address', 'latitude', 'longitude'], true), ARRAY_FILTER_USE_BOTH);
+        if (!empty($data['branch_id'])) {
+            $branch = DB::table('inventory_branches')->find($data['branch_id']);
+            abort_if($branch === null, 422, 'Tawi hili halipo. / That branch does not exist.');
+            $taken = DB::table('inventory_attendance_offices')->where('branch_id', $branch->id)->when($request->route('id'), fn ($q, $id) => $q->where('id', '!=', (int) $id))->exists();
+            abort_if($taken, 422, 'Tawi hili tayari lina ofisi. / This branch already has an office.');
+            $data['name'] = $branch->name;
+        }
+        abort_if(!$partial && empty($data['name']), 422, 'Weka jina la ofisi au chagua tawi. / Give the office a name or choose a branch.');
+
+        return array_filter($data, fn ($v, $k) => $v !== null || in_array($k, ['address', 'latitude', 'longitude', 'branch_id'], true), ARRAY_FILTER_USE_BOTH);
     }
 }

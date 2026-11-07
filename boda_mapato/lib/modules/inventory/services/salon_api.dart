@@ -265,6 +265,7 @@ class SalonApi {
 
   Future<void> saveAttendanceOffice({
     final int? id,
+    final int? branchId,
     required final String name,
     final String? address,
     final double? latitude,
@@ -274,7 +275,7 @@ class SalonApi {
     final bool active = true,
   }) async {
     final Map<String, dynamic> body = <String, dynamic>{
-      'name': name,
+      if (branchId != null) 'branch_id': branchId else 'name': name,
       'address': address,
       'latitude': latitude,
       'longitude': longitude,

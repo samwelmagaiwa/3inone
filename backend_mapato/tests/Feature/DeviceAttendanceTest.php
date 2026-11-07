@@ -470,6 +470,33 @@ class DeviceAttendanceTest extends TestCase
         $this->assertSame([], $kept);
     }
 
+    public function test_an_office_can_be_a_branch_and_shows_its_name_and_address_even_after_a_rename(): void
+    {
+        $owner = $this->salon();
+        $branch = (int) $this->api($owner, 'POST', '/api/inventory/salon/branches', ['name' => 'Kariakoo', 'address' => 'Mtaa wa Kongo'])->assertCreated()->json('data.id');
+
+        $o = $this->api($owner, 'POST', '/api/inventory/salon/attendance/admin/offices', ['branch_id' => $branch])->assertCreated()->json('data');
+        $this->assertSame($branch, $o['branch_id']);
+        $this->assertSame('Kariakoo', $o['name']);
+        $this->assertSame('Mtaa wa Kongo', $o['address']);
+
+        $this->api($owner, 'PUT', "/api/inventory/salon/branches/{$branch}", ['name' => 'Kariakoo Mpya'])->assertSuccessful();
+        $this->assertSame('Kariakoo Mpya', collect($this->api($owner, 'GET', '/api/inventory/salon/attendance/admin/offices')->json('data'))->firstWhere('id', $o['id'])['name']);
+    }
+
+    public function test_a_branch_has_one_office_and_must_be_the_businesss_own(): void
+    {
+        $owner = $this->salon();
+        $branch = (int) $this->api($owner, 'POST', '/api/inventory/salon/branches', ['name' => 'Main'])->assertCreated()->json('data.id');
+        $this->api($owner, 'POST', '/api/inventory/salon/attendance/admin/offices', ['branch_id' => $branch])->assertCreated();
+
+        $this->api($owner, 'POST', '/api/inventory/salon/attendance/admin/offices', ['branch_id' => $branch])->assertStatus(422);
+        $this->api($owner, 'POST', '/api/inventory/salon/attendance/admin/offices', ['branch_id' => 999999])->assertStatus(422);
+        $two = $this->salon('Two');
+        $this->api($two, 'POST', '/api/inventory/salon/attendance/admin/offices', ['branch_id' => $branch])->assertStatus(422);
+        $this->api($owner, 'POST', '/api/inventory/salon/attendance/admin/offices', [])->assertStatus(422);
+    }
+
     public function test_the_key_helpers_agree_with_each_other(): void
     {
         [$key, $pem] = $this->keys();

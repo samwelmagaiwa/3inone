@@ -38,10 +38,11 @@ class MyDevice {
 
 /// An office with its own number, so two offices with the same name are never mistaken for each other.
 class AttendanceOffice {
-  const AttendanceOffice({required this.id, required this.name, this.address, this.geofenceRequired = false, this.active = true, this.latitude, this.longitude, this.radiusM = 150, this.staffIds = const <String>[]});
+  const AttendanceOffice({required this.id, required this.name, this.branchId, this.address, this.geofenceRequired = false, this.active = true, this.latitude, this.longitude, this.radiusM = 150, this.staffIds = const <String>[]});
 
   factory AttendanceOffice.fromJson(final Map<String, dynamic> j) => AttendanceOffice(
         id: (j['id'] as num).toInt(),
+        branchId: (j['branch_id'] as num?)?.toInt(),
         name: j['name']?.toString() ?? '',
         address: j['address']?.toString(),
         geofenceRequired: j['geofence_required'] == true,
@@ -53,6 +54,9 @@ class AttendanceOffice {
       );
 
   final int id;
+
+  /// The branch this office is (its name and address come from there), or null for an office of its own.
+  final int? branchId;
   final String name;
   final String? address;
   final bool geofenceRequired;

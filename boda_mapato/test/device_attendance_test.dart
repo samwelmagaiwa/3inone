@@ -107,6 +107,11 @@ class _Fake extends SalonApi {
     devices = <Map<String, dynamic>>[for (final Map<String, dynamic> d in devices) d['id'] == id ? <String, dynamic>{...d, 'status': decision == 'approve' ? 'approved' : decision} : d];
   }
 
+  List<SalonBranchInfo> branchList = <SalonBranchInfo>[];
+
+  @override
+  Future<List<SalonBranchInfo>> branches() async => branchList;
+
   @override
   Future<List<Map<String, dynamic>>> attendanceOffices() async => offices;
 
@@ -116,8 +121,8 @@ class _Fake extends SalonApi {
       ];
 
   @override
-  Future<void> saveAttendanceOffice({int? id, required String name, String? address, double? latitude, double? longitude, int radiusM = 150, bool geofenceRequired = false, bool active = true}) async {
-    officeSaves.add(<String, dynamic>{'id': id, 'name': name, 'fence': geofenceRequired, 'lat': latitude});
+  Future<void> saveAttendanceOffice({int? id, int? branchId, required String name, String? address, double? latitude, double? longitude, int radiusM = 150, bool geofenceRequired = false, bool active = true}) async {
+    officeSaves.add(<String, dynamic>{'id': id, 'branch': branchId, 'name': name, 'fence': geofenceRequired, 'lat': latitude});
   }
 
   @override
@@ -333,8 +338,28 @@ void main() {
       await t.tap(_key('office_save'));
       await _settle(t);
 
-      expect(api.officeSaves.single, <String, dynamic>{'id': null, 'name': 'Mbezi', 'fence': false, 'lat': -6.7});
+      expect(api.officeSaves.single, <String, dynamic>{'id': null, 'branch': null, 'name': 'Mbezi', 'fence': false, 'lat': -6.7});
       expect(api.calls.single, 'staff:4:9'); // the newest office number in the fake list
+    });
+
+    testWidgets('an office can be a branch: choosing one fills its name and address and sends the branch', (t) async {
+      final _Fake api = _Fake()
+        ..offices = <Map<String, dynamic>>[]
+        ..branchList = const <SalonBranchInfo>[SalonBranchInfo(id: 12, name: 'Kariakoo', address: 'Mtaa wa Kongo')];
+      await _host(t, DevicesAdminScreen(api: api, staff: const <Map<String, String>>[]), role: 'admin');
+
+      await t.tap(_key('tab_offices'));
+      await _settle(t);
+      await t.tap(_key('add_office'));
+      await _settle(t);
+      await t.tap(_key('office_branch'));
+      await _settle(t);
+      await t.tap(find.text('Kariakoo').last);
+      await _settle(t);
+      await t.tap(_key('office_save'));
+      await _settle(t);
+
+      expect(api.officeSaves.single['branch'], 12);
     });
 
     testWidgets('the log shows what was refused', (t) async {

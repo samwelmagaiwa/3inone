@@ -138,10 +138,16 @@ final class DeviceAttendance
     /** @return array<string, mixed> */
     public static function presentOffice(object $o): array
     {
+        // An office that IS a branch takes the branch's name and address (so a rename there shows here); the office keeps only the
+        // attendance rules (the place to check, the radius, who works there).
+        $branch = ($o->branch_id ?? null) === null ? null : DB::table('inventory_branches')->find($o->branch_id);
+        $place = $branch === null ? null : trim((string) ($branch->address ?: implode(', ', array_filter([$branch->street ?? null, $branch->ward ?? null, $branch->district ?? null, $branch->region ?? null]))));
+
         return [
             'id' => (int) $o->id,
-            'name' => $o->name,
-            'address' => $o->address,
+            'branch_id' => $branch === null ? null : (int) $branch->id,
+            'name' => $branch?->name ?? $o->name,
+            'address' => $branch === null ? $o->address : ($place !== '' ? $place : $o->address),
             'latitude' => $o->latitude === null ? null : (float) $o->latitude,
             'longitude' => $o->longitude === null ? null : (float) $o->longitude,
             'radius_m' => (int) $o->radius_m,

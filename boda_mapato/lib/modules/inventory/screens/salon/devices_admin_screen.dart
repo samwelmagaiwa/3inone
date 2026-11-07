@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
+import '../../models/salon_models.dart';
 import '../../providers/inventory_provider.dart';
 import '../../services/salon_api.dart';
 import '../widgets/glow_list_card.dart';
@@ -38,6 +39,7 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
   List<AttendanceOffice> _offices = <AttendanceOffice>[];
   List<Map<String, dynamic>> _checks = <Map<String, dynamic>>[];
   List<Map<String, String>> _staff = <Map<String, String>>[];
+  List<SalonBranchInfo> _branches = <SalonBranchInfo>[];
 
   @override
   void initState() {
@@ -55,6 +57,12 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
       final List<Map<String, dynamic>> devices = await _api.attendanceDevices();
       final List<Map<String, dynamic>> offices = await _api.attendanceOffices();
       final List<Map<String, dynamic>> checks = await _api.attendanceChecks();
+      List<SalonBranchInfo> branches = <SalonBranchInfo>[];
+      try {
+        branches = await _api.branches();
+      } on Exception {
+        branches = <SalonBranchInfo>[]; // no right to see branches: an office of its own still works
+      }
       List<Map<String, String>> staff = widget.staff ?? <Map<String, String>>[];
       if (widget.staff == null && mounted) {
         try {
@@ -71,6 +79,7 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
         _devices = devices;
         _offices = <AttendanceOffice>[for (final Map<String, dynamic> o in offices) AttendanceOffice.fromJson(o)];
         _checks = checks;
+        _branches = branches;
         _staff = staff;
         _loading = false;
       });
@@ -281,6 +290,7 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
     final TextEditingController lat = TextEditingController(text: office?.latitude?.toString() ?? '');
     final TextEditingController lng = TextEditingController(text: office?.longitude?.toString() ?? '');
     final TextEditingController radius = TextEditingController(text: (office?.radiusM ?? 150).toString());
+    int? branchId = office?.branchId;
     bool fence = office?.geofenceRequired ?? false;
     bool active = office?.active ?? true;
     final Set<String> chosen = <String>{...?office?.staffIds};
@@ -297,9 +307,32 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
               type: MaterialType.transparency,
               child: Column(
                 children: <Widget>[
-                  TextField(key: const ValueKey<String>('office_name'), controller: name, style: salonInputStyle, decoration: salonInput(labelText: sw ? 'Jina la ofisi' : 'Office name')),
+                  if (_branches.isNotEmpty) ...<Widget>[
+                    DropdownButtonFormField<int?>(
+                      key: const ValueKey<String>('office_branch'),
+                      value: branchId,
+                      isExpanded: true,
+                      dropdownColor: ThemeConstants.invFill,
+                      style: salonInputStyle,
+                      decoration: salonInput(labelText: sw ? 'Tawi' : 'Branch'),
+                      items: <DropdownMenuItem<int?>>[
+                        DropdownMenuItem<int?>(value: null, child: Text(sw ? 'Hakuna (ofisi yake yenyewe)' : 'None (an office of its own)', style: salonInputStyle)),
+                        for (final SalonBranchInfo b in _branches) DropdownMenuItem<int?>(value: b.id, child: Text(b.name, style: salonInputStyle)),
+                      ],
+                      onChanged: (int? v) => set(() {
+                        branchId = v;
+                        if (v != null) {
+                          final SalonBranchInfo b = _branches.firstWhere((SalonBranchInfo x) => x.id == v);
+                          name.text = b.name;
+                          address.text = b.address;
+                        }
+                      }),
+                    ),
+                    SizedBox(height: 10.h),
+                  ],
+                  TextField(key: const ValueKey<String>('office_name'), controller: name, enabled: branchId == null, style: salonInputStyle, decoration: salonInput(labelText: sw ? 'Jina la ofisi' : 'Office name')),
                   SizedBox(height: 10.h),
-                  TextField(key: const ValueKey<String>('office_address'), controller: address, style: salonInputStyle, decoration: salonInput(labelText: sw ? 'Anwani' : 'Address')),
+                  TextField(key: const ValueKey<String>('office_address'), controller: address, enabled: branchId == null, style: salonInputStyle, decoration: salonInput(labelText: sw ? 'Anwani' : 'Address')),
                   SizedBox(height: 10.h),
                   Row(
                     children: <Widget>[
@@ -338,6 +371,7 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
     await _do(() async {
       await _api.saveAttendanceOffice(
         id: office?.id,
+        branchId: branchId,
         name: name.text.trim(),
         address: address.text.trim().isEmpty ? null : address.text.trim(),
         latitude: double.tryParse(lat.text.trim()),
