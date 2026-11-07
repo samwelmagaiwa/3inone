@@ -293,6 +293,7 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
     int? branchId = office?.branchId;
     bool fence = office?.geofenceRequired ?? false;
     bool active = office?.active ?? true;
+    String? problem;
     final Set<String> chosen = <String>{...?office?.staffIds};
 
     final bool? saved = await showModalBottomSheet<bool>(
@@ -359,7 +360,29 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
                       title: Text(s['name'] ?? '', style: ThemeConstants.bodyStyle),
                     ),
                   SizedBox(height: 8.h),
-                  ElevatedButton(key: const ValueKey<String>('office_save'), onPressed: () => Navigator.pop(sheet, true), child: Text(sw ? 'Hifadhi' : 'Save')),
+                  if (problem != null)
+                    Padding(
+                      padding: EdgeInsets.only(top: 6.h),
+                      child: Text(problem!, key: const ValueKey<String>('office_problem'), style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorText)),
+                    ),
+                  ElevatedButton(
+                    key: const ValueKey<String>('office_save'),
+                    onPressed: () {
+                      // Said here, in the form, before anything is sent: a name (or a branch), and a place when the office must be near.
+                      final bool hasPlace = double.tryParse(lat.text.trim()) != null && double.tryParse(lng.text.trim()) != null;
+                      final String? why = branchId == null && name.text.trim().length < 2
+                          ? (sw ? 'Andika jina la ofisi, au chagua tawi.' : 'Enter the office name, or choose a branch.')
+                          : fence && !hasPlace
+                              ? (sw ? 'Weka latitudo na longitudo ili kuhitaji awe karibu na ofisi, au zima chaguo hilo.' : 'Enter a latitude and longitude to require being near the office, or switch that off.')
+                              : null;
+                      if (why != null) {
+                        set(() => problem = why);
+                        return;
+                      }
+                      Navigator.pop(sheet, true);
+                    },
+                    child: Text(sw ? 'Hifadhi' : 'Save'),
+                  ),
                 ],
               ),
             ),

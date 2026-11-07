@@ -362,6 +362,27 @@ void main() {
       expect(api.officeSaves.single['branch'], 12);
     });
 
+    testWidgets('saving an office with no name, or a required place with no coordinates, is told in the form and sends nothing', (t) async {
+      final _Fake api = _Fake()..offices = <Map<String, dynamic>>[];
+      await _host(t, DevicesAdminScreen(api: api, staff: const <Map<String, String>>[]), role: 'admin');
+
+      await t.tap(_key('tab_offices'));
+      await _settle(t);
+      await t.tap(_key('add_office'));
+      await _settle(t);
+      await t.tap(_key('office_save'));
+      await _settle(t);
+      expect(find.text('Enter the office name, or choose a branch.'), findsOneWidget);
+
+      await t.enterText(_key('office_name'), 'Mbezi');
+      await t.tap(_key('office_fence'));
+      await t.pump();
+      await t.tap(_key('office_save'));
+      await _settle(t);
+      expect(find.textContaining('Enter a latitude and longitude'), findsOneWidget);
+      expect(api.officeSaves, isEmpty);
+    });
+
     testWidgets('the log shows what was refused', (t) async {
       final _Fake api = _Fake();
       await _host(t, DevicesAdminScreen(api: api, staff: const <Map<String, String>>[]), role: 'admin');
