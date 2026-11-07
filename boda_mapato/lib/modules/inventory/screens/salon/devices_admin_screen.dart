@@ -9,7 +9,9 @@ import '../../providers/inventory_provider.dart';
 import '../../services/salon_api.dart';
 import '../widgets/glow_list_card.dart';
 import '../widgets/inventory_widgets.dart';
+import '../widgets/joined_sections.dart';
 import 'device_attendance_flow.dart';
+import 'salon_input.dart';
 
 /// For the owner and whoever was given the right: switch device checks on, approve / reject / block / reset each person's phone, set up
 /// the offices (with their number, place and who works there) and read the log of every attempt, good and bad. Nothing here is deleted:
@@ -110,6 +112,8 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
           title: Text(sw ? 'Vifaa na ofisi' : 'Devices and offices'),
           bottom: TabBar(
             indicatorColor: Colors.white,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
             tabs: <Widget>[
               Tab(key: const ValueKey<String>('tab_devices'), text: sw ? 'Vifaa' : 'Devices'),
               Tab(key: const ValueKey<String>('tab_offices'), text: sw ? 'Ofisi' : 'Offices'),
@@ -133,6 +137,7 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
                           style: ThemeConstants.captionStyle,
                         ),
                       ),
+                      const SectionGlowDivider(lift: false),
                       Expanded(child: TabBarView(children: <Widget>[_devicesTab(sw), _officesTab(sw), _logTab(sw)])),
                     ],
                   ),
@@ -292,19 +297,25 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
               type: MaterialType.transparency,
               child: Column(
                 children: <Widget>[
-                  TextField(key: const ValueKey<String>('office_name'), controller: name, style: ThemeConstants.bodyStyle, decoration: InputDecoration(labelText: sw ? 'Jina la ofisi' : 'Office name')),
-                  TextField(key: const ValueKey<String>('office_address'), controller: address, style: ThemeConstants.bodyStyle, decoration: InputDecoration(labelText: sw ? 'Anwani' : 'Address')),
+                  TextField(key: const ValueKey<String>('office_name'), controller: name, style: salonInputStyle, decoration: salonInput(labelText: sw ? 'Jina la ofisi' : 'Office name')),
+                  SizedBox(height: 10.h),
+                  TextField(key: const ValueKey<String>('office_address'), controller: address, style: salonInputStyle, decoration: salonInput(labelText: sw ? 'Anwani' : 'Address')),
+                  SizedBox(height: 10.h),
                   Row(
                     children: <Widget>[
-                      Expanded(child: TextField(key: const ValueKey<String>('office_lat'), controller: lat, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), style: ThemeConstants.bodyStyle, decoration: InputDecoration(labelText: sw ? 'Latitudo' : 'Latitude'))),
+                      Expanded(child: TextField(key: const ValueKey<String>('office_lat'), controller: lat, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), style: salonInputStyle, decoration: salonInput(labelText: sw ? 'Latitudo' : 'Latitude'))),
                       SizedBox(width: 8.w),
-                      Expanded(child: TextField(key: const ValueKey<String>('office_lng'), controller: lng, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), style: ThemeConstants.bodyStyle, decoration: InputDecoration(labelText: sw ? 'Longitudo' : 'Longitude'))),
+                      Expanded(child: TextField(key: const ValueKey<String>('office_lng'), controller: lng, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), style: salonInputStyle, decoration: salonInput(labelText: sw ? 'Longitudo' : 'Longitude'))),
                       SizedBox(width: 8.w),
-                      SizedBox(width: 80.w, child: TextField(key: const ValueKey<String>('office_radius'), controller: radius, keyboardType: TextInputType.number, style: ThemeConstants.bodyStyle, decoration: InputDecoration(labelText: sw ? 'Mita' : 'Metres'))),
+                      SizedBox(width: 80.w, child: TextField(key: const ValueKey<String>('office_radius'), controller: radius, keyboardType: TextInputType.number, style: salonInputStyle, decoration: salonInput(labelText: sw ? 'Mita' : 'Metres'))),
                     ],
                   ),
+                  SizedBox(height: 6.h),
+                  const SectionGlowDivider(lift: false),
                   SwitchListTile(key: const ValueKey<String>('office_fence'), contentPadding: EdgeInsets.zero, value: fence, onChanged: (bool v) => set(() => fence = v), title: Text(sw ? 'Lazima awe karibu na ofisi' : 'Must be near the office', style: ThemeConstants.bodyStyle)),
+                  const SectionGlowDivider(lift: false),
                   SwitchListTile(key: const ValueKey<String>('office_active'), contentPadding: EdgeInsets.zero, value: active, onChanged: (bool v) => set(() => active = v), title: Text(sw ? 'Ofisi inatumika' : 'Office is active', style: ThemeConstants.bodyStyle)),
+                  const SectionGlowDivider(lift: false),
                   if (_staff.isNotEmpty) Align(alignment: Alignment.centerLeft, child: Text(sw ? 'Wanaofanya kazi hapa' : 'Who works here', style: ThemeConstants.captionStyle)),
                   for (final Map<String, String> s in _staff)
                     CheckboxListTile(
