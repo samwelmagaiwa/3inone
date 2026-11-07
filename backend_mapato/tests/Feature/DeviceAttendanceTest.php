@@ -1,0 +1,484 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Business;
+use App\Models\User;
+use App\Support\Salon\DeviceAttendance;
+use App\Support\Tenancy\TenantContext;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
+
+/**
+ * Attendance from one's own approved device: one device per person, approved by an administrator; a short-lived single-use challenge signed with
+ * the device's private key; the office, the place and the person checked; the server's own clock; a log of everything that was refused.
+ */
+class DeviceAttendanceTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private int $seq = 0;
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
+
+    private function salon(string $name = 'Glow'): User
+    {
+        $owner = $this->givenServices(User::factory()->create(['name' => "{$name} Owner", 'role' => 'admin', 'is_active' => true, 'phone_number' => '0727' . str_pad((string) ++$this->seq, 6, '0', STR_PAD_LEFT)]), 'salon');
+        Business::forOwnerId($owner->id)->update(['name' => $name]);
+
+        return $owner;
+    }
+
+    private function person(User $owner, string $name = 'Asha', string $role = 'hair_stylist'): User
+    {
+        return $this->givenServices(User::factory()->create(['name' => $name, 'role' => $role, 'is_active' => true, 'created_by' => $owner->id]), 'salon');
+    }
+
+    private function api(User $as, string $method, string $uri, array $body = [])
+    {
+        $token = $as->createToken('t')->plainTextToken;
+        $this->app['auth']->forgetGuards();
+        $this->flushHeaders();
+
+        return $this->withHeader('Authorization', "Bearer {$token}")->withHeader('X-Service', 'salon')->json($method, $uri, $body);
+    }
+
+    /** A device's key pair, made the way an app would. */
+    private function keys(): array
+    {
+        $key = openssl_pkey_new(['curve_name' => 'prime256v1', 'private_key_type' => OPENSSL_KEYTYPE_EC]);
+
+        return [$key, openssl_pkey_get_details($key)['key']];
+    }
+
+    private function sign($key, string $payload, bool $raw = false): string
+    {
+        openssl_sign($payload, $sig, $key, OPENSSL_ALGO_SHA256);
+        if ($raw) {
+            $sig = $this->derToRaw($sig);
+        }
+
+        return base64_encode($sig);
+    }
+
+    /** The DER sequence as 64 bytes r||s, the way a browser's Web Crypto gives it. */
+    private function derToRaw(string $der): string
+    {
+        $offset = 2;
+        $parts = [];
+        for ($i = 0; $i < 2; $i++) {
+            $len = ord($der[$offset + 1]);
+            $int = substr($der, $offset + 2, $len);
+            $parts[] = str_pad(ltrim($int, "\x00"), 32, "\x00", STR_PAD_LEFT);
+            $offset += 2 + $len;
+        }
+
+        return $parts[0] . $parts[1];
+    }
+
+    private function enroll(User $who, string $pem, string $uuid = 'device-uuid-0000001'): array
+    {
+        return $this->api($who, 'POST', '/api/inventory/salon/attendance/device/enroll', [
+            'device_uuid' => $uuid, 'public_key' => $pem, 'platform' => 'android', 'name' => "{$who->name}'s phone", 'manufacturer' => 'Tecno', 'model' => 'Spark 10', 'os_name' => 'Android', 'os_version' => '13', 'app_version' => '1.0.0+72',
+        ])->assertCreated()->json('data');
+    }
+
+    private function decide(User $owner, int $deviceId, string $decision)
+    {
+        return $this->api($owner, 'POST', "/api/inventory/salon/attendance/admin/devices/{$deviceId}/decision", ['decision' => $decision]);
+    }
+
+    private function office(User $owner, array $extra = [], array $staff = []): int
+    {
+        $id = (int) $this->api($owner, 'POST', '/api/inventory/salon/attendance/admin/offices', ['name' => 'Kariakoo' ] + $extra)->assertCreated()->json('data.id');
+        $this->api($owner, 'PUT', "/api/inventory/salon/attendance/admin/offices/{$id}/staff", ['user_ids' => array_map(fn ($u) => (string) $u->id, $staff)])->assertOk();
+
+        return $id;
+    }
+
+    /** Owner, a stylist with an APPROVED device, and an office she works at. */
+    private function scene(array $officeExtra = []): array
+    {
+        $owner = $this->salon();
+        $asha = $this->person($owner);
+        [$key, $pem] = $this->keys();
+        $device = $this->enroll($asha, $pem);
+        $this->decide($owner, $device['id'], 'approve')->assertOk();
+        $office = $this->office($owner, $officeExtra, [$asha]);
+
+        return [$owner, $asha, $key, $pem, $office, $device];
+    }
+
+    private function challenge(User $who, ?int $office, string $uuid = 'device-uuid-0000001', string $purpose = 'in')
+    {
+        return $this->api($who, 'POST', '/api/inventory/salon/attendance/challenge', ['device_uuid' => $uuid, 'office_id' => $office, 'purpose' => $purpose]);
+    }
+
+    /** Ask for a challenge, sign it with $key and send it. */
+    private function startWork(User $who, $key, ?int $office, array $extra = [], string $purpose = 'in', bool $raw = false)
+    {
+        $c = $this->challenge($who, $office, purpose: $purpose)->assertOk()->json('data');
+
+        return $this->api($who, 'POST', '/api/inventory/salon/attendance/verify', ['challenge_id' => $c['challenge_id'], 'signature' => $this->sign($key, $c['payload'], $raw)] + $extra);
+    }
+
+    private function checks(User $owner, string $outcome): array
+    {
+        return $this->api($owner, 'GET', "/api/inventory/salon/attendance/admin/checks?outcome={$outcome}")->assertOk()->json('data');
+    }
+
+    private function sessions(User $owner): int
+    {
+        return (int) TenantContext::runAs($owner, fn () => TenantContext::runInService('salon', fn () => DB::table('inventory_attendance')->count()));
+    }
+
+    // ------------------------------------------------------------------ the happy path
+
+    public function test_an_approved_device_starts_and_finishes_work_at_the_servers_time_with_the_office_and_device_recorded(): void
+    {
+        [$owner, $asha, $key, , $office, $device] = $this->scene();
+        Carbon::setTestNow(Carbon::parse('2026-11-09 06:30:00', 'UTC'));
+
+        $in = $this->startWork($asha, $key, $office, ['latitude' => -6.8, 'longitude' => 39.27, 'accuracy' => 12.5, 'location_at' => '2001-01-01 00:00:00'])->assertCreated()->json('data');
+
+        // the server's clock (09:30 in Dar es Salaam), never the phone's
+        $this->assertSame('2026-11-09 09:30', $in['clock_in']);
+        $this->assertSame($office, $in['office_id']);
+        $row = TenantContext::runAs($owner, fn () => TenantContext::runInService('salon', fn () => DB::table('inventory_attendance')->first()));
+        $this->assertSame('verified', $row->source);
+        $this->assertSame((int) $device['id'], (int) $row->device_id);
+        $this->assertEquals(-6.8, (float) $row->latitude);
+        $this->assertTrue($this->api($asha, 'GET', '/api/inventory/salon/attendance/today')->json('data.at_work'));
+
+        Carbon::setTestNow(Carbon::parse('2026-11-09 14:30:00', 'UTC'));
+        $out = $this->startWork($asha, $key, null, purpose: 'out')->assertOk()->json('data');
+        $this->assertSame('2026-11-09 17:30', $out['clock_out']);
+        $this->assertFalse($this->api($asha, 'GET', '/api/inventory/salon/attendance/today')->json('data.at_work'));
+        $this->assertCount(2, $this->checks($owner, 'ok'));
+    }
+
+    public function test_a_browsers_raw_signature_is_accepted_too(): void
+    {
+        [, $asha, $key, , $office] = $this->scene();
+
+        $this->startWork($asha, $key, $office, raw: true)->assertCreated();
+    }
+
+    public function test_the_policy_is_off_until_the_owner_turns_it_on_and_the_plain_clock_in_still_works_then(): void
+    {
+        $owner = $this->salon();
+        $asha = $this->person($owner);
+
+        $this->assertFalse($this->api($owner, 'GET', '/api/inventory/salon/attendance/admin/policy')->json('data.enabled'));
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/clock-in')->assertSuccessful();
+    }
+
+    public function test_with_the_policy_on_a_person_cannot_start_their_own_day_the_plain_way_but_a_manager_can_for_someone_else(): void
+    {
+        [$owner, $asha, , , ] = $this->scene();
+        $this->api($owner, 'PUT', '/api/inventory/salon/attendance/admin/policy', ['enabled' => true, 'timezone' => 'Africa/Dar_es_Salaam'])->assertOk();
+
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/clock-in')->assertForbidden()->assertJsonPath('code', 'device_verification_required');
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/clock-out')->assertForbidden();
+        $this->api($owner, 'POST', '/api/inventory/salon/attendance/clock-in', ['staff_id' => (string) $asha->id])->assertSuccessful();
+    }
+
+    // ------------------------------------------------------------------ the device
+
+    public function test_a_device_waits_for_approval_and_cannot_start_work_until_it_is_approved(): void
+    {
+        $owner = $this->salon();
+        $asha = $this->person($owner);
+        [$key, $pem] = $this->keys();
+        $device = $this->enroll($asha, $pem);
+        $office = $this->office($owner, [], [$asha]);
+
+        $this->assertSame('pending', $device['status']);
+        $mine = $this->api($asha, 'GET', '/api/inventory/salon/attendance/device')->assertOk()->json('data');
+        $this->assertSame('pending', $mine['device']['status']);
+        $this->assertSame([$office], array_column($mine['offices'], 'id'));
+        $this->challenge($asha, $office)->assertForbidden()->assertJsonPath('code', 'pending');
+        $this->assertCount(1, $this->checks($owner, 'pending'));
+        $this->assertSame(0, $this->sessions($owner));
+
+        $this->decide($owner, $device['id'], 'approve')->assertOk();
+        $this->startWork($asha, $key, $office)->assertCreated();
+    }
+
+    public function test_the_administrator_is_told_a_device_is_waiting(): void
+    {
+        $owner = $this->salon();
+        $asha = $this->person($owner);
+        [, $pem] = $this->keys();
+        $this->enroll($asha, $pem);
+
+        $told = collect($this->api($owner, 'GET', '/api/inventory/notifications')->json('data'))->firstWhere('type', 'salon_device_request');
+        $this->assertNotNull($told);
+    }
+
+    public function test_one_device_per_person_and_a_device_belongs_to_one_person(): void
+    {
+        $owner = $this->salon();
+        $asha = $this->person($owner);
+        $bahati = $this->person($owner, 'Bahati');
+        [, $pem] = $this->keys();
+        [, $pem2] = $this->keys();
+        $this->enroll($asha, $pem);
+
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'another-device-0002', 'public_key' => $pem2])->assertStatus(422);
+        $this->api($bahati, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'device-uuid-0000001', 'public_key' => $pem2])->assertStatus(422);
+    }
+
+    public function test_only_an_ec_p256_key_is_accepted(): void
+    {
+        $owner = $this->salon();
+        $asha = $this->person($owner);
+        $rsa = openssl_pkey_get_details(openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]))['key'];
+
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'device-uuid-0000001', 'public_key' => $rsa])->assertStatus(422)->assertJsonValidationErrors('public_key');
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'device-uuid-0000001', 'public_key' => 'not a key'])->assertStatus(422);
+    }
+
+    public function test_rejected_and_blocked_devices_cannot_start_work_and_say_so(): void
+    {
+        [$owner, $asha, , , $office, $device] = $this->scene();
+
+        $this->decide($owner, $device['id'], 'block')->assertOk();
+        $this->challenge($asha, $office)->assertForbidden()->assertJsonPath('code', 'blocked');
+
+        $owner2 = $this->salon('Other');
+        $bahati = $this->person($owner2, 'Bahati');
+        [, $pem] = $this->keys();
+        $d = $this->enroll($bahati, $pem, 'device-uuid-0000009');
+        $this->decide($owner2, $d['id'], 'reject')->assertOk();
+        $this->challenge($bahati, null, 'device-uuid-0000009')->assertForbidden()->assertJsonPath('code', 'rejected');
+        // a rejected person may ask again with another device
+        [, $pem3] = $this->keys();
+        $this->api($bahati, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'device-uuid-0000010', 'public_key' => $pem3])->assertCreated();
+    }
+
+    public function test_another_device_is_refused_as_a_mismatch_even_with_a_valid_key_of_its_own(): void
+    {
+        [$owner, $asha, , , $office] = $this->scene();
+
+        $this->challenge($asha, $office, 'someone-elses-phone-1')->assertForbidden()->assertJsonPath('code', 'device_mismatch');
+
+        $this->assertCount(1, $this->checks($owner, 'device_mismatch'));
+        $this->assertSame(0, $this->sessions($owner));
+    }
+
+    public function test_a_wrong_signature_is_refused_logged_and_burns_the_challenge(): void
+    {
+        [$owner, $asha, , , $office] = $this->scene();
+        [$other] = $this->keys();
+
+        $c = $this->challenge($asha, $office)->assertOk()->json('data');
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/verify', ['challenge_id' => $c['challenge_id'], 'signature' => $this->sign($other, $c['payload'])])->assertForbidden()->assertJsonPath('code', 'signature_invalid');
+
+        $this->assertCount(1, $this->checks($owner, 'signature_invalid'));
+        $this->assertSame(0, $this->sessions($owner));
+    }
+
+    public function test_a_signature_over_something_else_is_refused(): void
+    {
+        [, $asha, $key, , $office] = $this->scene();
+
+        $c = $this->challenge($asha, $office)->assertOk()->json('data');
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/verify', ['challenge_id' => $c['challenge_id'], 'signature' => $this->sign($key, str_replace('|in', '|out', $c['payload']))])->assertForbidden()->assertJsonPath('code', 'signature_invalid');
+    }
+
+    public function test_a_challenge_works_once_and_for_ninety_seconds(): void
+    {
+        [$owner, $asha, $key, , $office] = $this->scene();
+        Carbon::setTestNow(Carbon::parse('2026-11-09 06:00:00', 'UTC'));
+
+        $c = $this->challenge($asha, $office)->assertOk()->json('data');
+        $signature = $this->sign($key, $c['payload']);
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/verify', ['challenge_id' => $c['challenge_id'], 'signature' => $signature])->assertCreated();
+        // the same signed answer again (a replay) finds it used
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/verify', ['challenge_id' => $c['challenge_id'], 'signature' => $signature])->assertForbidden()->assertJsonPath('code', 'challenge_expired');
+
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/clock-out')->assertSuccessful(); // (the policy is off here: only to start again)
+        $late = $this->challenge($asha, $office)->assertOk()->json('data');
+        Carbon::setTestNow(Carbon::parse('2026-11-09 06:03:00', 'UTC'));
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/verify', ['challenge_id' => $late['challenge_id'], 'signature' => $this->sign($key, $late['payload'])])->assertForbidden()->assertJsonPath('code', 'challenge_expired');
+
+        $this->assertSame(1, $this->sessions($owner), 'only the one good answer wrote attendance');
+    }
+
+    public function test_one_persons_challenge_is_not_anothers(): void
+    {
+        [$owner, $asha, , , $office] = $this->scene();
+        $bahati = $this->person($owner, 'Bahati');
+        [$key2, $pem2] = $this->keys();
+        $d = $this->enroll($bahati, $pem2, 'device-uuid-0000002');
+        $this->decide($owner, $d['id'], 'approve')->assertOk();
+
+        $c = $this->challenge($asha, $office)->assertOk()->json('data');
+
+        $this->api($bahati, 'POST', '/api/inventory/salon/attendance/verify', ['challenge_id' => $c['challenge_id'], 'signature' => $this->sign($key2, $c['payload'])])->assertForbidden();
+        $this->assertSame(0, $this->sessions($owner));
+    }
+
+    // ------------------------------------------------------------------ the office and the place
+
+    public function test_only_an_office_the_person_is_assigned_to_and_that_is_active_is_accepted(): void
+    {
+        [$owner, $asha, , , $office] = $this->scene();
+        $elsewhere = $this->office($owner, ['name' => 'Mbezi'], []);
+
+        $this->challenge($asha, $elsewhere)->assertForbidden()->assertJsonPath('code', 'office_not_authorized');
+        $this->challenge($asha, 999999)->assertForbidden()->assertJsonPath('code', 'office_not_authorized');
+        $this->challenge($asha, null)->assertForbidden()->assertJsonPath('code', 'office_not_authorized');
+
+        $this->api($owner, 'PUT', "/api/inventory/salon/attendance/admin/offices/{$office}", ['active' => false])->assertOk();
+        $this->challenge($asha, $office)->assertForbidden()->assertJsonPath('code', 'office_not_authorized');
+        $this->assertSame([], $this->api($asha, 'GET', '/api/inventory/salon/attendance/device')->json('data.offices'), 'an inactive office is not offered');
+        $this->assertCount(3 + 1, $this->checks($owner, 'office_not_authorized'));
+    }
+
+    public function test_a_required_geofence_blocks_outside_and_without_a_location_but_a_circle_that_is_not_required_never_blocks(): void
+    {
+        [$owner, $asha, $key, , $office] = $this->scene(['latitude' => -6.8, 'longitude' => 39.27, 'radius_m' => 150, 'geofence_required' => true]);
+
+        $this->startWork($asha, $key, $office)->assertForbidden()->assertJsonPath('code', 'location_out_of_range');
+        $this->startWork($asha, $key, $office, ['latitude' => -6.9, 'longitude' => 39.27])->assertForbidden()->assertJsonPath('code', 'location_out_of_range');
+        $this->assertSame(0, $this->sessions($owner));
+        $this->startWork($asha, $key, $office, ['latitude' => -6.8004, 'longitude' => 39.2701, 'accuracy' => 18])->assertCreated();
+
+        // an office that does not require it: far away is only recorded
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/clock-out')->assertSuccessful();
+        $this->api($owner, 'PUT', "/api/inventory/salon/attendance/admin/offices/{$office}", ['geofence_required' => false])->assertOk();
+        $this->startWork($asha, $key, $office, ['latitude' => -1.0, 'longitude' => 30.0])->assertCreated();
+    }
+
+    public function test_a_required_geofence_needs_a_centre(): void
+    {
+        $owner = $this->salon();
+
+        $this->api($owner, 'POST', '/api/inventory/salon/attendance/admin/offices', ['name' => 'X', 'geofence_required' => true])->assertStatus(422);
+    }
+
+    // ------------------------------------------------------------------ one session at a time
+
+    public function test_no_second_session_while_one_is_open_and_no_clock_out_without_one(): void
+    {
+        [$owner, $asha, $key, , $office] = $this->scene();
+
+        $this->challenge($asha, null, purpose: 'out')->assertForbidden()->assertJsonPath('code', 'no_active_session');
+        $this->startWork($asha, $key, $office)->assertCreated();
+        $this->challenge($asha, $office)->assertForbidden()->assertJsonPath('code', 'already_clocked_in');
+        $this->assertSame(1, $this->sessions($owner));
+        $this->startWork($asha, $key, null, purpose: 'out')->assertOk();
+    }
+
+    // ------------------------------------------------------------------ replacing a device keeps the history
+
+    public function test_a_reset_keeps_the_old_device_and_its_attendance_and_lets_a_new_one_be_approved(): void
+    {
+        [$owner, $asha, $key, , $office, $old] = $this->scene();
+        $this->startWork($asha, $key, $office)->assertCreated();
+        $this->startWork($asha, $key, null, purpose: 'out')->assertOk();
+
+        $this->decide($owner, $old['id'], 'reset')->assertOk();
+        $this->challenge($asha, $office)->assertForbidden()->assertJsonPath('code', 'device_not_registered');
+
+        [$key2, $pem2] = $this->keys();
+        $new = $this->enroll($asha, $pem2, 'device-uuid-0000099');
+        $this->decide($owner, $new['id'], 'approve')->assertOk();
+
+        // the old one is still there, as replaced, and the attendance it made is untouched
+        $all = $this->api($owner, 'GET', '/api/inventory/salon/attendance/admin/devices')->json('data');
+        $this->assertEqualsCanonicalizing(['approved', 'replaced'], array_column($all, 'status'));
+        $this->assertSame(1, $this->sessions($owner));
+        // the old phone can no longer sign in; the new one can
+        $this->challenge($asha, $office)->assertForbidden()->assertJsonPath('code', 'device_mismatch');
+        $this->challenge($asha, $office, 'device-uuid-0000099')->assertOk();
+    }
+
+    public function test_approving_a_new_device_puts_another_approved_one_away_instead_of_deleting_it(): void
+    {
+        [$owner, $asha, , , , $old] = $this->scene();
+        $this->decide($owner, $old['id'], 'reject')->assertOk();
+        [, $pem2] = $this->keys();
+        $new = $this->enroll($asha, $pem2, 'device-uuid-0000050');
+
+        $this->decide($owner, $new['id'], 'approve')->assertOk();
+
+        $statuses = array_column($this->api($owner, 'GET', '/api/inventory/salon/attendance/admin/devices')->json('data'), 'status', 'id');
+        $this->assertSame('approved', $statuses[$new['id']]);
+        $this->assertSame('rejected', $statuses[$old['id']]);
+    }
+
+    // ------------------------------------------------------------------ rights and separation
+
+    public function test_only_the_owner_and_those_given_the_right_manage_devices_offices_and_the_log(): void
+    {
+        [$owner, $asha, , , $office, $device] = $this->scene();
+
+        foreach (['devices', 'checks', 'offices', 'policy'] as $page) {
+            $this->api($asha, 'GET', "/api/inventory/salon/attendance/admin/{$page}")->assertForbidden();
+        }
+        $this->decide($asha, $device['id'], 'block')->assertForbidden();
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/admin/offices', ['name' => 'X'])->assertForbidden();
+        foreach (['devices', 'checks', 'offices', 'policy'] as $page) {
+            $this->api($owner, 'GET', "/api/inventory/salon/attendance/admin/{$page}")->assertOk();
+        }
+
+        $on = collect($this->api($owner, 'GET', "/api/admin/users/{$asha->id}/access")->json('data.modules'))->filter(fn ($m) => $m['on'])->pluck('key')->all();
+        $this->api($owner, 'PUT', "/api/admin/users/{$asha->id}/access", ['on' => array_merge($on, ['inv_salon_devices'])])->assertOk();
+        $this->api($asha, 'GET', '/api/inventory/salon/attendance/admin/devices')->assertOk();
+    }
+
+    public function test_the_switch_is_named_and_starts_off_for_a_stylist(): void
+    {
+        $owner = $this->salon();
+        $asha = $this->person($owner);
+        $state = collect($this->api($owner, 'GET', "/api/admin/users/{$asha->id}/access")->json('data.modules'))->keyBy('key');
+
+        $this->assertTrue($state->has('inv_salon_devices'));
+        $this->assertFalse($state['inv_salon_devices']['on']);
+        $this->assertNotSame('', $state['inv_salon_devices']['sw']);
+    }
+
+    public function test_one_businesss_devices_offices_and_log_are_not_anothers(): void
+    {
+        [$owner, , , , , $device] = $this->scene();
+        $two = $this->salon('Two');
+
+        $this->assertSame([], $this->api($two, 'GET', '/api/inventory/salon/attendance/admin/devices')->json('data'));
+        $this->assertSame([], $this->api($two, 'GET', '/api/inventory/salon/attendance/admin/offices')->json('data'));
+        $this->decide($two, $device['id'], 'block')->assertNotFound();
+        $this->assertCount(1, $this->api($owner, 'GET', '/api/inventory/salon/attendance/admin/devices')->json('data'));
+    }
+
+    public function test_an_office_cannot_be_given_to_someone_from_another_business(): void
+    {
+        $owner = $this->salon();
+        $stranger = $this->person($this->salon('Other'), 'Stranger');
+        $id = (int) $this->api($owner, 'POST', '/api/inventory/salon/attendance/admin/offices', ['name' => 'Main'])->json('data.id');
+
+        $kept = $this->api($owner, 'PUT', "/api/inventory/salon/attendance/admin/offices/{$id}/staff", ['user_ids' => [(string) $stranger->id]])->assertOk()->json('data.staff_ids');
+
+        $this->assertSame([], $kept);
+    }
+
+    public function test_the_key_helpers_agree_with_each_other(): void
+    {
+        [$key, $pem] = $this->keys();
+        openssl_sign('hello', $der, $key, OPENSSL_ALGO_SHA256);
+
+        $this->assertTrue(DeviceAttendance::signatureValid($pem, 'hello', base64_encode($der)));
+        $this->assertTrue(DeviceAttendance::signatureValid($pem, 'hello', base64_encode($this->derToRaw($der))));
+        $this->assertFalse(DeviceAttendance::signatureValid($pem, 'hello!', base64_encode($der)));
+        $this->assertFalse(DeviceAttendance::signatureValid($pem, 'hello', 'not base64 !!'));
+        $this->assertEqualsWithDelta(111.2, DeviceAttendance::metres(0, 0, 0.001, 0), 0.5);
+    }
+}

@@ -62,3 +62,16 @@ bool isStylistHere(final BuildContext context, {final bool listen = true}) {
     return false;
   }
 }
+
+/// May the person signed in approve staff devices, set up offices and read the attendance log? The owner and managers; an administrator gives
+/// it to others on the access screen. A screen built without sign-in (a test) does not show it.
+bool canManageDevicesHere(final BuildContext context) {
+  try {
+    final UserData? user = context.watch<AuthProvider>().user;
+    if (user == null) return false;
+
+    return user.isSuperAdmin || user.fullAccess || user.access.has('inv_salon_devices');
+  } on ProviderNotFoundException {
+    return false;
+  }
+}

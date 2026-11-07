@@ -41,6 +41,8 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Your location is recorded when you start or finish work, to confirm you are at your office.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Camera is used to scan product, batch and crate barcodes.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>

@@ -59,6 +59,25 @@ class SalonStaffController extends Controller
         return $request->user();
     }
 
+    /**
+     * With device-verified attendance on, a person cannot start or finish their OWN work the plain way: it has to go through their approved
+     * device. A manager starting or finishing someone else's day, and an administrator of devices, still can (those are written as manual).
+     */
+    private function requireDeviceCheckOrAdmin(Request $request, User $who): void
+    {
+        if (!\App\Support\Salon\DeviceAttendance::policyOn()) {
+            return;
+        }
+        $me = $request->user();
+        if ((string) $who->id !== (string) $me->id || SalonAccess::can($me, 'inv_salon_devices')) {
+            return;
+        }
+        throw new \Illuminate\Http\Exceptions\HttpResponseException(response()->json([
+            'message' => 'Tumia kifaa chako kilichosajiliwa kuanza kazi. / Use your registered device to start work.',
+            'code' => 'device_verification_required',
+        ], 403));
+    }
+
     private function salonNow(): Carbon
     {
         return Carbon::now(AppointmentPlanner::TIMEZONE);
@@ -194,6 +213,7 @@ class SalonStaffController extends Controller
     {
         $request->validate(['staff_id' => 'nullable|string|max:64', 'note' => 'nullable|string|max:160']);
         $who = $this->subject($request);
+        $this->requireDeviceCheckOrAdmin($request, $who);
 
         $open = DB::table('inventory_attendance')->where('staff_id', (string) $who->id)->whereNull('clock_out')->first();
         if ($open !== null) {
@@ -221,6 +241,7 @@ class SalonStaffController extends Controller
     {
         $request->validate(['staff_id' => 'nullable|string|max:64']);
         $who = $this->subject($request);
+        $this->requireDeviceCheckOrAdmin($request, $who);
 
         $open = DB::table('inventory_attendance')->where('staff_id', (string) $who->id)->whereNull('clock_out')->orderByDesc('id')->first();
         if ($open === null) {

@@ -9,6 +9,9 @@ import '../../models/salon_models.dart';
 import '../../providers/inventory_provider.dart';
 import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
+import '../../services/device_identity.dart';
+import 'device_attendance_flow.dart';
+import 'devices_admin_screen.dart';
 import 'salon_access.dart';
 import 'salon_text.dart';
 import '../widgets/glow_list_card.dart';
@@ -16,13 +19,16 @@ import '../widgets/glow_list_card.dart';
 /// Who is at work and for how long. Everyone starts and finishes their own day with one tap; the owner and managers
 /// also see everyone's days and hours for the month, and can start or finish someone's day for them.
 class AttendanceScreen extends StatefulWidget {
-  const AttendanceScreen({super.key, this.api, this.today});
+  const AttendanceScreen({super.key, this.api, this.today, this.identity});
 
   /// The server calls (a fake in tests).
   final SalonApi? api;
 
   /// What "today" is (a test fixes it); the real clock otherwise.
   final DateTime? today;
+
+  /// This phone's key and facts (a fake in tests).
+  final DeviceIdentity? identity;
 
   @override
   State<AttendanceScreen> createState() => _AttendanceScreenState();
@@ -31,6 +37,8 @@ class AttendanceScreen extends StatefulWidget {
 class _AttendanceScreenState extends State<AttendanceScreen> {
   late final SalonApi _api = widget.api ?? SalonApi();
   late String _month = _monthOf(widget.today ?? DateTime.now());
+  late final DeviceAttendanceFlow _device = DeviceAttendanceFlow(api: _api, identity: widget.identity ?? SecureDeviceIdentity());
+  MyDevice? _mine;
 
   AttendanceNow? _now;
   List<AttendancePerson> _people = <AttendancePerson>[];
@@ -55,9 +63,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     try {
       final AttendanceNow now = await _api.attendanceToday();
       final List<AttendancePerson> people = await _api.attendance(asked);
+      MyDevice? mine;
+      try {
+        mine = await _device.mine();
+      } on Exception {
+        mine = null; // older server, or no right: the plain way stays
+      }
       if (!mounted || asked != _month) return;
       setState(() {
         _now = now;
+        _mine = mine;
         _people = people;
         _loading = false;
       });
@@ -84,6 +99,70 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
     }
   }
+
+  /// Start or finish my own work. With device checks on it goes through this phone's key; otherwise the plain way.
+  Future<void> _clockMe(final bool atWork) async {
+    final MyDevice? mine = _mine;
+    if (mine == null || !mine.policyOn) {
+      await _run(atWork ? _api.clockOut : _api.clockIn);
+      return;
+    }
+    final bool sw = context.read<LocalizationService>().isSwahili;
+    if (!mine.approved) {
+      ThemeConstants.showErrorSnackBar(context, _statusSentence(sw, mine.status));
+      return;
+    }
+    int? office;
+    if (!atWork && mine.offices.length == 1) {
+      office = mine.offices.first.id;
+    } else if (!atWork && mine.offices.length > 1) {
+      office = await _pickOffice(sw, mine.offices);
+      if (office == null || !mounted) return;
+    }
+    await _run(() => _device.run(purpose: atWork ? 'out' : 'in', officeId: office));
+  }
+
+  Future<int?> _pickOffice(final bool sw, final List<AttendanceOffice> offices) => showModalBottomSheet<int>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (BuildContext sheet) => InvSheetShell(
+          title: sw ? 'Unaanzia kazi ofisi gani?' : 'Which office are you starting at?',
+          children: <Widget>[
+            Material(
+              type: MaterialType.transparency,
+              child: Column(
+                children: <Widget>[
+                  for (final AttendanceOffice o in offices)
+                    ListTile(
+                      key: ValueKey<String>('office_${o.id}'),
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.storefront_outlined, color: Colors.white70, size: 22.sp),
+                      title: Text(o.label, style: ThemeConstants.bodyStyle),
+                      subtitle: o.address == null || o.address!.isEmpty ? null : Text(o.address!, style: ThemeConstants.captionStyle),
+                      onTap: () => Navigator.pop(sheet, o.id),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+
+  static String _statusSentence(final bool sw, final String? status) {
+    switch (status) {
+      case 'pending':
+        return sw ? 'Kifaa chako kinasubiri idhini ya msimamizi.' : 'Your device is waiting for an administrator to approve it.';
+      case 'rejected':
+        return sw ? 'Ombi la kifaa chako lilikataliwa. Omba tena kwa simu nyingine au muone msimamizi.' : 'Your device request was rejected. Ask again with another phone or see the administrator.';
+      case 'blocked':
+        return sw ? 'Kifaa chako kimezuiwa. Muone msimamizi.' : 'Your device is blocked. See the administrator.';
+      default:
+        return sw ? 'Sajili simu hii kwanza ili uanze kazi.' : 'Register this phone first to start work.';
+    }
+  }
+
+  Future<void> _registerDevice() => _run(_device.enroll);
 
   Future<void> _clockSomeoneIn() async {
     final InventoryProvider inv = context.read<InventoryProvider>();
@@ -160,12 +239,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ),
               ElevatedButton(
                 key: ValueKey<String>(now.atWork ? 'clock_out' : 'clock_in'),
-                onPressed: _busy ? null : () => _run(now.atWork ? _api.clockOut : _api.clockIn),
+                onPressed: _busy ? null : () => _clockMe(now.atWork),
                 style: ElevatedButton.styleFrom(backgroundColor: now.atWork ? ThemeConstants.errorRed : ThemeConstants.successGreen),
                 child: Text(now.atWork ? (sw ? 'Maliza kazi' : 'Finish work') : (sw ? 'Anza kazi' : 'Start work'), style: const TextStyle(color: Colors.white)),
               ),
             ],
           )],
+        ),
+      if (_mine != null && _mine!.policyOn) _deviceCard(sw, _mine!),
+      if (canManageDevicesHere(context))
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            key: const ValueKey<String>('open_devices_admin'),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => DevicesAdminScreen(api: _api))).then((_) => _load()),
+            icon: const Icon(Icons.phonelink_lock_outlined, color: Colors.white70),
+            label: Text(sw ? 'Vifaa na ofisi' : 'Devices and offices', style: const TextStyle(color: Colors.white70)),
+          ),
         ),
       if (manager) ...<Widget>[
         SizedBox(height: 8.h),
@@ -229,6 +319,55 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ],
         ),
     ];
+  }
+
+  Widget _deviceCard(final bool sw, final MyDevice d) {
+    final bool none = d.status == null;
+    final Color color = d.approved ? ThemeConstants.successGreen : (d.status == 'pending' ? ThemeConstants.warningAmber : ThemeConstants.errorText);
+    final String label = none
+        ? (sw ? 'Haujasajili simu' : 'No phone registered')
+        : d.approved
+            ? (sw ? 'Imeidhinishwa' : 'Approved')
+            : d.status == 'pending'
+                ? (sw ? 'Inasubiri idhini' : 'Waiting for approval')
+                : d.status == 'blocked'
+                    ? (sw ? 'Imezuiwa' : 'Blocked')
+                    : (sw ? 'Imekataliwa' : 'Rejected');
+
+    return Padding(
+      padding: EdgeInsets.only(top: 8.h),
+      child: GlowListCard(
+        key: const ValueKey<String>('my_device_card'),
+        padding: EdgeInsets.all(14.w),
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(Icons.smartphone_outlined, color: Colors.white70, size: 24.sp),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(sw ? 'Simu yangu ya kazi' : 'My work phone', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
+                    if (d.name != null && d.name!.isNotEmpty) Text(d.name!, style: ThemeConstants.captionStyle),
+                  ],
+                ),
+              ),
+              InvBadge(label: label, color: color),
+            ],
+          ),
+          if (none || d.status == 'rejected')
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                key: const ValueKey<String>('register_device'),
+                onPressed: _busy ? null : _registerDevice,
+                child: Text(sw ? 'Sajili simu hii' : 'Register this phone', style: const TextStyle(color: Colors.white)),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   void _go(final int by) {

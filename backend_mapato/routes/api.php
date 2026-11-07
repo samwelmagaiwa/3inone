@@ -560,6 +560,22 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('inventory/salon/days-off/{id}',     [SalonStaffController::class, 'destroyDayOff'])->middleware('salon_module:inv_salon_team');
         Route::get('inventory/salon/attendance',           [SalonStaffController::class, 'attendance'])->middleware('salon_module:inv_salon_team');
         Route::get('inventory/salon/attendance/today',     [SalonStaffController::class, 'attendanceToday'])->middleware('salon_module:inv_salon_team');
+        // Attendance from one's own approved device: the person's side (rate limited) and the administrator's.
+        Route::get('inventory/salon/attendance/device',    [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'mine'])->middleware('salon_module:inv_salon_team');
+        Route::post('inventory/salon/attendance/device/enroll', [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'enroll'])->middleware(['salon_module:inv_salon_team', 'throttle:6,1,device-enroll']);
+        Route::post('inventory/salon/attendance/challenge', [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'challenge'])->middleware(['salon_module:inv_salon_team', 'throttle:30,1,device-challenge']);
+        Route::post('inventory/salon/attendance/verify',   [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'verify'])->middleware(['salon_module:inv_salon_team', 'throttle:30,1,device-verify']);
+        Route::middleware('salon_module:inv_salon_devices')->prefix('inventory/salon/attendance/admin')->group(function () {
+            Route::get('devices',                 [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'devices']);
+            Route::post('devices/{id}/decision',  [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'decide']);
+            Route::get('checks',                  [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'checks']);
+            Route::get('offices',                 [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'offices']);
+            Route::post('offices',                [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'storeOffice']);
+            Route::put('offices/{id}',            [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'updateOffice']);
+            Route::put('offices/{id}/staff',      [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'setOfficeStaff']);
+            Route::get('policy',                  [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'policy']);
+            Route::put('policy',                  [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'savePolicy']);
+        });
         Route::post('inventory/salon/attendance/clock-in', [SalonStaffController::class, 'clockIn'])->middleware('salon_module:inv_salon_team');
         Route::post('inventory/salon/attendance/clock-out', [SalonStaffController::class, 'clockOut'])->middleware('salon_module:inv_salon_team');
         Route::get('inventory/salon/shifts',               [SalonStaffController::class, 'shifts'])->middleware('salon_module:inv_salon_team');

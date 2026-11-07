@@ -89,6 +89,13 @@ dependencies:
   google_sign_in: ^7.2.0
   flutter_tts: ^4.2.5
 
+  # Device-verified attendance: a key pair kept in secure storage, device facts, the place
+  flutter_secure_storage: ^9.2.2
+  device_info_plus: ^10.1.2
+  package_info_plus: ^8.0.2
+  geolocator: ^13.0.1
+  pointycastle: ^3.9.1
+
   
 
 dev_dependencies:

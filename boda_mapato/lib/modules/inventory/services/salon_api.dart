@@ -201,6 +201,104 @@ class SalonApi {
     await _api.post('/inventory/salon/attendance/clock-out', <String, dynamic>{if (staffId != null) 'staff_id': staffId});
   }
 
+  // ---------------------------------------------------------------- attendance from one's own approved device
+
+  /// My device (null until I ask), its status, whether device checks are on, and the offices I may start work at.
+  Future<Map<String, dynamic>> myDevice() async => _data(await _api.get('/inventory/salon/attendance/device'));
+
+  /// Ask for this phone to be registered (an administrator approves it).
+  Future<Map<String, dynamic>> enrollDevice({
+    required final String uuid,
+    required final String publicKey,
+    final String? platform,
+    final String? name,
+    final String? manufacturer,
+    final String? model,
+    final String? osName,
+    final String? osVersion,
+    final String? appVersion,
+  }) async =>
+      _data(await _api.post('/inventory/salon/attendance/device/enroll', <String, dynamic>{
+        'device_uuid': uuid,
+        'public_key': publicKey,
+        if (platform != null) 'platform': platform,
+        if (name != null) 'name': name,
+        if (manufacturer != null) 'manufacturer': manufacturer,
+        if (model != null) 'model': model,
+        if (osName != null) 'os_name': osName,
+        if (osVersion != null) 'os_version': osVersion,
+        if (appVersion != null) 'app_version': appVersion,
+      }));
+
+  /// A short-lived, single-use challenge to sign: {challenge_id, payload, ...}. [purpose] is 'in' or 'out'.
+  Future<Map<String, dynamic>> attendanceChallenge({required final String deviceUuid, required final String purpose, final int? officeId}) async =>
+      _data(await _api.post('/inventory/salon/attendance/challenge', <String, dynamic>{'device_uuid': deviceUuid, 'purpose': purpose, if (officeId != null) 'office_id': officeId}));
+
+  /// The signed challenge (and where the phone is): starts or finishes work when the server's checks all pass.
+  Future<Map<String, dynamic>> attendanceVerify({
+    required final int challengeId,
+    required final String signature,
+    final double? latitude,
+    final double? longitude,
+    final double? accuracy,
+    final DateTime? locationAt,
+  }) async =>
+      _data(await _api.post('/inventory/salon/attendance/verify', <String, dynamic>{
+        'challenge_id': challengeId,
+        'signature': signature,
+        if (latitude != null && longitude != null) ...<String, dynamic>{'latitude': latitude, 'longitude': longitude},
+        if (accuracy != null) 'accuracy': accuracy,
+        if (locationAt != null) 'location_at': locationAt.toUtc().toIso8601String(),
+      }));
+
+  Future<List<Map<String, dynamic>>> attendanceDevices() => _list('/inventory/salon/attendance/admin/devices');
+
+  /// [decision]: approve, reject, block or reset.
+  Future<void> decideDevice(final int id, final String decision, {final String? note}) async {
+    await _api.post('/inventory/salon/attendance/admin/devices/$id/decision', <String, dynamic>{'decision': decision, if (note != null && note.isNotEmpty) 'note': note});
+  }
+
+  Future<List<Map<String, dynamic>>> attendanceChecks({final String? outcome}) =>
+      _list('/inventory/salon/attendance/admin/checks${outcome == null ? '' : '?outcome=$outcome'}');
+
+  Future<List<Map<String, dynamic>>> attendanceOffices() => _list('/inventory/salon/attendance/admin/offices');
+
+  Future<void> saveAttendanceOffice({
+    final int? id,
+    required final String name,
+    final String? address,
+    final double? latitude,
+    final double? longitude,
+    final int radiusM = 150,
+    final bool geofenceRequired = false,
+    final bool active = true,
+  }) async {
+    final Map<String, dynamic> body = <String, dynamic>{
+      'name': name,
+      'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
+      'radius_m': radiusM,
+      'geofence_required': geofenceRequired,
+      'active': active,
+    };
+    if (id == null) {
+      await _api.post('/inventory/salon/attendance/admin/offices', body);
+    } else {
+      await _api.put('/inventory/salon/attendance/admin/offices/$id', body);
+    }
+  }
+
+  Future<void> setOfficeStaff(final int officeId, final List<String> userIds) async {
+    await _api.put('/inventory/salon/attendance/admin/offices/$officeId/staff', <String, dynamic>{'user_ids': userIds});
+  }
+
+  Future<Map<String, dynamic>> attendancePolicy() async => _data(await _api.get('/inventory/salon/attendance/admin/policy'));
+
+  Future<void> saveAttendancePolicy({required final bool enabled, final String? timezone}) async {
+    await _api.put('/inventory/salon/attendance/admin/policy', <String, dynamic>{'enabled': enabled, if (timezone != null) 'timezone': timezone});
+  }
+
   Future<List<AttendancePerson>> attendance(final String month) async {
     final Map<String, dynamic> res = await _api.get('/inventory/salon/attendance?month=$month');
     final Map<String, dynamic> data = _data(res);

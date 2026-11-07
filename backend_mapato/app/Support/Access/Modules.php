@@ -18,6 +18,7 @@ final class Modules
         'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team',
         'inv_salon_feedback', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_insights', 'inv_salon_money',
         'inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_export', 'inv_salon_schedule',
+        'inv_salon_devices',
     ];
 
     /**
@@ -66,6 +67,7 @@ final class Modules
             // ---- People and the place
             ['key' => 'inv_salon_team', 'group' => 'people', 'en' => 'Team: attendance, days off, payroll', 'sw' => 'Timu: mahudhurio, siku za mapumziko, mishahara', 'services' => $salon],
             ['key' => 'inv_salon_schedule', 'group' => 'people', 'en' => 'Set working days, hours and days off', 'sw' => 'Kupanga siku, saa za kazi na mapumziko', 'services' => $salon],
+            ['key' => 'inv_salon_devices', 'group' => 'people', 'en' => 'Offices, staff devices and the attendance log', 'sw' => 'Ofisi, vifaa vya wafanyakazi na kumbukumbu za mahudhurio', 'services' => $salon],
             ['key' => 'inv_salon_equipment', 'group' => 'people', 'en' => 'Equipment', 'sw' => 'Vifaa', 'services' => $salon],
             ['key' => 'inv_salon_branch_stock', 'group' => 'people', 'en' => 'Goods by branch', 'sw' => 'Bidhaa kwa tawi', 'services' => $salon],
             ['key' => 'inv_view_purchasing', 'group' => 'people', 'en' => 'Purchasing and suppliers', 'sw' => 'Manunuzi na wasambazaji', 'services' => ['inventory']],
