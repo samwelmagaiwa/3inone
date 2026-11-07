@@ -44,3 +44,35 @@ of people who work there. A person can only start work at an office they are ass
   profile can use it, clearing site data loses it, and the user agent is easily changed. The server already accepts `platform = web` and raw
   r||s signatures, but **no web screen has been built**: attendance from a browser is not offered.
 * Use HTTPS only (the production host is); the signature protects the request's meaning, not its secrecy.
+
+## Is the person really at work? (place proof)
+
+The administrator captures a reference place **from their own phone, standing there** (the server refuses a fix worse than ±100 m):
+
+* **For the whole office** (Offices > the office > "Use my location"): every person assigned to the office is measured from it.
+* **For one person, optionally** (open the saved office, tap that person's pin): their own place wins over the office's, with an optional radius of their own. The unpin button goes back to the office place.
+
+At **every** start and finish the server measures the distance from that place to where the phone says it is and keeps a verdict on the attendance
+and in the log: `at_work`, `away`, `no_location`, `stale` (fix older than 180 s), `weak_signal` (worse than ±100 m), `mocked` (the phone reports a fake
+location; Android), or `no_reference` (nothing captured yet). The GPS's own uncertainty is allowed for (167 m away with ±30 m counts as inside a 150 m
+circle; the same spot with ±5 m does not). Only an office that **requires** its place blocks a *start* on anything but `at_work`; finishing is never
+blocked. The person is told at once ("You are at work: 35 m from the office (150 m allowed)").
+
+## Rights (Access screen)
+
+Four switches, each a right a business admin can give or take away per person (owner and managers have all four by default):
+
+| Right | Lets them |
+|---|---|
+| `inv_salon_devices` | approve, reject, block and reset staff phones |
+| `inv_salon_offices` | create offices (or make a branch an office), assign staff, capture places |
+| `inv_salon_attendance_log` | read the log of every attempt |
+| `inv_salon_attendance_policy` | switch device-verified attendance on or off, set the time zone |
+
+The app shows only the tabs a person holds a right to, and asks the server for nothing else.
+
+## Where a business is (registration)
+
+On the registration form the applicant can tap **Capture my current location** while standing at the business; the point (and its accuracy) is kept
+on the registration. The super admin sees it in the request's details with an **Open on the map** button (`https://www.google.com/maps?q=lat,lng`).
+It is optional, never half a point, and never changes how the request is decided.

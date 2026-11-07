@@ -24,6 +24,9 @@ class BusinessRegistrationRequest {
     this.street,
     this.address,
     this.notes,
+    this.latitude,
+    this.longitude,
+    this.locationAccuracy,
     this.googleToken,
     this.currentPassword,
   });
@@ -52,6 +55,11 @@ class BusinessRegistrationRequest {
   final String? address;
   final String? notes;
 
+  /// Where the business is, read from the phone while the applicant stood at it (optional), and how exact the reading was (metres).
+  final double? latitude;
+  final double? longitude;
+  final double? locationAccuracy;
+
   /// Signed in with Google: the sealed token from the server. The password fields are then left empty and are not sent.
   final String? googleToken;
 
@@ -78,6 +86,8 @@ class BusinessRegistrationRequest {
       if (clean(ward) != null) 'ward': clean(ward),
       if (clean(street) != null) 'street': clean(street),
       if (clean(address) != null) 'address': clean(address),
+      if (latitude != null && longitude != null) ...<String, dynamic>{'latitude': latitude, 'longitude': longitude},
+      if (locationAccuracy != null && latitude != null) 'location_accuracy': locationAccuracy,
       if (clean(notes) != null) 'notes': clean(notes),
     };
   }
@@ -104,6 +114,10 @@ class BusinessRegistration {
     this.ward,
     this.street,
     this.address,
+    this.latitude,
+    this.longitude,
+    this.locationAccuracyM,
+    this.mapUrl,
     this.idNumber,
     this.notes,
     this.submittedAt,
@@ -135,6 +149,10 @@ class BusinessRegistration {
       ward: json['ward'] as String?,
       street: json['street'] as String?,
       address: json['address'] as String?,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      locationAccuracyM: (json['location_accuracy_m'] as num?)?.toDouble(),
+      mapUrl: json['map_url'] as String?,
       idNumber: json['id_number'] as String?,
       notes: json['notes'] as String?,
       submittedAt: _date(json['submitted_at']),
@@ -172,6 +190,12 @@ class BusinessRegistration {
   final String? ward;
   final String? street;
   final String? address;
+
+  /// The point the applicant captured at the business, how exact it was, and a link that opens it on a map.
+  final double? latitude;
+  final double? longitude;
+  final double? locationAccuracyM;
+  final String? mapUrl;
   final String? idNumber;
   final String? notes;
   final DateTime? submittedAt;
@@ -180,6 +204,11 @@ class BusinessRegistration {
   final String? rejectionReason;
 
   bool get isPending => status == pending;
+
+  bool get hasPoint => latitude != null && longitude != null;
+
+  /// "-6.79230, 39.20830": the captured point, as text.
+  String get pointText => hasPoint ? '${latitude!.toStringAsFixed(5)}, ${longitude!.toStringAsFixed(5)}' : '';
 
   /// "Mikocheni B, Mikocheni, Kinondoni, Dar es Salaam" -- whatever location parts were given.
   String get location => <String?>[address, street, ward, district, region]

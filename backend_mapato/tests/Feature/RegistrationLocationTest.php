@@ -60,4 +60,32 @@ class RegistrationLocationTest extends TestCase
     {
         $this->postJson('/api/auth/register', $this->payload(['ward' => str_repeat('a', 101)]))->assertStatus(422);
     }
+
+    public function test_the_point_captured_at_the_business_is_kept_and_the_super_admin_gets_it_with_a_map_link(): void
+    {
+        $this->postJson('/api/auth/register', $this->payload(['latitude' => -6.7923, 'longitude' => 39.2083, 'location_accuracy' => 9.5]))->assertCreated();
+
+        $registration = BusinessRegistration::firstOrFail();
+        $this->assertEqualsWithDelta(-6.7923, (float) $registration->latitude, 0.00001);
+        $this->assertNotNull($registration->location_captured_at);
+
+        $admin = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+        $token = $admin->createToken('t')->plainTextToken;
+        $this->app['auth']->forgetGuards();
+        $res = $this->withHeader('Authorization', "Bearer {$token}")->getJson('/api/admin/registrations')->assertOk();
+        $row = $res->json('data.0') ?? $res->json('data.data.0');
+
+        $this->assertEqualsWithDelta(-6.7923, $row['latitude'], 0.00001);
+        $this->assertEqualsWithDelta(9.5, $row['location_accuracy_m'], 0.01);
+        $this->assertSame('https://www.google.com/maps?q=-6.7923,39.2083', $row['map_url']);
+    }
+
+    public function test_a_point_is_optional_but_never_half_of_one_or_out_of_the_world(): void
+    {
+        $this->postJson('/api/auth/register', $this->payload())->assertCreated();
+        $this->assertNull(BusinessRegistration::firstOrFail()->latitude);
+
+        $this->postJson('/api/auth/register', $this->payload(['email' => 'b@example.test', 'phone_number' => '0743519101', 'latitude' => -6.8]))->assertStatus(422);
+        $this->postJson('/api/auth/register', $this->payload(['email' => 'c@example.test', 'phone_number' => '0743519102', 'latitude' => 123, 'longitude' => 39]))->assertStatus(422);
+    }
 }

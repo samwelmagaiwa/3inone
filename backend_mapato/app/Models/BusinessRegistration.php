@@ -31,6 +31,10 @@ class BusinessRegistration extends Model
         'ward',
         'street',
         'address',
+        'latitude',
+        'longitude',
+        'location_accuracy_m',
+        'location_captured_at',
         'id_number',
         'notes',
         'status',
@@ -42,6 +46,7 @@ class BusinessRegistration extends Model
     protected $casts = [
         'requested_services' => 'array',
         'reviewed_at' => 'datetime',
+        'location_captured_at' => 'datetime',
     ];
 
     public function user()

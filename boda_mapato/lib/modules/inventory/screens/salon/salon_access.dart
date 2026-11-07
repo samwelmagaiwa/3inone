@@ -63,15 +63,26 @@ bool isStylistHere(final BuildContext context, {final bool listen = true}) {
   }
 }
 
-/// May the person signed in approve staff devices, set up offices and read the attendance log? The owner and managers; an administrator gives
-/// it to others on the access screen. A screen built without sign-in (a test) does not show it.
-bool canManageDevicesHere(final BuildContext context) {
-  try {
-    final UserData? user = context.watch<AuthProvider>().user;
-    if (user == null) return false;
+/// The four attendance rights a business admin hands out on the access screen: approve staff phones, offices and the places people are measured
+/// from, the log of every check, and the on/off switch.
+const List<String> kAttendanceRights = <String>['inv_salon_devices', 'inv_salon_offices', 'inv_salon_attendance_log', 'inv_salon_attendance_policy'];
 
-    return user.isSuperAdmin || user.fullAccess || user.access.has('inv_salon_devices');
+/// Which of [kAttendanceRights] the person signed in holds (the owner and managers hold all four; others only what they were given).
+Set<String> attendanceRightsOf(final UserData? user) {
+  if (user == null) return <String>{};
+  if (user.isSuperAdmin || user.fullAccess) return kAttendanceRights.toSet();
+
+  return kAttendanceRights.where(user.access.has).toSet();
+}
+
+/// [attendanceRightsOf] for the person signed in. A screen built without sign-in (a test) holds none.
+Set<String> attendanceRightsHere(final BuildContext context, {final bool listen = true}) {
+  try {
+    return attendanceRightsOf(listen ? context.watch<AuthProvider>().user : context.read<AuthProvider>().user);
   } on ProviderNotFoundException {
-    return false;
+    return <String>{};
   }
 }
+
+/// Does the person signed in hold at least one attendance right (so the way into Devices and offices is shown)?
+bool canManageDevicesHere(final BuildContext context) => attendanceRightsHere(context).isNotEmpty;

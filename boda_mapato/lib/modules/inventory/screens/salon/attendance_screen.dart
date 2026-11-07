@@ -262,7 +262,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           alignment: Alignment.centerRight,
           child: TextButton.icon(
             key: const ValueKey<String>('open_devices_admin'),
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => DevicesAdminScreen(api: _api))).then((_) => _load()),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => DevicesAdminScreen(api: _api, rights: attendanceRightsHere(context, listen: false)))).then((_) => _load()),
             icon: const Icon(Icons.phonelink_lock_outlined, color: Colors.white70),
             label: Text(sw ? 'Vifaa na ofisi' : 'Devices and offices', style: const TextStyle(color: Colors.white70)),
           ),

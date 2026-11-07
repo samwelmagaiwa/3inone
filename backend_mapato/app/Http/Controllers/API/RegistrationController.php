@@ -116,6 +116,10 @@ class RegistrationController extends Controller
             'ward' => 'nullable|string|max:100',
             'street' => 'nullable|string|max:100',
             'address' => 'nullable|string|max:500',
+            // Where the business is, read from the applicant's phone while they stand at it (optional; the super admin sees it on a map link).
+            'latitude' => 'nullable|numeric|between:-90,90|required_with:longitude',
+            'longitude' => 'nullable|numeric|between:-180,180|required_with:latitude',
+            'location_accuracy' => 'nullable|numeric|min:0|max:100000',
             'id_number' => 'nullable|string|max:50',
             'notes' => 'nullable|string|max:1000',
             'current_password' => 'nullable|string',
@@ -256,6 +260,7 @@ class RegistrationController extends Controller
                     'ward' => $data['ward'] ?? null,
                     'street' => $data['street'] ?? null,
                     'address' => $data['address'] ?? null,
+                    ...$this->placeFields($data),
                     'id_number' => $data['id_number'] ?? null,
                     'notes' => $data['notes'] ?? null,
                     'status' => BusinessRegistration::PENDING,
@@ -292,6 +297,7 @@ class RegistrationController extends Controller
                     'ward' => $data['ward'] ?? null,
                     'street' => $data['street'] ?? null,
                     'address' => $data['address'] ?? null,
+                    ...$this->placeFields($data),
                     'id_number' => $data['id_number'] ?? null,
                     'notes' => $data['notes'] ?? null,
                     'status' => BusinessRegistration::PENDING,
@@ -326,6 +332,7 @@ class RegistrationController extends Controller
                     'ward' => $data['ward'] ?? null,
                     'street' => $data['street'] ?? null,
                 'address' => $data['address'] ?? null,
+                ...$this->placeFields($data),
                 'id_number' => $data['id_number'] ?? null,
                 'notes' => $data['notes'] ?? null,
                 'status' => BusinessRegistration::PENDING,
@@ -842,6 +849,25 @@ class RegistrationController extends Controller
     }
 
     /** Everything a super admin needs to decide, in one flat shape. */
+    /**
+     * The captured point, kept only when it is a real one (both numbers) and stamped with when it was read.
+     *
+     * @return array<string, mixed>
+     */
+    private function placeFields(array $data): array
+    {
+        if (!isset($data['latitude'], $data['longitude'])) {
+            return ['latitude' => null, 'longitude' => null, 'location_accuracy_m' => null, 'location_captured_at' => null];
+        }
+
+        return [
+            'latitude' => $data['latitude'],
+            'longitude' => $data['longitude'],
+            'location_accuracy_m' => $data['location_accuracy'] ?? null,
+            'location_captured_at' => now(),
+        ];
+    }
+
     private function payload(BusinessRegistration $r): array
     {
         $user = $r->user;
@@ -862,6 +888,12 @@ class RegistrationController extends Controller
             'ward' => $r->ward,
             'street' => $r->street,
             'address' => $r->address,
+            // The point the applicant captured at the business, and a link that opens it on a map.
+            'latitude' => $r->latitude === null ? null : (float) $r->latitude,
+            'longitude' => $r->longitude === null ? null : (float) $r->longitude,
+            'location_accuracy_m' => $r->location_accuracy_m === null ? null : (float) $r->location_accuracy_m,
+            'location_captured_at' => $r->location_captured_at?->toISOString(),
+            'map_url' => $r->latitude === null ? null : 'https://www.google.com/maps?q=' . (float) $r->latitude . ',' . (float) $r->longitude,
             'id_number' => $r->id_number,
             'notes' => $r->notes,
             'submitted_at' => $r->created_at?->toISOString(),

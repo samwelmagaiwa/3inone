@@ -153,19 +153,7 @@ class SecureDeviceIdentity implements DeviceIdentity {
   }
 
   @override
-  Future<PhonePlace?> place() async {
-    try {
-      if (!await Geolocator.isLocationServiceEnabled()) return null;
-      LocationPermission p = await Geolocator.checkPermission();
-      if (p == LocationPermission.denied) p = await Geolocator.requestPermission();
-      if (p == LocationPermission.denied || p == LocationPermission.deniedForever) return null;
-      final Position pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 12)));
-
-      return PhonePlace(latitude: pos.latitude, longitude: pos.longitude, accuracy: pos.accuracy, at: pos.timestamp, mocked: pos.isMocked);
-    } on Exception {
-      return null;
-    }
-  }
+  Future<PhonePlace?> place() => readPhonePlace();
 
   static Uint8List _fixed(final BigInt v) {
     final Uint8List out = Uint8List(32);
@@ -176,6 +164,21 @@ class SecureDeviceIdentity implements DeviceIdentity {
     }
 
     return out;
+  }
+}
+
+/// Where the phone is now (asks for the location permission if it must), or null: permission refused, location off, or no fix in time.
+Future<PhonePlace?> readPhonePlace() async {
+  try {
+    if (!await Geolocator.isLocationServiceEnabled()) return null;
+    LocationPermission p = await Geolocator.checkPermission();
+    if (p == LocationPermission.denied) p = await Geolocator.requestPermission();
+    if (p == LocationPermission.denied || p == LocationPermission.deniedForever) return null;
+    final Position pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 12)));
+
+    return PhonePlace(latitude: pos.latitude, longitude: pos.longitude, accuracy: pos.accuracy, at: pos.timestamp, mocked: pos.isMocked);
+  } on Exception {
+    return null;
   }
 }
 

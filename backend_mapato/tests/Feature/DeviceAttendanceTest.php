@@ -433,8 +433,39 @@ class DeviceAttendanceTest extends TestCase
         }
 
         $on = collect($this->api($owner, 'GET', "/api/admin/users/{$asha->id}/access")->json('data.modules'))->filter(fn ($m) => $m['on'])->pluck('key')->all();
+        // each thing is its own right: the phones only
         $this->api($owner, 'PUT', "/api/admin/users/{$asha->id}/access", ['on' => array_merge($on, ['inv_salon_devices'])])->assertOk();
         $this->api($asha, 'GET', '/api/inventory/salon/attendance/admin/devices')->assertOk();
+        foreach (['checks', 'offices', 'policy'] as $page) {
+            $this->api($asha, 'GET', "/api/inventory/salon/attendance/admin/{$page}")->assertForbidden();
+        }
+        // then the offices and places only
+        $this->api($owner, 'PUT', "/api/admin/users/{$asha->id}/access", ['on' => array_merge($on, ['inv_salon_offices'])])->assertOk();
+        $this->api($asha, 'GET', '/api/inventory/salon/attendance/admin/offices')->assertOk();
+        $this->api($asha, 'PUT', "/api/inventory/salon/attendance/admin/offices/{$office}/staff/{$asha->id}/place", ['latitude' => -6.8, 'longitude' => 39.27, 'accuracy' => 8])->assertOk();
+        $this->api($asha, 'GET', '/api/inventory/salon/attendance/admin/devices')->assertForbidden();
+        $this->api($asha, 'PUT', '/api/inventory/salon/attendance/admin/policy', ['enabled' => true])->assertForbidden();
+        // the log and the on/off switch
+        $this->api($owner, 'PUT', "/api/admin/users/{$asha->id}/access", ['on' => array_merge($on, ['inv_salon_attendance_log', 'inv_salon_attendance_policy'])])->assertOk();
+        $this->api($asha, 'GET', '/api/inventory/salon/attendance/admin/checks')->assertOk();
+        $this->api($asha, 'PUT', '/api/inventory/salon/attendance/admin/policy', ['enabled' => true, 'timezone' => 'Africa/Dar_es_Salaam'])->assertOk();
+        $this->api($asha, 'GET', '/api/inventory/salon/attendance/admin/offices')->assertForbidden();
+    }
+
+    public function test_the_four_attendance_switches_are_named_off_for_a_stylist_and_on_for_a_manager(): void
+    {
+        $owner = $this->salon();
+        $asha = $this->person($owner);
+        $manager = $this->person($owner, 'Mary', 'manager');
+
+        foreach ([$asha->id => false, $manager->id => true] as $id => $expected) {
+            $state = collect($this->api($owner, 'GET', "/api/admin/users/{$id}/access")->json('data.modules'))->keyBy('key');
+            foreach (['inv_salon_devices', 'inv_salon_offices', 'inv_salon_attendance_log', 'inv_salon_attendance_policy'] as $key) {
+                $this->assertTrue($state->has($key), $key);
+                $this->assertNotSame('', $state[$key]['sw']);
+                $this->assertSame($expected, $state[$key]['on'], "{$key} for {$id}");
+            }
+        }
     }
 
     public function test_the_switch_is_named_and_starts_off_for_a_stylist(): void

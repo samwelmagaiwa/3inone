@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:intl/intl.dart";
+import "package:url_launcher/url_launcher_string.dart";
 
 import "../../constants/theme_constants.dart";
 import "../../models/business.dart";
@@ -617,6 +618,24 @@ class _RegistrationSheetState extends State<_RegistrationSheet> {
                   : (_sw ? "Haijathibitishwa" : "Not confirmed"),
             ),
             if (_r.location.isNotEmpty) _row(Icons.place_outlined, _sw ? "Mahali" : "Location", _r.location),
+            // The exact spot the applicant captured while standing at the business: one tap opens it on a map.
+            if (_r.hasPoint) ...<Widget>[
+              _row(
+                Icons.my_location,
+                _sw ? "Eneo kwenye ramani" : "Spot on the map",
+                "${_r.pointText}${_r.locationAccuracyM == null ? '' : ' (± ${_r.locationAccuracyM!.round()} m)'}",
+                valueKey: "registration_point",
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  key: const ValueKey<String>("open_registration_map"),
+                  onPressed: () => launchUrlString(_r.mapUrl ?? "https://www.google.com/maps?q=${_r.latitude},${_r.longitude}", mode: LaunchMode.externalApplication),
+                  icon: const Icon(Icons.map_outlined, color: ThemeConstants.primaryCyan),
+                  label: Text(_sw ? "Fungua kwenye ramani" : "Open on the map", style: const TextStyle(color: ThemeConstants.primaryCyan)),
+                ),
+              ),
+            ],
             if ((_r.idNumber ?? "").isNotEmpty) _row(Icons.badge_outlined, _sw ? "Kitambulisho" : "ID number", _r.idNumber!),
             if ((_r.notes ?? "").isNotEmpty) _row(Icons.notes_outlined, _sw ? "Maelezo" : "Notes", _r.notes!),
             if (_r.submittedAt != null) _row(Icons.schedule, _sw ? "Imetumwa" : "Submitted", fmt.format(_r.submittedAt!)),

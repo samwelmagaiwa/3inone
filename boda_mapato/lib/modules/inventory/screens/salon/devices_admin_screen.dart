@@ -13,13 +13,17 @@ import '../widgets/inventory_widgets.dart';
 import '../widgets/joined_sections.dart';
 import 'device_attendance_flow.dart';
 import '../../services/device_identity.dart';
+import 'salon_access.dart';
 import 'salon_input.dart';
 
 /// For the owner and whoever was given the right: switch device checks on, approve / reject / block / reset each person's phone, set up
 /// the offices (with their number, place and who works there) and read the log of every attempt, good and bad. Nothing here is deleted:
 /// a replaced phone stays in the list as "replaced".
 class DevicesAdminScreen extends StatefulWidget {
-  const DevicesAdminScreen({super.key, this.api, this.staff, this.identity});
+  const DevicesAdminScreen({super.key, this.api, this.staff, this.identity, this.rights});
+
+  /// Which of the four attendance rights the person holds (a test fixes it); read from who is signed in when null.
+  final Set<String>? rights;
 
   /// Where the phone is (a fake in tests): the office's place is taken from the phone, never typed.
   final DeviceIdentity? identity;
@@ -46,6 +50,8 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
   List<Map<String, String>> _staff = <Map<String, String>>[];
   List<SalonBranchInfo> _branches = <SalonBranchInfo>[];
 
+  Set<String> get _rights => widget.rights ?? attendanceRightsHere(context, listen: false);
+
   @override
   void initState() {
     super.initState();
@@ -58,18 +64,22 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
       _error = null;
     });
     try {
-      final Map<String, dynamic> policy = await _api.attendancePolicy();
-      final List<Map<String, dynamic>> devices = await _api.attendanceDevices();
-      final List<Map<String, dynamic>> offices = await _api.attendanceOffices();
-      final List<Map<String, dynamic>> checks = await _api.attendanceChecks();
+      // Only what this person holds the right to: the server refuses the rest.
+      final Set<String> has = _rights;
+      final Map<String, dynamic> policy = has.contains('inv_salon_attendance_policy') ? await _api.attendancePolicy() : <String, dynamic>{};
+      final List<Map<String, dynamic>> devices = has.contains('inv_salon_devices') ? await _api.attendanceDevices() : <Map<String, dynamic>>[];
+      final List<Map<String, dynamic>> offices = has.contains('inv_salon_offices') ? await _api.attendanceOffices() : <Map<String, dynamic>>[];
+      final List<Map<String, dynamic>> checks = has.contains('inv_salon_attendance_log') ? await _api.attendanceChecks() : <Map<String, dynamic>>[];
       List<SalonBranchInfo> branches = <SalonBranchInfo>[];
-      try {
-        branches = await _api.branches();
-      } on Exception {
-        branches = <SalonBranchInfo>[]; // no right to see branches: an office of its own still works
+      if (has.contains('inv_salon_offices')) {
+        try {
+          branches = await _api.branches();
+        } on Exception {
+          branches = <SalonBranchInfo>[]; // no right to see branches: an office of its own still works
+        }
       }
       List<Map<String, String>> staff = widget.staff ?? <Map<String, String>>[];
-      if (widget.staff == null && mounted) {
+      if (widget.staff == null && mounted && has.contains('inv_salon_offices')) {
         try {
           final InventoryProvider inv = context.read<InventoryProvider>();
           await inv.fetchSalonStaff();
@@ -115,9 +125,17 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
   @override
   Widget build(BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
+    final Set<String> has = widget.rights ?? attendanceRightsHere(context);
+    // One tab for each right held.
+    final List<(String, String, Widget Function())> tabs = <(String, String, Widget Function())>[
+      if (has.contains('inv_salon_devices')) ('tab_devices', sw ? 'Vifaa' : 'Devices', () => _devicesTab(sw)),
+      if (has.contains('inv_salon_offices')) ('tab_offices', sw ? 'Ofisi' : 'Offices', () => _officesTab(sw)),
+      if (has.contains('inv_salon_attendance_log')) ('tab_log', sw ? 'Kumbukumbu' : 'Log', () => _logTab(sw)),
+    ];
 
     return DefaultTabController(
-      length: 3,
+      key: ValueKey<int>(tabs.length),
+      length: tabs.isEmpty ? 1 : tabs.length,
       child: Scaffold(
         backgroundColor: ThemeConstants.primaryBlue,
         appBar: AppBar(
@@ -129,9 +147,8 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
             tabs: <Widget>[
-              Tab(key: const ValueKey<String>('tab_devices'), text: sw ? 'Vifaa' : 'Devices'),
-              Tab(key: const ValueKey<String>('tab_offices'), text: sw ? 'Ofisi' : 'Offices'),
-              Tab(key: const ValueKey<String>('tab_log'), text: sw ? 'Kumbukumbu' : 'Log'),
+              for (final (String, String, Widget Function()) tab in tabs) Tab(key: ValueKey<String>(tab.$1), text: tab.$2),
+              if (tabs.isEmpty) const Tab(text: ''),
             ],
           ),
         ),
@@ -141,18 +158,25 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
                 ? ListView(children: <Widget>[InvEmptyState(icon: Icons.error_outline, message: _error!), Center(child: TextButton(key: const ValueKey<String>('devices_retry'), onPressed: _load, child: Text(sw ? 'Jaribu tena' : 'Try again', style: const TextStyle(color: Colors.white))))])
                 : Column(
                     children: <Widget>[
-                      SwitchListTile(
-                        key: const ValueKey<String>('policy_switch'),
-                        value: _policyOn,
-                        onChanged: _busy ? null : (bool v) => _do(() => _api.saveAttendancePolicy(enabled: v)),
-                        title: Text(sw ? 'Mahudhurio kwa kifaa kilichoidhinishwa' : 'Attendance from an approved device', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
-                        subtitle: Text(
-                          sw ? 'Ikiwashwa, kila mfanyakazi huanza na kumaliza kazi kwa simu yake iliyosajiliwa tu.' : 'When on, each person starts and finishes work only from their own registered phone.',
-                          style: ThemeConstants.captionStyle,
+                      // The on/off switch is a right of its own: shown (and loaded) only for whoever holds it.
+                      if (has.contains('inv_salon_attendance_policy')) ...<Widget>[
+                        SwitchListTile(
+                          key: const ValueKey<String>('policy_switch'),
+                          value: _policyOn,
+                          onChanged: _busy ? null : (bool v) => _do(() => _api.saveAttendancePolicy(enabled: v)),
+                          title: Text(sw ? 'Mahudhurio kwa kifaa kilichoidhinishwa' : 'Attendance from an approved device', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
+                          subtitle: Text(
+                            sw ? 'Ikiwashwa, kila mfanyakazi huanza na kumaliza kazi kwa simu yake iliyosajiliwa tu.' : 'When on, each person starts and finishes work only from their own registered phone.',
+                            style: ThemeConstants.captionStyle,
+                          ),
                         ),
+                        const SectionGlowDivider(lift: false),
+                      ],
+                      Expanded(
+                        child: tabs.isEmpty
+                            ? InvEmptyState(icon: Icons.lock_outline, message: sw ? 'Huna ruhusa ya sehemu hii.' : 'You do not have a right to anything here.')
+                            : TabBarView(children: <Widget>[for (final (String, String, Widget Function()) tab in tabs) tab.$3()]),
                       ),
-                      const SectionGlowDivider(lift: false),
-                      Expanded(child: TabBarView(children: <Widget>[_devicesTab(sw), _officesTab(sw), _logTab(sw)])),
                     ],
                   ),
       ),
@@ -435,7 +459,7 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
                   SizedBox(height: 6.h),
                   Row(
                     children: <Widget>[
-                      Expanded(child: Text(accuracyNote ?? (sw ? 'Simama ofisini na uchukue mahali.' : 'Stand in the office and capture its place.'), key: const ValueKey<String>('office_place_note'), style: ThemeConstants.captionStyle)),
+                      Expanded(child: Text(accuracyNote ?? (sw ? 'Mahali pa wote wa ofisi hii: simama ofisini na uchukue.' : 'One place for everyone at this office: stand there and capture it.'), key: const ValueKey<String>('office_place_note'), style: ThemeConstants.captionStyle)),
                       TextButton.icon(
                         key: const ValueKey<String>('office_capture'),
                         onPressed: locating ? null : () => grab(set),
@@ -449,7 +473,16 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
                   const SectionGlowDivider(lift: false),
                   SwitchListTile(key: const ValueKey<String>('office_active'), contentPadding: EdgeInsets.zero, value: active, onChanged: (bool v) => set(() => active = v), title: Text(sw ? 'Ofisi inatumika' : 'Office is active', style: ThemeConstants.bodyStyle)),
                   const SectionGlowDivider(lift: false),
-                  if (_staff.isNotEmpty) Align(alignment: Alignment.centerLeft, child: Text(sw ? 'Wanaofanya kazi hapa' : 'Who works here', style: ThemeConstants.captionStyle)),
+                  if (_staff.isNotEmpty)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        office == null
+                            ? (sw ? 'Wanaofanya kazi hapa (hifadhi kwanza, kisha unaweza kuchukua mahali pa mtu mmoja, si lazima)' : 'Who works here (save first; then you may capture a place for one person, optional)')
+                            : (sw ? 'Wanaofanya kazi hapa. Bonyeza pini ya mtu kuchukua mahali pake peke yake (si lazima); wasio na pini hutumia mahali pa ofisi.' : 'Who works here. Tap a person\u2019s pin to capture a place for them alone (optional); everyone else uses the office place.'),
+                        style: ThemeConstants.captionStyle,
+                      ),
+                    ),
                   for (final Map<String, String> s in _staff)
                     Row(
                       children: <Widget>[

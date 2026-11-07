@@ -132,8 +132,12 @@ class User extends Authenticatable
         'inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_export', 'inv_salon_schedule',
         // Approving what others spend in a salon: the owner and managers; the accountant records spending that then waits for them.
         'inv_approve_expenses',
-        // Offices, devices and the log of device-verified attendance: the owner's and managers'.
+        // Device-verified attendance, one right for each thing a business admin may hand out: approving staff devices, setting up offices and
+        // the places people are measured from, reading the log of every attempt, and switching the checks on or off. Owner's and managers' by default.
         'inv_salon_devices',
+        'inv_salon_offices',
+        'inv_salon_attendance_log',
+        'inv_salon_attendance_policy',
         // Cancelling a sale and approving goods taken back: the owner's. A person without them (the accountant) writes a request with a
         // comment instead, which the owner reads on that sale and decides.
         'inv_cancel_sales', 'inv_return_sales',
@@ -487,7 +491,7 @@ class User extends Authenticatable
             'inv_view_crates','inv_view_reports','inv_view_expenses',
             'inv_manage_expenses','inv_manage_settings',
             'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback','inv_salon_equipment','inv_salon_branch_stock','inv_salon_insights','inv_salon_money',
-            'inv_salon_reports','inv_salon_profit','inv_salon_payroll','inv_salon_cashbook','inv_salon_export','inv_salon_schedule','inv_approve_expenses','inv_salon_devices',
+            'inv_salon_reports','inv_salon_profit','inv_salon_payroll','inv_salon_cashbook','inv_salon_export','inv_salon_schedule','inv_approve_expenses','inv_salon_devices','inv_salon_offices','inv_salon_attendance_log','inv_salon_attendance_policy',
             'inv_cancel_sales','inv_return_sales',
         ],
         'administrator'=> [
@@ -497,7 +501,7 @@ class User extends Authenticatable
             'inv_view_crates','inv_view_reports','inv_view_expenses',
             'inv_manage_expenses','inv_manage_settings',
             'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback','inv_salon_equipment','inv_salon_branch_stock','inv_salon_insights','inv_salon_money',
-            'inv_salon_reports','inv_salon_profit','inv_salon_payroll','inv_salon_cashbook','inv_salon_export','inv_salon_schedule','inv_approve_expenses','inv_salon_devices',
+            'inv_salon_reports','inv_salon_profit','inv_salon_payroll','inv_salon_cashbook','inv_salon_export','inv_salon_schedule','inv_approve_expenses','inv_salon_devices','inv_salon_offices','inv_salon_attendance_log','inv_salon_attendance_policy',
             'inv_cancel_sales','inv_return_sales',
         ],
         'manager'      => [
@@ -507,7 +511,7 @@ class User extends Authenticatable
             'inv_view_crates','inv_view_reports','inv_view_expenses',
             'inv_manage_expenses',
             'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback','inv_salon_equipment','inv_salon_branch_stock','inv_salon_insights','inv_salon_money',
-            'inv_salon_reports','inv_salon_profit','inv_salon_payroll','inv_salon_cashbook','inv_salon_export','inv_salon_schedule','inv_approve_expenses','inv_salon_devices',
+            'inv_salon_reports','inv_salon_profit','inv_salon_payroll','inv_salon_cashbook','inv_salon_export','inv_salon_schedule','inv_approve_expenses','inv_salon_devices','inv_salon_offices','inv_salon_attendance_log','inv_salon_attendance_policy',
             'inv_cancel_sales','inv_return_sales',
         ],
         // Point-of-sale only -- deliberately excludes catalog management,

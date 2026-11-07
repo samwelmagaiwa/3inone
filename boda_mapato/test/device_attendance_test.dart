@@ -106,8 +106,13 @@ class _Fake extends SalonApi {
   @override
   Future<void> clockOut({String? staffId}) async => calls.add('plain-out');
 
+  final List<String> loaded = <String>[];
+
   @override
-  Future<Map<String, dynamic>> attendancePolicy() async => <String, dynamic>{'enabled': policyOn};
+  Future<Map<String, dynamic>> attendancePolicy() async {
+    loaded.add('policy');
+    return <String, dynamic>{'enabled': policyOn};
+  }
 
   @override
   Future<void> saveAttendancePolicy({required bool enabled, String? timezone}) async {
@@ -116,7 +121,10 @@ class _Fake extends SalonApi {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> attendanceDevices() async => devices;
+  Future<List<Map<String, dynamic>>> attendanceDevices() async {
+    loaded.add('devices');
+    return devices;
+  }
 
   @override
   Future<void> decideDevice(int id, String decision, {String? note}) async {
@@ -133,10 +141,15 @@ class _Fake extends SalonApi {
   Future<List<Map<String, dynamic>>> attendanceOffices() async => offices;
 
   @override
-  Future<List<Map<String, dynamic>>> attendanceChecks({String? outcome}) async => <Map<String, dynamic>>[
+  Future<List<Map<String, dynamic>>> attendanceChecks({String? outcome}) async {
+    loaded.add('checks');
+    return checkRows;
+  }
+
+  final List<Map<String, dynamic>> checkRows = <Map<String, dynamic>>[
         <String, dynamic>{'id': 1, 'user_name': 'Asha', 'purpose': 'in', 'outcome': 'device_mismatch', 'at': '2026-11-09 09:00:00', 'ip': '1.2.3.4', 'office_id': 3},
         <String, dynamic>{'id': 2, 'user_name': 'Asha', 'purpose': 'in', 'outcome': 'ok', 'at': '2026-11-09 09:05:00', 'office_id': 3, 'place_status': 'away', 'distance_m': 1112.0},
-      ];
+  ];
 
   @override
   Future<void> saveAttendanceOffice({int? id, int? branchId, required String name, String? address, double? latitude, double? longitude, double? accuracy, int radiusM = 150, bool geofenceRequired = false, bool active = true}) async {
@@ -492,6 +505,31 @@ void main() {
       await _settle(t);
 
       expect(find.text('Away • 1112 m'), findsOneWidget);
+    });
+
+    testWidgets('each right opens only its own part: offices only means no phones, no log and no on/off switch', (t) async {
+      final _Fake api = _Fake()..offices = <Map<String, dynamic>>[];
+      await _host(t, DevicesAdminScreen(api: api, identity: _Identity(), rights: const <String>{'inv_salon_offices'}, staff: const <Map<String, String>>[]), role: 'admin');
+
+      expect(_key('tab_offices'), findsOneWidget);
+      expect(_key('tab_devices'), findsNothing);
+      expect(_key('tab_log'), findsNothing);
+      expect(_key('policy_switch'), findsNothing);
+      expect(api.loaded, isEmpty); // nothing the server would refuse was even asked for
+    });
+
+    testWidgets('the on/off right alone shows just the switch', (t) async {
+      final _Fake api = _Fake();
+      await _host(t, DevicesAdminScreen(api: api, identity: _Identity(), rights: const <String>{'inv_salon_attendance_policy'}, staff: const <Map<String, String>>[]), role: 'admin');
+
+      expect(_key('policy_switch'), findsOneWidget);
+      expect(_key('tab_offices'), findsNothing);
+      expect(api.loaded, <String>['policy']);
+    });
+
+    testWidgets('someone with none of the four sees nothing to open', (t) async {
+      await _host(t, AttendanceScreen(api: _Fake()..status = 'approved', identity: _Identity()), role: 'hair_stylist');
+      expect(_key('open_devices_admin'), findsNothing);
     });
 
     testWidgets('the log shows what was refused', (t) async {

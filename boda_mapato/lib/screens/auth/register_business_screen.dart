@@ -6,6 +6,7 @@ import "../../models/business_registration.dart";
 import "../../models/plan_prices.dart";
 import "../../providers/auth_provider.dart" show ApplicantCredentials, GoogleSignup;
 import "../../modules/inventory/models/inv_capabilities.dart";
+import "../../modules/inventory/services/device_identity.dart" show PhonePlace, readPhonePlace;
 import "../../services/api_service.dart";
 import "../../services/auth_service.dart";
 import "../../services/localization_service.dart";
@@ -46,7 +47,11 @@ class RegisterBusinessScreen extends StatefulWidget {
     this.googleSignup,
     this.applicant,
     this.placeSource,
+    this.locate,
   });
+
+  /// Reads where the phone is (a fake in tests; the phone's location otherwise).
+  final Future<PhonePlace?> Function()? locate;
 
   /// Overridable so the screen can be tested without a network.
   final RegisterBusiness? onSubmit;
@@ -88,6 +93,9 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
   final TextEditingController _confirm = TextEditingController();
   PlaceChoice _place = PlaceChoice.empty;
   final TextEditingController _address = TextEditingController();
+  PhonePlace? _point;
+  bool _locating = false;
+  String? _pointProblem;
   final TextEditingController _notes = TextEditingController();
   final TextEditingController _code = TextEditingController();
 
@@ -223,6 +231,9 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
           ward: _place.ward,
           street: _place.street,
           address: _address.text,
+          latitude: _point?.latitude,
+          longitude: _point?.longitude,
+          locationAccuracy: _point?.accuracy,
           notes: _notes.text,
         ),
       );
@@ -423,6 +434,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
             child: PlacePicker(source: widget.placeSource, onChanged: (final PlaceChoice c) => _place = c, decoration: _decoration),
           ),
           _field(controller: _address, label: _sw ? "Anuani (nyumba, jengo, karibu na ...)" : "Address (house, building, near ...)", icon: Icons.place_outlined),
+          _pointCapture(),
           _field(
             controller: _notes,
             label: _sw ? "Maelezo ya ziada" : "Anything else we should know",
@@ -434,6 +446,81 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
             label: _sw ? "Tuma Ombi" : "Submit Registration",
             onPressed: _busy ? null : _submit,
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Stand at the business and tap: the phone's own reading of where it is, so whoever approves the request can open the exact spot on a map.
+  Future<void> _capturePoint() async {
+    if (_locating) return;
+    setState(() {
+      _locating = true;
+      _pointProblem = null;
+    });
+    final PhonePlace? where = await (widget.locate ?? readPhonePlace)();
+    if (!mounted) return;
+    setState(() {
+      _locating = false;
+      if (where == null) {
+        _pointProblem = _sw ? "Simu haikupata mahali. Washa location, ruhusu app, kisha jaribu tena." : "The phone could not find where it is. Turn location on, allow the app, and try again.";
+      } else if (where.accuracy != null && where.accuracy! > 100) {
+        _pointProblem = _sw ? "Mawasiliano ya GPS ni hafifu (± ${where.accuracy!.round()} m). Nenda eneo wazi ujaribu tena." : "The GPS signal is weak (± ${where.accuracy!.round()} m). Move to open space and try again.";
+      } else {
+        _point = where;
+      }
+    });
+  }
+
+  Widget _pointCapture() {
+    final PhonePlace? p = _point;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 14.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            _sw ? "Eneo kamili la biashara (hiari): simama kwenye biashara yako ubonyeze kitufe." : "The business's exact spot (optional): stand at your business and tap the button.",
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+          SizedBox(height: 8.h),
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: <Widget>[
+              OutlinedButton.icon(
+                key: const ValueKey<String>("capture_business_point"),
+                onPressed: _busy || _locating ? null : _capturePoint,
+                icon: _locating
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70))
+                    : Icon(p == null ? Icons.my_location : Icons.refresh, color: ThemeConstants.primaryCyan),
+                label: Text(
+                  p == null ? (_sw ? "Chukua eneo nililopo" : "Capture my current location") : (_sw ? "Chukua tena" : "Capture again"),
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              if (p != null)
+                TextButton(
+                  key: const ValueKey<String>("clear_business_point"),
+                  onPressed: () => setState(() => _point = null),
+                  child: Text(_sw ? "Ondoa" : "Remove", style: const TextStyle(color: Colors.white70)),
+                ),
+            ],
+          ),
+          if (p != null)
+            Padding(
+              padding: EdgeInsets.only(top: 6.h),
+              child: Text(
+                "${_sw ? 'Eneo limechukuliwa' : 'Location captured'}: ${p.latitude.toStringAsFixed(5)}, ${p.longitude.toStringAsFixed(5)}${p.accuracy == null ? '' : ' (± ${p.accuracy!.round()} m)'}",
+                key: const ValueKey<String>("business_point_text"),
+                style: const TextStyle(color: ThemeConstants.successGreen, fontSize: 13),
+              ),
+            ),
+          if (_pointProblem != null)
+            Padding(
+              padding: EdgeInsets.only(top: 6.h),
+              child: Text(_pointProblem!, key: const ValueKey<String>("business_point_problem"), style: const TextStyle(color: ThemeConstants.errorText, fontSize: 13)),
+            ),
         ],
       ),
     );
