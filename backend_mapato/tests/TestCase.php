@@ -22,6 +22,8 @@ abstract class TestCase extends BaseTestCase
         $this->app->instance(SmsGateway::class, $this->sms);
         // Most tests are about something else than who served the client; the rule has its own test that switches it on.
         config(['inventory.salon_stylist_required' => false]);
+        // Likewise the business's captured location at registration: its own tests switch it on.
+        config(['registration.require_location' => false]);
     }
 
     protected function tearDown(): void

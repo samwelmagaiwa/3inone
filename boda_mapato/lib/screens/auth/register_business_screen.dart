@@ -53,6 +53,10 @@ class RegisterBusinessScreen extends StatefulWidget {
   /// Reads where the phone is (a fake in tests; the phone's location otherwise).
   final Future<PhonePlace?> Function()? locate;
 
+  /// A business must say where it is to ask for the system: the form will not send without a captured location. Switched off only by the
+  /// test setup (test/flutter_test_config.dart); the screen's own tests switch it on.
+  static bool requireLocation = true;
+
   /// Overridable so the screen can be tested without a network.
   final RegisterBusiness? onSubmit;
   final VerifyPhone? onVerifyPhone;
@@ -94,6 +98,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
   PlaceChoice _place = PlaceChoice.empty;
   final TextEditingController _address = TextEditingController();
   PhonePlace? _point;
+  final GlobalKey _pointKey = GlobalKey();
   bool _locating = false;
   String? _pointProblem;
   final TextEditingController _notes = TextEditingController();
@@ -201,7 +206,14 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
       _servicesMissing = _services.isEmpty;
       _typeMissing = needsType;
     });
-    if (!formOk || _services.isEmpty || needsType) return;
+    // The location is required: stand at the business and capture it. Said next to the button, and the form is brought to it.
+    final bool needsPoint = RegisterBusinessScreen.requireLocation && _point == null;
+    if (needsPoint) {
+      setState(() => _pointProblem = _sw ? "Eneo la biashara linahitajika: simama kwenye biashara ubonyeze \"Chukua eneo nililopo\"." : "The business location is required: stand at your business and tap \"Capture my current location\".");
+      final BuildContext? at = _pointKey.currentContext;
+      if (at != null) Scrollable.ensureVisible(at, duration: const Duration(milliseconds: 200));
+    }
+    if (!formOk || _services.isEmpty || needsType || needsPoint) return;
 
     // The package must cover the services chosen: basic is ONE service, standard two, premium up to three.
     final String plan = _plan ?? _catalog.planFor(_services.length);
@@ -427,7 +439,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
           _servicePicker(),
           if (_services.contains("inventory")) _inventoryTypePicker(),
           _packagePicker(),
-          _section(_sw ? "Mahali na maelezo (hiari)" : "Location and details (optional)"),
+          _section(_sw ? "Mahali na maelezo" : "Location and details"),
           // region, district, ward, street or village: chosen from the imported locations, or typed when the list has nothing
           Padding(
             padding: EdgeInsets.only(bottom: 14.h),
@@ -476,12 +488,13 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
     final PhonePlace? p = _point;
 
     return Padding(
+      key: _pointKey,
       padding: EdgeInsets.only(bottom: 14.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
-            _sw ? "Eneo kamili la biashara (hiari): simama kwenye biashara yako ubonyeze kitufe." : "The business's exact spot (optional): stand at your business and tap the button.",
+            _sw ? "Eneo kamili la biashara (lazima): simama kwenye biashara yako ubonyeze kitufe." : "The business's exact spot (required): stand at your business and tap the button.",
             style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
           SizedBox(height: 8.h),

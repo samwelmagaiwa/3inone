@@ -80,12 +80,31 @@ class RegistrationLocationTest extends TestCase
         $this->assertSame('https://www.google.com/maps?q=-6.7923,39.2083', $row['map_url']);
     }
 
-    public function test_a_point_is_optional_but_never_half_of_one_or_out_of_the_world(): void
+    public function test_where_the_requirement_is_off_a_point_is_optional_but_never_half_of_one_or_out_of_the_world(): void
     {
         $this->postJson('/api/auth/register', $this->payload())->assertCreated();
         $this->assertNull(BusinessRegistration::firstOrFail()->latitude);
 
         $this->postJson('/api/auth/register', $this->payload(['email' => 'b@example.test', 'phone_number' => '0743519101', 'latitude' => -6.8]))->assertStatus(422);
         $this->postJson('/api/auth/register', $this->payload(['email' => 'c@example.test', 'phone_number' => '0743519102', 'latitude' => 123, 'longitude' => 39]))->assertStatus(422);
+    }
+
+    public function test_the_business_location_is_required_to_ask_for_the_system(): void
+    {
+        config(['registration.require_location' => true]);
+
+        // without it: refused, in words that say what to do
+        $res = $this->postJson('/api/auth/register', $this->payload())->assertStatus(422);
+        $this->assertStringContainsString('Capture my current location', json_encode($res->json()));
+        $this->assertSame(0, BusinessRegistration::count());
+
+        // half of it, or a reading too weak to pin the business down: refused
+        $this->postJson('/api/auth/register', $this->payload(['latitude' => -6.8]))->assertStatus(422);
+        $this->postJson('/api/auth/register', $this->payload(['latitude' => -6.8, 'longitude' => 39.2, 'location_accuracy' => 250]))->assertStatus(422);
+        $this->assertSame(0, BusinessRegistration::count());
+
+        // with a good reading: accepted
+        $this->postJson('/api/auth/register', $this->payload(['latitude' => -6.8, 'longitude' => 39.2, 'location_accuracy' => 12]))->assertCreated();
+        $this->assertSame(1, BusinessRegistration::count());
     }
 }

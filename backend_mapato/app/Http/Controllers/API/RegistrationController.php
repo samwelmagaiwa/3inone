@@ -117,13 +117,17 @@ class RegistrationController extends Controller
             'street' => 'nullable|string|max:100',
             'address' => 'nullable|string|max:500',
             // Where the business is, read from the applicant's phone while they stand at it (optional; the super admin sees it on a map link).
-            'latitude' => 'nullable|numeric|between:-90,90|required_with:longitude',
-            'longitude' => 'nullable|numeric|between:-180,180|required_with:latitude',
-            'location_accuracy' => 'nullable|numeric|min:0|max:100000',
+            'latitude' => [Rule::requiredIf(fn () => (bool) config('registration.require_location')), 'nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
+            'longitude' => [Rule::requiredIf(fn () => (bool) config('registration.require_location')), 'nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
+            // a reading worse than +-100 m does not pin a business down: the app asks the applicant to try again in the open
+            'location_accuracy' => 'nullable|numeric|min:0|max:100',
             'id_number' => 'nullable|string|max:50',
             'notes' => 'nullable|string|max:1000',
             'current_password' => 'nullable|string',
         ], [
+            'latitude.required' => 'Chukua eneo la biashara yako: bonyeza "Chukua eneo nililopo" ukiwa kwenye biashara. Kama huoni kitufe, sasisha app. / Capture your business location: tap "Capture my current location" while at the business. If you do not see the button, update the app.',
+            'longitude.required' => 'Chukua eneo la biashara yako: bonyeza "Chukua eneo nililopo" ukiwa kwenye biashara. Kama huoni kitufe, sasisha app. / Capture your business location: tap "Capture my current location" while at the business. If you do not see the button, update the app.',
+            'location_accuracy.max' => 'Mawasiliano ya GPS ni hafifu. Nenda eneo wazi uchukue eneo tena. / The GPS signal is weak. Move to open space and capture the location again.',
             'phone_number.regex' => 'Namba ya simu si sahihi. Tumia namba ya ndani (mfano: 0743519100) au ya kimataifa (mfano: +255743519100).',
             'inventory_type.required' => 'Chagua aina ya biashara yako ya bidhaa (rejareja, jumla, ...). / Choose what kind of stock business you run (retail, wholesale, ...).',
             'inventory_type.in' => 'Aina ya biashara si sahihi. / That kind of business is not available.',

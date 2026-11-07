@@ -73,6 +73,9 @@ BusinessRegistration _reg({double? lat, double? lng}) => BusinessRegistration.fr
     });
 
 void main() {
+  setUp(() => RegisterBusinessScreen.requireLocation = true);
+  tearDown(() => RegisterBusinessScreen.requireLocation = false);
+
   group('the registration form', () {
     testWidgets('capturing the location shows the point and sends it with the request', (t) async {
       _tall(t);
@@ -98,6 +101,34 @@ void main() {
       expect(body['latitude'], -6.79234);
       expect(body['longitude'], 39.20831);
       expect(body['location_accuracy'], 7.4);
+    });
+
+    testWidgets('the form will not be sent without the location, and says what to do', (t) async {
+      _tall(t);
+      int sends = 0;
+      await t.pumpWidget(_host(RegisterBusinessScreen(
+        placeSource: const NoPlaces(),
+        locate: () async => const PhonePlace(latitude: -6.8, longitude: 39.2, accuracy: 6),
+        onSubmit: (r) async {
+          sends++;
+          return <String, dynamic>{'status': 'success'};
+        },
+      )));
+      await _fill(t);
+
+      await t.ensureVisible(_key('registration_submit'));
+      await t.tap(_key('registration_submit'));
+      await _settle(t);
+      expect(sends, 0);
+      expect(find.textContaining('Eneo la biashara linahitajika'), findsOneWidget);
+
+      await t.ensureVisible(_key('capture_business_point'));
+      await t.tap(_key('capture_business_point'));
+      await _settle(t);
+      await t.ensureVisible(_key('registration_submit'));
+      await t.tap(_key('registration_submit'));
+      await _settle(t);
+      expect(sends, 1);
     });
 
     testWidgets('without a capture no point is sent, and a captured one can be removed', (t) async {
