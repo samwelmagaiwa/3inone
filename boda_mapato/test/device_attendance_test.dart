@@ -19,6 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// signed challenge (never the plain tap) when the business turned device checks on.
 class _Identity implements DeviceIdentity {
   final List<String> signed = <String>[];
+  PhonePlace? where = const PhonePlace(latitude: -6.8, longitude: 39.27, accuracy: 10);
 
   @override
   Future<DeviceFacts> facts() async => const DeviceFacts(uuid: 'phone-uuid-000000001', publicKey: 'PUBLIC', name: 'Tecno Spark', manufacturer: 'Tecno', model: 'Spark', osName: 'Android', osVersion: '13', appVersion: '1.0.0+72');
@@ -33,7 +34,7 @@ class _Identity implements DeviceIdentity {
   }
 
   @override
-  Future<PhonePlace?> place() async => const PhonePlace(latitude: -6.8, longitude: 39.27, accuracy: 10);
+  Future<PhonePlace?> place() async => where;
 }
 
 class _Fake extends SalonApi {
@@ -293,7 +294,7 @@ void main() {
 
     testWidgets('a waiting phone is approved, and the list shows it approved', (t) async {
       final _Fake api = _Fake()..devices = <Map<String, dynamic>>[device(5, 'pending')];
-      await _host(t, DevicesAdminScreen(api: api, staff: const <Map<String, String>>[]), role: 'admin');
+      await _host(t, DevicesAdminScreen(api: api, identity: _Identity(), staff: const <Map<String, String>>[]), role: 'admin');
 
       expect(find.text('Pending'), findsOneWidget);
       await t.tap(_key('device_approve_5'));
@@ -306,7 +307,7 @@ void main() {
 
     testWidgets('a replaced phone stays in the list with no actions', (t) async {
       final _Fake api = _Fake()..devices = <Map<String, dynamic>>[device(6, 'replaced')];
-      await _host(t, DevicesAdminScreen(api: api, staff: const <Map<String, String>>[]), role: 'admin');
+      await _host(t, DevicesAdminScreen(api: api, identity: _Identity(), staff: const <Map<String, String>>[]), role: 'admin');
 
       expect(find.text('Replaced'), findsOneWidget);
       expect(_key('device_block_6'), findsNothing);
@@ -314,7 +315,7 @@ void main() {
 
     testWidgets('the switch turns device checks on or off', (t) async {
       final _Fake api = _Fake()..policyOn = false;
-      await _host(t, DevicesAdminScreen(api: api, staff: const <Map<String, String>>[]), role: 'admin');
+      await _host(t, DevicesAdminScreen(api: api, identity: _Identity(), staff: const <Map<String, String>>[]), role: 'admin');
 
       await t.tap(_key('policy_switch'));
       await _settle(t);
@@ -324,7 +325,7 @@ void main() {
 
     testWidgets('an office is added with its place and the people who work there', (t) async {
       final _Fake api = _Fake()..offices = <Map<String, dynamic>>[<String, dynamic>{'id': 4, 'name': 'Old', 'staff_ids': <String>[]}];
-      await _host(t, DevicesAdminScreen(api: api, staff: const <Map<String, String>>[<String, String>{'id': '9', 'name': 'Asha'}]), role: 'admin');
+      await _host(t, DevicesAdminScreen(api: api, identity: _Identity(), staff: const <Map<String, String>>[<String, String>{'id': '9', 'name': 'Asha'}]), role: 'admin');
 
       await t.tap(_key('tab_offices'));
       await _settle(t);
@@ -332,13 +333,12 @@ void main() {
       await t.tap(_key('add_office'));
       await _settle(t);
       await t.enterText(_key('office_name'), 'Mbezi');
-      await t.enterText(_key('office_lat'), '-6.7');
       await t.tap(_key('office_staff_9'));
       await t.pump();
       await t.tap(_key('office_save'));
       await _settle(t);
 
-      expect(api.officeSaves.single, <String, dynamic>{'id': null, 'branch': null, 'name': 'Mbezi', 'fence': false, 'lat': -6.7});
+      expect(api.officeSaves.single, <String, dynamic>{'id': null, 'branch': null, 'name': 'Mbezi', 'fence': false, 'lat': -6.8});
       expect(api.calls.single, 'staff:4:9'); // the newest office number in the fake list
     });
 
@@ -346,7 +346,7 @@ void main() {
       final _Fake api = _Fake()
         ..offices = <Map<String, dynamic>>[]
         ..branchList = const <SalonBranchInfo>[SalonBranchInfo(id: 12, name: 'Kariakoo', address: 'Mtaa wa Kongo')];
-      await _host(t, DevicesAdminScreen(api: api, staff: const <Map<String, String>>[]), role: 'admin');
+      await _host(t, DevicesAdminScreen(api: api, identity: _Identity(), staff: const <Map<String, String>>[]), role: 'admin');
 
       await t.tap(_key('tab_offices'));
       await _settle(t);
@@ -364,12 +364,13 @@ void main() {
 
     testWidgets('saving an office with no name, or a required place with no coordinates, is told in the form and sends nothing', (t) async {
       final _Fake api = _Fake()..offices = <Map<String, dynamic>>[];
-      await _host(t, DevicesAdminScreen(api: api, staff: const <Map<String, String>>[]), role: 'admin');
+      await _host(t, DevicesAdminScreen(api: api, identity: _Identity()..where = null, staff: const <Map<String, String>>[]), role: 'admin');
 
       await t.tap(_key('tab_offices'));
       await _settle(t);
       await t.tap(_key('add_office'));
       await _settle(t);
+      expect(find.textContaining('could not find where it is'), findsOneWidget);
       await t.tap(_key('office_save'));
       await _settle(t);
       expect(find.text('Enter the office name, or choose a branch.'), findsOneWidget);
@@ -379,13 +380,37 @@ void main() {
       await t.pump();
       await t.tap(_key('office_save'));
       await _settle(t);
-      expect(find.textContaining('Enter a latitude and longitude'), findsOneWidget);
+      expect(find.textContaining('Capture the place of the office'), findsOneWidget);
       expect(api.officeSaves, isEmpty);
+    });
+
+    testWidgets('a new office takes its place from the phone by itself, shows how exact it is, and the boxes cannot be typed in', (t) async {
+      final _Fake api = _Fake()..offices = <Map<String, dynamic>>[];
+      await _host(t, DevicesAdminScreen(api: api, identity: _Identity(), staff: const <Map<String, String>>[]), role: 'admin');
+
+      await t.tap(_key('tab_offices'));
+      await _settle(t);
+      await t.tap(_key('add_office'));
+      await _settle(t);
+
+      expect(find.text('-6.8000000'), findsOneWidget);
+      expect(find.text('39.2700000'), findsOneWidget);
+      expect(find.text('Place captured (± 10 m)'), findsOneWidget);
+      expect(t.widget<TextField>(_key('office_lat')).readOnly, isTrue);
+
+      await t.enterText(_key('office_name'), 'Mbezi');
+      await t.tap(_key('office_fence'));
+      await t.pump();
+      await t.tap(_key('office_save'));
+      await _settle(t);
+
+      expect(api.officeSaves.single['fence'], isTrue);
+      expect(api.officeSaves.single['lat'], -6.8);
     });
 
     testWidgets('the log shows what was refused', (t) async {
       final _Fake api = _Fake();
-      await _host(t, DevicesAdminScreen(api: api, staff: const <Map<String, String>>[]), role: 'admin');
+      await _host(t, DevicesAdminScreen(api: api, identity: _Identity(), staff: const <Map<String, String>>[]), role: 'admin');
 
       await t.tap(_key('tab_log'));
       await _settle(t);

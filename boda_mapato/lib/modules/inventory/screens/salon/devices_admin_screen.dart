@@ -12,13 +12,17 @@ import '../widgets/glow_list_card.dart';
 import '../widgets/inventory_widgets.dart';
 import '../widgets/joined_sections.dart';
 import 'device_attendance_flow.dart';
+import '../../services/device_identity.dart';
 import 'salon_input.dart';
 
 /// For the owner and whoever was given the right: switch device checks on, approve / reject / block / reset each person's phone, set up
 /// the offices (with their number, place and who works there) and read the log of every attempt, good and bad. Nothing here is deleted:
 /// a replaced phone stays in the list as "replaced".
 class DevicesAdminScreen extends StatefulWidget {
-  const DevicesAdminScreen({super.key, this.api, this.staff});
+  const DevicesAdminScreen({super.key, this.api, this.staff, this.identity});
+
+  /// Where the phone is (a fake in tests): the office's place is taken from the phone, never typed.
+  final DeviceIdentity? identity;
 
   final SalonApi? api;
 
@@ -31,6 +35,7 @@ class DevicesAdminScreen extends StatefulWidget {
 
 class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
   late final SalonApi _api = widget.api ?? SalonApi();
+  late final DeviceIdentity _identity = widget.identity ?? SecureDeviceIdentity();
   bool _loading = true;
   bool _busy = false;
   String? _error;
@@ -294,6 +299,30 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
     bool fence = office?.geofenceRequired ?? false;
     bool active = office?.active ?? true;
     String? problem;
+    bool locating = false;
+    bool started = false;
+    String? accuracyNote = office?.latitude == null ? null : (sw ? 'Mahali pamehifadhiwa' : 'Place saved');
+
+    // The place is read from the phone (stand in the office and tap): never typed, so it cannot be mistyped.
+    Future<void> grab(final void Function(void Function()) set) async {
+      set(() {
+        locating = true;
+        problem = null;
+      });
+      final PhonePlace? where = await _identity.place();
+      if (!mounted) return;
+      set(() {
+        locating = false;
+        if (where == null) {
+          problem = sw ? 'Simu haikupata mahali. Washa location na ruhusu app, kisha jaribu tena.' : 'The phone could not find where it is. Turn location on, allow the app, and try again.';
+        } else {
+          lat.text = where.latitude.toStringAsFixed(7);
+          lng.text = where.longitude.toStringAsFixed(7);
+          accuracyNote = where.accuracy == null ? (sw ? 'Mahali pamechukuliwa' : 'Place captured') : (sw ? 'Mahali pamechukuliwa (± ${where.accuracy!.round()} m)' : 'Place captured (± ${where.accuracy!.round()} m)');
+        }
+      });
+    }
+
     final Set<String> chosen = <String>{...?office?.staffIds};
 
     final bool? saved = await showModalBottomSheet<bool>(
@@ -301,7 +330,13 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext sheet) => StatefulBuilder(
-        builder: (BuildContext ctx, void Function(void Function()) set) => InvSheetShell(
+        builder: (BuildContext ctx, void Function(void Function()) set) {
+          if (!started && lat.text.isEmpty) {
+            started = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) => grab(set));
+          }
+
+          return InvSheetShell(
           title: office == null ? (sw ? 'Ofisi mpya' : 'New office') : office.label,
           children: <Widget>[
             Material(
@@ -337,14 +372,25 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
                   SizedBox(height: 10.h),
                   Row(
                     children: <Widget>[
-                      Expanded(child: TextField(key: const ValueKey<String>('office_lat'), controller: lat, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), style: salonInputStyle, decoration: salonInput(labelText: sw ? 'Latitudo' : 'Latitude'))),
+                      Expanded(child: TextField(key: const ValueKey<String>('office_lat'), controller: lat, readOnly: true, style: salonInputStyle, decoration: salonInput(labelText: sw ? 'Latitudo' : 'Latitude'))),
                       SizedBox(width: 8.w),
-                      Expanded(child: TextField(key: const ValueKey<String>('office_lng'), controller: lng, keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true), style: salonInputStyle, decoration: salonInput(labelText: sw ? 'Longitudo' : 'Longitude'))),
+                      Expanded(child: TextField(key: const ValueKey<String>('office_lng'), controller: lng, readOnly: true, style: salonInputStyle, decoration: salonInput(labelText: sw ? 'Longitudo' : 'Longitude'))),
                       SizedBox(width: 8.w),
                       SizedBox(width: 80.w, child: TextField(key: const ValueKey<String>('office_radius'), controller: radius, keyboardType: TextInputType.number, style: salonInputStyle, decoration: salonInput(labelText: sw ? 'Mita' : 'Metres'))),
                     ],
                   ),
                   SizedBox(height: 6.h),
+                  Row(
+                    children: <Widget>[
+                      Expanded(child: Text(accuracyNote ?? (sw ? 'Simama ofisini na uchukue mahali.' : 'Stand in the office and capture its place.'), key: const ValueKey<String>('office_place_note'), style: ThemeConstants.captionStyle)),
+                      TextButton.icon(
+                        key: const ValueKey<String>('office_capture'),
+                        onPressed: locating ? null : () => grab(set),
+                        icon: locating ? SizedBox(width: 16.w, height: 16.w, child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.white70)) : const Icon(Icons.my_location, color: Colors.white70),
+                        label: Text(sw ? 'Tumia mahali nilipo' : 'Use my location', style: const TextStyle(color: Colors.white70)),
+                      ),
+                    ],
+                  ),
                   const SectionGlowDivider(lift: false),
                   SwitchListTile(key: const ValueKey<String>('office_fence'), contentPadding: EdgeInsets.zero, value: fence, onChanged: (bool v) => set(() => fence = v), title: Text(sw ? 'Lazima awe karibu na ofisi' : 'Must be near the office', style: ThemeConstants.bodyStyle)),
                   const SectionGlowDivider(lift: false),
@@ -373,7 +419,7 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
                       final String? why = branchId == null && name.text.trim().length < 2
                           ? (sw ? 'Andika jina la ofisi, au chagua tawi.' : 'Enter the office name, or choose a branch.')
                           : fence && !hasPlace
-                              ? (sw ? 'Weka latitudo na longitudo ili kuhitaji awe karibu na ofisi, au zima chaguo hilo.' : 'Enter a latitude and longitude to require being near the office, or switch that off.')
+                              ? (sw ? 'Chukua mahali pa ofisi ili kuhitaji awe karibu nayo, au zima chaguo hilo.' : 'Capture the place of the office to require being near it, or switch that off.')
                               : null;
                       if (why != null) {
                         set(() => problem = why);
@@ -387,7 +433,8 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
               ),
             ),
           ],
-        ),
+          );
+        },
       ),
     );
     if (saved != true || !mounted) return;
