@@ -27,12 +27,15 @@ class DeviceFacts {
 
 /// Where the phone is, as the phone reports it (the server records it and, for an office that asks, compares it; it is a hint, never proof).
 class PhonePlace {
-  const PhonePlace({required this.latitude, required this.longitude, this.accuracy, this.at});
+  const PhonePlace({required this.latitude, required this.longitude, this.accuracy, this.at, this.mocked = false});
 
   final double latitude;
   final double longitude;
   final double? accuracy;
   final DateTime? at;
+
+  /// The phone itself says this location was faked (a mock-location app).
+  final bool mocked;
 }
 
 /// This phone's identity for attendance: a private key made on it and never sent anywhere, the public half given to the server once
@@ -158,7 +161,7 @@ class SecureDeviceIdentity implements DeviceIdentity {
       if (p == LocationPermission.denied || p == LocationPermission.deniedForever) return null;
       final Position pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 12)));
 
-      return PhonePlace(latitude: pos.latitude, longitude: pos.longitude, accuracy: pos.accuracy, at: pos.timestamp);
+      return PhonePlace(latitude: pos.latitude, longitude: pos.longitude, accuracy: pos.accuracy, at: pos.timestamp, mocked: pos.isMocked);
     } on Exception {
       return null;
     }

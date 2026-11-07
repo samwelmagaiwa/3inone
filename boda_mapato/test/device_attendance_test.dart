@@ -3,6 +3,7 @@ import 'package:boda_mapato/models/user_permissions.dart';
 import 'package:boda_mapato/modules/inventory/models/salon_models.dart';
 import 'package:boda_mapato/modules/inventory/providers/inventory_provider.dart';
 import 'package:boda_mapato/modules/inventory/screens/salon/attendance_screen.dart';
+import 'package:boda_mapato/modules/inventory/screens/salon/device_attendance_flow.dart';
 import 'package:boda_mapato/modules/inventory/screens/salon/devices_admin_screen.dart';
 import 'package:boda_mapato/modules/inventory/services/device_identity.dart';
 import 'package:boda_mapato/modules/inventory/services/salon_api.dart';
@@ -77,11 +78,26 @@ class _Fake extends SalonApi {
     return <String, dynamic>{'challenge_id': 77, 'payload': 'P|$purpose|${officeId ?? 0}'};
   }
 
+  Map<String, dynamic>? placeAnswer;
+
   @override
-  Future<Map<String, dynamic>> attendanceVerify({required int challengeId, required String signature, double? latitude, double? longitude, double? accuracy, DateTime? locationAt}) async {
-    verified.add(<String, dynamic>{'id': challengeId, 'sig': signature, 'lat': latitude, 'lng': longitude});
+  Future<Map<String, dynamic>> attendanceVerify({required int challengeId, required String signature, double? latitude, double? longitude, double? accuracy, DateTime? locationAt, bool mocked = false}) async {
+    verified.add(<String, dynamic>{'id': challengeId, 'sig': signature, 'lat': latitude, 'lng': longitude, 'mocked': mocked});
     atWork = !atWork;
-    return <String, dynamic>{};
+    return <String, dynamic>{if (placeAnswer != null) 'place': placeAnswer};
+  }
+
+  final List<(String, double, double)> personPlaces = <(String, double, double)>[];
+  final List<String> personCleared = <String>[];
+
+  @override
+  Future<void> setPersonPlace(int officeId, String userId, {required double latitude, required double longitude, double? accuracy, int? radiusM}) async {
+    personPlaces.add((userId, latitude, longitude));
+  }
+
+  @override
+  Future<void> clearPersonPlace(int officeId, String userId) async {
+    personCleared.add(userId);
   }
 
   @override
@@ -119,10 +135,11 @@ class _Fake extends SalonApi {
   @override
   Future<List<Map<String, dynamic>>> attendanceChecks({String? outcome}) async => <Map<String, dynamic>>[
         <String, dynamic>{'id': 1, 'user_name': 'Asha', 'purpose': 'in', 'outcome': 'device_mismatch', 'at': '2026-11-09 09:00:00', 'ip': '1.2.3.4', 'office_id': 3},
+        <String, dynamic>{'id': 2, 'user_name': 'Asha', 'purpose': 'in', 'outcome': 'ok', 'at': '2026-11-09 09:05:00', 'office_id': 3, 'place_status': 'away', 'distance_m': 1112.0},
       ];
 
   @override
-  Future<void> saveAttendanceOffice({int? id, int? branchId, required String name, String? address, double? latitude, double? longitude, int radiusM = 150, bool geofenceRequired = false, bool active = true}) async {
+  Future<void> saveAttendanceOffice({int? id, int? branchId, required String name, String? address, double? latitude, double? longitude, double? accuracy, int radiusM = 150, bool geofenceRequired = false, bool active = true}) async {
     officeSaves.add(<String, dynamic>{'id': id, 'branch': branchId, 'name': name, 'fence': geofenceRequired, 'lat': latitude});
   }
 
@@ -195,7 +212,7 @@ void main() {
 
       expect(api.calls, <String>['challenge:in:3']); // the only office is chosen without asking
       expect(id.signed, <String>['P|in|3']);
-      expect(api.verified.single, <String, dynamic>{'id': 77, 'sig': 'SIG(P|in|3)', 'lat': -6.8, 'lng': 39.27});
+      expect(api.verified.single, <String, dynamic>{'id': 77, 'sig': 'SIG(P|in|3)', 'lat': -6.8, 'lng': 39.27, 'mocked': false});
       expect(api.calls.contains('plain-in'), isFalse);
       expect(_key('clock_out'), findsOneWidget);
     });
@@ -281,6 +298,43 @@ void main() {
       await _settle(t);
 
       expect(api.calls, <String>['plain-in']);
+    });
+
+    testWidgets('starting work says how far from the office you are and that you are at work', (t) async {
+      final _Fake api = _Fake()
+        ..status = 'approved'
+        ..placeAnswer = <String, dynamic>{'status': 'at_work', 'distance_m': 35.2, 'radius_m': 150, 'reference': 'office'};
+      await _host(t, AttendanceScreen(api: api, identity: _Identity()));
+
+      await t.tap(_key('clock_in'));
+      await _settle(t);
+
+      expect(find.text('Work started. You are at work: 35 m from the office (150 m allowed).'), findsOneWidget);
+      await t.pump(const Duration(seconds: 6));
+    });
+
+    testWidgets('being away is told with the distance, not hidden', (t) async {
+      final _Fake api = _Fake()
+        ..status = 'approved'
+        ..placeAnswer = <String, dynamic>{'status': 'away', 'distance_m': 1112.0, 'radius_m': 150, 'reference': 'person'};
+      await _host(t, AttendanceScreen(api: api, identity: _Identity()));
+
+      await t.tap(_key('clock_in'));
+      await _settle(t);
+
+      expect(find.text('Work started. You are away: 1112 m from your work place (150 m allowed).'), findsOneWidget);
+      await t.pump(const Duration(seconds: 6));
+    });
+
+    testWidgets('a fake location the phone reports is sent to the server', (t) async {
+      final _Fake api = _Fake()..status = 'approved';
+      final _Identity id = _Identity()..where = const PhonePlace(latitude: -6.8, longitude: 39.27, accuracy: 5, mocked: true);
+      await _host(t, AttendanceScreen(api: api, identity: id));
+
+      await t.tap(_key('clock_in'));
+      await _settle(t);
+
+      expect(api.verified.single['mocked'], isTrue);
     });
 
     testWidgets('only someone with the right sees the way into devices and offices', (t) async {
@@ -408,6 +462,38 @@ void main() {
       expect(api.officeSaves.single['lat'], -6.8);
     });
 
+    testWidgets('the administrator captures the place for one person, and can take it back', (t) async {
+      final _Fake api = _Fake()
+        ..offices = <Map<String, dynamic>>[
+          <String, dynamic>{'id': 4, 'name': 'Old', 'staff_ids': <String>['9'], 'staff_places': <String, dynamic>{}},
+        ];
+      await _host(t, DevicesAdminScreen(api: api, identity: _Identity(), staff: const <Map<String, String>>[<String, String>{'id': '9', 'name': 'Asha'}]), role: 'admin');
+
+      await t.tap(_key('tab_offices'));
+      await _settle(t);
+      await t.tap(_key('office_row_4'));
+      await _settle(t);
+      await t.tap(_key('person_capture_9'));
+      await _settle(t);
+
+      expect(api.personPlaces, <(String, double, double)>[('9', -6.8, 39.27)]);
+      expect(find.text('Has a place of their own'), findsOneWidget);
+      await t.tap(_key('person_clear_9'));
+      await _settle(t);
+      expect(api.personCleared, <String>['9']);
+      expect(find.text('Has a place of their own'), findsNothing);
+    });
+
+    testWidgets('the log shows the distance and the verdict of each start', (t) async {
+      final _Fake api = _Fake();
+      await _host(t, DevicesAdminScreen(api: api, identity: _Identity(), staff: const <Map<String, String>>[]), role: 'admin');
+
+      await t.tap(_key('tab_log'));
+      await _settle(t);
+
+      expect(find.text('Away • 1112 m'), findsOneWidget);
+    });
+
     testWidgets('the log shows what was refused', (t) async {
       final _Fake api = _Fake();
       await _host(t, DevicesAdminScreen(api: api, identity: _Identity(), staff: const <Map<String, String>>[]), role: 'admin');
@@ -416,6 +502,17 @@ void main() {
       await _settle(t);
 
       expect(find.text('device_mismatch'), findsOneWidget);
+    });
+  });
+
+  group('what the place says, in words', () {
+    test('English and Swahili, with the distance and the allowed radius', () {
+      const PlaceResult near = PlaceResult(status: 'at_work', distanceM: 35.2, radiusM: 150, reference: 'office');
+      expect(placeSentence(sw: false, p: near), 'You are at work: 35 m from the office (150 m allowed).');
+      expect(placeSentence(sw: true, p: near), 'Uko kazini: 35 m kutoka ofisi (ruhusa 150 m).');
+      expect(placeSentence(sw: true, p: const PlaceResult(status: 'away', distanceM: 900, radiusM: 100, reference: 'person')), 'Uko mbali: 900 m kutoka mahali pako pa kazi (ruhusa 100 m).');
+      expect(placeSentence(sw: false, p: const PlaceResult(status: 'mocked')), 'A fake location was detected.');
+      expect(placeSentence(sw: false, p: const PlaceResult(status: 'no_location')), 'Your place could not be found (is location off?).');
     });
   });
 

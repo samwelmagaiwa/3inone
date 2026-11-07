@@ -239,6 +239,25 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
     }
   }
 
+  static String _placeLabel(final bool sw, final String s) {
+    switch (s) {
+      case 'at_work':
+        return sw ? 'Yuko kazini' : 'At work';
+      case 'away':
+        return sw ? 'Yuko mbali' : 'Away';
+      case 'no_location':
+        return sw ? 'Hakuna eneo' : 'No location';
+      case 'stale':
+        return sw ? 'Eneo la zamani' : 'Old location';
+      case 'weak_signal':
+        return sw ? 'GPS hafifu' : 'Weak GPS';
+      case 'mocked':
+        return sw ? 'Eneo bandia' : 'Fake location';
+      default:
+        return sw ? 'Hakuna mahali pa kulinganisha' : 'No place to compare';
+    }
+  }
+
   static Color _statusColor(final String s) => s == 'approved' ? ThemeConstants.successGreen : (s == 'pending' ? ThemeConstants.warningAmber : (s == 'replaced' ? Colors.white54 : ThemeConstants.errorText));
 
   // ------------------------------------------------------------------ offices
@@ -300,8 +319,39 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
     bool active = office?.active ?? true;
     String? problem;
     bool locating = false;
+    double? lastAccuracy;
+    final Set<String> withPlace = <String>{...?office?.staffPlaceIds};
     bool started = false;
     String? accuracyNote = office?.latitude == null ? null : (sw ? 'Mahali pamehifadhiwa' : 'Place saved');
+
+    // Capture the place for ONE person (from this phone, standing where they work): it wins over the office's place for them.
+    Future<void> capturePerson(final String uid, final void Function(void Function()) set) async {
+      final PhonePlace? where = await _identity.place();
+      if (!mounted) return;
+      if (where == null || (where.accuracy != null && where.accuracy! > 100)) {
+        set(() => problem = sw ? 'Simu haikupata mahali pazuri. Nenda eneo wazi ujaribu tena.' : 'The phone could not get a good place. Move to open space and try again.');
+        return;
+      }
+      try {
+        await _api.setPersonPlace(office!.id, uid, latitude: where.latitude, longitude: where.longitude, accuracy: where.accuracy);
+        set(() {
+          withPlace.add(uid);
+          problem = null;
+          accuracyNote = sw ? 'Mahali pa mtu pamehifadhiwa' : 'Person\u2019s place saved';
+        });
+      } on Exception catch (e) {
+        set(() => problem = readableErrorMessage(e));
+      }
+    }
+
+    Future<void> clearPerson(final String uid, final void Function(void Function()) set) async {
+      try {
+        await _api.clearPersonPlace(office!.id, uid);
+        set(() => withPlace.remove(uid));
+      } on Exception catch (e) {
+        set(() => problem = readableErrorMessage(e));
+      }
+    }
 
     // The place is read from the phone (stand in the office and tap): never typed, so it cannot be mistyped.
     Future<void> grab(final void Function(void Function()) set) async {
@@ -313,9 +363,12 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
       if (!mounted) return;
       set(() {
         locating = false;
-        if (where == null) {
+        if (where != null && where.accuracy != null && where.accuracy! > 100) {
+          problem = sw ? 'Mawasiliano ya GPS ni hafifu (± ${where.accuracy!.round()} m). Nenda eneo wazi ujaribu tena.' : 'The GPS signal is weak (± ${where.accuracy!.round()} m). Move to open space and try again.';
+        } else if (where == null) {
           problem = sw ? 'Simu haikupata mahali. Washa location na ruhusu app, kisha jaribu tena.' : 'The phone could not find where it is. Turn location on, allow the app, and try again.';
         } else {
+          lastAccuracy = where.accuracy;
           lat.text = where.latitude.toStringAsFixed(7);
           lng.text = where.longitude.toStringAsFixed(7);
           accuracyNote = where.accuracy == null ? (sw ? 'Mahali pamechukuliwa' : 'Place captured') : (sw ? 'Mahali pamechukuliwa (± ${where.accuracy!.round()} m)' : 'Place captured (± ${where.accuracy!.round()} m)');
@@ -398,12 +451,30 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
                   const SectionGlowDivider(lift: false),
                   if (_staff.isNotEmpty) Align(alignment: Alignment.centerLeft, child: Text(sw ? 'Wanaofanya kazi hapa' : 'Who works here', style: ThemeConstants.captionStyle)),
                   for (final Map<String, String> s in _staff)
-                    CheckboxListTile(
-                      key: ValueKey<String>('office_staff_${s['id']}'),
-                      contentPadding: EdgeInsets.zero,
-                      value: chosen.contains(s['id']),
-                      onChanged: (bool? v) => set(() => v == true ? chosen.add(s['id']!) : chosen.remove(s['id'])),
-                      title: Text(s['name'] ?? '', style: ThemeConstants.bodyStyle),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: CheckboxListTile(
+                            key: ValueKey<String>('office_staff_${s['id']}'),
+                            contentPadding: EdgeInsets.zero,
+                            value: chosen.contains(s['id']),
+                            onChanged: (bool? v) => set(() => v == true ? chosen.add(s['id']!) : chosen.remove(s['id'])),
+                            title: Text(s['name'] ?? '', style: ThemeConstants.bodyStyle),
+                            subtitle: withPlace.contains(s['id']) ? Text(sw ? 'Ana mahali pake mwenyewe' : 'Has a place of their own', style: ThemeConstants.captionStyle) : null,
+                          ),
+                        ),
+                        // only for someone already saved at this office: stand where they work and capture it for them
+                        if (office != null && office.staffIds.contains(s['id'])) ...<Widget>[
+                          IconButton(
+                            key: ValueKey<String>('person_capture_${s['id']}'),
+                            tooltip: sw ? 'Chukua mahali pa mtu huyu' : 'Capture this person\u2019s place',
+                            onPressed: () => capturePerson(s['id']!, set),
+                            icon: Icon(withPlace.contains(s['id']) ? Icons.where_to_vote : Icons.add_location_alt_outlined, color: withPlace.contains(s['id']) ? ThemeConstants.successGreen : Colors.white70),
+                          ),
+                          if (withPlace.contains(s['id']))
+                            IconButton(key: ValueKey<String>('person_clear_${s['id']}'), tooltip: sw ? 'Rudi kwenye mahali pa ofisi' : 'Back to the office\u2019s place', onPressed: () => clearPerson(s['id']!, set), icon: const Icon(Icons.location_off_outlined, color: Colors.white54)),
+                        ],
+                      ],
                     ),
                   SizedBox(height: 8.h),
                   if (problem != null)
@@ -446,6 +517,7 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
         address: address.text.trim().isEmpty ? null : address.text.trim(),
         latitude: double.tryParse(lat.text.trim()),
         longitude: double.tryParse(lng.text.trim()),
+        accuracy: lastAccuracy,
         radiusM: int.tryParse(radius.text.trim()) ?? 150,
         geofenceRequired: fence,
         active: active,
@@ -484,6 +556,12 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
                       ],
                     ),
                     Text('${c['at'] ?? ''}${(c['ip']?.toString() ?? '').isEmpty ? '' : ' • ${c['ip']}'}${c['office_id'] == null ? '' : ' • #${c['office_id']}'}', style: ThemeConstants.captionStyle),
+                    if ((c['place_status']?.toString() ?? '').isNotEmpty)
+                      Text(
+                        '${_placeLabel(sw, c['place_status'].toString())}${c['distance_m'] == null ? '' : ' • ${(c['distance_m'] as num).round()} m'}${c['mocked'] == true ? ' • ${sw ? 'eneo bandia' : 'fake location'}' : ''}',
+                        key: ValueKey<String>('check_place_${c['id']}'),
+                        style: ThemeConstants.captionStyle.copyWith(color: c['place_status'] == 'at_work' ? ThemeConstants.successGreen : ThemeConstants.warningAmber),
+                      ),
                   ],
                 ),
               ),

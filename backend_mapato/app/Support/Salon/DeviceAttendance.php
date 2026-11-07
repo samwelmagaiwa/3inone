@@ -245,7 +245,8 @@ final class DeviceAttendance
         $device = $challenge === null ? self::current($uid) : DB::table('inventory_attendance_devices')->find($challenge->device_id);
         $purpose = $challenge->purpose ?? 'in';
         $officeId = $challenge?->office_id === null ? null : (int) $challenge->office_id;
-        $where = ['lat' => $answer['latitude'] ?? null, 'lng' => $answer['longitude'] ?? null, 'acc' => $answer['accuracy'] ?? null, 'at' => $answer['location_at'] ?? null];
+        $where = ['lat' => $answer['latitude'] ?? null, 'lng' => $answer['longitude'] ?? null, 'acc' => $answer['accuracy'] ?? null, 'at' => $answer['location_at'] ?? null, 'mocked' => !empty($answer['mocked'])];
+        $verdict = null;
 
         try {
             if ($challenge === null) {
@@ -269,8 +270,18 @@ final class DeviceAttendance
             if ($purpose === 'in' && $office === null) {
                 throw new DeviceDenied('office_not_authorized', 'Huna ruhusa ya ofisi hii. / You are not assigned to this office.');
             }
+            // Where the person is, measured from the reference place the administrator captured (theirs if they have one, else the office's).
+            // Recorded every time, for starting and for finishing; it only BLOCKS a start at an office that requires its place.
+            $placeOffice = $office;
+            if ($purpose === 'out' && $placeOffice === null) {
+                $openNow = DB::table('inventory_attendance')->where('staff_id', $uid)->whereNull('clock_out')->orderByDesc('id')->first();
+                $placeOffice = $openNow?->office_id === null ? null : DB::table('inventory_attendance_offices')->find($openNow->office_id);
+            }
+            $link = $placeOffice === null ? null : DB::table('inventory_attendance_office_staff')->where('office_id', $placeOffice->id)->where('user_id', $uid)->first();
+            $verdict = self::placeVerdict($placeOffice, $link, $where);
+            $where += ['dist' => $verdict['distance_m'], 'status' => $verdict['status'], 'ref' => $verdict['reference']];
             if ($purpose === 'in' && $office !== null) {
-                self::checkPlace($office, $where);
+                self::enforcePlace($office, $verdict);
             }
 
             $attendance = DB::transaction(function () use ($uid, $user, $purpose, $officeId, $current, $ip, $where) {
@@ -299,6 +310,10 @@ final class DeviceAttendance
                     'latitude' => $where['lat'],
                     'longitude' => $where['lng'],
                     'accuracy_m' => $where['acc'],
+                    'distance_m' => $where['dist'] ?? null,
+                    'place_status' => $where['status'] ?? null,
+                    'place_reference' => $where['ref'] ?? null,
+                    'mocked' => (bool) $where['mocked'],
                     'created_by' => $uid,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -312,7 +327,7 @@ final class DeviceAttendance
         }
         self::log($user, $device, $officeId, $purpose, 'ok', $purpose === 'in' ? 'Started work' : 'Finished work', $ip, $agent, $where);
 
-        return ['attendance' => $attendance, 'purpose' => $purpose];
+        return ['attendance' => $attendance, 'purpose' => $purpose, 'place' => $verdict];
     }
 
     private static function requireApproved(object $device): void
@@ -329,19 +344,77 @@ final class DeviceAttendance
         throw new DeviceDenied($status, $words[$status] ?? 'Kifaa hakiruhusiwi. / The device is not allowed.');
     }
 
-    /** A place is one more check, never proof: the office decides whether being outside its circle blocks. */
-    private static function checkPlace(object $office, array $where): void
+    /** The most inaccurate a GPS fix may be (metres) and still count as proof of being somewhere; and how old a fix may be (seconds). */
+    public const MAX_ACCURACY_M = 100;
+    public const MAX_FIX_AGE_S = 180;
+
+    /**
+     * Is this person really at work? The distance from the reference place (the person's own captured place, else the office's) to where the
+     * phone says it is, weighed against the radius, the fix's accuracy and age, and whether the phone says the location is faked. A place is
+     * strong evidence but never proof; the verdict is kept on every attempt, and only an office that REQUIRES it blocks on it.
+     *
+     * status: at_work · away · no_location · no_reference · stale · weak_signal · mocked
+     *
+     * @param  array{lat?: ?float, lng?: ?float, acc?: ?float, at?: ?string, mocked?: bool}  $where
+     * @return array{status: string, distance_m: ?float, radius_m: ?int, reference: ?string, accuracy_m: ?float}
+     */
+    public static function placeVerdict(?object $office, ?object $link, array $where): array
     {
-        if (!(bool) $office->geofence_required || $office->latitude === null || $office->longitude === null) {
+        $lat = $lng = $radius = null;
+        $source = null;
+        if ($link !== null && $link->latitude !== null && $link->longitude !== null) {
+            [$lat, $lng, $radius, $source] = [(float) $link->latitude, (float) $link->longitude, (int) ($link->radius_m ?: ($office->radius_m ?? 150)), 'person'];
+        } elseif ($office !== null && $office->latitude !== null && $office->longitude !== null) {
+            [$lat, $lng, $radius, $source] = [(float) $office->latitude, (float) $office->longitude, (int) $office->radius_m, 'office'];
+        }
+        $has = ($where['lat'] ?? null) !== null && ($where['lng'] ?? null) !== null;
+        $acc = isset($where['acc']) ? (float) $where['acc'] : null;
+        $distance = $source !== null && $has ? round(self::metres($lat, $lng, (float) $where['lat'], (float) $where['lng']), 1) : null;
+
+        $age = null;
+        if ($has && !empty($where['at'])) {
+            try {
+                $age = abs(Carbon::now('UTC')->diffInSeconds(Carbon::parse($where['at'])->utc()));
+            } catch (\Throwable) {
+                $age = null;
+            }
+        }
+
+        if ($source === null) {
+            $status = 'no_reference';
+        } elseif (!$has) {
+            $status = 'no_location';
+        } elseif (!empty($where['mocked'])) {
+            $status = 'mocked';
+        } elseif ($age !== null && $age > self::MAX_FIX_AGE_S) {
+            $status = 'stale';
+        } elseif ($acc !== null && $acc > self::MAX_ACCURACY_M) {
+            $status = 'weak_signal';
+        } elseif ($distance <= $radius || ($acc !== null && $distance - $acc <= $radius)) {
+            // inside the circle, or inside it once the GPS's own uncertainty is allowed for
+            $status = 'at_work';
+        } else {
+            $status = 'away';
+        }
+
+        return ['status' => $status, 'distance_m' => $distance, 'radius_m' => $radius, 'reference' => $source, 'accuracy_m' => $acc];
+    }
+
+    /** Only an office that requires its place blocks a start; for every other office the verdict is just kept. */
+    private static function enforcePlace(object $office, array $verdict): void
+    {
+        if (!(bool) $office->geofence_required || $verdict['status'] === 'at_work' || $verdict['status'] === 'no_reference') {
             return;
         }
-        if ($where['lat'] === null || $where['lng'] === null) {
-            throw new DeviceDenied('location_out_of_range', 'Ofisi hii inahitaji eneo lako. Washa location. / This office needs your location. Turn location on.');
-        }
-        $metres = self::metres((float) $office->latitude, (float) $office->longitude, (float) $where['lat'], (float) $where['lng']);
-        if ($metres > (int) $office->radius_m) {
-            throw new DeviceDenied('location_out_of_range', 'Uko mbali na ofisi (' . (int) round($metres) . ' m). / You are away from the office (' . (int) round($metres) . ' m).');
-        }
+        $m = $verdict['distance_m'] === null ? '' : (int) round($verdict['distance_m']);
+        $words = [
+            'no_location' => 'Ofisi hii inahitaji eneo lako. Washa location. / This office needs your location. Turn location on.',
+            'mocked' => 'Eneo la bandia limegunduliwa. Zima programu ya eneo bandia. / A fake location was detected. Turn the mock-location app off.',
+            'stale' => 'Eneo ulilotuma ni la zamani. Jaribu tena. / The location sent is old. Try again.',
+            'weak_signal' => 'Mawasiliano ya GPS ni hafifu (± ' . (int) round((float) $verdict['accuracy_m']) . ' m). Nenda eneo wazi ujaribu tena. / The GPS signal is weak (± ' . (int) round((float) $verdict['accuracy_m']) . ' m). Move to open space and try again.',
+            'away' => "Uko mbali na ofisi ({$m} m, ruhusa ni {$verdict['radius_m']} m). / You are away from the office ({$m} m; {$verdict['radius_m']} m allowed).",
+        ];
+        throw new DeviceDenied('location_out_of_range', $words[$verdict['status']] ?? $words['away']);
     }
 
     public static function metres(float $lat1, float $lng1, float $lat2, float $lng2): float
@@ -423,6 +496,10 @@ final class DeviceAttendance
             'latitude' => $where['lat'] ?? null,
             'longitude' => $where['lng'] ?? null,
             'accuracy_m' => $where['acc'] ?? null,
+            'distance_m' => $where['dist'] ?? null,
+            'place_status' => $where['status'] ?? null,
+            'place_reference' => $where['ref'] ?? null,
+            'mocked' => !empty($where['mocked']),
             'location_at' => isset($where['at']) && $where['at'] ? Carbon::parse($where['at'])->utc()->format('Y-m-d H:i:s') : null,
             'created_at' => now(),
             'updated_at' => now(),

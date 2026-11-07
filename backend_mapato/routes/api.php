@@ -573,6 +573,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('offices',                [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'storeOffice']);
             Route::put('offices/{id}',            [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'updateOffice']);
             Route::put('offices/{id}/staff',      [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'setOfficeStaff']);
+            Route::put('offices/{id}/staff/{userId}/place',    [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'setPersonPlace']);
+            Route::delete('offices/{id}/staff/{userId}/place', [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'clearPersonPlace']);
             Route::get('policy',                  [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'policy']);
             Route::put('policy',                  [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'savePolicy']);
         });

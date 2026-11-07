@@ -119,7 +119,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       office = await _pickOffice(sw, mine.offices);
       if (office == null || !mounted) return;
     }
-    await _run(() => _device.run(purpose: atWork ? 'out' : 'in', officeId: office));
+    PlaceResult? place;
+    await _run(() async => place = await _device.run(purpose: atWork ? 'out' : 'in', officeId: office));
+    final PlaceResult? measured = place;
+    if (!mounted || measured == null) return;
+    final String head = atWork ? (sw ? 'Umemaliza kazi. ' : 'Work finished. ') : (sw ? 'Umeanza kazi. ' : 'Work started. ');
+    final String line = head + placeSentence(sw: sw, p: measured);
+    if (measured.atWork) {
+      ThemeConstants.showSuccessSnackBar(context, line);
+    } else {
+      ThemeConstants.showWarningSnackBar(context, line);
+    }
   }
 
   Future<int?> _pickOffice(final bool sw, final List<AttendanceOffice> offices) => showModalBottomSheet<int>(

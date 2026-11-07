@@ -497,6 +497,102 @@ class DeviceAttendanceTest extends TestCase
         $this->api($owner, 'POST', '/api/inventory/salon/attendance/admin/offices', [])->assertStatus(422);
     }
 
+    // ------------------------------------------------------------------ is the person really at work?
+
+    private function lastCheck(User $owner, string $outcome = 'ok'): array
+    {
+        return $this->checks($owner, $outcome)[0];
+    }
+
+    public function test_every_start_keeps_the_distance_and_the_verdict_even_where_the_place_is_not_required(): void
+    {
+        [$owner, $asha, $key, , $office] = $this->scene(['latitude' => -6.8, 'longitude' => 39.27, 'radius_m' => 150, 'geofence_required' => false]);
+
+        // ~111 m north of the office: inside the 150 m circle
+        $near = $this->startWork($asha, $key, $office, ['latitude' => -6.799, 'longitude' => 39.27, 'accuracy' => 8])->assertCreated()->json('data.place');
+        $this->assertSame('at_work', $near['status']);
+        $this->assertSame('office', $near['reference']);
+        $this->assertEqualsWithDelta(111.2, $near['distance_m'], 1.0);
+        $this->assertSame(150, $near['radius_m']);
+        $this->assertSame('at_work', $this->lastCheck($owner)['place_status']);
+
+        $this->startWork($asha, $key, null, purpose: 'out')->assertOk();
+
+        // ~1.1 km away: allowed (the office does not require it) but plainly recorded as away, with how far
+        $far = $this->startWork($asha, $key, $office, ['latitude' => -6.79, 'longitude' => 39.27, 'accuracy' => 8])->assertCreated()->json('data.place');
+        $this->assertSame('away', $far['status']);
+        $this->assertEqualsWithDelta(1112.0, $far['distance_m'], 5.0);
+        $row = TenantContext::runAs($owner, fn () => TenantContext::runInService('salon', fn () => DB::table('inventory_attendance')->orderByDesc('id')->first()));
+        $this->assertSame('away', $row->place_status);
+        $this->assertEqualsWithDelta(1112.0, (float) $row->distance_m, 5.0);
+        $this->assertSame('office', $row->place_reference);
+    }
+
+    public function test_a_place_the_administrator_captured_for_one_person_wins_over_the_offices(): void
+    {
+        [$owner, $asha, $key, , $office] = $this->scene(['latitude' => -6.8, 'longitude' => 39.27, 'radius_m' => 150, 'geofence_required' => true]);
+        // she works at a stall 2 km from the office: captured from the administrator's phone, for her
+        $this->api($owner, 'PUT', "/api/inventory/salon/attendance/admin/offices/{$office}/staff/{$asha->id}/place", ['latitude' => -6.782, 'longitude' => 39.27, 'accuracy' => 12, 'radius_m' => 100])->assertOk();
+
+        $this->startWork($asha, $key, $office, ['latitude' => -6.8, 'longitude' => 39.27])->assertForbidden()->assertJsonPath('code', 'location_out_of_range');
+        $ok = $this->startWork($asha, $key, $office, ['latitude' => -6.7821, 'longitude' => 39.27, 'accuracy' => 10])->assertCreated()->json('data.place');
+
+        $this->assertSame('person', $ok['reference']);
+        $this->assertSame(100, $ok['radius_m']);
+        $listed = collect($this->api($owner, 'GET', '/api/inventory/salon/attendance/admin/offices')->json('data'))->firstWhere('id', $office);
+        $this->assertEqualsWithDelta(-6.782, $listed['staff_places'][(string) $asha->id]['latitude'], 0.0001);
+
+        $this->api($owner, 'DELETE', "/api/inventory/salon/attendance/admin/offices/{$office}/staff/{$asha->id}/place")->assertOk();
+        $this->startWork($asha, $key, null, purpose: 'out')->assertOk();
+        $this->assertSame('office', $this->startWork($asha, $key, $office, ['latitude' => -6.8, 'longitude' => 39.27])->assertCreated()->json('data.place.reference'));
+    }
+
+    public function test_capturing_a_place_needs_a_good_fix_and_an_assigned_person(): void
+    {
+        [$owner, $asha, , , $office] = $this->scene();
+        $stranger = $this->person($owner, 'Bahati');
+
+        $this->api($owner, 'PUT', "/api/inventory/salon/attendance/admin/offices/{$office}/staff/{$asha->id}/place", ['latitude' => -6.8, 'longitude' => 39.27, 'accuracy' => 400])->assertStatus(422);
+        $this->api($owner, 'PUT', "/api/inventory/salon/attendance/admin/offices/{$office}/staff/{$stranger->id}/place", ['latitude' => -6.8, 'longitude' => 39.27, 'accuracy' => 10])->assertNotFound();
+        $this->api($owner, 'PUT', "/api/inventory/salon/attendance/admin/offices/{$office}", ['latitude' => -6.8, 'longitude' => 39.27, 'accuracy' => 400])->assertStatus(422);
+        $this->api($owner, 'PUT', "/api/inventory/salon/attendance/admin/offices/{$office}", ['latitude' => -6.8, 'longitude' => 39.27, 'accuracy' => 9])->assertOk();
+        $this->api($asha, 'PUT', "/api/inventory/salon/attendance/admin/offices/{$office}/staff/{$asha->id}/place", ['latitude' => 0, 'longitude' => 0])->assertForbidden();
+    }
+
+    public function test_the_gps_uncertainty_is_allowed_for_but_a_weak_old_or_fake_fix_is_not_proof(): void
+    {
+        [$owner, $asha, $key, , $office] = $this->scene(['latitude' => -6.8, 'longitude' => 39.27, 'radius_m' => 150, 'geofence_required' => true]);
+
+        // 167 m away is outside 150 m, but with a 30 m uncertainty she may well be inside: allowed
+        $this->assertSame('at_work', $this->startWork($asha, $key, $office, ['latitude' => -6.7985, 'longitude' => 39.27, 'accuracy' => 30])->assertCreated()->json('data.place.status'));
+        $this->startWork($asha, $key, null, purpose: 'out')->assertOk();
+        // the same spot with a certain fix is away
+        $this->startWork($asha, $key, $office, ['latitude' => -6.7985, 'longitude' => 39.27, 'accuracy' => 5])->assertForbidden()->assertJsonPath('code', 'location_out_of_range');
+        // a fix that is too weak (±300 m) proves nothing, even right at the office
+        $this->startWork($asha, $key, $office, ['latitude' => -6.8, 'longitude' => 39.27, 'accuracy' => 300])->assertForbidden();
+        $this->assertSame('weak_signal', $this->lastCheck($owner, 'location_out_of_range')['place_status']);
+        // an old fix (the phone's own timestamp, ten minutes ago)
+        $this->startWork($asha, $key, $office, ['latitude' => -6.8, 'longitude' => 39.27, 'accuracy' => 5, 'location_at' => now()->subMinutes(10)->toIso8601String()])->assertForbidden();
+        $this->assertSame('stale', $this->lastCheck($owner, 'location_out_of_range')['place_status']);
+        // a fake-location app
+        $this->startWork($asha, $key, $office, ['latitude' => -6.8, 'longitude' => 39.27, 'accuracy' => 5, 'mocked' => true])->assertForbidden()->assertJsonPath('code', 'location_out_of_range');
+        $check = $this->lastCheck($owner, 'location_out_of_range');
+        $this->assertSame('mocked', $check['place_status']);
+        $this->assertTrue($check['mocked']);
+        $this->assertSame(1, $this->sessions($owner), 'only the one good start wrote attendance');
+    }
+
+    public function test_finishing_work_is_never_blocked_by_the_place_but_is_measured(): void
+    {
+        [$owner, $asha, $key, , $office] = $this->scene(['latitude' => -6.8, 'longitude' => 39.27, 'radius_m' => 150, 'geofence_required' => true]);
+        $this->startWork($asha, $key, $office, ['latitude' => -6.8, 'longitude' => 39.27, 'accuracy' => 5])->assertCreated();
+
+        $out = $this->startWork($asha, $key, null, ['latitude' => -6.7, 'longitude' => 39.3], purpose: 'out')->assertOk()->json('data.place');
+
+        $this->assertSame('away', $out['status']);
+        $this->assertGreaterThan(10000, $out['distance_m']);
+    }
+
     public function test_the_key_helpers_agree_with_each_other(): void
     {
         [$key, $pem] = $this->keys();

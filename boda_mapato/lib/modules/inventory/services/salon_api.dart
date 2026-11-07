@@ -242,8 +242,10 @@ class SalonApi {
     final double? longitude,
     final double? accuracy,
     final DateTime? locationAt,
+    final bool mocked = false,
   }) async =>
       _data(await _api.post('/inventory/salon/attendance/verify', <String, dynamic>{
+        if (mocked) 'mocked': true,
         'challenge_id': challengeId,
         'signature': signature,
         if (latitude != null && longitude != null) ...<String, dynamic>{'latitude': latitude, 'longitude': longitude},
@@ -270,6 +272,7 @@ class SalonApi {
     final String? address,
     final double? latitude,
     final double? longitude,
+    final double? accuracy,
     final int radiusM = 150,
     final bool geofenceRequired = false,
     final bool active = true,
@@ -279,6 +282,7 @@ class SalonApi {
       'address': address,
       'latitude': latitude,
       'longitude': longitude,
+      if (accuracy != null) 'accuracy': accuracy,
       'radius_m': radiusM,
       'geofence_required': geofenceRequired,
       'active': active,
@@ -292,6 +296,20 @@ class SalonApi {
 
   Future<void> setOfficeStaff(final int officeId, final List<String> userIds) async {
     await _api.put('/inventory/salon/attendance/admin/offices/$officeId/staff', <String, dynamic>{'user_ids': userIds});
+  }
+
+  /// Capture the place ONE person is measured from (from the administrator's phone); it wins over the office's.
+  Future<void> setPersonPlace(final int officeId, final String userId, {required final double latitude, required final double longitude, final double? accuracy, final int? radiusM}) async {
+    await _api.put('/inventory/salon/attendance/admin/offices/$officeId/staff/$userId/place', <String, dynamic>{
+      'latitude': latitude,
+      'longitude': longitude,
+      if (accuracy != null) 'accuracy': accuracy,
+      if (radiusM != null) 'radius_m': radiusM,
+    });
+  }
+
+  Future<void> clearPersonPlace(final int officeId, final String userId) async {
+    await _api.delete('/inventory/salon/attendance/admin/offices/$officeId/staff/$userId/place');
   }
 
   Future<Map<String, dynamic>> attendancePolicy() async => _data(await _api.get('/inventory/salon/attendance/admin/policy'));

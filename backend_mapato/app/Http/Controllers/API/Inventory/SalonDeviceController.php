@@ -121,6 +121,7 @@ class SalonDeviceController extends Controller
             'longitude' => 'nullable|numeric|between:-180,180',
             'accuracy' => 'nullable|numeric|min:0|max:100000',
             'location_at' => 'nullable|date',
+            'mocked' => 'nullable|boolean',
         ]);
         try {
             $done = DeviceAttendance::verify($request->user(), $data, $request->ip(), $request->userAgent());
@@ -136,6 +137,8 @@ class SalonDeviceController extends Controller
             'clock_in' => Carbon::parse($a->clock_in)->format('Y-m-d H:i'),
             'clock_out' => $a->clock_out ? Carbon::parse($a->clock_out)->format('Y-m-d H:i') : null,
             'office_id' => $a->office_id === null ? null : (int) $a->office_id,
+            // How far from the reference place the phone was, and whether that counts as being at work.
+            'place' => $done['place'],
         ]], $done['purpose'] === 'in' ? 201 : 200);
     }
 
@@ -189,6 +192,10 @@ class SalonDeviceController extends Controller
                 'latitude' => $c->latitude === null ? null : (float) $c->latitude,
                 'longitude' => $c->longitude === null ? null : (float) $c->longitude,
                 'accuracy_m' => $c->accuracy_m === null ? null : (float) $c->accuracy_m,
+                'distance_m' => $c->distance_m === null ? null : (float) $c->distance_m,
+                'place_status' => $c->place_status,
+                'place_reference' => $c->place_reference,
+                'mocked' => (bool) $c->mocked,
                 'at' => Carbon::parse($c->created_at)->setTimezone(DeviceAttendance::timezone())->format('Y-m-d H:i:s'),
             ]);
 
@@ -199,7 +206,11 @@ class SalonDeviceController extends Controller
     public function offices(): JsonResponse
     {
         $staff = DB::table('inventory_attendance_office_staff')->get()->groupBy('office_id');
-        $rows = DB::table('inventory_attendance_offices')->orderBy('name')->get()->map(fn ($o) => DeviceAttendance::presentOffice($o) + ['staff_ids' => ($staff[$o->id] ?? collect())->pluck('user_id')->values()->all()]);
+        $rows = DB::table('inventory_attendance_offices')->orderBy('name')->get()->map(fn ($o) => DeviceAttendance::presentOffice($o) + [
+            'staff_ids' => ($staff[$o->id] ?? collect())->pluck('user_id')->values()->all(),
+            // people who have a place of their own captured (it wins over the office's)
+            'staff_places' => ($staff[$o->id] ?? collect())->filter(fn ($r) => $r->latitude !== null)->mapWithKeys(fn ($r) => [(string) $r->user_id => ['latitude' => (float) $r->latitude, 'longitude' => (float) $r->longitude, 'radius_m' => $r->radius_m === null ? null : (int) $r->radius_m, 'captured_at' => $r->captured_at]])->all(),
+        ]);
 
         return response()->json(['data' => $rows->values()]);
     }
@@ -242,6 +253,35 @@ class SalonDeviceController extends Controller
         return response()->json(['message' => 'Saved', 'data' => ['staff_ids' => $mine]]);
     }
 
+    #[OA\Put(path: '/inventory/salon/attendance/admin/offices/{id}/staff/{userId}/place', summary: 'Capture the place one person is measured from (wins over the office\'s)', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 200, description: 'Success')])]
+    public function setPersonPlace(Request $request, int $id, string $userId): JsonResponse
+    {
+        $data = $request->validate([
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
+            'accuracy' => 'nullable|numeric|min:0|max:100000',
+            'radius_m' => 'nullable|integer|min:20|max:5000',
+        ]);
+        abort_if(($data['accuracy'] ?? 0) > DeviceAttendance::MAX_ACCURACY_M, 422, 'Mawasiliano ya GPS ni hafifu (± ' . (int) round($data['accuracy']) . ' m). Nenda eneo wazi uchukue tena. / The GPS signal is weak (± ' . (int) round($data['accuracy']) . ' m). Move to open space and capture again.');
+        $link = DB::table('inventory_attendance_office_staff')->where('office_id', $id)->where('user_id', $userId);
+        abort_if(!$link->exists(), 404, 'Mtu huyu hajapangiwa ofisi hii. / This person is not assigned to this office.');
+        $link->update([
+            'latitude' => $data['latitude'], 'longitude' => $data['longitude'], 'radius_m' => $data['radius_m'] ?? null,
+            'captured_at' => now(), 'captured_by' => (string) $request->user()->id, 'capture_accuracy_m' => $data['accuracy'] ?? null, 'updated_at' => now(),
+        ]);
+
+        return response()->json(['message' => 'Saved', 'data' => ['user_id' => $userId, 'latitude' => (float) $data['latitude'], 'longitude' => (float) $data['longitude'], 'radius_m' => $data['radius_m'] ?? null]]);
+    }
+
+    #[OA\Delete(path: '/inventory/salon/attendance/admin/offices/{id}/staff/{userId}/place', summary: 'Go back to measuring one person from the office\'s place', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 200, description: 'Success')])]
+    public function clearPersonPlace(int $id, string $userId): JsonResponse
+    {
+        DB::table('inventory_attendance_office_staff')->where('office_id', $id)->where('user_id', $userId)
+            ->update(['latitude' => null, 'longitude' => null, 'radius_m' => null, 'captured_at' => null, 'captured_by' => null, 'capture_accuracy_m' => null, 'updated_at' => now()]);
+
+        return response()->json(['message' => 'Saved']);
+    }
+
     #[OA\Get(path: '/inventory/salon/attendance/admin/policy', summary: 'Is device-verified attendance on?', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function policy(): JsonResponse
     {
@@ -268,6 +308,7 @@ class SalonDeviceController extends Controller
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'radius_m' => 'nullable|integer|min:20|max:5000',
+            'accuracy' => 'nullable|numeric|min:0|max:100000',
             'geofence_required' => 'sometimes|boolean',
             'active' => 'sometimes|boolean',
         ]);
@@ -275,6 +316,15 @@ class SalonDeviceController extends Controller
             abort(422, 'Weka latitudo na longitudo ili kuhitaji eneo. / Give the office a latitude and longitude to require location.');
         }
 
+        if (isset($data['accuracy']) && $data['accuracy'] > DeviceAttendance::MAX_ACCURACY_M) {
+            abort(422, 'Mawasiliano ya GPS ni hafifu (± ' . (int) round($data['accuracy']) . ' m). Nenda eneo wazi uchukue tena. / The GPS signal is weak (± ' . (int) round($data['accuracy']) . ' m). Move to open space and capture again.');
+        }
+        if (isset($data['latitude'], $data['longitude'])) {
+            $data['captured_at'] = now();
+            $data['captured_by'] = (string) $request->user()->id;
+            $data['capture_accuracy_m'] = $data['accuracy'] ?? null;
+        }
+        unset($data['accuracy']);
         if (!empty($data['branch_id'])) {
             $branch = DB::table('inventory_branches')->find($data['branch_id']);
             abort_if($branch === null, 422, 'Tawi hili halipo. / That branch does not exist.');
@@ -284,6 +334,6 @@ class SalonDeviceController extends Controller
         }
         abort_if(!$partial && empty($data['name']), 422, 'Weka jina la ofisi au chagua tawi. / Give the office a name or choose a branch.');
 
-        return array_filter($data, fn ($v, $k) => $v !== null || in_array($k, ['address', 'latitude', 'longitude', 'branch_id'], true), ARRAY_FILTER_USE_BOTH);
+        return array_filter($data, fn ($v, $k) => $v !== null || in_array($k, ['address', 'latitude', 'longitude', 'branch_id', 'capture_accuracy_m'], true), ARRAY_FILTER_USE_BOTH);
     }
 }
