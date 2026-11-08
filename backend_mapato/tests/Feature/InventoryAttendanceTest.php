@@ -284,6 +284,28 @@ class InventoryAttendanceTest extends TestCase
         }
     }
 
+    public function test_the_business_admin_controls_the_staff_and_never_starts_work_or_registers_a_phone(): void
+    {
+        [$owner, $juma, $key, , $office] = $this->scene();
+        [, $pem] = $this->keys();
+
+        // the owner's own phone and day: refused everywhere, in words that say why
+        $this->enroll($owner, $pem, 'owner-phone-uuid-0001')->assertForbidden()->assertJsonPath('code', 'admin_does_not_start_work');
+        $this->api($owner, 'POST', self::BASE . '/challenge', ['device_uuid' => 'owner-phone-uuid-0001', 'office_id' => $office, 'purpose' => 'in'])->assertForbidden()->assertJsonPath('code', 'admin_does_not_start_work');
+        $this->api($owner, 'POST', self::BASE . '/clock-in')->assertForbidden()->assertJsonPath('code', 'admin_does_not_start_work');
+        $this->api($owner, 'POST', self::BASE . '/clock-out')->assertForbidden()->assertJsonPath('code', 'admin_does_not_start_work');
+        $this->assertSame(0, $this->sessions($owner));
+        $this->assertNotContains((string) $owner->id, array_column($this->api($owner, 'GET', self::BASE . '/admin/devices')->json('data'), 'user_id'), 'no phone of the owner is registered');
+
+        // the owner is never an office's staff, even if asked for
+        $this->api($owner, 'PUT', self::BASE . "/admin/offices/{$office}/staff", ['user_ids' => [(string) $owner->id, (string) $juma->id]])->assertOk()->assertJsonPath('data.staff_ids', [(string) $juma->id]);
+
+        // what the owner does see is what the staff did
+        $this->startWork($juma, $key, $office)->assertCreated();
+        $row = collect($this->api($owner, 'GET', self::BASE)->json('data.staff'))->firstWhere('name', 'Juma');
+        $this->assertTrue($row['at_work']);
+    }
+
     public function test_nobody_starts_someone_elses_day_in_a_shop_each_person_starts_their_own(): void
     {
         [$owner, $juma] = $this->scene();

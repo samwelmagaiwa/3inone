@@ -86,3 +86,15 @@ Set<String> attendanceRightsHere(final BuildContext context, {final bool listen 
 
 /// Does the person signed in hold at least one attendance right (so the way into Devices and offices is shown)?
 bool canManageDevicesHere(final BuildContext context) => attendanceRightsHere(context).isNotEmpty;
+
+/// The business admin (the owner) controls the staff and does not start work: attendance is the staff's, and the owner reads from it who came
+/// to work and who did not. (The server refuses the owner's own start too.)
+bool isBusinessAdminRole(final String? role) => const <String>['admin', 'administrator', 'super_admin'].contains((role ?? '').toLowerCase());
+
+bool isBusinessAdminHere(final BuildContext context) {
+  try {
+    return isBusinessAdminRole(context.watch<AuthProvider>().user?.role);
+  } on ProviderNotFoundException {
+    return false;
+  }
+}

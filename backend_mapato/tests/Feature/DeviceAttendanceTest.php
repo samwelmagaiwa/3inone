@@ -276,6 +276,18 @@ class DeviceAttendanceTest extends TestCase
         $this->assertSame(0, $this->sessions($owner));
     }
 
+    public function test_the_salons_owner_does_not_start_work_either_only_the_staff_do(): void
+    {
+        [$owner, $asha, $key, , $office] = $this->scene();
+        [, $pem] = $this->keys();
+
+        $this->api($owner, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'owner-phone-uuid-0001', 'public_key' => $pem, 'consent' => true])->assertForbidden()->assertJsonPath('code', 'admin_does_not_start_work');
+        $this->api($owner, 'POST', '/api/inventory/salon/attendance/clock-in')->assertForbidden()->assertJsonPath('code', 'admin_does_not_start_work');
+        $this->assertSame(0, $this->sessions($owner));
+        $this->api($owner, 'PUT', "/api/inventory/salon/attendance/admin/offices/{$office}/staff", ['user_ids' => [(string) $owner->id, (string) $asha->id]])->assertOk()->assertJsonPath('data.staff_ids', [(string) $asha->id]);
+        $this->startWork($asha, $key, $office)->assertCreated();
+    }
+
     public function test_a_device_is_registered_only_after_the_person_agreed_and_the_agreement_is_kept(): void
     {
         $owner = $this->salon();

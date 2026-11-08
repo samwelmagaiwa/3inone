@@ -44,6 +44,13 @@ in the shop, and an office of one cannot be used from the other).
   right, and each tab only for the right that opens it. An office can be one of the shop's branches.
 * The same URLs are used (`/inventory/salon/attendance/...`); the app's `X-Service` header (absent in a shop) decides whose books are meant.
 
+## The business admin does not start work
+
+The owner (roles `admin`, `administrator`, `super_admin`) **controls** the staff and so has no Start work button, no phone to register, and is never
+an office's staff. The server refuses the owner's own enrol, challenge and plain clock-in/out (`admin_does_not_start_work`) and drops the owner from
+an office's staff list. The owner's Attendance page shows who came in and who did not, from the staff's own starts. A manager is staff and still starts
+their own work.
+
 ## Nobody starts someone else's day
 
 Each person starts their own work, so the owner can tell who came and who did not. `clock-in` for another person is refused for everyone, the owner

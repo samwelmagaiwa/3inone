@@ -95,7 +95,8 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
         _offices = <AttendanceOffice>[for (final Map<String, dynamic> o in offices) AttendanceOffice.fromJson(o)];
         _checks = checks;
         _branches = branches;
-        _staff = staff;
+        // the business admin is never an office's staff: they control the staff, they do not start work
+        _staff = <Map<String, String>>[for (final Map<String, String> s in staff) if (!isBusinessAdminRole(s['role'])) s];
         _loading = false;
       });
     } on Exception catch (e) {

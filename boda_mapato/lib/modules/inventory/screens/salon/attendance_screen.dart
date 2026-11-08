@@ -184,6 +184,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget build(BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     final bool manager = canSeeSalonMoneyHere(context);
+    final bool owner = isBusinessAdminHere(context);
 
     return Material(
       color: ThemeConstants.primaryBlue,
@@ -194,18 +195,28 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
           padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 24.h),
-          children: _body(sw, manager),
+          children: _body(sw, manager, owner),
         ),
       ),
     );
   }
 
-  List<Widget> _body(final bool sw, final bool manager) {
+  List<Widget> _body(final bool sw, final bool manager, final bool owner) {
     final AttendanceNow? now = _now;
     String hm(final DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
     return <Widget>[
-      if (now != null)
+      // The business admin controls the staff and does not start work: no Start work for them, only what the staff did.
+      if (owner)
+        Padding(
+          padding: EdgeInsets.only(bottom: 8.h),
+          child: Text(
+            sw ? 'Wafanyakazi wanaanza kazi wenyewe kwa simu zao. Hapa unaona nani amekuja na nani hajaja.' : 'Your staff start work themselves from their own phones. Here you see who came in and who did not.',
+            key: const ValueKey<String>('owner_attendance_note'),
+            style: ThemeConstants.captionStyle,
+          ),
+        ),
+      if (now != null && !owner)
         GlowListCard(
           key: const ValueKey<String>('attendance_status'),
           padding: EdgeInsets.all(14.w),
@@ -228,7 +239,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ],
           )],
         ),
-      if (_mine != null && _mine!.policyOn) _deviceCard(sw, _mine!),
+      if (!owner && _mine != null && _mine!.policyOn) _deviceCard(sw, _mine!),
       if (canManageDevicesHere(context))
         Align(
           alignment: Alignment.centerRight,

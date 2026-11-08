@@ -275,6 +275,40 @@ void main() {
     });
   });
 
+  group('the business admin controls the staff and does not start work', () {
+    testWidgets('the owner has no Start work and no phone card, only the note and what the staff did', (t) async {
+      final _Fake api = _Fake()
+        ..policyOn = true
+        ..status = 'approved';
+      await _host(t, ShopAttendancePage(api: api, identity: _Identity()), auth: _Auth('admin'));
+
+      expect(_key('clock_in'), findsNothing);
+      expect(_key('clock_out'), findsNothing);
+      expect(_key('attendance_status'), findsNothing);
+      expect(_key('register_device'), findsNothing);
+      expect(_key('owner_attendance_note'), findsOneWidget);
+      expect(find.text('Start work'), findsNothing);
+      // the month and the way into phones and offices stay
+      expect(_key('attendance_month'), findsOneWidget);
+      expect(_key('open_devices_admin'), findsOneWidget);
+    });
+
+    testWidgets('and says so in Swahili', (t) async {
+      await _host(t, ShopAttendancePage(api: _Fake(), identity: _Identity()), auth: _Auth('admin'), sw: true);
+
+      expect(find.textContaining('Wafanyakazi wanaanza kazi wenyewe'), findsOneWidget);
+      expect(find.text('Anza kazi'), findsNothing);
+    });
+
+    testWidgets('a staff member, a manager included, still has Start work', (t) async {
+      for (final String role in <String>['sales_officer', 'manager']) {
+        await _host(t, ShopAttendancePage(api: _Fake(), identity: _Identity()), auth: _Auth(role));
+        expect(_key('clock_in'), findsOneWidget, reason: role);
+        expect(_key('owner_attendance_note'), findsNothing, reason: role);
+      }
+    });
+  });
+
   group('the owner\'s and managers\' set-up in a shop', () {
     testWidgets('the owner gets the button and all four parts, and no way to start someone else\'s day', (t) async {
       final _Fake api = _Fake();

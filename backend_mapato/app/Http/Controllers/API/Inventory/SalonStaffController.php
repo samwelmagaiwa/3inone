@@ -78,6 +78,17 @@ class SalonStaffController extends Controller
         ], 403));
     }
 
+    /** The business admin controls the staff and does not start work: only the staff do (so the owner can tell who came and who did not). */
+    private function refuseAdminOwnDay(Request $request, User $who): void
+    {
+        if ((string) $who->id === (string) $request->user()->id && $who->isBusinessAdmin()) {
+            throw new \Illuminate\Http\Exceptions\HttpResponseException(response()->json([
+                'message' => 'Msimamizi wa biashara hasimamii kuanza kazi: wafanyakazi ndio wanaoanza. / The business admin does not start work: the staff do.',
+                'code' => 'admin_does_not_start_work',
+            ], 403));
+        }
+    }
+
     private function salonNow(): Carbon
     {
         return Carbon::now(AppointmentPlanner::TIMEZONE);
@@ -221,6 +232,7 @@ class SalonStaffController extends Controller
                 'code' => 'start_own_work',
             ], 403));
         }
+        $this->refuseAdminOwnDay($request, $who);
         $this->requireDeviceCheckOrAdmin($request, $who);
 
         $open = DB::table('inventory_attendance')->where('staff_id', (string) $who->id)->whereNull('clock_out')->first();
@@ -249,6 +261,7 @@ class SalonStaffController extends Controller
     {
         $request->validate(['staff_id' => 'nullable|string|max:64']);
         $who = $this->subject($request);
+        $this->refuseAdminOwnDay($request, $who);
         $this->requireDeviceCheckOrAdmin($request, $who);
 
         $open = DB::table('inventory_attendance')->where('staff_id', (string) $who->id)->whereNull('clock_out')->orderByDesc('id')->first();

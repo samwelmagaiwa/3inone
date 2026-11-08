@@ -648,6 +648,15 @@ class User extends Authenticatable
     }
 
     /**
+     * The business admin (the owner): the person who CONTROLS the staff and so does not start work themselves. Attendance is the staff's:
+     * the owner sees who came to work and who did not, from the staff's own starts.
+     */
+    public function isBusinessAdmin(): bool
+    {
+        return in_array(strtolower((string) $this->role), ['admin', 'administrator', 'super_admin'], true);
+    }
+
+    /**
      * Check if user is admin
      */
     public function isAdmin(): bool

@@ -296,7 +296,8 @@ void main() {
 
     testWidgets('a failed load says why and can be retried; Swahili is Swahili', (t) async {
       final _FakeSalon api = _FakeSalon()..failLoad = ApiException('Server is down');
-      await _host(t, AttendanceScreen(api: api, today: _today), sw: true);
+      // a staff member (the owner has no Start work: the staff start their own day)
+      await _host(t, AttendanceScreen(api: api, today: _today), sw: true, role: 'hair_stylist');
       expect(find.text('Server is down'), findsOneWidget);
 
       await t.tap(_key('attendance_retry'));

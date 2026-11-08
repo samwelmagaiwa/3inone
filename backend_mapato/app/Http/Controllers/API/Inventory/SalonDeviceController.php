@@ -27,6 +27,15 @@ class SalonDeviceController extends Controller
         return response()->json(['message' => $d->getMessage(), 'code' => $d->outcome], 403);
     }
 
+    /** The business admin controls the staff: no phone to register, no work to start (the staff's starts are what the owner reads). */
+    private function refuseAdmin(Request $request): ?JsonResponse
+    {
+        return $request->user()->isBusinessAdmin() ? response()->json([
+            'message' => 'Msimamizi wa biashara hasajili simu wala kuanza kazi: wafanyakazi ndio wanaofanya hivyo. / The business admin does not register a phone or start work: the staff do.',
+            'code' => 'admin_does_not_start_work',
+        ], 403) : null;
+    }
+
     /** @return array<string, mixed> */
     private function present(?object $d): ?array
     {
@@ -70,6 +79,9 @@ class SalonDeviceController extends Controller
     #[OA\Post(path: '/inventory/salon/attendance/device/enroll', summary: 'Ask for this device to be registered', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 201, description: 'Waiting for approval')])]
     public function enroll(Request $request): JsonResponse
     {
+        if ($refused = $this->refuseAdmin($request)) {
+            return $refused;
+        }
         $data = $request->validate([
             'device_uuid' => 'required|string|min:16|max:64|regex:/^[A-Za-z0-9\-_]+$/',
             'public_key' => 'required|string|max:2000',
@@ -102,6 +114,9 @@ class SalonDeviceController extends Controller
     #[OA\Post(path: '/inventory/salon/attendance/challenge', summary: 'A short-lived, single-use challenge for this device to sign', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 200, description: 'Success'), new OA\Response(response: 403, description: 'Refused, with a status code')])]
     public function challenge(Request $request): JsonResponse
     {
+        if ($refused = $this->refuseAdmin($request)) {
+            return $refused;
+        }
         $data = $request->validate([
             'device_uuid' => 'required|string|max:64',
             'office_id' => 'nullable|integer',
@@ -267,7 +282,8 @@ class SalonDeviceController extends Controller
         $data = $request->validate(['user_ids' => 'present|array|max:200', 'user_ids.*' => 'string|max:64']);
         // only people of this business (the users table is shared by every business)
         $members = \App\Support\Tenancy\TenantContext::viewer()?->accountMemberIds() ?? [];
-        $mine = User::query()->whereIn('id', $data['user_ids'])->whereIn('id', $members)->pluck('id')->map(fn ($u) => (string) $u)->all();
+        // the business admin is never an office's staff: they control the staff, they do not start work
+        $mine = User::query()->whereIn('id', $data['user_ids'])->whereIn('id', $members)->get(['id', 'role'])->reject(fn (User $u) => $u->isBusinessAdmin())->pluck('id')->map(fn ($u) => (string) $u)->values()->all();
         DB::transaction(function () use ($id, $mine) {
             DB::table('inventory_attendance_office_staff')->where('office_id', $id)->whereNotIn('user_id', $mine)->delete();
             foreach ($mine as $uid) {
