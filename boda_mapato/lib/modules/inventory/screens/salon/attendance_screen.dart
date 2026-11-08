@@ -6,7 +6,6 @@ import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
 import '../../../../utils/server_message.dart';
 import '../../models/salon_models.dart';
-import '../../providers/inventory_provider.dart';
 import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
 import '../../services/device_identity.dart';
@@ -181,40 +180,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     await _run(_device.enroll);
   }
 
-  Future<void> _clockSomeoneIn() async {
-    final InventoryProvider inv = context.read<InventoryProvider>();
-    final bool sw = context.read<LocalizationService>().isSwahili;
-    await inv.fetchSalonStaff();
-    if (!mounted) return;
-    final Map<String, String>? who = await showModalBottomSheet<Map<String, String>>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext sheet) => InvSheetShell(
-        title: sw ? 'Anzisha siku ya nani?' : 'Start whose day?',
-        children: <Widget>[
-          Material(
-            type: MaterialType.transparency,
-            child: Column(
-              children: <Widget>[
-                for (final Map<String, String> s in inv.salonStaff)
-                  ListTile(
-                    key: ValueKey<String>('clock_for_${s['id']}'),
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.person_outline, color: Colors.white70, size: 22.sp),
-                    title: Text(s['name'] ?? '', style: ThemeConstants.bodyStyle),
-                    onTap: () => Navigator.pop(sheet, s),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-    if (who == null || !mounted) return;
-    await _run(() => _api.clockIn(staffId: who['id']));
-  }
-
   @override
   Widget build(BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
@@ -274,18 +239,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             label: Text(sw ? 'Vifaa na ofisi' : 'Devices and offices', style: const TextStyle(color: Colors.white70)),
           ),
         ),
-      if (manager) ...<Widget>[
-        SizedBox(height: 8.h),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton.icon(
-            key: const ValueKey<String>('clock_someone_in'),
-            onPressed: _busy ? null : _clockSomeoneIn,
-            icon: const Icon(Icons.person_add_alt_1_outlined, color: Colors.white70),
-            label: Text(sw ? 'Anzisha siku ya mtu' : 'Start someone\'s day', style: const TextStyle(color: Colors.white70)),
-          ),
-        ),
-      ],
       SizedBox(height: 4.h),
       Row(
         children: <Widget>[

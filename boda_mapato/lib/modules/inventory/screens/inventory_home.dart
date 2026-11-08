@@ -38,6 +38,9 @@ import 'salon/offers_screens.dart';
 import 'salon/salon_settings_screen.dart';
 import 'hubs/salon_team_hub_screen.dart';
 import 'salon/appointments_screen.dart';
+import 'salon/attendance_screen.dart';
+import '../services/device_identity.dart';
+import '../services/salon_api.dart';
 import 'salon/rebook_screen.dart';
 import 'salon/stylists_screen.dart';
 import 'salon/salon_access.dart';
@@ -163,6 +166,16 @@ List<_InvMenuEntry> _invEntries(LocalizationService loc,
               color: ThemeConstants.warningAmber,
               pageBuilder: () => const MoneyMenuScreen(),
               visible: (UserPermissions p) => p.has('inv_view_credit') || p.has('inv_view_reports') || p.has('inv_manage_settings'),
+            ),
+            // 7f — Start and finish work from one's own approved phone: every person on the staff, and the owner's and managers' set-up of
+            // phones, offices and places behind the "Devices and offices" button (the same screens and the same server engine as the salon's).
+            _InvMenuEntry(
+              key: 'attendance',
+              staticTitle: loc.isSwahili ? 'Mahudhurio' : 'Attendance',
+              icon: Icons.timer_outlined,
+              color: const Color(0xFF8B5CF6),
+              pageBuilder: () => const ShopAttendancePage(),
+              visible: null,
             ),
             // 7e — More than one place to sell from: the branches, and the goods each one holds (the same screens as a salon's)
             _InvMenuEntry(
@@ -1123,6 +1136,21 @@ class _InventoryDrawer extends StatelessWidget {
 }
 
 /// The walk-in queue as a page of its own (the screen itself is only a body).
+/// Attendance in a shop or depot: the same screen the salon's team uses, in a page of its own.
+class ShopAttendancePage extends StatelessWidget {
+  const ShopAttendancePage({super.key, this.api, this.identity});
+
+  /// The server calls and this phone's key (fakes in tests).
+  final SalonApi? api;
+  final DeviceIdentity? identity;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: salonAppBar(context, context.watch<LocalizationService>().isSwahili ? 'Mahudhurio' : 'Attendance'),
+        body: AttendanceScreen(api: api, identity: identity),
+      );
+}
+
 class _QueuePage extends StatelessWidget {
   const _QueuePage();
 

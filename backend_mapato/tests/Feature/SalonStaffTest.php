@@ -210,7 +210,7 @@ class SalonStaffTest extends TestCase
         $this->assertNull($row['records'][0]['clock_out']);
     }
 
-    public function test_a_manager_clocks_someone_in_a_stylist_only_herself_and_each_sees_only_their_own(): void
+    public function test_nobody_clocks_someone_else_in_each_starts_their_own_and_each_sees_only_their_own(): void
     {
         $owner = $this->salon();
         $asha = $this->person($owner, 'Asha');
@@ -218,7 +218,9 @@ class SalonStaffTest extends TestCase
         $this->at('2026-10-07 06:00:00');
 
         $this->api($asha, 'POST', '/api/inventory/salon/attendance/clock-in', ['staff_id' => (string) $bahati->id])->assertStatus(403);
-        $this->api($owner, 'POST', '/api/inventory/salon/attendance/clock-in', ['staff_id' => (string) $bahati->id])->assertCreated()->assertJsonPath('data.name', 'Bahati');
+        // not even the owner: each person starts their own day, so the owner can see who came to work and who did not
+        $this->api($owner, 'POST', '/api/inventory/salon/attendance/clock-in', ['staff_id' => (string) $bahati->id])->assertStatus(403)->assertJsonPath('code', 'start_own_work');
+        $this->api($bahati, 'POST', '/api/inventory/salon/attendance/clock-in')->assertCreated()->assertJsonPath('data.name', 'Bahati');
         $this->api($asha, 'POST', '/api/inventory/salon/attendance/clock-in')->assertCreated();
 
         $mine = $this->api($asha, 'GET', '/api/inventory/salon/attendance?month=2026-10')->json('data.staff');

@@ -28,6 +28,28 @@ With the policy on, the older plain `clock-in` / `clock-out` is refused (`device
 a manager starting or finishing someone else's day, and holders of `inv_salon_devices`, may still do it (recorded as `source = manual`).
 Rate limits: enrol 6/min, challenge and verify 30/min.
 
+## In a shop or depot too (inventory service)
+
+Everything above works in the **inventory** service (a shop or depot) exactly as in the salon, in the shop's own books: the tables are split by
+`service`, so a business with both keeps **two separate sets** of phones, offices, places, switch and log (a phone approved in the salon is nobody
+in the shop, and an office of one cannot be used from the other).
+
+* **Who may start work:** every person on the staff, whatever their role (cashier, operator, accountant, even a read-only viewer). The routes have
+  a group of their own, so this never depends on a right that has nothing to do with attendance.
+* **The administrator's four rights** (`inv_salon_devices`, `inv_salon_offices`, `inv_salon_attendance_log`, `inv_salon_attendance_policy`) are
+  **enforced in both services** by the `attendance_right` middleware (`salon_module` lets everyone through outside a salon, so it cannot be used
+  here: a cashier must never approve a phone or read the log). Only the owner holds all four by default; the owner gives each to a person
+  on the access screen (and can take it back), which lists these four for a shop (and none of the salon-only switches).
+* **In the app:** "Attendance" is in the shop's menu for everyone; the "Devices and offices" button shows only for people who hold at least one
+  right, and each tab only for the right that opens it. An office can be one of the shop's branches.
+* The same URLs are used (`/inventory/salon/attendance/...`); the app's `X-Service` header (absent in a shop) decides whose books are meant.
+
+## Nobody starts someone else's day
+
+Each person starts their own work, so the owner can tell who came and who did not. `clock-in` for another person is refused for everyone, the owner
+included (`start_own_work`), and the app has no "start someone's day" button. An owner can still **finish** a forgotten session for someone
+(recorded as manual), so one forgotten tap does not block the next morning.
+
 ## Consent and the audit trail
 
 * **Consent first.** Before a phone is registered the app tells the person what is collected (phone name and model, system and app version, the
@@ -73,7 +95,7 @@ blocked. The person is told at once ("You are at work: 35 m from the office (150
 
 ## Rights (Access screen)
 
-Four switches, each a right a business admin can give or take away per person (owner and managers have all four by default):
+Four switches, each a right a business admin can give or take away per person on the access screen. **They are all OFF for everyone but the owner** (the business admin) until the owner decides to hand them out, a manager included:
 
 | Right | Lets them |
 |---|---|

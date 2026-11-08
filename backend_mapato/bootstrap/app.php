@@ -30,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_any' => \App\Http\Middleware\RoleAny::class,
             'inv_perm' => \App\Http\Middleware\CheckInventoryPermission::class,
             'salon_module' => \App\Http\Middleware\EnsureSalonModule::class,
+            'attendance_right' => \App\Http\Middleware\EnsureAttendanceRight::class,
             'service'  => \App\Http\Middleware\EnsureServiceAccess::class,
         ]);
         

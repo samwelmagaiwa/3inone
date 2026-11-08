@@ -180,14 +180,16 @@ class DeviceAttendanceTest extends TestCase
         $this->api($asha, 'POST', '/api/inventory/salon/attendance/clock-in')->assertSuccessful();
     }
 
-    public function test_with_the_policy_on_a_person_cannot_start_their_own_day_the_plain_way_but_a_manager_can_for_someone_else(): void
+    public function test_with_the_policy_on_a_person_cannot_start_their_own_day_the_plain_way_and_nobody_starts_it_for_them(): void
     {
         [$owner, $asha, , , ] = $this->scene();
         $this->api($owner, 'PUT', '/api/inventory/salon/attendance/admin/policy', ['enabled' => true, 'timezone' => 'Africa/Dar_es_Salaam'])->assertOk();
 
         $this->api($asha, 'POST', '/api/inventory/salon/attendance/clock-in')->assertForbidden()->assertJsonPath('code', 'device_verification_required');
         $this->api($asha, 'POST', '/api/inventory/salon/attendance/clock-out')->assertForbidden();
-        $this->api($owner, 'POST', '/api/inventory/salon/attendance/clock-in', ['staff_id' => (string) $asha->id])->assertSuccessful();
+        // nobody starts someone else's day, the owner included: each person starts their own, so the owner can see who came
+        $this->api($owner, 'POST', '/api/inventory/salon/attendance/clock-in', ['staff_id' => (string) $asha->id])->assertForbidden()->assertJsonPath('code', 'start_own_work');
+        $this->assertSame(0, $this->sessions($owner));
     }
 
     // ------------------------------------------------------------------ the device
@@ -514,13 +516,14 @@ class DeviceAttendanceTest extends TestCase
         $this->api($asha, 'GET', '/api/inventory/salon/attendance/admin/offices')->assertForbidden();
     }
 
-    public function test_the_four_attendance_switches_are_named_off_for_a_stylist_and_on_for_a_manager(): void
+    public function test_the_four_attendance_switches_are_named_and_off_for_everyone_but_the_owner_until_the_owner_turns_them_on(): void
     {
         $owner = $this->salon();
         $asha = $this->person($owner);
         $manager = $this->person($owner, 'Mary', 'manager');
 
-        foreach ([$asha->id => false, $manager->id => true] as $id => $expected) {
+        // a stylist and even a manager start with all four OFF; the business admin decides to hand them out
+        foreach ([$asha->id => false, $manager->id => false] as $id => $expected) {
             $state = collect($this->api($owner, 'GET', "/api/admin/users/{$id}/access")->json('data.modules'))->keyBy('key');
             foreach (['inv_salon_devices', 'inv_salon_offices', 'inv_salon_attendance_log', 'inv_salon_attendance_policy'] as $key) {
                 $this->assertTrue($state->has($key), $key);

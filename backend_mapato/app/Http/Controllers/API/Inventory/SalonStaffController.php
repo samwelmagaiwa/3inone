@@ -213,6 +213,14 @@ class SalonStaffController extends Controller
     {
         $request->validate(['staff_id' => 'nullable|string|max:64', 'note' => 'nullable|string|max:160']);
         $who = $this->subject($request);
+        // Nobody starts someone else's day, not even the owner: each person starts their own, so the owner can tell who came to work and who
+        // did not. (A forgotten session can still be finished for them below.)
+        if ((string) $who->id !== (string) $request->user()->id) {
+            throw new \Illuminate\Http\Exceptions\HttpResponseException(response()->json([
+                'message' => 'Kila mfanyakazi anaanza kazi mwenyewe, ili msimamizi ajue nani amekuja. / Each person starts their own work, so the owner can see who came in.',
+                'code' => 'start_own_work',
+            ], 403));
+        }
         $this->requireDeviceCheckOrAdmin($request, $who);
 
         $open = DB::table('inventory_attendance')->where('staff_id', (string) $who->id)->whereNull('clock_out')->first();

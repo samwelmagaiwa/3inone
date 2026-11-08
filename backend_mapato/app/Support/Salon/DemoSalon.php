@@ -577,8 +577,10 @@ final class DemoSalon
                 }
                 try {
                     $in = $day->copy()->setTime(8, $this->between(20, 59))->addMinutes($this->chance(0.12) ? $this->between(15, 40) : 0);
-                    $this->call('owner', 'POST', '/api/inventory/salon/attendance/clock-in', ['staff_id' => $this->staffIds[$key]], $in);
-                    $this->call('owner', 'POST', '/api/inventory/salon/attendance/clock-out', ['staff_id' => $this->staffIds[$key]], $day->copy()->setTime(17, $this->between(30, 59))->addMinutes($this->between(0, 70)));
+                    // Each person starts and finishes their own day (nobody starts someone else's): they act with a key of their own, dropped at the end.
+                    $this->tokens["staff:{$key}"] ??= User::query()->findOrFail($this->staffIds[$key])->createToken('demo')->plainTextToken;
+                    $this->call("staff:{$key}", 'POST', '/api/inventory/salon/attendance/clock-in', [], $in);
+                    $this->call("staff:{$key}", 'POST', '/api/inventory/salon/attendance/clock-out', [], $day->copy()->setTime(17, $this->between(30, 59))->addMinutes($this->between(0, 70)));
                     $this->made['shifts']++;
                 } catch (\RuntimeException) {
                     // a day the app refuses is not recorded

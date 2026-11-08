@@ -274,19 +274,16 @@ void main() {
       expect(find.text('Nobody has clocked in this month.'), findsOneWidget);
     });
 
-    testWidgets('the owner can finish someone\'s day and start someone\'s; a stylist cannot', (t) async {
+    testWidgets('the owner can finish someone\'s forgotten day but never start someone\'s: each person starts their own', (t) async {
       final _FakeSalon api = _FakeSalon()..people = <AttendancePerson>[_person('u-bahati', 'Bahati', atWork: true)];
       await _host(t, AttendanceScreen(api: api, today: _today));
 
+      expect(_key('clock_someone_in'), findsNothing);
+      expect(find.textContaining('Start someone'), findsNothing);
       await t.tap(_key('att_out_u-bahati'));
       await _settle(t);
       expect(api.clockOuts, <String?>['u-bahati']);
-
-      await t.tap(_key('clock_someone_in'));
-      await _settle(t);
-      await t.tap(_key('clock_for_u-asha'));
-      await _settle(t);
-      expect(api.clockIns, <String?>['u-asha']);
+      expect(api.clockIns, isEmpty);
     });
 
     testWidgets('a stylist has neither of those buttons', (t) async {

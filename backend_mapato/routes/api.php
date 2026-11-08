@@ -558,40 +558,45 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('inventory/salon/days-off',             [SalonStaffController::class, 'daysOff'])->middleware('salon_module:inv_salon_team');
         Route::post('inventory/salon/days-off',            [SalonStaffController::class, 'storeDayOff'])->middleware('salon_module:inv_salon_team');
         Route::delete('inventory/salon/days-off/{id}',     [SalonStaffController::class, 'destroyDayOff'])->middleware('salon_module:inv_salon_team');
-        Route::get('inventory/salon/attendance',           [SalonStaffController::class, 'attendance'])->middleware('salon_module:inv_salon_team');
-        Route::get('inventory/salon/attendance/today',     [SalonStaffController::class, 'attendanceToday'])->middleware('salon_module:inv_salon_team');
-        // Attendance from one's own approved device: the person's side (rate limited) and the administrator's.
-        Route::get('inventory/salon/attendance/device',    [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'mine'])->middleware('salon_module:inv_salon_team');
-        Route::post('inventory/salon/attendance/device/enroll', [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'enroll'])->middleware(['salon_module:inv_salon_team', 'throttle:6,1,device-enroll']);
-        Route::post('inventory/salon/attendance/challenge', [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'challenge'])->middleware(['salon_module:inv_salon_team', 'throttle:30,1,device-challenge']);
-        Route::post('inventory/salon/attendance/verify',   [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'verify'])->middleware(['salon_module:inv_salon_team', 'throttle:30,1,device-verify']);
-        // Four rights, so a business admin can hand out exactly what they mean to: the phones, the offices and places, the log, the on/off switch.
-        Route::middleware('salon_module:inv_salon_devices')->prefix('inventory/salon/attendance/admin')->group(function () {
-            Route::get('devices',                 [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'devices']);
-            Route::post('devices/{id}/decision',  [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'decide']);
-        });
-        Route::middleware('salon_module:inv_salon_attendance_log')->prefix('inventory/salon/attendance/admin')->group(function () {
-            Route::get('checks',                  [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'checks']);
-            Route::post('checks/{id}/acknowledge', [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'acknowledge']);
-        });
-        Route::middleware('salon_module:inv_salon_offices')->prefix('inventory/salon/attendance/admin')->group(function () {
-            Route::get('offices',                 [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'offices']);
-            Route::post('offices',                [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'storeOffice']);
-            Route::put('offices/{id}',            [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'updateOffice']);
-            Route::put('offices/{id}/staff',      [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'setOfficeStaff']);
-            Route::put('offices/{id}/staff/{userId}/place',    [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'setPersonPlace']);
-            Route::delete('offices/{id}/staff/{userId}/place', [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'clearPersonPlace']);
-        });
-        Route::middleware('salon_module:inv_salon_attendance_policy')->prefix('inventory/salon/attendance/admin')->group(function () {
-            Route::get('policy',                  [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'policy']);
-            Route::put('policy',                  [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'savePolicy']);
-        });
-        Route::post('inventory/salon/attendance/clock-in', [SalonStaffController::class, 'clockIn'])->middleware('salon_module:inv_salon_team');
-        Route::post('inventory/salon/attendance/clock-out', [SalonStaffController::class, 'clockOut'])->middleware('salon_module:inv_salon_team');
         Route::get('inventory/salon/shifts',               [SalonStaffController::class, 'shifts'])->middleware('salon_module:inv_salon_team');
         Route::get('inventory/salon/shifts/current',       [SalonStaffController::class, 'currentShift'])->middleware('salon_module:inv_salon_team');
         Route::post('inventory/salon/shifts/open',         [SalonStaffController::class, 'openShift'])->middleware('salon_module:inv_salon_team');
         Route::post('inventory/salon/shifts/{id}/close',   [SalonStaffController::class, 'closeShift'])->middleware('salon_module:inv_salon_team');
+    });
+    // Attendance (start/finish work from one's own approved phone) is for EVERY service that has staff: the salon and the shop or depot.
+    // It has its own group, so it never depends on a right that has nothing to do with it (a shop's viewer can still start work), and the
+    // administrator's four rights are enforced in both services (attendance_right), the books being split by service as everywhere else.
+    Route::group([], function () {
+            Route::get('inventory/salon/attendance',           [SalonStaffController::class, 'attendance'])->middleware('salon_module:inv_salon_team');
+            Route::get('inventory/salon/attendance/today',     [SalonStaffController::class, 'attendanceToday'])->middleware('salon_module:inv_salon_team');
+            // Attendance from one's own approved device: the person's side (rate limited) and the administrator's.
+            Route::get('inventory/salon/attendance/device',    [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'mine'])->middleware('salon_module:inv_salon_team');
+            Route::post('inventory/salon/attendance/device/enroll', [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'enroll'])->middleware(['salon_module:inv_salon_team', 'throttle:6,1,device-enroll']);
+            Route::post('inventory/salon/attendance/challenge', [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'challenge'])->middleware(['salon_module:inv_salon_team', 'throttle:30,1,device-challenge']);
+            Route::post('inventory/salon/attendance/verify',   [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'verify'])->middleware(['salon_module:inv_salon_team', 'throttle:30,1,device-verify']);
+            // Four rights, so a business admin can hand out exactly what they mean to: the phones, the offices and places, the log, the on/off switch.
+            Route::middleware('attendance_right:inv_salon_devices')->prefix('inventory/salon/attendance/admin')->group(function () {
+                Route::get('devices',                 [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'devices']);
+                Route::post('devices/{id}/decision',  [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'decide']);
+            });
+            Route::middleware('attendance_right:inv_salon_attendance_log')->prefix('inventory/salon/attendance/admin')->group(function () {
+                Route::get('checks',                  [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'checks']);
+                Route::post('checks/{id}/acknowledge', [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'acknowledge']);
+            });
+            Route::middleware('attendance_right:inv_salon_offices')->prefix('inventory/salon/attendance/admin')->group(function () {
+                Route::get('offices',                 [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'offices']);
+                Route::post('offices',                [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'storeOffice']);
+                Route::put('offices/{id}',            [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'updateOffice']);
+                Route::put('offices/{id}/staff',      [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'setOfficeStaff']);
+                Route::put('offices/{id}/staff/{userId}/place',    [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'setPersonPlace']);
+                Route::delete('offices/{id}/staff/{userId}/place', [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'clearPersonPlace']);
+            });
+            Route::middleware('attendance_right:inv_salon_attendance_policy')->prefix('inventory/salon/attendance/admin')->group(function () {
+                Route::get('policy',                  [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'policy']);
+                Route::put('policy',                  [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'savePolicy']);
+            });
+            Route::post('inventory/salon/attendance/clock-in', [SalonStaffController::class, 'clockIn'])->middleware('salon_module:inv_salon_team');
+            Route::post('inventory/salon/attendance/clock-out', [SalonStaffController::class, 'clockOut'])->middleware('salon_module:inv_salon_team');
     });
     Route::middleware('inv_perm:inv_manage_products,inv_create_sales,inv_salon_appointments')->group(function () {
         // PUT as well as PATCH: the app's HTTP client has PUT, and this changes only the two fields it is given.

@@ -200,7 +200,7 @@ class UserPermissions {
           'inv_view_expenses',
           'inv_manage_expenses',
           'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team', 'inv_salon_feedback', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_insights', 'inv_salon_money',
-          'inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_export', 'inv_salon_schedule', 'inv_approve_expenses', 'inv_salon_devices', 'inv_salon_offices', 'inv_salon_attendance_log', 'inv_salon_attendance_policy',
+          'inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_export', 'inv_salon_schedule', 'inv_approve_expenses',
           // Rental
           'view_tenants',
           'view_properties',
