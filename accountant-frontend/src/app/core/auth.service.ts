@@ -114,6 +114,7 @@ export class AuthService {
     this.blocked.set(false);
     write(PICK_KEY, user.services.length > 1 ? '1' : null);
     write(TOKEN_KEY, res.data.token);
+    write('last_activity', String(Date.now())); // the idle clock starts now
     write(USER_KEY, JSON.stringify(user));
     write(SERVICE_KEY, this.service());
   }
@@ -185,6 +186,7 @@ export class AuthService {
     this.token.set(null);
     this.user.set(null);
     write(TOKEN_KEY, null);
+    write('last_activity', null);
     write(USER_KEY, null);
     write(SERVICE_KEY, null);
     write(PICK_KEY, null);

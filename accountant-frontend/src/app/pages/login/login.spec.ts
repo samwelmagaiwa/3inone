@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
+import { ResumeService } from '../../core/resume.service';
 import { ToastService } from '../../core/services/toast.service';
 import { byTestId, configure, settle, text, type } from '../../testing';
 import { LoginPage } from './login';
@@ -244,5 +245,29 @@ describe('remember me', () => {
     h.http.expectOne(`${environment.apiUrl}/auth/login`).flush({ ...loginAnswer, data: { ...loginAnswer.data, user: { ...loginAnswer.data.user, role: 'viewer' } } });
     await settle(fixture);
     expect(localStorage.getItem('login_remembered_email')).toBeNull();
+  });
+});
+
+describe('coming back after being signed out for doing nothing', () => {
+  it('says why, and goes back to the page the person was on', async () => {
+    localStorage.clear();
+    const { h, fixture, el } = await open();
+    const go = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    TestBed.inject(ResumeService).save('1', '/credit?only=owing', null);
+    localStorage.setItem('idle_signed_out', '1');
+    const again = TestBed.createComponent(LoginPage);
+    again.detectChanges();
+    await settle(again);
+    expect(text(byTestId(again.nativeElement, 'login-idle')!)).toContain('nothing was done for 10 minutes');
+    expect(localStorage.getItem('idle_signed_out')).toBeNull();
+
+    type(el, '#email', 'a@shop.test');
+    type(el, '#password', 'secret');
+    await settle(fixture);
+    submit(el);
+    h.http.expectOne(`${environment.apiUrl}/auth/login`).flush({ ...loginAnswer, data: { ...loginAnswer.data, user: { ...loginAnswer.data.user, role: 'viewer' } } });
+    await settle(fixture);
+
+    expect(go).toHaveBeenCalledWith('/credit?only=owing');
   });
 });

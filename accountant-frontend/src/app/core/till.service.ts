@@ -2,6 +2,7 @@ import { Injectable, computed, effect, inject, signal, untracked } from '@angula
 
 import { AuthService } from './auth.service';
 import { CapabilitiesService } from './capabilities.service';
+import { ResumeService } from './resume.service';
 import { baseQty, defaultUnitFor, lineKey, lineTax, totalsOf, unitPriceFor } from './till-math';
 import { CartLine, Customer, PriceOption, Product, SellingUnit } from './till.models';
 
@@ -24,6 +25,12 @@ export interface SalePayloadResult {
 export class TillService {
   private readonly auth = inject(AuthService);
   private readonly caps = inject(CapabilitiesService);
+  private readonly resume = inject(ResumeService);
+
+  /** The till page tells how far its popup has got, so a sign-out for doing nothing can keep it (null when the page is not open). */
+  progressProvider: (() => string) | null = null;
+  /** What a sale kept at sign-out said about its popup, until the till page opens and picks it up. */
+  private pendingProgress = '';
 
   readonly lines = signal<CartLine[]>([]);
   readonly customer = signal<Customer | null>(null);
@@ -75,8 +82,25 @@ export class TillService {
     effect(() => {
       this.auth.user();
       this.auth.service();
-      untracked(() => this.clear());
+      untracked(() => {
+        // The same person signing in again after being signed out for doing nothing gets their sale back.
+        const user = this.auth.user();
+        const draft = user ? this.resume.takeTill(user.id) : null;
+        this.clear();
+        if (draft) {
+          this.restore(draft.lines, draft.customer);
+          this.pendingProgress = draft.progress;
+        }
+      });
     });
+  }
+
+  /** The popup progress kept with a sale that came back after signing in (once). */
+  takePendingProgress(): string {
+    const p = this.pendingProgress;
+    this.pendingProgress = '';
+
+    return p;
   }
 
   private priceCtx() {

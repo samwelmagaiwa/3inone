@@ -11,6 +11,7 @@ import { BranchesService } from '../../core/branches.service';
 import { serverDate } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
 import { ConfirmService } from '../../core/services/confirm.service';
+import { IdleService } from '../../core/idle.service';
 import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { ToastService } from '../../core/services/toast.service';
 import { AppNotification, ServiceName } from '../../core/models';
@@ -29,6 +30,7 @@ import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal
 export class ShellLayout implements OnDestroy {
   protected readonly auth = inject(AuthService);
   protected readonly slot = inject(HeaderSlotService);
+  private readonly idle = inject(IdleService);
   protected readonly i18n = inject(I18nService);
   protected readonly toastService = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
@@ -109,6 +111,8 @@ export class ShellLayout implements OnDestroy {
       this.sidebarOpen.set(false);
     });
     if (typeof window !== 'undefined') {
+      // ten minutes of doing nothing signs the person out (keeping where they were)
+      this.idle.start();
       void this.loadNotifications();
       void this.auth.refreshRights();
       void this.loadSubscription();
@@ -125,6 +129,7 @@ export class ShellLayout implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.idle.stop();
     if (this.bellTimer) clearInterval(this.bellTimer);
     if (this.payTimer) clearInterval(this.payTimer);
   }

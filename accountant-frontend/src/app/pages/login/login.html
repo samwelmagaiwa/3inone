@@ -63,6 +63,7 @@
         @if (view() === 'login') {
           <h1 class="form-title">{{ i18n.t('login.heading') }}</h1>
           <p class="form-subtitle">{{ i18n.t('login.subheading') }}</p>
+          @if (idleNotice()) { <div class="idle-note" role="status" data-testid="login-idle">{{ i18n.t('login.idle') }}</div> }
 
           <form (ngSubmit)="onLogin()" class="login-form" novalidate>
 
@@ -608,6 +609,7 @@
     accent-color: #1a2f6e;
     cursor: pointer;
   }
+  .idle-note { margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #92400e; background: #fff7e6; border: 1px solid #fcd9a0; }
   .remember-wrap { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #1a2f6e; cursor: pointer; }
   .remember-wrap input { width: 15px; height: 15px; accent-color: #1a2f6e; }
   .forgot-link {

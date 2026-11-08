@@ -166,6 +166,10 @@ export class TillPage implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    // A sign-out for doing nothing keeps the sale and how far the popup had got: carry on from there.
+    this.till.progressProvider = () => this.progressNote();
+    const kept = this.till.takePendingProgress();
+    if (kept) this.applyProgress(kept);
     // A salon starts with its services; the goods used for each one are asked after it is chosen.
     if (this.till.salon()) this.fKind = 'service';
     void this.loadProducts();
@@ -174,6 +178,7 @@ export class TillPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.till.progressProvider = null;
     if (this.timer) clearTimeout(this.timer);
   }
 

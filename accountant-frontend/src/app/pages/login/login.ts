@@ -9,6 +9,8 @@ import { AuthService } from '../../core/auth.service';
 import { monthKey, monthName, offline, serverMessage, tsh } from '../../core/format';
 import { headlineText } from '../../core/headline';
 import { I18nService } from '../../core/i18n.service';
+import { IDLE_NOTICE_KEY } from '../../core/idle.service';
+import { ResumeService } from '../../core/resume.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
 
@@ -23,6 +25,7 @@ export class LoginPage implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly api = inject(AccountantApi);
   private readonly router = inject(Router);
+  private readonly resume = inject(ResumeService);
   protected readonly i18n = inject(I18nService);
   protected readonly toastService = inject(ToastService);
 
@@ -41,6 +44,8 @@ export class LoginPage implements OnInit {
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly showPassword = signal(false);
+  /** Shown above the form when the last session ended because nothing was done for ten minutes. */
+  protected readonly idleNotice = signal(false);
 
   /** The accountant's message on signing in: how the month is going. Pressing OK goes on to the dashboard. */
   protected readonly brief = signal<{ month: string; title: string; lines: string[] } | null>(null);
@@ -50,6 +55,14 @@ export class LoginPage implements OnInit {
   private static readonly REMEMBERED_KEY = 'login_remembered_email';
 
   ngOnInit(): void {
+    try {
+      if (localStorage.getItem(IDLE_NOTICE_KEY)) {
+        this.idleNotice.set(true);
+        localStorage.removeItem(IDLE_NOTICE_KEY);
+      }
+    } catch {
+      // no notice
+    }
     try {
       const saved = localStorage.getItem(LoginPage.REMEMBERED_KEY);
       if (saved && !this.email) this.email = saved;
@@ -102,7 +115,7 @@ export class LoginPage implements OnInit {
       await this.auth.login(this.email.trim(), this.password);
       this.saveRemembered();
       this.toastService.success(this.i18n.t('login.welcome', this.auth.user()?.name ?? ''), t('login.signed'));
-      if (!(await this.showBrief())) await this.router.navigate(['/']);
+      if (!(await this.showBrief())) await this.goOn();
     } catch (err) {
       this.error.set(this.failure(err, 'login.failed'));
     } finally {
@@ -132,6 +145,17 @@ export class LoginPage implements OnInit {
   /** OK on the message: on to the dashboard. */
   protected async proceed(): Promise<void> {
     this.brief.set(null);
+    await this.goOn();
+  }
+
+  /** After signing in: back to the page they were on when they were signed out for doing nothing, else their first page. */
+  private async goOn(): Promise<void> {
+    const id = this.auth.user()?.id;
+    const back = id ? this.resume.takeUrl(id) : null;
+    if (back && back.startsWith('/') && !back.startsWith('/login')) {
+      const ok = await this.router.navigateByUrl(back);
+      if (ok) return;
+    }
     await this.router.navigate(['/']);
   }
 
