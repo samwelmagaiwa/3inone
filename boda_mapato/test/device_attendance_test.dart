@@ -45,6 +45,8 @@ class _Fake extends SalonApi {
   bool atWork = false;
   Object? refuse;
   final List<String> calls = <String>[];
+  final List<String?> names = <String?>[];
+  final List<int> acknowledged = <int>[];
   final List<Map<String, dynamic>> verified = <Map<String, dynamic>>[];
   final List<(int, String)> decisions = <(int, String)>[];
   List<Map<String, dynamic>> devices = <Map<String, dynamic>>[];
@@ -72,8 +74,9 @@ class _Fake extends SalonApi {
   }
 
   @override
-  Future<Map<String, dynamic>> attendanceChallenge({required String deviceUuid, required String purpose, int? officeId}) async {
+  Future<Map<String, dynamic>> attendanceChallenge({required String deviceUuid, required String purpose, int? officeId, String? deviceName}) async {
     calls.add('challenge:$purpose:$officeId');
+    names.add(deviceName);
     if (refuse != null) throw refuse!;
     return <String, dynamic>{'challenge_id': 77, 'payload': 'P|$purpose|${officeId ?? 0}'};
   }
@@ -141,12 +144,18 @@ class _Fake extends SalonApi {
   Future<List<Map<String, dynamic>>> attendanceOffices() async => offices;
 
   @override
+  Future<void> acknowledgeCheck(int id) async {
+    acknowledged.add(id);
+    checkRows = <Map<String, dynamic>>[for (final Map<String, dynamic> c in checkRows) c['flagged'] == true ? <String, dynamic>{...c, 'acknowledged': true} : c];
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> attendanceChecks({String? outcome}) async {
     loaded.add('checks');
     return checkRows;
   }
 
-  final List<Map<String, dynamic>> checkRows = <Map<String, dynamic>>[
+  List<Map<String, dynamic>> checkRows = <Map<String, dynamic>>[
         <String, dynamic>{'id': 1, 'user_name': 'Asha', 'purpose': 'in', 'outcome': 'device_mismatch', 'at': '2026-11-09 09:00:00', 'ip': '1.2.3.4', 'office_id': 3},
         <String, dynamic>{'id': 2, 'user_name': 'Asha', 'purpose': 'in', 'outcome': 'ok', 'at': '2026-11-09 09:05:00', 'office_id': 3, 'place_status': 'away', 'distance_m': 1112.0},
   ];
@@ -282,10 +291,52 @@ void main() {
       expect(find.text('No phone registered'), findsOneWidget);
       await t.tap(_key('register_device'));
       await _settle(t);
+      // what is collected is told first, and nothing is sent until the person agrees
+      expect(_key('device_consent'), findsOneWidget);
+      expect(api.calls, isEmpty);
+      await t.tap(_key('consent_agree'));
+      await _settle(t);
 
       expect(api.calls, <String>['enroll:phone-uuid-000000001:PUBLIC']);
       expect(find.text('Waiting for approval'), findsOneWidget);
       expect(_key('register_device'), findsNothing);
+    });
+
+    testWidgets('declining the agreement registers nothing and leaves the way open to agree later', (t) async {
+      final _Fake api = _Fake();
+      await _host(t, AttendanceScreen(api: api, identity: _Identity()));
+
+      await t.tap(_key('register_device'));
+      await _settle(t);
+      expect(find.textContaining('IP'), findsWidgets);
+      expect(find.textContaining('IMEI'), findsOneWidget);
+      await t.tap(_key('consent_decline'));
+      await _settle(t);
+
+      expect(api.calls, isEmpty);
+      expect(_key('device_consent'), findsNothing);
+      expect(_key('register_device'), findsOneWidget);
+    });
+
+    testWidgets('the agreement is told in Swahili too', (t) async {
+      await _host(t, AttendanceScreen(api: _Fake(), identity: _Identity()), sw: true);
+
+      await t.tap(_key('register_device'));
+      await _settle(t);
+
+      expect(find.text('Sajili simu hii kwa mahudhurio'), findsOneWidget);
+      expect(find.text('Nakubali'), findsOneWidget);
+      expect(find.text('Sikubali'), findsOneWidget);
+    });
+
+    testWidgets('the phone name travels with each request, so a different phone can be told apart in the log', (t) async {
+      final _Fake api = _Fake()..status = 'approved';
+      await _host(t, AttendanceScreen(api: api, identity: _Identity()));
+
+      await t.tap(_key('clock_in'));
+      await _settle(t);
+
+      expect(api.names, <String?>['Tecno Spark']);
     });
 
     testWidgets('a refusal from the server is shown in its words and nothing is recorded', (t) async {
@@ -530,6 +581,44 @@ void main() {
     testWidgets('someone with none of the four sees nothing to open', (t) async {
       await _host(t, AttendanceScreen(api: _Fake()..status = 'approved', identity: _Identity()), role: 'hair_stylist');
       expect(_key('open_devices_admin'), findsNothing);
+    });
+
+    testWidgets('a phone that is not the registered one shows as "Not the logged-in device" with both ids, and can be marked seen', (t) async {
+      final _Fake api = _Fake()
+        ..checkRows = <Map<String, dynamic>>[
+          <String, dynamic>{
+            'id': 9, 'user_name': 'Asha', 'purpose': 'in', 'outcome': 'device_mismatch', 'at': '2026-11-09 09:00:00', 'ip': '41.59.1.2', 'office_id': 3,
+            'flagged': true, 'acknowledged': false, 'registered_device_uuid': 'registered-uuid-0001', 'presented_device_uuid': 'other-phone-uuid-0002', 'presented_device_name': 'Samsung A14',
+          },
+        ];
+      await _host(t, DevicesAdminScreen(api: api, identity: _Identity(), staff: const <Map<String, String>>[]), role: 'admin');
+
+      await t.tap(_key('tab_log'));
+      await _settle(t);
+
+      expect(find.text('Not the logged-in device'), findsOneWidget);
+      expect((t.widget(_key('check_devices_9')) as Text).data, 'Registered: register…  •  Used: other-ph… (Samsung A14)');
+      await t.tap(_key('check_ack_9'));
+      await _settle(t);
+
+      expect(api.acknowledged, <int>[9]);
+      expect(_key('check_ack_9'), findsNothing);
+      expect(_key('check_devices_9'), findsOneWidget); // the line stays: it is a record
+    });
+
+    testWidgets('the same in Swahili', (t) async {
+      final _Fake api = _Fake()
+        ..checkRows = <Map<String, dynamic>>[
+          <String, dynamic>{'id': 9, 'user_name': 'Asha', 'purpose': 'in', 'outcome': 'device_mismatch', 'at': '2026-11-09 09:00:00', 'flagged': true, 'registered_device_uuid': 'a', 'presented_device_uuid': 'b'},
+        ];
+      await _host(t, DevicesAdminScreen(api: api, identity: _Identity(), staff: const <Map<String, String>>[]), role: 'admin', sw: true);
+
+      await t.tap(_key('tab_log'));
+      await _settle(t);
+
+      expect(find.text('Si kifaa alichoingia nacho'), findsOneWidget);
+      expect(find.text('Nimeona'), findsOneWidget);
+      expect((t.widget(_key('check_devices_9')) as Text).data, 'Kilichosajiliwa: a  •  Kilichotumika: b');
     });
 
     testWidgets('the log shows what was refused', (t) async {

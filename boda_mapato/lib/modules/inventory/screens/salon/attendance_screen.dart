@@ -11,6 +11,7 @@ import '../../services/salon_api.dart';
 import '../widgets/inventory_widgets.dart';
 import '../../services/device_identity.dart';
 import 'device_attendance_flow.dart';
+import 'device_consent_dialog.dart';
 import 'devices_admin_screen.dart';
 import 'salon_access.dart';
 import 'salon_text.dart';
@@ -172,7 +173,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  Future<void> _registerDevice() => _run(_device.enroll);
+  /// Nothing is collected or sent before the person has read what is collected and agreed.
+  Future<void> _registerDevice() async {
+    final bool sw = context.read<LocalizationService>().isSwahili;
+    if (!await askDeviceConsent(context, sw: sw)) return;
+    if (!mounted) return;
+    await _run(_device.enroll);
+  }
 
   Future<void> _clockSomeoneIn() async {
     final InventoryProvider inv = context.read<InventoryProvider>();

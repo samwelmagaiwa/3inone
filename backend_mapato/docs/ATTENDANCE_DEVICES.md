@@ -28,6 +28,19 @@ With the policy on, the older plain `clock-in` / `clock-out` is refused (`device
 a manager starting or finishing someone else's day, and holders of `inv_salon_devices`, may still do it (recorded as `source = manual`).
 Rate limits: enrol 6/min, challenge and verify 30/min.
 
+## Consent and the audit trail
+
+* **Consent first.** Before a phone is registered the app tells the person what is collected (phone name and model, system and app version, the
+  phone's own made-up id, the network address, the place at start/finish; never IMEI, MAC, files, messages or contacts) and asks "I agree". The
+  server refuses `device/enroll` without `consent: true` (older apps are told to update) and keeps `consent_at` and `consent_version` (`v1`) on the device.
+* **A different phone is kept, not just refused.** Using any phone other than the one registered to the person still fails (`device_mismatch`),
+  but the attempt is now flagged in the log as **"Not the logged-in device"**: the registered device id, the id and name of the phone that was
+  used, the person, the office, the network address and the time. People holding `inv_salon_devices` are notified once per spell (not on every
+  retry). The log's **Seen** button (`POST attendance/admin/checks/{id}/acknowledge`, right `inv_salon_attendance_log`) marks the person's open
+  spell as seen; the lines stay. `GET attendance/admin/checks?flagged=1` lists only these, with `meta.flagged_open` the count still unseen.
+* **Every line of the log** also carries the attendance it made (`attendance_id`), so a start can be traced from the log to the attendance row.
+* The MAC address is still not collected (the phone's operating system returns a fixed fake value for it).
+
 ## Offices
 
 Each office has a number shown with its name everywhere ("Kariakoo · #3"), an optional centre and radius, an "must be near" switch and a list

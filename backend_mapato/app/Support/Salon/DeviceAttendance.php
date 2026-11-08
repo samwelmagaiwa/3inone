@@ -3,6 +3,7 @@
 namespace App\Support\Salon;
 
 use App\Models\User;
+use App\Services\Inventory\InventoryNotifier;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -27,6 +28,9 @@ final class DeviceAttendance
     public const TIMEZONE_KEY = 'attendance_timezone';
 
     public const CHALLENGE_SECONDS = 90;
+
+    /** The version of the wording the person agreed to before registering a device (kept with the device). */
+    public const CONSENT_VERSION = 'v1';
 
     // ------------------------------------------------------------------ the policy
 
@@ -97,6 +101,9 @@ final class DeviceAttendance
             'user_agent' => self::clip($agent, 255),
             'ip' => $ip,
             'status' => 'pending',
+            // the person agreed, in the app, to what is collected (see CONSENT_VERSION)
+            'consent_at' => now(),
+            'consent_version' => self::CONSENT_VERSION,
             'last_seen_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
@@ -176,7 +183,7 @@ final class DeviceAttendance
      *
      * @return array<string, mixed>
      */
-    public static function challenge(User $user, ?int $officeId, string $deviceUuid, string $purpose, ?string $ip, ?string $agent): array
+    public static function challenge(User $user, ?int $officeId, string $deviceUuid, string $purpose, ?string $ip, ?string $agent, ?string $deviceName = null): array
     {
         $uid = (string) $user->id;
         $device = self::current($uid);
@@ -206,7 +213,8 @@ final class DeviceAttendance
                 }
             }
         } catch (DeviceDenied $d) {
-            self::log($user, $device, $officeId, $purpose, $d->outcome, $d->getMessage(), $ip, $agent);
+            // what was actually used is kept next to what is registered, so a different phone can be seen for what it is
+            self::log($user, $device, $officeId, $purpose, $d->outcome, $d->getMessage(), $ip, $agent, ['presented_uuid' => $deviceUuid, 'presented_name' => $deviceName]);
             throw $d;
         }
 
@@ -322,10 +330,12 @@ final class DeviceAttendance
                 return DB::table('inventory_attendance')->find($id);
             });
         } catch (DeviceDenied $d) {
-            self::log($user, $device, $officeId, $purpose, $d->outcome, $d->getMessage(), $ip, $agent, $where);
+            // the device the challenge was made on is the one that was used; the registered one is whatever the person has now
+            $registered = self::current($uid);
+            self::log($user, $registered ?? $device, $officeId, $purpose, $d->outcome, $d->getMessage(), $ip, $agent, $where + ['presented_uuid' => $device?->device_uuid, 'presented_name' => $device?->name]);
             throw $d;
         }
-        self::log($user, $device, $officeId, $purpose, 'ok', $purpose === 'in' ? 'Started work' : 'Finished work', $ip, $agent, $where);
+        self::log($user, $device, $officeId, $purpose, 'ok', $purpose === 'in' ? 'Started work' : 'Finished work', $ip, $agent, $where + ['attendance_id' => $attendance->id]);
 
         return ['attendance' => $attendance, 'purpose' => $purpose, 'place' => $verdict];
     }
@@ -484,7 +494,15 @@ final class DeviceAttendance
     /** @param  array{lat?: ?float, lng?: ?float, acc?: ?float, at?: ?string}  $where */
     public static function log(User $user, ?object $device, ?int $officeId, string $purpose, string $outcome, ?string $detail, ?string $ip, ?string $agent, array $where = []): void
     {
+        // "Not the logged-in device": the person is signed in on this phone, but it is not the one registered to them.
+        $flagged = $outcome === 'device_mismatch';
+        $fresh = $flagged && !DB::table('inventory_attendance_checks')->where('user_id', (string) $user->id)->where('flagged', true)->whereNull('acknowledged_at')->where('created_at', '>=', now()->subMinutes(10))->exists();
         DB::table('inventory_attendance_checks')->insert([
+            'attendance_id' => $where['attendance_id'] ?? null,
+            'registered_device_uuid' => $device?->device_uuid,
+            'presented_device_uuid' => self::clip($where['presented_uuid'] ?? ($outcome === 'ok' ? $device?->device_uuid : null), 64),
+            'presented_device_name' => self::clip($where['presented_name'] ?? ($outcome === 'ok' ? $device?->name : null), 120),
+            'flagged' => $flagged,
             'user_id' => (string) $user->id,
             'device_id' => $device?->id,
             'office_id' => $officeId,
@@ -504,6 +522,22 @@ final class DeviceAttendance
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        // Told to the people who manage devices, once per spell (not on every retry), and never at the cost of the refusal itself.
+        if ($fresh) {
+            try {
+                app(InventoryNotifier::class)->notifyByPermission(
+                    ['inv_salon_devices'],
+                    'salon_device_mismatch',
+                    'Si kifaa alichoingia nacho / Not the logged-in device',
+                    "{$user->name}: " . (self::clip($where['presented_name'] ?? null, 60) ?: 'unknown device'),
+                    ['user_id' => (string) $user->id],
+                    excludeUserId: (string) $user->id,
+                );
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
     }
 
     private static function clip(mixed $v, int $n): ?string

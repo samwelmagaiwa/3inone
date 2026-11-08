@@ -93,7 +93,13 @@ class DeviceAttendanceFlow {
   /// [purpose] 'in' needs the office; 'out' does not. Returns what the server measured: how far the phone was from the place it is checked against.
   Future<PlaceResult?> run({required final String purpose, final int? officeId}) async {
     final String uuid = await identity.uuid();
-    final Map<String, dynamic> c = await api.attendanceChallenge(deviceUuid: uuid, purpose: purpose, officeId: officeId);
+    String? deviceName;
+    try {
+      deviceName = (await identity.facts()).name;
+    } on Exception {
+      deviceName = null; // the name is only a help for the administrator
+    }
+    final Map<String, dynamic> c = await api.attendanceChallenge(deviceUuid: uuid, purpose: purpose, officeId: officeId, deviceName: deviceName);
     final String signature = await identity.sign(c['payload']?.toString() ?? '');
     final PhonePlace? where = await identity.place();
     final Map<String, dynamic> done = await api.attendanceVerify(

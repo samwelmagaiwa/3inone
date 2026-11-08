@@ -45,6 +45,7 @@ class SalonDeviceController extends Controller
             'ip' => $d->ip,
             'user_agent' => $d->user_agent,
             'note' => $d->decision_note,
+            'consent_at' => ($d->consent_at ?? null) ? Carbon::parse($d->consent_at)->format('Y-m-d H:i') : null,
             'requested_at' => Carbon::parse($d->created_at)->format('Y-m-d H:i'),
             'decided_at' => $d->decided_at ? Carbon::parse($d->decided_at)->format('Y-m-d H:i') : null,
             'last_seen_at' => $d->last_seen_at ? Carbon::parse($d->last_seen_at)->format('Y-m-d H:i') : null,
@@ -79,6 +80,10 @@ class SalonDeviceController extends Controller
             'os_name' => 'nullable|string|max:40',
             'os_version' => 'nullable|string|max:40',
             'app_version' => 'nullable|string|max:30',
+            // the person agreed, in the app, to what is collected: no agreement, no registration
+            'consent' => 'accepted',
+        ], [
+            'consent.accepted' => 'Kubali kwanza taarifa zitakazokusanywa ili kusajili kifaa. Kama huoni swali la ridhaa, sasisha app. / Agree to what is collected before registering a device. If you are not asked, update the app.',
         ]);
         $me = $request->user();
         $device = DeviceAttendance::enroll($me, $data, $request->ip(), $request->userAgent());
@@ -101,9 +106,10 @@ class SalonDeviceController extends Controller
             'device_uuid' => 'required|string|max:64',
             'office_id' => 'nullable|integer',
             'purpose' => ['nullable', Rule::in(['in', 'out'])],
+            'device_name' => 'nullable|string|max:120',
         ]);
         try {
-            $out = DeviceAttendance::challenge($request->user(), isset($data['office_id']) ? (int) $data['office_id'] : null, $data['device_uuid'], $data['purpose'] ?? 'in', $request->ip(), $request->userAgent());
+            $out = DeviceAttendance::challenge($request->user(), isset($data['office_id']) ? (int) $data['office_id'] : null, $data['device_uuid'], $data['purpose'] ?? 'in', $request->ip(), $request->userAgent(), $data['device_name'] ?? null);
         } catch (DeviceDenied $d) {
             return $this->denied($d);
         }
@@ -173,8 +179,9 @@ class SalonDeviceController extends Controller
     #[OA\Get(path: '/inventory/salon/attendance/admin/checks', summary: 'The log of every attendance check, good and bad', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function checks(Request $request): JsonResponse
     {
-        $data = $request->validate(['user_id' => 'nullable|string|max:64', 'outcome' => 'nullable|string|max:30']);
+        $data = $request->validate(['user_id' => 'nullable|string|max:64', 'outcome' => 'nullable|string|max:30', 'flagged' => 'nullable|boolean']);
         $list = DB::table('inventory_attendance_checks')
+            ->when(!empty($data['flagged']), fn ($q) => $q->where('flagged', true))
             ->when(!empty($data['user_id']), fn ($q) => $q->where('user_id', $data['user_id']))
             ->when(!empty($data['outcome']), fn ($q) => $q->where('outcome', $data['outcome']))
             ->orderByDesc('id')->limit(200)->get();
@@ -196,10 +203,30 @@ class SalonDeviceController extends Controller
                 'place_status' => $c->place_status,
                 'place_reference' => $c->place_reference,
                 'mocked' => (bool) $c->mocked,
+                // the audit trail: which attendance it made, the device registered to the person against the one that was used
+                'attendance_id' => $c->attendance_id === null ? null : (int) $c->attendance_id,
+                'registered_device_uuid' => $c->registered_device_uuid,
+                'presented_device_uuid' => $c->presented_device_uuid,
+                'presented_device_name' => $c->presented_device_name,
+                'flagged' => (bool) $c->flagged,
+                'status' => $c->flagged ? 'not_logged_in_device' : ($c->outcome === 'ok' ? 'verified' : 'refused'),
+                'acknowledged' => $c->acknowledged_at !== null,
                 'at' => Carbon::parse($c->created_at)->setTimezone(DeviceAttendance::timezone())->format('Y-m-d H:i:s'),
             ]);
 
-        return response()->json(['data' => $rows->values()]);
+        return response()->json(['data' => $rows->values(), 'meta' => ['flagged_open' => DB::table('inventory_attendance_checks')->where('flagged', true)->whereNull('acknowledged_at')->count()]]);
+    }
+
+    #[OA\Post(path: '/inventory/salon/attendance/admin/checks/{id}/acknowledge', summary: 'Mark a "not the logged-in device" case as seen', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success')])]
+    public function acknowledge(Request $request, int $id): JsonResponse
+    {
+        $check = DB::table('inventory_attendance_checks')->find($id);
+        abort_if($check === null, 404, 'Not found');
+        // seen for the person's whole spell, not only this line: the same case is not asked about twice
+        DB::table('inventory_attendance_checks')->where('user_id', $check->user_id)->where('flagged', true)->whereNull('acknowledged_at')
+            ->update(['acknowledged_at' => now(), 'acknowledged_by' => (string) $request->user()->id, 'updated_at' => now()]);
+
+        return response()->json(['message' => 'Saved']);
     }
 
     #[OA\Get(path: '/inventory/salon/attendance/admin/offices', summary: 'Offices, with who works at each', security: [['bearerAuth' => []]], tags: ['Inventory / Salon'], responses: [new OA\Response(response: 200, description: 'Success')])]

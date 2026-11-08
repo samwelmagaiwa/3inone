@@ -567,6 +567,13 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
 
   // ------------------------------------------------------------------ the log
 
+  /// The first eight characters of a device id: enough to tell two phones apart without a wall of letters.
+  static String _shortId(final dynamic id) {
+    final String s = id?.toString() ?? '';
+
+    return s.isEmpty ? '—' : (s.length > 8 ? '${s.substring(0, 8)}…' : s);
+  }
+
   Widget _logTab(final bool sw) {
     if (_checks.isEmpty) return InvEmptyState(icon: Icons.fact_check_outlined, message: sw ? 'Bado hakuna kumbukumbu.' : 'Nothing logged yet.');
 
@@ -585,9 +592,29 @@ class _DevicesAdminScreenState extends State<DevicesAdminScreen> {
                     Row(
                       children: <Widget>[
                         Expanded(child: Text('${c['user_name'] ?? ''}  ${c['purpose'] == 'out' ? '⟵' : '⟶'}', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700))),
-                        InvBadge(label: c['outcome']?.toString() ?? '', color: c['outcome'] == 'ok' ? ThemeConstants.successGreen : ThemeConstants.errorText),
+                        InvBadge(
+                          label: c['flagged'] == true ? (sw ? 'Si kifaa alichoingia nacho' : 'Not the logged-in device') : (c['outcome']?.toString() ?? ''),
+                          color: c['outcome'] == 'ok' ? ThemeConstants.successGreen : ThemeConstants.errorText,
+                        ),
                       ],
                     ),
+                    if (c['flagged'] == true) ...<Widget>[
+                      // The audit line the administrator needs: the phone registered to this person against the one that was used.
+                      Text(
+                        '${sw ? 'Kilichosajiliwa' : 'Registered'}: ${_shortId(c['registered_device_uuid'])}  •  ${sw ? 'Kilichotumika' : 'Used'}: ${_shortId(c['presented_device_uuid'])}${(c['presented_device_name']?.toString() ?? '').isEmpty ? '' : ' (${c['presented_device_name']})'}',
+                        key: ValueKey<String>('check_devices_${c['id']}'),
+                        style: ThemeConstants.captionStyle,
+                      ),
+                      if (c['acknowledged'] != true)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            key: ValueKey<String>('check_ack_${c['id']}'),
+                            onPressed: _busy ? null : () => _do(() => _api.acknowledgeCheck((c['id'] as num).toInt())),
+                            child: Text(sw ? 'Nimeona' : 'Seen', style: const TextStyle(color: Colors.white)),
+                          ),
+                        ),
+                    ],
                     Text('${c['at'] ?? ''}${(c['ip']?.toString() ?? '').isEmpty ? '' : ' • ${c['ip']}'}${c['office_id'] == null ? '' : ' • #${c['office_id']}'}', style: ThemeConstants.captionStyle),
                     if ((c['place_status']?.toString() ?? '').isNotEmpty)
                       Text(

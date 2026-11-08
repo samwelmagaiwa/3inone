@@ -572,6 +572,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         });
         Route::middleware('salon_module:inv_salon_attendance_log')->prefix('inventory/salon/attendance/admin')->group(function () {
             Route::get('checks',                  [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'checks']);
+            Route::post('checks/{id}/acknowledge', [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'acknowledge']);
         });
         Route::middleware('salon_module:inv_salon_offices')->prefix('inventory/salon/attendance/admin')->group(function () {
             Route::get('offices',                 [\App\Http\Controllers\API\Inventory\SalonDeviceController::class, 'offices']);

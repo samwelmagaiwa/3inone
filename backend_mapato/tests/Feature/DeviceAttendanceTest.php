@@ -86,7 +86,7 @@ class DeviceAttendanceTest extends TestCase
     private function enroll(User $who, string $pem, string $uuid = 'device-uuid-0000001'): array
     {
         return $this->api($who, 'POST', '/api/inventory/salon/attendance/device/enroll', [
-            'device_uuid' => $uuid, 'public_key' => $pem, 'platform' => 'android', 'name' => "{$who->name}'s phone", 'manufacturer' => 'Tecno', 'model' => 'Spark 10', 'os_name' => 'Android', 'os_version' => '13', 'app_version' => '1.0.0+72',
+            'device_uuid' => $uuid, 'public_key' => $pem, 'platform' => 'android', 'name' => "{$who->name}'s phone", 'manufacturer' => 'Tecno', 'model' => 'Spark 10', 'os_name' => 'Android', 'os_version' => '13', 'app_version' => '1.0.0+72', 'consent' => true,
         ])->assertCreated()->json('data');
     }
 
@@ -232,8 +232,8 @@ class DeviceAttendanceTest extends TestCase
         [, $pem2] = $this->keys();
         $this->enroll($asha, $pem);
 
-        $this->api($asha, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'another-device-0002', 'public_key' => $pem2])->assertStatus(422);
-        $this->api($bahati, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'device-uuid-0000001', 'public_key' => $pem2])->assertStatus(422);
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'another-device-0002', 'public_key' => $pem2, 'consent' => true])->assertStatus(422)->assertJsonValidationErrors('device');
+        $this->api($bahati, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'device-uuid-0000001', 'public_key' => $pem2, 'consent' => true])->assertStatus(422)->assertJsonValidationErrors('device_uuid');
     }
 
     public function test_only_an_ec_p256_key_is_accepted(): void
@@ -242,8 +242,8 @@ class DeviceAttendanceTest extends TestCase
         $asha = $this->person($owner);
         $rsa = openssl_pkey_get_details(openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]))['key'];
 
-        $this->api($asha, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'device-uuid-0000001', 'public_key' => $rsa])->assertStatus(422)->assertJsonValidationErrors('public_key');
-        $this->api($asha, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'device-uuid-0000001', 'public_key' => 'not a key'])->assertStatus(422);
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'device-uuid-0000001', 'public_key' => $rsa, 'consent' => true])->assertStatus(422)->assertJsonValidationErrors('public_key');
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'device-uuid-0000001', 'public_key' => 'not a key', 'consent' => true])->assertStatus(422);
     }
 
     public function test_rejected_and_blocked_devices_cannot_start_work_and_say_so(): void
@@ -261,7 +261,7 @@ class DeviceAttendanceTest extends TestCase
         $this->challenge($bahati, null, 'device-uuid-0000009')->assertForbidden()->assertJsonPath('code', 'rejected');
         // a rejected person may ask again with another device
         [, $pem3] = $this->keys();
-        $this->api($bahati, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'device-uuid-0000010', 'public_key' => $pem3])->assertCreated();
+        $this->api($bahati, 'POST', '/api/inventory/salon/attendance/device/enroll', ['device_uuid' => 'device-uuid-0000010', 'public_key' => $pem3, 'consent' => true])->assertCreated();
     }
 
     public function test_another_device_is_refused_as_a_mismatch_even_with_a_valid_key_of_its_own(): void
@@ -272,6 +272,68 @@ class DeviceAttendanceTest extends TestCase
 
         $this->assertCount(1, $this->checks($owner, 'device_mismatch'));
         $this->assertSame(0, $this->sessions($owner));
+    }
+
+    public function test_a_device_is_registered_only_after_the_person_agreed_and_the_agreement_is_kept(): void
+    {
+        $owner = $this->salon();
+        $asha = $this->person($owner);
+        [, $pem] = $this->keys();
+        $body = ['device_uuid' => 'device-uuid-0000001', 'public_key' => $pem, 'platform' => 'android'];
+
+        // no agreement, or a "no": nothing is registered, and the message says what to do
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/device/enroll', $body)->assertStatus(422)->assertJsonValidationErrors('consent');
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/device/enroll', $body + ['consent' => false])->assertStatus(422)->assertJsonValidationErrors('consent');
+        $this->assertNull($this->api($asha, 'GET', '/api/inventory/salon/attendance/device')->json('data.device'));
+
+        // with it: registered, and when and to which wording is kept
+        $device = $this->api($asha, 'POST', '/api/inventory/salon/attendance/device/enroll', $body + ['consent' => true])->assertCreated()->json('data');
+        $this->assertNotNull($device['consent_at']);
+        $this->assertSame('v1', TenantContext::runAs($owner, fn () => TenantContext::runInService('salon', fn () => DB::table('inventory_attendance_devices')->where('id', $device['id'])->value('consent_version'))));
+    }
+
+    public function test_a_different_device_is_kept_as_not_the_logged_in_device_with_both_ids_and_the_administrator_is_told_once(): void
+    {
+        [$owner, $asha, , , $office] = $this->scene();
+
+        $this->api($asha, 'POST', '/api/inventory/salon/attendance/challenge', ['device_uuid' => 'someone-elses-phone-1', 'device_name' => 'Samsung A14', 'office_id' => $office, 'purpose' => 'in'])->assertForbidden()->assertJsonPath('code', 'device_mismatch');
+        // a retry in the same spell is the same case: logged again, not announced again
+        $this->challenge($asha, $office, 'someone-elses-phone-1')->assertForbidden();
+
+        $rows = $this->checks($owner, 'device_mismatch');
+        $this->assertCount(2, $rows);
+        $row = collect($rows)->firstWhere('presented_device_name', 'Samsung A14');
+        $this->assertTrue($row['flagged']);
+        $this->assertSame('not_logged_in_device', $row['status']);
+        $this->assertSame('device-uuid-0000001', $row['registered_device_uuid']);
+        $this->assertSame('someone-elses-phone-1', $row['presented_device_uuid']);
+        $this->assertNotEmpty($row['ip']);
+        $this->assertSame((string) $asha->id, $row['user_id']);
+
+        $told = collect($this->api($owner, 'GET', '/api/inventory/notifications')->json('data'))->where('type', 'salon_device_mismatch');
+        $this->assertCount(1, $told);
+
+        // the open count, then seen: the whole spell is marked, the lines stay
+        $this->assertSame(2, $this->api($owner, 'GET', '/api/inventory/salon/attendance/admin/checks?flagged=1')->json('meta.flagged_open'));
+        $this->api($owner, 'POST', '/api/inventory/salon/attendance/admin/checks/' . $row['id'] . '/acknowledge')->assertOk();
+        $after = $this->api($owner, 'GET', '/api/inventory/salon/attendance/admin/checks?flagged=1')->assertOk();
+        $this->assertSame(0, $after->json('meta.flagged_open'));
+        $this->assertCount(2, $after->json('data'));
+        $this->assertTrue($after->json('data.0.acknowledged'));
+    }
+
+    public function test_a_good_start_keeps_the_attendance_id_and_the_device_used(): void
+    {
+        [$owner, $asha, $key, , $office] = $this->scene();
+
+        $id = $this->startWork($asha, $key, $office)->assertCreated()->json('data.id');
+
+        $ok = $this->checks($owner, 'ok')[0];
+        $this->assertSame($id, $ok['attendance_id']);
+        $this->assertSame('verified', $ok['status']);
+        $this->assertFalse($ok['flagged']);
+        $this->assertSame($ok['registered_device_uuid'], $ok['presented_device_uuid']);
+        $this->assertSame(0, $this->api($owner, 'GET', '/api/inventory/salon/attendance/admin/checks?flagged=1')->json('meta.flagged_open'));
     }
 
     public function test_a_wrong_signature_is_refused_logged_and_burns_the_challenge(): void

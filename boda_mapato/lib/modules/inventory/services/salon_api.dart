@@ -221,6 +221,8 @@ class SalonApi {
       _data(await _api.post('/inventory/salon/attendance/device/enroll', <String, dynamic>{
         'device_uuid': uuid,
         'public_key': publicKey,
+        // The person has agreed (the app asks before this is called): the server refuses a registration without it.
+        'consent': true,
         if (platform != null) 'platform': platform,
         if (name != null) 'name': name,
         if (manufacturer != null) 'manufacturer': manufacturer,
@@ -231,8 +233,14 @@ class SalonApi {
       }));
 
   /// A short-lived, single-use challenge to sign: {challenge_id, payload, ...}. [purpose] is 'in' or 'out'.
-  Future<Map<String, dynamic>> attendanceChallenge({required final String deviceUuid, required final String purpose, final int? officeId}) async =>
-      _data(await _api.post('/inventory/salon/attendance/challenge', <String, dynamic>{'device_uuid': deviceUuid, 'purpose': purpose, if (officeId != null) 'office_id': officeId}));
+  Future<Map<String, dynamic>> attendanceChallenge({required final String deviceUuid, required final String purpose, final int? officeId, final String? deviceName}) async =>
+      _data(await _api.post('/inventory/salon/attendance/challenge', <String, dynamic>{
+        'device_uuid': deviceUuid,
+        'purpose': purpose,
+        if (officeId != null) 'office_id': officeId,
+        // kept in the log next to the registered phone, so a different phone can be told apart
+        if (deviceName != null && deviceName.isNotEmpty) 'device_name': deviceName,
+      }));
 
   /// The signed challenge (and where the phone is): starts or finishes work when the server's checks all pass.
   Future<Map<String, dynamic>> attendanceVerify({
@@ -262,6 +270,11 @@ class SalonApi {
 
   Future<List<Map<String, dynamic>>> attendanceChecks({final String? outcome}) =>
       _list('/inventory/salon/attendance/admin/checks${outcome == null ? '' : '?outcome=$outcome'}');
+
+  /// Mark a "not the logged-in device" case as seen (the person's whole open spell).
+  Future<void> acknowledgeCheck(final int id) async {
+    await _api.post('/inventory/salon/attendance/admin/checks/$id/acknowledge', <String, dynamic>{});
+  }
 
   Future<List<Map<String, dynamic>>> attendanceOffices() => _list('/inventory/salon/attendance/admin/offices');
 
