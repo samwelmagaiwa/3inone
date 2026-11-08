@@ -42,12 +42,12 @@ describe('rights follow the owner', () => {
 });
 
 describe('sign-in', () => {
-  it('sends email, phone and password, then keeps the token, the person, their rights and the services the web app supports', async () => {
+  it('sends the email and password only (no phone), then keeps the token, the person, their rights and the services the web app supports', async () => {
     const { auth, http } = configure(null);
 
-    const done = auth.login('amina@shop.test', '0712345678', 'secret');
+    const done = auth.login('amina@shop.test', 'secret');
     const req = http.expectOne(`${environment.apiUrl}/auth/login`);
-    expect(req.request.body).toEqual({ email: 'amina@shop.test', phone_number: '0712345678', password: 'secret' });
+    expect(req.request.body).toEqual({ email: 'amina@shop.test', password: 'secret' });
     req.flush({ status: 'success', message: 'ok', data: accountantPayload });
     await done;
 
@@ -61,7 +61,7 @@ describe('sign-in', () => {
   it('a wrong password leaves nobody signed in', async () => {
     const { auth, http } = configure(null);
 
-    const done = auth.login('x@y.test', '0712345678', 'bad');
+    const done = auth.login('x@y.test', 'bad');
     http.expectOne(`${environment.apiUrl}/auth/login`).flush({ status: 'error', message: 'Invalid credentials' }, { status: 401, statusText: 'Unauthorized' });
 
     await expect(done).rejects.toMatchObject({ status: 401 });

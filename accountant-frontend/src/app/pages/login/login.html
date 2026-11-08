@@ -78,19 +78,6 @@
               </span>
             </div>
 
-            <!-- Phone -->
-            <div class="field-wrap">
-              <input id="phone" name="phone" type="tel" [(ngModel)]="phone" placeholder=" " required autocomplete="tel" class="field-input field-input--icon">
-              <label for="phone" class="field-label">{{ i18n.t('login.phone') }}</label>
-              <span class="field-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="7" y="2" width="10" height="20" rx="2.5" stroke="currentColor" stroke-width="1.6" fill="currentColor" opacity="0.06"/>
-                  <path d="M11 18h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                </svg>
-              </span>
-            </div>
-            <p class="field-help">{{ i18n.t('login.phone.help') }}</p>
-
             <!-- Password -->
             <div class="field-wrap">
               <input id="password" name="password" [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password" placeholder=" " required autocomplete="current-password" class="field-input field-input--icon">
@@ -113,9 +100,9 @@
               </button>
             </div>
 
-            <!-- Forgot -->
+            <!-- Remember the email on this computer, and forgot -->
             <div class="form-row">
-              <span></span>
+              <label class="remember-wrap"><input type="checkbox" name="remember" [(ngModel)]="remember" data-testid="remember-me"> <span>{{ i18n.t('login.remember') }}</span></label>
               <a href="javascript:void(0)" (click)="showForgot()" class="forgot-link">{{ i18n.t('login.forgot') }}</a>
             </div>
 
@@ -621,6 +608,8 @@
     accent-color: #1a2f6e;
     cursor: pointer;
   }
+  .remember-wrap { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #1a2f6e; cursor: pointer; }
+  .remember-wrap input { width: 15px; height: 15px; accent-color: #1a2f6e; }
   .forgot-link {
     font-size: 11px;
     font-weight: 700;

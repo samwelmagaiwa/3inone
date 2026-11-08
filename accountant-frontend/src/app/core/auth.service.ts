@@ -103,10 +103,9 @@ export class AuthService {
     return wanted && mine.includes(wanted) ? wanted : (mine[0] ?? environment.defaultService);
   }
 
-  async login(email: string, phone: string, password: string): Promise<void> {
-    const res = await firstValueFrom(
-      this.http.post<ApiEnvelope<LoginPayload>>(`${environment.apiUrl}/auth/login`, { email, phone_number: phone, password }),
-    );
+  /** Signing in is with the email and the password, as on the phone: no phone number is asked (it is only for registering and for a forgotten password). */
+  async login(email: string, password: string): Promise<void> {
+    const res = await firstValueFrom(this.http.post<ApiEnvelope<LoginPayload>>(`${environment.apiUrl}/auth/login`, { email, password }));
     const user = toSessionUser(res.data);
     this.token.set(res.data.token);
     this.user.set(user);

@@ -6,8 +6,9 @@ import { ToastService } from '../../core/services/toast.service';
 import { byTestId, configure, settle, text, type } from '../../testing';
 import { LoginPage } from './login';
 
-async function open() {
+async function open(opts: { remembered?: string } = {}) {
   const h = configure(null);
+  if (opts.remembered) localStorage.setItem('login_remembered_email', opts.remembered);
   const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
   const fixture = TestBed.createComponent(LoginPage);
   fixture.detectChanges();
@@ -28,35 +29,34 @@ const brief = {
 const loginAnswer = { status: 'success', message: 'ok', data: { token: 'T', user: { id: 1, name: 'Amina Hassan', email: 'a@shop.test', role: 'accountant', services: [{ service_type: 'inventory' }], effective_permissions: ['inv_view_reports'] } } };
 
 describe('sign-in page', () => {
-  it('has no phone number written into it: the hint is words, not a number', async () => {
+  it('asks for the email and the password only: no phone number is asked when signing in, as on the phone', async () => {
     const { el } = await open();
-    const phone = el.querySelector('#phone') as HTMLInputElement;
-    expect(phone.placeholder).not.toMatch(/\d{6}/);
-    expect(text(el)).not.toMatch(/0\d{9}|\+255\d{9}/);
-    expect(text(el)).toContain('The phone number saved on your account.');
+    expect(el.querySelector('#phone')).toBeNull();
+    expect(el.querySelector('#email')).not.toBeNull();
+    expect(el.querySelector('#password')).not.toBeNull();
+    expect(text(el)).not.toContain('The phone number saved on your account.');
   });
 
-  it('asks for all three details before it asks the server', async () => {
+  it('asks for both details before it asks the server', async () => {
     const { h, fixture, el } = await open();
 
     type(el, '#email', 'a@shop.test');
     submit(el);
     await settle(fixture);
 
-    expect(text(el.querySelector('.form-error') as HTMLElement)).toBe('Please fill in your email, phone number and password.');
+    expect(text(el.querySelector('.form-error') as HTMLElement)).toBe('Please fill in your email and password.');
     h.http.expectNone(() => true);
   });
 
-  it('sends the details (spaces in the phone number are dropped), welcomes the person and opens their first page', async () => {
+  it('sends the email and password only, welcomes the person and opens their first page', async () => {
     const { h, navigate, fixture, el } = await open();
 
     type(el, '#email', ' a@shop.test ');
-    type(el, '#phone', '0712 345-678');
     type(el, '#password', 'secret');
     await settle(fixture);
     submit(el);
     const req = h.http.expectOne(`${environment.apiUrl}/auth/login`);
-    expect(req.request.body).toEqual({ email: 'a@shop.test', phone_number: '0712345678', password: 'secret' });
+    expect(req.request.body).toEqual({ email: 'a@shop.test', password: 'secret' });
     req.flush(loginAnswer);
     await settle(fixture);
     // an accountant first sees how the month is going; OK takes them on
@@ -75,7 +75,6 @@ describe('sign-in page', () => {
   it('an accountant whose month cannot be read still gets in, and anyone else goes straight on', async () => {
     const { h, navigate, fixture, el } = await open();
     type(el, '#email', 'a@shop.test');
-    type(el, '#phone', '0712345678');
     type(el, '#password', 'secret');
     await settle(fixture);
     submit(el);
@@ -90,7 +89,6 @@ describe('sign-in page', () => {
   it('shows the server\'s own words when sign-in fails, and plain words when the server cannot be reached', async () => {
     const { h, fixture, el } = await open();
     type(el, '#email', 'a@shop.test');
-    type(el, '#phone', '0712345678');
     type(el, '#password', 'bad');
     await settle(fixture);
 
@@ -215,5 +213,36 @@ describe('sign-in page', () => {
       expect(text(el)).toContain('Welcome'); // back at sign-in
       expect(TestBed.inject(ToastService).toasts()[0].title).toBe('Password changed');
     });
+  });
+});
+
+describe('remember me', () => {
+  it('fills the email in again the next time the page opens, so the next sign-in is the password alone', async () => {
+    localStorage.clear();
+    const first = await open();
+    type(first.el, '#email', 'a@shop.test');
+    type(first.el, '#password', 'secret');
+    await settle(first.fixture);
+    submit(first.el);
+    first.h.http.expectOne(`${environment.apiUrl}/auth/login`).flush({ ...loginAnswer, data: { ...loginAnswer.data, user: { ...loginAnswer.data.user, role: 'viewer' } } });
+    await settle(first.fixture);
+    expect(localStorage.getItem('login_remembered_email')).toBe('a@shop.test');
+
+    TestBed.resetTestingModule();
+    const again = await open({ remembered: 'a@shop.test' });
+    expect((again.el.querySelector('#email') as HTMLInputElement).value).toBe('a@shop.test');
+  });
+
+  it('forgets the email when "Remember me" is unticked', async () => {
+    localStorage.clear();
+    const { h, fixture, el } = await open();
+    (byTestId(el, 'remember-me') as HTMLInputElement).click();
+    type(el, '#email', 'a@shop.test');
+    type(el, '#password', 'secret');
+    await settle(fixture);
+    submit(el);
+    h.http.expectOne(`${environment.apiUrl}/auth/login`).flush({ ...loginAnswer, data: { ...loginAnswer.data, user: { ...loginAnswer.data.user, role: 'viewer' } } });
+    await settle(fixture);
+    expect(localStorage.getItem('login_remembered_email')).toBeNull();
   });
 });

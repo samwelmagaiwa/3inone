@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -19,7 +19,7 @@ type LoginView = 'login' | 'forgot' | 'forgot-sent' | 'reset';
   imports: [FormsModule, ModalDialogComponent],
   templateUrl: './login.html',
 })
-export class LoginPage {
+export class LoginPage implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly api = inject(AccountantApi);
   private readonly router = inject(Router);
@@ -44,6 +44,28 @@ export class LoginPage {
 
   /** The accountant's message on signing in: how the month is going. Pressing OK goes on to the dashboard. */
   protected readonly brief = signal<{ month: string; title: string; lines: string[] } | null>(null);
+
+  /** "Remember me": the email last used on this computer is filled in again, so the next sign-in is the password alone. */
+  protected remember = true;
+  private static readonly REMEMBERED_KEY = 'login_remembered_email';
+
+  ngOnInit(): void {
+    try {
+      const saved = localStorage.getItem(LoginPage.REMEMBERED_KEY);
+      if (saved && !this.email) this.email = saved;
+    } catch {
+      // nothing remembered: the person types it
+    }
+  }
+
+  private saveRemembered(): void {
+    try {
+      if (this.remember) localStorage.setItem(LoginPage.REMEMBERED_KEY, this.email.trim());
+      else localStorage.removeItem(LoginPage.REMEMBERED_KEY);
+    } catch {
+      // not remembered this time
+    }
+  }
 
   protected togglePassword(): void {
     this.showPassword.update((v) => !v);
@@ -70,14 +92,15 @@ export class LoginPage {
 
   protected async onLogin(): Promise<void> {
     const t = (k: string) => this.i18n.t(k);
-    if (!this.email.trim() || !this.cleanPhone() || !this.password) {
+    if (!this.email.trim() || !this.password) {
       this.error.set(t('login.incomplete'));
       return;
     }
     this.error.set('');
     this.loading.set(true);
     try {
-      await this.auth.login(this.email.trim(), this.cleanPhone(), this.password);
+      await this.auth.login(this.email.trim(), this.password);
+      this.saveRemembered();
       this.toastService.success(this.i18n.t('login.welcome', this.auth.user()?.name ?? ''), t('login.signed'));
       if (!(await this.showBrief())) await this.router.navigate(['/']);
     } catch (err) {
@@ -114,7 +137,7 @@ export class LoginPage {
 
   protected async onForgot(): Promise<void> {
     if (!this.email.trim() || !this.cleanPhone()) {
-      this.error.set(this.i18n.t('login.incomplete'));
+      this.error.set(this.i18n.t('forgot.incomplete'));
       return;
     }
     this.error.set('');
