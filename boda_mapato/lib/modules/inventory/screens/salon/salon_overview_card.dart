@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../constants/theme_constants.dart';
+import '../../../../providers/auth_provider.dart';
 import '../../../../services/api_service.dart';
 import '../../../../services/localization_service.dart';
 import '../../models/salon_models.dart';
@@ -104,13 +105,16 @@ class _SalonOverviewCardState extends State<SalonOverviewCard> {
             ],
           ),
           SizedBox(height: 12.h),
-          // The day in four numbers: two rows of two, each with its picture and its name.
-          Row(children: <Widget>[
-            Expanded(child: _fact(Icons.event_available_outlined, '${d.bookingsToday}', sw ? 'Miadi ya leo' : 'Bookings today', 'ov_bookings_today')),
-            SizedBox(width: 8.w),
-            Expanded(child: _fact(Icons.event_note_outlined, '${d.bookingsUpcoming}', sw ? 'Zinazokuja' : 'Coming up', 'ov_bookings_upcoming')),
-          ]),
-          SizedBox(height: 8.h),
+          // The day in four numbers: two rows of two, each with its picture and its name. The business admin's dashboard leaves the
+          // bookings out (they are for whoever keeps the diary); everyone else sees them as before.
+          if (!_isBusinessAdmin(context)) ...<Widget>[
+            Row(children: <Widget>[
+              Expanded(child: _fact(Icons.event_available_outlined, '${d.bookingsToday}', sw ? 'Miadi ya leo' : 'Bookings today', 'ov_bookings_today')),
+              SizedBox(width: 8.w),
+              Expanded(child: _fact(Icons.event_note_outlined, '${d.bookingsUpcoming}', sw ? 'Zinazokuja' : 'Coming up', 'ov_bookings_upcoming')),
+            ]),
+            SizedBox(height: 8.h),
+          ],
           Row(children: <Widget>[
             Expanded(child: _fact(Icons.people_alt_outlined, '${d.month.clients}', sw ? 'Wateja wa mwezi' : 'Clients this month', 'ov_clients')),
             SizedBox(width: 8.w),
@@ -154,6 +158,15 @@ class _SalonOverviewCardState extends State<SalonOverviewCard> {
         ],
       ),
     );
+  }
+
+  /// Is the person looking at this the business admin (the owner)? Without a signed-in person (a test host) it is someone else.
+  bool _isBusinessAdmin(BuildContext context) {
+    try {
+      return context.read<AuthProvider>().user?.access.isAdmin ?? false;
+    } on ProviderNotFoundException {
+      return false;
+    }
   }
 
   /// How many of a league table the dashboard shows; the rest is behind the More button.

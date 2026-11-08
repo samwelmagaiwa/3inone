@@ -127,6 +127,24 @@ void main() {
     expect(find.descendant(of: _key('ov_month'), matching: find.text('Loss TSH -4,000')), findsOneWidget);
   });
 
+  testWidgets('the business admin dashboard leaves the bookings out and keeps the rest', (t) async {
+    await _host(t, _FakeSalon(_overview()), role: 'admin');
+
+    expect(_key('ov_bookings_today'), findsNothing);
+    expect(_key('ov_bookings_upcoming'), findsNothing);
+    expect(find.text('Bookings today'), findsNothing);
+    expect(find.descendant(of: _key('ov_clients'), matching: find.text('4')), findsOneWidget);
+    expect(find.descendant(of: _key('ov_outstanding'), matching: find.text('TSH 20,000')), findsOneWidget);
+    expect(find.text('Top 3 stylists this month'), findsOneWidget);
+  });
+
+  testWidgets('everyone else still sees how many are booked today and coming up', (t) async {
+    await _host(t, _FakeSalon(_overview()), role: 'accountant');
+
+    expect(find.descendant(of: _key('ov_bookings_today'), matching: find.text('2')), findsOneWidget);
+    expect(find.descendant(of: _key('ov_bookings_upcoming'), matching: find.text('5')), findsOneWidget);
+  });
+
   testWidgets('says how many are booked today and coming up, how many clients, and what is owed', (t) async {
     await _host(t, _FakeSalon(_overview()));
 
