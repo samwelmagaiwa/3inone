@@ -104,7 +104,13 @@ class _SalonOverviewCardState extends State<SalonOverviewCard> {
             ],
           ),
           SizedBox(height: 12.h),
-          // The clients of the month and what is owed, each with its picture and its name (the bookings are not shown here).
+          // The day in four numbers: two rows of two, each with its picture and its name.
+          Row(children: <Widget>[
+            Expanded(child: _fact(Icons.event_available_outlined, '${d.bookingsToday}', sw ? 'Miadi ya leo' : 'Bookings today', 'ov_bookings_today')),
+            SizedBox(width: 8.w),
+            Expanded(child: _fact(Icons.event_note_outlined, '${d.bookingsUpcoming}', sw ? 'Zinazokuja' : 'Coming up', 'ov_bookings_upcoming')),
+          ]),
+          SizedBox(height: 8.h),
           Row(children: <Widget>[
             Expanded(child: _fact(Icons.people_alt_outlined, '${d.month.clients}', sw ? 'Wateja wa mwezi' : 'Clients this month', 'ov_clients')),
             SizedBox(width: 8.w),

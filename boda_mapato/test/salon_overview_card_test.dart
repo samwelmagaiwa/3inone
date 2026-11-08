@@ -127,13 +127,11 @@ void main() {
     expect(find.descendant(of: _key('ov_month'), matching: find.text('Loss TSH -4,000')), findsOneWidget);
   });
 
-  testWidgets('says how many clients there were, and what is owed; the bookings are not on the dashboard', (t) async {
+  testWidgets('says how many are booked today and coming up, how many clients, and what is owed', (t) async {
     await _host(t, _FakeSalon(_overview()));
 
-    expect(_key('ov_bookings_today'), findsNothing);
-    expect(_key('ov_bookings_upcoming'), findsNothing);
-    expect(find.text('Bookings today'), findsNothing);
-    expect(find.text('Coming up'), findsNothing);
+    expect(find.descendant(of: _key('ov_bookings_today'), matching: find.text('2')) , findsOneWidget);
+    expect(find.descendant(of: _key('ov_bookings_upcoming'), matching: find.text('5')), findsOneWidget);
     expect(find.descendant(of: _key('ov_clients'), matching: find.text('4')), findsOneWidget);
     expect(find.descendant(of: _key('ov_outstanding'), matching: find.text('TSH 20,000')), findsOneWidget);
   });
@@ -201,7 +199,7 @@ void main() {
     await _host(t, _FakeSalon(_overview()), sw: true);
 
     expect(find.text('Muhtasari wa biashara'), findsOneWidget);
-    expect(_key('ov_bookings_today'), findsNothing);
+    expect(find.descendant(of: _key('ov_bookings_today'), matching: find.text('2')), findsOneWidget);
     expect(find.text('Wahudumu 3 bora mwezi huu'), findsOneWidget);
     expect(find.text('Huduma 3 zinazouza zaidi'), findsOneWidget);
     expect(find.text('Pesa zilizopokelewa mwezi huu'), findsOneWidget);
