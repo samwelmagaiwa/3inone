@@ -73,6 +73,8 @@ The app shows only the tabs a person holds a right to, and asks the server for n
 
 ## Where a business is (registration)
 
-On the registration form the applicant can tap **Capture my current location** while standing at the business; the point (and its accuracy) is kept
-on the registration. The super admin sees it in the request's details with an **Open on the map** button (`https://www.google.com/maps?q=lat,lng`).
-It is optional, never half a point, and never changes how the request is decided.
+On the registration form the applicant must tap **Capture my current location** while standing at the business; the point (and its accuracy)
+is kept on the registration. The super admin sees it in the request's details with an **Open on the map** button (`https://www.google.com/maps?q=lat,lng`).
+It is **required**: the form will not send without it, and the server refuses a request with no point, half a point, or a reading worse than
+±100 m (`config/registration.php`, switch `REGISTRATION_REQUIRE_LOCATION=false` for an emergency). Older app versions have no capture button and
+so cannot register a new business until updated. It never changes how the request is decided.
