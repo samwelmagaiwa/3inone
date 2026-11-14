@@ -1944,3 +1944,8 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
   body:has(.theme-phone) .swal-bs-actions button { flex: 1 1 100%; margin: 0 !important; }
 }
 
+/* ═══ A page of sections in ONE card, told apart by glowing lines (the phone's joined card) ═══ */
+.ph-joined { padding: 0 !important; overflow: hidden; }
+.ph-joined > .ph-sec { position: relative; padding: 12px 14px; background: transparent !important; border: 0 !important; border-radius: 0 !important; color: #fff; }
+.ph-joined > .ph-sec h3 { font-size: 15px; font-weight: 900; margin-bottom: 4px; }
+.ph-joined > .ph-sec + .ph-sec::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(32,184,206,.7) 50%, transparent); box-shadow: 0 0 8px rgba(32,184,206,.5); }

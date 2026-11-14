@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { readSalonReport, reportRange } from './reports';
+import { TestBed } from '@angular/core/testing';
+
+import { byTestId, configure, settle } from '../../testing';
+import { ReportsPage, readSalonReport, reportRange } from './reports';
 
 describe('reports page', () => {
   const wed = new Date(2026, 10, 11);
@@ -28,5 +31,21 @@ describe('reports page', () => {
     expect(r.owed[0].client).toBe('Asha');
     expect(r.topSpenders[0].spent).toBe(200);
     expect(readSalonReport({}).byBranch).toEqual([]);
+  });
+});
+
+describe('reports page layout', () => {
+  it('puts every section of the report in ONE card, told apart by lines, not in a card each', async () => {
+    const h = configure({ services: ['salon'] });
+    const fixture = TestBed.createComponent(ReportsPage);
+    fixture.detectChanges();
+    h.http.expectOne((r) => r.url.endsWith('/inventory/salon/reports')).flush({ data: { summary: { revenue: 100 }, by_service: [], by_method: [], owed: { total: 0, list: [] }, clients: {}, stock: {} } });
+    await settle(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+
+    const joined = byTestId(el, 'rp-joined')!;
+    expect(joined.classList.contains('ph-card')).toBe(true);
+    expect(joined.querySelectorAll(':scope > section.ph-sec').length).toBeGreaterThanOrEqual(8);
+    expect(el.querySelectorAll('section.ph-card').length).toBe(0);
   });
 });

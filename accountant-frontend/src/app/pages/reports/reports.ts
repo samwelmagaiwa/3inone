@@ -89,97 +89,100 @@ export function reportRange(p: Period, now: Date): [string, string] {
         <section class="ph-card"><p class="ph-muted">{{ i18n.t('pl.loading') }}</p></section>
       } @else {
         @let d = data()!;
-        <section class="ph-card" data-testid="rp-summary">
-          <h3>{{ i18n.t('rp.summary') }}</h3>
-          <div class="ph-line"><span>{{ i18n.t('pl.revenue') }}</span><b data-testid="rp-revenue">{{ money(d.summary['revenue']) }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('st.services') }}</span><b>{{ money(d.summary['service_revenue']) }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('rp.goods') }}</span><b>{{ money(d.summary['goods_revenue']) }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('rp.discounts') }}</span><b>{{ money(d.summary['discounts']) }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('pl.expenses') }}</span><b>{{ money(d.summary['expenses']) }}</b></div>
-          @if (!d.hidden) {
-            <div class="ph-line"><span>{{ i18n.t('rp.commissions') }}</span><b>{{ money(d.summary['commissions']) }}</b></div>
-            <div class="ph-line"><b>{{ i18n.t('pl.net.profit') }}</b><b data-testid="rp-profit">{{ money(d.summary['net_profit']) }}</b></div>
+        <!-- One card, its sections told apart by the glowing lines (as on the phone) -->
+        <div class="ph-card ph-joined" data-testid="rp-joined">
+          <section class="ph-sec" data-testid="rp-summary">
+            <h3>{{ i18n.t('rp.summary') }}</h3>
+            <div class="ph-line"><span>{{ i18n.t('pl.revenue') }}</span><b data-testid="rp-revenue">{{ money(d.summary['revenue']) }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('st.services') }}</span><b>{{ money(d.summary['service_revenue']) }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('rp.goods') }}</span><b>{{ money(d.summary['goods_revenue']) }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('rp.discounts') }}</span><b>{{ money(d.summary['discounts']) }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('pl.expenses') }}</span><b>{{ money(d.summary['expenses']) }}</b></div>
+            @if (!d.hidden) {
+              <div class="ph-line"><span>{{ i18n.t('rp.commissions') }}</span><b>{{ money(d.summary['commissions']) }}</b></div>
+              <div class="ph-line"><b>{{ i18n.t('pl.net.profit') }}</b><b data-testid="rp-profit">{{ money(d.summary['net_profit']) }}</b></div>
+            }
+            <div class="ph-line"><span>{{ i18n.t('rp.sales.clients') }}</span><b>{{ d.summary['sales'] ?? 0 }} / {{ d.summary['clients'] ?? 0 }}</b></div>
+          </section>
+
+          <section class="ph-sec">
+            <h3>{{ i18n.t('rp.by.service') }}</h3>
+            @for (r of d.byService; track r.name) {
+              <div class="ph-line"><span>{{ r.name }} ×{{ r.times }}</span><b>{{ tsh(r.revenue) }}</b></div>
+              @if (!d.hidden) { <p class="ph-muted">@if (r.commission > 0 || r.materials > 0) { − @if (r.commission > 0) { {{ i18n.t('st.commission') }} {{ tsh(r.commission) }} } @if (r.materials > 0) { · {{ i18n.t('rp.goods.used') }} {{ tsh(r.materials) }} } · } <span class="ph-good">{{ i18n.t('pl.profit') }} {{ tsh(r.profit) }}</span></p> }
+            } @empty { <p class="ph-muted">{{ i18n.t('rp.none') }}</p> }
+          </section>
+
+          @if (d.goodsSold.length) {
+            <section class="ph-sec">
+              <h3>{{ i18n.t('rp.goods.sold') }}</h3>
+              @for (r of d.goodsSold; track r.name) {
+                <div class="ph-line"><span>{{ r.name }} ×{{ r.qty }}</span><b>{{ tsh(r.revenue) }}</b></div>
+                @if (!d.hidden) { <p class="ph-muted">{{ i18n.t('rp.cost') }} {{ tsh(r.cost) }} · <span class="ph-good">{{ i18n.t('pl.profit') }} {{ tsh(r.profit) }}</span></p> }
+              }
+            </section>
           }
-          <div class="ph-line"><span>{{ i18n.t('rp.sales.clients') }}</span><b>{{ d.summary['sales'] ?? 0 }} / {{ d.summary['clients'] ?? 0 }}</b></div>
-        </section>
 
-        <section class="ph-card">
-          <h3>{{ i18n.t('rp.by.service') }}</h3>
-          @for (r of d.byService; track r.name) {
-            <div class="ph-line"><span>{{ r.name }} ×{{ r.times }}</span><b>{{ tsh(r.revenue) }}</b></div>
-            @if (!d.hidden) { <p class="ph-muted">@if (r.commission > 0 || r.materials > 0) { − @if (r.commission > 0) { {{ i18n.t('st.commission') }} {{ tsh(r.commission) }} } @if (r.materials > 0) { · {{ i18n.t('rp.goods.used') }} {{ tsh(r.materials) }} } · } <span class="ph-good">{{ i18n.t('pl.profit') }} {{ tsh(r.profit) }}</span></p> }
-          } @empty { <p class="ph-muted">{{ i18n.t('rp.none') }}</p> }
-        </section>
+          <section class="ph-sec">
+            <h3>{{ i18n.t('rp.by.stylist') }}</h3>
+            @for (r of d.byStylist; track r.name) { <div class="ph-line"><span>{{ r.name }} ({{ r.services }} · {{ r.clients }} {{ i18n.t('st.clients') }})</span><b>{{ tsh(r.revenue) }}</b></div> } @empty { <p class="ph-muted">{{ i18n.t('rp.none') }}</p> }
+          </section>
 
-        @if (d.goodsSold.length) {
-          <section class="ph-card">
-            <h3>{{ i18n.t('rp.goods.sold') }}</h3>
-            @for (r of d.goodsSold; track r.name) {
-              <div class="ph-line"><span>{{ r.name }} ×{{ r.qty }}</span><b>{{ tsh(r.revenue) }}</b></div>
-              @if (!d.hidden) { <p class="ph-muted">{{ i18n.t('rp.cost') }} {{ tsh(r.cost) }} · <span class="ph-good">{{ i18n.t('pl.profit') }} {{ tsh(r.profit) }}</span></p> }
+          <section class="ph-sec">
+            <h3>{{ i18n.t('rp.by.method') }}</h3>
+            @for (r of d.byMethod; track r.method) { <div class="ph-line"><span>{{ channel(r.method) }}</span><b>{{ tsh(r.amount) }}</b></div> } @empty { <p class="ph-muted">{{ i18n.t('rp.none') }}</p> }
+          </section>
+
+          @if (d.byBranch.length) {
+            <section class="ph-sec">
+              <h3>{{ i18n.t('rp.by.branch') }}</h3>
+              @for (r of d.byBranch; track r.name) { <div class="ph-line"><span>{{ r.name }} ({{ r.sales }} {{ i18n.t('rp.sales') }})</span><b>{{ tsh(r.revenue) }}</b></div> }
+            </section>
+          }
+
+          <section class="ph-sec">
+            <h3>{{ i18n.t('rp.by.category') }}</h3>
+            @for (r of d.expenses; track r.category) { <div class="ph-line"><span>{{ r.category }}</span><b>{{ tsh(r.total) }}</b></div> } @empty { <p class="ph-muted">{{ i18n.t('rp.none') }}</p> }
+          </section>
+
+          <section class="ph-sec" data-testid="rp-diary">
+            <h3>{{ i18n.t('nav.ph.appointments') }}</h3>
+            <div class="ph-line"><span>{{ i18n.t('rp.booked') }}</span><b>{{ d.diary['booked'] ?? 0 }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('ap.s.done') }}</span><b>{{ d.diary['done'] ?? 0 }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('rp.noshows') }}</span><b>{{ d.diary['no_show'] ?? 0 }}@if (d.diary['no_show_rate'] !== null && d.diary['no_show_rate'] !== undefined) { ({{ d.diary['no_show_rate'] }}%) }</b></div>
+            <div class="ph-line"><span>{{ i18n.t('ap.s.cancelled') }}</span><b>{{ d.diary['cancelled'] ?? 0 }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('rp.open') }}</span><b>{{ d.diary['still_open'] ?? 0 }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('rp.online') }}</span><b>{{ d.diary['online'] ?? 0 }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('rp.deposits.kept') }}</span><b>{{ money(d.diary['deposits_kept']) }}</b></div>
+          </section>
+
+          <section class="ph-sec">
+            <h3>{{ i18n.t('st.clients') }}</h3>
+            <div class="ph-line"><span>{{ i18n.t('rp.came') }}</span><b>{{ d.clients['active'] ?? 0 }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('rp.new') }}</span><b>{{ d.clients['new'] ?? 0 }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('rp.returning') }}</span><b>{{ d.clients['returning'] ?? 0 }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('rp.not.seen', weeks(d)) }}</span><b>{{ d.clients['stopped_coming'] ?? 0 }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('rp.birthdays') }}</span><b>{{ d.clients['birthdays_this_month'] ?? 0 }}</b></div>
+            @if (d.topSpenders.length) {
+              <h4 class="ph-accent">{{ i18n.t('rp.best') }}</h4>
+              @for (r of d.topSpenders; track r.name) { <div class="ph-line"><span>{{ r.name }} ({{ r.visits }})</span><b>{{ tsh(r.spent) }}</b></div> }
             }
           </section>
-        }
 
-        <section class="ph-card">
-          <h3>{{ i18n.t('rp.by.stylist') }}</h3>
-          @for (r of d.byStylist; track r.name) { <div class="ph-line"><span>{{ r.name }} ({{ r.services }} · {{ r.clients }} {{ i18n.t('st.clients') }})</span><b>{{ tsh(r.revenue) }}</b></div> } @empty { <p class="ph-muted">{{ i18n.t('rp.none') }}</p> }
-        </section>
-
-        <section class="ph-card">
-          <h3>{{ i18n.t('rp.by.method') }}</h3>
-          @for (r of d.byMethod; track r.method) { <div class="ph-line"><span>{{ channel(r.method) }}</span><b>{{ tsh(r.amount) }}</b></div> } @empty { <p class="ph-muted">{{ i18n.t('rp.none') }}</p> }
-        </section>
-
-        @if (d.byBranch.length) {
-          <section class="ph-card">
-            <h3>{{ i18n.t('rp.by.branch') }}</h3>
-            @for (r of d.byBranch; track r.name) { <div class="ph-line"><span>{{ r.name }} ({{ r.sales }} {{ i18n.t('rp.sales') }})</span><b>{{ tsh(r.revenue) }}</b></div> }
+          <section class="ph-sec">
+            <h3>{{ i18n.t('pl.owed') }}</h3>
+            <div class="ph-line"><b>{{ i18n.t('rp.total') }}</b><b data-testid="rp-owed">{{ tsh(d.owedTotal) }}</b></div>
+            @for (r of d.owed; track r.client) { <div class="ph-line"><span>{{ r.client }} · {{ r.days }} {{ i18n.t('rp.days') }}</span><b>{{ tsh(r.due) }}</b></div> }
           </section>
-        }
 
-        <section class="ph-card">
-          <h3>{{ i18n.t('rp.by.category') }}</h3>
-          @for (r of d.expenses; track r.category) { <div class="ph-line"><span>{{ r.category }}</span><b>{{ tsh(r.total) }}</b></div> } @empty { <p class="ph-muted">{{ i18n.t('rp.none') }}</p> }
-        </section>
-
-        <section class="ph-card" data-testid="rp-diary">
-          <h3>{{ i18n.t('nav.ph.appointments') }}</h3>
-          <div class="ph-line"><span>{{ i18n.t('rp.booked') }}</span><b>{{ d.diary['booked'] ?? 0 }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('ap.s.done') }}</span><b>{{ d.diary['done'] ?? 0 }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('rp.noshows') }}</span><b>{{ d.diary['no_show'] ?? 0 }}@if (d.diary['no_show_rate'] !== null && d.diary['no_show_rate'] !== undefined) { ({{ d.diary['no_show_rate'] }}%) }</b></div>
-          <div class="ph-line"><span>{{ i18n.t('ap.s.cancelled') }}</span><b>{{ d.diary['cancelled'] ?? 0 }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('rp.open') }}</span><b>{{ d.diary['still_open'] ?? 0 }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('rp.online') }}</span><b>{{ d.diary['online'] ?? 0 }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('rp.deposits.kept') }}</span><b>{{ money(d.diary['deposits_kept']) }}</b></div>
-        </section>
-
-        <section class="ph-card">
-          <h3>{{ i18n.t('st.clients') }}</h3>
-          <div class="ph-line"><span>{{ i18n.t('rp.came') }}</span><b>{{ d.clients['active'] ?? 0 }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('rp.new') }}</span><b>{{ d.clients['new'] ?? 0 }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('rp.returning') }}</span><b>{{ d.clients['returning'] ?? 0 }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('rp.not.seen', weeks(d)) }}</span><b>{{ d.clients['stopped_coming'] ?? 0 }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('rp.birthdays') }}</span><b>{{ d.clients['birthdays_this_month'] ?? 0 }}</b></div>
-          @if (d.topSpenders.length) {
-            <h4 class="ph-accent">{{ i18n.t('rp.best') }}</h4>
-            @for (r of d.topSpenders; track r.name) { <div class="ph-line"><span>{{ r.name }} ({{ r.visits }})</span><b>{{ tsh(r.spent) }}</b></div> }
-          }
-        </section>
-
-        <section class="ph-card">
-          <h3>{{ i18n.t('pl.owed') }}</h3>
-          <div class="ph-line"><b>{{ i18n.t('rp.total') }}</b><b data-testid="rp-owed">{{ tsh(d.owedTotal) }}</b></div>
-          @for (r of d.owed; track r.client) { <div class="ph-line"><span>{{ r.client }} · {{ r.days }} {{ i18n.t('rp.days') }}</span><b>{{ tsh(r.due) }}</b></div> }
-        </section>
-
-        <section class="ph-card">
-          <h3>{{ i18n.t('rp.shelves') }}</h3>
-          <div class="ph-line"><span>{{ i18n.t('rp.items') }}</span><b>{{ d.stock['items'] ?? 0 }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('rp.at.cost') }}</span><b>{{ money(d.stock['at_cost']) }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('rp.at.price') }}</span><b>{{ money(d.stock['at_price']) }}</b></div>
-          <div class="ph-line"><span>{{ i18n.t('rp.low') }}</span><b>{{ d.stock['low'] ?? 0 }}</b></div>
-        </section>
+          <section class="ph-sec">
+            <h3>{{ i18n.t('rp.shelves') }}</h3>
+            <div class="ph-line"><span>{{ i18n.t('rp.items') }}</span><b>{{ d.stock['items'] ?? 0 }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('rp.at.cost') }}</span><b>{{ money(d.stock['at_cost']) }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('rp.at.price') }}</span><b>{{ money(d.stock['at_price']) }}</b></div>
+            <div class="ph-line"><span>{{ i18n.t('rp.low') }}</span><b>{{ d.stock['low'] ?? 0 }}</b></div>
+          </section>
+        </div>
       }
     </div>
   `,
