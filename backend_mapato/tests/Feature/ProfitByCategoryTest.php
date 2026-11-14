@@ -161,6 +161,72 @@ class ProfitByCategoryTest extends TestCase
         $b = $this->owner('inventory', 'B');
         $this->sell($a, $this->product($a, 'Mafuta', $this->category($a, 'Nywele'), 600, 1000), 1, 1000, 600);
 
-        $this->assertSame(['goods' => [], 'services' => []], $this->report($b)['profit_by_category']);
+        $p = $this->report($b)['profit_by_category'];
+        $this->assertSame([], $p['goods']);
+        $this->assertSame([], $p['services']);
+        $this->assertSame([], $p['categories']);
+        $this->assertEquals(0, $p['totals']['all']['sales']);
+    }
+
+    public function test_a_service_earns_what_it_sold_for_less_the_goods_it_used_and_those_goods_are_listed_under_it_with_subtotals_and_a_grand_total(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-18 10:00:00', 'Africa/Dar_es_Salaam')->utc());
+        $owner = $this->owner('salon');
+        $hair = $this->category($owner, 'Nywele', 'salon');
+        $braids = $this->product($owner, 'Knotless', $hair, 0, 40000, true, 'salon');
+        $gel = $this->product($owner, 'Gel ya nywele', $hair, 1500, 4000, false, 'salon');
+        $shampoo = $this->product($owner, 'Shampoo', $hair, 2000, 5000, false, 'salon');
+        $this->api($owner, 'PUT', "/api/inventory/salon/services/{$braids}/materials", ['items' => [['material_product_id' => $gel, 'quantity' => 2]]], 'salon')->assertOk();
+
+        $this->sell($owner, $braids, 2, 40000, 0, 'salon');   // 2 braids: sales 80,000, uses 4 gel = 6,000
+        $this->sell($owner, $shampoo, 3, 5000, 2000, 'salon'); // goods sold: sales 15,000, cost 6,000, profit 9,000
+
+        $r = $this->report($owner, 'salon');
+        $p = $r['profit_by_category'];
+
+        $svc = $p['services'][0];
+        $this->assertEquals(80000, $svc['sales']);
+        $this->assertEquals(6000, $svc['cost'], 'the goods the service used');
+        $this->assertEquals(74000, $svc['profit']);
+        $item = $svc['items'][0];
+        $this->assertEquals(74000, $item['profit']);
+        $this->assertSame('Gel ya nywele', $item['materials'][0]['name']);
+        $this->assertEquals(4, $item['materials'][0]['qty']);
+        $this->assertEquals(6000, $item['materials'][0]['cost']);
+
+        // one block per category: goods, services and both together
+        $cat = $p['categories'][0];
+        $this->assertSame('Nywele', $cat['category']);
+        $this->assertEquals(9000, $cat['goods']['profit']);
+        $this->assertEquals(74000, $cat['services']['profit']);
+        $this->assertEquals(95000, $cat['total']['sales']);
+        $this->assertEquals(83000, $cat['total']['profit']);
+
+        // the totals at the end, and they are the month's gross profit
+        $this->assertEquals(9000, $p['totals']['goods']['profit']);
+        $this->assertEquals(74000, $p['totals']['services']['profit']);
+        $this->assertEquals(83000, $p['totals']['all']['profit']);
+        $this->assertEquals($r['figures']['gross_profit'], $p['totals']['all']['profit'], 'the report ties to the month');
+        $this->assertEquals(12000, $r['figures']['cost_of_goods'], 'goods sold 6,000 + goods the services used 6,000');
+    }
+
+    public function test_the_accountant_sees_the_sales_of_services_and_their_goods_but_no_cost_or_profit(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-18 10:00:00', 'Africa/Dar_es_Salaam')->utc());
+        $owner = $this->owner('salon');
+        $hair = $this->category($owner, 'Nywele', 'salon');
+        $braids = $this->product($owner, 'Knotless', $hair, 0, 40000, true, 'salon');
+        $gel = $this->product($owner, 'Gel', $hair, 1500, 4000, false, 'salon');
+        $this->api($owner, 'PUT', "/api/inventory/salon/services/{$braids}/materials", ['items' => [['material_product_id' => $gel, 'quantity' => 2]]], 'salon')->assertOk();
+        $this->sell($owner, $braids, 1, 40000, 0, 'salon');
+        $accountant = $this->givenServices(User::factory()->create(['name' => 'Acc', 'role' => 'accountant', 'is_active' => true, 'created_by' => $owner->id]), 'salon');
+
+        $p = $this->report($accountant, 'salon')['profit_by_category'];
+
+        $this->assertEquals(40000, $p['categories'][0]['services']['sales']);
+        $this->assertEquals(0, $p['categories'][0]['services']['profit']);
+        $this->assertEquals(0, $p['categories'][0]['services']['items'][0]['materials'][0]['cost']);
+        $this->assertEquals(0, $p['totals']['all']['profit']);
+        $this->assertEquals(40000, $p['totals']['all']['sales']);
     }
 }

@@ -72,6 +72,15 @@ final class MonthlyFigures
             ->whereBetween('s.created_at', [$fromUtc, $toUtc])
             ->when($branch !== null, fn ($q) => $q->where('s.branch_id', $branch))
             ->sum(DB::raw('si.unit_cost_snapshot * si.quantity'));
+        // The goods a SALON's services used up (shampoo, dye, towels) cost money too: a service is not pure profit. They leave the shelf when the
+        // service is sold, and what they cost is kept against the sale (inventory_service_usage); the shop has none.
+        if (Schema::hasTable('inventory_service_usage')) {
+            $cogs += (float) DB::table('inventory_service_usage as u')->join('inventory_sales as s', 's.id', '=', 'u.sale_id')
+                ->whereNull('s.cancelled_at')->where('s.payment_status', '!=', 'cancelled')
+                ->whereBetween('s.created_at', [$fromUtc, $toUtc])
+                ->when($branch !== null, fn ($q) => $q->where('s.branch_id', $branch))
+                ->sum(DB::raw('u.quantity * u.unit_cost'));
+        }
 
         $expenseQuery = fn () => DB::table('inventory_expenses')->whereBetween('expense_date', [$first->toDateString(), $end->toDateString()])
             ->when(Schema::hasColumn('inventory_expenses', 'status'), fn ($q) => $q->where('status', 'approved'))

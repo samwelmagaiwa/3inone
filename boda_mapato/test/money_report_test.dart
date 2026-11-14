@@ -356,6 +356,71 @@ void main() {
     });
   });
 
+  group('profit by category: goods, services and the totals', () {
+    Map<String, dynamic> part(num sales, num cost, List<Map<String, dynamic>> items) => <String, dynamic>{'category': 'Nywele', 'qty': 5, 'sales': sales, 'cost': cost, 'profit': sales - cost, 'margin_percent': 80, 'items': items};
+    final Map<String, dynamic> salon = <String, dynamic>{
+      'profit_by_category': <String, dynamic>{
+        'goods': <dynamic>[],
+        'services': <dynamic>[],
+        'categories': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'category': 'Nywele',
+            'goods': part(15000, 6000, <Map<String, dynamic>>[<String, dynamic>{'name': 'Shampoo', 'qty': 3, 'sales': 15000, 'cost': 6000, 'profit': 9000}]),
+            'services': part(80000, 6000, <Map<String, dynamic>>[
+              <String, dynamic>{
+                'name': 'Knotless', 'qty': 2, 'sales': 80000, 'cost': 6000, 'profit': 74000,
+                'materials': <Map<String, dynamic>>[<String, dynamic>{'name': 'Gel ya nywele', 'qty': 4, 'cost': 6000}],
+              },
+            ]),
+            'total': <String, dynamic>{'category': 'Nywele', 'qty': 8, 'sales': 95000, 'cost': 12000, 'profit': 83000, 'margin_percent': 87.4},
+          },
+        ],
+        'totals': <String, dynamic>{
+          'goods': <String, dynamic>{'sales': 15000, 'cost': 6000, 'profit': 9000},
+          'services': <String, dynamic>{'sales': 80000, 'cost': 6000, 'profit': 74000},
+          'all': <String, dynamic>{'sales': 95000, 'cost': 12000, 'profit': 83000},
+        },
+      },
+    };
+
+    testWidgets('a category shows its total, and opens to its goods and services with subtotals, the goods each service used, and the category total', (t) async {
+      await _open(t, _FakeMoney(extra: salon));
+
+      expect((t.widget(_k('cat_total_Nywele')) as Text).data, 'TSH 83,000');
+      await t.tap(_k('cat_block_Nywele'));
+      await t.pumpAndSettle();
+      expect(_k('cat_item_goods_Nywele_Shampoo'), findsOneWidget);
+      expect(_k('cat_item_services_Nywele_Knotless'), findsOneWidget);
+      // the service's profit beside the goods it used
+      expect((t.widget(_k('cat_used_services_Nywele_Knotless')) as Text).data, contains('goods used TSH 6,000'));
+      expect((t.widget(_k('cat_used_services_Nywele_Knotless')) as Text).data, contains('Gel ya nywele ×4 (TSH 6,000)'));
+      // subtotals of goods and of services, and the category's own total
+      expect(find.descendant(of: _k('sub_goods_Nywele'), matching: find.text('TSH 9,000')), findsOneWidget);
+      expect(find.descendant(of: _k('sub_services_Nywele'), matching: find.text('TSH 74,000')), findsOneWidget);
+      expect(find.descendant(of: _k('cat_sum_Nywele'), matching: find.text('TSH 83,000')), findsOneWidget);
+    });
+
+    testWidgets('the totals of all the goods, all the services and everything close the section', (t) async {
+      await _open(t, _FakeMoney(extra: salon));
+
+      expect(find.descendant(of: _k('totals_goods'), matching: find.text('TSH 9,000')), findsOneWidget);
+      expect(find.descendant(of: _k('totals_services'), matching: find.text('TSH 74,000')), findsOneWidget);
+      expect(find.descendant(of: _k('totals_all'), matching: find.text('TSH 83,000')), findsOneWidget);
+    });
+
+    testWidgets('in Swahili', (t) async {
+      await _open(t, _FakeMoney(extra: salon), sw: true);
+      await t.tap(_k('cat_block_Nywele'));
+      await t.pumpAndSettle();
+
+      expect(find.text('Jumla ndogo ya huduma'), findsOneWidget);
+      expect(find.text('Jumla ndogo ya bidhaa'), findsOneWidget);
+      expect(find.text('Jumla ya kundi'), findsOneWidget);
+      expect(find.text('Jumla yote'), findsOneWidget);
+      expect((t.widget(_k('cat_used_services_Nywele_Knotless')) as Text).data, contains('bidhaa zilizotumika'));
+    });
+  });
+
   group('the profit target', () {
     testWidgets('none yet: offered, and setting one sends the month and amount', (t) async {
       final _FakeMoney api = _FakeMoney();

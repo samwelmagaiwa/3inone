@@ -279,18 +279,25 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
           ]),
         ),
       // What each category earned: its products (or services) together under it, the biggest earner first.
-      if (_byCategory('goods').isNotEmpty || _byCategory('services').isNotEmpty)
+      if (_categories().isNotEmpty || _byCategory('goods').isNotEmpty || _byCategory('services').isNotEmpty)
         _padded(
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
             _section(owner ? (sw ? 'Faida kwa kundi' : 'Profit by category') : (sw ? 'Mauzo kwa kundi' : 'Sales by category'), key: 'by_category_title'),
-            if (_byCategory('goods').isNotEmpty) ...<Widget>[
-              if (_byCategory('services').isNotEmpty) _kindHeading(sw ? 'Bidhaa' : 'Goods', 'kind_goods'),
-              for (final Map<String, dynamic> c in _byCategory('goods')) _categoryTile(sw, owner, 'goods', c),
-            ],
-            if (_byCategory('services').isNotEmpty) ...<Widget>[
-              if (_byCategory('goods').isNotEmpty) const SizedBox(height: 6),
-              _kindHeading(sw ? 'Huduma' : 'Services', 'kind_services'),
-              for (final Map<String, dynamic> c in _byCategory('services')) _categoryTile(sw, owner, 'services', c),
+            if (_categories().isNotEmpty) ...<Widget>[
+              // One block per category: its goods, its services (with the goods each used), the subtotals, then the totals of everything.
+              for (final Map<String, dynamic> c in _categories()) _categoryBlock(sw, owner, c),
+              _totalsBlock(sw, owner),
+            ] else ...<Widget>[
+              // An older server that sends only the two lists.
+              if (_byCategory('goods').isNotEmpty) ...<Widget>[
+                if (_byCategory('services').isNotEmpty) _kindHeading(sw ? 'Bidhaa' : 'Goods', 'kind_goods'),
+                for (final Map<String, dynamic> c in _byCategory('goods')) _categoryTile(sw, owner, 'goods', c),
+              ],
+              if (_byCategory('services').isNotEmpty) ...<Widget>[
+                if (_byCategory('goods').isNotEmpty) const SizedBox(height: 6),
+                _kindHeading(sw ? 'Huduma' : 'Services', 'kind_services'),
+                for (final Map<String, dynamic> c in _byCategory('services')) _categoryTile(sw, owner, 'services', c),
+              ],
             ],
           ]),
         ),
@@ -346,6 +353,80 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
 
   /// The categories of one kind ('goods' or 'services'), as the server worked them out.
   List<Map<String, dynamic>> _byCategory(final String kind) => _list(_m(_r['profit_by_category'])[kind]);
+
+  List<Map<String, dynamic>> _categories() => _list(_m(_r['profit_by_category'])['categories']);
+
+  /// One category, closed: its total on the line. Opened: its goods and its services each with their items and a subtotal, then the category's total.
+  Widget _categoryBlock(final bool sw, final bool owner, final Map<String, dynamic> c) {
+    final String name = c['category'] == null ? (sw ? 'Bila kundi' : 'No category') : '${c['category']}';
+    final Map<String, dynamic> total = _m(c['total']);
+    final String key = owner ? 'profit' : 'sales';
+    final Map<String, dynamic>? goods = c['goods'] is Map ? _m(c['goods']) : null;
+    final Map<String, dynamic>? services = c['services'] is Map ? _m(c['services']) : null;
+    final dynamic margin = total['margin_percent'];
+
+    Widget kind(final String heading, final String id, final Map<String, dynamic> part, final bool isService) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _kindHeading(heading, 'kind_${id}_$name'),
+            for (final Map<String, dynamic> i in _list(part['items'])) ...<Widget>[
+              _line('${i['name']}  ×${i['qty']}', tsh(_n(i[key])), key: 'cat_item_${id}_${name}_${i['name']}'),
+              if (isService && owner)
+                Padding(
+                  padding: const EdgeInsets.only(left: 10, bottom: 4),
+                  child: Text(
+                    '${sw ? 'Mauzo' : 'Sold'} ${tsh(_n(i['sales']))}  −  ${sw ? 'bidhaa zilizotumika' : 'goods used'} ${tsh(_n(i['cost']))}'
+                    '${_list(i['materials']).isEmpty ? '' : '\n${_list(i['materials']).map((Map<String, dynamic> m) => '${m['name']} ×${m['qty']} (${tsh(_n(m['cost']))})').join(', ')}'}',
+                    key: Key('cat_used_${id}_${name}_${i['name']}'),
+                    style: kMoneyCaption,
+                  ),
+                ),
+            ],
+            _line(isService ? (sw ? 'Jumla ndogo ya huduma' : 'Subtotal: services') : (sw ? 'Jumla ndogo ya bidhaa' : 'Subtotal: goods'), tsh(_n(part[key])), key: 'sub_${id}_$name', bold: true),
+          ],
+        );
+
+    return Material(
+      type: MaterialType.transparency,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          key: Key('cat_block_$name'),
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(left: 10),
+          iconColor: Colors.white70,
+          collapsedIconColor: Colors.white54,
+          title: Row(children: <Widget>[
+            Expanded(child: Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+            Text(tsh(_n(total[key])), key: Key('cat_total_$name'), style: TextStyle(color: _n(total[key]) < 0 ? ThemeConstants.errorText : Colors.white, fontWeight: FontWeight.w800)),
+          ]),
+          subtitle: Text(owner ? '${sw ? 'Mauzo' : 'Sales'} ${tsh(_n(total['sales']))}${margin == null ? '' : '  ·  $margin%'}' : '${sw ? 'Mauzo' : 'Sales'} ${tsh(_n(total['sales']))}', style: kMoneyCaption),
+          children: <Widget>[
+            if (goods != null) kind(sw ? 'Bidhaa' : 'Goods', 'goods', goods, false),
+            if (services != null) kind(sw ? 'Huduma' : 'Services', 'services', services, true),
+            if (goods != null && services != null) _line(sw ? 'Jumla ya kundi' : 'Category total', tsh(_n(total[key])), key: 'cat_sum_$name', bold: true),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The totals of everything at the foot of the section: all the goods, all the services, and the whole.
+  Widget _totalsBlock(final bool sw, final bool owner) {
+    final Map<String, dynamic> t = _m(_m(_r['profit_by_category'])['totals']);
+    final String key = owner ? 'profit' : 'sales';
+    if (t.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+        const SectionGlowDivider(lift: false),
+        _line(sw ? 'Jumla ya bidhaa' : 'Total: goods', tsh(_n(_m(t['goods'])[key])), key: 'totals_goods'),
+        _line(sw ? 'Jumla ya huduma' : 'Total: services', tsh(_n(_m(t['services'])[key])), key: 'totals_services'),
+        _line(sw ? 'Jumla yote' : 'Total: all', tsh(_n(_m(t['all'])[key])), key: 'totals_all', bold: true),
+      ]),
+    );
+  }
 
   Widget _kindHeading(final String text, final String key) =>
       Padding(key: Key(key), padding: const EdgeInsets.only(top: 2, bottom: 2), child: Text(text.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.8, color: ThemeConstants.invAccent)));
