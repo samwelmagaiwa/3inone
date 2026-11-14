@@ -211,16 +211,18 @@ describe('the menu of the business admin, on a phone and on a computer', () => {
   it("lists the phone's menus that the web does not have yet, marked as on the phone, for the rights held", async () => {
     const { el } = await open(ADMIN);
     expect(text(el.querySelector('[data-testid=nav-phone-title]') as HTMLElement)).toBe('On the phone');
-    for (const k of ['business', 'offers', 'settings']) expect(el.querySelector(`[data-testid=nav-phone-${k}]`)).not.toBeNull();
+    for (const k of ['offers']) expect(el.querySelector(`[data-testid=nav-phone-${k}]`)).not.toBeNull();
     expect(el.querySelector('[data-testid=nav-phone-feedback]')).toBeNull(); // no right for it
     expect(el.querySelector('[data-testid=nav-phone-money]')).toBeNull(); // Money is a real page now
     expect(nav(el)).toContain('Money');
-    expect(text(el.querySelector('[data-testid=nav-phone-business]') as HTMLElement)).toContain('Phone');
-    expect(el.querySelector('[data-testid=nav-phone-business]')!.tagName).toBe('SPAN'); // not a link: nothing to open yet
+    expect(text(el.querySelector('[data-testid=nav-phone-offers]') as HTMLElement)).toContain('Phone');
+    expect(el.querySelector('[data-testid=nav-phone-offers]')!.tagName).toBe('SPAN'); // not a link: nothing to open yet
     expect(el.querySelector('[data-testid=nav-phone-appointments]')).toBeNull(); // real pages now
     expect(el.querySelector('[data-testid=nav-phone-stylists]')).toBeNull();
     expect(el.querySelector('[data-testid=nav-phone-team]')).toBeNull();
     expect(el.querySelector('[data-testid=nav-phone-rebook]')).toBeNull();
+    expect(el.querySelector('[data-testid=nav-phone-business]')).toBeNull();
+    expect(el.querySelector('[data-testid=nav-phone-settings]')).toBeNull();
   });
 
   it('the accountant is not shown the phone-only list', async () => {

@@ -6,7 +6,7 @@ import { AuthService } from './auth.service';
  * The server enforces the same rights; this keeps the screens honest.
  */
 export interface NavItem {
-  key: 'dashboard' | 'products' | 'sales' | 'credit' | 'debts' | 'expenses' | 'branch_stock' | 'branches' | 'branch_team' | 'branch_sales' | 'money' | 'appointments' | 'stylists' | 'reports' | 'cashbook' | 'rebook' | 'team' | 'payroll' | 'export' | 'assistant';
+  key: 'dashboard' | 'products' | 'sales' | 'credit' | 'debts' | 'expenses' | 'branch_stock' | 'branches' | 'branch_team' | 'branch_sales' | 'money' | 'appointments' | 'stylists' | 'reports' | 'cashbook' | 'rebook' | 'team' | 'payroll' | 'export' | 'business' | 'salon_settings' | 'assistant';
   path: string;
   labelKey: string;
   hintKey: string;
@@ -190,6 +190,24 @@ export const NAV: NavItem[] = [
     allowed: (a) => a.service() === 'salon' && a.can('inv_salon_export'),
   },
   {
+    key: 'business',
+    path: '/business',
+    labelKey: 'nav.ph.business',
+    hintKey: 'nav.business.hint',
+    group: 'overview',
+    icon: 'M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6',
+    allowed: (a) => a.service() === 'salon' && a.can('inv_manage_settings'),
+  },
+  {
+    key: 'salon_settings',
+    path: '/salon-settings',
+    labelKey: 'nav.ph.settings',
+    hintKey: 'nav.salon.settings.hint',
+    group: 'overview',
+    icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4',
+    allowed: (a) => a.service() === 'salon' && a.can('inv_manage_settings'),
+  },
+  {
     key: 'money',
     path: '/money',
     labelKey: 'nav.ph.money',
@@ -227,9 +245,7 @@ export const PHONE_ONLY: PhoneOnly[] = [
   { key: 'insights', labelKey: 'nav.ph.insights', right: 'inv_salon_insights', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' },
   { key: 'feedback', labelKey: 'nav.ph.feedback', right: 'inv_salon_feedback', icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z' },
   { key: 'equipment', labelKey: 'nav.ph.equipment', right: 'inv_salon_equipment', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
-  { key: 'business', labelKey: 'nav.ph.business', right: 'inv_manage_settings', icon: 'M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6' },
   { key: 'offers', labelKey: 'nav.ph.offers', right: 'inv_manage_settings', icon: 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z' },
-  { key: 'settings', labelKey: 'nav.ph.settings', right: 'inv_manage_settings', icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4' },
 ];
 
 /** The phone-only menus this person would see in the menu: the business admin of a salon, for the rights held. */
