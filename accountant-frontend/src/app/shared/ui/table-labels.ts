@@ -23,7 +23,7 @@ export function labelTable(table: HTMLTableElement): void {
 }
 
 export function labelAllTables(root: ParentNode = document): void {
-  root.querySelectorAll('table.grid-table').forEach((t) => labelTable(t as HTMLTableElement));
+  root.querySelectorAll('table.grid-table, table.premium-table').forEach((t) => labelTable(t as HTMLTableElement));
 }
 
 export function installTableLabels(): void {
