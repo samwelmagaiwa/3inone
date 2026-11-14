@@ -6,7 +6,7 @@ import { AuthService } from './auth.service';
  * The server enforces the same rights; this keeps the screens honest.
  */
 export interface NavItem {
-  key: 'dashboard' | 'products' | 'sales' | 'credit' | 'debts' | 'expenses' | 'branch_stock' | 'branches' | 'branch_team' | 'branch_sales' | 'money' | 'appointments' | 'stylists' | 'reports' | 'cashbook' | 'assistant';
+  key: 'dashboard' | 'products' | 'sales' | 'credit' | 'debts' | 'expenses' | 'branch_stock' | 'branches' | 'branch_team' | 'branch_sales' | 'money' | 'appointments' | 'stylists' | 'reports' | 'cashbook' | 'rebook' | 'team' | 'assistant';
   path: string;
   labelKey: string;
   hintKey: string;
@@ -154,6 +154,24 @@ export const NAV: NavItem[] = [
     allowed: (a) => a.service() === 'salon' && a.can('inv_salon_cashbook'),
   },
   {
+    key: 'rebook',
+    path: '/rebook',
+    labelKey: 'nav.ph.rebook',
+    hintKey: 'nav.rebook.hint',
+    group: 'overview',
+    icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
+    allowed: (a) => a.service() === 'salon' && a.can('inv_salon_rebook'),
+  },
+  {
+    key: 'team',
+    path: '/team',
+    labelKey: 'nav.ph.team',
+    hintKey: 'nav.team.hint',
+    group: 'overview',
+    icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+    allowed: (a) => a.service() === 'salon' && a.can('inv_salon_team'),
+  },
+  {
     key: 'money',
     path: '/money',
     labelKey: 'nav.ph.money',
@@ -187,9 +205,7 @@ export interface PhoneOnly {
 }
 
 export const PHONE_ONLY: PhoneOnly[] = [
-  { key: 'rebook', labelKey: 'nav.ph.rebook', right: 'inv_salon_rebook', icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' },
   { key: 'queue', labelKey: 'nav.ph.queue', right: 'inv_salon_walkins', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-  { key: 'team', labelKey: 'nav.ph.team', right: 'inv_salon_team', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
   { key: 'insights', labelKey: 'nav.ph.insights', right: 'inv_salon_insights', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' },
   { key: 'feedback', labelKey: 'nav.ph.feedback', right: 'inv_salon_feedback', icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z' },
   { key: 'equipment', labelKey: 'nav.ph.equipment', right: 'inv_salon_equipment', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },

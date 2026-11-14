@@ -30,6 +30,8 @@ export const routes: Routes = [
       { path: 'stylists', canActivate: [canOpen('stylists')], loadComponent: () => import('./pages/stylists/stylists').then((m) => m.StylistsPage) },
       { path: 'reports', canActivate: [canOpen('reports')], loadComponent: () => import('./pages/reports/reports').then((m) => m.ReportsPage) },
       { path: 'cashbook', canActivate: [canOpen('cashbook')], loadComponent: () => import('./pages/cashbook/cashbook').then((m) => m.CashbookPage) },
+      { path: 'rebook', canActivate: [canOpen('rebook')], loadComponent: () => import('./pages/rebook/rebook').then((m) => m.RebookPage) },
+      { path: 'team', canActivate: [canOpen('team')], loadComponent: () => import('./pages/team/team').then((m) => m.TeamPage) },
       { path: 'money', canActivate: [canOpen('money')], loadComponent: () => import('./pages/money/money').then((m) => m.MoneyPage) },
       { path: 'branch-team', canActivate: [canOpen('branch_team')], loadComponent: () => import('./pages/branch-team/branch-team').then((m) => m.BranchTeamPage) },
       { path: 'branch-sales', canActivate: [canOpen('branch_sales')], loadComponent: () => import('./pages/branch-sales/branch-sales').then((m) => m.BranchSalesPage) },
