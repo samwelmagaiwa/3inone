@@ -103,7 +103,7 @@ describe('the frame', () => {
     both.h.http.expectOne(`${environment.apiUrl}/inventory/notifications`).flush({ data: [], meta: { unread_count: 0 } });
     await settle(both.fixture);
     expect(both.h.auth.service()).toBe('salon');
-    expect(nav(both.el)).toEqual(['Salon dashboard', 'Sales by branch', 'Sales', 'Customers & credit', 'Debts', 'Expenses']);
+    expect(nav(both.el)).toEqual(['Salon dashboard', 'Sales by branch', 'Reports', 'Sales', 'Customers & credit', 'Debts', 'Expenses']);
     expect(both.navigate).toHaveBeenCalledWith(['/dashboard']);
   });
 

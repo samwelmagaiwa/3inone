@@ -192,7 +192,7 @@ describe('pages by rights', () => {
   it('in the salon the month, the clients and the debts are there too (the phone has them), and goods by branch needs its own right', () => {
     const { auth } = configure({ services: ['inventory', 'salon'] });
     auth.switchService('salon');
-    expect(keys(auth)).toEqual(['dashboard', 'sales', 'credit', 'debts', 'expenses', 'branch_sales']);
+    expect(keys(auth)).toEqual(['dashboard', 'sales', 'credit', 'debts', 'expenses', 'branch_sales', 'reports']);
     expect(homePath(auth)).toBe('/dashboard');
   });
 
