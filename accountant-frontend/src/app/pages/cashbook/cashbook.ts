@@ -116,37 +116,40 @@ export function cashRange(p: Period, now: Date): [string, string] {
         <section class="ph-card"><p class="ph-muted">{{ i18n.t('pl.loading') }}</p></section>
       } @else {
         @let b = book()!;
-        @for (p of b.places; track p.place) {
-          <section class="ph-card" [attr.data-testid]="'cb-place-' + p.place">
-            <button type="button" class="cb-head" (click)="toggle(p.place)">
-              <span><h3>{{ placeName(p.place) }}</h3><span class="ph-muted">{{ i18n.t('cb.should') }}: </span><b [attr.data-testid]="'cb-closing-' + p.place">{{ tsh(p.closing) }}</b></span>
-              <span>{{ open().includes(p.place) ? '▴' : '▾' }}</span>
-            </button>
-            @if (open().includes(p.place)) {
-              <div class="ph-line"><span>{{ i18n.t('cb.opening') }}</span><b>{{ tsh(p.opening) }}</b></div>
-              <div class="ph-line"><span>{{ i18n.t('cb.in') }}</span><b>{{ tsh(p.in) }}</b></div>
-              <div class="ph-line"><span>{{ i18n.t('cb.out') }}</span><b>{{ tsh(p.out) }}</b></div>
-              @for (d of p.days; track d.date) {
-                <div class="cb-day">
-                  <div class="ph-line"><span>{{ d.date }}</span><b>{{ tsh(d.closing) }}</b></div>
-                  <p class="ph-muted">{{ i18n.t('cb.in') }} {{ tsh(d.in) }} · {{ i18n.t('cb.out') }} {{ tsh(d.out) }}@if (d.counted !== null) { · {{ i18n.t('cb.counted') }} {{ tsh(d.counted) }} }
-                    @if (d.counted !== null && d.difference !== 0) { <b [class.ph-bad]="d.difference < 0" [class.ph-warn]="d.difference > 0"> {{ d.difference < 0 ? '−' : '+' }} {{ tsh(Math.abs(d.difference)) }}</b> }</p>
+        <!-- One card, its sections told apart by the glowing lines (as on the phone) -->
+        <div class="ph-card ph-joined" data-testid="cb-joined">
+          @for (p of b.places; track p.place) {
+            <section class="ph-sec" [attr.data-testid]="'cb-place-' + p.place">
+              <button type="button" class="cb-head" (click)="toggle(p.place)">
+                <span><h3>{{ placeName(p.place) }}</h3><span class="ph-muted">{{ i18n.t('cb.should') }}: </span><b [attr.data-testid]="'cb-closing-' + p.place">{{ tsh(p.closing) }}</b></span>
+                <span>{{ open().includes(p.place) ? '▴' : '▾' }}</span>
+              </button>
+              @if (open().includes(p.place)) {
+                <div class="ph-line"><span>{{ i18n.t('cb.opening') }}</span><b>{{ tsh(p.opening) }}</b></div>
+                <div class="ph-line"><span>{{ i18n.t('cb.in') }}</span><b>{{ tsh(p.in) }}</b></div>
+                <div class="ph-line"><span>{{ i18n.t('cb.out') }}</span><b>{{ tsh(p.out) }}</b></div>
+                @for (d of p.days; track d.date) {
+                  <div class="cb-day">
+                    <div class="ph-line"><span>{{ d.date }}</span><b>{{ tsh(d.closing) }}</b></div>
+                    <p class="ph-muted">{{ i18n.t('cb.in') }} {{ tsh(d.in) }} · {{ i18n.t('cb.out') }} {{ tsh(d.out) }}@if (d.counted !== null) { · {{ i18n.t('cb.counted') }} {{ tsh(d.counted) }} }
+                      @if (d.counted !== null && d.difference !== 0) { <b [class.ph-bad]="d.difference < 0" [class.ph-warn]="d.difference > 0"> {{ d.difference < 0 ? '−' : '+' }} {{ tsh(Math.abs(d.difference)) }}</b> }</p>
+                  </div>
+                }
+              }
+            </section>
+          }
+          @if (b.moves.length) {
+            <section class="ph-sec">
+              <h3>{{ i18n.t('cb.owner.moves') }}</h3>
+              @for (m of b.moves; track m.id) {
+                <div class="ph-row" style="padding: 4px 0" [attr.data-testid]="'cb-move-' + m.id">
+                  <span>{{ kindName(m.kind) }} · {{ placeName(m.method) }}<br /><span class="ph-muted">{{ m.movedOn }}@if (m.note) { · {{ m.note }} }</span></span>
+                  <span><b>{{ tsh(m.amount) }}</b> <button type="button" class="btn-outline" style="padding: 0 8px" (click)="removeMove(m)" [attr.aria-label]="i18n.t('cb.remove')" [attr.data-testid]="'cb-remove-' + m.id">×</button></span>
                 </div>
               }
-            }
-          </section>
-        }
-        @if (b.moves.length) {
-          <section class="ph-card">
-            <h3>{{ i18n.t('cb.owner.moves') }}</h3>
-            @for (m of b.moves; track m.id) {
-              <div class="ph-row" style="padding: 4px 0" [attr.data-testid]="'cb-move-' + m.id">
-                <span>{{ kindName(m.kind) }} · {{ placeName(m.method) }}<br /><span class="ph-muted">{{ m.movedOn }}@if (m.note) { · {{ m.note }} }</span></span>
-                <span><b>{{ tsh(m.amount) }}</b> <button type="button" class="btn-outline" style="padding: 0 8px" (click)="removeMove(m)" [attr.aria-label]="i18n.t('cb.remove')" [attr.data-testid]="'cb-remove-' + m.id">×</button></span>
-              </div>
-            }
-          </section>
-        }
+            </section>
+          }
+        </div>
       }
     </div>
 

@@ -113,10 +113,13 @@ interface Staff {
       @if (!stylist()) { <button type="button" class="btn-primary ph-btn" (click)="openForm(null)" data-testid="appt-add">{{ i18n.t('ap.book') }}</button> }
 
       @if (settings(); as s) {
-        <section class="ph-card ph-row"><span>{{ i18n.t('ap.remind') }}</span><input type="checkbox" [checked]="s.reminders" (change)="switchSetting('appointment_reminders', $any($event.target).checked)" data-testid="appt-reminders" /></section>
-        @if (auth.can('inv_salon_money')) {
-          <section class="ph-card ph-row"><span>{{ i18n.t('ap.daily') }}</span><input type="checkbox" [checked]="s.daily" (change)="switchSetting('daily_summary', $any($event.target).checked)" data-testid="appt-daily" /></section>
-        }
+        <!-- One card, its sections told apart by the glowing lines (as on the phone) -->
+        <div class="ph-card ph-joined" data-testid="ap-switches">
+          <section class="ph-sec ph-row"><span>{{ i18n.t('ap.remind') }}</span><input type="checkbox" [checked]="s.reminders" (change)="switchSetting('appointment_reminders', $any($event.target).checked)" data-testid="appt-reminders" /></section>
+          @if (auth.can('inv_salon_money')) {
+            <section class="ph-sec ph-row"><span>{{ i18n.t('ap.daily') }}</span><input type="checkbox" [checked]="s.daily" (change)="switchSetting('daily_summary', $any($event.target).checked)" data-testid="appt-daily" /></section>
+          }
+        </div>
       }
 
       @if (error()) {
@@ -127,27 +130,30 @@ interface Staff {
         <section class="ph-card"><p class="ph-muted" data-testid="appt-empty">{{ i18n.t('ap.empty') }}</p></section>
       } @else {
         <p class="ph-muted" data-testid="appt-count">{{ i18n.t('ap.count', items().length) }}</p>
-        @for (a of items(); track a.id) {
-          <section class="ph-card" [style.opacity]="isActive(a) || a.status === 'done' ? 1 : 0.6" [attr.data-testid]="'appt-' + a.id">
-            <div class="ph-row"><b class="ph-accent">{{ hm(a.startsAt) }}–{{ hm(a.endsAt) }}</b><span class="ph-badge" [class]="statusClass(a.status)">{{ statusName(a.status) }}</span></div>
-            <h3>{{ a.clientName }}</h3>
-            @if (a.clientPhone) { <p class="ph-muted">{{ a.clientPhone }}</p> }
-            <p class="ph-muted">{{ servicesText(a) }}</p>
-            <div class="ph-row"><span [class.ph-warn]="!a.staffName" class="ph-muted">{{ a.staffName ?? i18n.t('ap.no.stylist') }}</span><b>{{ tsh(a.total) }}</b></div>
-            @if (a.online) { <span class="ph-badge ph-accent">{{ i18n.t('ap.online') }}</span> }
-            @if (a.deposit > 0) { <span class="ph-badge ph-warn">{{ i18n.t('ap.deposit') }} {{ tsh(a.deposit) }}</span> }
-            @if (a.notes) { <p class="ph-muted"><i>{{ a.notes }}</i></p> }
-            <div class="ap-actions">
-              @if (a.status === 'booked') { <button type="button" class="btn-outline ph-btn" (click)="setStatus(a, 'confirmed')" [attr.data-testid]="'appt-confirm-' + a.id">{{ i18n.t('ap.confirm') }}</button> }
-              @if (a.status === 'booked' || a.status === 'confirmed') { <button type="button" class="btn-outline ph-btn" (click)="setStatus(a, 'in_progress')" [attr.data-testid]="'appt-start-' + a.id">{{ i18n.t('ap.start') }}</button> }
-              @if (isActive(a)) { <button type="button" class="btn-primary ph-btn" (click)="setStatus(a, 'done')" [attr.data-testid]="'appt-done-' + a.id">{{ i18n.t('ap.done') }}</button> }
-              @if (isActive(a) && !stylist()) { <button type="button" class="btn-outline ph-btn" (click)="openForm(a)" [attr.data-testid]="'appt-edit-' + a.id">{{ i18n.t('ap.edit') }}</button> }
-              @if (!stylist() && (a.status === 'booked' || a.status === 'confirmed')) { <button type="button" class="btn-outline ph-btn" (click)="setStatus(a, 'no_show')">{{ i18n.t('ap.noshow') }}</button> }
-              @if (isActive(a) && !stylist()) { <button type="button" class="btn-outline ph-btn" (click)="setStatus(a, 'cancelled')" [attr.data-testid]="'appt-cancel-' + a.id">{{ i18n.t('ap.cancel') }}</button> }
-            </div>
-            @if (!isActive(a)) { <p class="ph-muted">{{ i18n.t('ap.finished') }}</p> }
-          </section>
-        }
+        <!-- One card, its sections told apart by the glowing lines (as on the phone) -->
+        <div class="ph-card ph-joined" data-testid="ap-joined">
+          @for (a of items(); track a.id) {
+            <section class="ph-sec" [style.opacity]="isActive(a) || a.status === 'done' ? 1 : 0.6" [attr.data-testid]="'appt-' + a.id">
+              <div class="ph-row"><b class="ph-accent">{{ hm(a.startsAt) }}–{{ hm(a.endsAt) }}</b><span class="ph-badge" [class]="statusClass(a.status)">{{ statusName(a.status) }}</span></div>
+              <h3>{{ a.clientName }}</h3>
+              @if (a.clientPhone) { <p class="ph-muted">{{ a.clientPhone }}</p> }
+              <p class="ph-muted">{{ servicesText(a) }}</p>
+              <div class="ph-row"><span [class.ph-warn]="!a.staffName" class="ph-muted">{{ a.staffName ?? i18n.t('ap.no.stylist') }}</span><b>{{ tsh(a.total) }}</b></div>
+              @if (a.online) { <span class="ph-badge ph-accent">{{ i18n.t('ap.online') }}</span> }
+              @if (a.deposit > 0) { <span class="ph-badge ph-warn">{{ i18n.t('ap.deposit') }} {{ tsh(a.deposit) }}</span> }
+              @if (a.notes) { <p class="ph-muted"><i>{{ a.notes }}</i></p> }
+              <div class="ap-actions">
+                @if (a.status === 'booked') { <button type="button" class="btn-outline ph-btn" (click)="setStatus(a, 'confirmed')" [attr.data-testid]="'appt-confirm-' + a.id">{{ i18n.t('ap.confirm') }}</button> }
+                @if (a.status === 'booked' || a.status === 'confirmed') { <button type="button" class="btn-outline ph-btn" (click)="setStatus(a, 'in_progress')" [attr.data-testid]="'appt-start-' + a.id">{{ i18n.t('ap.start') }}</button> }
+                @if (isActive(a)) { <button type="button" class="btn-primary ph-btn" (click)="setStatus(a, 'done')" [attr.data-testid]="'appt-done-' + a.id">{{ i18n.t('ap.done') }}</button> }
+                @if (isActive(a) && !stylist()) { <button type="button" class="btn-outline ph-btn" (click)="openForm(a)" [attr.data-testid]="'appt-edit-' + a.id">{{ i18n.t('ap.edit') }}</button> }
+                @if (!stylist() && (a.status === 'booked' || a.status === 'confirmed')) { <button type="button" class="btn-outline ph-btn" (click)="setStatus(a, 'no_show')">{{ i18n.t('ap.noshow') }}</button> }
+                @if (isActive(a) && !stylist()) { <button type="button" class="btn-outline ph-btn" (click)="setStatus(a, 'cancelled')" [attr.data-testid]="'appt-cancel-' + a.id">{{ i18n.t('ap.cancel') }}</button> }
+              </div>
+              @if (!isActive(a)) { <p class="ph-muted">{{ i18n.t('ap.finished') }}</p> }
+            </section>
+          }
+        </div>
       }
     </div>
 

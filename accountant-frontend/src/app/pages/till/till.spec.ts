@@ -811,8 +811,8 @@ describe('the till: where to choose the customer', () => {
     expect(byTestId(el, 'hit-7')).not.toBeNull();
 
     byTestId(el, 'till-customer-toggle')!.click();
-    await settle(fixture);
-    await settle(fixture); // a second pass: on a busy machine the first can end before the view is redrawn
+    // on a busy machine the view can be redrawn a pass or two late: wait for it (up to ten passes) instead of guessing how many
+    for (let i = 0; i < 10 && byTestId(el, 'till-customer-list'); i++) await settle(fixture);
     expect(byTestId(el, 'till-customer-list')).toBeNull();
   });
 

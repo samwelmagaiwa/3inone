@@ -128,28 +128,31 @@ export function readStylistReport(j: Record<string, unknown>): StylistReportView
           <p class="ph-muted" [class.ph-good]="d.revenueChange >= 0" [class.ph-bad]="d.revenueChange < 0">{{ change(d.revenueChange) }} {{ i18n.t('st.vs.before') }} ({{ tsh(d.previousRevenue) }})</p>
         }
 
-        @for (r of d.stylists; track r.staffId ?? 'none') {
-          <section class="ph-card" [attr.data-testid]="'st-row-' + (r.staffId ?? 'none')">
-            <div class="ph-row">
-              <h3>@if (d.seesEveryone && r.rank) { <span class="ph-badge ph-accent">{{ r.rank }}</span> } {{ r.staffId === null || !r.name.trim() ? i18n.t('st.nobody') : r.name }}</h3>
-              <b class="ph-accent">{{ tsh(r.revenue) }}</b>
-            </div>
-            @if (r.target; as t) {
-              <div class="st-bar"><i [style.width.%]="Math.min(100, t.percent)"></i></div>
-              <div class="ph-row"><span class="ph-muted">{{ i18n.t('st.target') }} {{ tsh(t.amount) }}</span><b [class]="paceClass(t.pace)">{{ Math.round(t.percent) }}% · {{ paceName(t.pace) }}</b></div>
-            }
-            <div class="ph-line"><span>{{ i18n.t('st.services') }}</span><b>{{ r.services }}</b></div>
-            <div class="ph-line"><span>{{ i18n.t('st.visits') }}</span><b>{{ r.visits }}</b></div>
-            <div class="ph-line"><span>{{ i18n.t('st.clients') }}</span><b>{{ r.clients }}</b></div>
-            @if (r.visits > 0) { <div class="ph-line"><span>{{ i18n.t('st.avg') }}</span><b>{{ tsh(r.avgTicket) }}</b></div> }
-            @if (r.returnRate !== null) { <div class="ph-line"><span>{{ i18n.t('st.came.back') }}</span><b>{{ Math.round(r.returnRate) }}%</b></div> }
-            @if (r.share > 0 && d.seesEveryone) { <div class="ph-line"><span>{{ i18n.t('st.share') }}</span><b>{{ Math.round(r.share) }}%</b></div> }
-            @if (r.discount > 0) { <div class="ph-line"><span>{{ i18n.t('st.discount') }}</span><b>{{ tsh(r.discount) }}</b></div> }
-            @if (r.commission > 0) { <div class="ph-line"><span>{{ i18n.t('st.commission') }}</span><b>{{ tsh(r.commission) }}</b></div> }
-          </section>
-        } @empty {
-          <section class="ph-card"><p class="ph-muted" data-testid="st-empty">{{ i18n.t('st.empty') }}</p></section>
-        }
+        <!-- One card, its sections told apart by the glowing lines (as on the phone) -->
+        <div class="ph-card ph-joined" data-testid="st-joined">
+          @for (r of d.stylists; track r.staffId ?? 'none') {
+            <section class="ph-sec" [attr.data-testid]="'st-row-' + (r.staffId ?? 'none')">
+              <div class="ph-row">
+                <h3>@if (d.seesEveryone && r.rank) { <span class="ph-badge ph-accent">{{ r.rank }}</span> } {{ r.staffId === null || !r.name.trim() ? i18n.t('st.nobody') : r.name }}</h3>
+                <b class="ph-accent">{{ tsh(r.revenue) }}</b>
+              </div>
+              @if (r.target; as t) {
+                <div class="st-bar"><i [style.width.%]="Math.min(100, t.percent)"></i></div>
+                <div class="ph-row"><span class="ph-muted">{{ i18n.t('st.target') }} {{ tsh(t.amount) }}</span><b [class]="paceClass(t.pace)">{{ Math.round(t.percent) }}% · {{ paceName(t.pace) }}</b></div>
+              }
+              <div class="ph-line"><span>{{ i18n.t('st.services') }}</span><b>{{ r.services }}</b></div>
+              <div class="ph-line"><span>{{ i18n.t('st.visits') }}</span><b>{{ r.visits }}</b></div>
+              <div class="ph-line"><span>{{ i18n.t('st.clients') }}</span><b>{{ r.clients }}</b></div>
+              @if (r.visits > 0) { <div class="ph-line"><span>{{ i18n.t('st.avg') }}</span><b>{{ tsh(r.avgTicket) }}</b></div> }
+              @if (r.returnRate !== null) { <div class="ph-line"><span>{{ i18n.t('st.came.back') }}</span><b>{{ Math.round(r.returnRate) }}%</b></div> }
+              @if (r.share > 0 && d.seesEveryone) { <div class="ph-line"><span>{{ i18n.t('st.share') }}</span><b>{{ Math.round(r.share) }}%</b></div> }
+              @if (r.discount > 0) { <div class="ph-line"><span>{{ i18n.t('st.discount') }}</span><b>{{ tsh(r.discount) }}</b></div> }
+              @if (r.commission > 0) { <div class="ph-line"><span>{{ i18n.t('st.commission') }}</span><b>{{ tsh(r.commission) }}</b></div> }
+            </section>
+          } @empty {
+            <section class="ph-sec"><p class="ph-muted" data-testid="st-empty">{{ i18n.t('st.empty') }}</p></section>
+          }
+        </div>
       }
     </div>
   `,
