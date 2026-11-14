@@ -32,6 +32,8 @@ export const routes: Routes = [
       { path: 'cashbook', canActivate: [canOpen('cashbook')], loadComponent: () => import('./pages/cashbook/cashbook').then((m) => m.CashbookPage) },
       { path: 'rebook', canActivate: [canOpen('rebook')], loadComponent: () => import('./pages/rebook/rebook').then((m) => m.RebookPage) },
       { path: 'team', canActivate: [canOpen('team')], loadComponent: () => import('./pages/team/team').then((m) => m.TeamPage) },
+      { path: 'payroll', canActivate: [canOpen('payroll')], loadComponent: () => import('./pages/payroll/payroll').then((m) => m.PayrollPage) },
+      { path: 'export', canActivate: [canOpen('export')], loadComponent: () => import('./pages/export/export').then((m) => m.ExportPage) },
       { path: 'money', canActivate: [canOpen('money')], loadComponent: () => import('./pages/money/money').then((m) => m.MoneyPage) },
       { path: 'branch-team', canActivate: [canOpen('branch_team')], loadComponent: () => import('./pages/branch-team/branch-team').then((m) => m.BranchTeamPage) },
       { path: 'branch-sales', canActivate: [canOpen('branch_sales')], loadComponent: () => import('./pages/branch-sales/branch-sales').then((m) => m.BranchSalesPage) },
