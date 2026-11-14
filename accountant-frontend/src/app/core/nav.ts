@@ -6,7 +6,7 @@ import { AuthService } from './auth.service';
  * The server enforces the same rights; this keeps the screens honest.
  */
 export interface NavItem {
-  key: 'dashboard' | 'products' | 'sales' | 'credit' | 'debts' | 'expenses' | 'branch_stock' | 'branches' | 'branch_team' | 'branch_sales' | 'money' | 'assistant';
+  key: 'dashboard' | 'products' | 'sales' | 'credit' | 'debts' | 'expenses' | 'branch_stock' | 'branches' | 'branch_team' | 'branch_sales' | 'money' | 'appointments' | 'stylists' | 'assistant';
   path: string;
   labelKey: string;
   hintKey: string;
@@ -118,6 +118,24 @@ export const NAV: NavItem[] = [
     allowed: (a) => a.can('inv_view_reports'),
   },
   {
+    key: 'appointments',
+    path: '/appointments',
+    labelKey: 'nav.ph.appointments',
+    hintKey: 'nav.appointments.hint',
+    group: 'overview',
+    icon: 'M8 7V3m8 4V3M5 11h14M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z',
+    allowed: (a) => a.service() === 'salon' && a.can('inv_salon_appointments'),
+  },
+  {
+    key: 'stylists',
+    path: '/stylists',
+    labelKey: 'nav.ph.stylists',
+    hintKey: 'nav.stylists.hint',
+    group: 'overview',
+    icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
+    allowed: (a) => a.service() === 'salon' && a.can('inv_salon_stylists'),
+  },
+  {
     key: 'money',
     path: '/money',
     labelKey: 'nav.ph.money',
@@ -151,8 +169,6 @@ export interface PhoneOnly {
 }
 
 export const PHONE_ONLY: PhoneOnly[] = [
-  { key: 'appointments', labelKey: 'nav.ph.appointments', right: 'inv_salon_appointments', icon: 'M8 7V3m8 4V3M5 11h14M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z' },
-  { key: 'stylists', labelKey: 'nav.ph.stylists', right: 'inv_salon_stylists', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
   { key: 'rebook', labelKey: 'nav.ph.rebook', right: 'inv_salon_rebook', icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' },
   { key: 'queue', labelKey: 'nav.ph.queue', right: 'inv_salon_walkins', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
   { key: 'reports', labelKey: 'nav.ph.reports', right: 'inv_view_reports', icon: 'M9 17v-6m4 6V7m4 10v-3M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z' },

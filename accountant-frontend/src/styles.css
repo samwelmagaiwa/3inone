@@ -1794,3 +1794,22 @@ app-book-ward-table, app-book-summaries, app-table-toolbar, app-table-pagination
   .theme-phone .kpi-three .kpi-hint { display: none; }
   .theme-phone .kpi-three .kpi-num { font-size: clamp(11px, 3.3vw, 17px) !important; white-space: nowrap; }
 }
+
+/* ─── The phone-style page kit (used by the pages that mirror the phone's screens) ─── */
+.ph-page { display: grid; gap: 10px; max-width: 760px; margin: 0 auto; }
+.ph-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ph-chips .pill-tab { padding: 6px 12px; border-radius: 99px; font-size: 12.5px; font-weight: 800; cursor: pointer; }
+.ph-card { padding: 12px 14px; border-radius: 16px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); color: #fff; }
+.ph-card h3 { font-size: 15px; font-weight: 900; margin-bottom: 4px; }
+.ph-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.ph-tile { display: grid; gap: 2px; padding: 10px 12px; border-radius: 16px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); color: #fff; }
+.ph-tile b { font-size: 18px; font-weight: 900; }
+.ph-line { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; font-size: 14px; }
+.ph-line b { font-weight: 700; }
+.ph-muted { font-size: 12px; opacity: .72; }
+.ph-good { color: #86efac !important; } .ph-bad { color: #fca5a5 !important; } .ph-warn { color: #fcd34d !important; } .ph-accent { color: #20b8ce !important; }
+.ph-badge { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 900; border: 1px solid currentColor; }
+.ph-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ph-btn { padding: 9px 16px; border-radius: 12px; font-size: 13px; font-weight: 900; cursor: pointer; }
+.ph-field { display: grid; gap: 3px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
+.ph-field input, .ph-field select, .ph-field textarea { padding: 8px 10px; border-radius: 10px; font-size: 14px; text-transform: none; letter-spacing: 0; font-weight: 600; }
