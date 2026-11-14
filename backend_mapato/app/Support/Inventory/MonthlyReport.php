@@ -75,6 +75,7 @@ final class MonthlyReport
             'capital_change' => $capital,
             'target' => self::target($month, (float) $figures['net_profit'], $isCurrent, $isFuture, $first->daysInMonth, $isCurrent ? $today->day : null),
             'top_products' => self::topProducts($first, $last, 5, $branch),
+            'profit_by_category' => self::profitByCategory($first, $last, $branch),
             'top_customers' => self::topCustomers($first, $last, 5, $branch),
             'slow_stock' => array_slice($sleeping, 0, self::SLEEPING_SHOWN),
             'slow_stock_count' => count($sleeping),
@@ -111,6 +112,15 @@ final class MonthlyReport
         $r['target'] = null;
         $r['creditors'] = [];
         $r['top_products'] = array_map(fn (array $p) => ['profit' => 0.0] + $p, $r['top_products']);
+        // what each category sold stays; what it earned does not (left-hand values win in `+`)
+        $blank = fn (array $row): array => ['profit' => 0.0, 'cost' => 0.0, 'margin_percent' => null] + $row;
+        foreach (['goods', 'services'] as $kind) {
+            $r['profit_by_category'][$kind] = array_map(function (array $c) use ($blank): array {
+                $c['items'] = array_map($blank, $c['items']);
+
+                return $blank($c);
+            }, $r['profit_by_category'][$kind] ?? []);
+        }
         $r['owner_figures'] = false;
 
         return $r;
@@ -172,6 +182,67 @@ final class MonthlyReport
             ->limit($limit)
             ->get(['p.name', DB::raw('SUM(COALESCE(si.unit_qty, si.quantity)) as qty'), DB::raw('SUM(si.total) as sales'), DB::raw('SUM(si.total - si.unit_cost_snapshot * si.quantity) as profit')])
             ->map(fn ($r) => ['name' => $r->name, 'qty' => (int) $r->qty, 'sales' => round((float) $r->sales, 2), 'profit' => round((float) $r->profit, 2)])->all();
+    }
+
+    /**
+     * What each CATEGORY earned in the month, so everything that belongs together is read together: the goods of one category (hair care,
+     * say) with their profit added up and each product under it, and the services the same way, in their own list. The biggest earner first.
+     * A line's profit is what it sold for less what its goods cost (the same as the top products); a product with no category is listed
+     * under "no category" (`category` = null, the app words it).
+     *
+     * @return array{goods: array<int, array<string, mixed>>, services: array<int, array<string, mixed>>}
+     */
+    public static function profitByCategory(Carbon $first, Carbon $last, ?int $branch = null): array
+    {
+        $from = $first->copy()->startOfDay()->utc()->format('Y-m-d H:i:s');
+        $to = $last->copy()->endOfDay()->utc()->format('Y-m-d H:i:s');
+
+        $rows = DB::table('inventory_sale_items as si')
+            ->join('inventory_sales as s', 's.id', '=', 'si.sale_id')
+            ->join('inventory_products as p', 'p.id', '=', 'si.product_id')
+            ->leftJoin('inventory_categories as c', 'c.id', '=', 'p.category_id')
+            ->whereNull('s.cancelled_at')->where('s.payment_status', '!=', 'cancelled')
+            ->whereBetween('s.created_at', [$from, $to])
+            ->when($branch !== null, fn ($q) => $q->where('s.branch_id', $branch))
+            ->groupBy('p.id', 'p.name', 'p.is_service', 'p.category', 'c.name')
+            ->get([
+                'p.name', 'p.is_service', DB::raw('COALESCE(c.name, p.category) as category'),
+                DB::raw('SUM(COALESCE(si.unit_qty, si.quantity)) as qty'), DB::raw('SUM(si.total) as sales'),
+                DB::raw('SUM(si.unit_cost_snapshot * si.quantity) as cost'),
+            ]);
+
+        $out = ['goods' => [], 'services' => []];
+        $groups = [];
+        foreach ($rows as $r) {
+            $kind = $r->is_service ? 'services' : 'goods';
+            $name = trim((string) $r->category);
+            $key = $kind . '|' . mb_strtolower($name);
+            $groups[$key] ??= ['kind' => $kind, 'category' => $name === '' ? null : $name, 'qty' => 0, 'sales' => 0.0, 'cost' => 0.0, 'items' => []];
+            $sales = (float) $r->sales;
+            $cost = (float) $r->cost;
+            $groups[$key]['qty'] += (int) $r->qty;
+            $groups[$key]['sales'] += $sales;
+            $groups[$key]['cost'] += $cost;
+            $groups[$key]['items'][] = ['name' => $r->name, 'qty' => (int) $r->qty, 'sales' => round($sales, 2), 'profit' => round($sales - $cost, 2)];
+        }
+        foreach ($groups as $g) {
+            usort($g['items'], fn ($a, $b) => $b['profit'] <=> $a['profit']);
+            $profit = $g['sales'] - $g['cost'];
+            $out[$g['kind']][] = [
+                'category' => $g['category'],
+                'qty' => $g['qty'],
+                'sales' => round($g['sales'], 2),
+                'cost' => round($g['cost'], 2),
+                'profit' => round($profit, 2),
+                'margin_percent' => $g['sales'] > 0 ? round($profit / $g['sales'] * 100, 1) : null,
+                'items' => $g['items'],
+            ];
+        }
+        foreach (['goods', 'services'] as $kind) {
+            usort($out[$kind], fn ($a, $b) => $b['profit'] <=> $a['profit']);
+        }
+
+        return $out;
     }
 
     /** @return array<int, array<string, mixed>> */

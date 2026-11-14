@@ -254,6 +254,108 @@ void main() {
     expect(_k('debtor_Baba Juma'), findsOneWidget);
   });
 
+  group('profit by category', () {
+    Map<String, dynamic> row(String? name, num sales, num cost, List<Map<String, dynamic>> items) => <String, dynamic>{
+          'category': name, 'qty': 9, 'sales': sales, 'cost': cost, 'profit': sales - cost, 'margin_percent': sales == 0 ? null : ((sales - cost) / sales * 100).round(), 'items': items,
+        };
+    Map<String, dynamic> item(String name, int qty, num sales, num profit) => <String, dynamic>{'name': name, 'qty': qty, 'sales': sales, 'profit': profit};
+
+    final Map<String, dynamic> shop = <String, dynamic>{
+      'profit_by_category': <String, dynamic>{
+        'goods': <Map<String, dynamic>>[
+          row('Nywele', 14000, 7500, <Map<String, dynamic>>[item('Mafuta ya nywele', 10, 10000, 4000), item('Gel', 5, 4000, 2500)]),
+          row('Vinywaji', 10000, 8000, <Map<String, dynamic>>[item('Soda', 20, 10000, 2000)]),
+          row(null, 600, 300, <Map<String, dynamic>>[item('Mfuko', 3, 600, 300)]),
+        ],
+        'services': <Map<String, dynamic>>[],
+      },
+    };
+
+    testWidgets('each category shows its profit added up, the biggest first, and opens to the products under it', (t) async {
+      await _open(t, _FakeMoney(extra: shop));
+
+      expect(find.text('Profit by category'), findsOneWidget);
+      expect((t.widget(_k('cat_profit_goods_Nywele')) as Text).data, 'TSH 6,500');
+      expect((t.widget(_k('cat_profit_goods_Vinywaji')) as Text).data, 'TSH 2,000');
+      expect((t.widget(_k('cat_profit_goods_No category')) as Text).data, 'TSH 300');
+      // the hair category comes before the drinks, and a product without a category is listed apart
+      expect(t.getTopLeft(_k('cat_goods_Nywele')).dy, lessThan(t.getTopLeft(_k('cat_goods_Vinywaji')).dy));
+      expect(find.textContaining('Sales TSH 14,000  ·  46%  ·  2 items'), findsOneWidget);
+      // closed until tapped, then the products with what each earned
+      expect(_k('cat_item_goods_Nywele_Gel'), findsNothing);
+      await t.tap(_k('cat_goods_Nywele'));
+      await t.pumpAndSettle();
+      expect(_k('cat_item_goods_Nywele_Mafuta ya nywele'), findsOneWidget);
+      expect(find.text('TSH 2,500'), findsWidgets);
+      // goods only: no Goods/Services sub-headings
+      expect(_k('kind_goods'), findsNothing);
+    });
+
+    testWidgets('a salon reads its services by category apart from its goods', (t) async {
+      final Map<String, dynamic> salon = <String, dynamic>{
+        'profit_by_category': <String, dynamic>{
+          'goods': <Map<String, dynamic>>[row('Kusuka', 20000, 8000, <Map<String, dynamic>>[item('Shampoo', 4, 20000, 12000)])],
+          'services': <Map<String, dynamic>>[
+            row('Kusuka', 110000, 0, <Map<String, dynamic>>[item('Knotless', 2, 80000, 80000), item('Box braids', 1, 30000, 30000)]),
+            row('Kucha', 60000, 0, <Map<String, dynamic>>[item('Gel polish', 3, 60000, 60000)]),
+          ],
+        },
+      };
+      await _open(t, _FakeMoney(extra: salon));
+
+      expect(_k('kind_goods'), findsOneWidget);
+      expect(_k('kind_services'), findsOneWidget);
+      expect(find.text('GOODS'), findsOneWidget);
+      expect(find.text('SERVICES'), findsOneWidget);
+      // the same category name in both lists keeps its own figures
+      expect((t.widget(_k('cat_profit_services_Kusuka')) as Text).data, 'TSH 110,000');
+      expect((t.widget(_k('cat_profit_goods_Kusuka')) as Text).data, 'TSH 12,000');
+      expect((t.widget(_k('cat_profit_services_Kucha')) as Text).data, 'TSH 60,000');
+    });
+
+    testWidgets('in Swahili', (t) async {
+      await _open(t, _FakeMoney(extra: shop), sw: true);
+
+      expect(find.text('Faida kwa kundi'), findsOneWidget);
+      expect(find.text('Bila kundi'), findsOneWidget);
+      expect(find.textContaining('Mauzo TSH 14,000'), findsOneWidget);
+    });
+
+    testWidgets('someone who may not see profit sees what each category sold, never what it earned', (t) async {
+      final Map<String, dynamic> hidden = <String, dynamic>{
+        'owner_figures': false,
+        'figures': <String, dynamic>{'sales': 300000, 'sales_count': 12, 'cost_of_goods': 0, 'gross_profit': 0, 'margin_percent': null, 'expenses': 30000, 'expenses_by_category': <dynamic>[], 'personal_spending': 0, 'write_offs': 0, 'net_profit': 0},
+        'compare': <String, dynamic>{'sales': _cmp(300000, 200000, 'up', 50), 'gross_profit': _cmp(0, 0, 'same', null), 'expenses': _cmp(30000, 20000, 'up', 50, good: false), 'net_profit': _cmp(0, 0, 'same', null)},
+        'overall': <String, dynamic>{'direction': 'up', 'percent': 50, 'based_on': 'sales'},
+        'position': null, 'capital_change': null, 'target': null,
+        'profit_by_category': <String, dynamic>{
+          'goods': <Map<String, dynamic>>[
+            <String, dynamic>{'category': 'Nywele', 'qty': 15, 'sales': 14000, 'cost': 0, 'profit': 0, 'margin_percent': null, 'items': <Map<String, dynamic>>[item('Gel', 5, 4000, 0)]},
+          ],
+          'services': <Map<String, dynamic>>[],
+        },
+      };
+      await _open(t, _FakeMoney(extra: hidden));
+
+      expect(find.text('Sales by category'), findsOneWidget);
+      expect(find.text('Profit by category'), findsNothing);
+      expect((t.widget(_k('cat_profit_goods_Nywele')) as Text).data, 'TSH 14,000');
+    });
+
+    testWidgets('a month with no sales has no such section', (t) async {
+      await _open(t, _FakeMoney(extra: <String, dynamic>{'profit_by_category': <String, dynamic>{'goods': <dynamic>[], 'services': <dynamic>[]}}));
+
+      expect(_k('by_category_title'), findsNothing);
+    });
+
+    testWidgets('an older server that sends nothing about categories shows no section and nothing breaks', (t) async {
+      await _open(t, _FakeMoney());
+
+      expect(_k('by_category_title'), findsNothing);
+      expect(_k('fig_net'), findsOneWidget);
+    });
+  });
+
   group('the profit target', () {
     testWidgets('none yet: offered, and setting one sends the month and amount', (t) async {
       final _FakeMoney api = _FakeMoney();

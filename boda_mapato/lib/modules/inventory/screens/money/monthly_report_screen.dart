@@ -278,6 +278,22 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
             for (final Map<String, dynamic> p in _list(_r['top_products'])) _line('${p['name']}  ×${p['qty']}', tsh(_n(p[owner ? 'profit' : 'sales'])), key: 'top_${p['name']}'),
           ]),
         ),
+      // What each category earned: its products (or services) together under it, the biggest earner first.
+      if (_byCategory('goods').isNotEmpty || _byCategory('services').isNotEmpty)
+        _padded(
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            _section(owner ? (sw ? 'Faida kwa kundi' : 'Profit by category') : (sw ? 'Mauzo kwa kundi' : 'Sales by category'), key: 'by_category_title'),
+            if (_byCategory('goods').isNotEmpty) ...<Widget>[
+              if (_byCategory('services').isNotEmpty) _kindHeading(sw ? 'Bidhaa' : 'Goods', 'kind_goods'),
+              for (final Map<String, dynamic> c in _byCategory('goods')) _categoryTile(sw, owner, 'goods', c),
+            ],
+            if (_byCategory('services').isNotEmpty) ...<Widget>[
+              if (_byCategory('goods').isNotEmpty) const SizedBox(height: 6),
+              _kindHeading(sw ? 'Huduma' : 'Services', 'kind_services'),
+              for (final Map<String, dynamic> c in _byCategory('services')) _categoryTile(sw, owner, 'services', c),
+            ],
+          ]),
+        ),
       if (best.isNotEmpty)
         _padded(
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
@@ -325,6 +341,46 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  /// The categories of one kind ('goods' or 'services'), as the server worked them out.
+  List<Map<String, dynamic>> _byCategory(final String kind) => _list(_m(_r['profit_by_category'])[kind]);
+
+  Widget _kindHeading(final String text, final String key) =>
+      Padding(key: Key(key), padding: const EdgeInsets.only(top: 2, bottom: 2), child: Text(text.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.8, color: ThemeConstants.invAccent)));
+
+  /// One category: its profit (or, for someone who may not see profit, its sales) on the line, and what it sold under it when opened.
+  Widget _categoryTile(final bool sw, final bool owner, final String kind, final Map<String, dynamic> c) {
+    final String name = c['category'] == null ? (sw ? 'Bila kundi' : 'No category') : '${c['category']}';
+    final num shown = _n(c[owner ? 'profit' : 'sales']);
+    final dynamic margin = c['margin_percent'];
+    final List<Map<String, dynamic>> items = _list(c['items']);
+    final String caption = owner
+        ? '${sw ? 'Mauzo' : 'Sales'} ${tsh(_n(c['sales']))}${margin == null ? '' : '  ·  $margin%'}  ·  ${items.length} ${sw ? (kind == 'services' ? 'huduma' : 'bidhaa') : (kind == 'services' ? (items.length == 1 ? 'service' : 'services') : (items.length == 1 ? 'item' : 'items'))}'
+        : '${items.length} ${sw ? (kind == 'services' ? 'huduma' : 'bidhaa') : (kind == 'services' ? 'services' : 'items')}';
+
+    // The tile paints on the nearest Material: the report sits in a coloured box, so it gets a clear one of its own.
+    return Material(
+      type: MaterialType.transparency,
+      child: Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        key: Key('cat_${kind}_$name'),
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(left: 10),
+        iconColor: Colors.white70,
+        collapsedIconColor: Colors.white54,
+        title: Row(children: <Widget>[
+          Expanded(child: Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+          Text(tsh(shown), key: Key('cat_profit_${kind}_$name'), style: TextStyle(color: shown < 0 ? ThemeConstants.errorText : Colors.white, fontWeight: FontWeight.w800)),
+        ]),
+        subtitle: Text(caption, style: kMoneyCaption),
+        children: <Widget>[
+          for (final Map<String, dynamic> i in items) _line('${i['name']}  ×${i['qty']}', tsh(_n(i[owner ? 'profit' : 'sales'])), key: 'cat_item_${kind}_${name}_${i['name']}'),
+        ],
+      ),
+      ),
     );
   }
 
