@@ -761,4 +761,22 @@
     max-width: 280px;
     margin: 0;
   }
+
+  /* ───────────── A PHONE: one column, the form first, nothing squeezed ───────────── */
+  @media (max-width: 767px) {
+    .login-page { min-height: 100dvh; }
+    .login-brand { padding: 14px 14px 0 !important; max-width: calc(100% - 150px); }
+    .login-brand .brand-sub { display: none; }
+    .login-brand .brand-name { font-size: 15px !important; }
+    .login-brand .brand-logo { width: 38px !important; height: 38px !important; }
+    .lang-toggle { top: 14px; right: 12px; padding: 6px 10px; gap: 5px; font-size: 11px; }
+    .login-center { padding: 12px 12px 18px; align-items: flex-start; }
+    .login-card { grid-template-columns: 1fr; min-height: 0; border-radius: 22px; max-width: 460px; }
+    .card-left { display: none; }
+    .card-right { padding: 26px 20px 28px; }
+    .form-title { font-size: 1.6rem; }
+    .form-subtitle { margin-bottom: 20px; }
+    .form-row { flex-wrap: wrap; gap: 8px 12px; }
+    .field-input { font-size: 16px; } /* 16px keeps a phone from zooming into the box */
+  }
 </style>

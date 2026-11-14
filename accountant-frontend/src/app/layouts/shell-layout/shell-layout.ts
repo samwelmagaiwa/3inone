@@ -15,7 +15,7 @@ import { IdleService } from '../../core/idle.service';
 import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { ToastService } from '../../core/services/toast.service';
 import { AppNotification, ServiceName } from '../../core/models';
-import { NAV, NavItem, allowedPages } from '../../core/nav';
+import { NAV, NavItem, allowedPages, phoneOnlyPages } from '../../core/nav';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
 
 /**
@@ -48,6 +48,12 @@ export class ShellLayout implements OnDestroy {
   protected readonly overview = computed(() => this.pages().filter((p) => p.group === 'overview'));
   protected readonly money = computed(() => this.pages().filter((p) => p.group === 'money'));
   protected readonly helpPages = computed(() => this.pages().filter((p) => p.group === 'help'));
+  /** The business admin also sees the phone's menus that the web does not have yet, marked as such. */
+  protected readonly phoneOnly = computed(() => {
+    this.auth.service();
+
+    return phoneOnlyPages(this.auth);
+  });
 
   /** A page's name in the menu: a salon sees "Services & goods" where a shop sees "Products". */
   protected label(item: NavItem): string {
@@ -91,7 +97,7 @@ export class ShellLayout implements OnDestroy {
   protected readonly breadcrumb = computed(() => {
     const url = this.currentUrl();
     const page = NAV.find((n) => url.startsWith(n.path));
-    return page ? this.i18n.t(page.labelKey) : this.i18n.t('nav.welcome');
+    return page ? this.label(page) : this.i18n.t('nav.welcome');
   });
 
   protected readonly today = computed(() => new Date().toLocaleDateString(this.i18n.locale(), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
@@ -176,6 +182,21 @@ export class ShellLayout implements OnDestroy {
 
   protected toggleSidebar(): void {
     this.sidebarOpen.update((v) => !v);
+  }
+
+  /** Below 1024 px the menu is a drawer that slides in from the left; wider, the same button narrows it to icons. */
+  protected phoneWidth(): boolean {
+    return typeof window !== 'undefined' && window.innerWidth < 1024;
+  }
+
+  /** The hamburger button: on a phone it opens (and closes) the whole menu; on a computer it narrows it. */
+  protected toggleMenu(): void {
+    if (this.phoneWidth()) {
+      this.sidebarCollapsed.set(false); // the drawer always shows the names
+      this.toggleSidebar();
+    } else {
+      this.toggleCollapse();
+    }
   }
 
   protected toggleCollapse(): void {

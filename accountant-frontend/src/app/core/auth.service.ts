@@ -145,6 +145,13 @@ export class AuthService {
     return p.includes('__all__') || p.includes(permission);
   }
 
+  /** The business admin (the owner): the person the phone's whole dashboard and menu are made for. */
+  isBusinessAdmin(): boolean {
+    const role = (this.user()?.role ?? '').toLowerCase();
+
+    return role === 'admin' || role === 'administrator';
+  }
+
   /** Working where things are sold and owed: a shop, depot or salon (the same sales engine, so the same pages). */
   sells(): boolean {
     return this.service() === 'inventory' || this.service() === 'salon';

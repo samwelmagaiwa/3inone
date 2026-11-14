@@ -1588,6 +1588,11 @@ app-book-ward-table, app-book-summaries, app-table-toolbar, app-table-pagination
 /* A grid on a page whose figure cards stay at the top: the page scrolls (not the table), and the header stops right under the cards. */
 .table-scroll-container.fit-page { max-height: none; overflow: clip; }
 .fit-page thead, .fit-page thead tr { position: static; }
+/* A phone or a narrow window: a wide table scrolls sideways inside its own box instead of being cut off */
+@media (max-width: 1023px) {
+  .table-scroll-container.fit-page { overflow: auto; max-height: 75vh; }
+  .fit-page .grid-table thead th { top: 0; }
+}
 .fit-page .grid-table thead th { top: var(--stick-top, 0px); }
 .grid-table tbody td { padding: 10px 14px; font-size: 14px; color: #1e293b; border: 1px solid #e2e8f4; vertical-align: middle; }
 .grid-table tbody tr:nth-child(odd) { background: #fff; }
@@ -1619,3 +1624,8 @@ app-book-ward-table, app-book-summaries, app-table-toolbar, app-table-pagination
 .slim-tab { padding: 6px 12px !important; font-size: 12.5px !important; }
 .bar-cta { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 900; color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); box-shadow: 0 10px 20px -12px rgba(26,47,110,.8); cursor: pointer; }
 .kpi-row { position: sticky; top: 0; z-index: 30; padding: 10px 0 4px; background: #f8fafc; }
+/* A phone: the figure cards scroll away with the page (stuck at the top they would cover half the screen) */
+@media (max-width: 767px) {
+  .kpi-row, .stat-row { position: static !important; }
+  .fit-page .grid-table thead th { top: 0 !important; }
+}

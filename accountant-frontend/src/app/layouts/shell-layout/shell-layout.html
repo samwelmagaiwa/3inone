@@ -36,6 +36,16 @@
       @if (!overview().length && !money().length) {
         <p class="nav-group-title">{{ i18n.t('welcome.empty.title') }}</p>
       }
+      @if (phoneOnly().length) {
+        <p class="nav-group-title" data-testid="nav-phone-title">{{ i18n.t('nav.phone.title') }}</p>
+        @for (item of phoneOnly(); track item.key) {
+          <span class="nav-item nav-phone" role="listitem" [attr.data-testid]="'nav-phone-' + item.key" [title]="i18n.t('nav.phone.hint')">
+            <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" [attr.d]="item.icon"/></svg>
+            <span class="nav-label">{{ i18n.t(item.labelKey) }}</span>
+            <span class="nav-phone-tag">{{ i18n.t('nav.phone.tag') }}</span>
+          </span>
+        }
+      }
 
       <p class="nav-group-title">{{ i18n.t('nav.group.help') }}</p>
       @for (item of helpPages(); track item.key) {
@@ -72,7 +82,7 @@
 
     <!-- TOPBAR -->
     <header class="topbar">
-      <button class="topbar-toggle-btn group transition-all duration-300 hover:scale-105 cursor-pointer" (click)="toggleCollapse()" [title]="i18n.t('shell.toggle')" [attr.aria-label]="i18n.t('shell.toggle')">
+      <button class="topbar-toggle-btn group transition-all duration-300 hover:scale-105 cursor-pointer" (click)="toggleMenu()" [title]="i18n.t('shell.toggle')" [attr.aria-label]="i18n.t('shell.toggle')" [attr.aria-expanded]="phoneWidth() ? sidebarOpen() : !sidebarCollapsed()" data-testid="menu-toggle">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="transition-transform duration-300 ease-in-out" [class.rotate-90]="sidebarCollapsed()">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
@@ -483,6 +493,12 @@
     gap: 6px;
   }
 
+  /* A phone: the page uses the whole width, with only a small margin */
+  @media (max-width: 640px) { .page-content .page-body { padding-left: 8px; padding-right: 8px; padding-bottom: 20px; } }
+  .nav-phone { cursor: default; opacity: .62; }
+  .nav-phone:hover { background: transparent; }
+  .nav-phone-tag { margin-left: auto; padding: 1px 7px; border-radius: 99px; font-size: 9.5px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; color: #64748b; background: #eef2f7; }
+  .sidebar--collapsed .nav-phone-tag { display: none; }
   .nav-group-title {
     margin: 14px 14px 4px;
     font-size: 10px;
@@ -1093,4 +1109,20 @@
     transition: opacity 0.15s;
   }
   .toast-close:hover { opacity: 1; }
+
+  /* A phone: the drawer sits over the top bar, and the top bar keeps everything in view (names fold away, icons stay) */
+  @media (max-width: 1023px) {
+    .sidebar { z-index: 120; width: min(300px, 86vw); }
+    .mobile-overlay { z-index: 110; }
+  }
+  @media (max-width: 767px) {
+    .topbar { padding: 0 10px; gap: 8px; }
+    .topbar-search { margin: 0; min-width: 0; }
+    .topbar-search input { padding-left: 38px; padding-right: 8px; }
+    .topbar-right { gap: 8px; min-width: 0; }
+    .profile-name { display: none; }
+    .top-chip { padding: 8px 9px; }
+    .top-chip--ai { font-size: 0; gap: 0; }
+    .top-chip--ai svg { width: 18px; height: 18px; }
+  }
 </style>

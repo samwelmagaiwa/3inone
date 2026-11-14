@@ -103,7 +103,7 @@ describe('the frame', () => {
     both.h.http.expectOne(`${environment.apiUrl}/inventory/notifications`).flush({ data: [], meta: { unread_count: 0 } });
     await settle(both.fixture);
     expect(both.h.auth.service()).toBe('salon');
-    expect(nav(both.el)).toEqual(['This month', 'Sales by branch', 'Sales', 'Customers & credit', 'Debts', 'Expenses']);
+    expect(nav(both.el)).toEqual(['Salon dashboard', 'Sales by branch', 'Sales', 'Customers & credit', 'Debts', 'Expenses']);
     expect(both.navigate).toHaveBeenCalledWith(['/dashboard']);
   });
 
@@ -176,5 +176,54 @@ describe('the frame', () => {
     expect(modals).toContain('You do not need to know computers');
     expect(modals).toContain('Sign out');
     expect(modals).toContain('Nothing you do here can be lost');
+  });
+});
+
+describe('the menu of the business admin, on a phone and on a computer', () => {
+  const ADMIN = { role: 'admin', name: 'Mary Owner', services: ['salon' as const], permissions: ['inv_view_products', 'inv_create_sales', 'inv_view_credit', 'inv_view_reports', 'inv_view_expenses', 'inv_manage_settings', 'inv_salon_appointments', 'inv_salon_stylists', 'inv_salon_money', 'inv_salon_team'] };
+
+  it('the hamburger button opens the whole menu as a drawer on a phone, and closes it again', async () => {
+    const { fixture, el } = await open(ADMIN);
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(375);
+    const aside = el.querySelector('aside.sidebar') as HTMLElement;
+    expect(aside.classList.contains('sidebar--open')).toBe(false);
+
+    (el.querySelector('[data-testid=menu-toggle]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(aside.classList.contains('sidebar--open')).toBe(true);
+    expect(aside.classList.contains('sidebar--collapsed')).toBe(false); // the drawer shows the names, not only icons
+
+    (el.querySelector('.mobile-overlay') as HTMLElement).click(); // a tap outside closes it
+    await settle(fixture);
+    expect(aside.classList.contains('sidebar--open')).toBe(false);
+  });
+
+  it('on a computer the same button only narrows the menu to icons', async () => {
+    const { fixture, el } = await open(ADMIN);
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(1440);
+    (el.querySelector('[data-testid=menu-toggle]') as HTMLButtonElement).click();
+    await settle(fixture);
+    const aside = el.querySelector('aside.sidebar') as HTMLElement;
+    expect(aside.classList.contains('sidebar--collapsed')).toBe(true);
+    expect(aside.classList.contains('sidebar--open')).toBe(false);
+  });
+
+  it("lists the phone's menus that the web does not have yet, marked as on the phone, for the rights held", async () => {
+    const { el } = await open(ADMIN);
+    expect(text(el.querySelector('[data-testid=nav-phone-title]') as HTMLElement)).toBe('On the phone');
+    for (const k of ['appointments', 'stylists', 'money', 'team', 'business', 'offers', 'settings']) expect(el.querySelector(`[data-testid=nav-phone-${k}]`)).not.toBeNull();
+    expect(el.querySelector('[data-testid=nav-phone-feedback]')).toBeNull(); // no right for it
+    expect(text(el.querySelector('[data-testid=nav-phone-appointments]') as HTMLElement)).toContain('Phone');
+    expect(el.querySelector('[data-testid=nav-phone-appointments]')!.tagName).toBe('SPAN'); // not a link: nothing to open yet
+  });
+
+  it('the accountant is not shown the phone-only list', async () => {
+    const { el } = await open({ ...ADMIN, role: 'accountant' });
+    expect(el.querySelector('[data-testid=nav-phone-title]')).toBeNull();
+  });
+
+  it('the dashboard is called the salon dashboard in a salon', async () => {
+    const { el } = await open(ADMIN);
+    expect(nav(el)).toContain('Salon dashboard');
   });
 });

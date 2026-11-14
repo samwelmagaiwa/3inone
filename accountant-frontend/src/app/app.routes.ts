@@ -16,7 +16,7 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', canActivate: [startPage], children: [] },
       { path: 'services', loadComponent: () => import('./pages/services/services').then((m) => m.ServicesPage) },
       { path: 'welcome', loadComponent: () => import('./pages/welcome/welcome').then((m) => m.WelcomePage) },
-      { path: 'dashboard', canActivate: [canOpen('dashboard')], loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.DashboardPage) },
+      { path: 'dashboard', canActivate: [canOpen('dashboard')], loadComponent: () => import('./pages/dashboard/dashboard-entry').then((m) => m.DashboardEntryPage) },
       { path: 'products', canActivate: [canOpen('products')], loadComponent: () => import('./pages/products/products').then((m) => m.ProductsPage) },
       { path: 'sales', canActivate: [canOpen('sales')], loadComponent: () => import('./pages/sales/sales').then((m) => m.SalesPage) },
       { path: 'sales/new', canActivate: [canSell], loadComponent: () => import('./pages/till/till').then((m) => m.TillPage) },

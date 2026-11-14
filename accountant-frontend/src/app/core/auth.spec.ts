@@ -266,3 +266,26 @@ describe('pages by rights', () => {
     for (const n of NAV) expect(n.labelKey && n.hintKey && n.path.startsWith('/')).toBeTruthy();
   });
 });
+
+describe('where each role lands after signing in', () => {
+  const rights = ['inv_view_products', 'inv_create_sales', 'inv_manage_sales', 'inv_view_credit', 'inv_view_reports', 'inv_view_expenses'];
+
+  it('the business admin of a salon lands on the dashboard, as the accountant does', () => {
+    const { auth } = configure({ role: 'admin', services: ['salon'], permissions: rights });
+    expect(auth.isBusinessAdmin()).toBe(true);
+    expect(homePath(auth)).toBe('/dashboard');
+  });
+
+  it('an administrator is a business admin too; a manager is not and lands on the first page their rights open', () => {
+    expect(configure({ role: 'administrator', services: ['salon'], permissions: rights }).auth.isBusinessAdmin()).toBe(true);
+    TestBed.resetTestingModule();
+    const { auth } = configure({ role: 'manager', services: ['inventory'], permissions: ['inv_view_products', 'inv_create_sales'] });
+    expect(auth.isBusinessAdmin()).toBe(false);
+    expect(homePath(auth)).not.toBe('/dashboard');
+  });
+
+  it('a business admin without the rights of the dashboard still lands on a page they may open', () => {
+    const { auth } = configure({ role: 'admin', services: ['salon'], permissions: ['inv_view_products'] });
+    expect(homePath(auth)).toBe('/products');
+  });
+});

@@ -1,0 +1,315 @@
+<!-- The business admin's dashboard, in the phone's own look: dark teal glass cards, one column -->
+<div class="ad" data-testid="admin-home">
+
+  <!-- Today, with the filter -->
+  @if (can('inv_create_sales') && figures(); as f) {
+    <section class="glass today" data-testid="ad-today">
+      <div class="today-head">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dim" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
+        <span class="today-label" data-testid="ad-period">{{ periodLabel() }}</span>
+        @if (versus(); as v) {
+          <div class="track" role="progressbar" [attr.aria-valuenow]="v.pct" aria-valuemin="0" aria-valuemax="100"><div class="fill" [class.behind]="!v.ahead" [style.width.%]="v.pct"></div></div>
+          <span class="vs" [class.behind]="!v.ahead" data-testid="ad-vs">{{ v.label }}</span>
+        } @else { <span class="grow"></span> }
+        <button type="button" class="chip" (click)="sheet.set(true)" data-testid="ad-filter">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+          {{ i18n.t('ad.filter') }}
+        </button>
+      </div>
+      <div class="mini-grid">
+        <div class="mini">
+          <p class="lbl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l3 4v14H4V7l3-4zM4 7h16M9 12h6M9 16h4"/></svg>{{ i18n.t('home.sales') }}</p>
+          <p class="val" data-testid="ad-sales">{{ tsh(f.sales) }}</p>
+        </div>
+        <div class="mini has-divider">
+          <p class="lbl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M3 4h2l2.4 11h11l2-8H6"/></svg>{{ i18n.t('home.count') }}</p>
+          <p class="val" data-testid="ad-count">{{ f.count ?? '—' }}</p>
+        </div>
+        @if (f.profit !== null) {
+          <div class="mini has-divider">
+            <p class="lbl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fcd34d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>{{ i18n.t(f.profit < 0 ? 'home.loss' : 'home.profit') }}</p>
+            <p class="val" [class.bad]="f.profit < 0" data-testid="ad-profit">{{ tsh(f.profit) }}</p>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  <!-- Cash, credit and expenses of the day -->
+  @if (kpis(); as k) {
+    @if (can('inv_view_cash') || can('inv_view_credit') || can('inv_view_expenses')) {
+      <div class="tiles">
+        @if (can('inv_view_cash')) { <div class="glass tile" data-testid="ad-cash"><p class="lbl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 12h2M3 10h18"/></svg>{{ i18n.t('home.cash') }}</p><p class="val sm">{{ tsh(k.cash) }}</p></div> }
+        @if (can('inv_view_credit')) { <div class="glass tile" data-testid="ad-credit"><p class="lbl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5M17 4.5a3.5 3.5 0 010 7M22 20c0-2.5-1.7-4.3-4-5"/></svg>{{ i18n.t('home.credit') }}</p><p class="val sm">{{ tsh(k.outstanding_debt) }}</p></div> }
+        @if (can('inv_view_expenses')) { <div class="glass tile" data-testid="ad-expenses"><p class="lbl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>{{ i18n.t('home.expenses') }}</p><p class="val sm">{{ tsh(k.expenses) }}</p></div> }
+      </div>
+    }
+  }
+
+  <!-- Services and goods, and what is running low -->
+  @if (can('inv_view_products') && services() !== null && goods() !== null) {
+    <div class="tiles two">
+      <div class="glass tile" data-testid="ad-catalogue"><p class="lbl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/></svg>{{ i18n.t('home.catalogue') }}</p><p class="val sm">{{ i18n.t('home.catalogue.value', services()!, goods()!) }}</p></div>
+      @if (low() !== null) {
+        <div class="glass tile" data-testid="ad-low"><p class="lbl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" [style.color]="low() ? '#fbbf24' : '#4ade80'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"/></svg>{{ i18n.t('home.low') }}</p><p class="val sm">{{ i18n.t('home.items', low()!) }}</p></div>
+      }
+    </div>
+  }
+
+  <!-- The joined card: the month, the business overview, the sales by day, the best earners, the services -->
+  <section class="glass joined">
+
+    @if (monthCard(); as m) {
+      <div class="block" data-testid="ad-month">
+        <p class="h">{{ i18n.t('ad.month.title') }}</p>
+        <div class="month-row">
+          <div>
+            <p class="lbl">{{ i18n.t('kpi.net') }}</p>
+            <p class="val" [class.bad]="m.profit < 0" data-testid="ad-month-profit">{{ tsh(m.profit) }}</p>
+          </div>
+          <div class="cmp" [class.bad]="!m.good" data-testid="ad-month-cmp">{{ m.sign }} {{ m.pct }}<small>{{ i18n.t('ad.month.before', tsh(m.before)) }}</small></div>
+        </div>
+        @if (m.target; as t) {
+          <div class="track thick" role="progressbar" [attr.aria-valuenow]="t.progress_percent ?? 0" aria-valuemin="0" aria-valuemax="100"><div class="fill" [class.behind]="t.status === 'behind' || t.status === 'missed'" [style.width.%]="Math.max(0, Math.min(100, t.progress_percent ?? 0))"></div></div>
+          <p class="note" data-testid="ad-target">{{ i18n.t('ad.target', tsh(t.profit), tsh(t.profit_target)) }}</p>
+        }
+      </div>
+      <div class="rule"></div>
+    }
+
+    @if (overview(); as o) {
+      <div class="block" data-testid="ad-overview">
+        <p class="h">{{ i18n.t('home.overview') }}</p>
+        <div class="grid2">
+          @for (p of periodTiles(); track p.key) {
+            <div class="sub-tile" [attr.data-testid]="'ad-ov-' + p.key">
+              <p class="lbl big">{{ i18n.t('home.' + p.key) }}</p>
+              <p class="val cy">{{ tsh(p.revenue) }}</p>
+              @if (p.profit !== null) {
+                <p class="pf" [class.bad]="p.profit < 0">{{ i18n.t(p.profit < 0 ? 'home.loss' : 'home.profit') }} {{ tsh(p.profit) }}</p>
+              }
+            </div>
+          }
+        </div>
+        <div class="grid2 facts">
+          <div class="fact" data-testid="ad-clients"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5M17 4.5a3.5 3.5 0 010 7M22 20c0-2.5-1.7-4.3-4-5"/></svg></span><div><p class="val sm">{{ o.periods.month.clients }}</p><p class="lbl">{{ i18n.t('home.clients') }}</p></div></div>
+          @if (o.month.outstanding > 0) {
+            <div class="fact warn" data-testid="ad-owed"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12M6 22h12M7 2c0 5 5 6 5 10s-5 5-5 10M17 2c0 5-5 6-5 10s5 5 5 10"/></svg></span><div><p class="val sm">{{ tsh(o.month.outstanding) }}</p><p class="lbl">{{ i18n.t('home.owed') }}</p></div></div>
+          } @else {
+            <div class="fact ok" data-testid="ad-nodebt"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><div><p class="val sm">{{ i18n.t('home.none') }}</p><p class="lbl">{{ i18n.t('home.owed') }}</p></div></div>
+          }
+        </div>
+
+        @if (o.top_staff.length) {
+          <p class="h2"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4zM17 5h3a2 2 0 01-2 4M7 5H4a2 2 0 002 4"/></svg>{{ i18n.t('home.top.staff') }}</p>
+          @for (s of top3(o.top_staff); track $index; let i = $index) {
+            <div class="rank" [attr.data-testid]="'ad-staff-' + i">
+              <div class="rank-row"><span class="no">{{ i + 1 }}</span><span class="nm" [class.dim]="!s.name.trim()">{{ s.name.trim() || i18n.t('home.nostylist') }}</span><span class="amt">{{ tsh(s.revenue) }}</span></div>
+              <div class="track"><div class="fill" [style.width.%]="barOf(s.revenue, o.top_staff[0].revenue)"></div></div>
+            </div>
+          }
+        }
+        @if (o.top_services.length) {
+          <p class="h2"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/></svg>{{ i18n.t('home.top.services') }}</p>
+          @for (s of top3(o.top_services); track $index; let i = $index) {
+            <div class="rank" [attr.data-testid]="'ad-service-' + i">
+              <div class="rank-row"><span class="no">{{ i + 1 }}</span><span class="nm">{{ s.name }} <small class="dim">· {{ i18n.t('home.times', s.times ?? 0) }}</small></span><span class="amt">{{ tsh(s.revenue) }}</span></div>
+              <div class="track"><div class="fill" [style.width.%]="barOf(s.revenue, o.top_services[0].revenue)"></div></div>
+            </div>
+          }
+        }
+        @if (o.month.collections.length) {
+          <p class="h2"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 12h2M3 10h18"/></svg>{{ i18n.t('home.received') }}</p>
+          <div class="collect">
+            @for (c of o.month.collections; track c.method) {
+              <div class="coll" [attr.data-testid]="'ad-collect-' + c.method"><span>{{ channel(c.method) }}</span><b>{{ tsh(c.amount) }}</b></div>
+            }
+          </div>
+        }
+      </div>
+      <div class="rule"></div>
+    }
+
+    <!-- Sales by day, with the month to look at -->
+    @if (can('inv_create_sales')) {
+      <div class="block" data-testid="ad-chart">
+        <div class="chart-head">
+          <p class="h">{{ i18n.t('ad.chart.title') }}</p>
+          <div class="months">
+            <button type="button" class="arrow" (click)="moveMonth(-1)" [disabled]="month() <= 1" [attr.aria-label]="i18n.t('ad.month.prev')" data-testid="ad-month-prev">‹</button>
+            <span class="mname" data-testid="ad-month-name">{{ monthName() }}</span>
+            <button type="button" class="arrow" (click)="moveMonth(1)" [disabled]="!canNextMonth()" [attr.aria-label]="i18n.t('ad.month.next')" data-testid="ad-month-next">›</button>
+          </div>
+        </div>
+        @if (days().length && chartTotal() > 0) {
+          <div class="bars" role="img" [attr.aria-label]="i18n.t('ad.chart.title')">
+            @for (v of days(); track $index; let i = $index) {
+              <div class="bar-col" [attr.title]="(i + 1) + ': ' + tsh(v)"><div class="bar-fill" [style.height.%]="bar(v)"></div></div>
+            }
+          </div>
+          <div class="bar-axis"><span>1</span><span>{{ Math.ceil(days().length / 2) }}</span><span>{{ days().length }}</span></div>
+          <p class="note">{{ i18n.t('ad.chart.total', tsh(chartTotal())) }}</p>
+        } @else {
+          <p class="empty" data-testid="ad-chart-empty">{{ chartLoading() ? '…' : i18n.t('ad.chart.none') }}</p>
+        }
+
+        @if (top().rows.length) {
+          <p class="h2">{{ i18n.t(top().profit ? 'ad.top.profit' : 'ad.top.sales') }}</p>
+          @for (r of top().rows; track r.name; let i = $index) {
+            <div class="rank" [attr.data-testid]="'ad-top-' + i">
+              <div class="rank-row"><span class="no">{{ i + 1 }}</span><span class="nm">{{ r.name }}</span><span class="amt">{{ tsh(r.value) }}</span></div>
+              <div class="track"><div class="fill alt" [style.width.%]="barOf(r.value, top().rows[0].value)"></div></div>
+            </div>
+          }
+        }
+      </div>
+      <div class="rule"></div>
+    }
+
+    <!-- The services -->
+    @if (can('inv_view_products')) {
+      <div class="block" data-testid="ad-services">
+        <p class="h">{{ i18n.t('ad.services.title') }}</p>
+        <div class="srv head"><span>{{ i18n.t('ad.col.service') }}</span><span>{{ i18n.t('ad.col.time') }}</span><span class="r">{{ i18n.t('ad.col.price') }}</span></div>
+        @for (p of serviceList(); track p.id) {
+          <div class="srv" [attr.data-testid]="'ad-srv-' + p.id"><span class="nm">{{ p.name }}</span><span>{{ p.duration_minutes ? i18n.t('ad.minutes', p.duration_minutes) : '—' }}</span><span class="r">{{ tsh(p.selling_price) }}</span></div>
+        } @empty {
+          <p class="empty">{{ i18n.t('ad.services.none') }}</p>
+        }
+        <a class="more" routerLink="/products">{{ i18n.t('ad.more') }} ›</a>
+      </div>
+    }
+  </section>
+</div>
+
+<!-- The filter, as a sheet from the bottom of the screen -->
+@if (sheet()) {
+  <div class="sheet-bg" (click)="sheet.set(false)" data-testid="ad-sheet-bg"></div>
+  <div class="sheet" role="dialog" aria-modal="true" [attr.aria-label]="i18n.t('ad.filter')" data-testid="ad-sheet">
+    <p class="sheet-title">{{ i18n.t('ad.filter') }}</p>
+    <div class="sheet-list">
+      @for (p of periods; track p) {
+        <button type="button" class="opt" [class.on]="period() === p" (click)="pick(p)" [attr.data-testid]="'ad-opt-' + p">{{ i18n.t('period.' + p) }}</button>
+      }
+      <button type="button" class="opt" [class.on]="period() === 'custom'" (click)="period.set('custom')" data-testid="ad-opt-custom">{{ i18n.t('ad.custom') }}</button>
+    </div>
+    @if (period() === 'custom') {
+      <div class="dates">
+        <label><span>{{ i18n.t('ad.from') }}</span><input type="date" [(ngModel)]="from" [max]="todayIso" data-testid="ad-from"></label>
+        <label><span>{{ i18n.t('ad.to') }}</span><input type="date" [(ngModel)]="to" [max]="todayIso" data-testid="ad-to"></label>
+      </div>
+      <button type="button" class="apply" (click)="applyCustom()" data-testid="ad-apply">{{ i18n.t('ad.apply') }}</button>
+    }
+  </div>
+}
+
+<style>
+  :host { display: block; }
+  .ad { max-width: 760px; margin: 0 auto; padding: 14px 12px 18px; border-radius: 26px; color: #fff; background: linear-gradient(180deg, #04121a 0%, #092d3a 55%, #0d485a 100%); box-shadow: 0 30px 60px -30px rgba(4, 18, 26, .9); }
+  .ad * { box-sizing: border-box; }
+  .ad p { margin: 0; }
+  .glass { background: rgba(255, 255, 255, .10); border: 1.5px solid rgba(32, 184, 206, .42); border-radius: 20px; box-shadow: 0 0 18px rgba(0, 229, 255, .16), 0 10px 26px -14px rgba(13, 61, 77, 1); }
+  .ad > * + * { margin-top: 8px; }
+  .dim { color: rgba(255, 255, 255, .65); }
+  .lbl { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, .72); }
+  .lbl.big { font-size: 13px; }
+  .val { margin-top: 3px; font-size: clamp(13px, 4vw, 18px); font-weight: 800; letter-spacing: -.01em; color: #fff; white-space: nowrap; }
+  .val.sm { font-size: clamp(12px, 3.5vw, 16px); }
+  .val.cy { color: #20b8ce; font-size: 17px; }
+  .val.bad, .pf.bad, .cmp.bad { color: #ff9b9b; }
+  .grow { flex: 1; }
+
+  .today { padding: 12px 14px 14px; }
+  .today-head { display: flex; align-items: center; gap: 8px; }
+  .today-label { font-size: 12px; font-weight: 800; letter-spacing: .04em; color: rgba(255, 255, 255, .78); white-space: nowrap; }
+  .track { flex: 1; height: 4px; border-radius: 99px; background: rgba(255, 255, 255, .14); overflow: hidden; }
+  .track.thick { height: 7px; margin-top: 10px; }
+  .fill { height: 100%; border-radius: 99px; background: #4ade80; }
+  .fill.behind { background: #fbbf24; }
+  .fill.alt { background: #20b8ce; }
+  .vs { font-size: 10px; font-weight: 800; color: #4ade80; }
+  .vs.behind { color: #fbbf24; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff; background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .24); cursor: pointer; }
+  .chip:hover { background: rgba(255, 255, 255, .2); }
+  .mini-grid { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0; margin-top: 12px; }
+  .mini { padding: 0 10px; }
+  .mini:first-child { padding-left: 0; }
+  .mini.has-divider { border-left: 1px solid rgba(255, 255, 255, .15); }
+
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .tiles.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tile { padding: 10px 12px; min-width: 0; }
+  .tile .val { overflow: hidden; }
+  .tiles:not(.two) .val { font-size: clamp(10.5px, 3.15vw, 15px); }
+
+  .joined { padding: 0; overflow: hidden; }
+  .block { padding: 14px; }
+  .rule { height: 1px; background: rgba(255, 255, 255, .14); }
+  .h { font-size: 16px; font-weight: 800; color: #fff; }
+  .h2 { display: flex; align-items: center; gap: 7px; margin-top: 16px; margin-bottom: 8px; font-size: 13px; font-weight: 800; color: #fff; }
+  .bar-axis + .note { margin-bottom: 4px; }
+  .note { margin-top: 6px; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, .7); }
+  .empty { padding: 22px 0; text-align: center; font-size: 13px; color: rgba(255, 255, 255, .6); }
+
+  .month-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: 8px; }
+  .month-row .val { font-size: clamp(17px, 5.4vw, 22px); }
+  .cmp { text-align: right; font-size: 16px; font-weight: 800; color: #4ade80; }
+  .cmp small { display: block; font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, .62); }
+
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+  .sub-tile { padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .12); min-width: 0; }
+  .pf { margin-top: 2px; font-size: 12px; font-weight: 700; color: #4ade80; }
+  .fact { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: rgba(255, 255, 255, .08); min-width: 0; }
+  .fact .ico { color: #fff; flex: none; }
+  .fact .val { margin-top: 0; overflow: hidden; text-overflow: ellipsis; }
+  .fact.warn { background: rgba(245, 158, 11, .16); }
+  .fact.warn .ico, .fact.warn .val { color: #fbbf24; }
+  .fact.ok { background: rgba(16, 185, 129, .14); }
+  .fact.ok .ico, .fact.ok .val { color: #4ade80; }
+
+  .rank { margin-bottom: 9px; }
+  .rank-row { display: flex; align-items: baseline; gap: 8px; }
+  .no { display: inline-flex; flex: none; width: 20px; height: 20px; align-items: center; justify-content: center; border-radius: 99px; font-size: 11px; font-weight: 800; color: #04121a; background: #20b8ce; }
+  .nm { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+  .amt { font-size: 13px; font-weight: 800; white-space: nowrap; }
+  .rank .track { margin-top: 5px; height: 6px; }
+  .collect { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+  .coll span { min-width: 0; }
+  .coll { display: flex; justify-content: space-between; gap: 8px; padding: 9px 12px; border-radius: 12px; font-size: 13px; background: rgba(255, 255, 255, .08); }
+  .coll b { font-weight: 800; }
+
+  .chart-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .months { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 99px; background: rgba(255, 255, 255, .1); }
+  .arrow { width: 28px; height: 28px; font-size: 20px; line-height: 1; font-weight: 800; color: #fff; background: transparent; border: 0; border-radius: 99px; cursor: pointer; }
+  .arrow:disabled { opacity: .3; cursor: not-allowed; }
+  .mname { min-width: 84px; text-align: center; font-size: 13px; font-weight: 700; text-transform: capitalize; }
+  .bars { display: flex; align-items: flex-end; gap: 2px; height: 130px; margin-top: 14px; padding: 0 2px; }
+  .bar-col { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+  .bar-fill { width: 100%; min-height: 0; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, #22d3ee, #0e7490); }
+  .bar-axis { display: flex; justify-content: space-between; margin-top: 4px; font-size: 10px; color: rgba(255, 255, 255, .55); }
+
+  .srv { display: grid; grid-template-columns: minmax(0, 1fr) 64px minmax(0, auto); gap: 8px; align-items: center; margin-top: 7px; padding: 9px 10px; border-radius: 12px; font-size: 13px; background: rgba(0, 0, 0, .2); }
+  .srv.head { margin-top: 10px; padding: 0 10px; background: transparent; font-size: 11px; color: rgba(255, 255, 255, .62); }
+  .srv .r { text-align: right; white-space: nowrap; }
+  .more { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 700; color: #7dd3fc; }
+
+  .sheet-bg { position: fixed; inset: 0; z-index: 80; background: rgba(0, 0, 0, .5); }
+  .sheet { position: fixed; z-index: 81; left: 50%; bottom: 0; transform: translateX(-50%); width: 100%; max-width: 520px; max-height: 80vh; overflow-y: auto; padding: 16px 16px 22px; border-radius: 22px 22px 0 0; color: #fff; background: #0d3d4d; border: 1px solid rgba(32, 184, 206, .45); box-shadow: 0 -20px 50px -20px rgba(0, 0, 0, .8); }
+  .sheet-title { margin-bottom: 10px; font-size: 16px; font-weight: 800; }
+  .sheet-list { display: flex; flex-direction: column; gap: 6px; }
+  .opt { padding: 12px 14px; border-radius: 12px; text-align: left; font-size: 14px; font-weight: 700; color: #fff; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); cursor: pointer; }
+  .opt.on { background: rgba(32, 184, 206, .28); border-color: #20b8ce; }
+  .dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .dates label span { display: block; margin-bottom: 4px; font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, .7); }
+  .dates input { width: 100%; padding: 10px; border-radius: 10px; color: #fff; background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .24); color-scheme: dark; }
+  .apply { width: 100%; margin-top: 12px; padding: 12px; border-radius: 12px; font-size: 14px; font-weight: 800; color: #04121a; background: #20b8ce; border: 0; cursor: pointer; }
+
+  @media (max-width: 480px) {
+    .ad { padding: 10px 8px 14px; border-radius: 20px; }
+    .tiles { gap: 5px; }
+    .tile { padding: 9px 9px; }
+    .lbl { font-size: 11px; }
+    .tiles:not(.two) .lbl { flex-wrap: wrap; }
+    .grid2 { gap: 6px; }
+  }
+</style>

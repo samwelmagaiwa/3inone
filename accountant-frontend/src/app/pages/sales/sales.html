@@ -11,7 +11,7 @@
   } @else {
 
     <!-- The four figures stay in view while the page scrolls under them -->
-    <div appStickyRow class="stat-row grid grid-cols-2 xl:grid-cols-4 gap-3">
+    <div appStickyRow class="kpi-row stat-row grid grid-cols-2 xl:grid-cols-4 gap-3">
       @if (summary(); as s) {
         <div class="stat stat-slim" style="--accent:#3b61e2"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10M9 12h10M9 19h10M4 5h.01M4 12h.01M4 19h.01"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.count') }}</p><h3 class="stat-value" [appCountUp]="'' + s.count" data-testid="sales-count">{{ s.count }}</h3></div>
         <div class="stat stat-slim" style="--accent:#1a2f6e"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l3 4v14H4V7l3-4zM4 7h16M9 12h6M9 16h4"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.billed') }}</p><h3 class="stat-value" [appCountUp]="tsh(s.total)" data-testid="sales-total">{{ tsh(s.total) }}</h3></div>
@@ -25,7 +25,7 @@
     <section class="panel overflow-clip" style="padding:0">
       <app-table-toolbar [compact]="true" [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('sales.search')" [count]="total()" [noun]="noun()">
         <!-- The state of payment, the day and the New sale button: one row, with the search -->
-        <div class="flex items-center gap-1.5">
+        <div class="flex flex-wrap items-center gap-1.5">
           <span class="slim-label">{{ i18n.t('sales.filter.status') }}</span>
           @for (st of statuses; track st) {
             <button type="button" class="status-btn" [class.is-on]="status() === st" (click)="setStatus(st)" [attr.data-testid]="'status-' + (st || 'all')">{{ i18n.t('sales.status.' + (st || 'all')) }}</button>

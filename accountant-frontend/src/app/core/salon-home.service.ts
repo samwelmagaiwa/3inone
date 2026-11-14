@@ -97,6 +97,13 @@ export class SalonHomeApi {
     );
   }
 
+  /** The takings of each day of a month (the phone's sales chart). */
+  monthlyChart(year: number, month: number): Observable<number[]> {
+    return this.http
+      .get<{ data?: { days?: { total?: unknown }[] } }>(`${API}/inventory/sales/monthly-chart`, { params: { year: String(year), month: String(month) } })
+      .pipe(map((r) => (r.data?.days ?? []).map((d) => num(d.total))));
+  }
+
   /** How many services, goods, or goods running low there are: the total of a one-row page. */
   count(filter: { kind?: 'services' | 'goods'; low?: boolean }): Observable<number> {
     const params: Record<string, string> = { page: '1' };
