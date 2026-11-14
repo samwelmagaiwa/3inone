@@ -901,3 +901,152 @@ describe('the till: where to choose the customer', () => {
     expect(text(byTestId(el, 'cp-status')!)).toContain('Ready to continue');
   });
 });
+
+describe('the till: a customer typed at the till is never lost', () => {
+  const goToCustomerStep = async (el: HTMLElement, fixture: Parameters<typeof settle>[0]) => {
+    byTestId(el, 'good-1')!.click();
+    await settle(fixture);
+    for (let i = 0; i < 2; i++) {
+      byTestId(el, 'till-next')!.click();
+      await settle(fixture);
+    }
+    byTestId(el, 'till-tab-new')!.click();
+    await settle(fixture);
+  };
+
+  it('a customer saved when the server answers with the id only is shown with the name and number that were typed', async () => {
+    const { h, fixture, el } = await open();
+    await goToCustomerStep(el, fixture);
+    type(el, '[data-testid=till-newcustomer-name]', 'Amina Bakari');
+    type(el, '[data-testid=till-newcustomer-phone]', '0712 345 678');
+    await settle(fixture);
+
+    byTestId(el, 'till-newcustomer-save')!.click();
+    h.http.expectOne((r) => r.url.endsWith('/inventory/customers') && r.method === 'POST').flush({ message: 'Customer created', data: { id: 21 } });
+    await settle(fixture);
+    h.http.match((r) => r.url.includes('/credit/customers/21/check')).forEach((r) => r.flush({ data: {} }));
+    await settle(fixture);
+
+    expect(text(byTestId(el, 'till-customer')!)).toContain('Amina Bakari');
+    expect(text(byTestId(el, 'till-customer')!)).toContain('0712 345 678');
+  });
+
+  it('pressing Next with a name and number typed but not saved saves them first, then goes on', async () => {
+    const { h, fixture, el } = await open();
+    await goToCustomerStep(el, fixture);
+    type(el, '[data-testid=till-newcustomer-name]', 'Amina Bakari');
+    type(el, '[data-testid=till-newcustomer-phone]', '0712345678');
+    await settle(fixture);
+
+    byTestId(el, 'till-next')!.click();
+    const post = h.http.expectOne((r) => r.url.endsWith('/inventory/customers') && r.method === 'POST');
+    expect(post.request.body).toEqual({ name: 'Amina Bakari', phone: '0712345678' });
+    post.flush({ data: { id: 21, name: 'Amina Bakari', phone: '0712345678', existing: false } });
+    await settle(fixture);
+    h.http.match((r) => r.url.includes('/credit/customers/21/check')).forEach((r) => r.flush({ data: {} }));
+    await settle(fixture);
+
+    expect(text(byTestId(el, 'till-step-title')!)).toContain('4.');
+    expect(text(byTestId(el, 'till-customer')!)).toContain('Amina Bakari');
+  });
+
+  it('a name typed with no number stays on the step and says what is missing, and nothing is sent', async () => {
+    const { h, fixture, el } = await open();
+    await goToCustomerStep(el, fixture);
+    type(el, '[data-testid=till-newcustomer-name]', 'Amina Bakari');
+    await settle(fixture);
+
+    byTestId(el, 'till-next')!.click();
+    await settle(fixture);
+
+    h.http.expectNone((r) => r.url.endsWith('/inventory/customers') && r.method === 'POST');
+    expect(text(byTestId(el, 'till-newcustomer-error')!)).toContain('phone number');
+    expect(text(byTestId(el, 'till-step-title')!)).toContain('3.');
+  });
+
+  it('a customer found by name with another number is told so, and the saved number is the one that stays', async () => {
+    const { h, fixture, el } = await open();
+    await goToCustomerStep(el, fixture);
+    type(el, '[data-testid=till-newcustomer-name]', 'Amina Bakari');
+    type(el, '[data-testid=till-newcustomer-phone]', '0788999000');
+    await settle(fixture);
+
+    byTestId(el, 'till-newcustomer-save')!.click();
+    h.http.expectOne((r) => r.url.endsWith('/inventory/customers') && r.method === 'POST').flush({ message: 'exists', data: { id: 5, existing: true, matched_by: 'name', name: 'Amina Bakari', phone: '0712345678', phone_differs: true } });
+    await settle(fixture);
+    h.http.match((r) => r.url.includes('/credit/customers/5/check')).forEach((r) => r.flush({ data: {} }));
+    await settle(fixture);
+
+    expect(text(byTestId(el, 'till-customer')!)).toContain('0712345678');
+    expect(toasts().join(' ')).toContain('NOT saved');
+    expect(toasts().join(' ')).toContain('0788999000');
+  });
+});
+
+describe('the till on a phone: one page, in the order of the phone app', () => {
+  const shown = (el: HTMLElement, id: string) => !!byTestId(el, id) && !byTestId(el, id)!.closest('.hidden');
+  const onPhone = async (salon = false) => {
+    const o = await open({}, [soda, cut], salon);
+    (o.fixture.componentInstance as unknown as { flat: { set(v: boolean): void } }).flat.set(true);
+    await settle(o.fixture);
+    return o;
+  };
+
+  it('has no steps: the services or goods, the cart, the customer and the payment are all on the page', async () => {
+    const { fixture, el } = await onPhone();
+    byTestId(el, 'good-1')!.click();
+    await settle(fixture);
+
+    expect(byTestId(el, 'till-steps')).toBeNull();
+    expect(text(byTestId(el, 'till-step-title')!)).toBe('New sale');
+    for (const id of ['line-1', 'till-customer-search', 'mode-cash']) expect(shown(el, id), id).toBe(true);
+    expect(byTestId(el, 'till-next')).toBeNull();
+    expect(byTestId(el, 'till-back')).toBeNull();
+  });
+
+  it('keeps the list of goods behind "Add services or goods" once something is in the cart', async () => {
+    const { fixture, el } = await onPhone();
+    expect(shown(el, 'good-1')).toBe(true);
+    byTestId(el, 'good-1')!.click();
+    await settle(fixture);
+    expect(shown(el, 'good-1')).toBe(false);
+    expect(text(byTestId(el, 'till-add-goods')!)).toContain('Add services or goods (1)');
+
+    byTestId(el, 'till-add-goods')!.click();
+    await settle(fixture);
+    expect(shown(el, 'good-1')).toBe(true);
+    expect(text(byTestId(el, 'till-add-goods')!)).toContain('Close the list');
+  });
+
+  it('charges from the foot of the page, with the total on the button, and sends the sale', async () => {
+    const { h, fixture, el } = await onPhone();
+    byTestId(el, 'good-1')!.click();
+    await settle(fixture);
+    expect(text(byTestId(el, 'till-charge-flat')!)).toContain('TSH 1,000');
+    h.confirmAnswer.value = true;
+
+    byTestId(el, 'till-charge-flat')!.click();
+    await settle(fixture);
+
+    expect(h.http.expectOne((r) => r.url.endsWith('/inventory/sales') && r.method === 'POST').request.body).toMatchObject({ total: 1000 });
+  });
+
+  it('a name and number typed in the new-customer boxes are saved when the sale is charged', async () => {
+    const { h, fixture, el } = await onPhone();
+    byTestId(el, 'good-1')!.click();
+    await settle(fixture);
+    byTestId(el, 'till-tab-new')!.click();
+    await settle(fixture);
+    type(el, '[data-testid=till-newcustomer-name]', 'Amina Bakari');
+    type(el, '[data-testid=till-newcustomer-phone]', '0712345678');
+    await settle(fixture);
+
+    byTestId(el, 'till-charge-flat')!.click();
+    h.http.expectOne((r) => r.url.endsWith('/inventory/customers') && r.method === 'POST').flush({ data: { id: 21, name: 'Amina Bakari', phone: '0712345678', existing: false } });
+    await settle(fixture);
+    h.http.match((r) => r.url.includes('/credit/customers/21/check')).forEach((r) => r.flush({ data: {} }));
+    await settle(fixture);
+
+    expect(h.http.expectOne((r) => r.url.endsWith('/inventory/sales') && r.method === 'POST').request.body).toMatchObject({ customer_id: 21, customer_phone: '0712345678' });
+  });
+});

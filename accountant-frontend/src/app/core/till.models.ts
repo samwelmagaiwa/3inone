@@ -48,6 +48,10 @@ export interface Customer {
   id: number;
   name: string;
   phone: string;
+  /** Typed at the till but already saved: this is the one who was there (by number or by name). */
+  existing?: boolean;
+  /** Found by name, while the number typed is another one: the card keeps its own number, and the till says so. */
+  phoneDiffers?: boolean;
 }
 
 /** One line of the cart. `qty` counts the selling unit; `unitCost` is the cost of ONE BASE unit. */
@@ -123,7 +127,13 @@ export function parseProduct(j: Record<string, unknown>): Product {
 }
 
 export function parseCustomer(j: Record<string, unknown>): Customer {
-  return { id: num(j['id'] ?? j['customer_id']), name: String(j['name'] ?? j['customer_name'] ?? ''), phone: String(j['phone'] ?? j['phone_number'] ?? '') };
+  return {
+    id: num(j['id'] ?? j['customer_id']),
+    name: String(j['name'] ?? j['customer_name'] ?? ''),
+    phone: String(j['phone'] ?? j['phone_number'] ?? ''),
+    ...(j['existing'] === true ? { existing: true } : {}),
+    ...(j['phone_differs'] === true ? { phoneDiffers: true } : {}),
+  };
 }
 
 /** The units of a product that can be sold now (the base unit is always among them). */

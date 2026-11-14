@@ -119,10 +119,16 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         $existingId = \App\Support\Inventory\CustomerMatch::find($name, $phone, $by);
         if ($existingId) {
             $row = DB::table('inventory_customers')->where('id', $existingId)->first(['id', 'name', 'phone']);
+            $saved = (string) ($row->phone ?? '');
 
             return response()->json([
                 'message' => 'Mteja huyu tayari yupo. / This customer already exists.',
-                'data' => ['id' => (int) $existingId, 'existing' => true, 'matched_by' => $by, 'name' => (string) ($row->name ?? ''), 'phone' => (string) ($row->phone ?? '')],
+                'data' => [
+                    'id' => (int) $existingId, 'existing' => true, 'matched_by' => $by, 'name' => (string) ($row->name ?? ''), 'phone' => $saved,
+                    // Found by NAME while the number typed is another one: the card keeps its own number (texts go there), and the till says so
+                    // instead of letting the person think the number they typed was saved.
+                    'phone_differs' => $by === 'name' && $saved !== '' && \App\Support\Inventory\CustomerMatch::phoneKey($saved) !== \App\Support\Inventory\CustomerMatch::phoneKey($phone),
+                ],
             ]);
         }
 
@@ -133,7 +139,8 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        return response()->json(['message' => 'Customer created', 'data' => ['id' => (int)$id]], 201);
+        // The customer as saved, so a till shows the name and number at once (it used to get the id only and showed an empty card).
+        return response()->json(['message' => 'Customer created', 'data' => ['id' => (int) $id, 'existing' => false, 'name' => $name, 'phone' => $phone]], 201);
     }
 
     #[OA\Put(

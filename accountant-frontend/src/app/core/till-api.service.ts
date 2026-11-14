@@ -136,7 +136,13 @@ export class TillApi {
   }
 
   createCustomer(name: string, phone: string): Observable<Customer> {
-    return this.http.post<{ data: Record<string, unknown> }>(`${API}/inventory/customers`, { name, phone }).pipe(map((r) => parseCustomer(r.data)));
+    // An older server answered with the id only: the name and number typed are then the customer's, so the till never shows an empty card.
+    return this.http.post<{ data: Record<string, unknown> }>(`${API}/inventory/customers`, { name, phone }).pipe(
+      map((r) => {
+        const c = parseCustomer(r.data);
+        return { ...c, name: c.name || name, phone: c.phone || phone };
+      }),
+    );
   }
 
   creditCheck(customerId: number, amount: number): Observable<CreditCheck> {

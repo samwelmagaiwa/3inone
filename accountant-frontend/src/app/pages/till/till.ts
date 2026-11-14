@@ -82,6 +82,24 @@ export class TillPage implements OnInit, OnDestroy {
   // ---- the steps of the popup: 1 find the goods, 2 what is bought, 3 who buys, 4 how they pay, 5 check everything and save
   protected readonly steps = [1, 2, 3, 4, 5];
   protected readonly step = signal(1);
+
+  /**
+   * On a phone the sale is ONE page, in the order of the phone app's till: add services or goods, the cart (with who served), the customer, how
+   * it is paid, then charge. (The steps are for a wider screen; the same checks run when the sale is charged.)
+   */
+  protected readonly flat = signal(typeof window !== 'undefined' && window.innerWidth < 768);
+  /** On the one-page sale the list of goods stays closed behind "Add services or goods" once the cart has something in it. */
+  protected readonly goodsOpen = signal(false);
+
+  /** Is this step's section put away? (Never on the one-page sale: everything is there to scroll through.) */
+  protected hid(n: number): boolean {
+    return !this.flat() && this.step() !== n;
+  }
+
+  @HostListener('window:resize')
+  protected syncFlat(): void {
+    this.flat.set(window.innerWidth < 768);
+  }
   /** Services, goods or both (a salon sells both): chosen in plain sight above the list. */
   protected readonly kinds = [
     { value: '', label: 'till.kind.all' },
@@ -471,20 +489,42 @@ export class TillPage implements OnInit, OnDestroy {
     this.custTab.set(tab);
   }
 
-  protected async saveNewCustomer(): Promise<void> {
+  protected async saveNewCustomer(): Promise<boolean> {
     const name = this.newName.trim();
-    if (!name) return this.newError.set(this.i18n.t('till.cust.needname'));
-    if (!this.phoneOk()) return this.newError.set(this.i18n.t('till.cust.needphone'));
+    if (!name) return this.refuseNew(this.i18n.t('till.cust.needname'));
+    if (!this.phoneOk()) return this.refuseNew(this.i18n.t('till.cust.needphone'));
     try {
-      const c = await firstValueFrom(this.api.createCustomer(name, this.newPhone.trim()));
+      const typed = this.newPhone.trim();
+      const c = await firstValueFrom(this.api.createCustomer(name, typed));
       this.newName = '';
       this.newPhone = '';
+      this.newError.set('');
       this.custTab.set('find');
       await this.chooseCustomer(c);
-      this.toast.success(this.i18n.t('till.customer.added', c.name), this.i18n.t('common.done'));
+      if (c.existing && c.phoneDiffers) {
+        // The same name is the same customer: her card keeps ITS number and a text goes there, so the person is told, not left to think the new one was saved.
+        this.toast.error(this.i18n.t('till.customer.differs', c.name, c.phone, typed), this.i18n.t('till.customer.exists.title'));
+      } else if (c.existing) {
+        this.toast.success(this.i18n.t('till.customer.exists', c.name, c.phone), this.i18n.t('common.done'));
+      } else {
+        this.toast.success(this.i18n.t('till.customer.added', c.name), this.i18n.t('common.done'));
+      }
+      return true;
     } catch (err) {
-      this.newError.set(this.fail(err));
+      return this.refuseNew(this.fail(err));
     }
+  }
+
+  private refuseNew(message: string): boolean {
+    this.newError.set(message);
+    this.custTab.set('new');
+    this.reveal('till-customer-section');
+    return false;
+  }
+
+  /** A name or number was written in the new-customer boxes but "Save customer" was not pressed: it must not be lost. */
+  protected pendingNewCustomer(): boolean {
+    return this.custTab() === 'new' && !this.till.customer() && (!!this.newName.trim() || !!this.newPhone.trim());
   }
 
   /** On credit: is the customer blocked or over their limit? Asked of the server, which keeps the figures. */
@@ -862,6 +902,13 @@ export class TillPage implements OnInit, OnDestroy {
 
   protected next(): void {
     const from = this.step();
+    // Leaving the customer step with a name or number typed but not saved: save it now (or say what is missing) instead of dropping it.
+    if (from === 3 && this.pendingNewCustomer()) {
+      void this.saveNewCustomer().then((ok) => {
+        if (ok) this.next();
+      });
+      return;
+    }
     const problem = this.problemIn(from);
     if (problem) {
       this.tried.set(true);
@@ -914,6 +961,7 @@ export class TillPage implements OnInit, OnDestroy {
   }
 
   protected async charge(): Promise<void> {
+    if (this.pendingNewCustomer() && !(await this.saveNewCustomer())) return;
     const built = this.till.buildSale();
     if (built.error) {
       this.tried.set(true);
