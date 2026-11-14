@@ -13,7 +13,7 @@
   } @else if (current(); as c) {
 
     <!-- The three figures stay in view while the page scrolls under them -->
-    <div appStickyRow class="kpi-row grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div appStickyRow class="kpi-row kpi-three grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div class="kpi-card kpi-slim">
         <p class="label-eyebrow">{{ i18n.t(kind() === 'receivable' ? 'debts.total.owed' : 'debts.total.owe') }}</p>
         <h3 class="kpi-num" style="color: #1a2f6e;" [appCountUp]="tsh(c.total)" data-testid="debts-total">{{ tsh(c.total) }}</h3>

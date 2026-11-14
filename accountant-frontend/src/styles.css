@@ -1772,3 +1772,25 @@ app-book-ward-table, app-book-summaries, app-table-toolbar, app-table-pagination
 .theme-phone .bell-dot--on { background: #20b8ce !important; }
 .theme-phone .topbar-search-item { color: #fff !important; border-bottom-color: rgba(255,255,255,.12) !important; }
 .theme-phone .topbar-search-item:hover { background: rgba(255,255,255,.09) !important; }
+
+/* Tinted tiles (blue, indigo, red, green, amber) were drawn pale for the light look: on the dark glass a pale tile under white text is
+   unreadable ("Left to pay" in the payment window). They become a soft tint of the same colour with light text. */
+.theme-phone [class*="bg-blue-50"], .theme-phone [class*="bg-indigo-50"], .theme-phone [class*="bg-sky-50"] { background: rgba(32,184,206,.14) !important; border-color: rgba(32,184,206,.4) !important; color: #fff !important; }
+.theme-phone [class*="bg-red-50"], .theme-phone [class*="bg-rose-50"] { background: rgba(239,68,68,.16) !important; border-color: rgba(239,68,68,.4) !important; color: #fecaca !important; }
+.theme-phone [class*="bg-emerald-50"], .theme-phone [class*="bg-green-50"] { background: rgba(16,185,129,.16) !important; border-color: rgba(16,185,129,.4) !important; color: #a7f3d0 !important; }
+.theme-phone [class*="bg-amber-50"], .theme-phone [class*="bg-yellow-50"], .theme-phone [class*="bg-orange-50"] { background: rgba(245,158,11,.16) !important; border-color: rgba(245,158,11,.4) !important; color: #fde68a !important; }
+.theme-phone [class*="bg-blue-50"] *, .theme-phone [class*="bg-indigo-50"] *, .theme-phone [class*="bg-sky-50"] * { color: #fff !important; }
+.theme-phone [class*="bg-blue-50"] .label-eyebrow, .theme-phone [class*="bg-indigo-50"] .label-eyebrow, .theme-phone [class*="bg-sky-50"] .label-eyebrow { color: rgba(255,255,255,.72) !important; }
+.theme-phone [class*="bg-red-50"] *, .theme-phone [class*="bg-rose-50"] * { color: #fecaca !important; }
+.theme-phone [class*="bg-emerald-50"] *, .theme-phone [class*="bg-green-50"] * { color: #a7f3d0 !important; }
+.theme-phone [class*="bg-amber-50"] *, .theme-phone [class*="bg-yellow-50"] *, .theme-phone [class*="bg-orange-50"] * { color: #fde68a !important; }
+.theme-phone [class*="border-blue-100"], .theme-phone [class*="border-indigo-100"] { border-color: rgba(32,184,206,.4) !important; }
+
+/* The three figures at the top of a page (debts, credit, expenses) sit in ONE row on a phone, not one under another. */
+@media (max-width: 639px) {
+  .theme-phone .kpi-three { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 8px !important; }
+  .theme-phone .kpi-three .kpi-card { padding: 8px 9px !important; min-width: 0; }
+  .theme-phone .kpi-three .label-eyebrow { font-size: 9px !important; letter-spacing: .02em !important; line-height: 1.25 !important; }
+  .theme-phone .kpi-three .kpi-hint { display: none; }
+  .theme-phone .kpi-three .kpi-num { font-size: clamp(11px, 3.3vw, 17px) !important; white-space: nowrap; }
+}
