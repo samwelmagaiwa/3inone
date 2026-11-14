@@ -31,6 +31,8 @@ import 'crate_checkout_rules.dart';
 import 'sale_confirmation_dialog.dart';
 import 'sale_receipt_screen.dart';
 import '../salon/price_option_picker.dart';
+import '../salon/salon_access.dart' show isBusinessAdminHere;
+import '../salon/salon_text.dart' show channelLabel;
 import '../salon/salon_perks_card.dart';
 import '../salon/salon_mode.dart';
 import '../salon/goods_used_sheet.dart';
@@ -770,6 +772,29 @@ class _SalesScreenState extends State<SalesScreen>
                     ],
                   ),
                 ],
+                // What this sale earns: the owner's to see while booking (never on the receipt or in anything sent to the client).
+                if (isBusinessAdminHere(context) && inv.cart.isNotEmpty) ...<Widget>[
+                  Row(
+                    key: const ValueKey<String>('cart_profit_row'),
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        loc.isSwahili ? 'Faida ya mauzo haya (wewe tu)' : 'Profit on this sale (only you)',
+                        style: ThemeConstants.captionStyle.copyWith(color: Colors.white70),
+                      ),
+                      Text(
+                        'TZS ${inv.cartProfitAfterDiscount.toStringAsFixed(0)}',
+                        key: const ValueKey<String>('cart_profit_value'),
+                        style: TextStyle(
+                          color: inv.cartProfitAfterDiscount >= 0 ? ThemeConstants.successGreen : ThemeConstants.errorText,
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4.h),
+                ],
                 SizedBox(height: 4.h),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1450,6 +1475,13 @@ class _SalesScreenState extends State<SalesScreen>
                             ),
                           if (canCancel && !s.isCancelled)
                             IconButton(
+                              key: ValueKey<String>('discount_sale_${s.id}'),
+                              tooltip: loc.isSwahili ? 'Punguzo baada ya mauzo' : 'Discount after the sale',
+                              onPressed: () => _showDiscountSheet(context, s),
+                              icon: Icon(Icons.sell_outlined, color: ThemeConstants.warningAmber, size: 19.sp),
+                            ),
+                          if (canCancel && !s.isCancelled)
+                            IconButton(
                               tooltip: loc.translate('cancel_sale'),
                               onPressed: () => _showCancelSheet(context, s),
                               icon: Icon(Icons.cancel_outlined, color: _vivid(ThemeConstants.errorRed), size: 19.sp),
@@ -1690,6 +1722,145 @@ class _SalesScreenState extends State<SalesScreen>
                 },
               ),
             ],
+          ),
+        );
+      }),
+    );
+  }
+
+  /// A discount after the sale: the client was not satisfied with the goods. It comes off the sale's total with its reason. What the client
+  /// still owes shrinks first; if they had already paid more than the new total, the difference goes back to them (they choose how).
+  void _showDiscountSheet(BuildContext context, InvSale sale) {
+    final TextEditingController amountCtrl = TextEditingController();
+    final TextEditingController reasonCtrl = TextEditingController();
+    String refundMethod = 'cash';
+    bool busy = false;
+    String? problem;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: ThemeConstants.primaryBlue,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20.r))),
+      builder: (BuildContext ctx) => StatefulBuilder(builder: (BuildContext ctx, StateSetter setBS) {
+        final LocalizationService loc = LocalizationService.instance;
+        final bool sw = loc.isSwahili;
+        final double owed = (sale.total - sale.paidTotal).clamp(0, double.infinity).toDouble();
+
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, MediaQuery.of(ctx).viewInsets.bottom + 20.h),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text('${sw ? 'Punguzo baada ya mauzo' : 'Discount after the sale'} — #${sale.number}', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.bold, fontSize: 15.sp)),
+                SizedBox(height: 4.h),
+                Text(
+                  sw ? 'Jumla sasa: TZS ${sale.total.toStringAsFixed(0)} • Imelipwa: TZS ${sale.paidTotal.toStringAsFixed(0)}' : 'Total now: TZS ${sale.total.toStringAsFixed(0)} • Paid: TZS ${sale.paidTotal.toStringAsFixed(0)}',
+                  key: const ValueKey<String>('discount_now'),
+                  style: ThemeConstants.captionStyle,
+                ),
+                SizedBox(height: 14.h),
+                InvTextField(
+                  key: const ValueKey<String>('discount_amount'),
+                  controller: amountCtrl,
+                  label: sw ? 'Kiasi cha punguzo (TZS)' : 'Discount amount (TZS)',
+                  keyboardType: TextInputType.number,
+                  inputFormatters: <TextInputFormatter>[ThousandsFormatter()],
+                ),
+                SizedBox(height: 10.h),
+                InvTextField(
+                  key: const ValueKey<String>('discount_reason'),
+                  controller: reasonCtrl,
+                  label: sw ? 'Sababu (mf. mzigo haujaridhisha)' : 'Reason (e.g. the goods did not satisfy)',
+                ),
+                // What the sale becomes as the amount is typed (and what must be given back if the client had already paid it).
+                ListenableBuilder(
+                  listenable: amountCtrl,
+                  builder: (BuildContext context, Widget? child) {
+                    final double amount = parseAmount(amountCtrl.text);
+                    final double refund = amount > owed ? (amount - owed) : 0;
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        if (amount > 0) ...<Widget>[
+                          SizedBox(height: 10.h),
+                          Text(
+                            sw ? 'Jumla mpya: TZS ${(sale.total - amount).clamp(0, double.infinity).toStringAsFixed(0)}' : 'New total: TZS ${(sale.total - amount).clamp(0, double.infinity).toStringAsFixed(0)}',
+                            key: const ValueKey<String>('discount_new_total'),
+                            style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                        if (refund > 0) ...<Widget>[
+                          SizedBox(height: 8.h),
+                          Text(
+                            sw ? 'Mteja alishalipa zaidi: rudisha TZS ${refund.toStringAsFixed(0)} kwake.' : 'The client already paid more: give TZS ${refund.toStringAsFixed(0)} back.',
+                            key: const ValueKey<String>('discount_refund_note'),
+                            style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.warningAmber),
+                          ),
+                          SizedBox(height: 6.h),
+                          Wrap(
+                            spacing: 8.w,
+                            runSpacing: 4.h,
+                            children: <Widget>[
+                              for (final String c in InventoryProvider.paymentChannels)
+                                ChoiceChip(
+                                  key: ValueKey<String>('discount_refund_$c'),
+                                  label: Text(channelLabel(sw: sw, channel: c)),
+                                  selected: refundMethod == c,
+                                  onSelected: (_) => setBS(() => refundMethod = c),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                ),
+                if (problem != null)
+                  Padding(
+                    padding: EdgeInsets.only(top: 8.h),
+                    child: Text(problem!, key: const ValueKey<String>('discount_error'), style: ThemeConstants.captionStyle.copyWith(color: ThemeConstants.errorText)),
+                  ),
+                SizedBox(height: 16.h),
+                InvPrimaryButton(
+                  key: const ValueKey<String>('discount_save'),
+                  busy: busy,
+                  label: sw ? 'Hifadhi punguzo' : 'Save discount',
+                  onPressed: () async {
+                    final String reason = reasonCtrl.text.trim();
+                    final double amount = parseAmount(amountCtrl.text);
+                    final double refund = amount > owed ? (amount - owed) : 0;
+                    if (!(amount > 0)) {
+                      setBS(() => problem = sw ? 'Andika kiasi cha punguzo.' : 'Enter the discount amount.');
+                      return;
+                    }
+                    if (amount > sale.total) {
+                      setBS(() => problem = sw ? 'Punguzo haliwezi kuzidi jumla ya mauzo.' : 'The discount cannot be more than the sale total.');
+                      return;
+                    }
+                    if (reason.length < 3) {
+                      setBS(() => problem = sw ? 'Andika sababu ya punguzo.' : 'Write the reason for the discount.');
+                      return;
+                    }
+                    setBS(() => busy = true);
+                    final String? error = await context.read<InventoryProvider>().discountSale(sale.id, amount: amount, reason: reason, refundMethod: refund > 0 ? refundMethod : null);
+                    if (!ctx.mounted) return;
+                    if (error != null) {
+                      setBS(() {
+                        busy = false;
+                        problem = error;
+                      });
+                      return;
+                    }
+                    Navigator.pop(ctx);
+                    if (context.mounted) ThemeConstants.showSuccessSnackBar(context, sw ? 'Punguzo limehifadhiwa.' : 'Discount saved.');
+                  },
+                ),
+              ],
+            ),
           ),
         );
       }),

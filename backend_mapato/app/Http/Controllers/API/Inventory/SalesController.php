@@ -386,6 +386,12 @@ class SalesController extends Controller
             $request,
             's.created_by',
         )->sum(DB::raw('si.total - (si.unit_cost_snapshot * si.quantity)'));
+        // ...less what was given off the sales (a discount, also one given after the sale, is money the business did not get).
+        $profitToday -= (float) $this->applyOfficerScope(
+            DB::table('inventory_sales as s')->whereNull('s.cancelled_at')->whereDate('s.created_at', $today),
+            $request,
+            's.created_by',
+        )->sum('s.discount');
 
         // 7-day daily trend
         $weekTrend = $this->applyOfficerScope(
@@ -717,6 +723,98 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             ], ['reason' => $data['reason']], $sale->number);
 
             return response()->json(['message' => 'Sale cancelled and stock restored']);
+        });
+    }
+
+    /**
+     * POST /inventory/sales/{id}/discount
+     * A discount given AFTER the sale (the client was not happy with the goods): it comes off the sale's total and is written down
+     * with its reason. What the client still owes shrinks first; if they had already paid more than the new total, the difference
+     * goes back to them and is recorded as a refund (a negative payment), so the cash and the profit tell the truth.
+     * The owner's right (the one that deletes a sale): it changes money already booked.
+     */
+    #[OA\Post(path: '/inventory/sales/{id}/discount', summary: 'Give a discount on a sale that is already booked', security: [['bearerAuth' => []]], tags: ['Inventory / Sales'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Success')])]
+    public function discount(Request $request, int $id)
+    {
+        $data = $request->validate([
+            'amount' => 'required|numeric|min:1',
+            'reason' => 'required|string|min:3|max:160',
+            'refund_method' => ['nullable', \Illuminate\Validation\Rule::in(\App\Support\PaymentChannels::all())],
+        ]);
+
+        return DB::transaction(function () use ($request, $id, $data) {
+            $sale = DB::table('inventory_sales')->lockForUpdate()->find($id);
+            if (!$sale) {
+                return response()->json(['message' => 'Sale not found'], 404);
+            }
+            if (!empty($sale->cancelled_at)) {
+                return response()->json(['message' => 'Mauzo yaliyofutwa hayabadilishwi. / A cancelled sale cannot be changed.'], 422);
+            }
+
+            $amount = round((float) $data['amount'], 2);
+            $total = (float) $sale->total;
+            if ($amount > $total) {
+                return response()->json(['message' => 'Punguzo haliwezi kuzidi jumla ya mauzo (' . self::money($total) . '). / The discount cannot be more than the sale total (' . self::money($total) . ').'], 422);
+            }
+
+            $newTotal = round($total - $amount, 2);
+            $paid = (float) $sale->paid_total;
+            // Paid more than the new total: the difference is given back to the client.
+            $refund = round(max(0.0, $paid - $newTotal), 2);
+            $newPaid = round($paid - $refund, 2);
+            $newStatus = $newPaid >= $newTotal ? 'paid' : ($newPaid > 0 ? 'partial' : 'debt');
+
+            if ($refund > 0) {
+                [$method, $channel] = \App\Support\PaymentChannels::split($data['refund_method'] ?? 'cash');
+                DB::table('inventory_sale_payments')->insert([
+                    'sale_id' => $id,
+                    'amount' => -$refund,
+                    'method' => $method,
+                    'method_extended' => $channel,
+                    'reference' => 'Rudisha punguzo / Discount refund',
+                    'paid_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            $previous = trim((string) ($sale->discount_reason ?? ''));
+            $reasons = $previous !== '' ? $previous . '; ' . $data['reason'] : $data['reason'];
+            $update = [
+                'discount' => round((float) $sale->discount + $amount, 2),
+                'total' => $newTotal,
+                'paid_total' => $newPaid,
+                'payment_status' => $newStatus,
+                'updated_at' => now(),
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('inventory_sales', 'discount_reason')) {
+                $update['discount_reason'] = mb_substr($reasons, 0, 160);
+            }
+            DB::table('inventory_sales')->where('id', $id)->update($update);
+
+            // Nothing left to collect: the "payment due" reminder is done.
+            if ($newStatus === 'paid') {
+                DB::table('inventory_reminders')->where('type', 'payment_due')->where('related_id', $id)->where('status', 'open')->update(['status' => 'done', 'updated_at' => now()]);
+            }
+
+            $this->audit->record($request, 'sale', $id, 'discounted', [
+                'total' => $total, 'paid_total' => $paid, 'payment_status' => $sale->payment_status,
+            ], [
+                'discount_given' => $amount, 'reason' => $data['reason'], 'new_total' => $newTotal, 'refund' => $refund, 'new_paid_total' => $newPaid, 'new_status' => $newStatus,
+            ], $sale->number);
+
+            return response()->json([
+                'message' => 'Discount recorded',
+                'data' => [
+                    'sale_id' => $id,
+                    'discount_given' => $amount,
+                    'new_total' => $newTotal,
+                    'refund' => $refund,
+                    'new_paid_total' => $newPaid,
+                    'balance' => max(0, $newTotal - $newPaid),
+                    'payment_status' => $newStatus,
+                ],
+            ]);
         });
     }
 

@@ -353,6 +353,9 @@ class InventoryProvider extends ChangeNotifier {
       cartSubtotal - totalDiscount + (_capabilities.pricesIncludeVat ? 0 : cartTax);
   double get cartProfit => _cart.fold(0, (sum, it) => sum + it.profit);
 
+  /// What this sale earns once what is taken off it is taken off: shown to the owner at the till, never printed or sent.
+  double get cartProfitAfterDiscount => cartProfit - totalDiscount;
+
   InvCapabilities get capabilities => _capabilities;
   String? get lastError => _lastError;
 
@@ -1065,6 +1068,23 @@ class InventoryProvider extends ChangeNotifier {
       return (true, 'cancelled');
     } on Exception catch (_) {
       return (false, 'cancel_failed');
+    }
+  }
+
+  /// A discount given AFTER the sale (the goods did not satisfy the client): it comes off the total with its reason, and anything already
+  /// paid beyond the new total goes back to the client ([refundMethod]). Returns null on success, else the server's reason.
+  Future<String?> discountSale(final int id, {required final double amount, required final String reason, final String? refundMethod}) async {
+    try {
+      await _api.post('/inventory/sales/$id/discount', <String, dynamic>{
+        'amount': amount,
+        'reason': reason.trim(),
+        if (refundMethod != null) 'refund_method': refundMethod,
+      });
+      await fetchSales();
+      await fetchKpis();
+      return null;
+    } on Exception catch (e) {
+      return readableErrorMessage(e);
     }
   }
 

@@ -700,6 +700,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Deleting a sale is its own right (the owner's); the accountant asks for it with a comment instead (a request at inventory/returns).
     Route::middleware('inv_perm:inv_cancel_sales')->group(function () {
         Route::post('inventory/sales/{id}/cancel',      [InventorySalesController::class, 'cancel']);
+        // A discount after the sale (the client was not happy): money already booked, so the same right as deleting a sale.
+        Route::post('inventory/sales/{id}/discount',    [InventorySalesController::class, 'discount']);
     });
     // Approving or turning down such a request: the right for what it asks (checked again in the controller).
     Route::middleware('inv_perm:inv_cancel_sales,inv_return_sales')->group(function () {
