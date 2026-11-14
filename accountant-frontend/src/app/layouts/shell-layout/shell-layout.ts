@@ -48,6 +48,12 @@ export class ShellLayout implements OnDestroy {
   protected readonly overview = computed(() => this.pages().filter((p) => p.group === 'overview'));
   protected readonly money = computed(() => this.pages().filter((p) => p.group === 'money'));
   protected readonly helpPages = computed(() => this.pages().filter((p) => p.group === 'help'));
+  /** The business admin sees every page in the phone app's own look (dark teal glass). */
+  protected readonly phoneTheme = computed(() => {
+    this.auth.service();
+
+    return this.auth.isBusinessAdmin();
+  });
   /** The business admin also sees the phone's menus that the web does not have yet, marked as such. */
   protected readonly phoneOnly = computed(() => {
     this.auth.service();

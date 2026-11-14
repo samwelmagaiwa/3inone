@@ -1629,3 +1629,93 @@ app-book-ward-table, app-book-summaries, app-table-toolbar, app-table-pagination
   .kpi-row, .stat-row { position: static !important; }
   .fit-page .grid-table thead th { top: 0 !important; }
 }
+
+/* ═══ The phone's own look for the business admin: dark teal glass, the same as the phone app (.theme-phone on the shell) ═══ */
+.theme-phone { background: linear-gradient(180deg, #04121a 0%, #092d3a 55%, #0d485a 100%) !important; color: #fff; }
+.theme-phone::before { display: none !important; }
+.theme-phone .main-area, .theme-phone .page-content { background: transparent !important; }
+.theme-phone .sidebar, .theme-phone .topbar { background: #0d3d4d !important; border-color: rgba(32,184,206,.28) !important; color: #fff !important; }
+.theme-phone .topbar *, .theme-phone .sidebar .sidebar-logo-name, .theme-phone .sidebar .nav-label, .theme-phone .sidebar .nav-group-title { color: #fff; }
+.theme-phone .sidebar .nav-item { color: rgba(255,255,255,.78) !important; }
+.theme-phone .sidebar .nav-item:hover { background: rgba(255,255,255,.08) !important; }
+.theme-phone .sidebar .nav-item.nav-active { background: rgba(32,184,206,.2) !important; color: #fff !important; box-shadow: inset 3px 0 0 #20b8ce; }
+.theme-phone .sidebar .nav-group-title, .theme-phone .sidebar .sidebar-logo-sub { color: rgba(255,255,255,.5) !important; }
+.theme-phone .sidebar .nav-phone-tag { color: #bfeff6; background: rgba(255,255,255,.12); }
+.theme-phone .topbar input, .theme-phone .topbar select, .theme-phone .topbar-search, .theme-phone .top-chip, .theme-phone .bell-btn, .theme-phone .profile-btn { background: rgba(255,255,255,.1) !important; border-color: rgba(255,255,255,.18) !important; color: #fff !important; }
+.theme-phone .topbar select option { background: #0d3d4d; color: #fff; }
+.theme-phone .bell-panel, .theme-phone .profile-dropdown, .theme-phone .topbar-search-panel { background: #0d3d4d !important; border-color: rgba(255,255,255,.18) !important; }
+.theme-phone .app-footer { background: #1ba3c7 !important; color: #fff !important; border-color: transparent !important; }
+.theme-phone .app-footer * { color: #fff !important; }
+
+.theme-phone .breadcrumb-strip { background: rgba(4,18,26,.55) !important; border-color: rgba(255,255,255,.14) !important; }
+.theme-phone .breadcrumb-strip * { color: rgba(255,255,255,.8) !important; }
+.theme-phone .breadcrumb-strip .breadcrumb-active { color: #fff !important; }
+
+/* Cards and panels */
+.theme-phone .section-card, .theme-phone .panel, .theme-phone .kpi-card, .theme-phone .stat, .theme-phone .page-header-card, .theme-phone .card-soft,
+.theme-phone .info-card, .theme-phone .bg-white, .theme-phone [class*="bg-white"], .theme-phone .glass-card {
+  background: rgba(255,255,255,.1) !important; border: 1px solid rgba(255,255,255,.18) !important; box-shadow: none !important; color: #fff !important;
+}
+.theme-phone [class*="bg-slate-50"], .theme-phone [class*="bg-slate-100"], .theme-phone [class*="bg-gray-50"] { background: rgba(255,255,255,.07) !important; }
+.theme-phone [class*="border-slate"], .theme-phone [class*="border-gray"], .theme-phone [class*="border-t"], .theme-phone [class*="border-b"] { border-color: rgba(255,255,255,.16) !important; }
+.theme-phone .text-slate-900, .theme-phone .text-slate-800, .theme-phone .text-slate-700, .theme-phone [class*="text-[#1a2f6e]"], .theme-phone [class*="text-navy"], .theme-phone .text-black { color: #fff !important; }
+.theme-phone .text-slate-600, .theme-phone .text-slate-500, .theme-phone .label-eyebrow, .theme-phone .kpi-hint { color: rgba(255,255,255,.72) !important; }
+.theme-phone .text-slate-400, .theme-phone .text-slate-300 { color: rgba(255,255,255,.55) !important; }
+.theme-phone h1, .theme-phone h2, .theme-phone h3, .theme-phone h4 { color: #fff; }
+
+/* Controls */
+.theme-phone .filter-input, .theme-phone .filter-select, .theme-phone .modal-input, .theme-phone .list-size, .theme-phone input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), .theme-phone select, .theme-phone textarea {
+  background: rgba(255,255,255,.1) !important; border: 1px solid rgba(255,255,255,.22) !important; color: #fff !important;
+}
+.theme-phone input::placeholder, .theme-phone textarea::placeholder { color: rgba(255,255,255,.5) !important; }
+.theme-phone select option { background: #0d3d4d; color: #fff; }
+.theme-phone .filter-input:focus, .theme-phone .filter-select:focus, .theme-phone .modal-input:focus, .theme-phone input:focus, .theme-phone select:focus { border-color: #20b8ce !important; box-shadow: 0 0 0 3px rgba(32,184,206,.25) !important; }
+.theme-phone .btn-primary, .theme-phone .bar-cta, .theme-phone .modal-footer .btn-submit { background: linear-gradient(135deg, #1ba3c7, #20b8ce) !important; color: #04121a !important; border: 0 !important; box-shadow: none !important; }
+.theme-phone .btn-outline, .theme-phone .modal-cancel-btn, .theme-phone .bar-btn, .theme-phone .status-btn, .theme-phone .pill-tab, .theme-phone .list-pager .pg {
+  background: rgba(255,255,255,.1) !important; border: 1px solid rgba(255,255,255,.22) !important; color: #fff !important;
+}
+.theme-phone .pill-tab.is-active, .theme-phone .list-pager .pg.is-current { background: rgba(32,184,206,.28) !important; border-color: #20b8ce !important; }
+.theme-phone .list-pager .pg:disabled { opacity: .4; }
+.theme-phone .list-bar { border-color: rgba(255,255,255,.16) !important; }
+.theme-phone .list-bar-count { color: rgba(255,255,255,.75); }
+
+/* Tables */
+.theme-phone .grid-table thead th { background: rgba(32,184,206,.2) !important; color: #fff !important; border-color: rgba(255,255,255,.18) !important; }
+.theme-phone .grid-table tbody td { color: #fff !important; border-color: rgba(255,255,255,.14) !important; }
+.theme-phone .grid-table tbody tr:nth-child(odd) { background: rgba(255,255,255,.04) !important; }
+.theme-phone .grid-table tbody tr:nth-child(even) { background: rgba(255,255,255,.09) !important; }
+.theme-phone .grid-table tbody tr:hover { background: rgba(32,184,206,.2) !important; }
+.theme-phone .grid-table tfoot td { background: rgba(32,184,206,.2) !important; color: #fff !important; border-color: rgba(255,255,255,.18) !important; }
+.theme-phone .grid-table .grid-sort .arrow { color: #fff; }
+.theme-phone .empty-state, .theme-phone .empty-title { color: rgba(255,255,255,.75) !important; }
+.theme-phone .skeleton-box { background: rgba(255,255,255,.12) !important; }
+.theme-phone .modal-panel { background: #0d3d4d !important; border: 1px solid rgba(255,255,255,.2) !important; color: #fff !important; }
+.theme-phone .modal-header { background: rgba(255,255,255,.06) !important; border-color: rgba(255,255,255,.16) !important; }
+.theme-phone .modal-title, .theme-phone .modal-label, .theme-phone .modal-eyebrow { color: #fff !important; }
+.theme-phone .modal-footer { background: transparent !important; border-color: rgba(255,255,255,.16) !important; }
+/* The phone dashboard already carries its own look */
+.theme-phone .ad { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+
+/* A phone: topbar fits, tables become small cards (a row = a card, each cell labelled by its column) */
+@media (max-width: 640px) {
+  .theme-phone .topbar-search { display: none !important; }
+  .theme-phone .topbar select { max-width: 120px; }
+}
+@media (max-width: 767px) {
+  .theme-phone .fit-page, .theme-phone .fit-page > * { overflow: visible !important; }
+  .theme-phone table.grid-table, .theme-phone table.grid-table tbody { display: block; width: 100%; }
+  .theme-phone table.grid-table thead { display: none; }
+  .theme-phone table.grid-table tbody tr { display: block; margin: 0 0 10px; padding: 6px 12px; border: 1px solid rgba(255,255,255,.18); border-radius: 14px; background: rgba(255,255,255,.1) !important; }
+  .theme-phone table.grid-table tbody td { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 7px 0 !important; border: 0 !important; border-bottom: 1px solid rgba(255,255,255,.1) !important; text-align: right; min-height: 0; }
+  .theme-phone table.grid-table tbody td:last-child { border-bottom: 0 !important; }
+  .theme-phone table.grid-table tbody td::before { content: attr(data-label); flex: none; max-width: 45%; text-align: left; font-size: 11px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; color: rgba(255,255,255,.6); }
+  .theme-phone table.grid-table tbody td:not([data-label])::before, .theme-phone table.grid-table tbody td[data-label=""]::before, .theme-phone table.grid-table tbody td.no-col { display: none; }
+  .theme-phone table.grid-table tbody td[colspan] { display: block; text-align: center; }
+  .theme-phone table.grid-table tfoot { display: block; }
+  .theme-phone table.grid-table tfoot tr { display: flex; flex-wrap: wrap; }
+  .theme-phone table.grid-table tfoot td { flex: 1 1 auto; border: 0 !important; }
+}
+
+.theme-phone .kpi-row, .theme-phone .stat-row { background: transparent !important; }
+.theme-phone .stat, .theme-phone .stat * { color: #fff !important; }
+.theme-phone .stat .stat-ic, .theme-phone .stat .stat-ic * { color: var(--accent, #20b8ce) !important; }

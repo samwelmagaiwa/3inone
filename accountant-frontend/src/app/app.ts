@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 import { installNoAutofill } from './shared/ui/no-autofill';
+import { installTableLabels } from './shared/ui/table-labels';
 
 @Component({
   selector: 'app-root',
@@ -12,5 +13,6 @@ import { installNoAutofill } from './shared/ui/no-autofill';
 export class App {
   constructor() {
     installNoAutofill();
+    installTableLabels();
   }
 }
