@@ -14,6 +14,7 @@ import { MotionService } from '../../core/services/motion.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
 import { SalonHomeComponent } from './salon-home';
+import { CategoryProfitComponent } from '../../shared/components/category-profit/category-profit';
 import { ChartItem, TopChartComponent } from '../../shared/components/top-chart/top-chart';
 import { CountUpDirective } from '../../shared/ui/count-up.directive';
 import { MoneyDirective } from '../../shared/ui/money.directive';
@@ -25,7 +26,7 @@ import { MoneyDirective } from '../../shared/ui/money.directive';
  */
 @Component({
   selector: 'app-dashboard',
-  imports: [NgTemplateOutlet, FormsModule, RouterLink, ModalDialogComponent, CountUpDirective, MoneyDirective, SalonHomeComponent, TopChartComponent],
+  imports: [NgTemplateOutlet, FormsModule, RouterLink, ModalDialogComponent, CountUpDirective, MoneyDirective, SalonHomeComponent, TopChartComponent, CategoryProfitComponent],
   templateUrl: './dashboard.html',
 })
 export class DashboardPage implements OnInit, AfterViewInit, OnDestroy {

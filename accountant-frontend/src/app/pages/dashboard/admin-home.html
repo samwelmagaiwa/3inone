@@ -166,6 +166,14 @@
       <div class="rule"></div>
     }
 
+    <!-- What each category earned this month: goods and services, subtotals and totals -->
+    @if (report()?.profit_by_category?.categories?.length) {
+      <div class="block" data-testid="ad-categories">
+        <app-category-profit [report]="report()" />
+      </div>
+      <div class="rule"></div>
+    }
+
     <!-- The services -->
     @if (can('inv_view_products')) {
       <div class="block" data-testid="ad-services">

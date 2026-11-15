@@ -265,3 +265,18 @@ describe('dashboard (this month)', () => {
     expect(all).not.toContain('Better than');
   });
 });
+
+describe('the month page: profit by category', () => {
+  const blocks = { categories: [{ category: 'Nywele', goods: null, services: null, total: { sales: 95000, cost: 12000, profit: 83000, margin_percent: 87 } }], totals: { goods: { sales: 0, profit: 0 }, services: { sales: 0, profit: 0 }, all: { sales: 95000, profit: 83000 } } };
+
+  it('has a card with the categories when the server sends them, and none when it does not', async () => {
+    const withIt = await open({}, { report: report(monthKey(new Date()), { profit_by_category: blocks }) });
+    expect(byTestId(withIt.el, 'category-card')).not.toBeNull();
+    expect(byTestId(withIt.el, 'cat-total-Nywele')).not.toBeNull();
+  });
+
+  it('leaves the card out when there are no categories', async () => {
+    const without = await open({}, { report: report(monthKey(new Date())) });
+    expect(byTestId(without.el, 'category-card')).toBeNull();
+  });
+});

@@ -122,6 +122,13 @@
       </section>
     </div>
 
+    <!-- What each category earned: its goods and services with subtotals, then the totals -->
+    @if (r.profit_by_category?.categories?.length) {
+      <section class="section-card p-5" data-testid="category-card">
+        <app-category-profit [report]="r" />
+      </section>
+    }
+
     <!-- Where to improve: advice is written from the profit, so it is the owner's -->
     @if (!r.is_future && ownerFigures(r)) {
       <section class="section-card p-5">

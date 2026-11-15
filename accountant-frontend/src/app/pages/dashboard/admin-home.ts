@@ -1,3 +1,4 @@
+import { CategoryProfitComponent } from '../../shared/components/category-profit/category-profit';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -22,7 +23,7 @@ type Period = 'today' | 'week' | 'month' | 'year' | 'custom';
  */
 @Component({
   selector: 'app-admin-home',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, CategoryProfitComponent],
   templateUrl: './admin-home.html',
 })
 export class AdminHomeComponent implements OnInit {
