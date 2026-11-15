@@ -67,7 +67,8 @@ export class ShellLayout implements OnDestroy {
   }
 
   protected readonly sidebarOpen = signal(false); // phone drawer
-  protected readonly sidebarCollapsed = signal(false); // icons only
+  /** Icons only. A computer screen that shows less than 1366 px starts with the narrow menu so the pages have the room (the button opens it). */
+  protected readonly sidebarCollapsed = signal(typeof window !== 'undefined' && window.innerWidth >= 1024 && window.innerWidth < 1366);
   protected readonly profileOpen = signal(false);
   protected readonly searchQuery = signal('');
   protected readonly searchOpen = signal(false);

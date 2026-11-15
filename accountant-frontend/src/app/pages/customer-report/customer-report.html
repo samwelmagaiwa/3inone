@@ -48,7 +48,7 @@
     <section class="section-card overflow-hidden" data-testid="crr-details">
       <div class="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-slate-100">
         <div class="min-w-0 mr-auto">
-          <p class="text-slate-900 font-black text-base truncate" data-testid="crr-name">{{ r.customer.name }}</p>
+          <p class="text-slate-900 font-black text-base truncate" [attr.title]="r.customer.name" data-testid="crr-name">{{ r.customer.name }}</p>
           <p class="text-xs font-semibold text-slate-400">{{ r.customer.phone }}@if (r.customer.address) { · {{ r.customer.address }} }</p>
         </div>
         <label class="crr-sort">

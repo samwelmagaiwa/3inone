@@ -1958,3 +1958,10 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
   .fit-page .grid-table thead th { top: 0 !important; white-space: normal; }
   .grid-table tbody td { overflow-wrap: anywhere; }
 }
+
+/* A computer screen showing 1280 px or less (a 22-inch monitor with the display scaled up): tables take less room, so nothing is pushed out of view */
+@media (min-width: 768px) and (max-width: 1280px) {
+  .grid-table thead th, .grid-table tbody td, .grid-table tfoot td { padding: 8px 9px; font-size: 13px; }
+  .grid-table thead th { font-size: 11.5px; letter-spacing: .02em; }
+  .list-bar { padding: 10px 12px; }
+}

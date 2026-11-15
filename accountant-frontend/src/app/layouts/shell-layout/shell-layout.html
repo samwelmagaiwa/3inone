@@ -166,7 +166,7 @@
                   <button type="button" (click)="openNotification(n)" class="bell-item" [class.bell-item--unread]="!n.read_at">
                     <span class="bell-dot" [class.bell-dot--on]="!n.read_at"></span>
                     <span class="min-w-0 flex-1 text-left">
-                      <span class="block text-xs font-black text-slate-900 truncate">{{ n.title }}</span>
+                      <span class="block text-xs font-black text-slate-900 truncate" [attr.title]="n.title">{{ n.title }}</span>
                       <span class="block text-[11px] font-semibold text-slate-500 leading-snug mt-0.5">{{ n.body }}</span>
                       <span class="block text-[10px] font-bold text-slate-400 mt-1">{{ timeAgo(n.created_at) }}</span>
                     </span>
@@ -291,7 +291,7 @@
     <div class="flex items-center gap-3 p-3.5 bg-white border border-slate-100" style="border-radius: 12px;">
       <div class="w-12 h-12 flex items-center justify-center font-black text-sm text-[#1a2f6e] bg-[#f3f5ff] shrink-0" style="border-radius: 12px;">{{ initials() }}</div>
       <div class="min-w-0">
-        <p class="font-black text-slate-900 text-sm leading-tight truncate">{{ user().name }}</p>
+        <p class="font-black text-slate-900 text-sm leading-tight truncate" [attr.title]="user().name">{{ user().name }}</p>
         <p class="text-[11px] text-slate-500 font-bold uppercase tracking-wide mt-0.5">{{ user().roleLabel }}</p>
       </div>
     </div>

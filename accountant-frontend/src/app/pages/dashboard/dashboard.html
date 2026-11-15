@@ -241,7 +241,7 @@
             </div>
           </div>
           <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wide truncate">{{ k.hint }}</span>
+            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wide leading-tight min-w-0">{{ k.hint }}</span>
             @if (k.cmp.direction !== 'same') {
               <span class="text-xs font-black shrink-0" [style.color]="k.cmp.good ? '#059669' : '#dc2626'">{{ k.cmp.direction === 'up' ? '▲' : '▼' }} {{ percent(k.cmp) }}</span>
             }
