@@ -135,3 +135,91 @@ describe('sales', () => {
     expect((fixture.nativeElement as HTMLElement).querySelector('[role=alert]')?.textContent).toContain('Server busy');
   });
 });
+
+describe('sales by category', () => {
+  const answer = {
+    from: '2026-11-01', to: '2026-11-30', owner_figures: true,
+    categories: [{
+      category: 'Nywele', goods: null,
+      services: { category: 'Nywele', qty: 2, sales: 80000, cost: 6000, profit: 74000, margin_percent: 92, items: [{ name: 'Knotless', qty: 2, sales: 80000, cost: 6000, profit: 74000, materials: [{ name: 'Gel', qty: 4, cost: 6000 }] }] },
+      total: { sales: 80000, cost: 6000, profit: 74000, margin_percent: 92 },
+    }],
+    totals: { goods: { sales: 0, profit: 0 }, services: { sales: 80000, profit: 74000 }, all: { sales: 80000, profit: 74000 } },
+  };
+
+  it('has the two views for someone who may read reports', async () => {
+    const { el } = await open({});
+    expect(byTestId(el, 'sales-views')).not.toBeNull();
+  });
+
+  it('has no "By category" for someone who may not read reports (they would see what each category earned)', async () => {
+    const { el } = await open({ permissions: ['inv_create_sales', 'inv_manage_sales'] });
+    expect(byTestId(el, 'sales-views')).toBeNull();
+  });
+
+  it('opens on this month, asks the server for those days, and shows each category with what it sold and earned', async () => {
+    const { h, fixture, el } = await open({});
+    byTestId(el, 'view-category')!.click();
+    await settle(fixture);
+
+    const ask = h.http.expectOne((r) => r.url.endsWith('/inventory/sales/by-category'));
+    const first = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    expect(ask.request.params.get('from')).toBe(`${first.getFullYear()}-${pad(first.getMonth() + 1)}-01`);
+    ask.flush({ data: answer });
+    await settle(fixture);
+
+    expect(byTestId(el, 'sales-categories')).not.toBeNull();
+    expect(text(byTestId(el, 'cat-total-Nywele')!)).toBe('TSH 74,000');
+    expect(text(byTestId(el, 'cat-totals-all')!)).toBe('TSH 74,000');
+    expect(byTestId(el, 'sale-row-1')).toBeNull(); // the list of sales is put away while the categories are read
+  });
+
+  it('a date written by hand asks again for those days, and a quick pick fills the dates in', async () => {
+    const { h, fixture, el } = await open({});
+    byTestId(el, 'view-category')!.click();
+    await settle(fixture);
+    h.http.expectOne((r) => r.url.endsWith('/inventory/sales/by-category')).flush({ data: answer });
+    await settle(fixture);
+
+    type(el, '[data-testid=cat-from]', '2026-10-01');
+    type(el, '[data-testid=cat-to]', '2026-10-31');
+    await settle(fixture);
+    const asked = h.http.match((r) => r.url.endsWith('/inventory/sales/by-category'));
+    expect(asked[asked.length - 1].request.params.get('from')).toBe('2026-10-01');
+    expect(asked[asked.length - 1].request.params.get('to')).toBe('2026-10-31');
+    asked.forEach((r) => r.flush({ data: answer }));
+
+    const quick = byTestId(el, 'cat-quick') as HTMLSelectElement;
+    quick.value = 'today';
+    quick.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle(fixture);
+    expect((byTestId(el, 'cat-from') as HTMLInputElement).value).toBe((byTestId(el, 'cat-to') as HTMLInputElement).value);
+    h.http.match((r) => r.url.endsWith('/inventory/sales/by-category')).forEach((r) => r.flush({ data: answer }));
+  });
+
+  it('says plainly when nothing was sold in the period', async () => {
+    const { h, fixture, el } = await open({});
+    byTestId(el, 'view-category')!.click();
+    await settle(fixture);
+
+    h.http.expectOne((r) => r.url.endsWith('/inventory/sales/by-category')).flush({ data: { from: 'a', to: 'b', owner_figures: true, categories: [], totals: { goods: { sales: 0, profit: 0 }, services: { sales: 0, profit: 0 }, all: { sales: 0, profit: 0 } } } });
+    await settle(fixture);
+
+    expect(text(byTestId(el, 'cat-empty')!)).toBe('Nothing was sold in this period.');
+  });
+
+  it('goes back to the list of sales', async () => {
+    const { h, fixture, el } = await open({});
+    byTestId(el, 'view-category')!.click();
+    await settle(fixture);
+    h.http.expectOne((r) => r.url.endsWith('/inventory/sales/by-category')).flush({ data: answer });
+    await settle(fixture);
+
+    byTestId(el, 'view-list')!.click();
+    await settle(fixture);
+
+    expect(byTestId(el, 'sale-row-1')).not.toBeNull();
+    expect(byTestId(el, 'sales-categories')).toBeNull();
+  });
+});

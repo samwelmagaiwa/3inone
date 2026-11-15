@@ -69,6 +69,13 @@ export interface ProfitByCategory {
   totals?: { goods: { sales: number; profit: number }; services: { sales: number; profit: number }; all: { sales: number; profit: number } };
 }
 
+/** The by-category answer for any period (the Sales screen): the blocks and totals, whether profit is shown, and the days it covers. */
+export interface ByCategoryData extends ProfitByCategory {
+  from: string;
+  to: string;
+  owner_figures: boolean;
+}
+
 export interface MonthlyReport {
   /** False for someone who may not see what the business earns or is worth: profit, target, capital and advice are left out. */
   owner_figures?: boolean;

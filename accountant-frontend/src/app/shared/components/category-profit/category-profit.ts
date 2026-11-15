@@ -2,7 +2,7 @@ import { Component, computed, inject, input } from '@angular/core';
 
 import { tsh } from '../../../core/format';
 import { I18nService } from '../../../core/i18n.service';
-import { CategoryBlock, CategoryItem, MonthlyReport } from '../../../core/models';
+import { ByCategoryData, CategoryBlock, CategoryItem, MonthlyReport, ProfitByCategory } from '../../../core/models';
 
 /**
  * What each CATEGORY earned in the month, in one place: its goods and its services each with their items and a subtotal (a service's goods
@@ -86,11 +86,15 @@ export class CategoryProfitComponent {
   protected readonly i18n = inject(I18nService);
   protected readonly tsh = tsh;
 
+  /** A month's report (the "This month" page and the dashboard)... */
   readonly report = input<MonthlyReport | null>(null);
+  /** ...or the answer for any period (the Sales screen's "By category"). */
+  readonly data = input<ByCategoryData | null>(null);
 
-  protected readonly owner = computed(() => this.report()?.owner_figures !== false);
-  protected readonly blocks = computed<CategoryBlock[]>(() => this.report()?.profit_by_category?.categories ?? []);
-  protected readonly totals = computed(() => this.report()?.profit_by_category?.totals ?? null);
+  private readonly source = computed<ProfitByCategory | null>(() => this.data() ?? this.report()?.profit_by_category ?? null);
+  protected readonly owner = computed(() => (this.data() ? this.data()!.owner_figures : this.report()?.owner_figures) !== false);
+  protected readonly blocks = computed<CategoryBlock[]>(() => this.source()?.categories ?? []);
+  protected readonly totals = computed(() => this.source()?.totals ?? null);
 
   /** Profit for the owner; what was sold for anyone else (the server already leaves the profit at nothing for them). */
   protected val(x: { sales: number; profit: number }): number {

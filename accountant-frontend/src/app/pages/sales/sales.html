@@ -22,6 +22,37 @@
       }
     </div>
 
+    <!-- Two ways to read the sales: one by one, or by category (what each category sold and earned) -->
+    @if (canSeeCategories()) {
+      <div class="flex flex-wrap gap-2" role="tablist" data-testid="sales-views">
+        <button type="button" role="tab" class="pill-tab" [class.is-active]="view() === 'list'" [attr.aria-selected]="view() === 'list'" (click)="setView('list')" data-testid="view-list">{{ i18n.t('sales.view.list') }}</button>
+        <button type="button" role="tab" class="pill-tab" [class.is-active]="view() === 'category'" [attr.aria-selected]="view() === 'category'" (click)="setView('category')" data-testid="view-category">{{ i18n.t('sales.view.cat') }}</button>
+      </div>
+    }
+
+    @if (view() === 'category') {
+      <section class="panel" style="padding: 16px" data-testid="sales-categories">
+        <div class="flex flex-wrap items-end gap-3 mb-3">
+          <label class="filter-field"><span>{{ i18n.t('pl.quick') }}</span>
+            <select class="filter-select" [ngModel]="catPeriod()" (ngModelChange)="pickCat($event)" data-testid="cat-quick">
+              @for (p of quickPeriods; track p) { <option [value]="p">{{ quickName(p) }}</option> }
+              <option value="custom">{{ i18n.t('ad.custom') }}</option>
+            </select>
+          </label>
+          <label class="filter-field"><span>{{ i18n.t('ad.from') }}</span><input type="date" class="filter-input" [ngModel]="catFrom()" (ngModelChange)="setCatFrom($event)" [max]="todayIso" data-testid="cat-from"></label>
+          <label class="filter-field"><span>{{ i18n.t('ad.to') }}</span><input type="date" class="filter-input" [ngModel]="catTo()" (ngModelChange)="setCatTo($event)" [max]="todayIso" data-testid="cat-to"></label>
+        </div>
+        @if (catError()) {
+          <div class="text-center space-y-3 py-6" role="alert"><p class="text-slate-500 text-sm" data-testid="cat-error">{{ catError() }}</p><button type="button" class="btn-primary" (click)="loadCategories()">{{ i18n.t('common.retry') }}</button></div>
+        } @else if (catLoading() && !catData()) {
+          <div class="skeleton-box" style="height: 140px; border-radius: 12px;"></div>
+        } @else if (catData()?.categories?.length) {
+          <app-category-profit [data]="catData()" />
+        } @else {
+          <p class="text-sm text-slate-500 py-4" data-testid="cat-empty">{{ i18n.t('cat.none.sold') }}</p>
+        }
+      </section>
+    } @else {
     <section class="panel overflow-clip" style="padding:0">
       <app-table-toolbar [compact]="true" [search]="query()" (searchChange)="setQuery($event)" [placeholder]="i18n.t('sales.search')" [count]="total()" [noun]="noun()">
         <!-- The state of payment, the day and the New sale button: one row, with the search -->
@@ -117,6 +148,7 @@
         </div>
       }
     </section>
+    }
 
     @if (returns().length) {
       <section class="panel" data-testid="returns">

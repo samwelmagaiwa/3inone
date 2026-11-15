@@ -5,6 +5,7 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   Advice,
+  ByCategoryData,
   AssistantAnswer,
   AssistantStatus,
   AssistantTurnOut,
@@ -48,6 +49,11 @@ export class AccountantApi {
   // ------------------------------------------------------------------ the month
   monthlyReport(month: string): Observable<MonthlyReport> {
     return this.http.get<ApiEnvelope<MonthlyReport>>(`${API}/inventory/monthly-report`, { params: { month } }).pipe(map((r) => r.data));
+  }
+
+  /** What each category sold and earned between two days (profit for the owner, sales for anyone else). */
+  salesByCategory(from: string, to: string): Observable<ByCategoryData> {
+    return this.http.get<ApiEnvelope<ByCategoryData>>(`${API}/inventory/sales/by-category`, { params: { from, to } }).pipe(map((r) => r.data));
   }
 
   /** Set the month's profit target (0 clears it). */

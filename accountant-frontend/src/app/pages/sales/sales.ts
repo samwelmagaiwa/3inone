@@ -10,6 +10,9 @@ import { dayOf, eatDateTime, offline, parseAmount, serverMessage, tsh } from '..
 import { I18nService } from '../../core/i18n.service';
 import { SaleRow } from '../../core/models';
 import { ReceiptSize, printReceipt, rememberReceiptSize } from '../../core/receipt';
+import { periodRange } from '../money/money';
+import { CategoryProfitComponent } from '../../shared/components/category-profit/category-profit';
+import { ByCategoryData } from '../../core/models';
 import { ReceiptSizeComponent } from '../../shared/components/receipt-size/receipt-size';
 import { MotionService } from '../../core/services/motion.service';
 import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
@@ -31,7 +34,7 @@ type Status = '' | 'paid' | 'partial' | 'debt';
  */
 @Component({
   selector: 'app-sales',
-  imports: [FormsModule, RouterLink, ReceiptSizeComponent, ModalDialogComponent, TableToolbarComponent, ListBarComponent, CountUpDirective, MoneyDirective, StickyRowDirective],
+  imports: [FormsModule, RouterLink, CategoryProfitComponent, ReceiptSizeComponent, ModalDialogComponent, TableToolbarComponent, ListBarComponent, CountUpDirective, MoneyDirective, StickyRowDirective],
   templateUrl: './sales.html',
 })
 export class SalesPage implements OnInit {
@@ -72,6 +75,67 @@ export class SalesPage implements OnInit {
   protected readonly tsh = tsh;
   protected readonly channels = PAYMENT_CHANNELS;
   protected readonly canSell = computed(() => this.auth.can('inv_create_sales'));
+
+  // ---- "By category": what each category sold and earned in a period (for whoever may read reports)
+  protected readonly canSeeCategories = computed(() => this.auth.can('inv_view_reports'));
+  protected readonly view = signal<'list' | 'category'>('list');
+  protected readonly quickPeriods = ['today', 'yesterday', 'last7', 'thisWeek', 'lastWeek', 'thisMonth', 'lastMonth', 'thisYear'] as const;
+  protected readonly catPeriod = signal<string>('thisMonth');
+  protected readonly catFrom = signal(periodRange('thisMonth', new Date())[0]);
+  protected readonly catTo = signal(periodRange('thisMonth', new Date())[1]);
+  protected readonly catData = signal<ByCategoryData | null>(null);
+  protected readonly catLoading = signal(false);
+  protected readonly catError = signal('');
+  private catAsked = 0;
+
+  protected setView(v: 'list' | 'category'): void {
+    this.view.set(v);
+    if (v === 'category' && !this.catData() && !this.catLoading()) void this.loadCategories();
+  }
+
+  protected quickName(p: string): string {
+    return this.i18n.t('pl.p.' + p);
+  }
+
+  /** A quick pick fills in the two dates and shows the report; writing a date by hand leaves "Pick dates" selected. */
+  protected pickCat(p: string): void {
+    this.catPeriod.set(p);
+    if (p === 'custom') return;
+    const [a, b] = periodRange(p as 'today', new Date());
+    this.catFrom.set(a);
+    this.catTo.set(b);
+    void this.loadCategories();
+  }
+
+  protected setCatFrom(v: string): void {
+    this.catFrom.set(v);
+    this.catChanged();
+  }
+
+  protected setCatTo(v: string): void {
+    this.catTo.set(v);
+    this.catChanged();
+  }
+
+  private catChanged(): void {
+    this.catPeriod.set('custom');
+    const day = /^\d{4}-\d{2}-\d{2}$/;
+    if (day.test(this.catFrom()) && day.test(this.catTo()) && this.catFrom() <= this.catTo()) void this.loadCategories();
+  }
+
+  protected async loadCategories(): Promise<void> {
+    const ticket = ++this.catAsked;
+    this.catLoading.set(true);
+    this.catError.set('');
+    try {
+      const data = await firstValueFrom(this.api.salesByCategory(this.catFrom(), this.catTo()));
+      if (ticket === this.catAsked) this.catData.set(data);
+    } catch (err) {
+      if (ticket === this.catAsked) this.catError.set(offline(err) ? this.i18n.t('error.offline') : serverMessage(err) || this.i18n.t('error.generic'));
+    } finally {
+      if (ticket === this.catAsked) this.catLoading.set(false);
+    }
+  }
   protected readonly canManage = computed(() => this.auth.can('inv_manage_sales'));
   /** Deleting a sale and taking goods back are the owner's rights; without them the person writes a request with a comment instead. */
   protected readonly canCancel = computed(() => this.auth.can('inv_cancel_sales'));
