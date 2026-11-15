@@ -282,6 +282,21 @@ final class MonthlyReport
         return $out + ['categories' => $categories, 'totals' => $totals];
     }
 
+    /**
+     * The by-category report for ANY period (the Sales screen's "By category"): the same blocks and totals as the month's report. The owner reads
+     * profit; anyone else reads what each category sold (cost and profit are left at nothing).
+     *
+     * @return array<string, mixed>
+     */
+    public static function categoriesBetween(string $from, string $to, ?int $branch, bool $owner): array
+    {
+        $a = Carbon::createFromFormat('!Y-m-d', $from, MonthlyFigures::TIMEZONE);
+        $b = Carbon::createFromFormat('!Y-m-d', $to, MonthlyFigures::TIMEZONE);
+        $data = self::profitByCategory($a, $b, $branch);
+
+        return ['from' => $from, 'to' => $to, 'owner_figures' => $owner] + ($owner ? $data : self::withoutProfit($data));
+    }
+
     /** One row of the by-category report: what was sold, what it cost, what it earned and the margin. */
     private static function part(?string $category, int $qty, float $sales, float $cost, array $items): array
     {

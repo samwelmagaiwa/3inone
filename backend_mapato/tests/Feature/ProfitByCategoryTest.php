@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Business;
 use App\Models\User;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
@@ -228,5 +230,74 @@ class ProfitByCategoryTest extends TestCase
         $this->assertEquals(0, $p['categories'][0]['services']['items'][0]['materials'][0]['cost']);
         $this->assertEquals(0, $p['totals']['all']['profit']);
         $this->assertEquals(40000, $p['totals']['all']['sales']);
+    }
+
+    private function range(User $as, string $query, string $svc = 'salon')
+    {
+        return $this->api($as, 'GET', '/api/inventory/sales/by-category' . $query, [], $svc);
+    }
+
+    public function test_the_sales_screen_reads_what_each_category_sold_and_earned_in_any_period(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-18 10:00:00', 'Africa/Dar_es_Salaam')->utc());
+        $owner = $this->owner('salon');
+        $hair = $this->category($owner, 'Nywele', 'salon');
+        $nails = $this->category($owner, 'Kucha', 'salon');
+        $braids = $this->product($owner, 'Knotless', $hair, 0, 40000, true, 'salon');
+        $gel = $this->product($owner, 'Gel polish', $nails, 0, 20000, true, 'salon');
+        $oil = $this->product($owner, 'Mafuta', $hair, 600, 1000, false, 'salon');
+
+        $this->sell($owner, $braids, 1, 40000, 0, 'salon');
+        $this->sell($owner, $oil, 5, 1000, 600, 'salon');
+        $old = $this->sell($owner, $gel, 2, 20000, 0, 'salon');
+        TenantContext::runAs($owner, fn () => TenantContext::runInService('salon', fn () => DB::table('inventory_sales')->where('id', $old)->update(['created_at' => '2026-10-10 09:00:00'])));
+
+        // this month: the hair category (a service and goods), and not the nails sold in October
+        $month = $this->range($owner, '?from=2026-11-01&to=2026-11-30')->assertOk()->json('data');
+        $this->assertSame(['Nywele'], array_column($month['categories'], 'category'));
+        $this->assertEquals(40000, $month['categories'][0]['services']['profit']);
+        $this->assertEquals(2000, $month['categories'][0]['goods']['profit']);
+        $this->assertEquals(42000, $month['totals']['all']['profit']);
+        $this->assertTrue($month['owner_figures']);
+
+        // October to November: both categories, the nails with their own profit
+        $both = $this->range($owner, '?from=2026-10-01&to=2026-11-30')->assertOk()->json('data');
+        $this->assertEqualsCanonicalizing(['Nywele', 'Kucha'], array_column($both['categories'], 'category'));
+        $this->assertEquals(40000, collect($both['categories'])->firstWhere('category', 'Kucha')['services']['profit']);
+        $this->assertEquals(82000, $both['totals']['all']['profit']);
+
+        // no dates: this month so far
+        $this->assertEquals(42000, $this->range($owner, '')->assertOk()->json('data.totals.all.profit'));
+    }
+
+    public function test_the_by_category_period_is_checked_and_a_shop_reads_it_too(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-18 10:00:00', 'Africa/Dar_es_Salaam')->utc());
+        $owner = $this->owner('inventory', 'Duka');
+        $oil = $this->product($owner, 'Mafuta', $this->category($owner, 'Nywele'), 600, 1000);
+        $this->sell($owner, $oil, 5, 1000, 600);
+
+        $this->range($owner, '?from=2026-11-10&to=2026-11-01', 'inventory')->assertStatus(422);
+        $this->range($owner, '?from=2024-01-01&to=2026-11-01', 'inventory')->assertStatus(422);
+        $this->range($owner, '?from=nope', 'inventory')->assertStatus(422);
+        $this->assertEquals(2000, $this->range($owner, '?from=2026-11-01&to=2026-11-30', 'inventory')->assertOk()->json('data.totals.goods.profit'));
+    }
+
+    public function test_the_by_category_period_hides_profit_from_anyone_but_the_owner_and_is_not_another_businesss(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-18 10:00:00', 'Africa/Dar_es_Salaam')->utc());
+        $owner = $this->owner('salon');
+        $braids = $this->product($owner, 'Knotless', $this->category($owner, 'Nywele', 'salon'), 0, 40000, true, 'salon');
+        $this->sell($owner, $braids, 1, 40000, 0, 'salon');
+        $accountant = $this->givenServices(User::factory()->create(['name' => 'Acc', 'role' => 'accountant', 'is_active' => true, 'created_by' => $owner->id]), 'salon');
+        $other = $this->owner('salon', 'Other');
+
+        $mine = $this->range($accountant, '?from=2026-11-01&to=2026-11-30')->assertOk()->json('data');
+        $this->assertFalse($mine['owner_figures']);
+        $this->assertEquals(40000, $mine['totals']['all']['sales']);
+        $this->assertEquals(0, $mine['totals']['all']['profit']);
+        $this->assertEquals(0, $mine['categories'][0]['services']['items'][0]['profit']);
+
+        $this->assertSame([], $this->range($other, '?from=2026-11-01&to=2026-11-30')->assertOk()->json('data.categories'));
     }
 }

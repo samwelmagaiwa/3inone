@@ -132,6 +132,24 @@ class BusinessMoneyController extends Controller
         return response()->json(['data' => self::mayAudit($request) ? $report : MonthlyReport::withoutOwnerFigures($report)]);
     }
 
+    #[OA\Get(path: '/inventory/sales/by-category', summary: 'What each category sold and earned in a period: its goods and services, subtotals and totals', security: [['bearerAuth' => []]], tags: ['Inventory / Money'], parameters: [new OA\Parameter(name: 'from', in: 'query', schema: new OA\Schema(type: 'string')), new OA\Parameter(name: 'to', in: 'query', schema: new OA\Schema(type: 'string'))], responses: [new OA\Response(response: 200, description: 'Success')])]
+    public function byCategory(Request $request): JsonResponse
+    {
+        $month = \App\Support\Inventory\MonthlyFigures::currentMonth();
+        $data = $request->validate([
+            'from' => 'nullable|date_format:Y-m-d',
+            'to' => 'nullable|date_format:Y-m-d|after_or_equal:from',
+        ]);
+        $from = $data['from'] ?? $month . '-01';
+        $to = $data['to'] ?? \Illuminate\Support\Carbon::now(\App\Support\Inventory\MonthlyFigures::TIMEZONE)->toDateString();
+        if (\Illuminate\Support\Carbon::parse($from)->diffInDays(\Illuminate\Support\Carbon::parse($to)) > 366) {
+            throw ValidationException::withMessages(['to' => ['Kipindi ni kirefu mno (juu ya mwaka mmoja). / The period is too long (over a year).']]);
+        }
+
+        // Profit is the owner's: anyone else reads what each category sold.
+        return response()->json(['data' => MonthlyReport::categoriesBetween($from, $to, \App\Support\Salon\SalonBranch::selected($request), self::mayAudit($request))]);
+    }
+
     #[OA\Get(path: '/inventory/monthly-report/lists', summary: 'The whole sleeping-stock list and the whole list of who owes (the report shows the first few)', security: [['bearerAuth' => []]], tags: ['Inventory / Money'], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function reportLists(): JsonResponse
     {
