@@ -1949,3 +1949,12 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
 .ph-joined > .ph-sec { position: relative; padding: 12px 14px; background: transparent !important; border: 0 !important; border-radius: 0 !important; color: #fff; }
 .ph-joined > .ph-sec h3 { font-size: 15px; font-weight: 900; margin-bottom: 4px; }
 .ph-joined > .ph-sec + .ph-sec::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(32,184,206,.7) 50%, transparent); box-shadow: 0 0 8px rgba(32,184,206,.5); }
+.ph-rule { border: 0; border-top: 1px solid rgba(255,255,255,.22); margin: 6px 0; }
+
+/* ═══ A grid on a normal-sized screen: a table wider than its box scrolls sideways inside it instead of being cut off. The grids that let the page
+   scroll (fit-page) CLIPPED whatever did not fit, so on a 22-inch screen at 125-150% (about 1280px) the right-hand columns and words were lost. ═══ */
+@media (max-width: 1599px) {
+  .table-scroll-container.fit-page { overflow: auto !important; max-height: 78vh; }
+  .fit-page .grid-table thead th { top: 0 !important; white-space: normal; }
+  .grid-table tbody td { overflow-wrap: anywhere; }
+}
