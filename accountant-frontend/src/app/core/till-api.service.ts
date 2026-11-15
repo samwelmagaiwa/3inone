@@ -163,11 +163,6 @@ export class TillApi {
       .pipe(map((r) => r.data));
   }
 
-  /** A discount after the sale (the owner's right): comes off the total; what was paid beyond the new total goes back by [refundMethod]. */
-  discountSale(id: number, body: { amount: number; reason: string; refund_method?: string }): Observable<void> {
-    return this.http.post(`${API}/inventory/sales/${id}/discount`, body).pipe(map(() => undefined));
-  }
-
   cancelSale(id: number, reason: string): Observable<void> {
     return this.http.post(`${API}/inventory/sales/${id}/cancel`, { reason }).pipe(map(() => undefined));
   }

@@ -1,4 +1,4 @@
-import { afterSaleDiscount, baseQty, defaultUnitFor, lineKey, lineProfit, lineTax, lineTotal, totalsOf, unitPriceFor } from './till-math';
+import { baseQty, defaultUnitFor, lineKey, lineProfit, lineTax, lineTotal, totalsOf, unitPriceFor } from './till-math';
 import { CartLine, Product, SellingUnit, parseProduct } from './till.models';
 
 const unit = (over: Partial<SellingUnit> = {}): SellingUnit => ({ id: 1, name: 'Crate', factor: 24, isBase: false, active: true, prices: [], ...over });
@@ -81,26 +81,6 @@ describe('VAT and the total', () => {
     expect(baseQty(crate)).toBe(48);
     expect(lineProfit(crate)).toBe(48000 - 600 * 48);
     expect(totalsOf([crate], 0, true).profit).toBe(19200);
-  });
-
-  it('the profit the owner sees while booking is the lines\' profit less the discount', () => {
-    const crate = line({ qty: 2, unitPrice: 24000, unitFactor: 24, unitCost: 600 });
-    expect(totalsOf([crate], 0, true).profit).toBe(48000 - 600 * 48);
-    expect(totalsOf([crate], 3000, true).profit).toBe(48000 - 600 * 48 - 3000);
-  });
-});
-
-describe('a discount after the sale', () => {
-  it('shrinks what is owed first, and only what was paid beyond the new total is given back', () => {
-    expect(afterSaleDiscount(10000, 0, 3000)).toEqual({ newTotal: 7000, refund: 0, balance: 7000 });
-    expect(afterSaleDiscount(10000, 3000, 4000)).toEqual({ newTotal: 6000, refund: 0, balance: 3000 });
-    expect(afterSaleDiscount(10000, 10000, 2000)).toEqual({ newTotal: 8000, refund: 2000, balance: 0 });
-    expect(afterSaleDiscount(10000, 9000, 4000)).toEqual({ newTotal: 6000, refund: 3000, balance: 0 });
-  });
-
-  it('is never more than the total, and never negative', () => {
-    expect(afterSaleDiscount(5000, 0, 99999)).toEqual({ newTotal: 0, refund: 0, balance: 0 });
-    expect(afterSaleDiscount(5000, 0, -5)).toEqual({ newTotal: 5000, refund: 0, balance: 5000 });
   });
 });
 

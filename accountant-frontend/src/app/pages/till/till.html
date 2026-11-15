@@ -223,9 +223,6 @@
               @if (till.totals().discount > 0) { <div class="row"><span>{{ i18n.t('till.discount') }}</span><span>− {{ tsh(till.totals().discount) }}</span></div> }
               @if (till.totals().tax > 0) { <div class="row"><span>{{ i18n.t('till.vat') }}</span><span>{{ tsh(till.totals().tax) }}</span></div> }
               <div class="cp-total"><span>{{ i18n.t('till.total') }}</span><b data-testid="cp-total">{{ tsh(till.totals().total) }}</b></div>
-              @if (seesProfit() && till.lines().length) {
-                <div class="row cp-profit" data-testid="cp-profit-row"><span>{{ i18n.t('till.profit.owner') }}</span><b [class.is-loss]="till.totals().profit < 0" data-testid="cp-profit">{{ tsh(till.totals().profit) }}</b></div>
-              }
             </div>
             @if (till.salon() && missingStylists() > 0) {
               <p class="cp-status is-todo" data-testid="cp-status">{{ i18n.t('till.cart.missing', missingStylists()) }}</p>
@@ -609,8 +606,6 @@
   .cp-goods b { font-weight: 900; color: #1a2f6e; }
   .cp-totals { margin-top: 8px; padding-top: 10px; border-top: 1px dashed #c5d3f5; display: flex; flex-direction: column; gap: 4px; }
   .cp-totals .row { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #475a8f; }
-  .cp-profit b { color: #059669; }
-  .cp-profit b.is-loss { color: #dc2626; }
   .cp-total { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding: 10px 14px; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); font-weight: 800; }
   .cp-total b { font-size: 20px; font-weight: 900; }
   .cp-status { margin-top: 10px; padding: 8px 12px; border-radius: 12px; font-size: 12px; font-weight: 800; text-align: center; }

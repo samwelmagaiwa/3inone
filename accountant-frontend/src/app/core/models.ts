@@ -35,6 +35,40 @@ export interface Comparison {
   good: boolean;
 }
 
+/** What one category sold, cost and earned (a product's cost is what it cost; a service's is the goods it used up). */
+export interface CategoryItem {
+  name: string;
+  qty: number;
+  sales: number;
+  cost: number;
+  profit: number;
+  /** The goods a service used up this month (services only). */
+  materials?: { name: string; qty: number; cost: number }[];
+}
+
+export interface CategoryPart {
+  category: string | null;
+  qty: number;
+  sales: number;
+  cost: number;
+  profit: number;
+  margin_percent: number | null;
+  items: CategoryItem[];
+}
+
+/** One category: its goods, its services and both together. */
+export interface CategoryBlock {
+  category: string | null;
+  goods: CategoryPart | null;
+  services: CategoryPart | null;
+  total: { sales: number; cost: number; profit: number; margin_percent: number | null };
+}
+
+export interface ProfitByCategory {
+  categories?: CategoryBlock[];
+  totals?: { goods: { sales: number; profit: number }; services: { sales: number; profit: number }; all: { sales: number; profit: number } };
+}
+
 export interface MonthlyReport {
   /** False for someone who may not see what the business earns or is worth: profit, target, capital and advice are left out. */
   owner_figures?: boolean;
@@ -62,6 +96,8 @@ export interface MonthlyReport {
   capital_change: Comparison | null;
   target: Target | null;
   top_products: { name: string; qty: number; sales: number; profit: number }[];
+  /** Each category's goods and services with their profit, subtotals and the totals (an older server leaves it out). */
+  profit_by_category?: ProfitByCategory;
   top_customers: { name: string; purchases: number; spent: number }[];
   slow_stock: { name: string; quantity: number; value: number }[];
   debtors: { name: string; owed: number; days: number }[];

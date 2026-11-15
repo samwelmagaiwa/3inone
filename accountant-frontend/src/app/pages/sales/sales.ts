@@ -16,7 +16,6 @@ import { SortState, nextSort, sortArrow, sorted } from '../../core/sort';
 import { ToastService } from '../../core/services/toast.service';
 import { PAYMENT_CHANNELS } from '../../core/till.service';
 import { SaleDetail, SaleReturn, TillApi } from '../../core/till-api.service';
-import { afterSaleDiscount } from '../../core/till-math';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
 import { ListBarComponent } from '../../shared/components/list-bar/list-bar';
 import { TableToolbarComponent } from '../../shared/components/table-toolbar/table-toolbar';
@@ -84,12 +83,6 @@ export class SalesPage implements OnInit {
   protected payMethod = 'cash';
   protected payReference = '';
   protected readonly cancelFor = signal<SaleRow | null>(null);
-  // a discount after the sale
-  protected readonly discountFor = signal<SaleRow | null>(null);
-  protected discountText = '';
-  protected discountReason = '';
-  protected refundMethod = 'cash';
-
   protected cancelReason = '';
   protected readonly returnFor = signal<SaleDetail | null>(null);
   protected readonly returnQty = signal<Record<number, number>>({});
@@ -215,44 +208,6 @@ export class SalesPage implements OnInit {
       await firstValueFrom(this.till.recordPayment(s.id, amount, this.payMethod, this.payMethod === 'cash' ? undefined : this.payReference.trim() || undefined));
       this.payFor.set(null);
       this.toast.success(this.i18n.t('sales.pay.saved', tsh(amount)), this.i18n.t('common.done'));
-      await this.load();
-    } catch (err) {
-      this.actionError.set(this.fail(err));
-    } finally {
-      this.busy.set(false);
-    }
-  }
-
-  protected openDiscount(s: SaleRow): void {
-    this.discountText = '';
-    this.discountReason = '';
-    this.refundMethod = 'cash';
-    this.actionError.set('');
-    this.discountFor.set(s);
-  }
-
-  /** What the sale would become with the discount typed so far. */
-  protected discountPlan(s: SaleRow): { newTotal: number; refund: number; balance: number } {
-    const amount = parseAmount(this.discountText);
-
-    return afterSaleDiscount(s.total, s.paid_total, Number.isNaN(amount) ? 0 : amount);
-  }
-
-  protected async saveDiscount(): Promise<void> {
-    const s = this.discountFor();
-    const amount = parseAmount(this.discountText);
-    if (!s) return;
-    if (Number.isNaN(amount) || amount <= 0) return this.actionError.set(this.i18n.t('sales.disc.err.amount'));
-    if (amount > s.total) return this.actionError.set(this.i18n.t('sales.disc.err.toomuch', tsh(s.total)));
-    if (this.discountReason.trim().length < 3) return this.actionError.set(this.i18n.t('sales.disc.err.reason'));
-    const plan = this.discountPlan(s);
-    this.busy.set(true);
-    try {
-      await firstValueFrom(
-        this.till.discountSale(s.id, { amount, reason: this.discountReason.trim(), ...(plan.refund > 0 ? { refund_method: this.refundMethod } : {}) }),
-      );
-      this.discountFor.set(null);
-      this.toast.success(this.i18n.t('sales.disc.done', s.number), this.i18n.t('common.done'));
       await this.load();
     } catch (err) {
       this.actionError.set(this.fail(err));

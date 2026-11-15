@@ -100,7 +100,6 @@
                         @if (owing(s) > 0 && canSell()) { <button type="button" class="btn-primary" (click)="openPay(s)" [attr.data-testid]="'pay-' + s.id">{{ i18n.t('sales.pay') }} ({{ tsh(owing(s)) }})</button> }
                         <button type="button" class="modal-cancel-btn" (click)="receipt(s)">{{ i18n.t('till.print') }}</button>
                         @if (canSell()) { <button type="button" class="modal-cancel-btn" (click)="openReturn(s)" [attr.data-testid]="'return-' + s.id">{{ i18n.t(canReturn() ? 'sales.return' : 'sales.return.ask') }}</button> }
-                        @if (canCancel()) { <button type="button" class="modal-cancel-btn" (click)="openDiscount(s)" [attr.data-testid]="'discount-' + s.id">{{ i18n.t('sales.disc') }}</button> }
                         @if (canSell() || canCancel()) { <button type="button" class="modal-cancel-btn danger-btn" (click)="openCancel(s)" [attr.data-testid]="'cancel-' + s.id">{{ i18n.t(canCancel() ? 'sales.cancel' : 'sales.cancel.ask') }}</button> }
                       </div>
                     }
@@ -151,29 +150,6 @@
   <div slot="footer" class="flex gap-2 justify-end">
     <button type="button" class="modal-cancel-btn" (click)="payFor.set(null)">{{ i18n.t('common.cancel') }}</button>
     <button type="button" class="btn-primary" [disabled]="busy()" (click)="savePayment()" data-testid="pay-save">{{ i18n.t('common.save') }}</button>
-  </div>
-</app-modal-dialog>
-
-<!-- A discount after the sale -->
-<app-modal-dialog [show]="!!discountFor()" [title]="i18n.t('sales.disc')" [eyebrow]="discountFor()?.number ?? ''" (close)="discountFor.set(null)">
-  <div slot="body" class="space-y-4">
-    @if (discountFor(); as d) {
-      <p class="text-sm text-slate-500" data-testid="disc-now">{{ i18n.t('sales.disc.now', tsh(d.total), tsh(d.paid_total)) }}</p>
-      <div><label class="modal-label req" for="damt">{{ i18n.t('sales.disc.amount') }}</label><input appMoney id="damt" class="modal-input" inputmode="numeric" [(ngModel)]="discountText" autocomplete="off" data-testid="disc-amount" required [placeholder]="i18n.t('ph.amount')"></div>
-      <div><label class="modal-label req" for="dreason">{{ i18n.t('sales.disc.reason') }}</label><input id="dreason" class="modal-input" [(ngModel)]="discountReason" autocomplete="off" data-testid="disc-reason" required [placeholder]="i18n.t('sales.disc.reason.ph')"></div>
-      @if (discountPlan(d); as plan) {
-        @if (plan.newTotal !== d.total) { <p class="text-sm font-black text-slate-800" data-testid="disc-new-total">{{ i18n.t('sales.disc.new', tsh(plan.newTotal)) }}</p> }
-        @if (plan.refund > 0) {
-          <p class="text-sm font-bold text-amber-600" data-testid="disc-refund">{{ i18n.t('sales.disc.refund', tsh(plan.refund)) }}</p>
-          <div><label class="modal-label" for="dref">{{ i18n.t('sales.disc.refund.how') }}</label><select id="dref" class="modal-input" [(ngModel)]="refundMethod" data-testid="disc-refund-method">@for (c of channels; track c) { <option [value]="c">{{ channelName(c) }}</option> }</select></div>
-        }
-      }
-    }
-    @if (actionError()) { <p class="form-error" role="alert">{{ actionError() }}</p> }
-  </div>
-  <div slot="footer" class="flex gap-2 justify-end">
-    <button type="button" class="modal-cancel-btn" (click)="discountFor.set(null)">{{ i18n.t('common.cancel') }}</button>
-    <button type="button" class="btn-primary" [disabled]="busy()" (click)="saveDiscount()" data-testid="disc-save">{{ i18n.t('common.save') }}</button>
   </div>
 </app-modal-dialog>
 

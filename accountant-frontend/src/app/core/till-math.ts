@@ -61,18 +61,6 @@ export const baseQty = (l: CartLine): number => l.qty * (l.unitFactor < 1 ? 1 : 
 /** What the line earns: its price less the cost of the base units that leave. */
 export const lineProfit = (l: CartLine): number => lineTotal(l) - l.unitCost * baseQty(l);
 
-/**
- * A discount given AFTER the sale: the new total, what is still owed, and what must be given back because the client had already paid
- * more than the new total. The server applies the same rule.
- */
-export function afterSaleDiscount(total: number, paid: number, amount: number): { newTotal: number; refund: number; balance: number } {
-  const off = Math.min(Math.max(amount, 0), total);
-  const newTotal = Math.round((total - off) * 100) / 100;
-  const refund = Math.round(Math.max(0, paid - newTotal) * 100) / 100;
-
-  return { newTotal, refund, balance: Math.max(0, newTotal - (paid - refund)) };
-}
-
 export interface Totals {
   subtotal: number;
   discount: number;
@@ -86,5 +74,5 @@ export function totalsOf(lines: CartLine[], discount: number, pricesIncludeVat: 
   const subtotal = lines.reduce((s, l) => s + lineTotal(l), 0);
   const off = Math.min(Math.max(discount, 0), subtotal);
   const tax = lines.reduce((s, l) => s + l.taxAmount, 0);
-  return { subtotal, discount: off, tax, total: subtotal - off + (pricesIncludeVat ? 0 : tax), profit: lines.reduce((s, l) => s + lineProfit(l), 0) - off };
+  return { subtotal, discount: off, tax, total: subtotal - off + (pricesIncludeVat ? 0 : tax), profit: lines.reduce((s, l) => s + lineProfit(l), 0) };
 }

@@ -39,8 +39,6 @@ export class TillPage implements OnInit, OnDestroy {
   protected readonly till = inject(TillService);
   protected readonly caps = inject(CapabilitiesService);
   protected readonly auth = inject(AuthService);
-  /** What the sale being booked earns: the owner's to see (a shop or depot; never printed, never sent to the client). */
-  protected readonly seesProfit = computed(() => this.auth.isBusinessAdmin() && !this.till.salon());
   protected readonly i18n = inject(I18nService);
 
   protected readonly tsh = tsh;
