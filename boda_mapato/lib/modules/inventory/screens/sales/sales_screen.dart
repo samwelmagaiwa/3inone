@@ -31,12 +31,24 @@ import 'crate_checkout_rules.dart';
 import 'sale_confirmation_dialog.dart';
 import 'sale_receipt_screen.dart';
 import '../salon/price_option_picker.dart';
-import '../salon/salon_access.dart' show isBusinessAdminHere;
 import '../salon/salon_text.dart' show channelLabel;
 import '../salon/salon_perks_card.dart';
 import '../salon/salon_mode.dart';
 import '../salon/goods_used_sheet.dart';
 import '../salon/staff_picker.dart';
+
+/// The profit on the sale being booked is the business admin's alone: the owner of this shop or depot. Not a seller, an accountant or any other
+/// staff, and not a platform super admin (who owns no business). It is only ever drawn on the till screen: the receipt and the confirmation
+/// the client may read do not carry it.
+bool ownerSeesSaleProfit(BuildContext context) {
+  try {
+    final String role = (context.watch<AuthProvider>().user?.role ?? '').toLowerCase();
+
+    return role == 'admin' || role == 'administrator';
+  } on ProviderNotFoundException {
+    return false;
+  }
+}
 
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
@@ -492,6 +504,19 @@ class _SalesScreenState extends State<SalesScreen>
                       ),
                     ],
                   ),
+                  if (ownerSeesSaleProfit(context) && inv.cart.isNotEmpty)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '${LocalizationService.instance.isSwahili ? 'Faida (wewe tu)' : 'Profit (only you)'}: TZS ${inv.cartProfitAfterDiscount.toStringAsFixed(0)}',
+                        key: const ValueKey<String>('cart_profit_header'),
+                        style: TextStyle(
+                          color: inv.cartProfitAfterDiscount >= 0 ? ThemeConstants.successGreen : ThemeConstants.errorText,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12.sp,
+                        ),
+                      ),
+                    ),
                   const Divider(color: Colors.white24, height: 16),
                   ListView.separated(
                     shrinkWrap: true,
@@ -773,7 +798,7 @@ class _SalesScreenState extends State<SalesScreen>
                   ),
                 ],
                 // What this sale earns: the owner's to see while booking (never on the receipt or in anything sent to the client).
-                if (isBusinessAdminHere(context) && inv.cart.isNotEmpty) ...<Widget>[
+                if (ownerSeesSaleProfit(context) && inv.cart.isNotEmpty) ...<Widget>[
                   Row(
                     key: const ValueKey<String>('cart_profit_row'),
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
