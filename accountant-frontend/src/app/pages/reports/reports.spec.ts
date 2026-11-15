@@ -32,6 +32,30 @@ describe('reports page', () => {
     expect(r.topSpenders[0].spent).toBe(200);
     expect(readSalonReport({}).byBranch).toEqual([]);
   });
+
+  it('adds up the services and the goods: what each sold for, cost and earned, and each one\'s share of the profit', () => {
+    const r = readSalonReport({
+      by_service: [
+        { name: 'Braids', times: 3, revenue: 90, commission: 5, materials_cost: 2, profit: 80 },
+        { name: 'Haircut', times: 2, revenue: 40, profit: 40 },
+      ],
+      goods_sold: [
+        { name: 'Gel', qty: 4, revenue: 60, cost: 40, profit: 20 },
+        { name: 'Oil', qty: 1, revenue: 30, cost: 20, profit: 10 },
+      ],
+    });
+    expect(r.totals.services).toEqual({ times: 5, revenue: 130, profit: 120 });
+    expect(r.totals.goods).toEqual({ qty: 5, revenue: 90, cost: 60, profit: 30 });
+    expect(r.totals.goodsShare).toBe(20);
+    expect(r.totals.servicesShare).toBe(80);
+  });
+
+  it('with nothing sold the totals are zero and no share is made up', () => {
+    const t = readSalonReport({}).totals;
+    expect(t.services.profit).toBe(0);
+    expect(t.goods.profit).toBe(0);
+    expect(t.goodsShare + t.servicesShare).toBe(0);
+  });
 });
 
 describe('reports page layout', () => {

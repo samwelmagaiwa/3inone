@@ -33,17 +33,43 @@ export interface SalonReport {
   owedTotal: number;
   owed: { client: string; days: number; due: number }[];
   stock: Record<string, unknown>;
+  /** The sub-totals: what the services and the goods each sold for and earned in the period (profit only for someone who may see it). */
+  totals: ReportTotals;
+}
+
+export interface ReportTotals {
+  services: { times: number; revenue: number; profit: number };
+  goods: { qty: number; revenue: number; cost: number; profit: number };
+  /** The share of the profit of goods and services together that each earned, in whole percent (0 when there is no profit to share). */
+  goodsShare: number;
+  servicesShare: number;
+}
+
+export function reportTotals(byService: SalonReport['byService'], goodsSold: SalonReport['goodsSold']): ReportTotals {
+  const services = byService.reduce((a, r) => ({ times: a.times + r.times, revenue: a.revenue + r.revenue, profit: a.profit + r.profit }), { times: 0, revenue: 0, profit: 0 });
+  const goods = goodsSold.reduce((a, r) => ({ qty: a.qty + r.qty, revenue: a.revenue + r.revenue, cost: a.cost + r.cost, profit: a.profit + r.profit }), { qty: 0, revenue: 0, cost: 0, profit: 0 });
+  const both = goods.profit + services.profit;
+
+  return {
+    services,
+    goods,
+    goodsShare: both > 0 ? Math.round((goods.profit / both) * 100) : 0,
+    servicesShare: both > 0 ? Math.round((services.profit / both) * 100) : 0,
+  };
 }
 
 export function readSalonReport(j: Record<string, unknown>): SalonReport {
   const clients = obj(j['clients']);
   const owed = obj(j['owed']);
+  const byService = list(j['by_service']).map((r) => ({ name: text(r['name']), times: num(r['times']), revenue: num(r['revenue']), commission: num(r['commission']), materials: num(r['materials_cost']), profit: num(r['profit']) }));
+  const goodsSold = list(j['goods_sold']).map((r) => ({ name: text(r['name']), qty: num(r['qty']), revenue: num(r['revenue']), cost: num(r['cost']), profit: num(r['profit']) }));
 
   return {
     hidden: j['profit_hidden'] === true,
     summary: obj(j['summary']),
-    byService: list(j['by_service']).map((r) => ({ name: text(r['name']), times: num(r['times']), revenue: num(r['revenue']), commission: num(r['commission']), materials: num(r['materials_cost']), profit: num(r['profit']) })),
-    goodsSold: list(j['goods_sold']).map((r) => ({ name: text(r['name']), qty: num(r['qty']), revenue: num(r['revenue']), cost: num(r['cost']), profit: num(r['profit']) })),
+    byService,
+    goodsSold,
+    totals: reportTotals(byService, goodsSold),
     byStylist: list(j['by_stylist']).map((r) => ({ name: text(r['name']), services: num(r['services']), clients: num(r['clients']), revenue: num(r['revenue']) })),
     byMethod: list(j['by_method']).map((r) => ({ method: text(r['method']), amount: num(r['amount']) })),
     byBranch: list(j['by_branch']).map((r) => ({ name: text(r['name']), sales: num(r['sales']), revenue: num(r['revenue']) })),
@@ -105,12 +131,27 @@ export function reportRange(p: Period, now: Date): [string, string] {
             <div class="ph-line"><span>{{ i18n.t('rp.sales.clients') }}</span><b>{{ d.summary['sales'] ?? 0 }} / {{ d.summary['clients'] ?? 0 }}</b></div>
           </section>
 
+          @if (!d.hidden && (d.byService.length || d.goodsSold.length)) {
+            <section class="ph-sec" data-testid="rp-versus">
+              <h3>{{ i18n.t('rp.versus') }}</h3>
+              <div class="ph-line"><span>{{ i18n.t('rp.goods.profit') }}</span><b>{{ tsh(d.totals.goods.profit) }} <span class="ph-muted">({{ d.totals.goodsShare }}%)</span></b></div>
+              <div class="ph-line"><span>{{ i18n.t('rp.services.profit') }}</span><b>{{ tsh(d.totals.services.profit) }} <span class="ph-muted">({{ d.totals.servicesShare }}%)</span></b></div>
+              <div class="ph-line"><b>{{ i18n.t('rp.both.profit') }}</b><b data-testid="rp-both-profit">{{ tsh(d.totals.goods.profit + d.totals.services.profit) }}</b></div>
+              <p class="ph-muted">{{ i18n.t('rp.versus.note') }}</p>
+            </section>
+          }
+
           <section class="ph-sec">
             <h3>{{ i18n.t('rp.by.service') }}</h3>
             @for (r of d.byService; track r.name) {
               <div class="ph-line"><span>{{ r.name }} ×{{ r.times }}</span><b>{{ tsh(r.revenue) }}</b></div>
               @if (!d.hidden) { <p class="ph-muted">@if (r.commission > 0 || r.materials > 0) { − @if (r.commission > 0) { {{ i18n.t('st.commission') }} {{ tsh(r.commission) }} } @if (r.materials > 0) { · {{ i18n.t('rp.goods.used') }} {{ tsh(r.materials) }} } · } <span class="ph-good">{{ i18n.t('pl.profit') }} {{ tsh(r.profit) }}</span></p> }
             } @empty { <p class="ph-muted">{{ i18n.t('rp.none') }}</p> }
+            @if (d.byService.length) {
+              <hr class="ph-rule" />
+              <div class="ph-line" data-testid="rp-services-total"><b>{{ i18n.t('rp.services.total') }}</b><b>{{ tsh(d.totals.services.revenue) }}</b></div>
+              @if (!d.hidden) { <div class="ph-line" data-testid="rp-services-profit"><b>{{ i18n.t('rp.services.profit') }}</b><b class="ph-good">{{ tsh(d.totals.services.profit) }}</b></div> }
+            }
           </section>
 
           @if (d.goodsSold.length) {
@@ -119,6 +160,12 @@ export function reportRange(p: Period, now: Date): [string, string] {
               @for (r of d.goodsSold; track r.name) {
                 <div class="ph-line"><span>{{ r.name }} ×{{ r.qty }}</span><b>{{ tsh(r.revenue) }}</b></div>
                 @if (!d.hidden) { <p class="ph-muted">{{ i18n.t('rp.cost') }} {{ tsh(r.cost) }} · <span class="ph-good">{{ i18n.t('pl.profit') }} {{ tsh(r.profit) }}</span></p> }
+              }
+              <hr class="ph-rule" />
+              <div class="ph-line" data-testid="rp-goods-total"><b>{{ i18n.t('rp.goods.total') }}</b><b>{{ tsh(d.totals.goods.revenue) }}</b></div>
+              @if (!d.hidden) {
+                <div class="ph-line"><span class="ph-muted">{{ i18n.t('rp.cost') }}</span><b>{{ tsh(d.totals.goods.cost) }}</b></div>
+                <div class="ph-line" data-testid="rp-goods-profit"><b>{{ i18n.t('rp.goods.profit') }}</b><b class="ph-good">{{ tsh(d.totals.goods.profit) }}</b></div>
               }
             </section>
           }
