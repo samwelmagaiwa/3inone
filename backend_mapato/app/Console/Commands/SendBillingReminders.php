@@ -130,12 +130,17 @@ class SendBillingReminders extends Command
     /** @param  array<int, array{0: Business, 1: string}>  $items */
     private function digestText(array $items): string
     {
+        // "7/7d" said the same number twice and read as "7 of 7". Now: the days left of the days the plan was given for, and the day it ends.
         $label = function (Business $b, string $kind): string {
+            $left = max($b->daysLeft() ?? 0, 0);
+            $total = $b->periodDays();
+            $ends = $b->valid_until?->format('d/m');
+
             return match ($kind) {
-                'd0' => 'leo/today',
-                'blocked' => 'imesimamishwa/stopped',
-                'expired' => 'imeisha/expired',
-                default => 'siku ' . max($b->daysLeft() ?? 0, 0) . '/' . max($b->daysLeft() ?? 0, 0) . 'd',
+                'd0' => 'leo/today' . ($ends ? ", {$ends}" : ''),
+                'blocked' => 'imesimamishwa/stopped' . ($ends ? ", {$ends}" : ''),
+                'expired' => 'imeisha/expired' . ($ends ? ", {$ends}" : ''),
+                default => 'siku ' . $left . ($total !== null ? '/' . $total : '') . ' zimebaki' . ($ends ? ", {$ends}" : ''),
             };
         };
 
@@ -144,6 +149,6 @@ class SendBillingReminders extends Command
         $more = count($items) - count($shown);
 
         return '3 in One: Mipango inayoisha / Plans ending: ' . implode(', ', $parts)
-            . ($more > 0 ? " +{$more} zaidi/more" : '') . '.';
+            . ($more > 0 ? " +{$more} zaidi/more" : '') . '. (Siku zimebaki kati ya siku alizopewa / days left of the days given)';
     }
 }

@@ -436,6 +436,37 @@ class Business extends Model
     }
 
     /**
+     * The day the current period began: the newest payment's, else the day the super admin approved the registration (a trial begins there),
+     * else the day the business was made.
+     */
+    public function periodStartedOn(): ?Carbon
+    {
+        $last = $this->lastPayment();
+        if ($last?->period_start) {
+            return $last->period_start;
+        }
+        try {
+            $approved = BusinessRegistration::withoutGlobalScopes()->where('user_id', $this->owner_id)->where('status', BusinessRegistration::APPROVED)->orderByDesc('reviewed_at')->value('reviewed_at');
+        } catch (\Throwable) {
+            $approved = null;
+        }
+
+        return $approved !== null ? Carbon::parse($approved) : $this->created_at;
+    }
+
+    /** How many days the current period was given for (a 14-day trial says 14, however many are left); null when it cannot be told. */
+    public function periodDays(): ?int
+    {
+        $start = $this->periodStartedOn();
+        if ($start === null || $this->valid_until === null) {
+            return null;
+        }
+        $days = (int) $start->copy()->startOfDay()->diffInDays($this->valid_until->copy()->startOfDay(), false);
+
+        return $days > 0 ? max($days, max($this->daysLeft() ?? 0, 0)) : null;
+    }
+
+    /**
      * never   -- no end date (an account from before plans)
      * active  -- paid up, more than `soon` days left
      * expiring -- paid up, but `soon` days or fewer remain

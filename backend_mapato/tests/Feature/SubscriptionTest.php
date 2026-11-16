@@ -315,6 +315,25 @@ class SubscriptionTest extends TestCase
         $this->assertStringNotContainsString('Forever Ltd', $digest[0]['message']);
     }
 
+    public function test_the_super_admins_summary_says_the_days_left_of_the_days_given_and_the_day_it_ends(): void
+    {
+        $this->superAdmin('0711000111');
+        // a 17-day trial given on 1 October, 3 days left on the 15th
+        $trial = $this->owner('Trial', '2026-10-18 23:59:59', 'trial');
+        \Illuminate\Support\Facades\DB::table('businesses')->where('owner_id', $trial->id)->update(['created_at' => '2026-10-01 09:00:00']);
+        // a week given, a week left: the same number, but now said as a fraction of what was given, never "7/7d"
+        $week = $this->owner('Week', '2026-10-22 23:59:59', 'trial');
+
+        $this->remind();
+        $digest = array_values(array_filter($this->sms->to('0711000111'), fn (array $m) => str_contains($m['message'], 'Plans ending')))[0]['message'];
+
+        $this->assertStringContainsString('Trial Ltd (siku 3/17 zimebaki, 18/10)', $digest);
+        $this->assertStringContainsString('Week Ltd (siku 7/7 zimebaki, 22/10)', $digest);
+        $this->assertStringNotContainsString('7d)', $digest);
+        // the owner is told the days left too, the same number as the summary
+        $this->assertStringContainsString('baada ya siku 3', $this->ownerTexts(['Trial' => $trial])['Trial']);
+    }
+
     public function test_when_enforcement_is_on_the_texts_say_the_service_is_stopped(): void
     {
         config(['billing.enforce' => true, 'billing.contact_phone' => '0617919104']);
