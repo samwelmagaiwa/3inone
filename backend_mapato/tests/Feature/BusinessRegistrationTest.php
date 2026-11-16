@@ -333,6 +333,9 @@ class BusinessRegistrationTest extends TestCase
         $this->assertStringContainsString('umekubaliwa', $texts[0]['message']);
         $this->assertStringContainsString('asha@example.test', $texts[0]['message'], 'it names the email to sign in with');
         $this->assertStringContainsString('is approved', $texts[0]['message']);
+        // and how long the trial is, with the day it ends (the default trial is 30 days)
+        $this->assertStringContainsString('Jaribio lako: siku 30, hadi ' . now()->addDays(30)->format('d/m/Y'), $texts[0]['message']);
+        $this->assertStringContainsString('Your trial: 30 days, until ' . now()->addDays(30)->format('d/m/Y'), $texts[0]['message']);
 
         $other = $this->register(['email' => 'bob@example.test', 'phone_number' => '0755123456', 'business_name' => 'Bob Shop']);
         $this->sms->sent = [];

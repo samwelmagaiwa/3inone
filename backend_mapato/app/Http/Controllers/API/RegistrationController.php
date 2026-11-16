@@ -704,13 +704,28 @@ class RegistrationController extends Controller
             );
         });
 
+        // The time the owner was given, said in the text: "Jaribio lako: siku 14, hadi 30/11/2026" (so nobody has to ask how long it is).
+        $given = '';
+        try {
+            $granted = \App\Models\Business::forOwnerId((string) $user->id);
+            if ($granted?->valid_until !== null) {
+                $days = $granted->periodDays();
+                $until = $granted->valid_until->format('d/m/Y');
+                $trial = $granted->plan === 'trial';
+                $given = ' ' . ($trial ? 'Jaribio lako' : 'Usajili wako') . ': ' . ($days !== null ? "siku {$days}, " : '') . "hadi {$until}."
+                    . ' / ' . ($trial ? 'Your trial' : 'Your plan') . ': ' . ($days !== null ? "{$days} days, " : '') . "until {$until}.";
+            }
+        } catch (\Throwable) {
+            $given = '';
+        }
+
         $this->notifyUser(
             $user->phone_number,
             $user->email,
             'Usajili wa Biashara Umekubaliwa / Business Registration Approved',
             'Hongera! Usajili wa "' . $registration->business_name . '" umekubaliwa. Ingia kwenye app kwa barua pepe ' . $user->email
             . ' na nenosiri ulilojisajilia. / Congratulations! "' . $registration->business_name . '" is approved. Sign in to the app with '
-            . $user->email . ' and the password you registered with.'
+            . $user->email . ' and the password you registered with.' . $given
         );
 
         return ResponseHelper::success($this->payload($registration->fresh(['user.services', 'reviewer:id,name'])), 'Registration approved');
