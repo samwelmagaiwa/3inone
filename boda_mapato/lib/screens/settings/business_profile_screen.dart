@@ -12,6 +12,7 @@ import "../../modules/inventory/models/inv_capabilities.dart";
 import "../../modules/inventory/services/inv_event_bus.dart";
 import "../../services/api_service.dart";
 import "../../services/localization_service.dart";
+import "../../utils/one_space_formatter.dart";
 import "../../widgets/subscription_banner.dart";
 import '../../utils/server_message.dart';
 import 'subscription_screen.dart';
@@ -676,7 +677,7 @@ class _SenderRequestDialog extends StatefulWidget {
 }
 
 class _SenderRequestDialogState extends State<_SenderRequestDialog> {
-  static final RegExp _valid = RegExp(r"^[A-Za-z][A-Za-z0-9]{2,10}$");
+  static final RegExp _valid = RegExp(r"^(?=.{3,11}$)[A-Za-z][A-Za-z0-9]*(?: [A-Za-z0-9]+)*$");
 
   late final TextEditingController _id = TextEditingController(text: widget.current.senderId ?? "");
   late final TextEditingController _display = TextEditingController(text: widget.current.displayName ?? "");
@@ -693,7 +694,7 @@ class _SenderRequestDialogState extends State<_SenderRequestDialog> {
 
   void _submit() {
     if (!_valid.hasMatch(_id.text.trim())) {
-      setState(() => _problem = _sw ? "Herufi 3 hadi 11, herufi na tarakimu tu, ikianza na herufi." : "3 to 11 letters or digits, starting with a letter.");
+      setState(() => _problem = _sw ? "Herufi 3 hadi 11, herufi na tarakimu (nafasi moja kati ya maneno), ikianza na herufi." : "3 to 11 letters or digits (one space between words), starting with a letter.");
       return;
     }
     Navigator.of(context).pop((senderId: _id.text.trim(), displayName: _display.text.trim()));
@@ -711,8 +712,8 @@ class _SenderRequestDialogState extends State<_SenderRequestDialog> {
           children: <Widget>[
             Text(
               _sw
-                  ? "Andika jina fupi la biashara yako (herufi 3 hadi 11, herufi na tarakimu tu). Msimamizi atalisajili kisha kukuarifu."
-                  : "Type a short name for your business (3 to 11 letters or digits). The administrator registers it and lets you know.",
+                  ? "Andika jina fupi la biashara yako (herufi 3 hadi 11, herufi na tarakimu; maneno mawili yanaweza kutenganishwa na nafasi moja). Msimamizi atalisajili kisha kukuarifu."
+                  : "Type a short name for your business (3 to 11 letters or digits; two words may be separated by one space). The administrator registers it and lets you know.",
               style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
             const SizedBox(height: 12),
@@ -721,7 +722,7 @@ class _SenderRequestDialogState extends State<_SenderRequestDialog> {
               controller: _id,
               maxLength: 11,
               textCapitalization: TextCapitalization.characters,
-              inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.allow(RegExp(r"[A-Za-z0-9]"))],
+              inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.allow(RegExp(r"[A-Za-z0-9 ]")), OneSpaceBetweenWords()],
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, letterSpacing: 1.2),
               decoration: ThemeConstants.darkField(_sw ? "Jina (mfano MAMAASHA)" : "Name (e.g. MAMAASHA)", error: _problem),
             ),

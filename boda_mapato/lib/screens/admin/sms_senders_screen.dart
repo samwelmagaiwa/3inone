@@ -7,6 +7,7 @@ import "../../constants/theme_constants.dart";
 import "../../models/sms_sender.dart";
 import "../../services/api_service.dart";
 import "../../services/localization_service.dart";
+import "../../utils/one_space_formatter.dart";
 import "../../utils/server_message.dart";
 import "../../widgets/scrolling_chip_row.dart";
 
@@ -442,7 +443,7 @@ class _SenderSheet extends StatefulWidget {
 }
 
 class _SenderSheetState extends State<_SenderSheet> {
-  static final RegExp _valid = RegExp(r"^[A-Za-z][A-Za-z0-9]{2,10}$");
+  static final RegExp _valid = RegExp(r"^(?=.{3,11}$)[A-Za-z][A-Za-z0-9]*(?: [A-Za-z0-9]+)*$");
 
   late final TextEditingController _senderId = TextEditingController(text: widget.entry.sender.senderId ?? "");
   late final TextEditingController _displayName = TextEditingController(text: widget.entry.sender.displayName ?? "");
@@ -679,7 +680,7 @@ class _SenderSheetState extends State<_SenderSheet> {
                 enabled: !_busy,
                 maxLength: 11,
                 textCapitalization: TextCapitalization.characters,
-                inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.allow(RegExp(r"[A-Za-z0-9]"))],
+                inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.allow(RegExp(r"[A-Za-z0-9 ]")), OneSpaceBetweenWords()],
                 style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 1.2),
                 onChanged: (final String _) => setState(() {}),
                 decoration: _decoration(_sw ? "Sender ID (jina linaloonekana kwa mteja)" : "Sender ID (what the customer's phone shows)"),

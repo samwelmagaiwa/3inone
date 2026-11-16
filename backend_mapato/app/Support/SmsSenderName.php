@@ -10,14 +10,15 @@ use App\Models\Business;
  * In Tanzania a sender name has to be registered with the SMS provider (and through it with the operators)
  * before it works, and it must not pass for somebody else. So a name is checked here before it is stored:
  *
- *   - 3 to 11 characters, letters and digits only, starting with a letter (so never just a number);
+ *   - 3 to 11 characters in all, letters and digits only, starting with a letter (so never just a number), with a single space
+ *     allowed between words ("MAMA ASHA"); no space at the start or the end, and never two in a row;
  *   - not a generic or look-alike name (INFO, NOTIFY, a bank, a mobile operator, the state ...) and not the
  *     platform's own name;
  *   - not used by another business (compared without regard to case).
  */
 class SmsSenderName
 {
-    public const PATTERN = '/^[A-Za-z][A-Za-z0-9]{2,10}$/';
+    public const PATTERN = '/^(?=.{3,11}$)[A-Za-z][A-Za-z0-9]*(?: [A-Za-z0-9]+)*$/';
 
     /** Names nobody may take: generic words, operators, banks, mobile money, the state. Compared in upper case. */
     private const BLOCKED = [
@@ -62,7 +63,8 @@ class SmsSenderName
     /** Does another business already hold this name? (Case does not matter.) */
     public static function takenByAnother(string $name, ?string $exceptBusinessId = null): bool
     {
-        $query = Business::withoutAccountScope()->whereRaw('LOWER(sms_sender_id) = ?', [strtolower($name)]);
+        // "MAMA ASHA" and "MAMAASHA" are the same name to a phone: compared without spaces and case
+        $query = Business::withoutAccountScope()->whereRaw("REPLACE(LOWER(sms_sender_id), ' ', '') = ?", [strtolower(str_replace(' ', '', $name))]);
 
         if ($exceptBusinessId !== null) {
             $query->where('id', '!=', $exceptBusinessId);
@@ -77,8 +79,8 @@ class SmsSenderName
     public static function problem(string $name, ?string $exceptBusinessId = null): ?string
     {
         if (!self::validFormat($name)) {
-            return 'Jina la mtumaji lazima liwe na herufi 3 hadi 11 (herufi na tarakimu tu), likianza na herufi. / '
-                . 'The sender name must be 3 to 11 letters or digits and start with a letter.';
+            return 'Jina la mtumaji lazima liwe na herufi 3 hadi 11 (herufi na tarakimu, nafasi moja kati ya maneno), likianza na herufi. / '
+                . 'The sender name must be 3 to 11 letters or digits (one space between words is fine) and start with a letter.';
         }
         if (self::isReserved($name)) {
             return 'Jina hili haliruhusiwi (ni la kawaida mno au linafanana na taasisi nyingine). Chagua jina la biashara yako. / '

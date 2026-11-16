@@ -527,14 +527,14 @@ void main() {
       expect(source.saves, isEmpty);
     });
 
-    testWidgets('the field takes only letters and digits', (t) async {
+    testWidgets('the field takes letters, digits and a single space between words', (t) async {
       _tall(t);
       await t.pumpWidget(_host(_FakeSource(_sample())));
       await t.pumpAndSettle();
       await _openCard(t, 'Alpha Homes');
 
-      await t.enterText(_key('sender_id_field'), 'MAMA ASHA-1!');
-      expect(_fieldText(t, 'sender_id_field'), 'MAMAASHA1');
+      await t.enterText(_key('sender_id_field'), 'MAMA  ASHA-1!');
+      expect(_fieldText(t, 'sender_id_field'), 'MAMA ASHA1');
     });
 
     testWidgets('a refusal from the server is shown and the sheet stays open with what was typed', (t) async {

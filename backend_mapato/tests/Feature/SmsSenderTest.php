@@ -211,7 +211,7 @@ class SmsSenderTest extends TestCase
         $other = $this->owner('Baba Homes', ['sms_sender_id' => 'BABAHOMES', 'sms_sender_status' => 'approved']);
         $super = $this->superAdmin();
 
-        foreach (['AB' => 'too short', 'TWELVECHARSX' => 'too long', '1MAMA' => 'starts with a digit', 'MAMA ASHA' => 'a space', 'MAMA-ASHA' => 'a symbol', 'MÀMA' => 'an accent'] as $name => $why) {
+        foreach (['AB' => 'too short', 'TWELVECHARSX' => 'too long', '1MAMA' => 'starts with a digit', 'MAMA  ASHA' => 'two spaces in a row', 'MAMA ASHA XY' => 'more than 11 characters with the spaces', 'MAMA-ASHA' => 'a symbol', 'MÀMA' => 'an accent'] as $name => $why) {
             $this->save($super, $owner, ['sender_id' => $name])->assertStatus(422)->assertJsonPath('errors.code', 'sender_invalid');
         }
         foreach (['MPESA', 'info', 'Vodacom', 'PLATFORM', '3INONE'] as $reserved) {
@@ -229,7 +229,11 @@ class SmsSenderTest extends TestCase
     public function test_the_rules_in_one_place(): void
     {
         $this->assertTrue(SmsSenderName::validFormat('MAMAASHA'));
-        $this->assertFalse(SmsSenderName::validFormat('MAMA ASHA'));
+        $this->assertTrue(SmsSenderName::validFormat('MAMA ASHA'), 'two words with one space');
+        $this->assertTrue(SmsSenderName::validFormat('Mama Asha 1'));
+        $this->assertFalse(SmsSenderName::validFormat('MAMA  ASHA'));
+        $this->assertFalse(SmsSenderName::validFormat('MAMA ASHA TZ'), '12 characters with the spaces');
+        $this->assertFalse(SmsSenderName::validFormat('1 MAMA'));
         $this->assertTrue(SmsSenderName::isReserved('m-pesa'), 'compared without punctuation or case');
         $this->assertFalse(SmsSenderName::isReserved('MAMAASHA'));
         $this->assertSame('MAMAASHA', SmsSenderName::key('Mama-Asha'));
@@ -557,7 +561,7 @@ class SmsSenderTest extends TestCase
         $this->assertSame([], $this->sms->sent);
 
         $this->as($super, 'POST', '/api/admin/sms-senders/' . $this->business($bare)->id . '/test')->assertStatus(422);
-        $this->as($super, 'POST', '/api/admin/sms-senders/' . $this->business($owner)->id . '/test', ['sender_id' => 'BAD NAME'])->assertStatus(422);
+        $this->as($super, 'POST', '/api/admin/sms-senders/' . $this->business($owner)->id . '/test', ['sender_id' => 'BAD-NAME'])->assertStatus(422);
 
         $noPhone = $this->superAdmin(null);
         $this->as($noPhone, 'POST', '/api/admin/sms-senders/' . $this->business($owner)->id . '/test')->assertStatus(422);

@@ -239,7 +239,7 @@ class SmsSenderController extends Controller
             return $this->problem('Weka jina la mtumaji kwanza. / Enter the sender name first.');
         }
         if (!SmsSenderName::validFormat($sender)) {
-            return $this->problem('Jina la mtumaji lazima liwe na herufi 3 hadi 11 (herufi na tarakimu tu), likianza na herufi. / The sender name must be 3 to 11 letters or digits and start with a letter.');
+            return $this->problem('Jina la mtumaji lazima liwe na herufi 3 hadi 11 (herufi na tarakimu, nafasi moja kati ya maneno), likianza na herufi. / The sender name must be 3 to 11 letters or digits (one space between words is fine) and start with a letter.');
         }
 
         $phone = $this->clean($data['phone'] ?? null) ?? $this->clean($request->user()->phone_number);

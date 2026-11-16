@@ -402,6 +402,21 @@ void main() {
       await _bannerGone(t);
     });
 
+    testWidgets('the owner may ask for a name of two words with one space between them', (t) async {
+      final _FakeSource source = await open(t, const SmsSenderInfo());
+
+      await t.ensureVisible(_key('request_sender'));
+      await t.tap(_key('request_sender'));
+      await t.pumpAndSettle();
+      // a second space in a row is dropped as it is typed; the space between the words stays
+      await t.enterText(_key('request_sender_id_field'), 'MAMA  ASHA');
+      await t.tap(_key('submit_request'));
+      await t.pumpAndSettle();
+
+      expect(source.senderRequests.single.senderId, 'MAMA ASHA');
+      await _bannerGone(t);
+    });
+
     testWidgets('a name that cannot work is refused on the spot and nothing is sent', (t) async {
       final _FakeSource source = await open(t, const SmsSenderInfo());
 
