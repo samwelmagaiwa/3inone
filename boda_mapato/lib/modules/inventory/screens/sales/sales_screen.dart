@@ -28,6 +28,7 @@ import '../widgets/inv_units_ui.dart';
 import '../widgets/inventory_widgets.dart';
 import '../widgets/joined_sections.dart';
 import 'crate_checkout_rules.dart';
+import 'sales_by_category_screen.dart';
 import 'sale_confirmation_dialog.dart';
 import 'sale_receipt_screen.dart';
 import '../salon/price_option_picker.dart';
@@ -1202,6 +1203,25 @@ class _SalesScreenState extends State<SalesScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── By category: what each category sold and earned (for whoever may read reports) ──
+          if (perms.has('inv_view_reports')) ...[
+            InkWell(
+              key: const Key('sales_by_category_button'),
+              borderRadius: BorderRadius.circular(14.r),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SalesByCategoryScreen())),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14.r), border: Border.all(color: ThemeConstants.invAccent.withValues(alpha: 0.6))),
+                child: Row(children: [
+                  Icon(Icons.category_rounded, color: ThemeConstants.invAccent, size: 22.sp),
+                  SizedBox(width: 10.w),
+                  Expanded(child: Text(LocalizationService.instance.isSwahili ? 'Kwa kundi' : 'By category', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w800))),
+                  Icon(Icons.chevron_right, color: Colors.white70, size: 22.sp),
+                ]),
+              ),
+            ),
+            SizedBox(height: 8.h),
+          ],
           // ── Search bar ──────────────────────────────────────────────────
           Container(
             decoration: ThemeConstants.glassCardDecoration,
