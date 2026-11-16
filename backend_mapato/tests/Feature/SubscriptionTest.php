@@ -294,18 +294,18 @@ class SubscriptionTest extends TestCase
         $this->remind();
         $texts = $this->ownerTexts($o + ['Forever' => $forever]);
 
-        $this->assertStringContainsString('unaisha baada ya siku 7', $texts['Seven']);
-        $this->assertStringContainsString('ends in 7 day(s)', $texts['Seven']);
+        // The owner is texted at two moments only: three days (or fewer) before the end, and the day it ends
+        $this->assertSame('', $texts['Seven'], 'a week left: not a text to the owner (only the summary to the super admin)');
         $this->assertStringContainsString('baada ya siku 3', $texts['Three']);
-        $this->assertStringContainsString('baada ya siku 1', $texts['One']);
+        $this->assertStringContainsString('ends in 3 day(s)', $texts['Three']);
+        $this->assertStringContainsString('baada ya siku 1', $texts['One'], 'a plan with 1 day left is still in the "3 days" stage: told once');
         $this->assertStringContainsString('unaisha leo', $texts['Today']);
-        $this->assertStringContainsString('umeisha', $texts['Late']);
-        $this->assertStringContainsString('Please pay to continue', $texts['Late'], 'not enforced: no threat of stopping yet');
-        $this->assertStringContainsString('is unpaid', $texts['Stopped']);
+        $this->assertSame('', $texts['Late'], 'ended: no daily or "ended" texts to the owner');
+        $this->assertSame('', $texts['Stopped'], 'stopped: the app says so, no text');
         $this->assertSame('', $texts['Far'], 'more than a week away: nothing yet');
         $this->assertSame('', $texts['Forever'], 'no end date: nothing to remind');
 
-        // ONE text to the super admin lists them all
+        // ONE text to the super admin lists them all, at every stage
         $digest = array_values(array_filter($this->sms->to('0711000111'), fn (array $m) => str_contains($m['message'], 'Plans ending')));
         $this->assertCount(1, $digest);
         foreach (['Seven Ltd', 'Three Ltd', 'One Ltd', 'Today Ltd', 'Late Ltd', 'Stopped Ltd'] as $name) {
@@ -334,19 +334,38 @@ class SubscriptionTest extends TestCase
         $this->assertStringContainsString('baada ya siku 3', $this->ownerTexts(['Trial' => $trial])['Trial']);
     }
 
-    public function test_when_enforcement_is_on_the_texts_say_the_service_is_stopped(): void
+    public function test_the_owner_is_not_texted_after_the_end_or_every_day_but_the_super_admin_still_hears_of_it(): void
     {
         config(['billing.enforce' => true, 'billing.contact_phone' => '0617919104']);
+        $this->superAdmin('0711000111');
         $late = $this->owner('Late', '2026-10-13 23:59:59');
         $stopped = $this->owner('Stopped', '2026-10-01 23:59:59');
+        $today = $this->owner('Today', '2026-10-15 23:59:59');
 
         $this->remind();
-        $texts = $this->ownerTexts(['Late' => $late, 'Stopped' => $stopped]);
+        $texts = $this->ownerTexts(['Late' => $late, 'Stopped' => $stopped, 'Today' => $today]);
 
-        $this->assertStringContainsString('ili huduma zisisimame', $texts['Late']);
-        $this->assertStringContainsString('zimesimamishwa', $texts['Stopped']);
-        $this->assertStringContainsString('are stopped', $texts['Stopped']);
-        $this->assertStringContainsString('0617919104', $texts['Stopped'], 'tells them who to pay');
+        $this->assertSame('', $texts['Late']);
+        $this->assertSame('', $texts['Stopped']);
+        $this->assertStringContainsString('unaisha leo', $texts['Today']);
+        $this->assertStringContainsString('0617919104', $texts['Today'], 'tells them who to pay');
+        $digest = array_values(array_filter($this->sms->to('0711000111'), fn (array $m) => str_contains($m['message'], 'Plans ending')))[0]['message'];
+        $this->assertStringContainsString('Late Ltd', $digest);
+        $this->assertStringContainsString('Stopped Ltd', $digest);
+    }
+
+    public function test_an_owner_gets_exactly_two_texts_over_the_whole_countdown_three_days_before_and_the_last_day(): void
+    {
+        $owner = $this->owner('Count', '2026-10-22 23:59:59'); // 7 days left on the 15th
+        for ($day = 15; $day <= 26; $day++) {
+            $this->travelTo(now()->setDate(2026, 10, $day)->setTime(9, 0));
+            $this->remind();
+        }
+
+        $texts = $this->sms->to($owner->phone_number);
+        $this->assertCount(2, $texts, 'not every day: three days left, and the day it ends');
+        $this->assertStringContainsString('baada ya siku 3', $texts[0]['message']);
+        $this->assertStringContainsString('unaisha leo', $texts[1]['message']);
     }
 
     public function test_a_reminder_goes_out_once_however_often_the_job_runs(): void

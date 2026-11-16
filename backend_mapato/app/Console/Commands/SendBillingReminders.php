@@ -12,10 +12,11 @@ use Illuminate\Support\Facades\DB;
  * Tell people a plan is about to end (or has), by text message. Runs every morning.
  *
  * For each business with an end date it works out where it stands today:
- *   d7 / d3 / d1  7, 3 or 1 days (or fewer) left      d0       ends today
- *   expired       ended, still inside the grace days   blocked  ended and past the grace days
- * and sends THAT reminder once for that end date. Every reminder goes to the business owner; everything new
- * from this run is also listed in one text to the super admin(s), so one message covers all customers.
+ *   d7  4 to 7 days left   d3  1 to 3 days left (sent at 3 days; a plan given for fewer days gets it on the first morning)   d0  ends today
+ *   expired  ended, still inside the grace days   blocked  ended and past the grace days
+ * and records THAT stage once for that end date. The BUSINESS OWNER is texted at only two of them: when 3 days are left and on the day the
+ * plan ends; never every day, and not at the other stages. Everything new from this run (every stage) is listed in one text to the
+ * super admin(s), so one message covers all customers.
  *
  * Safe to run any number of times: a reminder is claimed in `billing_reminders` before it is sent, so it goes
  * out once; a renewal gives the business a new end date and so a fresh set of reminders. A text that could
@@ -25,7 +26,10 @@ class SendBillingReminders extends Command
 {
     protected $signature = 'billing:remind {--dry-run : list what would be sent, send nothing}';
 
-    protected $description = 'Text business owners and the super admin about plans that are ending or have ended';
+    protected $description = 'Text business owners (3 days before and on the last day) and the super admin (every stage) about plans that are ending or have ended';
+
+    /** The stages the OWNER is texted at: three days before the end, and the day it ends. */
+    private const OWNER_KINDS = ['d3', 'd0'];
 
     public function handle(): int
     {
@@ -58,6 +62,11 @@ class SendBillingReminders extends Command
             // Claim it first, so two runs at the same moment cannot both send it.
             if (DB::table('billing_reminders')->insertOrIgnore($row + ['sent_at' => now(), 'created_at' => now(), 'updated_at' => now()]) === 0) {
                 array_pop($digest);
+                continue;
+            }
+
+            // The other stages are only the super admin's summary: the owner is not texted at them.
+            if (!in_array($kind, self::OWNER_KINDS, true)) {
                 continue;
             }
 
@@ -96,7 +105,6 @@ class SendBillingReminders extends Command
             $business->pastGrace() => 'blocked',
             $days < 0 => 'expired',
             $days === 0 => 'd0',
-            $days === 1 => 'd1',
             $days <= 3 => 'd3',
             $days <= 7 => 'd7',
             default => null,
@@ -115,7 +123,7 @@ class SendBillingReminders extends Command
 
         $text = match ($kind) {
             'd0' => "Usajili wa \"{$name}\" unaisha leo ({$date}). Lipia ili uendelee. / Your subscription for \"{$name}\" ends today ({$date}). Pay to keep using it.",
-            'd1', 'd3', 'd7' => "Usajili wa \"{$name}\" unaisha baada ya siku {$days} ({$date}). Lipia ili uendelee. / Your subscription for \"{$name}\" ends in {$days} day(s) ({$date}). Pay to keep using it.",
+            'd3', 'd7' => "Usajili wa \"{$name}\" unaisha baada ya siku {$days} ({$date}). Lipia ili uendelee. / Your subscription for \"{$name}\" ends in {$days} day(s) ({$date}). Pay to keep using it.",
             'expired' => $enforced
                 ? "Usajili wa \"{$name}\" umeisha ({$date}). Lipia ndani ya siku {$grace} ili huduma zisisimame. / The subscription for \"{$name}\" ended on {$date}. Pay within {$grace} days so the service is not stopped."
                 : "Usajili wa \"{$name}\" umeisha ({$date}). Tafadhali lipia ili uendelee. / The subscription for \"{$name}\" ended on {$date}. Please pay to continue.",
