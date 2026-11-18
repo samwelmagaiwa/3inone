@@ -47,12 +47,7 @@ class SendSalonDailySummary extends Command
                         return;
                     }
                     $found++;
-                    $tomorrow = $today->copy()->addDay();
-                    $booked = (int) DB::table('inventory_appointments')
-                        ->whereIn('status', AppointmentPlanner::ACTIVE)
-                        ->whereBetween('starts_at', [$tomorrow->format('Y-m-d 00:00:00'), $tomorrow->format('Y-m-d 23:59:59')])
-                        ->count();
-                    $text = DailySummary::message((string) $business->name, SalonFinance::summary($today, $today), $booked);
+                    $text = DailySummary::message((string) $business->name, SalonFinance::summary($today, $today));
                     if ($dry) {
                         $this->line("would text {$business->name}: {$text}");
 

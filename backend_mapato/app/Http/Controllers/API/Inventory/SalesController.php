@@ -624,6 +624,14 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             \App\Support\Salon\SalonFeedback::afterPaid((int) $id);
         }
 
+        // A shop or depot thanks the customer for paying on their debt and says what is left.
+        if ($response->getStatusCode() === 200) {
+            $paidSale = DB::table('inventory_sales')->where('id', $id)->first(['customer_id']);
+            if ($paidSale?->customer_id !== null) {
+                \App\Support\Inventory\ShopTexts::afterDebtPayment((int) $paidSale->customer_id, (float) ($response->getData(true)['data']['amount_paid'] ?? 0));
+            }
+        }
+
         return $response;
     }
 
@@ -1426,6 +1434,11 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         // A salon asks a client how the visit went, once the sale is made and paid (after it is safely saved).
         if ($response->getStatusCode() === 201 && (string) $request->payment_status === 'paid') {
             \App\Support\Salon\SalonFeedback::afterPaid((int) ($response->getData(true)['data']['id'] ?? 0));
+        }
+
+        // A shop or depot sends its customer the receipt (never a salon: it has its own texts).
+        if ($response->getStatusCode() === 201) {
+            \App\Support\Inventory\ShopTexts::afterSale((int) ($response->getData(true)['data']['id'] ?? 0));
         }
 
         return $response;

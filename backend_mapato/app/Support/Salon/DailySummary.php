@@ -24,7 +24,7 @@ final class DailySummary
     }
 
     /** @param array<string, mixed> $s the day's {@see SalonFinance::summary()} */
-    public static function message(string $business, array $s, int $bookingsTomorrow): string
+    public static function message(string $business, array $s): string
     {
         $tsh = fn ($v) => number_format((float) $v, 0, '.', ',');
         $business = trim((string) preg_replace('/\s+/u', ' ', $business)) ?: 'saluni yako';
@@ -32,7 +32,7 @@ final class DailySummary
         $sw = $profit >= 0 ? 'faida' : 'hasara';
         $en = $profit >= 0 ? 'profit' : 'loss';
 
-        return "Leo {$business}: mapato TSh {$tsh($s['revenue'])}, matumizi TSh {$tsh($s['expenses'])}, {$sw} TSh {$tsh(abs($profit))}, wateja {$s['clients']}. Kesho miadi {$bookingsTomorrow}. / "
-            . "Today at {$business}: revenue TSh {$tsh($s['revenue'])}, expenses TSh {$tsh($s['expenses'])}, {$en} TSh {$tsh(abs($profit))}, {$s['clients']} clients. {$bookingsTomorrow} booked tomorrow.";
+        return "Leo {$business}: mapato TSh {$tsh($s['revenue'])}, matumizi TSh {$tsh($s['expenses'])}, {$sw} TSh {$tsh(abs($profit))}, wateja {$s['clients']}. / "
+            . "Today at {$business}: revenue TSh {$tsh($s['revenue'])}, expenses TSh {$tsh($s['expenses'])}, {$en} TSh {$tsh(abs($profit))}, {$s['clients']} clients.";
     }
 }

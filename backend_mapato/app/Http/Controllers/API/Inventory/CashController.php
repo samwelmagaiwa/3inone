@@ -159,6 +159,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         $salesAllocated = array_sum(array_column($result['sales'], 'amount'));
         $allocated = $oldAllocated + $salesAllocated;
 
+        // A shop or depot thanks the customer for what they paid and says what is left.
+        \App\Support\Inventory\ShopTexts::afterDebtPayment($customerId, (float) $allocated);
+
         return response()->json([
             'message' => 'Payment recorded',
             'data' => [

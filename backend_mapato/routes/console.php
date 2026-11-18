@@ -37,9 +37,14 @@ Schedule::command('salon:remind-appointments')
     ->dailyAt('15:00')
     ->withoutOverlapping();
 
-// Every evening (19:30 in Tanzania): text each salon owner how the day went, for salons that switched it on.
+// Every night at 23:59 in Tanzania (20:59 UTC), just before the day turns: text each salon owner how the day went (on unless the owner switched it off).
 Schedule::command('salon:daily-summary')
-    ->dailyAt('16:30')
+    ->dailyAt('20:59')
+    ->withoutOverlapping();
+
+// The same for each shop or depot owner, with how the day compares with yesterday.
+Schedule::command('inventory:daily-summary')
+    ->dailyAt('20:59')
     ->withoutOverlapping();
 
 // Every morning: remember each shop's position, and tell owners how the month ended (report ready, target reached or missed).

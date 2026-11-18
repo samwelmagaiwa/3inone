@@ -497,8 +497,8 @@ class SalonStaffTest extends TestCase
         $this->assertCount(1, $this->sms->sent);
         $this->assertSame($owner->phone_number, $this->sms->sent[0]['to']);
         $this->assertSame(
-            'Leo Glow Salon: mapato TSh 40,000, matumizi TSh 10,000, faida TSh 30,000, wateja 1. Kesho miadi 1. / '
-            . 'Today at Glow Salon: revenue TSh 40,000, expenses TSh 10,000, profit TSh 30,000, 1 clients. 1 booked tomorrow.',
+            'Leo Glow Salon: mapato TSh 40,000, matumizi TSh 10,000, faida TSh 30,000, wateja 1. / '
+            . 'Today at Glow Salon: revenue TSh 40,000, expenses TSh 10,000, profit TSh 30,000, 1 clients.',
             $this->sms->sent[0]['message']
         );
 
@@ -521,6 +521,35 @@ class SalonStaffTest extends TestCase
 
         $this->assertCount(1, $this->sms->sent, 'no switch to press: the owner is texted');
         $this->assertSame($owner->phone_number, $this->sms->sent[0]['to']);
+    }
+
+    public function test_each_salon_is_texted_its_own_day_under_its_own_sender_and_no_appointments_are_mentioned(): void
+    {
+        $one = $this->salon('Glow Salon');
+        $two = $this->salon('Rose Salon');
+        Business::forOwnerId($one->id)->update(['sms_sender_id' => 'GLOWSAL', 'sms_sender_status' => 'approved']);
+        Business::forOwnerId($two->id)->update(['sms_sender_id' => 'ROSESAL', 'sms_sender_status' => 'approved']);
+        $washOne = $this->service($one, 'Wash', 40000);
+        $washTwo = $this->service($two, 'Cut', 15000);
+        $this->freshSms();
+        $this->at('2026-10-07 10:00:00');
+        $this->sell($one, $washOne, 40000)->assertCreated();
+        $this->sell($two, $washTwo, 15000)->assertCreated();
+        // 23:59 in Tanzania is 20:59 UTC: still the same day
+        $this->at('2026-10-07 20:59:00');
+
+        $this->artisan('salon:daily-summary')->assertExitCode(0);
+
+        $this->assertCount(2, $this->sms->sent);
+        $toOne = $this->sms->to($one->phone_number)[0];
+        $toTwo = $this->sms->to($two->phone_number)[0];
+        $this->assertSame('GLOWSAL', $toOne['sender']);
+        $this->assertSame('ROSESAL', $toTwo['sender']);
+        $this->assertStringContainsString('Leo Glow Salon: mapato TSh 40,000', $toOne['message']);
+        $this->assertStringContainsString('Leo Rose Salon: mapato TSh 15,000', $toTwo['message']);
+        $this->assertStringNotContainsString('Rose', $toOne['message']);
+        $this->assertStringNotContainsString('Kesho', $toOne['message']);
+        $this->assertStringNotContainsString('tomorrow', $toOne['message']);
     }
 
     public function test_a_day_at_a_loss_says_loss_and_a_failed_text_is_tried_again(): void
