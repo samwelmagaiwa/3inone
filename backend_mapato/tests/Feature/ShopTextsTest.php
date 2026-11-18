@@ -268,4 +268,79 @@ class ShopTextsTest extends TestCase
         $this->artisan('schedule:list')->expectsOutputToContain('inventory:daily-summary')->assertExitCode(0);
         $this->assertStringContainsString("dailyAt('20:59')", (string) file_get_contents(base_path('routes/console.php')));
     }
+
+    // ------------------------------------------------------------------ low stock, month end, a debt reminder
+
+    public function test_the_owner_is_told_each_morning_which_goods_are_low_once_and_never_when_none_are(): void
+    {
+        $owner = $this->shop('DUKA LA MAMA ASHA', ['sms_sender_id' => 'MAMAASHA', 'sms_sender_status' => 'approved']);
+        $this->api($owner, 'POST', '/api/inventory/products', ['name' => 'Sukari', 'sku' => 'SUK1', 'quantity' => 3, 'min_stock' => 10, 'status' => 'active', 'cost_price' => 1000, 'selling_price' => 2000])->assertCreated();
+        $this->api($owner, 'POST', '/api/inventory/products', ['name' => 'Mchele', 'sku' => 'MCH1', 'quantity' => 50, 'min_stock' => 10, 'status' => 'active', 'cost_price' => 1000, 'selling_price' => 2000])->assertCreated();
+        $this->sms->sent = [];
+        Carbon::setTestNow(Carbon::parse('2026-11-19 08:00:00', 'Africa/Dar_es_Salaam')->utc());
+
+        $this->artisan('inventory:low-stock')->assertExitCode(0);
+        $this->artisan('inventory:low-stock')->assertExitCode(0);
+
+        $this->assertCount(1, $this->sms->sent, 'once a morning');
+        $this->assertSame('MAMAASHA', $this->sms->sent[0]['sender']);
+        $this->assertSame('DUKA LA MAMA ASHA: bidhaa 1 zimebaki chache: Sukari (3). Ongeza stoo.', $this->sms->sent[0]['message']);
+    }
+
+    public function test_nothing_is_texted_when_no_goods_are_low_or_when_it_is_switched_off(): void
+    {
+        $quiet = $this->shop('DUKA Q');
+        $this->api($quiet, 'POST', '/api/inventory/products', ['name' => 'Mchele', 'sku' => 'MCH2', 'quantity' => 50, 'min_stock' => 10, 'status' => 'active', 'cost_price' => 1000, 'selling_price' => 2000])->assertCreated();
+        $off = $this->shop('DUKA OFF');
+        $this->api($off, 'POST', '/api/inventory/products', ['name' => 'Sukari', 'sku' => 'SUK2', 'quantity' => 1, 'min_stock' => 10, 'status' => 'active', 'cost_price' => 1000, 'selling_price' => 2000])->assertCreated();
+        $this->api($off, 'PUT', '/api/inventory/settings', ['inv_low_stock_sms' => '0'])->assertOk();
+        $this->sms->sent = [];
+
+        $this->artisan('inventory:low-stock')->assertExitCode(0);
+
+        $this->assertCount(0, $this->sms->sent);
+    }
+
+    public function test_the_month_end_text_says_the_profit_the_trend_and_the_target(): void
+    {
+        $report = [
+            'figures' => ['net_profit' => 2140000],
+            'compare' => ['net_profit' => ['direction' => 'up', 'percent' => 12.5]],
+            'target' => ['status' => 'reached', 'profit_target' => 2000000, 'left' => 0],
+        ];
+        $this->assertSame(
+            'DUKA LA MAMA ASHA: Oktoba 2026 umeisha. Faida TSh 2,140,000 (imepanda 12.5%). Lengo la TSh 2,000,000 limefikiwa. Fungua app uone ripoti kamili.',
+            ShopTexts::monthMessage('DUKA LA MAMA ASHA', '2026-10', $report)
+        );
+        $report['target'] = ['status' => 'missed', 'profit_target' => 3000000, 'left' => 860000];
+        $this->assertStringContainsString('Lengo la TSh 3,000,000 halikufikiwa, upungufu TSh 860,000.', ShopTexts::monthMessage('DUKA', '2026-10', $report));
+    }
+
+    public function test_the_owner_can_remind_a_customer_of_their_debt_and_is_told_why_when_it_cannot_be_done(): void
+    {
+        $owner = $this->shop('DUKA LA MAMA ASHA', ['sms_sender_id' => 'MAMAASHA', 'sms_sender_status' => 'approved']);
+        $sugar = $this->product($owner, 'Sukari', 1500, 3000);
+        $juma = $this->customer($owner, 'Juma', '0711000001');
+        $none = $this->customer($owner, 'Hana Deni', '0711000009');
+        $this->sell($owner, $sugar, 5, 3000, 1500, $juma, 0);
+        $this->sms->sent = [];
+
+        $this->api($owner, 'POST', "/api/inventory/credit/customers/{$juma}/remind")->assertOk()->assertJsonPath('data.owed', 15000);
+
+        $this->assertCount(1, $this->sms->sent);
+        $this->assertSame('MAMAASHA', $this->sms->sent[0]['sender']);
+        $this->assertSame('Habari Juma, unadaiwa TSh 15,000 na DUKA LA MAMA ASHA. Tafadhali lipa ukipata nafasi. Asante!', $this->sms->sent[0]['message']);
+        $this->api($owner, 'POST', "/api/inventory/credit/customers/{$none}/remind")->assertStatus(422)->assertJsonPath('data.reason', 'owes_nothing');
+        $this->assertCount(1, $this->sms->sent, 'nothing sent for a customer who owes nothing');
+    }
+
+    public function test_the_text_switches_are_on_from_the_start_in_the_settings(): void
+    {
+        $owner = $this->shop();
+        $s = $this->api($owner, 'GET', '/api/inventory/settings')->assertOk()->json('data');
+
+        foreach (['inv_customer_sms', 'inv_daily_summary', 'inv_low_stock_sms', 'inv_month_sms'] as $key) {
+            $this->assertSame('1', $s[$key], $key);
+        }
+    }
 }

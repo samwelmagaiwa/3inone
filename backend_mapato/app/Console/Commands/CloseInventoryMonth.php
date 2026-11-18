@@ -64,6 +64,7 @@ class CloseInventoryMonth extends Command
                 $this->line("would tell {$business->name} ({$month}): {$body}");
             } else {
                 DB::table('inventory_settings')->updateOrInsert(['key' => $key], ['value' => $month, 'updated_at' => now()]);
+                \App\Support\Inventory\ShopTexts::sendMonth($month, $r);
                 app(InventoryNotifier::class)->notifyByPermission(['inv_view_reports'], 'inventory_month_report', "Ripoti ya {$month} iko tayari / The {$month} report is ready", $body, ['month' => $month]);
             }
             $told++;

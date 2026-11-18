@@ -201,6 +201,30 @@ responses: [new OA\Response(response: 200, description: 'Success')],
     }
 
     /**
+     * Text the customer what they owe (from the business's own sender name). Says why when it could not: no phone, asked for no texts, owes nothing.
+     */
+    public function remind(int $id)
+    {
+        if (!DB::table('inventory_customers')->where('id', $id)->exists()) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+        if (!\App\Support\Inventory\ShopTexts::active()) {
+            return response()->json(['message' => 'Not available here'], 422);
+        }
+        $r = \App\Support\Inventory\ShopTexts::remindDebt($id);
+        $why = [
+            'no_phone' => 'Mteja huyu hana namba ya simu. / This customer has no phone number.',
+            'opted_out' => 'Mteja huyu ameomba asitumiwe SMS. / This customer asked for no texts.',
+            'owes_nothing' => 'Mteja huyu hana deni. / This customer owes nothing.',
+        ];
+        if (!$r['sent']) {
+            return response()->json(['message' => $why[$r['reason']] ?? 'Ujumbe haukutumwa. / The text was not sent.', 'data' => $r], 422);
+        }
+
+        return response()->json(['message' => 'Reminder sent', 'data' => $r]);
+    }
+
+    /**
      * One customer's whole account on one page: the old debt, the new debt and the total, every old debt and every credit sale with the
      * payments made on it, and all the payments together by date.
      */

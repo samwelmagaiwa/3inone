@@ -184,7 +184,7 @@ final class InventoryDefaults
      * Settings that came after the 2026_10_08 restore migration. They are never seeded by a migration: a
      * business that has no row reads the default here, and seedFor() writes them for a new business.
      */
-    public const READ_TIME_DEFAULTS = ['use_crates', 'sale_tier', 'prices_include_vat', 'hidden_reports'];
+    public const READ_TIME_DEFAULTS = ['use_crates', 'sale_tier', 'prices_include_vat', 'hidden_reports', 'inv_customer_sms', 'inv_daily_summary', 'inv_low_stock_sms', 'inv_month_sms'];
 
     /** Depot setting => the business field it mirrors. */
     private const BUSINESS_FIELDS = [
@@ -200,6 +200,12 @@ final class InventoryDefaults
         // Returnable packaging (crates and empties) and which price the till uses. The defaults are the
         // depot's, so a business that predates them behaves exactly as before; see config/inventory_types.php.
         'use_crates' => '1',
+        // Texts the business sends (1 = on): the customer's receipt and thank-you for a debt paid, the owner's night summary,
+        // the morning text about goods running low, and the text when a month has ended.
+        'inv_customer_sms' => '1',
+        'inv_daily_summary' => '1',
+        'inv_low_stock_sms' => '1',
+        'inv_month_sms' => '1',
         'sale_tier' => 'product',
         // Do the prices already include VAT? (Only matters for products that carry a VAT rate.)
         'prices_include_vat' => '1',

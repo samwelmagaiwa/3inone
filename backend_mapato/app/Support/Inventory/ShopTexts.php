@@ -40,6 +40,18 @@ final class ShopTexts
         return DB::table('inventory_settings')->where('key', self::SUMMARY_KEY)->value('value') !== '0';
     }
 
+    /** The owner's morning text about goods running low (on unless switched off). */
+    public static function lowStockOn(): bool
+    {
+        return DB::table('inventory_settings')->where('key', 'inv_low_stock_sms')->value('value') !== '0';
+    }
+
+    /** The owner's text when a month has ended (on unless switched off). */
+    public static function monthOn(): bool
+    {
+        return DB::table('inventory_settings')->where('key', 'inv_month_sms')->value('value') !== '0';
+    }
+
     public static function saveCustomersOn(bool $on): void
     {
         DB::table('inventory_settings')->updateOrInsert(['key' => self::CUSTOMER_KEY], ['value' => $on ? '1' : '0', 'updated_at' => now()]);
@@ -109,6 +121,58 @@ final class ShopTexts
         return "Leo {$business}: mauzo " . self::tsh($today['sales']) . ', ' . ($profit >= 0 ? 'faida ' : 'hasara ') . self::tsh(abs($profit))
             . ', matumizi ' . self::tsh($today['expenses']) . ', madeni mapya ' . self::tsh($today['new_debts'])
             . '. Tofauti ya faida na jana: ' . ($d < 0 ? '-' : '+') . self::tsh(abs($d)) . '.' . $own;
+    }
+
+    /**
+     * "DUKA LA MAMA ASHA: bidhaa 4 zimebaki chache: Sukari (3), Mchele (5), Mafuta (2) na nyingine 1."
+     *
+     * @param  array<int, array{name: string, quantity: float|int|string}>  $items
+     */
+    public static function lowStockMessage(string $business, array $items): string
+    {
+        $business = self::clean($business, 'duka lako');
+        $shown = array_slice($items, 0, 5);
+        $more = count($items) - count($shown);
+        $list = implode(', ', array_map(fn ($i) => self::clean((string) $i['name'], 'bidhaa') . ' (' . rtrim(rtrim(number_format((float) $i['quantity'], 2, '.', ''), '0'), '.') . ')', $shown));
+
+        return "{$business}: bidhaa " . count($items) . " zimebaki chache: {$list}" . ($more > 0 ? " na nyingine {$more}" : '') . '. Ongeza stoo.';
+    }
+
+    private const MONTHS = ['Januari', 'Februari', 'Machi', 'Aprili', 'Mei', 'Juni', 'Julai', 'Agosti', 'Septemba', 'Oktoba', 'Novemba', 'Desemba'];
+
+    /**
+     * "DUKA LA MAMA ASHA: Oktoba 2026 umeisha. Faida TSh 2,140,000 (imepanda 12%). Lengo la TSh 2,000,000 limefikiwa. Fungua app uone ripoti kamili."
+     *
+     * @param  array<string, mixed>  $report  {@see \App\Support\Inventory\MonthlyReport::build()}
+     */
+    public static function monthMessage(string $business, string $month, array $report): string
+    {
+        $business = self::clean($business, 'duka lako');
+        [$year, $m] = array_pad(explode('-', $month), 2, '1');
+        $name = (self::MONTHS[max((int) $m, 1) - 1] ?? $month) . " {$year}";
+        $profit = (float) $report['figures']['net_profit'];
+        $p = $report['compare']['net_profit'] ?? [];
+        $trend = ($p['direction'] ?? '') === 'up' ? 'imepanda' : (($p['direction'] ?? '') === 'down' ? 'imeshuka' : '');
+        $pct = isset($p['percent']) && $p['percent'] !== null ? ' ' . abs((float) $p['percent']) . '%' : '';
+        $text = "{$business}: {$name} umeisha. " . ($profit >= 0 ? 'Faida ' : 'Hasara ') . self::tsh(abs($profit)) . ($trend !== '' ? " ({$trend}{$pct})" : '') . '.';
+
+        $target = $report['target'] ?? null;
+        if (is_array($target)) {
+            $text .= ($target['status'] ?? '') === 'reached'
+                ? ' Lengo la ' . self::tsh((float) $target['profit_target']) . ' limefikiwa.'
+                : ' Lengo la ' . self::tsh((float) $target['profit_target']) . ' halikufikiwa, upungufu ' . self::tsh((float) $target['left']) . '.';
+        }
+
+        return $text . ' Fungua app uone ripoti kamili.';
+    }
+
+    /** "Habari Juma, unadaiwa TSh 15,000 na DUKA LA MAMA ASHA. Tafadhali lipa ukipata nafasi. Asante!" */
+    public static function debtReminderMessage(string $client, string $business, float $owed): string
+    {
+        $first = ClientSegments::firstName($client);
+        $business = self::clean($business, 'duka letu');
+
+        return ($first !== '' ? "Habari {$first}, " : 'Habari, ') . 'unadaiwa ' . self::tsh($owed) . " na {$business}. Tafadhali lipa ukipata nafasi. Asante!";
     }
 
     // ------------------------------------------------------------------ the figures
@@ -218,5 +282,60 @@ final class ShopTexts
         } catch (\Throwable) {
             // The payment stands.
         }
+    }
+
+    /** The owner's morning text about goods running low. Never throws; true when it went out. */
+    public static function sendLowStock(Business $business, string $phone, array $items): bool
+    {
+        try {
+            return SmsService::sendFor($business, $phone, self::lowStockMessage((string) $business->name, $items));
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /** The owner's text when a month has ended. Never throws. */
+    public static function sendMonth(string $month, array $report): void
+    {
+        try {
+            if (!self::active() || !self::monthOn()) {
+                return;
+            }
+            $business = self::business();
+            $phone = trim((string) ($business?->owner?->phone_number ?? ''));
+            if ($business === null || $phone === '') {
+                return;
+            }
+            SmsService::sendFor($business, $phone, self::monthMessage((string) $business->name, $month, $report));
+        } catch (\Throwable) {
+            // The report stands; the text is a courtesy.
+        }
+    }
+
+    /**
+     * The owner asked to remind a customer of what they owe. Returns [sent, owed, reason]: reason is 'no_phone', 'opted_out', 'owes_nothing' or null.
+     *
+     * @return array{sent: bool, owed: float, reason: ?string}
+     */
+    public static function remindDebt(int $customerId): array
+    {
+        $c = DB::table('inventory_customers')->where('id', $customerId)->first();
+        $owed = CustomerDebt::left($customerId);
+        if ($c === null || trim((string) ($c->phone ?? '')) === '') {
+            return ['sent' => false, 'owed' => $owed, 'reason' => 'no_phone'];
+        }
+        if ((bool) ($c->sms_opt_out ?? false)) {
+            return ['sent' => false, 'owed' => $owed, 'reason' => 'opted_out'];
+        }
+        if ($owed <= 0) {
+            return ['sent' => false, 'owed' => $owed, 'reason' => 'owes_nothing'];
+        }
+        $business = self::business();
+        if ($business === null) {
+            return ['sent' => false, 'owed' => $owed, 'reason' => null];
+        }
+        $sent = SmsService::sendFor($business, trim((string) $c->phone), self::debtReminderMessage((string) $c->name, (string) $business->name, $owed));
+
+        return ['sent' => $sent, 'owed' => $owed, 'reason' => null];
     }
 }

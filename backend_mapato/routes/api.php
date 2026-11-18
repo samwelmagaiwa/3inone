@@ -750,6 +750,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // The whole account of one customer on one page, with every payment.
         Route::get('inventory/credit/customers/{id}/account', [InventoryCreditController::class, 'account']);
         Route::get('inventory/credit/customers/{id}/report', [InventoryCreditController::class, 'report']);
+        // The owner reminds a customer by text of what they owe.
+        Route::post('inventory/credit/customers/{id}/remind', [InventoryCreditController::class, 'remind']);
         Route::get('inventory/credit/debtors-ageing',       [InventoryCreditController::class, 'debtorsAgeing']);
     });
 

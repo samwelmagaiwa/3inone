@@ -42,6 +42,11 @@ Schedule::command('salon:daily-summary')
     ->dailyAt('20:59')
     ->withoutOverlapping();
 
+// Every morning at 08:00 in Tanzania (05:00 UTC): tell each shop owner which goods are running low (nothing is sent when nothing is).
+Schedule::command('inventory:low-stock')
+    ->dailyAt('05:00')
+    ->withoutOverlapping();
+
 // The same for each shop or depot owner, with how the day compares with yesterday.
 Schedule::command('inventory:daily-summary')
     ->dailyAt('20:59')
