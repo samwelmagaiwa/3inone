@@ -1965,3 +1965,22 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
   .grid-table thead th { font-size: 11.5px; letter-spacing: .02em; }
   .list-bar { padding: 10px 12px; }
 }
+
+/* ─── The phone-style pages for everyone who does NOT have the dark theme (the accountant): the same pages, on the light look ───
+   The pages were made with white text on dark glass; without the dark theme that was white on white. */
+.shell-wrap:not(.theme-phone) :is(.ph-card, .ph-tile, .glass) { background: #fff !important; border: 1px solid #dfe6f5 !important; color: #1e293b !important; box-shadow: 0 1px 6px rgba(26, 47, 110, .06); }
+.shell-wrap:not(.theme-phone) .ph-joined > .ph-sec { color: #1e293b !important; }
+.shell-wrap:not(.theme-phone) .ph-joined > .ph-sec + .ph-sec::before { background: linear-gradient(90deg, transparent, rgba(59, 97, 226, .35), transparent) !important; }
+.shell-wrap:not(.theme-phone) :is(.ph-card, .ph-joined, .ph-sec) h3 { color: #1a2f6e !important; }
+.shell-wrap:not(.theme-phone) :is(.ph-card, .ph-sec) h4 { color: #0e7490 !important; }
+.shell-wrap:not(.theme-phone) :is(.ph-muted, .pl-muted) { color: #64748b !important; opacity: 1 !important; }
+.shell-wrap:not(.theme-phone) :is(.ph-good, .pl-good) { color: #047857 !important; }
+.shell-wrap:not(.theme-phone) :is(.ph-bad, .pl-bad) { color: #b91c1c !important; }
+.shell-wrap:not(.theme-phone) :is(.ph-warn, .pl-warn) { color: #b45309 !important; }
+.shell-wrap:not(.theme-phone) .ph-accent { color: #0e7490 !important; }
+.shell-wrap:not(.theme-phone) :is(.ph-rule, .ph-card hr, .pl-card hr) { border-top-color: #e2e8f4 !important; }
+.shell-wrap:not(.theme-phone) :is(.pl-range) { color: #475a8f; opacity: 1; }
+.shell-wrap:not(.theme-phone) .cb-day { border-top-color: #e2e8f4 !important; }
+.shell-wrap:not(.theme-phone) .st-bar { background: #e2e8f4 !important; }
+.shell-wrap:not(.theme-phone) .ph-field { color: #475a8f; }
+.shell-wrap:not(.theme-phone) :is(.ph-field input, .ph-field select, .ph-field textarea, .ap-day, .pl-dates input, .pl-dates select) { background: #fff; color: #1e293b; border: 1px solid #cfd9f3; }
