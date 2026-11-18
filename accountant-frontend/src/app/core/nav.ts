@@ -142,7 +142,7 @@ export const NAV: NavItem[] = [
     hintKey: 'nav.reports.hint',
     group: 'overview',
     icon: 'M9 17v-6m4 6V7m4 10v-3M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z',
-    allowed: (a) => a.service() === 'salon' && a.can('inv_view_reports'),
+    allowed: (a) => a.service() === 'salon' && a.can('inv_salon_reports'),
   },
   {
     key: 'cashbook',
