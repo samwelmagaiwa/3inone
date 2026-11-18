@@ -119,6 +119,21 @@ final class AssistantTools
         ];
     }
 
+    /**
+     * May this person be told what the business EARNS (profit, margins, what goods cost, the profit target, what the business is worth)?
+     * The same rule as the screens: the owner's figures belong to whoever may change the business settings, and in a salon the profit has a
+     * right of its own (the accountant starts without it). Without it the assistant still answers about sales, spending, who owes, stock
+     * and everyone's takings, but never about profit.
+     */
+    public static function seesProfit(User $user): bool
+    {
+        if ($user->seesAllAccounts() || $user->hasInventoryPermission('inv_manage_settings')) {
+            return true;
+        }
+
+        return \App\Support\Tenancy\TenantContext::service() === 'salon' && \App\Support\Salon\SalonAccess::seesProfit($user);
+    }
+
     /** Whether one tool is open to this user: the business has the service, and the person holds the right the matching screen needs. */
     private static function opens(array $tool, User $user): bool
     {
@@ -174,7 +189,7 @@ final class AssistantTools
         }
 
         return match ($name) {
-            'business_report' => self::businessReport($args),
+            'business_report' => self::businessReport($args, $user),
             'customers_who_owe' => self::customersWhoOwe($args),
             'find_customer' => self::findCustomer($args, $user),
             'customer_report' => self::customerReport($args, $user),
@@ -265,10 +280,27 @@ final class AssistantTools
 
     // ------------------------------------------------------------------ the tools
 
-    private static function businessReport(array $args): array
+    private static function businessReport(array $args, User $user): array
     {
         $month = self::month($args);
         $r = MonthlyReport::build($month, \App\Support\Salon\SalonBranch::selected());
+
+        // Without the owner's figures the report is cut the way the screens cut it, and what is left is NAMED so the assistant says what it is,
+        // never a zero where a profit would be.
+        if (!self::seesProfit($user)) {
+            $f = collect($r['figures'])->except(['cost_of_goods', 'gross_profit', 'net_profit', 'margin_percent'])->all();
+            $change = collect($r['compare'])->except(['gross_profit', 'net_profit'])->map(fn ($c) => ['now' => $c['now'], 'before' => $c['before'], 'percent' => $c['percent']])->all();
+
+            return ['data' => [
+                'month' => $month, 'currency' => 'TSh', 'figures' => $f, 'compared_with' => $r['previous']['month'], 'change' => $change,
+                'best_products_by_sales' => array_map(fn ($p) => collect($p)->except(['profit', 'cost'])->all(), $r['top_products']),
+                'best_customers_by_sales' => array_map(fn ($c) => collect($c)->except(['profit'])->all(), $r['top_customers']),
+                'profit_not_available' => 'This person may not see profit, margins, costs or the profit target: say that their account does not include it and that the business owner can tell them. Everything else above may be shared.',
+            ], 'card' => ['type' => 'rows', 'title' => $month, 'rows' => [
+                ['title' => 'Sales', 'value' => self::tsh($r['figures']['sales'])],
+                ['title' => 'Expenses', 'value' => self::tsh($r['figures']['expenses'])],
+            ]]];
+        }
 
         return ['data' => [
             'month' => $month, 'currency' => 'TSh', 'figures' => $r['figures'], 'compared_with' => $r['previous']['month'],
@@ -343,12 +375,17 @@ final class AssistantTools
         };
         $r = \App\Support\Inventory\CustomerReport::build((int) $customer->id, $from->toDateString(), $today->toDateString(), $period === 'year' ? 'month' : ($period === 'week' ? 'day' : 'week'), $user);
         // The AI reads names and numbers only; the phone is shown on the card, from the record.
-        $data = ['currency' => 'TSh', 'customer' => $r['customer']['name'], 'period' => $period, 'from' => $r['from'], 'to' => $r['to'], 'totals' => $r['totals'], 'owes_now' => $r['debt'], 'lifetime' => $r['lifetime'], 'top_products' => $r['top_products']];
+        $profitOk = $r['profit_visible'] && self::seesProfit($user);
+        $strip = fn (array $x): array => $profitOk ? $x : collect($x)->except(['profit', 'cost', 'margin_percent'])->all();
+        $data = ['currency' => 'TSh', 'customer' => $r['customer']['name'], 'period' => $period, 'from' => $r['from'], 'to' => $r['to'], 'totals' => $strip($r['totals']), 'owes_now' => $r['debt'], 'lifetime' => $strip($r['lifetime']), 'top_products' => array_map($strip, $r['top_products'])];
+        if (!$profitOk) {
+            $data['profit_not_available'] = 'This person may not see profit: say that their account does not include it.';
+        }
         $rows = [
             ['title' => 'Bought', 'value' => self::tsh($r['totals']['sales']), 'note' => $r['totals']['purchases'] . ' purchases'],
             ['title' => 'Paid', 'value' => self::tsh($r['totals']['paid'])],
         ];
-        if ($r['profit_visible']) {
+        if ($profitOk) {
             $rows[] = ['title' => 'Profit brought', 'value' => self::tsh((float) $r['totals']['profit'])];
         }
         $rows[] = ['title' => 'Owes now', 'value' => self::tsh($r['debt']['owes_now'])];
@@ -366,7 +403,7 @@ final class AssistantTools
         if (!empty($args['low_stock_only'])) {
             $q->where('is_service', false)->whereColumn('quantity', '<=', 'min_stock');
         }
-        $showCost = $user->hasInventoryPermission('inv_view_reports') || $user->hasInventoryPermission('inv_manage_products');
+        $showCost = self::seesProfit($user) || $user->hasInventoryPermission('inv_manage_products');
         $rows = $q->get(['name', 'unit', 'quantity', 'min_stock', 'selling_price', 'cost_price', 'is_service']);
 
         $data = $rows->map(function ($p) use ($showCost) {

@@ -57,7 +57,7 @@ final class FlexibleTools
 
     private static function seesProfit(User $user): bool
     {
-        return $user->hasInventoryPermission('inv_view_reports');
+        return AssistantTools::seesProfit($user);
     }
 
     /** Sales (and what was sold), grouped the way the question needs, for any dates. */
@@ -188,7 +188,7 @@ final class FlexibleTools
     {
         $kind = in_array($args['kind'] ?? '', ['low', 'sleeping', 'value', 'fast_moving', 'out_of_stock'], true) ? $args['kind'] : 'sleeping';
         $days = max(7, min(365, (int) ($args['days'] ?? 60)));
-        $cost = $user->hasInventoryPermission('inv_view_reports') || $user->hasInventoryPermission('inv_manage_products');
+        $cost = self::seesProfit($user) || $user->hasInventoryPermission('inv_manage_products');
         $limit = self::limit($args);
         $since = now()->subDays($days)->format('Y-m-d H:i:s');
 

@@ -277,4 +277,87 @@ class AssistantTest extends TestCase
         $this->assertArrayHasKey('tools', $this->sent()[0], 'the first try offered the tools');
         $this->assertArrayNotHasKey('tools', $this->sent()[1], 'the second is a plain answer');
     }
+    /** Only the business snapshot part of what the model is told (the rules around it name the words too). */
+    private function snapshotOf(string $system): string
+    {
+        $after = explode('BUSINESS SNAPSHOT', $system, 2)[1] ?? '';
+
+        return explode('HOW-TO:', $after, 2)[0];
+    }
+
+    private function salonOwner(): User
+    {
+        $owner = $this->givenServices(User::factory()->create(['name' => 'Salon Owner', 'role' => 'admin', 'is_active' => true, 'phone_number' => '0727' . str_pad((string) ++$this->seq, 6, '0', STR_PAD_LEFT)]), 'salon');
+        Business::forOwnerId($owner->id)->update(['name' => 'Mary Beauty']);
+
+        return $owner;
+    }
+
+    private function asService(User $as, string $service, string $method, string $uri, array $body = [])
+    {
+        $token = $as->createToken('test')->plainTextToken;
+        $this->app['auth']->forgetGuards();
+        $this->flushHeaders();
+
+        return $this->withHeader('Authorization', "Bearer {$token}")->withHeader('X-Service', $service)->json($method, $uri, $body);
+    }
+
+    public function test_the_accountant_is_told_about_sales_and_spending_but_never_about_profit(): void
+    {
+        $owner = $this->salonOwner();
+        $accountant = $this->givenServices(User::factory()->create(['name' => 'Ivan Acc', 'role' => 'accountant', 'is_active' => true, 'created_by' => $owner->id]), 'salon');
+        $p = $this->asService($owner, 'salon', 'POST', '/api/inventory/products', ['name' => 'Braids', 'is_service' => true, 'quantity' => 0, 'min_stock' => 0, 'status' => 'active', 'cost_price' => 0, 'selling_price' => 40000, 'duration_minutes' => 60])->assertCreated()->json('data.id');
+        $this->asService($owner, 'salon', 'POST', '/api/inventory/sales', ['payment_status' => 'paid', 'subtotal' => 40000, 'discount' => 0, 'tax' => 0, 'total' => 40000, 'paid_total' => 40000, 'items' => [['product_id' => $p, 'quantity' => 1, 'unit_price' => 40000, 'unit_cost_snapshot' => 10000]]])->assertCreated();
+
+        $this->assertTrue(\App\Support\Ai\AssistantTools::seesProfit($owner));
+        $this->assertFalse(\App\Support\Ai\AssistantTools::seesProfit($accountant));
+
+        config(['services.gemini.key' => 'g-test', 'services.gemini.model' => 'gemini-test']);
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response(['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Sawa.']]]]]], 200)]);
+
+        // the picture the model starts from: sales and spending are in it, profit is not
+        $this->asService($accountant, 'salon', 'POST', '/api/assistant', ['question' => 'hello'])->assertOk();
+        $system = $this->snapshotOf($this->sent()[0]['systemInstruction']['parts'][0]['text']);
+        $this->assertStringContainsString('"sales"', $system);
+        $this->assertStringNotContainsString('net_profit', $system);
+        $this->assertStringNotContainsString('gross_profit', $system);
+        $this->assertStringNotContainsString('cost_of_goods', $system);
+        $this->assertStringNotContainsString('profit_target', $system);
+        $this->assertStringContainsString('profit_not_available', $system);
+
+        // the tool itself, asked directly, answers the same way
+        $r = \App\Support\Ai\AssistantTools::run('business_report', [], $accountant);
+        $this->assertArrayNotHasKey('error', $r['data']);
+        $this->assertStringNotContainsString('profit', strtolower(json_encode(array_diff_key($r['data'], ['profit_not_available' => 1]))));
+        $this->assertSame(['Sales', 'Expenses'], array_column($r['card']['rows'], 'title'));
+    }
+
+    public function test_the_owner_is_still_told_the_profit(): void
+    {
+        $owner = $this->salonOwner();
+        $p = $this->asService($owner, 'salon', 'POST', '/api/inventory/products', ['name' => 'Braids', 'is_service' => true, 'quantity' => 0, 'min_stock' => 0, 'status' => 'active', 'cost_price' => 0, 'selling_price' => 40000, 'duration_minutes' => 60])->assertCreated()->json('data.id');
+        $this->asService($owner, 'salon', 'POST', '/api/inventory/sales', ['payment_status' => 'paid', 'subtotal' => 40000, 'discount' => 0, 'tax' => 0, 'total' => 40000, 'paid_total' => 40000, 'items' => [['product_id' => $p, 'quantity' => 1, 'unit_price' => 40000, 'unit_cost_snapshot' => 10000]]])->assertCreated();
+        config(['services.gemini.key' => 'g-test', 'services.gemini.model' => 'gemini-test']);
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response(['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Sawa.']]]]]], 200)]);
+
+        $this->asService($owner, 'salon', 'POST', '/api/assistant', ['question' => 'hello'])->assertOk();
+
+        $system = $this->snapshotOf($this->sent()[0]['systemInstruction']['parts'][0]['text']);
+        $this->assertStringContainsString('net_profit', $system);
+        $this->assertStringNotContainsString('profit_not_available', $system);
+    }
+
+    public function test_someone_the_owner_gave_the_salon_profit_right_is_told_it(): void
+    {
+        $owner = $this->salonOwner();
+        $accountant = $this->givenServices(User::factory()->create(['name' => 'Ivan Acc', 'role' => 'accountant', 'is_active' => true, 'created_by' => $owner->id]), 'salon');
+        $this->assertFalse(\App\Support\Ai\AssistantTools::seesProfit($accountant));
+
+        $accountant->forceFill(['permissions' => ['inv_salon_profit']])->save();
+        \App\Support\Tenancy\TenantContext::runAs($owner, fn () => null);
+        $this->app['auth']->forgetGuards();
+        $this->asService($accountant->refresh(), 'salon', 'GET', '/api/assistant')->assertOk();
+
+        $this->assertTrue(\App\Support\Ai\AssistantTools::seesProfit($accountant->refresh()));
+    }
 }
