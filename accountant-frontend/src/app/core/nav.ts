@@ -6,7 +6,7 @@ import { AuthService } from './auth.service';
  * The server enforces the same rights; this keeps the screens honest.
  */
 export interface NavItem {
-  key: 'dashboard' | 'products' | 'sales' | 'credit' | 'debts' | 'expenses' | 'branch_stock' | 'branches' | 'branch_team' | 'branch_sales' | 'money' | 'appointments' | 'stylists' | 'reports' | 'cashbook' | 'rebook' | 'team' | 'payroll' | 'export' | 'business' | 'salon_settings' | 'assistant';
+  key: 'dashboard' | 'products' | 'sales' | 'credit' | 'debts' | 'expenses' | 'branch_stock' | 'branches' | 'staff' | 'branch_team' | 'branch_sales' | 'money' | 'appointments' | 'stylists' | 'reports' | 'cashbook' | 'rebook' | 'team' | 'payroll' | 'export' | 'business' | 'salon_settings' | 'assistant';
   path: string;
   labelKey: string;
   hintKey: string;
@@ -98,6 +98,16 @@ export const NAV: NavItem[] = [
     group: 'overview',
     icon: 'M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6',
     allowed: (a) => a.can('inv_manage_settings'),
+  },
+  {
+    key: 'staff',
+    path: '/staff',
+    labelKey: 'nav.staff',
+    hintKey: 'nav.staff.hint',
+    group: 'overview',
+    icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+    // Only the business owner registers people (the server refuses anyone else), in a salon, shop or depot.
+    allowed: (a) => a.isBusinessAdmin() && a.sells(),
   },
   {
     key: 'branch_team',

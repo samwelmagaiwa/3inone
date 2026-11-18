@@ -37,6 +37,7 @@ export const routes: Routes = [
       { path: 'business', canActivate: [canOpen('business')], loadComponent: () => import('./pages/business/business').then((m) => m.BusinessPage) },
       { path: 'salon-settings', canActivate: [canOpen('salon_settings')], loadComponent: () => import('./pages/salon-settings/salon-settings').then((m) => m.SalonSettingsPage) },
       { path: 'money', canActivate: [canOpen('money')], loadComponent: () => import('./pages/money/money').then((m) => m.MoneyPage) },
+      { path: 'staff', canActivate: [canOpen('staff')], loadComponent: () => import('./pages/staff/staff').then((m) => m.StaffPage) },
       { path: 'branch-team', canActivate: [canOpen('branch_team')], loadComponent: () => import('./pages/branch-team/branch-team').then((m) => m.BranchTeamPage) },
       { path: 'branch-sales', canActivate: [canOpen('branch_sales')], loadComponent: () => import('./pages/branch-sales/branch-sales').then((m) => m.BranchSalesPage) },
       { path: 'assistant', loadComponent: () => import('./pages/assistant/assistant').then((m) => m.AssistantPage) },

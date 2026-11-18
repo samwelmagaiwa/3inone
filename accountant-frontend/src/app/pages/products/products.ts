@@ -177,7 +177,9 @@ export class ProductsPage implements OnInit {
   protected readonly hasFilters = computed(() => !!(this.query() || this.status() || this.kind() || this.lowStock() || this.categoryId()));
   protected readonly noun = computed(() => this.i18n.t(this.total() === 1 ? 'prod.noun.one' : 'prod.noun.many'));
   protected readonly namedList = computed(() => (this.tab() === 'brands' ? this.brands() : this.categories()));
-  protected readonly namedKind = computed<NamedKind>(() => (this.tab() === 'brands' ? 'brands' : 'categories'));
+  /** Set while a category is made from the item form (the tab is then "products", which is not a list of names). */
+  private readonly namedAs = signal<NamedKind | null>(null);
+  protected readonly namedKind = computed<NamedKind>(() => this.namedAs() ?? (this.tab() === 'brands' ? 'brands' : 'categories'));
 
   ngOnInit(): void {
     void this.load();
@@ -548,6 +550,11 @@ export class ProductsPage implements OnInit {
   }
 
   // ------------------------------------------------------------------ categories and brands
+  private openNamedAs(kind: NamedKind): void {
+    this.namedAs.set(kind);
+    this.openNamed(null);
+  }
+
   protected openNamed(n: Named | null): void {
     this.namedEditing.set(n);
     this.namedName = n?.name ?? '';
@@ -555,6 +562,15 @@ export class ProductsPage implements OnInit {
     this.namedStatus = n?.status ?? 'active';
     this.namedError.set('');
     this.namedOpen.set(true);
+  }
+
+  /** The category being made from inside the item form: once it is saved it is chosen for the item. */
+  private choosingFor: string | null = null;
+
+  /** "+ Add category" under the category choice of the item form: the same dialog as the Categories tab. */
+  protected newCategoryFromForm(): void {
+    this.choosingFor = '';
+    this.openNamedAs('categories');
   }
 
   protected async saveNamed(): Promise<void> {
@@ -567,10 +583,17 @@ export class ProductsPage implements OnInit {
       this.toast.success(this.i18n.t('prod.saved'), this.i18n.t('common.done'));
       this.namedOpen.set(false);
       await this.loadNamed(kind);
+      // Made from the item form: choose it for the item.
+      if (this.choosingFor !== null && kind === 'categories') {
+        const made = this.categories().find((c) => c.name === this.namedName.trim());
+        if (made) this.fCategory = String(made.id);
+      }
     } catch (err) {
       this.namedError.set(this.messageOf(err));
     } finally {
       this.namedSaving.set(false);
+      this.choosingFor = null;
+      this.namedAs.set(null);
     }
   }
 

@@ -458,6 +458,28 @@ describe('products and services', () => {
       h.http.expectOne({ method: 'GET', url: `${API}/inventory/categories` }).flush({ data: [] });
     });
 
+    it('a category can be made from inside the item form, and is then chosen for that item', async () => {
+      const { h, fixture, el } = await open(MANAGER, { service: 'salon' });
+
+      click(el, 'prod-add');
+      await settle(fixture);
+      click(el, 'p-new-category');
+      await settle(fixture);
+      type(el, '[data-testid="named-name"]', 'Hair care');
+      await settle(fixture);
+      click(el, 'named-save');
+      const req = h.http.expectOne({ method: 'POST', url: `${API}/inventory/categories` });
+      expect(req.request.body).toEqual({ name: 'Hair care', description: null, status: 'active' });
+      req.flush({ data: { id: 2 } });
+      await settle(fixture);
+      h.http.expectOne({ method: 'GET', url: `${API}/inventory/categories` }).flush({
+        data: [{ id: 1, name: 'Drinks', description: null, status: 'active', products_count: 2 }, { id: 2, name: 'Hair care', description: null, status: 'active', products_count: 0 }],
+      });
+      await settle(fixture);
+
+      expect((el.querySelector('#pCategory') as HTMLSelectElement).value).toBe('2');
+    });
+
     it('a shop is not offered ready-made salon categories', async () => {
       const shop = await open(MANAGER);
       click(shop.el, 'tab-categories');

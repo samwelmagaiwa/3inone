@@ -215,6 +215,8 @@
           <option value="">{{ i18n.t('prod.form.none') }}</option>
           @for (c of categories(); track c.id) { <option [value]="'' + c.id">{{ localized(c.name) }}</option> }
         </select>
+        <!-- No fitting category yet? Make one here, without leaving the form: it is then chosen for this item -->
+        @if (canAdd()) { <button type="button" class="text-xs font-black text-sky-600 mt-1" (click)="newCategoryFromForm()" data-testid="p-new-category">+ {{ i18n.t('cat.add') }}</button> }
       </div>
       <div>
         <label class="modal-label" for="pBrand">{{ i18n.t(fIsService ? 'prod.form.brand.service' : 'prod.form.brand') }}</label>
