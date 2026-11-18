@@ -291,7 +291,7 @@ class SalonEquipmentAndExportsTest extends TestCase
         }
         // Export is off for an accountant until the owner switches it on.
         $this->api($accountant, 'GET', '/api/inventory/salon/export/sales')->assertStatus(403);
-        $accountant->forceFill(['permissions' => ['inv_salon_export']])->save();
+        $accountant->forceFill(['permissions' => ['inv_salon_export', 'inv_salon_money']])->save();
         $this->api($accountant, 'GET', '/api/inventory/salon/export/sales')->assertOk();
         $this->api($manager, 'GET', '/api/inventory/salon/export/sales')->assertOk();
         $this->api($owner, 'GET', '/api/inventory/salon/export/secrets')->assertStatus(404);

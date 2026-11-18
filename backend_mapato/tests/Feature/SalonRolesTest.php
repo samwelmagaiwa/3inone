@@ -185,10 +185,10 @@ class SalonRolesTest extends TestCase
         $owner = $this->salon();
         $uris = ['/api/inventory/salon/profit-loss', '/api/inventory/salon/payroll', '/api/inventory/salon/payouts', '/api/inventory/salon/overview', '/api/inventory/salon/staff-profiles'];
 
-        // Pay (payroll, payouts, who earns what) is a right of its own: the accountant starts with the money pages but not the pay.
+        // The money pages and the pay (payroll, payouts, who earns what) are rights of their own: the accountant starts with neither, the owner gives them.
         $pay = ['/api/inventory/salon/payroll', '/api/inventory/salon/payouts', '/api/inventory/salon/staff-profiles'];
 
-        foreach (['manager' => true, 'accountant' => true, 'hair_stylist' => false, 'nail_technician' => false, 'lash_makeup_artist' => false] as $role => $sees) {
+        foreach (['manager' => true, 'accountant' => false, 'hair_stylist' => false, 'nail_technician' => false, 'lash_makeup_artist' => false] as $role => $sees) {
             $user = $this->person($owner, ucfirst($role), $role);
             foreach ($uris as $uri) {
                 $this->api($user, 'GET', $uri)->assertStatus($sees && !($role === 'accountant' && in_array($uri, $pay, true)) ? 200 : 403);
