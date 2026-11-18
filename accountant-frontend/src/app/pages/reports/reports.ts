@@ -116,7 +116,7 @@ export function reportRange(p: Period, now: Date): [string, string] {
       } @else {
         @let d = data()!;
         <!-- One card, its sections told apart by the glowing lines (as on the phone) -->
-        <div class="ph-card ph-joined" data-testid="rp-joined">
+        <div class="ph-card ph-joined ph-cols" data-testid="rp-joined">
           <section class="ph-sec" data-testid="rp-summary">
             <h3>{{ i18n.t('rp.summary') }}</h3>
             <div class="ph-line"><span>{{ i18n.t('pl.revenue') }}</span><b data-testid="rp-revenue">{{ money(d.summary['revenue']) }}</b></div>
