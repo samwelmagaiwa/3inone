@@ -201,4 +201,80 @@ class AssistantTest extends TestCase
         $this->assertStringNotContainsString('quota', $r->getContent());
         $this->assertStringNotContainsString('g-test', $r->getContent());
     }
+    public function test_a_hello_is_answered_from_the_business_because_the_model_is_given_a_snapshot(): void
+    {
+        $owner = $this->shop('Glow Duka');
+        $p = $this->product($owner, 'Mafuta');
+        $debtor = $this->customer($owner, 'Neema Debtor', '0754111222');
+        $this->sell($owner, $p, $debtor, 120000, 'debt');
+        config(['services.gemini.key' => 'g-test', 'services.gemini.model' => 'gemini-test']);
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response(['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Habari Glow.']]]]]], 200)]);
+
+        $this->api($owner, 'POST', '/api/assistant', ['question' => 'hello', 'lang' => 'sw'])->assertOk()->assertJsonPath('data.answer', 'Habari Glow.');
+
+        $system = $this->sent()[0]['systemInstruction']['parts'][0]['text'];
+        $this->assertStringContainsString('BUSINESS SNAPSHOT', $system);
+        $this->assertStringContainsString('Neema Debtor', $system, 'who owes is already in front of the model');
+        $this->assertStringContainsString('greet back', $system);
+        $this->assertStringNotContainsString('0754111222', $system, 'a phone number never reaches the model');
+    }
+
+    public function test_the_snapshot_holds_only_what_the_persons_rights_open(): void
+    {
+        $owner = $this->shop('Glow Duka');
+        $officer = $this->officer($owner);
+        $p = $this->product($owner, 'Sabuni');
+        $debtor = $this->customer($owner, 'Neema Debtor', '0754111222');
+        $this->sell($owner, $p, $debtor, 90000, 'debt');
+        config(['services.gemini.key' => 'g-test', 'services.gemini.model' => 'gemini-test']);
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response(['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Karibu.']]]]]], 200)]);
+
+        $this->api($officer, 'POST', '/api/assistant', ['question' => 'hello'])->assertOk();
+
+        $system = $this->sent()[0]['systemInstruction']['parts'][0]['text'];
+        $this->assertStringNotContainsString('best_customers', $system, 'the monthly report is not for the officer to read');
+        $this->assertStringNotContainsString('"business_report"', $system);
+        $this->assertStringContainsString('customers_who_owe', $system, 'what the officer may read is still in it');
+    }
+
+    public function test_a_failed_answer_leaves_no_two_questions_in_a_row_for_the_model(): void
+    {
+        $owner = $this->shop();
+        config(['services.gemini.key' => 'g-test', 'services.gemini.model' => 'gemini-test']);
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response(['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Sawa.']]]]]], 200)]);
+
+        // what the web sends after an answer failed: the answer was dropped, so two questions follow each other, and an answer comes first
+        $this->api($owner, 'POST', '/api/assistant', [
+            'question' => 'And this month?',
+            'history' => [
+                ['role' => 'model', 'text' => 'Karibu, naweza kusaidia.'],
+                ['role' => 'user', 'text' => 'Who owes me?'],
+                ['role' => 'user', 'text' => 'Who owes me?'],
+            ],
+        ])->assertOk();
+
+        $contents = $this->sent()[0]['contents'];
+        $this->assertSame('user', $contents[0]['role'], 'the model never speaks first');
+        $this->assertCount(1, $contents, 'the questions are joined into one turn');
+        $this->assertStringContainsString('And this month?', $contents[0]['parts'][0]['text']);
+        $roles = array_column($contents, 'role');
+        for ($i = 1; $i < count($roles); $i++) {
+            $this->assertNotSame($roles[$i - 1], $roles[$i], 'the two sides alternate');
+        }
+    }
+
+    public function test_when_the_model_refuses_the_tool_request_the_person_still_gets_a_plain_answer(): void
+    {
+        $owner = $this->shop();
+        config(['services.gemini.key' => 'g-test', 'services.gemini.model' => 'gemini-test']);
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::sequence()
+            ->push(['error' => ['message' => 'invalid argument']], 400)
+            ->push(['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Hapa ndivyo biashara ilivyo.']]]]]], 200)]);
+
+        $r = $this->api($owner, 'POST', '/api/assistant', ['question' => 'How am I doing?'])->assertOk();
+
+        $this->assertSame('Hapa ndivyo biashara ilivyo.', $r->json('data.answer'));
+        $this->assertArrayHasKey('tools', $this->sent()[0], 'the first try offered the tools');
+        $this->assertArrayNotHasKey('tools', $this->sent()[1], 'the second is a plain answer');
+    }
 }

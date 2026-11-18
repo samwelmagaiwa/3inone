@@ -92,7 +92,9 @@ final class GeminiClient
             } elseif ($status >= 500) {
                 self::down($model, 60, 'overloaded');
             } else {
-                // 400/401/403: our request or the key is wrong, so every model would refuse it the same way.
+                // 400/401/403: our request or the key is wrong, so every model would refuse it the same way. Say why in the log (never the key).
+                Log::warning('gemini refused the request', ['model' => $model, 'status' => $status, 'why' => mb_substr((string) $res->body(), 0, 500)]);
+
                 throw new \RuntimeException($last);
             }
         }
