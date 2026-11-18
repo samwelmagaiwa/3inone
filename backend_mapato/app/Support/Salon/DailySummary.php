@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The text the owner gets at the end of the day: what came in, what went out, what is left, how many clients. Off until
- * the owner switches it on (it is an SMS, and SMS cost money).
+ * the owner switches it off.
  */
 final class DailySummary
 {
@@ -14,7 +14,8 @@ final class DailySummary
 
     public static function isOn(): bool
     {
-        return DB::table('inventory_settings')->where('key', self::KEY)->value('value') === '1';
+        // On from the start: only an owner who switched it off (a stored 0) goes without.
+        return DB::table('inventory_settings')->where('key', self::KEY)->value('value') !== '0';
     }
 
     public static function save(bool $on): void

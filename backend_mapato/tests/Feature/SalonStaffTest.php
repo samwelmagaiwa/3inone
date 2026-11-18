@@ -485,8 +485,9 @@ class SalonStaffTest extends TestCase
         $this->api($owner, 'POST', '/api/inventory/salon/appointments', ['client_name' => 'Tomorrow', 'starts_at' => '2026-10-08 10:00', 'services' => [['product_id' => $wash]]])->assertCreated();
         $this->at('2026-10-07 16:30:00');
 
+        $this->api($owner, 'PUT', '/api/inventory/salon/settings', ['daily_summary' => false])->assertOk()->assertJsonPath('data.daily_summary', false);
         $this->artisan('salon:daily-summary')->assertExitCode(0);
-        $this->assertCount(0, $this->sms->sent, 'off until the owner switches it on');
+        $this->assertCount(0, $this->sms->sent, 'switched off by the owner: nothing');
 
         $this->api($owner, 'PUT', '/api/inventory/salon/settings', ['daily_summary' => true])->assertOk()->assertJsonPath('data.daily_summary', true);
         $this->artisan('salon:daily-summary', ['--dry-run' => true])->assertExitCode(0);
@@ -506,6 +507,20 @@ class SalonStaffTest extends TestCase
         $this->at('2026-10-08 16:30:00');
         $this->artisan('salon:daily-summary')->assertExitCode(0);
         $this->assertCount(2, $this->sms->sent, 'the next evening: texted again');
+    }
+
+    public function test_the_evening_summary_is_on_from_the_start(): void
+    {
+        $owner = $this->salon('Glow Salon');
+        $this->freshSms();
+        $this->at('2026-10-07 10:00:00');
+        $this->api($owner, 'GET', '/api/inventory/salon/settings')->assertOk()->assertJsonPath('data.daily_summary', true);
+        $this->at('2026-10-07 16:30:00');
+
+        $this->artisan('salon:daily-summary')->assertExitCode(0);
+
+        $this->assertCount(1, $this->sms->sent, 'no switch to press: the owner is texted');
+        $this->assertSame($owner->phone_number, $this->sms->sent[0]['to']);
     }
 
     public function test_a_day_at_a_loss_says_loss_and_a_failed_text_is_tried_again(): void

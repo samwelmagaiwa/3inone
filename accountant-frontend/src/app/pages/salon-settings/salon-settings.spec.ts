@@ -12,7 +12,7 @@ describe('salon settings page', () => {
   });
 
   it('every switch saves the field the phone saves', () => {
-    expect(SWITCHES.map((s) => s.field)).toEqual(['rebook_enabled', 'appointment_reminders', 'feedback_sms', 'birthday_offer', 'daily_summary', 'online_booking']);
+    expect(SWITCHES.map((s) => s.field)).toEqual(['rebook_enabled', 'appointment_reminders', 'feedback_sms', 'daily_summary', 'online_booking']);
   });
 
   it('sends the loyalty numbers as whole numbers, with the phone\'s fall-backs', () => {

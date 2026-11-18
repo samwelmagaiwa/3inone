@@ -18,7 +18,6 @@ export const SWITCHES: { field: string; title: string; sub: string; group: 'text
   { field: 'rebook_enabled', title: 'set.rebook', sub: 'set.rebook.sub', group: 'texts' },
   { field: 'appointment_reminders', title: 'set.reminders', sub: 'set.reminders.sub', group: 'texts' },
   { field: 'feedback_sms', title: 'set.feedback', sub: 'set.feedback.sub', group: 'texts' },
-  { field: 'birthday_offer', title: 'set.birthday', sub: 'set.birthday.sub', group: 'texts' },
   { field: 'daily_summary', title: 'set.summary', sub: 'set.summary.sub', group: 'owner' },
   { field: 'online_booking', title: 'set.online', sub: 'set.online.sub', group: 'online' },
 ];
@@ -52,8 +51,6 @@ export function loyaltyBody(per: string, value: string, referral: string): { per
           @for (s of group('texts'); track s.field) {
             <div class="ph-row" style="padding: 6px 0"><span>{{ i18n.t(s.title) }}<br /><span class="ph-muted">{{ i18n.t(s.sub) }}</span></span><input type="checkbox" [checked]="isOn(s.field)" (change)="toggle(s.field, $any($event.target).checked)" [attr.data-testid]="'set-' + s.field" /></div>
           }
-          <label class="ph-field" style="margin-top: 6px">{{ i18n.t('set.birthday.text') }}<input class="modal-input" maxlength="160" [ngModel]="birthdayText()" (ngModelChange)="birthdayText.set($event)" data-testid="set-birthday-text" name="setBt" /></label>
-          <button type="button" class="btn-outline ph-btn is-success" style="margin-top: 6px" (click)="save({ birthday_text: birthdayText().trim() })" data-testid="set-birthday-save">{{ i18n.t('common.save') }}</button>
         </section>
 
         <section class="ph-card">

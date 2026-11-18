@@ -146,14 +146,6 @@ class _SalonSettingsScreenState extends State<SalonSettingsScreen> {
                   _switch('set_rebook', 'rebook_enabled', sw ? 'Vikumbusho vya kurudi' : 'Come-back reminders', sw ? 'Mteja anakumbushwa baada ya muda' : 'Clients are reminded after a while'),
                   _switch('set_reminders', 'appointment_reminders', sw ? 'Kikumbusho cha miadi' : 'Appointment reminders', sw ? 'Siku moja kabla' : 'The day before'),
                   _switch('set_feedback', 'feedback_sms', sw ? 'Ombi la maoni' : 'Ask for feedback', sw ? 'Ujumbe wenye kiungo baada ya kuhudumiwa' : 'A text with a link after a visit'),
-                  _switch('set_birthday', 'birthday_offer', sw ? 'Zawadi ya siku ya kuzaliwa' : 'Birthday offer', sw ? 'Ujumbe siku ya kuzaliwa' : 'A text on their birthday'),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(children: <Widget>[
-                      Expanded(child: TextField(style: salonInputStyle, key: const Key('set_birthday_text'), controller: _birthdayText, maxLength: 160, decoration: salonInput(labelText: sw ? 'Maneno ya zawadi' : 'Offer wording'))),
-                      TextButton(key: const Key('set_birthday_save'), onPressed: () => _save(<String, dynamic>{'birthday_text': _birthdayText.text.trim()}), child: Text(sw ? 'Hifadhi' : 'Save')),
-                    ]),
-                  ),
                   ]),
                   GlowCard(title: sw ? 'Mmiliki' : 'Owner', dividerKey: 'set_divider', children: <Widget>[
                   _switch('set_summary', 'daily_summary', sw ? 'Muhtasari wa jioni' : 'Evening summary', sw ? 'Ujumbe wa jinsi siku ilivyokwenda' : 'A text on how the day went'),

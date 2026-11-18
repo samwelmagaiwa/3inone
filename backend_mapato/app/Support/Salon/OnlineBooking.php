@@ -196,14 +196,6 @@ final class OnlineBooking
             app(InventoryNotifier::class)->notifyByPermission(['inv_view_reports'], 'salon_online_booking', 'Miadi ya mtandaoni / Online booking', "{$name} - {$when} ({$person->name})", ['appointment_id' => (int) $id]);
             app(InventoryNotifier::class)->notifyUser((string) $person->id, 'salon_new_booking', 'Miadi mpya / New appointment', "{$name} - {$when}", ['appointment_id' => (int) $id]);
 
-            try {
-                $first = ClientSegments::firstName($name);
-                SmsService::sendFor($business, $phone, ($first !== '' ? "Habari {$first}, " : 'Habari, ') . "miadi yako {$business->name} {$when} imepokelewa. Karibu! / "
-                    . ($first !== '' ? "Hello {$first}, " : 'Hello, ') . "your appointment at {$business->name} on {$when} is booked. See you!");
-            } catch (\Throwable) {
-                // The booking stands; the text is a courtesy.
-            }
-
             return ['id' => (int) $id, 'starts_at' => $start->format('Y-m-d H:i'), 'ends_at' => $end->format('Y-m-d H:i'), 'staff_name' => $person->name, 'total' => SalonFinance::money($total)];
         });
     }

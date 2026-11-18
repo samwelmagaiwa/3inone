@@ -277,10 +277,7 @@ class SalonOnlineBookingTest extends TestCase
         $this->assertSame(['online', 'booked', 'Neema Juma', '0711000001', 'First time'], [$a->source, $a->status, $a->client_name, $a->client_phone, $a->notes]);
         $this->assertSame(1, $this->rows($owner, fn () => DB::table('inventory_customers')->where('phone', '0711000001')->count()), 'a client record was made');
 
-        $this->assertCount(1, $this->sms->sent);
-        $this->assertSame('0711000001', $this->sms->sent[0]['to']);
-        $this->assertStringContainsString('miadi yako Glow Salon 08/10 10:00 imepokelewa', $this->sms->sent[0]['message']);
-        $this->assertStringContainsString('your appointment at Glow Salon on 08/10 10:00 is booked', $this->sms->sent[0]['message']);
+        $this->assertCount(0, $this->sms->sent, 'the client is not texted when they book online');
         $note = fn (User $u, string $type) => collect($this->api($u, 'GET', '/api/inventory/notifications')->json('data'))->firstWhere('type', $type);
         $this->assertNotNull($note($owner, 'salon_online_booking'));
         $this->assertNotNull($note($manager, 'salon_online_booking'));

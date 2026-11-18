@@ -437,6 +437,6 @@ class SalonClientsTest extends TestCase
         $messages = array_column($this->sms->sent, 'message');
         $this->assertCount(1, array_filter($messages, fn ($m) => str_contains($m, 'Glow')));
         $this->assertCount(1, array_filter($messages, fn ($m) => str_contains($m, 'Other')));
-        $this->artisan('schedule:list')->expectsOutputToContain('salon:birthday-offers')->assertExitCode(0);
+        $this->artisan('schedule:list')->doesntExpectOutputToContain('salon:birthday-offers')->assertExitCode(0);
     }
 }

@@ -47,11 +47,6 @@ Schedule::command('inventory:month-close')
     ->dailyAt('04:30')
     ->withoutOverlapping();
 
-// Every morning (08:30 in Tanzania): wish clients a happy birthday, for salons that switched it on.
-Schedule::command('salon:birthday-offers')
-    ->dailyAt('05:30')
-    ->withoutOverlapping();
-
 // Expired API tokens are already rejected; this just removes the dead rows.
 Schedule::command('sanctum:prune-expired --hours=24')
     ->daily();
