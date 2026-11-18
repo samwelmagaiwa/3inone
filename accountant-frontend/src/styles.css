@@ -1960,7 +1960,8 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
 @media (max-width: 1599px) {
   .table-scroll-container.fit-page { overflow: auto !important; max-height: 78vh; }
   .fit-page .grid-table thead th { top: 0 !important; white-space: normal; }
-  .grid-table tbody td { overflow-wrap: anywhere; }
+  /* long free text may break to fit, but a date, an amount or a word is never split in the middle */
+  .grid-table tbody td { overflow-wrap: break-word; }
 }
 
 /* A computer screen showing 1280 px or less (a 22-inch monitor with the display scaled up): tables take less room, so nothing is pushed out of view */
@@ -2022,3 +2023,11 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
 .theme-phone .btn-outline.is-danger { color: #fca5a5 !important; border-color: #f87171 !important; }
 .theme-phone .btn-outline.is-warn { color: #fcd34d !important; border-color: #fbbf24 !important; }
 .theme-phone .btn-outline.is-info { color: #67e8f9 !important; border-color: #22d3ee !important; }
+
+/* Status chips are small labels that never wrap or split */
+.grid-table :is(.pill-active, .pill-inactive, .pill-critical, .status-ok, .status-chip) { white-space: nowrap; overflow-wrap: normal; word-break: keep-all; }
+
+/* A status label that is fine (Approved, Active, Within the limit): a soft green chip with a dot, on one line. It is a label, not a button. */
+.status-ok { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 900; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; color: #047857; background: #d1fae5; border: 1px solid #a7f3d0; }
+.status-ok::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #10b981; flex: none; }
+.theme-phone .status-ok { color: #6ee7b7; background: rgba(16, 185, 129, .2); border-color: rgba(52, 211, 153, .45); }
