@@ -18,6 +18,7 @@ COPY docker/nginx-prod.conf /etc/nginx/http.d/default.conf
 COPY docker/supervisord.conf /etc/supervisord.conf
 COPY docker/php-fpm-pool.conf /usr/local/etc/php-fpm.d/zzz-pool-override.conf
 COPY docker/opcache-prod.ini /usr/local/etc/php/conf.d/zz-opcache-prod.ini
+COPY docker/php-prod-errors.ini /usr/local/etc/php/conf.d/zz-prod-errors.ini
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
