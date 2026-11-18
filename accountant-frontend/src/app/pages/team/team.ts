@@ -86,7 +86,7 @@ export const hoursText = (h: number): string => (h % 1 === 0 ? String(Math.trunc
               <p class="ph-muted">{{ dayLabel(r.date) }}  {{ hm(r.clockIn) }}–{{ r.clockOut ? hm(r.clockOut) : '…' }}@if (r.hours !== null) { ({{ hoursText(r.hours) }} h) }</p>
             }
             @if (canManage() && p.atWork) {
-              <button type="button" class="btn-outline ph-btn" (click)="finish(p)" [disabled]="busy()" [attr.data-testid]="'tm-out-' + p.staffId">{{ i18n.t('tm.finish') }}</button>
+              <button type="button" class="btn-outline ph-btn is-warn" (click)="finish(p)" [disabled]="busy()" [attr.data-testid]="'tm-out-' + p.staffId">{{ i18n.t('tm.finish') }}</button>
             }
           </section>
         } @empty {

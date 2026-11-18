@@ -98,6 +98,6 @@
   </div>
   <div slot="footer" class="flex gap-2 justify-end">
     <button type="button" class="modal-cancel-btn" (click)="moveFor.set(null)">{{ i18n.t('common.cancel') }}</button>
-    <button type="button" class="btn-primary" [disabled]="moving()" (click)="move()" data-testid="bs-save">{{ moving() ? i18n.t('common.saving') : i18n.t('bs.move') }}</button>
+    <button type="button" class="btn-primary is-success" [disabled]="moving()" (click)="move()" data-testid="bs-save">{{ moving() ? i18n.t('common.saving') : i18n.t('bs.move') }}</button>
   </div>
 </app-modal-dialog>

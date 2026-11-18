@@ -115,7 +115,7 @@ export const CHANNELS = ['cash', 'mpesa', 'mixx', 'airtel_money', 'halopesa', 'b
             <div class="ph-line"><span>{{ i18n.t('pr.advance') }}</span><b>{{ tsh(s.advances) }}</b></div>
             <div class="ph-row" style="margin-top: 6px">
               <b [class.ph-warn]="s.owed > 0" [class.ph-good]="s.owed <= 0" [attr.data-testid]="'pr-owed-' + s.staffId">{{ s.owed > 0 ? i18n.t('pr.owed.amount', tsh(s.owed)) : i18n.t('pr.nothing.owed') }}</b>
-              <button type="button" class="btn-primary ph-btn" (click)="openPay(s)" [attr.data-testid]="'pr-pay-' + s.staffId">{{ i18n.t('pr.pay') }}</button>
+              <button type="button" class="btn-primary ph-btn is-success" (click)="openPay(s)" [attr.data-testid]="'pr-pay-' + s.staffId">{{ i18n.t('pr.pay') }}</button>
             </div>
           </section>
         } @empty {
@@ -128,7 +128,7 @@ export const CHANNELS = ['cash', 'mpesa', 'mixx', 'airtel_money', 'halopesa', 'b
             @for (p of payouts(); track p.id) {
               <div class="ph-row" style="padding: 4px 0" [attr.data-testid]="'pr-payout-' + p.id">
                 <span>{{ p.staffName }} • {{ kindName(p.kind) }}<br /><span class="ph-muted">{{ dayLabel(p.paidOn) }} • {{ channel(p.method) }}@if (p.note) { • {{ p.note }} }</span></span>
-                <span><b>{{ tsh(p.amount) }}</b> <button type="button" class="btn-outline" style="padding: 0 8px" (click)="remove(p)" [attr.aria-label]="i18n.t('cb.remove')" [attr.data-testid]="'pr-remove-' + p.id">×</button></span>
+                <span><b>{{ tsh(p.amount) }}</b> <button type="button" class="btn-outline is-danger" style="padding: 0 8px" (click)="remove(p)" [attr.aria-label]="i18n.t('cb.remove')" [attr.data-testid]="'pr-remove-' + p.id">×</button></span>
               </div>
             }
           </section>
@@ -153,7 +153,7 @@ export const CHANNELS = ['cash', 'mpesa', 'mixx', 'airtel_money', 'halopesa', 'b
       </div>
       <div slot="footer" class="flex gap-2 justify-end">
         <button type="button" class="modal-cancel-btn" (click)="dialog.set('')">{{ i18n.t('common.cancel') }}</button>
-        <button type="button" class="btn-primary" [disabled]="busy()" (click)="savePay()" data-testid="pr-save">{{ i18n.t('pr.save.payment') }}</button>
+        <button type="button" class="btn-primary is-success" [disabled]="busy()" (click)="savePay()" data-testid="pr-save">{{ i18n.t('pr.save.payment') }}</button>
       </div>
     </app-modal-dialog>
 
@@ -167,7 +167,7 @@ export const CHANNELS = ['cash', 'mpesa', 'mixx', 'airtel_money', 'halopesa', 'b
       </div>
       <div slot="footer" class="flex gap-2 justify-end">
         <button type="button" class="modal-cancel-btn" (click)="dialog.set('')">{{ i18n.t('common.cancel') }}</button>
-        <button type="button" class="btn-primary" [disabled]="busy() || !loaded()" (click)="saveProfile()" data-testid="pr-profile-save">{{ i18n.t('common.save') }}</button>
+        <button type="button" class="btn-primary is-success" [disabled]="busy() || !loaded()" (click)="saveProfile()" data-testid="pr-profile-save">{{ i18n.t('common.save') }}</button>
       </div>
     </app-modal-dialog>
   `,

@@ -274,7 +274,7 @@
               <div><label class="modal-label req" for="newPhone">{{ i18n.t('till.cust.phone') }}</label><input id="newPhone" class="modal-input" required [class.is-bad]="!!newError() && !phoneOk()" inputmode="tel" [(ngModel)]="newPhone" name="newPhone" [placeholder]="i18n.t('ph.phone')" autocomplete="off" data-testid="till-newcustomer-phone"></div>
             </div>
             @if (newError()) { <p class="form-error mt-2" role="alert" data-testid="till-newcustomer-error">{{ newError() }}</p> }
-            <button type="button" class="btn-primary mt-2" (click)="saveNewCustomer()" data-testid="till-newcustomer-save">{{ i18n.t('till.cust.save') }}</button>
+            <button type="button" class="btn-primary mt-2 is-success" (click)="saveNewCustomer()" data-testid="till-newcustomer-save">{{ i18n.t('till.cust.save') }}</button>
           } @else {
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
               <input class="modal-input" [ngModel]="till.manualName()" (ngModelChange)="till.manualName.set($event)" [placeholder]="i18n.t('till.customer.walkin')" autocomplete="off" data-testid="till-walkin">
@@ -447,7 +447,7 @@
       </div>
 
       @if (!flat()) {
-      <button type="button" class="btn-primary charge-btn w-full big-btn justify-center" [disabled]="saving() || !till.lines().length" (click)="charge()" data-testid="till-charge">
+      <button type="button" class="btn-primary charge-btn w-full big-btn justify-center is-success" [disabled]="saving() || !till.lines().length" (click)="charge()" data-testid="till-charge">
         {{ saving() ? i18n.t('common.saving') : i18n.t('till.charge', tsh(till.totals().total)) }}
       </button>
       }
@@ -470,7 +470,7 @@
         <button type="button" class="btn-primary big-btn" (click)="next()" data-testid="till-next">{{ i18n.t(step() === 4 ? 'till.review' : 'till.next') }}</button>
       }
       @if (flat()) {
-        <button type="button" class="btn-primary charge-btn big-btn" [disabled]="saving() || !till.lines().length" (click)="charge()" data-testid="till-charge-flat">
+        <button type="button" class="btn-primary charge-btn big-btn is-success" [disabled]="saving() || !till.lines().length" (click)="charge()" data-testid="till-charge-flat">
           {{ saving() ? i18n.t('common.saving') : i18n.t('till.charge', tsh(till.totals().total)) }}
         </button>
       }
@@ -512,7 +512,7 @@
   </div>
   <div slot="footer" class="flex gap-2 justify-end">
     <button type="button" class="modal-cancel-btn" (click)="goodsFor.set(null)">{{ i18n.t('common.cancel') }}</button>
-    <button type="button" class="btn-primary" (click)="saveGoods()">{{ i18n.t('common.save') }}</button>
+    <button type="button" class="btn-primary is-success" (click)="saveGoods()">{{ i18n.t('common.save') }}</button>
   </div>
 </app-modal-dialog>
 

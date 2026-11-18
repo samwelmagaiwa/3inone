@@ -161,7 +161,7 @@
   </div>
   <div slot="footer" class="flex gap-2 justify-end">
     <button type="button" class="modal-cancel-btn" (click)="addOpen.set(false)">{{ i18n.t('common.cancel') }}</button>
-    <button type="button" class="btn-primary" [disabled]="saving()" (click)="saveExpense()" data-testid="exp-save">{{ saving() ? i18n.t('common.saving') : i18n.t('common.save') }}</button>
+    <button type="button" class="btn-primary is-success" [disabled]="saving()" (click)="saveExpense()" data-testid="exp-save">{{ saving() ? i18n.t('common.saving') : i18n.t('common.save') }}</button>
   </div>
 </app-modal-dialog>
 

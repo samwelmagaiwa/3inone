@@ -221,7 +221,7 @@ export function periodRange(p: Period, now: Date, from = '', to = ''): [string, 
   `,
   styles: [
     `
-      .pl { display: grid; gap: 10px; max-width: 1280px; margin: 0 auto; }
+      .pl { display: grid; gap: 10px; max-width: min(100%, 1900px); margin: 0 auto; }
       .pl-dates { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; padding: 10px 12px; border-radius: 14px; }
       .pl-dates label { display: grid; gap: 3px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
       .pl-dates input, .pl-dates select { padding: 6px 8px; border-radius: 8px; min-width: 0; }

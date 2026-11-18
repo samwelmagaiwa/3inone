@@ -144,7 +144,7 @@ export function cashRange(p: Period, now: Date): [string, string] {
               @for (m of b.moves; track m.id) {
                 <div class="ph-row" style="padding: 4px 0" [attr.data-testid]="'cb-move-' + m.id">
                   <span>{{ kindName(m.kind) }} · {{ placeName(m.method) }}<br /><span class="ph-muted">{{ m.movedOn }}@if (m.note) { · {{ m.note }} }</span></span>
-                  <span><b>{{ tsh(m.amount) }}</b> <button type="button" class="btn-outline" style="padding: 0 8px" (click)="removeMove(m)" [attr.aria-label]="i18n.t('cb.remove')" [attr.data-testid]="'cb-remove-' + m.id">×</button></span>
+                  <span><b>{{ tsh(m.amount) }}</b> <button type="button" class="btn-outline is-danger" style="padding: 0 8px" (click)="removeMove(m)" [attr.aria-label]="i18n.t('cb.remove')" [attr.data-testid]="'cb-remove-' + m.id">×</button></span>
                 </div>
               }
             </section>
@@ -167,7 +167,7 @@ export function cashRange(p: Period, now: Date): [string, string] {
       </div>
       <div slot="footer" class="flex gap-2 justify-end">
         <button type="button" class="modal-cancel-btn" (click)="dialog.set('')">{{ i18n.t('common.cancel') }}</button>
-        <button type="button" class="btn-primary" [disabled]="busy()" (click)="saveMove()" data-testid="cb-move-save">{{ i18n.t('common.save') }}</button>
+        <button type="button" class="btn-primary is-success" [disabled]="busy()" (click)="saveMove()" data-testid="cb-move-save">{{ i18n.t('common.save') }}</button>
       </div>
     </app-modal-dialog>
 
@@ -182,7 +182,7 @@ export function cashRange(p: Period, now: Date): [string, string] {
       </div>
       <div slot="footer" class="flex gap-2 justify-end">
         <button type="button" class="modal-cancel-btn" (click)="dialog.set('')">{{ i18n.t('common.cancel') }}</button>
-        <button type="button" class="btn-primary" [disabled]="busy()" (click)="saveCount()" data-testid="cb-count-save">{{ i18n.t('cb.compare') }}</button>
+        <button type="button" class="btn-primary is-success" [disabled]="busy()" (click)="saveCount()" data-testid="cb-count-save">{{ i18n.t('cb.compare') }}</button>
       </div>
     </app-modal-dialog>
   `,

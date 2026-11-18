@@ -53,7 +53,7 @@ export function loyaltyBody(per: string, value: string, referral: string): { per
             <div class="ph-row" style="padding: 6px 0"><span>{{ i18n.t(s.title) }}<br /><span class="ph-muted">{{ i18n.t(s.sub) }}</span></span><input type="checkbox" [checked]="isOn(s.field)" (change)="toggle(s.field, $any($event.target).checked)" [attr.data-testid]="'set-' + s.field" /></div>
           }
           <label class="ph-field" style="margin-top: 6px">{{ i18n.t('set.birthday.text') }}<input class="modal-input" maxlength="160" [ngModel]="birthdayText()" (ngModelChange)="birthdayText.set($event)" data-testid="set-birthday-text" name="setBt" /></label>
-          <button type="button" class="btn-outline ph-btn" style="margin-top: 6px" (click)="save({ birthday_text: birthdayText().trim() })" data-testid="set-birthday-save">{{ i18n.t('common.save') }}</button>
+          <button type="button" class="btn-outline ph-btn is-success" style="margin-top: 6px" (click)="save({ birthday_text: birthdayText().trim() })" data-testid="set-birthday-save">{{ i18n.t('common.save') }}</button>
         </section>
 
         <section class="ph-card">
@@ -66,7 +66,7 @@ export function loyaltyBody(per: string, value: string, referral: string): { per
         <section class="ph-card">
           <h3>{{ i18n.t('set.deposits') }}</h3>
           <label class="ph-field">{{ i18n.t('set.cancel.hours') }}<input class="modal-input" inputmode="numeric" [ngModel]="cancelHours()" (ngModelChange)="cancelHours.set($event)" data-testid="set-cancel" name="setCancel" /></label>
-          <button type="button" class="btn-outline ph-btn" style="margin-top: 6px" (click)="save({ cancel_hours: toInt(cancelHours()) })" data-testid="set-cancel-save">{{ i18n.t('common.save') }}</button>
+          <button type="button" class="btn-outline ph-btn is-danger" style="margin-top: 6px" (click)="save({ cancel_hours: toInt(cancelHours()) })" data-testid="set-cancel-save">{{ i18n.t('common.save') }}</button>
         </section>
 
         <section class="ph-card">
@@ -75,9 +75,9 @@ export function loyaltyBody(per: string, value: string, referral: string): { per
             <div class="ph-row"><span>{{ i18n.t(s.title) }}<br /><span class="ph-muted">{{ i18n.t(s.sub) }}</span></span><input type="checkbox" [checked]="isOn(s.field)" (change)="toggle(s.field, $any($event.target).checked)" [attr.data-testid]="'set-' + s.field" /></div>
           }
           <label class="ph-field" style="margin-top: 6px">{{ i18n.t('set.slug') }}<input class="modal-input" [ngModel]="slug()" (ngModelChange)="slug.set($event)" data-testid="set-slug" name="setSlug" /></label>
-          <button type="button" class="btn-outline ph-btn" style="margin-top: 6px" (click)="save({ booking_slug: slug().trim().toLowerCase() })" data-testid="set-slug-save">{{ i18n.t('common.save') }}</button>
+          <button type="button" class="btn-outline ph-btn is-success" style="margin-top: 6px" (click)="save({ booking_slug: slug().trim().toLowerCase() })" data-testid="set-slug-save">{{ i18n.t('common.save') }}</button>
           @if (bookingUrl()) {
-            <div class="ph-row" style="margin-top: 6px"><a [href]="bookingUrl()" target="_blank" rel="noopener" data-testid="set-url">{{ bookingUrl() }}</a><button type="button" class="btn-outline ph-btn" (click)="copy()" data-testid="set-copy">{{ i18n.t('set.copy') }}</button></div>
+            <div class="ph-row" style="margin-top: 6px"><a [href]="bookingUrl()" target="_blank" rel="noopener" data-testid="set-url">{{ bookingUrl() }}</a><button type="button" class="btn-outline ph-btn is-info" (click)="copy()" data-testid="set-copy">{{ i18n.t('set.copy') }}</button></div>
           }
         </section>
 
@@ -94,7 +94,7 @@ export function loyaltyBody(per: string, value: string, referral: string): { per
             <label class="ph-field" style="margin-top: 6px">{{ i18n.t('set.per') }}<input class="modal-input" inputmode="numeric" [ngModel]="per()" (ngModelChange)="per.set($event)" data-testid="set-per" name="setPer" /></label>
             <label class="ph-field" style="margin-top: 6px">{{ i18n.t('set.value') }}<input class="modal-input" inputmode="numeric" [ngModel]="pointValue()" (ngModelChange)="pointValue.set($event)" data-testid="set-value" name="setValue" /></label>
             <label class="ph-field" style="margin-top: 6px">{{ i18n.t('set.referral') }}<input class="modal-input" inputmode="numeric" [ngModel]="referral()" (ngModelChange)="referral.set($event)" data-testid="set-referral" name="setReferral" /></label>
-            <button type="button" class="btn-outline ph-btn" style="margin-top: 6px" (click)="saveLoyalty(loyaltyForm())" data-testid="set-loyalty-save">{{ i18n.t('set.points.save') }}</button>
+            <button type="button" class="btn-outline ph-btn is-success" style="margin-top: 6px" (click)="saveLoyalty(loyaltyForm())" data-testid="set-loyalty-save">{{ i18n.t('set.points.save') }}</button>
           </section>
         }
       }

@@ -65,7 +65,7 @@ export function businessProblems(b: { name: string; tin: string; phone: string; 
           @if (edit()) {
             <div class="ph-row" style="gap: 6px; flex-wrap: wrap">
               <label class="btn-outline ph-btn" style="cursor: pointer">{{ logo() ? i18n.t('bp.logo.change') : i18n.t('bp.logo.add') }}<input type="file" accept="image/*" hidden (change)="pickLogo($event)" data-testid="bp-logo-input" /></label>
-              @if (logo()) { <button type="button" class="btn-outline ph-btn" (click)="removeLogo()" data-testid="bp-logo-remove">{{ i18n.t('bp.logo.remove') }}</button> }
+              @if (logo()) { <button type="button" class="btn-outline ph-btn is-danger" (click)="removeLogo()" data-testid="bp-logo-remove">{{ i18n.t('bp.logo.remove') }}</button> }
             </div>
           }
         </section>
@@ -79,7 +79,7 @@ export function businessProblems(b: { name: string; tin: string; phone: string; 
           @for (p of problems(); track p.field) { <p class="ph-bad" [attr.data-testid]="'bp-problem-' + p.field">{{ i18n.t(p.key) }}</p> }
           @if (error()) { <p class="ph-bad">{{ error() }}</p> }
           @if (saved()) { <p class="ph-good" data-testid="bp-saved">{{ i18n.t('set.saved') }}</p> }
-          @if (edit()) { <button type="button" class="btn-primary ph-btn" [disabled]="busy()" (click)="save()" data-testid="bp-save">{{ busy() ? i18n.t('common.saving') : i18n.t('common.save') }}</button> }
+          @if (edit()) { <button type="button" class="btn-primary ph-btn is-success" [disabled]="busy()" (click)="save()" data-testid="bp-save">{{ busy() ? i18n.t('common.saving') : i18n.t('common.save') }}</button> }
           @else { <p class="ph-muted">{{ i18n.t('bp.read.only') }}</p> }
         </section>
         <p class="ph-muted">{{ i18n.t('bp.phone.only') }}</p>

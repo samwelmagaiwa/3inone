@@ -128,7 +128,7 @@
                     }
                     @if (!cancelled(s)) {
                       <div class="flex flex-wrap gap-2 pt-2 pb-1" data-testid="sale-actions">
-                        @if (owing(s) > 0 && canSell()) { <button type="button" class="btn-primary" (click)="openPay(s)" [attr.data-testid]="'pay-' + s.id">{{ i18n.t('sales.pay') }} ({{ tsh(owing(s)) }})</button> }
+                        @if (owing(s) > 0 && canSell()) { <button type="button" class="btn-primary is-success" (click)="openPay(s)" [attr.data-testid]="'pay-' + s.id">{{ i18n.t('sales.pay') }} ({{ tsh(owing(s)) }})</button> }
                         <button type="button" class="modal-cancel-btn" (click)="receipt(s)">{{ i18n.t('till.print') }}</button>
                         @if (canSell()) { <button type="button" class="modal-cancel-btn" (click)="openReturn(s)" [attr.data-testid]="'return-' + s.id">{{ i18n.t(canReturn() ? 'sales.return' : 'sales.return.ask') }}</button> }
                         @if (canSell() || canCancel()) { <button type="button" class="modal-cancel-btn danger-btn" (click)="openCancel(s)" [attr.data-testid]="'cancel-' + s.id">{{ i18n.t(canCancel() ? 'sales.cancel' : 'sales.cancel.ask') }}</button> }
@@ -157,7 +157,7 @@
           <div class="flex flex-wrap items-center gap-3 py-2 border-b border-slate-100">
             <div class="grow min-w-0"><p class="font-black text-slate-900">{{ requestKind(r) }} · {{ r.sale_number }} · {{ tsh(r.amount) }}</p><p class="text-xs font-semibold text-slate-400">{{ r.reason }} @if (r.requested_by_name) { · {{ r.requested_by_name }} }</p></div>
             @if (mayDecide(r)) {
-              <button type="button" class="btn-primary" (click)="decide(r, 'approved')" [attr.data-testid]="'approve-' + r.id">{{ i18n.t('sales.return.approve') }}</button>
+              <button type="button" class="btn-primary is-success" (click)="decide(r, 'approved')" [attr.data-testid]="'approve-' + r.id">{{ i18n.t('sales.return.approve') }}</button>
               <button type="button" class="modal-cancel-btn" (click)="decide(r, 'rejected')">{{ i18n.t('sales.return.reject') }}</button>
             } @else { <span class="pill-inactive">{{ i18n.t('exp.pending') }}</span> }
           </div>
@@ -181,7 +181,7 @@
   </div>
   <div slot="footer" class="flex gap-2 justify-end">
     <button type="button" class="modal-cancel-btn" (click)="payFor.set(null)">{{ i18n.t('common.cancel') }}</button>
-    <button type="button" class="btn-primary" [disabled]="busy()" (click)="savePayment()" data-testid="pay-save">{{ i18n.t('common.save') }}</button>
+    <button type="button" class="btn-primary is-success" [disabled]="busy()" (click)="savePayment()" data-testid="pay-save">{{ i18n.t('common.save') }}</button>
   </div>
 </app-modal-dialog>
 
@@ -194,7 +194,7 @@
   </div>
   <div slot="footer" class="flex gap-2 justify-end">
     <button type="button" class="modal-cancel-btn" (click)="cancelFor.set(null)">{{ i18n.t('common.keep') }}</button>
-    <button type="button" class="btn-primary" [disabled]="busy()" (click)="saveCancel()" data-testid="cancel-save">{{ i18n.t(canCancel() ? 'sales.cancel.yes' : 'sales.ask.send') }}</button>
+    <button type="button" class="btn-primary is-danger" [disabled]="busy()" (click)="saveCancel()" data-testid="cancel-save">{{ i18n.t(canCancel() ? 'sales.cancel.yes' : 'sales.ask.send') }}</button>
   </div>
 </app-modal-dialog>
 
@@ -215,7 +215,7 @@
   </div>
   <div slot="footer" class="flex gap-2 justify-end">
     <button type="button" class="modal-cancel-btn" (click)="returnFor.set(null)">{{ i18n.t('common.cancel') }}</button>
-    <button type="button" class="btn-primary" [disabled]="busy()" (click)="saveReturn()" data-testid="ret-save">{{ i18n.t(canReturn() ? 'sales.return.send' : 'sales.ask.send') }}</button>
+    <button type="button" class="btn-primary is-success" [disabled]="busy()" (click)="saveReturn()" data-testid="ret-save">{{ i18n.t(canReturn() ? 'sales.return.send' : 'sales.ask.send') }}</button>
   </div>
 </app-modal-dialog>
 

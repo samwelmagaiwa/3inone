@@ -172,7 +172,7 @@
     <div class="flex flex-wrap items-end gap-3">
       <div><label class="modal-label" for="stFrom">{{ i18n.t('cr.from') }}</label><input id="stFrom" name="stFrom" type="date" class="modal-input" [(ngModel)]="from" data-testid="st-from"></div>
       <div><label class="modal-label" for="stTo">{{ i18n.t('cr.to') }}</label><input id="stTo" name="stTo" type="date" class="modal-input" [(ngModel)]="to" data-testid="st-to"></div>
-      <button type="button" class="btn-outline" (click)="loadStatement()" data-testid="st-show">{{ i18n.t('cr.show') }}</button>
+      <button type="button" class="btn-outline is-info" (click)="loadStatement()" data-testid="st-show">{{ i18n.t('cr.show') }}</button>
     </div>
     @if (statementLoading()) {
       <div class="skeleton-box" style="height: 90px; border-radius: 12px;"></div>
@@ -241,7 +241,7 @@
   </div>
   <div slot="footer" class="flex gap-2 justify-end">
     <button type="button" class="modal-cancel-btn" (click)="settingsFor.set(null)">{{ i18n.t('common.cancel') }}</button>
-    <button type="button" class="btn-primary" [disabled]="settingsSaving()" (click)="saveSettings()" data-testid="cs-save">{{ settingsSaving() ? i18n.t('common.saving') : i18n.t('common.save') }}</button>
+    <button type="button" class="btn-primary is-success" [disabled]="settingsSaving()" (click)="saveSettings()" data-testid="cs-save">{{ settingsSaving() ? i18n.t('common.saving') : i18n.t('common.save') }}</button>
   </div>
 </app-modal-dialog>
 
@@ -316,7 +316,7 @@
   <div slot="footer" class="flex gap-2 justify-end">
     <button type="button" class="modal-cancel-btn" (click)="payFor.set(null)">{{ i18n.t('common.cancel') }}</button>
     @if (allocations().length) {
-      <button type="button" class="btn-primary" [disabled]="paySaving()" (click)="savePayment()" data-testid="pay-save">{{ paySaving() ? i18n.t('common.saving') : i18n.t('cr.pay.save') }}</button>
+      <button type="button" class="btn-primary is-success" [disabled]="paySaving()" (click)="savePayment()" data-testid="pay-save">{{ paySaving() ? i18n.t('common.saving') : i18n.t('cr.pay.save') }}</button>
     }
   </div>
 </app-modal-dialog>

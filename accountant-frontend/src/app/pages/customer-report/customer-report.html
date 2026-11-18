@@ -66,7 +66,7 @@
               <input id="crrCalFrom" name="crrCalFrom" type="date" class="modal-input" [(ngModel)]="from" [max]="to || ''" data-testid="crr-cal-from">
               <label class="modal-label mt-2" for="crrCalTo">{{ i18n.t('cr.to') }}</label>
               <input id="crrCalTo" name="crrCalTo" type="date" class="modal-input" [(ngModel)]="to" [min]="from || ''" data-testid="crr-cal-to">
-              <button type="button" class="btn-primary mt-3 w-full" (click)="applyDates()" data-testid="crr-cal-apply">{{ i18n.t('crr.apply') }}</button>
+              <button type="button" class="btn-primary mt-3 w-full is-info" (click)="applyDates()" data-testid="crr-cal-apply">{{ i18n.t('crr.apply') }}</button>
             </div>
           }
         </div>

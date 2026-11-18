@@ -182,7 +182,7 @@
   </div>
   <div slot="footer" class="flex gap-2 justify-end">
     <button type="button" class="modal-cancel-btn" (click)="targetOpen.set(false)">{{ i18n.t('common.cancel') }}</button>
-    <button type="button" class="btn-primary" [disabled]="targetSaving()" (click)="saveTarget()">{{ targetSaving() ? i18n.t('common.saving') : i18n.t('common.save') }}</button>
+    <button type="button" class="btn-primary is-success" [disabled]="targetSaving()" (click)="saveTarget()">{{ targetSaving() ? i18n.t('common.saving') : i18n.t('common.save') }}</button>
   </div>
 </app-modal-dialog>
 

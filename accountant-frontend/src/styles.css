@@ -1796,11 +1796,11 @@ app-book-ward-table, app-book-summaries, app-table-toolbar, app-table-pagination
 }
 
 /* ─── The phone-style page kit (used by the pages that mirror the phone's screens) ─── */
-.ph-page { display: grid; gap: 10px; max-width: 1280px; margin: 0 auto; grid-template-columns: repeat(auto-fill, minmax(min(440px, 100%), 1fr)); }
+.ph-page { display: grid; gap: 10px; max-width: min(100%, 1900px); margin: 0 auto; grid-template-columns: repeat(auto-fill, minmax(min(440px, 100%), 1fr)); }
 /* The phone-style pages use the width of the screen they are on: figure rows and the page's controls take the whole width, and the cards
    (an appointment, a stylist, a person ...) flow side by side. On a phone it is one column. */
 .ph-page > * { grid-column: 1 / -1; }
-.ph-page > section.ph-card:not(.ph-joined) { grid-column: auto; }
+.ph-page > section.ph-card:not(.ph-joined):not(:only-of-type) { grid-column: auto; }
 .ph-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .ph-chips .pill-tab { padding: 6px 12px; border-radius: 99px; font-size: 12.5px; font-weight: 800; cursor: pointer; }
 .ph-card { padding: 12px 14px; border-radius: 16px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); color: #fff; }
@@ -1996,3 +1996,29 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
   .ph-joined.ph-cols > .ph-sec:nth-child(even) { border-left: 1px solid rgba(127, 140, 170, .22) !important; }
   .ph-joined.ph-cols > .ph-sec:first-child:last-child { grid-column: 1 / -1; }
 }
+
+
+/* ─── Buttons by what they do: blue = the main action, green = save / confirm / record a payment, red = remove / cancel, amber = take care,
+       teal = look at / print / download, plain outline = the other way out ─── */
+.btn-primary.is-success { background: linear-gradient(135deg, #047857, #10b981); box-shadow: 0 2px 8px rgba(4, 120, 87, .3); }
+.btn-primary.is-success:hover { background: linear-gradient(135deg, #059669, #34d399); box-shadow: 0 4px 14px rgba(4, 120, 87, .35); }
+.btn-primary.is-danger { background: linear-gradient(135deg, #b91c1c, #ef4444); box-shadow: 0 2px 8px rgba(185, 28, 28, .3); }
+.btn-primary.is-danger:hover { background: linear-gradient(135deg, #dc2626, #f87171); box-shadow: 0 4px 14px rgba(185, 28, 28, .35); }
+.btn-primary.is-warn { background: linear-gradient(135deg, #b45309, #f59e0b); box-shadow: 0 2px 8px rgba(180, 83, 9, .3); }
+.btn-primary.is-warn:hover { background: linear-gradient(135deg, #d97706, #fbbf24); box-shadow: 0 4px 14px rgba(180, 83, 9, .35); }
+.btn-primary.is-info { background: linear-gradient(135deg, #0e7490, #06b6d4); box-shadow: 0 2px 8px rgba(14, 116, 144, .3); }
+.btn-primary.is-info:hover { background: linear-gradient(135deg, #0891b2, #22d3ee); box-shadow: 0 4px 14px rgba(14, 116, 144, .35); }
+.btn-outline.is-success { color: #047857; border-color: #047857; } .btn-outline.is-success:hover { background: #ecfdf5; color: #047857; }
+.btn-outline.is-danger { color: #b91c1c; border-color: #b91c1c; } .btn-outline.is-danger:hover { background: #fef2f2; color: #b91c1c; }
+.btn-outline.is-warn { color: #b45309; border-color: #b45309; } .btn-outline.is-warn:hover { background: #fffbeb; color: #b45309; }
+.btn-outline.is-info { color: #0e7490; border-color: #0e7490; } .btn-outline.is-info:hover { background: #ecfeff; color: #0e7490; }
+.btn-primary:disabled, .btn-outline:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+/* the business admin's dark look keeps the same meaning in its own colours */
+.theme-phone .btn-primary.is-success { background: linear-gradient(135deg, #10b981, #34d399) !important; color: #04221a !important; }
+.theme-phone .btn-primary.is-danger { background: linear-gradient(135deg, #ef4444, #f87171) !important; color: #2a0505 !important; }
+.theme-phone .btn-primary.is-warn { background: linear-gradient(135deg, #f59e0b, #fbbf24) !important; color: #2b1a02 !important; }
+.theme-phone .btn-primary.is-info { background: linear-gradient(135deg, #06b6d4, #22d3ee) !important; color: #03222a !important; }
+.theme-phone .btn-outline.is-success { color: #6ee7b7 !important; border-color: #34d399 !important; }
+.theme-phone .btn-outline.is-danger { color: #fca5a5 !important; border-color: #f87171 !important; }
+.theme-phone .btn-outline.is-warn { color: #fcd34d !important; border-color: #fbbf24 !important; }
+.theme-phone .btn-outline.is-info { color: #67e8f9 !important; border-color: #22d3ee !important; }

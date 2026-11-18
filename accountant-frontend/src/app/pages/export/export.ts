@@ -63,7 +63,7 @@ export function exportUrl(type: ExportType, format: 'pdf' | 'csv', lang: string,
           <button type="button" class="pill-tab" [class.is-active]="format() === 'csv'" (click)="format.set('csv')" data-testid="ex-csv">CSV</button>
         </div>
       </section>
-      <button type="button" class="btn-primary ph-btn" [disabled]="busy() || !allowed().length" (click)="download()" data-testid="ex-go">{{ busy() ? i18n.t('common.saving') : i18n.t('ex.download') }}</button>
+      <button type="button" class="btn-primary ph-btn is-info" [disabled]="busy() || !allowed().length" (click)="download()" data-testid="ex-go">{{ busy() ? i18n.t('common.saving') : i18n.t('ex.download') }}</button>
       @if (error()) { <p class="ph-bad" data-testid="ex-error">{{ error() }}</p> }
     </div>
   `,

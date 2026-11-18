@@ -143,12 +143,12 @@ interface Staff {
               @if (a.deposit > 0) { <span class="ph-badge ph-warn">{{ i18n.t('ap.deposit') }} {{ tsh(a.deposit) }}</span> }
               @if (a.notes) { <p class="ph-muted"><i>{{ a.notes }}</i></p> }
               <div class="ap-actions">
-                @if (a.status === 'booked') { <button type="button" class="btn-outline ph-btn" (click)="setStatus(a, 'confirmed')" [attr.data-testid]="'appt-confirm-' + a.id">{{ i18n.t('ap.confirm') }}</button> }
+                @if (a.status === 'booked') { <button type="button" class="btn-outline ph-btn is-success" (click)="setStatus(a, 'confirmed')" [attr.data-testid]="'appt-confirm-' + a.id">{{ i18n.t('ap.confirm') }}</button> }
                 @if (a.status === 'booked' || a.status === 'confirmed') { <button type="button" class="btn-outline ph-btn" (click)="setStatus(a, 'in_progress')" [attr.data-testid]="'appt-start-' + a.id">{{ i18n.t('ap.start') }}</button> }
-                @if (isActive(a)) { <button type="button" class="btn-primary ph-btn" (click)="setStatus(a, 'done')" [attr.data-testid]="'appt-done-' + a.id">{{ i18n.t('ap.done') }}</button> }
+                @if (isActive(a)) { <button type="button" class="btn-primary ph-btn is-success" (click)="setStatus(a, 'done')" [attr.data-testid]="'appt-done-' + a.id">{{ i18n.t('ap.done') }}</button> }
                 @if (isActive(a) && !stylist()) { <button type="button" class="btn-outline ph-btn" (click)="openForm(a)" [attr.data-testid]="'appt-edit-' + a.id">{{ i18n.t('ap.edit') }}</button> }
-                @if (!stylist() && (a.status === 'booked' || a.status === 'confirmed')) { <button type="button" class="btn-outline ph-btn" (click)="setStatus(a, 'no_show')">{{ i18n.t('ap.noshow') }}</button> }
-                @if (isActive(a) && !stylist()) { <button type="button" class="btn-outline ph-btn" (click)="setStatus(a, 'cancelled')" [attr.data-testid]="'appt-cancel-' + a.id">{{ i18n.t('ap.cancel') }}</button> }
+                @if (!stylist() && (a.status === 'booked' || a.status === 'confirmed')) { <button type="button" class="btn-outline ph-btn is-warn" (click)="setStatus(a, 'no_show')">{{ i18n.t('ap.noshow') }}</button> }
+                @if (isActive(a) && !stylist()) { <button type="button" class="btn-outline ph-btn is-danger" (click)="setStatus(a, 'cancelled')" [attr.data-testid]="'appt-cancel-' + a.id">{{ i18n.t('ap.cancel') }}</button> }
               </div>
               @if (!isActive(a)) { <p class="ph-muted">{{ i18n.t('ap.finished') }}</p> }
             </section>
@@ -168,7 +168,7 @@ interface Staff {
         <div>
           <p class="ph-field">{{ i18n.t('ap.services') }}</p>
           @for (s of fServices(); track $index) {
-            <div class="ph-row ph-card" style="margin-top: 6px; padding: 6px 12px"><span>{{ s.label ? s.name + ' (' + s.label + ')' : s.name }}</span><span><b>{{ tsh(s.price) }}</b> <button type="button" class="btn-outline" style="padding: 0 8px" (click)="removeService($index)" [attr.data-testid]="'appt-remove-' + $index">×</button></span></div>
+            <div class="ph-row ph-card" style="margin-top: 6px; padding: 6px 12px"><span>{{ s.label ? s.name + ' (' + s.label + ')' : s.name }}</span><span><b>{{ tsh(s.price) }}</b> <button type="button" class="btn-outline is-danger" style="padding: 0 8px" (click)="removeService($index)" [attr.data-testid]="'appt-remove-' + $index">×</button></span></div>
           }
           <select class="modal-input" style="margin-top: 6px" (change)="addService($any($event.target).value); $any($event.target).value = ''" data-testid="appt-add-service" name="apSvc">
             <option value="">{{ i18n.t('ap.add.service') }}</option>
@@ -186,8 +186,8 @@ interface Staff {
       </div>
       <div slot="footer" class="flex gap-2 justify-end">
         <button type="button" class="modal-cancel-btn" (click)="formOpen.set(false)">{{ i18n.t('common.cancel') }}</button>
-        @if (clash()) { <button type="button" class="btn-outline" (click)="save(true)" data-testid="appt-force">{{ i18n.t('ap.book.anyway') }}</button> }
-        <button type="button" class="btn-primary" [disabled]="saving()" (click)="save(false)" data-testid="appt-save">{{ saving() ? i18n.t('common.saving') : i18n.t('ap.save') }}</button>
+        @if (clash()) { <button type="button" class="btn-outline is-warn" (click)="save(true)" data-testid="appt-force">{{ i18n.t('ap.book.anyway') }}</button> }
+        <button type="button" class="btn-primary is-success" [disabled]="saving()" (click)="save(false)" data-testid="appt-save">{{ saving() ? i18n.t('common.saving') : i18n.t('ap.save') }}</button>
       </div>
     </app-modal-dialog>
   `,
