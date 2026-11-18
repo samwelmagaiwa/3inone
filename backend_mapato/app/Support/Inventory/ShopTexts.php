@@ -52,6 +52,12 @@ final class ShopTexts
         return DB::table('inventory_settings')->where('key', 'inv_month_sms')->value('value') !== '0';
     }
 
+    /** The weekly text to customers who have owed for a while (on unless switched off; the customer texts switch must be on too). */
+    public static function debtRemindersOn(): bool
+    {
+        return self::customersOn() && DB::table('inventory_settings')->where('key', 'inv_debt_reminder_sms')->value('value') !== '0';
+    }
+
     public static function saveCustomersOn(bool $on): void
     {
         DB::table('inventory_settings')->updateOrInsert(['key' => self::CUSTOMER_KEY], ['value' => $on ? '1' : '0', 'updated_at' => now()]);
@@ -337,5 +343,52 @@ final class ShopTexts
         $sent = SmsService::sendFor($business, trim((string) $c->phone), self::debtReminderMessage((string) $c->name, (string) $business->name, $owed));
 
         return ['sent' => $sent, 'owed' => $owed, 'reason' => null];
+    }
+
+    /** A debt that is this many days old (or past its due date) is reminded about, and then again no sooner than this many days later. */
+    public const DEBT_REMIND_AFTER_DAYS = 7;
+
+    /** Most customers reminded in one run, per business (a guard on the cost of texts). */
+    public const DEBT_REMIND_MAX = 100;
+
+    /**
+     * The customers who are due a reminder: they owe, have a phone and have not asked for no texts, their debt is at least a week old (or past
+     * its due date, or an old debt from before the app that began a week ago), and they were not reminded in the last week.
+     *
+     * @return array<int, int> customer ids
+     */
+    public static function customersDueDebtReminder(Carbon $today): array
+    {
+        $cut = $today->copy()->subDays(self::DEBT_REMIND_AFTER_DAYS);
+        $fromSales = DB::table('inventory_sales')->whereNull('cancelled_at')->whereNotNull('customer_id')->whereIn('payment_status', ['debt', 'partial'])
+            ->where(fn ($q) => $q->where('created_at', '<=', $cut->copy()->utc()->format('Y-m-d H:i:s'))->orWhere(fn ($w) => $w->whereNotNull('due_date')->where('due_date', '<', $today->toDateString())))
+            ->distinct()->pluck('customer_id')->all();
+        $fromOld = Schema::hasTable('inventory_opening_debts')
+            ? DB::table('inventory_opening_debts')->where('kind', OpeningDebts::RECEIVABLE)->whereNotNull('customer_id')->whereRaw('amount - paid_amount > 0')
+                ->where('started_on', '<=', $cut->toDateString())->distinct()->pluck('customer_id')->all()
+            : [];
+        $ids = array_values(array_unique(array_map('intval', array_merge($fromSales, $fromOld))));
+        if ($ids === []) {
+            return [];
+        }
+
+        $last = DB::table('inventory_settings')->where('key', 'like', 'inv_debt_reminded_%')->pluck('value', 'key')->all();
+        $due = [];
+        foreach (DB::table('inventory_customers')->whereIn('id', $ids)->where(fn ($q) => $q->whereNull('sms_opt_out')->orWhere('sms_opt_out', false))
+            ->whereNotNull('phone')->where('phone', '!=', '')->orderBy('id')->pluck('id') as $id) {
+            $when = $last['inv_debt_reminded_' . $id] ?? null;
+            if ($when !== null && $when > $cut->toDateString()) {
+                continue;
+            }
+            $due[] = (int) $id;
+        }
+
+        return $due;
+    }
+
+    /** Remember that a customer was reminded today (so it is a week before the next one). */
+    public static function markDebtReminded(int $customerId, Carbon $today): void
+    {
+        DB::table('inventory_settings')->updateOrInsert(['key' => 'inv_debt_reminded_' . $customerId], ['value' => $today->toDateString(), 'updated_at' => now()]);
     }
 }

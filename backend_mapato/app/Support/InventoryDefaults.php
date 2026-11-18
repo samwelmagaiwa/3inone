@@ -184,7 +184,7 @@ final class InventoryDefaults
      * Settings that came after the 2026_10_08 restore migration. They are never seeded by a migration: a
      * business that has no row reads the default here, and seedFor() writes them for a new business.
      */
-    public const READ_TIME_DEFAULTS = ['use_crates', 'sale_tier', 'prices_include_vat', 'hidden_reports', 'inv_customer_sms', 'inv_daily_summary', 'inv_low_stock_sms', 'inv_month_sms'];
+    public const READ_TIME_DEFAULTS = ['use_crates', 'sale_tier', 'prices_include_vat', 'hidden_reports', 'inv_customer_sms', 'inv_daily_summary', 'inv_low_stock_sms', 'inv_month_sms', 'inv_debt_reminder_sms'];
 
     /** Depot setting => the business field it mirrors. */
     private const BUSINESS_FIELDS = [
@@ -206,6 +206,7 @@ final class InventoryDefaults
         'inv_daily_summary' => '1',
         'inv_low_stock_sms' => '1',
         'inv_month_sms' => '1',
+        'inv_debt_reminder_sms' => '1',
         'sale_tier' => 'product',
         // Do the prices already include VAT? (Only matters for products that carry a VAT rate.)
         'prices_include_vat' => '1',

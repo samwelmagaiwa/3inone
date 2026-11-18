@@ -137,7 +137,7 @@ void main() {
     testWidgets('the owner sees a switch for each text the business sends, all on from the start, and a switch saves at once', (t) async {
       await _openSettings(t, 'admin');
 
-      for (final String k in <String>['inv_customer_sms', 'inv_daily_summary', 'inv_low_stock_sms', 'inv_month_sms']) {
+      for (final String k in <String>['inv_customer_sms', 'inv_daily_summary', 'inv_low_stock_sms', 'inv_month_sms', 'inv_debt_reminder_sms']) {
         await t.ensureVisible(_key('sms_$k'));
         expect(t.widget<SwitchListTile>(_key('sms_$k')).value, isTrue, reason: '$k is on when no value is stored');
       }

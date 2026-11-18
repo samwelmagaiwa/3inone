@@ -748,6 +748,7 @@ class _SmsSwitches extends StatelessWidget {
     final DepotProvider depot = context.watch<DepotProvider>();
     final List<(String, String, String)> rows = <(String, String, String)>[
       ('inv_customer_sms', sw ? 'Ujumbe kwa wateja' : 'Texts to customers', sw ? 'Risiti wanaponunua na shukrani wakilipa deni' : 'A receipt when they buy, a thank-you when they pay a debt'),
+      ('inv_debt_reminder_sms', sw ? 'Ukumbusho wa deni' : 'Debt reminders', sw ? 'Wateja wanaodaiwa zaidi ya wiki wanakumbushwa, mara moja kwa wiki' : 'Customers who owe for over a week are reminded, once a week'),
       ('inv_daily_summary', sw ? 'Muhtasari wa usiku' : 'Night summary', sw ? 'Mauzo, faida na tofauti na jana, saa 23:59' : 'Sales, profit and the change from yesterday, at 23:59'),
       ('inv_low_stock_sms', sw ? 'Bidhaa zinazoisha' : 'Goods running low', sw ? 'Kila asubuhi saa 2:00, ikiwa zipo' : 'Each morning at 8:00, when there are any'),
       ('inv_month_sms', sw ? 'Mwezi umeisha' : 'Month ended', sw ? 'Faida ya mwezi na lengo' : 'The month profit and the target'),

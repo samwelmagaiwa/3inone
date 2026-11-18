@@ -47,6 +47,11 @@ Schedule::command('inventory:low-stock')
     ->dailyAt('05:00')
     ->withoutOverlapping();
 
+// Every morning at 10:00 in Tanzania (07:00 UTC): remind shop customers who have owed for a week what they owe (once a week each).
+Schedule::command('inventory:debt-reminders')
+    ->dailyAt('07:00')
+    ->withoutOverlapping();
+
 // The same for each shop or depot owner, with how the day compares with yesterday.
 Schedule::command('inventory:daily-summary')
     ->dailyAt('20:59')

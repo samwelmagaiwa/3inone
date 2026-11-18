@@ -339,8 +339,86 @@ class ShopTextsTest extends TestCase
         $owner = $this->shop();
         $s = $this->api($owner, 'GET', '/api/inventory/settings')->assertOk()->json('data');
 
-        foreach (['inv_customer_sms', 'inv_daily_summary', 'inv_low_stock_sms', 'inv_month_sms'] as $key) {
+        foreach (['inv_customer_sms', 'inv_daily_summary', 'inv_low_stock_sms', 'inv_month_sms', 'inv_debt_reminder_sms'] as $key) {
             $this->assertSame('1', $s[$key], $key);
         }
+    }
+
+    // ------------------------------------------------------------------ the weekly debt reminder
+
+    private function morning(string $day): void
+    {
+        Carbon::setTestNow(Carbon::parse("{$day} 10:00:00", 'Africa/Dar_es_Salaam')->utc());
+    }
+
+    public function test_a_customer_who_has_owed_for_a_week_is_reminded_once_a_week_and_never_a_new_debt_or_a_paid_one(): void
+    {
+        $this->morning('2026-11-01');
+        $owner = $this->shop('DUKA LA MAMA ASHA', ['sms_sender_id' => 'MAMAASHA', 'sms_sender_status' => 'approved']);
+        $sugar = $this->product($owner, 'Sukari', 1500, 3000);
+        $old = $this->customer($owner, 'Juma', '0711000001');
+        $new = $this->customer($owner, 'Neo', '0711000002');
+        $paid = $this->customer($owner, 'Paid', '0711000003');
+        $quiet = $this->customer($owner, 'Quiet', '0711000004');
+        $this->rows($owner, fn () => DB::table('inventory_customers')->where('id', $quiet)->update(['sms_opt_out' => true]));
+        $this->sell($owner, $sugar, 5, 3000, 1500, $old, 0);
+        $this->sell($owner, $sugar, 1, 3000, 1500, $quiet, 0);
+        $this->sell($owner, $sugar, 1, 3000, 1500, $paid, 3000);
+        $this->morning('2026-11-06');
+        $this->sell($owner, $sugar, 1, 3000, 1500, $new, 0);
+        $this->sms->sent = [];
+
+        // 8 days after the first debts: Juma is due; Neo's debt is two days old; Paid owes nothing; Quiet asked for no texts
+        $this->morning('2026-11-09');
+        $this->artisan('inventory:debt-reminders', ['--dry-run' => true])->assertExitCode(0);
+        $this->assertCount(0, $this->sms->sent, 'a dry run sends nothing');
+        $this->artisan('inventory:debt-reminders')->assertExitCode(0);
+
+        $this->assertCount(1, $this->sms->sent);
+        $this->assertSame('0711000001', $this->sms->sent[0]['to']);
+        $this->assertSame('MAMAASHA', $this->sms->sent[0]['sender']);
+        $this->assertSame('Habari Juma, unadaiwa TSh 15,000 na DUKA LA MAMA ASHA. Tafadhali lipa ukipata nafasi. Asante!', $this->sms->sent[0]['message']);
+
+        $this->artisan('inventory:debt-reminders')->assertExitCode(0);
+        $this->morning('2026-11-12');
+        $this->artisan('inventory:debt-reminders')->assertExitCode(0);
+        $this->assertCount(1, $this->sms->sent, 'not again within the week');
+
+        // a week later Juma is reminded again, and Neo (now over a week) for the first time
+        $this->morning('2026-11-16');
+        $this->artisan('inventory:debt-reminders')->assertExitCode(0);
+        $this->assertCount(3, $this->sms->sent);
+        $this->assertSame(['0711000001', '0711000001', '0711000002'], array_column($this->sms->sent, 'to'));
+    }
+
+    public function test_debt_reminders_can_be_switched_off_and_a_failed_text_is_tried_again(): void
+    {
+        $this->morning('2026-11-01');
+        $owner = $this->shop();
+        $sugar = $this->product($owner, 'Sukari', 1500, 3000);
+        $juma = $this->customer($owner, 'Juma', '0711000001');
+        $this->sell($owner, $sugar, 5, 3000, 1500, $juma, 0);
+        $this->morning('2026-11-09');
+        $this->sms->sent = [];
+
+        $this->api($owner, 'PUT', '/api/inventory/settings', ['inv_debt_reminder_sms' => '0'])->assertOk();
+        $this->artisan('inventory:debt-reminders')->assertExitCode(0);
+        $this->assertCount(0, $this->sms->sent, 'switched off');
+
+        $this->api($owner, 'PUT', '/api/inventory/settings', ['inv_debt_reminder_sms' => '1'])->assertOk();
+        $this->sms->refuseAll();
+        $this->artisan('inventory:debt-reminders')->assertExitCode(0);
+        $this->assertCount(0, $this->sms->sent);
+
+        $this->sms = new \Tests\Support\FakeSmsGateway();
+        $this->app->instance(SmsGateway::class, $this->sms);
+        $this->artisan('inventory:debt-reminders')->assertExitCode(0);
+        $this->assertCount(1, $this->sms->sent, 'the failed one was tried again');
+    }
+
+    public function test_the_debt_reminder_is_scheduled_for_10_in_the_morning_in_tanzania(): void
+    {
+        $this->artisan('schedule:list')->expectsOutputToContain('inventory:debt-reminders')->assertExitCode(0);
+        $this->assertStringContainsString("->dailyAt('07:00')", (string) file_get_contents(base_path('routes/console.php')));
     }
 }
