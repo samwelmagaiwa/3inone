@@ -73,9 +73,8 @@ class SalonMoneyRightsTest extends TestCase
         [, $acc] = $this->scene();
         $have = $this->api($acc, 'GET', '/api/auth/user')->json('data.user.effective_permissions');
 
-        foreach (['inv_salon_money', 'inv_view_expenses'] as $key) {
-            $this->assertContains($key, $have, $key);
-        }
+        $this->assertContains('inv_view_expenses', $have);
+        $this->assertNotContains('inv_salon_money', $have, 'the Money pages are for the owner to give');
         foreach (['inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_export', 'inv_salon_schedule'] as $key) {
             $this->assertNotContains($key, $have, $key);
         }
@@ -99,6 +98,9 @@ class SalonMoneyRightsTest extends TestCase
     {
         [$owner, $acc] = $this->scene();
         $from = '?from=2026-11-01&to=2026-11-30';
+        // the Money pages are the owner's to give: they do not start with the accountant
+        $this->api($acc, 'GET', "/api/inventory/salon/profit-loss{$from}")->assertForbidden();
+        $this->give($owner, $acc, ['inv_salon_money']);
 
         $mine = $this->api($acc, 'GET', "/api/inventory/salon/profit-loss{$from}")->assertOk()->json('data');
         $this->assertTrue($mine['profit_hidden']);
@@ -120,7 +122,7 @@ class SalonMoneyRightsTest extends TestCase
         [$owner, $acc] = $this->scene();
         $from = '?from=2026-11-01&to=2026-11-30';
 
-        $this->give($owner, $acc, ['inv_salon_profit']);
+        $this->give($owner, $acc, ['inv_salon_money', 'inv_salon_profit']);
         $this->assertArrayHasKey('net_profit', $this->api($acc, 'GET', "/api/inventory/salon/profit-loss{$from}")->json('data'));
 
         $this->give($owner, $acc, [], ['inv_salon_profit']);
@@ -197,7 +199,7 @@ class SalonMoneyRightsTest extends TestCase
 
         // Off by default; once the owner switches export on, each report still needs its own right.
         $this->api($acc, 'GET', "/api/inventory/salon/export/sales{$from}")->assertForbidden()->assertJsonPath('code', 'module_not_allowed');
-        $this->give($owner, $acc, ['inv_salon_export']);
+        $this->give($owner, $acc, ['inv_salon_export', 'inv_salon_money']);
 
         foreach (['sales', 'expenses', 'tax'] as $type) {
             $this->api($acc, 'GET', "/api/inventory/salon/export/{$type}{$from}")->assertOk();

@@ -127,7 +127,7 @@ class User extends Authenticatable
         'inv_report_damage',
         // The salon's menu sections, each its own right (see App\Support\Access\Modules).
         'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team',
-        'inv_salon_feedback', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_insights', 'inv_salon_money',
+        'inv_salon_feedback', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_branch_sales', 'inv_salon_insights', 'inv_salon_money',
         // The money pages and what is shown in them: each can be given or taken back on its own.
         'inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_export', 'inv_salon_schedule',
         // Approving what others spend in a salon: the owner and managers; the accountant records spending that then waits for them.
@@ -490,7 +490,7 @@ class User extends Authenticatable
             'inv_view_purchasing','inv_view_credit','inv_view_cash',
             'inv_view_crates','inv_view_reports','inv_view_expenses',
             'inv_manage_expenses','inv_manage_settings',
-            'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback','inv_salon_equipment','inv_salon_branch_stock','inv_salon_insights','inv_salon_money',
+            'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback','inv_salon_equipment','inv_salon_branch_stock', 'inv_salon_branch_sales','inv_salon_insights','inv_salon_money',
             'inv_salon_reports','inv_salon_profit','inv_salon_payroll','inv_salon_cashbook','inv_salon_export','inv_salon_schedule','inv_approve_expenses','inv_salon_devices','inv_salon_offices','inv_salon_attendance_log','inv_salon_attendance_policy',
             'inv_cancel_sales','inv_return_sales',
         ],
@@ -500,7 +500,7 @@ class User extends Authenticatable
             'inv_view_purchasing','inv_view_credit','inv_view_cash',
             'inv_view_crates','inv_view_reports','inv_view_expenses',
             'inv_manage_expenses','inv_manage_settings',
-            'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback','inv_salon_equipment','inv_salon_branch_stock','inv_salon_insights','inv_salon_money',
+            'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback','inv_salon_equipment','inv_salon_branch_stock', 'inv_salon_branch_sales','inv_salon_insights','inv_salon_money',
             'inv_salon_reports','inv_salon_profit','inv_salon_payroll','inv_salon_cashbook','inv_salon_export','inv_salon_schedule','inv_approve_expenses','inv_salon_devices','inv_salon_offices','inv_salon_attendance_log','inv_salon_attendance_policy',
             'inv_cancel_sales','inv_return_sales',
         ],
@@ -510,7 +510,7 @@ class User extends Authenticatable
             'inv_view_purchasing','inv_view_credit','inv_view_cash',
             'inv_view_crates','inv_view_reports','inv_view_expenses',
             'inv_manage_expenses',
-            'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback','inv_salon_equipment','inv_salon_branch_stock','inv_salon_insights','inv_salon_money',
+            'inv_salon_appointments','inv_salon_walkins','inv_salon_rebook','inv_salon_stylists','inv_salon_team','inv_salon_feedback','inv_salon_equipment','inv_salon_branch_stock', 'inv_salon_branch_sales','inv_salon_insights','inv_salon_money',
             'inv_salon_reports','inv_salon_profit','inv_salon_payroll','inv_salon_cashbook','inv_salon_export','inv_salon_schedule','inv_approve_expenses',
             'inv_cancel_sales','inv_return_sales',
         ],
@@ -546,7 +546,7 @@ class User extends Authenticatable
         'accountant'   => [
             'inv_view_products','inv_create_products','inv_create_sales','inv_manage_sales','inv_view_credit','inv_view_cash',
             'inv_view_reports','inv_view_expenses','inv_manage_expenses','inv_view_reminders',
-            'inv_salon_appointments','inv_salon_team','inv_salon_insights','inv_salon_money',
+            'inv_salon_appointments','inv_salon_team','inv_salon_insights',
         ],
         'viewer'       => ['inv_view_products'],
     ];

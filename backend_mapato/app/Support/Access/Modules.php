@@ -16,7 +16,7 @@ final class Modules
     /** The salon's menu sections, each its own right: nothing is shown or opened just because another right happens to be held. */
     public const SALON = [
         'inv_salon_appointments', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_salon_team',
-        'inv_salon_feedback', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_insights', 'inv_salon_money',
+        'inv_salon_feedback', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_branch_sales', 'inv_salon_insights', 'inv_salon_money',
         'inv_salon_reports', 'inv_salon_profit', 'inv_salon_payroll', 'inv_salon_cashbook', 'inv_salon_export', 'inv_salon_schedule',
         'inv_salon_devices', 'inv_salon_offices', 'inv_salon_attendance_log', 'inv_salon_attendance_policy',
     ];
@@ -61,6 +61,7 @@ final class Modules
             ['key' => 'inv_view_reports', 'group' => 'reports', 'en' => 'Reports, profit and the monthly report', 'sw' => 'Ripoti, faida na ripoti ya mwezi', 'services' => $both],
             ['key' => 'inv_view_reminders', 'group' => 'reports', 'en' => 'Reminders', 'sw' => 'Vikumbusho', 'services' => $both],
             ['key' => 'inv_salon_reports', 'group' => 'reports', 'en' => 'The Salon tab of Reports', 'sw' => 'Kichupo cha Saluni kwenye Ripoti', 'services' => $salon],
+            ['key' => 'inv_salon_branch_sales', 'group' => 'reports', 'en' => 'Sales by branch and by person', 'sw' => 'Mauzo kwa tawi na kwa mtu', 'services' => $salon],
             ['key' => 'inv_salon_insights', 'group' => 'reports', 'en' => 'Insights (trends, best days and hours)', 'sw' => 'Mwenendo (siku na saa bora)', 'services' => $salon],
             ['key' => 'inv_salon_stylists', 'group' => 'reports', 'en' => 'How each stylist did', 'sw' => 'Matokeo ya kila mhudumu', 'services' => $salon],
             ['key' => 'inv_salon_feedback', 'group' => 'reports', 'en' => 'Client feedback', 'sw' => 'Maoni ya wateja', 'services' => $salon],

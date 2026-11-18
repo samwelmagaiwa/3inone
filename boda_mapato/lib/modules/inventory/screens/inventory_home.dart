@@ -200,7 +200,8 @@ List<_InvMenuEntry> _invEntries(LocalizationService loc,
               icon: Icons.leaderboard_outlined,
               color: const Color(0xFF22C55E),
               pageBuilder: () => const BranchSalesScreen(),
-              visible: (UserPermissions p) => p.has('inv_view_reports'),
+              // a salon has a right of its own for it (the server asks for the same); a shop or depot keeps the reports right
+              visible: (UserPermissions p) => salon ? p.has('inv_salon_branch_sales') : p.has('inv_view_reports'),
             ),
             // 7d — Ask the business: AI answers from what this person's rights allow
             _InvMenuEntry(

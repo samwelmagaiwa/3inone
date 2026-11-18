@@ -192,8 +192,16 @@ describe('pages by rights', () => {
   it('in the salon the month, the clients and the debts are there too (the phone has them), and goods by branch needs its own right', () => {
     const { auth } = configure({ services: ['inventory', 'salon'] });
     auth.switchService('salon');
-    expect(keys(auth)).toEqual(['dashboard', 'sales', 'credit', 'debts', 'expenses', 'branch_sales']);
+    expect(keys(auth)).toEqual(['dashboard', 'sales', 'credit', 'debts', 'expenses']);
     expect(homePath(auth)).toBe('/dashboard');
+  });
+
+  it('in the salon, Sales by branch has a right of its own (the shop keeps the reports right)', () => {
+    const { auth } = configure({ services: ['salon'], permissions: ['inv_view_reports'] });
+    expect(keys(auth)).not.toContain('branch_sales');
+
+    auth.user.set({ ...auth.user()!, permissions: ['inv_salon_branch_sales'] });
+    expect(keys(auth)).toContain('branch_sales');
   });
 
   it('the salon Reports page is offered only with the salon reports right, the one the server asks for (not the shop reports right)', () => {

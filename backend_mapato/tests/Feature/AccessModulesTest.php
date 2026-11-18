@@ -72,10 +72,10 @@ class AccessModulesTest extends TestCase
         $ivan = $this->person($owner, 'accountant');
         $have = $this->effective($ivan);
 
-        foreach (['inv_view_products', 'inv_create_products', 'inv_create_sales', 'inv_view_credit', 'inv_view_reports', 'inv_manage_expenses', 'inv_salon_money', 'inv_salon_team', 'inv_salon_insights', 'inv_salon_appointments'] as $key) {
+        foreach (['inv_view_products', 'inv_create_products', 'inv_create_sales', 'inv_view_credit', 'inv_view_reports', 'inv_manage_expenses', 'inv_salon_team', 'inv_salon_insights', 'inv_salon_appointments'] as $key) {
             $this->assertContains($key, $have, $key);
         }
-        foreach (['inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_feedback', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_manage_settings', 'inv_manage_products'] as $key) {
+        foreach (['inv_salon_money', 'inv_salon_branch_sales', 'inv_salon_equipment', 'inv_salon_branch_stock', 'inv_salon_feedback', 'inv_salon_walkins', 'inv_salon_rebook', 'inv_salon_stylists', 'inv_manage_settings', 'inv_manage_products'] as $key) {
             $this->assertNotContains($key, $have, $key);
         }
     }
@@ -166,7 +166,7 @@ class AccessModulesTest extends TestCase
     {
         $owner = $this->salon();
         $ivan = $this->person($owner, 'accountant');
-        $this->save($owner, $ivan, $this->allOn($owner, $ivan, ['inv_salon_equipment', 'inv_salon_feedback'], ['inv_create_products', 'inv_salon_money']))->assertOk();
+        $this->save($owner, $ivan, $this->allOn($owner, $ivan, ['inv_salon_equipment', 'inv_salon_feedback'], ['inv_create_products', 'inv_salon_insights']))->assertOk();
 
         $this->api($owner, 'POST', "/api/admin/users/{$ivan->id}/access/reset")->assertOk();
 
@@ -174,7 +174,7 @@ class AccessModulesTest extends TestCase
         $this->assertSame([], $ivan->permissions);
         $this->assertSame([], $ivan->deniedPermissions());
         $this->assertContains('inv_create_products', $this->effective($ivan));
-        $this->assertContains('inv_salon_money', $this->effective($ivan));
+        $this->assertContains('inv_salon_insights', $this->effective($ivan));
         $this->assertNotContains('inv_salon_equipment', $this->effective($ivan));
     }
 
@@ -236,6 +236,37 @@ class AccessModulesTest extends TestCase
         $this->flushHeaders();
         // The same controllers serve a shop (goods by branch): the salon switches never lock a shop out of them.
         $this->withHeader('Authorization', "Bearer {$token}")->withHeader('X-Service', 'inventory')->json('GET', '/api/inventory/branch-stock')->assertStatus(200);
+    }
+
+    public function test_sales_by_branch_is_a_right_of_its_own_the_accountant_starts_without_and_the_owner_can_give(): void
+    {
+        $owner = $this->salon();
+        $ivan = $this->person($owner, 'accountant');
+
+        $this->assertContains('inv_salon_branch_sales', $this->effective($owner));
+        $this->assertNotContains('inv_salon_branch_sales', $this->effective($ivan));
+        $this->api($owner, 'GET', '/api/inventory/branch-sales?from=2026-11-01&to=2026-11-18')->assertOk();
+        $this->api($ivan, 'GET', '/api/inventory/branch-sales?from=2026-11-01&to=2026-11-18')->assertForbidden()->assertJsonPath('code', 'module_not_allowed');
+
+        $this->save($owner, $ivan, $this->allOn($owner, $ivan, ['inv_salon_branch_sales']))->assertOk();
+        $this->assertContains('inv_salon_branch_sales', $this->effective($ivan));
+        $this->api($ivan, 'GET', '/api/inventory/branch-sales?from=2026-11-01&to=2026-11-18')->assertOk();
+    }
+
+    public function test_someone_given_the_reports_right_by_hand_keeps_sales_by_branch(): void
+    {
+        $owner = $this->salon();
+        $asha = $this->person($owner, 'hair_stylist', 'Asha');
+        $asha->forceFill(['permissions' => ['inv_view_reports']])->save();
+        $plain = $this->person($owner, 'hair_stylist', 'Plain');
+
+        (require base_path('database/migrations/2026_11_30_000100_give_branch_sales_its_own_right.php'))->up();
+
+        $this->assertContains('inv_salon_branch_sales', $asha->refresh()->permissions);
+        $this->assertEmpty($plain->refresh()->permissions ?? []);
+
+        (require base_path('database/migrations/2026_11_30_000100_give_branch_sales_its_own_right.php'))->up();
+        $this->assertCount(2, $asha->refresh()->permissions, 'running it again adds nothing');
     }
 
     public function test_the_catalog_names_every_switch_in_both_languages_and_matches_the_known_rights(): void

@@ -97,7 +97,8 @@ class SalonAccessRightsTest extends TestCase
 
         $this->api($owner, 'GET', '/api/inventory/salon/profit-loss')->assertOk();
         $this->api($owner, 'GET', '/api/inventory/salon/cashbook')->assertOk();
-        $this->api($acc, 'GET', '/api/inventory/salon/profit-loss')->assertOk();
+        // The Money pages are the owner's to give: the accountant does not start with them.
+        $this->api($acc, 'GET', '/api/inventory/salon/profit-loss')->assertForbidden();
         // The cashbook is a right of its own that the owner gives the accountant; it does not start with it.
         $this->api($acc, 'GET', '/api/inventory/salon/cashbook')->assertForbidden();
         // The goods held by each branch are the owner's to share: the accountant does not start with them.

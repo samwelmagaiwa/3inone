@@ -528,7 +528,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('inventory/branches/{id}',           [SalonBranchController::class, 'destroy']);
         Route::get('inventory/branch-team',                [\App\Http\Controllers\API\Inventory\BranchTeamController::class, 'index']);
         Route::put('inventory/branch-team/{staffId}',      [\App\Http\Controllers\API\Inventory\BranchTeamController::class, 'assign']);
-        Route::get('inventory/branch-sales',               [\App\Http\Controllers\API\Inventory\BranchTeamController::class, 'sales']);
+        Route::get('inventory/branch-sales',               [\App\Http\Controllers\API\Inventory\BranchTeamController::class, 'sales'])->middleware('salon_module:inv_salon_branch_sales');
         Route::get('inventory/salon/branches',             [SalonBranchController::class, 'index']);
         Route::post('inventory/salon/branches',            [SalonBranchController::class, 'store']);
         Route::match(['put', 'patch'], 'inventory/salon/branches/{id}', [SalonBranchController::class, 'update']);
