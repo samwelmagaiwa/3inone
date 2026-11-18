@@ -452,6 +452,16 @@ class DepotProvider extends ChangeNotifier {
     }
   }
 
+  /// Text the customer what they owe (from the business's own sender name). Null when it went out, otherwise why not.
+  Future<String?> remindDebt(final int customerId) async {
+    try {
+      await _api.post('/inventory/credit/customers/$customerId/remind', <String, dynamic>{});
+      return null;
+    } on Exception catch (e) {
+      return readableErrorMessage(e);
+    }
+  }
+
   /// Customers that look like the same person saved more than once (to be merged). Empty when there are none or it could not be loaded.
   List<DuplicateGroup> duplicateGroups = <DuplicateGroup>[];
 

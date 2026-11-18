@@ -257,6 +257,8 @@ class _SettingsTabState extends State<_SettingsTab> {
           ],
         ),
       ),
+      // -- The texts this business sends: each can be switched off here --
+      if (!salon && canManageSettings) _SmsSwitches(sw: loc.isSwahili),
       // -- Security deposit charged per crate (one row per crate type) --
       // Only for a business that uses returnable packaging.
       if (canManageSettings && depot.capabilities.useCrates)
@@ -729,6 +731,45 @@ class _AuditTab extends StatelessWidget {
                 );
               },
             ),
+    );
+  }
+}
+
+
+/// The texts a shop or depot sends, each with its own switch (all on from the start): the customer's receipt and thank-you for a debt paid, the
+/// owner's night summary, the morning text about goods running low, and the text when a month has ended. A switch saves at once.
+class _SmsSwitches extends StatelessWidget {
+  const _SmsSwitches({required this.sw});
+
+  final bool sw;
+
+  @override
+  Widget build(final BuildContext context) {
+    final DepotProvider depot = context.watch<DepotProvider>();
+    final List<(String, String, String)> rows = <(String, String, String)>[
+      ('inv_customer_sms', sw ? 'Ujumbe kwa wateja' : 'Texts to customers', sw ? 'Risiti wanaponunua na shukrani wakilipa deni' : 'A receipt when they buy, a thank-you when they pay a debt'),
+      ('inv_daily_summary', sw ? 'Muhtasari wa usiku' : 'Night summary', sw ? 'Mauzo, faida na tofauti na jana, saa 23:59' : 'Sales, profit and the change from yesterday, at 23:59'),
+      ('inv_low_stock_sms', sw ? 'Bidhaa zinazoisha' : 'Goods running low', sw ? 'Kila asubuhi saa 2:00, ikiwa zipo' : 'Each morning at 8:00, when there are any'),
+      ('inv_month_sms', sw ? 'Mwezi umeisha' : 'Month ended', sw ? 'Faida ya mwezi na lengo' : 'The month profit and the target'),
+    ];
+
+    // (the tiles paint on the nearest Material: the card is a coloured box, so they get a clear one of their own)
+    return Material(
+      type: MaterialType.transparency,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+      Text(sw ? 'Ujumbe wa SMS' : 'Text messages', style: ThemeConstants.bodyStyle.copyWith(fontWeight: FontWeight.w700)),
+      for (final (String, String, String) r in rows)
+        SwitchListTile(
+          key: ValueKey<String>('sms_${r.$1}'),
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          activeThumbColor: ThemeConstants.invAccent,
+          title: Text(r.$2, style: ThemeConstants.bodyStyle),
+          subtitle: Text(r.$3, style: ThemeConstants.captionStyle),
+          value: depot.settings[r.$1] != '0',
+          onChanged: (final bool on) => depot.saveSettings(<String, String>{r.$1: on ? '1' : '0'}),
+        ),
+    ]),
     );
   }
 }

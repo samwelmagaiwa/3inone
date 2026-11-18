@@ -59,6 +59,23 @@ class _CustomerAccountScreenState extends State<CustomerAccountScreen> {
     if (paid == true && mounted) await _load();
   }
 
+  bool _reminding = false;
+
+  /// Text the customer what they owe; the answer (sent, or why not) is shown in a message.
+  Future<void> _remind() async {
+    if (_reminding) return;
+    setState(() => _reminding = true);
+    final String? problem = await context.read<DepotProvider>().remindDebt(widget.customer.id);
+    if (!mounted) return;
+    setState(() => _reminding = false);
+    final bool sw = LocalizationService.instance.isSwahili;
+    if (problem == null) {
+      ThemeConstants.showInfoSnackBar(context, sw ? 'Ujumbe umetumwa kwa mteja' : 'The text was sent to the customer');
+    } else {
+      ThemeConstants.showErrorSnackBar(context, problem);
+    }
+  }
+
   static String _tsh(final double v) => 'TSH ${v.round().toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (final Match m) => ',')}';
 
   @override
@@ -111,6 +128,15 @@ class _CustomerAccountScreenState extends State<CustomerAccountScreen> {
                                 color: ThemeConstants.successGreen,
                                 arrow: false,
                                 onPressed: _receive,
+                              ),
+                            if (a.debt.totalLeft > 0 && a.phone.isNotEmpty)
+                              InvActionButton(
+                                key: const ValueKey<String>('account_remind'),
+                                label: loc.isSwahili ? 'Mkumbushe deni kwa SMS' : 'Remind them by SMS',
+                                icon: Icons.sms_rounded,
+                                color: ThemeConstants.invAccent,
+                                arrow: false,
+                                onPressed: _reminding ? null : _remind,
                               ),
                             if (a.oldDebts.isNotEmpty)
                               Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[

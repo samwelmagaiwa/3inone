@@ -60,6 +60,20 @@ class _Server extends ApiService {
   }
 }
 
+class _Texting extends _Server {
+  _Texting(super.account, {this.refuse});
+
+  final String? refuse;
+  final List<String> posted = <String>[];
+
+  @override
+  Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> data, {bool requireAuth = true, Map<String, String>? headers}) async {
+    posted.add(endpoint);
+    if (refuse != null) throw ApiException(refuse!);
+    return <String, dynamic>{'message': 'Reminder sent'};
+  }
+}
+
 Future<void> _open(WidgetTester t, _Server server) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   await LocalizationService.instance.changeLanguage('en');
@@ -134,6 +148,38 @@ void main() {
     await _open(t, _Server(_account()));
 
     expect(_key('account_receive'), findsOneWidget);
+  });
+
+  testWidgets('the owner can remind a customer who owes by text, and is told it was sent', (t) async {
+    final _Texting server = _Texting(_account());
+    await _open(t, server);
+
+    expect(_key('account_remind'), findsOneWidget);
+    await t.tap(_key('account_remind'));
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 100));
+
+    expect(server.posted, <String>['/inventory/credit/customers/5/remind']);
+    expect(find.text('The text was sent to the customer'), findsOneWidget);
+    await t.pump(const Duration(seconds: 8));
+  });
+
+  testWidgets('a reminder that cannot be sent says why', (t) async {
+    await _open(t, _Texting(_account(), refuse: 'This customer asked for no texts.'));
+
+    await t.tap(_key('account_remind'));
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 100));
+
+    expect(find.textContaining('asked for no texts'), findsOneWidget);
+    await t.pump(const Duration(seconds: 8));
+  });
+
+  testWidgets('no reminder button when nothing is owed or the customer has no phone', (t) async {
+    final Map<String, dynamic> paid = _account();
+    (paid['debt'] as Map<String, dynamic>)['total'] = <String, dynamic>{'owed': 430000, 'paid': 430000, 'left': 0};
+    await _open(t, _Server(paid));
+    expect(_key('account_remind'), findsNothing);
   });
 
   testWidgets('no button when nothing is owed', (t) async {
