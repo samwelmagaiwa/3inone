@@ -63,10 +63,8 @@ final class SalonFeedback
         // The client is thanked for being a customer; what was paid follows; the link to say how it went is the last line.
         $sw = ($first !== '' ? "Asante {$first} kwa kuwa mteja wetu, tunathamini mchango wako!" : 'Asante kwa kuwa mteja wetu, tunathamini mchango wako!')
             . ($paid > 0 ? " Umelipa {$amount}" . ($what !== '' ? " kwa {$what}" : '') . " - {$business}." : " Karibu tena {$business}.");
-        $en = ($first !== '' ? "Thank you {$first} for being our customer, we appreciate your support!" : 'Thank you for being our customer, we appreciate your support!')
-            . ($paid > 0 ? " You paid {$amount}" . ($what !== '' ? " for {$what}" : '') . " at {$business}." : " See you again at {$business}.");
 
-        return "{$sw}\n{$en}\n\nTupe maoni yako / Your feedback: {$url}";
+        return "{$sw}\n\nTupe maoni yako: {$url}";
     }
 
     /**
@@ -231,10 +229,8 @@ final class SalonFeedback
         $first = ClientSegments::firstName((string) $client->name);
         $name = trim((string) ($business?->name ?? '')) ?: 'saluni yetu';
         $sw = ($first !== '' ? "Habari {$first}, " : '') . "tumeshughulikia lalamiko lako. Pole sana kwa usumbufu uliopata, tunakuahidi huduma bora zaidi. - {$name}";
-        $en = ($first !== '' ? "Hello {$first}, " : '') . "your complaint has been sorted out. We are very sorry for the inconvenience and promise better service. - {$name}";
         try {
-            SmsService::sendFor($business, $phone, "{$sw}
-{$en}");
+            SmsService::sendFor($business, $phone, $sw);
         } catch (\Throwable) {
             // The complaint is settled either way.
         }

@@ -23,16 +23,25 @@ final class DailySummary
         DB::table('inventory_settings')->updateOrInsert(['key' => self::KEY], ['value' => $on ? '1' : '0', 'updated_at' => now()]);
     }
 
-    /** @param array<string, mixed> $s the day's {@see SalonFinance::summary()} */
-    public static function message(string $business, array $s): string
+    /**
+     * "Leo GLOW: mapato TSh 185,000, matumizi TSh 42,000, faida TSh 143,000, wateja 9. Tofauti ya faida na jana: +TSh 12,000."
+     * Personal spending is never taken off the profit; when there was some, the text says so.
+     *
+     * @param array<string, mixed> $s the day's {@see SalonFinance::summary()} (spending and profit already without personal spending)
+     */
+    public static function message(string $business, array $s, ?float $yesterdayProfit = null, float $personal = 0.0): string
     {
         $tsh = fn ($v) => number_format((float) $v, 0, '.', ',');
         $business = trim((string) preg_replace('/\s+/u', ' ', $business)) ?: 'saluni yako';
         $profit = (float) $s['net_profit'];
-        $sw = $profit >= 0 ? 'faida' : 'hasara';
-        $en = $profit >= 0 ? 'profit' : 'loss';
+        $word = $profit >= 0 ? 'faida' : 'hasara';
+        $diff = '';
+        if ($yesterdayProfit !== null) {
+            $d = $profit - $yesterdayProfit;
+            $diff = ' Tofauti ya faida na jana: ' . ($d < 0 ? '-' : '+') . 'TSh ' . $tsh(abs($d)) . '.';
+        }
+        $own = $personal > 0 ? " Matumizi binafsi TSh {$tsh($personal)} hayahesabiwi kwenye faida." : '';
 
-        return "Leo {$business}: mapato TSh {$tsh($s['revenue'])}, matumizi TSh {$tsh($s['expenses'])}, {$sw} TSh {$tsh(abs($profit))}, wateja {$s['clients']}. / "
-            . "Today at {$business}: revenue TSh {$tsh($s['revenue'])}, expenses TSh {$tsh($s['expenses'])}, {$en} TSh {$tsh(abs($profit))}, {$s['clients']} clients.";
+        return "Leo {$business}: mapato TSh {$tsh($s['revenue'])}, matumizi TSh {$tsh($s['expenses'])}, {$word} TSh {$tsh(abs($profit))}, wateja {$s['clients']}.{$diff}{$own}";
     }
 }

@@ -841,8 +841,7 @@ class SalonTest extends TestCase
 
         $this->assertCount(1, $this->sms->sent, 'Anna only: the others have no phone, asked not to be texted, or are not due');
         $this->assertSame(
-            'Habari Anna, Zimepita wiki 4 tangu ulipohudumiwa kwa Haircut katika Glow Salon. Karibu tena! / '
-            . 'Hello Anna, it has been 4 weeks since your Haircut at Glow Salon. We would love to see you again!',
+            'Habari Anna, Zimepita wiki 4 tangu ulipohudumiwa kwa Haircut katika Glow Salon. Karibu tena!',
             $this->sms->sent[0]['message']
         );
         $this->assertSame('0711000001', $this->sms->sent[0]['to']);
@@ -1058,12 +1057,9 @@ class SalonTest extends TestCase
         $many = RebookPlanner::message('NEEMA JUMA', 'Braids', 6, 'Glow Salon');
 
         $this->assertStringContainsString('Imepita wiki moja tangu ulipohudumiwa', $one);
-        $this->assertStringContainsString('it has been one week since your Braids', $one);
         $this->assertStringContainsString('Zimepita wiki 6 tangu ulipohudumiwa', $many);
-        $this->assertStringContainsString('it has been 6 weeks since your Braids', $many);
         $this->assertStringStartsWith('Habari Neema,', $many, 'the first name, properly capitalised');
-        $this->assertStringContainsString('Hello Neema, ', $many);
-        $this->assertStringContainsString(' / ', $many);
+        $this->assertStringNotContainsString('Hello', $many, 'Swahili only');
     }
 
     public function test_the_message_copes_with_no_name_and_very_long_names_and_stays_in_the_sms_alphabet(): void
@@ -1071,7 +1067,6 @@ class SalonTest extends TestCase
         $text = RebookPlanner::message('', str_repeat('Long service name ', 6), 4, str_repeat('Beautiful Salon ', 6));
 
         $this->assertStringStartsWith('Habari, Zimepita wiki 4', $text);
-        $this->assertStringContainsString('Hello, it has been 4 weeks', $text);
         $this->assertStringContainsString('...', $text, 'a long name is cut, not left to run on');
         $this->assertSame($text, mb_convert_encoding($text, 'ASCII', 'UTF-8'), 'plain characters only: one 160-character segment, not 70');
         $this->assertLessThan(320, mb_strlen($text), 'at most two text messages');

@@ -149,9 +149,8 @@ class SalonFeedbackTest extends TestCase
         $token = $this->token($owner);
         $this->assertSame('0711000001', $this->sms->sent[0]['to']);
         $this->assertSame(
-            "Asante Neema kwa kuwa mteja wetu, tunathamini mchango wako! Umelipa TSh 45,000 kwa Wash, Braids - Glow Salon.\n"
-            . "Thank you Neema for being our customer, we appreciate your support! You paid TSh 45,000 for Wash, Braids at Glow Salon.\n\n"
-            . "Tupe maoni yako / Your feedback: https://3inone.example/f/{$token}",
+            "Asante Neema kwa kuwa mteja wetu, tunathamini mchango wako! Umelipa TSh 45,000 kwa Wash, Braids - Glow Salon.\n\n"
+            . "Tupe maoni yako: https://3inone.example/f/{$token}",
             $this->sms->sent[0]['message']
         );
         $req = $this->rows($owner, fn () => DB::table('inventory_feedback_requests')->first());
@@ -429,7 +428,7 @@ class SalonFeedbackTest extends TestCase
         $this->assertCount(1, $sms->sent);
         $this->assertSame('0711000001', $sms->sent[0]['to'] ?? $sms->sent[0]['phone'] ?? null);
         $this->assertStringContainsString('Pole sana', $sms->sent[0]['message']);
-        $this->assertStringContainsString('sorry', $sms->sent[0]['message']);
+        $this->assertStringNotContainsString('sorry', $sms->sent[0]['message'], 'Swahili only');
         $this->assertStringContainsString('Neema', $sms->sent[0]['message']);
     }
 

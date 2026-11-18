@@ -126,10 +126,8 @@ final class AppointmentPlanner
         $business = self::shorten($business !== '' ? $business : 'saluni yetu', 40);
         $what = self::shorten(implode(', ', array_slice($serviceNames, 0, 3)) ?: 'huduma', 50);
         $swHello = $first !== '' ? "Habari {$first}," : 'Habari,';
-        $enHello = $first !== '' ? "Hello {$first}," : 'Hello,';
 
-        return "{$swHello} ukumbusho: una miadi {$business} kesho saa {$when} ({$what}). Karibu! / "
-            . "{$enHello} reminder: your appointment at {$business} is tomorrow at {$when} ({$what}). See you!";
+        return "{$swHello} ukumbusho: una miadi {$business} kesho saa {$when} ({$what}). Karibu!";
     }
 
     private static function shorten(string $text, int $max): string

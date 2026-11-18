@@ -225,12 +225,9 @@ final class RebookPlanner
         $business = self::shorten($business !== '' ? $business : 'saluni yetu', 40);
 
         $swWeeks = $weeks === 1 ? 'Imepita wiki moja' : "Zimepita wiki {$weeks}";
-        $enWeeks = $weeks === 1 ? 'one week' : "{$weeks} weeks";
         $swHello = $first !== '' ? "Habari {$first}," : 'Habari,';
-        $enHello = $first !== '' ? "Hello {$first}," : 'Hello,';
 
-        return "{$swHello} {$swWeeks} tangu ulipohudumiwa kwa {$service} katika {$business}. Karibu tena! / "
-            . "{$enHello} it has been {$enWeeks} since your {$service} at {$business}. We would love to see you again!";
+        return "{$swHello} {$swWeeks} tangu ulipohudumiwa kwa {$service} katika {$business}. Karibu tena!";
     }
 
     private static function shorten(string $text, int $max): string

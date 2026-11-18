@@ -313,8 +313,7 @@ class SalonAppointmentTest extends TestCase
         $this->assertCount(1, $this->sms->sent);
         $this->assertSame('0711000001', $this->sms->sent[0]['to']);
         $this->assertSame(
-            'Habari Neema, ukumbusho: una miadi Glow Salon kesho saa 10:30 (Braids, Wash). Karibu! / '
-            . 'Hello Neema, reminder: your appointment at Glow Salon is tomorrow at 10:30 (Braids, Wash). See you!',
+            'Habari Neema, ukumbusho: una miadi Glow Salon kesho saa 10:30 (Braids, Wash). Karibu!',
             $this->sms->sent[0]['message']
         );
 

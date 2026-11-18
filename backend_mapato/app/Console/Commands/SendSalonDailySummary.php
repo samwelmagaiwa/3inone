@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Business;
 use App\Services\SmsService;
+use App\Support\Inventory\ShopTexts;
 use App\Support\Salon\AppointmentPlanner;
 use App\Support\Salon\DailySummary;
 use App\Support\Salon\SalonFinance;
@@ -47,7 +48,18 @@ class SendSalonDailySummary extends Command
                         return;
                     }
                     $found++;
-                    $text = DailySummary::message((string) $business->name, SalonFinance::summary($today, $today));
+                    // Personal spending (family, drawings) is not the business's: it is left out of the spending and the profit, and named apart.
+                    $figures = function (Carbon $day): array {
+                        $s = SalonFinance::summary($day, $day);
+                        $personal = ShopTexts::personalOn($day->toDateString());
+                        $s['expenses'] = max((float) $s['expenses'] - $personal, 0);
+                        $s['net_profit'] = (float) $s['net_profit'] + $personal;
+
+                        return [$s, $personal];
+                    };
+                    [$s, $personal] = $figures($today);
+                    [$before] = $figures($today->copy()->subDay());
+                    $text = DailySummary::message((string) $business->name, $s, (float) $before['net_profit'], $personal);
                     if ($dry) {
                         $this->line("would text {$business->name}: {$text}");
 

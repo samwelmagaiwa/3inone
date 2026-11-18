@@ -497,8 +497,7 @@ class SalonStaffTest extends TestCase
         $this->assertCount(1, $this->sms->sent);
         $this->assertSame($owner->phone_number, $this->sms->sent[0]['to']);
         $this->assertSame(
-            'Leo Glow Salon: mapato TSh 40,000, matumizi TSh 10,000, faida TSh 30,000, wateja 1. / '
-            . 'Today at Glow Salon: revenue TSh 40,000, expenses TSh 10,000, profit TSh 30,000, 1 clients.',
+            'Leo Glow Salon: mapato TSh 40,000, matumizi TSh 10,000, faida TSh 30,000, wateja 1. Tofauti ya faida na jana: +TSh 30,000.',
             $this->sms->sent[0]['message']
         );
 
@@ -569,7 +568,7 @@ class SalonStaffTest extends TestCase
         $this->artisan('salon:daily-summary')->assertExitCode(0);
         $this->assertCount(1, $this->sms->sent, 'the failed one gave the day back');
         $this->assertStringContainsString('hasara TSh 5,000', $this->sms->sent[0]['message']);
-        $this->assertStringContainsString('loss TSh 5,000', $this->sms->sent[0]['message']);
+        $this->assertStringNotContainsString('loss', $this->sms->sent[0]['message'], 'Swahili only');
     }
 
     public function test_each_salon_is_told_about_itself_only_and_the_job_is_scheduled(): void

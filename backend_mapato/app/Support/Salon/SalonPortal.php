@@ -44,9 +44,8 @@ final class SalonPortal
         $first = ClientSegments::firstName($clientName);
         $business = trim((string) preg_replace('/\s+/u', ' ', $business)) ?: 'saluni yetu';
         $hello = $first !== '' ? "Habari {$first}!" : 'Habari!';
-        $helloEn = $first !== '' ? "Hello {$first}!" : 'Hello!';
 
-        return "{$hello} Ukurasa wako wa {$business}: miadi, pointi, vifurushi na historia yako.\n{$helloEn} Your page at {$business}: visits, points, packages and history.\n\n{$url}";
+        return "{$hello} Ukurasa wako wa {$business}: miadi, pointi, vifurushi na historia yako.\n\n{$url}";
     }
 
     /**

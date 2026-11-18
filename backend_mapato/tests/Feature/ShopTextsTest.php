@@ -91,8 +91,7 @@ class ShopTextsTest extends TestCase
         $texts = $this->sms->to('0711000001');
         $this->assertCount(1, $texts);
         $this->assertSame(
-            'Habari Juma, umenunua Sukari kwa TSh 45,000 kwa DUKA LA MAMA ASHA. Umelipa TSh 30,000, bado TSh 15,000. Asante, karibu tena! / '
-            . 'Hello Juma, you bought Sukari for TSh 45,000 at DUKA LA MAMA ASHA. Paid TSh 30,000, balance TSh 15,000. Thank you, welcome again!',
+            'Habari Juma, umenunua Sukari kwa TSh 45,000 kwa DUKA LA MAMA ASHA. Umelipa TSh 30,000, bado TSh 15,000. Asante, karibu tena!',
             $texts[0]['message']
         );
     }
@@ -111,7 +110,7 @@ class ShopTextsTest extends TestCase
 
         $this->assertCount(1, $this->sms->sent, 'only the customer who can be texted');
         $this->assertStringContainsString('Umelipa kikamilifu', $this->sms->sent[0]['message']);
-        $this->assertStringContainsString('Paid in full', $this->sms->sent[0]['message']);
+        $this->assertStringNotContainsString('Paid in full', $this->sms->sent[0]['message'], 'Swahili only');
     }
 
     public function test_the_owner_can_switch_the_customer_texts_off(): void
@@ -165,8 +164,7 @@ class ShopTextsTest extends TestCase
         $texts = $this->sms->to('0711000001');
         $this->assertCount(1, $texts);
         $this->assertSame(
-            'Asante Juma, tumepokea TSh 10,000. Deni lililobaki: TSh 5,000. Karibu DUKA LA MAMA ASHA! / '
-            . 'Thank you Juma, we received TSh 10,000. Balance left: TSh 5,000. Welcome to DUKA LA MAMA ASHA!',
+            'Asante Juma, tumepokea TSh 10,000. Deni lililobaki: TSh 5,000. Karibu DUKA LA MAMA ASHA!',
             $texts[0]['message']
         );
 
@@ -209,6 +207,8 @@ class ShopTextsTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-11-18 12:00:00', 'Africa/Dar_es_Salaam')->utc());
         $this->sell($owner, $sugar, 160, 2000, 1000, $juma, 295000);
         $this->api($owner, 'POST', '/api/inventory/expenses', ['category' => 'rent', 'description' => 'Rent', 'amount' => 18000, 'expense_date' => '2026-11-18'])->assertCreated();
+        // 9,000 spent on themselves: named apart, never taken off the profit
+        $this->api($owner, 'POST', '/api/inventory/expenses', ['category' => 'family', 'description' => 'School fees', 'amount' => 9000, 'expense_date' => '2026-11-18', 'is_personal' => true])->assertCreated();
         $this->sms->sent = [];
 
         $this->atNight();
@@ -219,8 +219,7 @@ class ShopTextsTest extends TestCase
         $this->assertCount(1, $this->sms->sent);
         $this->assertSame($owner->phone_number, $this->sms->sent[0]['to']);
         $this->assertSame(
-            'Leo DUKA LA MAMA ASHA: mauzo TSh 320,000, faida TSh 142,000, matumizi TSh 18,000, madeni mapya TSh 25,000. Tofauti na jana: mauzo +TSh 220,000, faida +TSh 92,000. / '
-            . 'Today at DUKA LA MAMA ASHA: sales TSh 320,000, profit TSh 142,000, expenses TSh 18,000, new debts TSh 25,000. Compared with yesterday: sales +TSh 220,000, profit +TSh 92,000.',
+            'Leo DUKA LA MAMA ASHA: mauzo TSh 320,000, faida TSh 142,000, matumizi TSh 18,000, madeni mapya TSh 25,000. Tofauti ya faida na jana: +TSh 92,000. Matumizi binafsi TSh 9,000 hayahesabiwi kwenye faida.',
             $this->sms->sent[0]['message']
         );
 
@@ -230,12 +229,12 @@ class ShopTextsTest extends TestCase
 
     public function test_a_worse_day_says_minus_and_a_day_at_a_loss_says_loss(): void
     {
-        $text = ShopTexts::summaryMessage('DUKA', ['sales' => 10000, 'cost' => 9000, 'expenses' => 5000, 'profit' => -4000, 'new_debts' => 0], ['sales' => 30000, 'cost' => 0, 'expenses' => 0, 'profit' => 6000, 'new_debts' => 0]);
+        $text = ShopTexts::summaryMessage('DUKA', ['sales' => 10000, 'cost' => 9000, 'expenses' => 5000, 'profit' => -4000, 'new_debts' => 0, 'personal' => 0.0], ['sales' => 30000, 'cost' => 0, 'expenses' => 0, 'profit' => 6000, 'new_debts' => 0, 'personal' => 0.0]);
 
         $this->assertStringContainsString('hasara TSh 4,000', $text);
-        $this->assertStringContainsString('mauzo -TSh 20,000, faida -TSh 10,000', $text);
-        $this->assertStringContainsString('loss TSh 4,000', $text);
-        $this->assertStringContainsString('sales -TSh 20,000, profit -TSh 10,000', $text);
+        $this->assertStringContainsString('Tofauti ya faida na jana: -TSh 10,000.', $text);
+        $this->assertStringNotContainsString('binafsi', $text, 'no personal spending, no line about it');
+        $this->assertStringNotContainsString('Today', $text, 'Swahili only');
     }
 
     public function test_each_shop_is_told_only_its_own_day_under_its_own_sender_and_the_owner_can_switch_it_off(): void

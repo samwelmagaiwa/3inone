@@ -63,7 +63,7 @@ final class ShopTexts
     // ------------------------------------------------------------------ the words
 
     /**
-     * "Umenunua Sukari, Mchele kwa TSh 45,000 kwa DUKA LA MAMA ASHA. Umelipa TSh 30,000, bado TSh 15,000."
+     * "Habari Juma, umenunua Sukari kwa TSh 45,000 kwa DUKA LA MAMA ASHA. Umelipa TSh 30,000, bado TSh 15,000. Asante, karibu tena!"
      *
      * @param  array<int, string>  $items  the names of what was bought
      */
@@ -74,16 +74,11 @@ final class ShopTexts
         $names = array_values(array_filter(array_map(fn ($n) => self::clean((string) $n, ''), $items)));
         $shown = array_slice($names, 0, 3);
         $more = count($names) - count($shown);
-        $swWhat = $shown === [] ? 'bidhaa' : implode(', ', $shown) . ($more > 0 ? " na nyingine {$more}" : '');
-        $enWhat = $shown === [] ? 'goods' : implode(', ', $shown) . ($more > 0 ? " and {$more} more" : '');
+        $what = $shown === [] ? 'bidhaa' : implode(', ', $shown) . ($more > 0 ? " na nyingine {$more}" : '');
         $left = max(round($total - $paid, 2), 0);
 
-        $sw = ($first !== '' ? "Habari {$first}, " : 'Habari, ') . "umenunua {$swWhat} kwa " . self::tsh($total) . " kwa {$business}. "
+        return ($first !== '' ? "Habari {$first}, " : 'Habari, ') . "umenunua {$what} kwa " . self::tsh($total) . " kwa {$business}. "
             . ($left > 0 ? 'Umelipa ' . self::tsh($paid) . ', bado ' . self::tsh($left) . '.' : 'Umelipa kikamilifu.') . ' Asante, karibu tena!';
-        $en = ($first !== '' ? "Hello {$first}, " : 'Hello, ') . "you bought {$enWhat} for " . self::tsh($total) . " at {$business}. "
-            . ($left > 0 ? 'Paid ' . self::tsh($paid) . ', balance ' . self::tsh($left) . '.' : 'Paid in full.') . ' Thank you, welcome again!';
-
-        return "{$sw} / {$en}";
     }
 
     /** "Asante Juma, tumepokea TSh 10,000. Deni lililobaki: TSh 5,000. Karibu DUKA LA MAMA ASHA!" */
@@ -93,17 +88,13 @@ final class ShopTexts
         $business = self::clean($business, 'duka letu');
         $left = max(round($left, 2), 0);
 
-        $sw = ($first !== '' ? "Asante {$first}, " : 'Asante, ') . 'tumepokea ' . self::tsh($received) . '. '
+        return ($first !== '' ? "Asante {$first}, " : 'Asante, ') . 'tumepokea ' . self::tsh($received) . '. '
             . ($left > 0 ? 'Deni lililobaki: ' . self::tsh($left) . '.' : 'Deni lako limelipwa lote.') . " Karibu {$business}!";
-        $en = ($first !== '' ? "Thank you {$first}, " : 'Thank you, ') . 'we received ' . self::tsh($received) . '. '
-            . ($left > 0 ? 'Balance left: ' . self::tsh($left) . '.' : 'Your debt is fully paid.') . " Welcome to {$business}!";
-
-        return "{$sw} / {$en}";
     }
 
     /**
-     * The owner's night text. `$today` and `$yesterday` are {@see dayFigures()}. The difference with yesterday is said for the sales and for
-     * the profit: "Tofauti na jana: mauzo +TSh 40,000, faida -TSh 5,000".
+     * The owner's night text. `$today` and `$yesterday` are {@see dayFigures()}; the difference said is the profit's only. Personal spending is
+     * not the business's: when there was some it is named apart and is not in the profit (as in the monthly report).
      *
      * @param  array<string, float>  $today
      * @param  array<string, float>  $yesterday
@@ -111,17 +102,13 @@ final class ShopTexts
     public static function summaryMessage(string $business, array $today, array $yesterday): string
     {
         $business = self::clean($business, 'duka lako');
-        $diff = fn (float $a, float $b): string => ($a - $b < 0 ? '-' : '+') . self::tsh(abs($a - $b));
         $profit = $today['profit'];
-        $sw = $profit >= 0 ? 'faida' : 'hasara';
-        $en = $profit >= 0 ? 'profit' : 'loss';
-        $compare = fn (string $lead) => "{$lead} sales " . $diff($today['sales'], $yesterday['sales']) . ', profit ' . $diff($profit, $yesterday['profit']);
+        $d = $profit - $yesterday['profit'];
+        $own = $today['personal'] > 0 ? ' Matumizi binafsi ' . self::tsh($today['personal']) . ' hayahesabiwi kwenye faida.' : '';
 
-        return "Leo {$business}: mauzo " . self::tsh($today['sales']) . ", {$sw} " . self::tsh(abs($profit)) . ', matumizi ' . self::tsh($today['expenses'])
-            . ', madeni mapya ' . self::tsh($today['new_debts']) . '. Tofauti na jana: mauzo ' . $diff($today['sales'], $yesterday['sales'])
-            . ', faida ' . $diff($profit, $yesterday['profit']) . '. / '
-            . "Today at {$business}: sales " . self::tsh($today['sales']) . ", {$en} " . self::tsh(abs($profit)) . ', expenses ' . self::tsh($today['expenses'])
-            . ', new debts ' . self::tsh($today['new_debts']) . '. ' . $compare('Compared with yesterday:') . '.';
+        return "Leo {$business}: mauzo " . self::tsh($today['sales']) . ', ' . ($profit >= 0 ? 'faida ' : 'hasara ') . self::tsh(abs($profit))
+            . ', matumizi ' . self::tsh($today['expenses']) . ', madeni mapya ' . self::tsh($today['new_debts'])
+            . '. Tofauti ya faida na jana: ' . ($d < 0 ? '-' : '+') . self::tsh(abs($d)) . '.' . $own;
     }
 
     // ------------------------------------------------------------------ the figures
@@ -129,7 +116,7 @@ final class ShopTexts
     /**
      * One day of the business (the day as it is in Tanzania): what was sold, what it cost, the spending, the profit left and the debts made.
      *
-     * @return array{sales: float, cost: float, expenses: float, profit: float, new_debts: float}
+     * @return array{sales: float, cost: float, expenses: float, profit: float, new_debts: float, personal: float}
      */
     public static function dayFigures(Carbon $day, string $timezone): array
     {
@@ -148,7 +135,18 @@ final class ShopTexts
             ->when(Schema::hasColumn('inventory_expenses', 'is_personal'), fn ($q) => $q->where('is_personal', false))
             ->sum('amount');
 
-        return ['sales' => $revenue, 'cost' => $cost, 'expenses' => $expenses, 'profit' => round($revenue - $cost - $expenses, 2), 'new_debts' => $debts];
+        return ['sales' => $revenue, 'cost' => $cost, 'expenses' => $expenses, 'profit' => round($revenue - $cost - $expenses, 2), 'new_debts' => $debts, 'personal' => self::personalOn($date)];
+    }
+
+    /** What the owner spent on themselves (family, drawings) on a day: never part of the business's spending or profit. */
+    public static function personalOn(string $date): float
+    {
+        if (!Schema::hasColumn('inventory_expenses', 'is_personal')) {
+            return 0.0;
+        }
+
+        return (float) DB::table('inventory_expenses')->where('expense_date', $date)->where('is_personal', true)
+            ->when(Schema::hasColumn('inventory_expenses', 'status'), fn ($q) => $q->where('status', 'approved'))->sum('amount');
     }
 
     // ------------------------------------------------------------------ the sending
