@@ -52,7 +52,10 @@ class SendBillingReminders extends Command
                 continue;
             }
 
-            $digest[] = [$business, $kind];
+            // The super admin hears at the same two moments as the owner (3 days left, the day it ends): never at the other stages.
+            if (in_array($kind, self::OWNER_KINDS, true)) {
+                $digest[] = [$business, $kind];
+            }
 
             if ($dry) {
                 $this->line("would remind: {$business->name} ({$kind}, ends {$date})");
@@ -61,11 +64,13 @@ class SendBillingReminders extends Command
 
             // Claim it first, so two runs at the same moment cannot both send it.
             if (DB::table('billing_reminders')->insertOrIgnore($row + ['sent_at' => now(), 'created_at' => now(), 'updated_at' => now()]) === 0) {
-                array_pop($digest);
+                if (in_array($kind, self::OWNER_KINDS, true)) {
+                    array_pop($digest);
+                }
                 continue;
             }
 
-            // The other stages are only the super admin's summary: the owner is not texted at them.
+            // The other stages are recorded, and nobody is texted.
             if (!in_array($kind, self::OWNER_KINDS, true)) {
                 continue;
             }
@@ -122,8 +127,8 @@ class SendBillingReminders extends Command
         $reach = $contact !== '' ? " Wasiliana: {$contact}. / Contact: {$contact}." : '';
 
         $text = match ($kind) {
-            'd0' => "Usajili wa \"{$name}\" unaisha leo ({$date}). Lipia ili uendelee. / Your subscription for \"{$name}\" ends today ({$date}). Pay to keep using it.",
-            'd3', 'd7' => "Usajili wa \"{$name}\" unaisha baada ya siku {$days} ({$date}). Lipia ili uendelee. / Your subscription for \"{$name}\" ends in {$days} day(s) ({$date}). Pay to keep using it.",
+            'd0' => "Habari! Usajili wa \"{$name}\" unaisha leo ({$date}). Lipia leo ili huduma zako ziendelee bila kusimama. Asante kwa kuwa nasi! / Hello! Your subscription for \"{$name}\" ends today ({$date}). Pay today so your service keeps running without a break. Thank you for being with us!",
+            'd3', 'd7' => "Habari! Usajili wa \"{$name}\" unaisha baada ya siku {$days} ({$date}). Lipia sasa ili huduma zako ziendelee bila kikwazo. Asante kwa kuwa nasi! / Hello! Your subscription for \"{$name}\" ends in {$days} day(s) ({$date}). Pay now to keep your service running smoothly. Thank you for being with us!",
             'expired' => $enforced
                 ? "Usajili wa \"{$name}\" umeisha ({$date}). Lipia ndani ya siku {$grace} ili huduma zisisimame. / The subscription for \"{$name}\" ended on {$date}. Pay within {$grace} days so the service is not stopped."
                 : "Usajili wa \"{$name}\" umeisha ({$date}). Tafadhali lipia ili uendelee. / The subscription for \"{$name}\" ended on {$date}. Please pay to continue.",
@@ -135,28 +140,29 @@ class SendBillingReminders extends Command
         return '3 in One: ' . $text . $reach;
     }
 
-    /** @param  array<int, array{0: Business, 1: string}>  $items */
+    /**
+     * One text to the super admin. One business: "NAME (siku 3 zimebaki, 24/11)". Several at once: each with the day its plan ends, "NAME (24/11)",
+     * so the list stays short and clear.
+     *
+     * @param  array<int, array{0: Business, 1: string}>  $items
+     */
     private function digestText(array $items): string
     {
-        // "7/7d" said the same number twice and read as "7 of 7". Now: the days left of the days the plan was given for, and the day it ends.
-        $label = function (Business $b, string $kind): string {
-            $left = max($b->daysLeft() ?? 0, 0);
-            $total = $b->periodDays();
+        $many = count($items) > 1;
+        $label = function (Business $b, string $kind) use ($many): string {
             $ends = $b->valid_until?->format('d/m');
+            if ($kind === 'd0') {
+                return $many ? 'leo/today' . ($ends ? " {$ends}" : '') : 'inaisha leo/ends today' . ($ends ? ", {$ends}" : '');
+            }
+            $left = max($b->daysLeft() ?? 0, 0);
 
-            return match ($kind) {
-                'd0' => 'leo/today' . ($ends ? ", {$ends}" : ''),
-                'blocked' => 'imesimamishwa/stopped' . ($ends ? ", {$ends}" : ''),
-                'expired' => 'imeisha/expired' . ($ends ? ", {$ends}" : ''),
-                default => 'siku ' . $left . ($total !== null ? '/' . $total : '') . ' zimebaki' . ($ends ? ", {$ends}" : ''),
-            };
+            return $many ? (string) $ends : "siku {$left} zimebaki" . ($ends ? ", {$ends}" : '');
         };
 
-        $shown = array_slice($items, 0, 6);
+        $shown = array_slice($items, 0, 8);
         $parts = array_map(fn (array $i) => $i[0]->name . ' (' . $label($i[0], $i[1]) . ')', $shown);
         $more = count($items) - count($shown);
 
-        return '3 in One: Mipango inayoisha / Plans ending: ' . implode(', ', $parts)
-            . ($more > 0 ? " +{$more} zaidi/more" : '') . '. (Siku zimebaki kati ya siku alizopewa / days left of the days given)';
+        return '3 in One: Mipango inayoisha / Plans ending: ' . implode(', ', $parts) . ($more > 0 ? " +{$more} zaidi/more" : '') . '.';
     }
 }

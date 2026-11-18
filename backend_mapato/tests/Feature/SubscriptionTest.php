@@ -305,33 +305,43 @@ class SubscriptionTest extends TestCase
         $this->assertSame('', $texts['Far'], 'more than a week away: nothing yet');
         $this->assertSame('', $texts['Forever'], 'no end date: nothing to remind');
 
-        // ONE text to the super admin lists them all, at every stage
+        // ONE text to the super admin, at the same two moments only (3 days left, the day it ends)
         $digest = array_values(array_filter($this->sms->to('0711000111'), fn (array $m) => str_contains($m['message'], 'Plans ending')));
         $this->assertCount(1, $digest);
-        foreach (['Seven Ltd', 'Three Ltd', 'One Ltd', 'Today Ltd', 'Late Ltd', 'Stopped Ltd'] as $name) {
+        foreach (['Three Ltd', 'One Ltd', 'Today Ltd'] as $name) {
             $this->assertStringContainsString($name, $digest[0]['message']);
+        }
+        foreach (['Seven Ltd', 'Late Ltd', 'Stopped Ltd'] as $name) {
+            $this->assertStringNotContainsString($name, $digest[0]['message']);
         }
         $this->assertStringNotContainsString('Far Ltd', $digest[0]['message']);
         $this->assertStringNotContainsString('Forever Ltd', $digest[0]['message']);
     }
 
-    public function test_the_super_admins_summary_says_the_days_left_of_the_days_given_and_the_day_it_ends(): void
+    public function test_the_super_admins_text_for_one_plan_says_the_days_left_and_the_day_it_ends(): void
     {
         $this->superAdmin('0711000111');
-        // a 17-day trial given on 1 October, 3 days left on the 15th
         $trial = $this->owner('Trial', '2026-10-18 23:59:59', 'trial');
-        \Illuminate\Support\Facades\DB::table('businesses')->where('owner_id', $trial->id)->update(['created_at' => '2026-10-01 09:00:00']);
-        // a week given, a week left: the same number, but now said as a fraction of what was given, never "7/7d"
-        $week = $this->owner('Week', '2026-10-22 23:59:59', 'trial');
 
         $this->remind();
         $digest = array_values(array_filter($this->sms->to('0711000111'), fn (array $m) => str_contains($m['message'], 'Plans ending')))[0]['message'];
 
-        $this->assertStringContainsString('Trial Ltd (siku 3/17 zimebaki, 18/10)', $digest);
-        $this->assertStringContainsString('Week Ltd (siku 7/7 zimebaki, 22/10)', $digest);
-        $this->assertStringNotContainsString('7d)', $digest);
-        // the owner is told the days left too, the same number as the summary
+        $this->assertSame('3 in One: Mipango inayoisha / Plans ending: Trial Ltd (siku 3 zimebaki, 18/10).', $digest);
         $this->assertStringContainsString('baada ya siku 3', $this->ownerTexts(['Trial' => $trial])['Trial']);
+    }
+
+    public function test_the_super_admins_text_for_several_plans_gives_each_end_date(): void
+    {
+        $this->superAdmin('0711000111');
+        $this->owner('Aa', '2026-10-18 23:59:59');
+        $this->owner('Bb', '2026-10-17 23:59:59');
+
+        $this->remind();
+        $digest = array_values(array_filter($this->sms->to('0711000111'), fn (array $m) => str_contains($m['message'], 'Plans ending')))[0]['message'];
+
+        $this->assertStringContainsString('Aa Ltd (18/10)', $digest);
+        $this->assertStringContainsString('Bb Ltd (17/10)', $digest);
+        $this->assertStringNotContainsString('zimebaki', $digest);
     }
 
     public function test_the_owner_is_not_texted_after_the_end_or_every_day_but_the_super_admin_still_hears_of_it(): void
@@ -350,8 +360,9 @@ class SubscriptionTest extends TestCase
         $this->assertStringContainsString('unaisha leo', $texts['Today']);
         $this->assertStringContainsString('0617919104', $texts['Today'], 'tells them who to pay');
         $digest = array_values(array_filter($this->sms->to('0711000111'), fn (array $m) => str_contains($m['message'], 'Plans ending')))[0]['message'];
-        $this->assertStringContainsString('Late Ltd', $digest);
-        $this->assertStringContainsString('Stopped Ltd', $digest);
+        $this->assertStringContainsString('Today Ltd', $digest);
+        $this->assertStringNotContainsString('Late Ltd', $digest, 'ended: no text to the super admin either');
+        $this->assertStringNotContainsString('Stopped Ltd', $digest);
     }
 
     public function test_an_owner_gets_exactly_two_texts_over_the_whole_countdown_three_days_before_and_the_last_day(): void
