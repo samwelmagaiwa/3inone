@@ -233,6 +233,13 @@ docker run --rm --network host -e MYSQL_PWD="$PW" mysql:8.0 \
 BYTES=$(wc -c < "$OUT")
 if tail -3 "$OUT" | grep -q 'Dump completed' && [ "$BYTES" -gt 10000 ]; then
   echo "backup OK: $OUT ($BYTES bytes, $(grep -c '^CREATE TABLE' "$OUT") tables)"
+  # Only the latest dump is kept: the older ones of this database go, but only now that the new one is known to be
+  # complete (a failed dump above never removes anything). Other files in backups/ are left alone.
+  for OLD in backups/"${DBN}"_*.sql; do
+    [ -e "$OLD" ] || continue
+    [ "$PWD/$OLD" = "$OUT" ] && continue
+    rm -f -- "$OLD" && echo "older backup removed: $OLD"
+  done
 else
   grep -v 'Using a password' backups/.dump_errors | head -3 >&2 || true
   rm -f "$OUT"; rm -f backups/.dump_errors

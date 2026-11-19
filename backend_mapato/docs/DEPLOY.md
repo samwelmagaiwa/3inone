@@ -106,7 +106,7 @@ touches the 3inone stack above, and it pushes to the `threeinone` git remote, ne
 "Rolling out" is: refresh `docker-compose.yml` on the server if the repo's `docker-compose.prod.yml` differs (the old
 copy is kept as `.bak`), `docker compose pull && up -d`, wait for `/api/health`, **if migrations are pending: dump the
 database to `/www/3inone/backups/` (stops if the dump is not complete), then `migrate --force`**, load the regions /
-districts / wards if the server has none (`locations:import --if-empty`), `config:cache`, `route:cache`. `SKIP_MIGRATE=1` leaves pending migrations alone. Backups are not pruned: delete old ones by hand.
+districts / wards if the server has none (`locations:import --if-empty`), `config:cache`, `route:cache`. `SKIP_MIGRATE=1` leaves pending migrations alone. Only the latest dump is kept: once a new dump is verified complete, the older `<database>_*.sql` files in `backups/` are deleted (a failed dump deletes nothing; other files there are left alone).
 
 The same by hand:
 
