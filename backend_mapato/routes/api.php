@@ -199,6 +199,13 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/plan-pric
     Route::put('', [PlanPriceController::class, 'adminUpdate']);
 });
 
+// SMS COUNTERS -- super admin only: how many SMS each business used against the limit set for it, and its texts of the last 3 days.
+Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/sms-usage')->group(function () {
+    Route::get('', [\App\Http\Controllers\API\SmsUsageController::class, 'adminIndex']);
+    Route::get('{id}', [\App\Http\Controllers\API\SmsUsageController::class, 'adminShow']);
+    Route::put('{id}/limit', [\App\Http\Controllers\API\SmsUsageController::class, 'setLimit']);
+});
+
 // SMS SENDER NAMES -- super admin only: which registered sender name each business's texts go out under.
 // A name works only once the super admin has registered it with the SMS provider and marked it approved.
 Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/sms-senders')->group(function () {
@@ -370,6 +377,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // The owner's master switch for every text the business sends (owner only, with password; off also needs the word ZIMA).
         Route::get('sms-switch', [\App\Http\Controllers\API\BusinessSmsSwitchController::class, 'show']);
         Route::put('sms-switch', [\App\Http\Controllers\API\BusinessSmsSwitchController::class, 'update'])->middleware('throttle:5,1');
+        // The owner's SMS counter: used / limit / left (the badge in the ⋮ menu).
+        Route::get('sms-usage', [\App\Http\Controllers\API\SmsUsageController::class, 'ownerShow']);
         Route::post('logo', [BusinessController::class, 'uploadLogo']);
         Route::delete('logo', [BusinessController::class, 'removeLogo']);
     });

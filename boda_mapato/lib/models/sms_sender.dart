@@ -1,6 +1,8 @@
 /// The SMS sender name of a business: the name its customers' phones show instead of a number.
 library;
 
+import 'sms_usage.dart';
+
 /// Where a business's sender name stands. Only [approved] is ever used to send.
 const List<String> kSmsSenderStatuses = <String>['none', 'pending', 'approved', 'rejected'];
 
@@ -24,6 +26,7 @@ class SmsSenderInfo {
     this.hasApiSecret = false,
     this.apiKeyHint,
     this.fallbackPlatform = true,
+    this.usage = const SmsUsage(),
   });
 
   factory SmsSenderInfo.fromJson(final Map<String, dynamic> json) => SmsSenderInfo(
@@ -43,6 +46,7 @@ class SmsSenderInfo {
         hasApiSecret: json['has_api_secret'] == true,
         apiKeyHint: _text(json['api_key_hint']),
         fallbackPlatform: json['fallback_platform'] != false,
+        usage: SmsUsage.maybe(json['usage']) ?? const SmsUsage(),
       );
 
   final String? senderId;
@@ -74,6 +78,9 @@ class SmsSenderInfo {
 
   /// May a text go out through the platform's account when the business's own is refused?
   final bool fallbackPlatform;
+
+  /// SMS used against the limit the super admin set (super admin list only).
+  final SmsUsage usage;
 
   bool get hasSender => (senderId ?? '').isNotEmpty;
   bool get isApproved => status == 'approved' && hasSender;

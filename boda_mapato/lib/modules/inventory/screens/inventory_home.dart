@@ -9,7 +9,10 @@ import 'package:provider/provider.dart';
 import '../../../constants/theme_constants.dart';
 import '../../../models/user_permissions.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../services/api_service.dart';
 import '../../../services/localization_service.dart';
+import '../../../models/sms_usage.dart';
+import '../../../screens/settings/sms_counters_screen.dart';
 import '../../../widgets/service_switcher_dialog.dart';
 import 'dashboard/inventory_dashboard_screen.dart';
 import 'credit/credit_screen.dart';
@@ -448,6 +451,9 @@ int? _pageForSlot(int slot, List<_InvMenuEntry> visible) {
 }
 
 class InventoryHome extends StatefulWidget {
+  /// How the owner's SMS counter in the ⋮ menu is read (the server; tests replace it).
+  static Future<Map<String, dynamic>?> Function() smsUsageReader = () => ApiService().getOrNull('/business/sms-usage');
+
   const InventoryHome({super.key, this.initialIndex = 0, this.salon = false});
   final int initialIndex;
 
@@ -496,6 +502,22 @@ class _InventoryHomeState extends State<InventoryHome> {
   /// The home that is on screen, for [InventoryHome.goToFooterSlot].
   static _InventoryHomeState? _active;
 
+  /// The owner's SMS counter ("20/1000") shown in the ⋮ menu. Only the business owner sees it; null until read.
+  SmsUsage? _smsUsage;
+
+  bool get _isOwner => context.read<AuthProvider>().user?.isBusinessOwner ?? false;
+
+  Future<void> _loadSmsUsage() async {
+    if (!_isOwner) return;
+    try {
+      final Map<String, dynamic>? res = await InventoryHome.smsUsageReader();
+      final SmsUsage? usage = SmsUsage.maybe(res?['data']);
+      if (mounted && usage != null) setState(() => _smsUsage = usage);
+    } on Object {
+      // The badge is a courtesy: the menu works without it.
+    }
+  }
+
   @override
   void dispose() {
     if (_active == this) _active = null;
@@ -533,6 +555,7 @@ class _InventoryHomeState extends State<InventoryHome> {
       inv.fetchCapabilities().then((_) => _askKindIfUnset());
       if (widget.salon) inv.fetchSalonStaff();
       _readDebtsOnOpening();
+      _loadSmsUsage();
     });
   }
 
@@ -817,8 +840,12 @@ class _InventoryHomeState extends State<InventoryHome> {
                 ],
               ),
               tooltip: loc.isSwahili ? 'Zaidi' : 'More',
+              // The SMS counter is read again each time the menu opens, so it is never stale.
+              onOpened: _loadSmsUsage,
               onSelected: (String v) {
                 switch (v) {
+                  case 'sms_counter':
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => OwnerSmsUsageScreen())).then((_) => _loadSmsUsage());
                   case 'notifications':
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const ApprovalNotificationsScreen()));
                   case 'ai':
@@ -834,6 +861,30 @@ class _InventoryHomeState extends State<InventoryHome> {
                 }
               },
               itemBuilder: (BuildContext _) => <PopupMenuEntry<String>>[
+                // The business owner only: how many SMS are used and left ("20/1000"), right before Notifications.
+                if (_isOwner)
+                  PopupMenuItem<String>(
+                    key: const Key('menu_sms_counter'),
+                    value: 'sms_counter',
+                    child: ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.sms_outlined, color: (_smsUsage?.blocked ?? false) ? ThemeConstants.errorRed : null),
+                      title: Text(loc.translate('sms_usage_title')),
+                      trailing: Container(
+                        key: const Key('menu_sms_counter_badge'),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: ((_smsUsage?.blocked ?? false) ? ThemeConstants.errorRed : ((_smsUsage?.warned ?? false) ? Colors.orange : ThemeConstants.successGreen)).withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          _smsUsage == null ? '…' : (_smsUsage!.hasLimit ? _smsUsage!.badge : '${_smsUsage!.used}'),
+                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ),
                 PopupMenuItem<String>(
                   key: const Key('menu_notifications'),
                   value: 'notifications',

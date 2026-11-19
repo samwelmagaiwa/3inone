@@ -24,6 +24,13 @@ return [
     // The help numbers at the end of the text an owner gets when the super admin switches their business's SMS off or on.
     'support_phones' => env('SMS_SUPPORT_PHONES', '0617919104 / 0743519104'),
 
+    // How a business's SMS are counted against its limit: 'parts' (as the provider bills: 160 plain characters each,
+    // 70 with other letters) or 'messages' (one per text, whatever its length).
+    'count_by' => env('SMS_COUNT_BY', 'parts'),
+
+    // The owner and the super admin are texted once when a business has used this share of its SMS limit.
+    'warn_at_percent' => (int) env('SMS_WARN_AT_PERCENT', 90),
+
     'kilakona' => [
         'api_url' => env('SMS_API_URL', 'https://messaging.kilakona.co.tz/api/v1/vendor/message/send'),
         'api_key' => env('SMS_API_KEY', ''),

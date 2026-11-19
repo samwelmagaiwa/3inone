@@ -343,6 +343,9 @@ final class ShopTexts
         if ($business->smsPaused()) {
             return ['sent' => false, 'owed' => $owed, 'reason' => 'sms_paused'];
         }
+        if (\App\Support\SmsQuota::blocked($business)) {
+            return ['sent' => false, 'owed' => $owed, 'reason' => 'sms_limit'];
+        }
         $sent = SmsService::sendFor($business, trim((string) $c->phone), self::debtReminderMessage((string) $c->name, (string) $business->name, $owed));
 
         return ['sent' => $sent, 'owed' => $owed, 'reason' => null];

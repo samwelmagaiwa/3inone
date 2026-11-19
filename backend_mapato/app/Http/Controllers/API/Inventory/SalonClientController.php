@@ -156,6 +156,9 @@ class SalonClientController extends Controller
             'inactive_weeks' => 'nullable|integer|min:1|max:104',
         ]);
 
+        if (\App\Models\Business::smsLimitReachedForUser($request->user())) {
+            throw ValidationException::withMessages(['message' => [\App\Models\Business::SMS_LIMIT_MESSAGE]]);
+        }
         if (\App\Models\Business::smsPausedForUser($request->user())) {
             throw ValidationException::withMessages(['message' => [\App\Models\Business::SMS_PAUSED_MESSAGE]]);
         }

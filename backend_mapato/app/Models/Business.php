@@ -57,6 +57,8 @@ class Business extends Model
         'sms_paused' => 'boolean',
         'sms_paused_at' => 'datetime',
         'sms_paused_by_platform' => 'boolean',
+        'sms_limit_warned_at' => 'datetime',
+        'sms_limit_reached_at' => 'datetime',
     ];
 
     public function constrainToAccount(Builder $query, User $user): void
@@ -348,6 +350,20 @@ class Business extends Model
     }
 
     /** The words shown when someone tries to send a text while the owner has switched them off. */
+    /** The words shown when someone tries to send a text after the business used up its SMS limit. */
+    public const SMS_LIMIT_MESSAGE = 'SMS za biashara hii zimeisha (kikomo kimefikiwa). Wasiliana na Administrator kuongeza SMS. / This business has used up its SMS limit. Contact the administrator to add more SMS.';
+
+    /** The business someone works for has used up its SMS limit. */
+    public static function smsLimitReachedForUser(?User $user): bool
+    {
+        if ($user === null || $user->seesAllAccounts()) {
+            return false;
+        }
+        $business = static::forOwnerId($user->accountHeadId());
+
+        return $business !== null && \App\Support\SmsQuota::blocked($business);
+    }
+
     public const SMS_PAUSED_MESSAGE = 'SMS za biashara hii zimezimwa na mmiliki. Mmiliki anaweza kuziwasha kwenye Mipangilio > Arifa. / The text messages of this business are switched off by the owner. The owner can switch them on in Settings > Notifications.';
 
     /** What the business's own people see about its sender name. */
@@ -383,6 +399,8 @@ class Business extends Model
             'last_sent_at' => $this->sms_last_sent_at?->toIso8601String(),
             'last_error' => $this->sms_last_error,
             'needs_attention' => $this->smsNeedsAttention(),
+            // How many SMS it used against the limit the super admin set (see App\Support\SmsQuota).
+            'usage' => \App\Support\SmsQuota::usage($this),
         ]);
     }
 

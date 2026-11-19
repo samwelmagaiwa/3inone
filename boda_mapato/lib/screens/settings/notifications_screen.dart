@@ -8,6 +8,7 @@ import '../../services/localization_service.dart';
 import '../../utils/server_message.dart';
 import 'business_sms_switches_screen.dart';
 import 'sms_confirm_dialog.dart';
+import 'sms_counters_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   NotificationsScreen({super.key, final ApiService? api, this.superAdmin}) : api = api ?? ApiService();
@@ -239,6 +240,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           if (_superAdmin) ...<Widget>[
                             const Divider(color: Colors.white24, height: 1),
                             _buildSuperAdminSmsRow(),
+                            // How many SMS each business used against its limit, and its texts of the last 3 days.
+                            const Divider(color: Colors.white24, height: 1),
+                            _buildSmsCounterRow(),
                           ],
                           const Divider(color: Colors.white24, height: 1),
                           _buildNotificationSwitch(
@@ -333,6 +337,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               inactiveThumbColor: ThemeConstants.textSecondary,
               inactiveTrackColor: Colors.white24,
             ),
+    );
+  }
+
+  Widget _buildSmsCounterRow() {
+    return ListTile(
+      key: const ValueKey<String>('sms_counter_row'),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      leading: const Icon(Icons.speed, color: ThemeConstants.textSecondary, size: 24),
+      title: Text(
+        _localizationService.translate('sms_counter_row_title'),
+        style: const TextStyle(color: ThemeConstants.textPrimary, fontSize: 16),
+      ),
+      subtitle: Text(
+        _localizationService.translate('sms_counter_row_subtitle'),
+        style: const TextStyle(color: ThemeConstants.textSecondary, fontSize: 12),
+      ),
+      trailing: const Icon(Icons.chevron_right, color: ThemeConstants.textSecondary),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => SmsCountersScreen(api: widget.api)),
+      ),
     );
   }
 

@@ -62,6 +62,11 @@ Schedule::command('inventory:month-close')
     ->dailyAt('04:30')
     ->withoutOverlapping();
 
+// The list of each business's texts keeps 3 days; the counters (used / limit, this week) are kept.
+Schedule::command('sms:prune-log')
+    ->dailyAt('00:30')
+    ->withoutOverlapping();
+
 // Expired API tokens are already rejected; this just removes the dead rows.
 Schedule::command('sanctum:prune-expired --hours=24')
     ->daily();

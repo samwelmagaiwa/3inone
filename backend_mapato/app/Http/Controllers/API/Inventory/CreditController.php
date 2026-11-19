@@ -217,6 +217,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'opted_out' => 'Mteja huyu ameomba asitumiwe SMS. / This customer asked for no texts.',
             'owes_nothing' => 'Mteja huyu hana deni. / This customer owes nothing.',
             'sms_paused' => \App\Models\Business::SMS_PAUSED_MESSAGE,
+            'sms_limit' => \App\Models\Business::SMS_LIMIT_MESSAGE,
         ];
         if (!$r['sent']) {
             return response()->json(['message' => $why[$r['reason']] ?? 'Ujumbe haukutumwa. / The text was not sent.', 'data' => $r], 422);

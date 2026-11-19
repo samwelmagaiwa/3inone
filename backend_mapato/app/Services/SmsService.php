@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Business;
 use App\Services\Sms\SmsGateway;
+use App\Support\SmsQuota;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -68,7 +69,28 @@ class SmsService
         }
 
         if (!$business instanceof Business) {
-            return self::send($phone, $message);
+            // No business record was given: count it against the business of the person acting, when there is one.
+            $counted = self::viewerBusiness();
+            if ($counted !== null && SmsQuota::blocked($counted)) {
+                SmsQuota::refused($counted);
+                Log::info('SMS not sent: the business has used its SMS limit.');
+
+                return false;
+            }
+            $sent = self::send($phone, $message);
+            if ($sent && $counted !== null) {
+                self::count($counted, (string) $phone, (string) $message, null);
+            }
+
+            return $sent;
+        }
+
+        // The SMS limit the super admin set: used up, nothing more goes out until it is raised.
+        if (SmsQuota::blocked($business)) {
+            SmsQuota::refused($business);
+            Log::info('SMS not sent: the business has used its SMS limit.');
+
+            return false;
         }
 
         try {
@@ -79,6 +101,7 @@ class SmsService
                 $sent = $gateway->send((string) $phone, (string) $message, false, null);
                 if ($sent) {
                     self::record($business, $gateway, own: false);
+                    self::count($business, (string) $phone, (string) $message, null);
                 }
 
                 return $sent;
@@ -88,6 +111,7 @@ class SmsService
             $own = $business->smsCredentials();
             if ($gateway->send((string) $phone, (string) $message, false, $sender, $own)) {
                 self::record($business, $gateway, own: true);
+                self::count($business, (string) $phone, (string) $message, $sender);
 
                 return true;
             }
@@ -109,6 +133,7 @@ class SmsService
 
             $sent = $gateway->send((string) $phone, (string) $message, false, null);
             if ($sent) {
+                self::count($business, (string) $phone, (string) $message, null);
                 // Only now do we know the NAME or key was the problem (the same text went through without them).
                 self::record($business, $gateway, own: false, fallbackError: "Kilakona haikukubali {$whatSw}. Ujumbe unatoka kwa akaunti ya jukwaa hadi litakaporekebishwa. / Kilakona did not accept {$whatEn}. Texts go out through the platform until it is fixed.");
             }
@@ -118,6 +143,33 @@ class SmsService
             Log::warning('SMS for a business could not be sent: ' . $e->getMessage());
 
             return false;
+        }
+    }
+
+    /** Count a text the provider took for the business against its SMS limit (only when a real provider is on). */
+    private static function count(Business $business, string $phone, string $message, ?string $sender): void
+    {
+        try {
+            if (app(SmsGateway::class)->delivers()) {
+                SmsQuota::record($business, $phone, $message, $sender);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('SMS could not be counted: ' . $e->getMessage());
+        }
+    }
+
+    /** The business of the person acting, if it has a record (never creates one). */
+    private static function viewerBusiness(): ?Business
+    {
+        try {
+            $viewer = \App\Support\Tenancy\TenantContext::viewer();
+            if ($viewer === null || $viewer->seesAllAccounts()) {
+                return null;
+            }
+
+            return Business::forOwnerId($viewer->accountHeadId());
+        } catch (\Throwable) {
+            return null;
         }
     }
 

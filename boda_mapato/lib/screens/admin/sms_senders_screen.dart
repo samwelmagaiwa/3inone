@@ -5,6 +5,7 @@ import "package:share_plus/share_plus.dart";
 
 import "../../constants/theme_constants.dart";
 import "../../models/sms_sender.dart";
+import "../../models/sms_usage.dart";
 import "../../services/api_service.dart";
 import "../../services/localization_service.dart";
 import "../../utils/one_space_formatter.dart";
@@ -83,9 +84,12 @@ String _statusLabel(final SmsSenderInfo s, final bool sw) {
 /// if the business has an account of its own with the SMS provider, its API key) is entered once the provider
 /// has approved it. Nothing needs changing in the code or on the server for a new business.
 class SmsSendersScreen extends StatefulWidget {
-  const SmsSendersScreen({super.key, this.dataSource, this.onShare});
+  const SmsSendersScreen({super.key, this.dataSource, this.onShare, this.saveLimit});
 
   final SmsSendersDataSource? dataSource;
+
+  /// Saves a business's SMS limit (null = no limit; [resetUsed] starts its counter at 0). The app calls the server; tests supply a fake.
+  final Future<SmsUsage> Function(String businessId, int? limit, bool resetUsed)? saveLimit;
 
   /// How the list of names to register is shared. The app opens the share sheet; tests supply a fake.
   final Future<void> Function(String text)? onShare;
@@ -165,16 +169,23 @@ class _SmsSendersScreenState extends State<SmsSendersScreen> {
   }
 
   Future<void> _open(final SmsSenderEntry entry) async {
-    final SmsSenderEntry? saved = await showModalBottomSheet<SmsSenderEntry>(
+    await showModalBottomSheet<SmsSenderEntry>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (final BuildContext sheetContext) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(sheetContext).bottom),
-        child: _SenderSheet(entry: entry, source: _source, sw: _sw, platformSender: _meta.platformSender),
+        child: _SenderSheet(entry: entry, source: _source, sw: _sw, platformSender: _meta.platformSender, saveLimit: widget.saveLimit ?? _saveLimitOnServer),
       ),
     );
-    if (saved != null && mounted) await _load(spinner: false);
+    // Reloaded either way: the SMS limit is saved inside the sheet without closing it.
+    if (mounted) await _load(spinner: false);
+  }
+
+  static Future<SmsUsage> _saveLimitOnServer(final String businessId, final int? limit, final bool resetUsed) async {
+    final Map<String, dynamic> res = await ApiService().put('/admin/sms-usage/$businessId/limit', <String, dynamic>{'sms_limit': limit, 'reset_used': resetUsed});
+    final Object? data = res['data'];
+    return (data is Map ? SmsUsage.maybe(data['usage']) : null) ?? const SmsUsage();
   }
 
   /// The names that are waiting, as lines to take to the provider (name, business, TIN, owner).
@@ -407,6 +418,18 @@ class _SmsSendersScreenState extends State<SmsSendersScreen> {
                 style: const TextStyle(color: Colors.white54, fontSize: 12),
               ),
             ],
+            if (s.usage.hasLimit || s.usage.used > 0) ...<Widget>[
+              const SizedBox(height: 6),
+              Text(
+                "${LocalizationService.instance.translate("sms_usage_title")}: ${s.usage.hasLimit ? s.usage.badge : "${s.usage.used} · ${LocalizationService.instance.translate("sms_usage_no_limit")}"}",
+                key: ValueKey<String>("sender_usage_${e.id}"),
+                style: TextStyle(
+                  color: s.usage.blocked ? Colors.redAccent : (s.usage.warned ? Colors.orangeAccent : Colors.greenAccent),
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
             if (s.needsAttention && (s.lastError ?? "").isNotEmpty) ...<Widget>[
               const SizedBox(height: 6),
               Row(
@@ -431,8 +454,9 @@ class _SmsSendersScreenState extends State<SmsSendersScreen> {
 
 /// One business's sender name: set it, try it with a real text, approve it. Pops with the saved entry.
 class _SenderSheet extends StatefulWidget {
-  const _SenderSheet({required this.entry, required this.source, required this.sw, required this.platformSender});
+  const _SenderSheet({required this.entry, required this.source, required this.sw, required this.platformSender, required this.saveLimit});
 
+  final Future<SmsUsage> Function(String businessId, int? limit, bool resetUsed) saveLimit;
   final SmsSenderEntry entry;
   final SmsSendersDataSource source;
   final bool sw;
@@ -451,6 +475,13 @@ class _SenderSheetState extends State<_SenderSheet> {
   final TextEditingController _apiSecret = TextEditingController();
   late final TextEditingController _note = TextEditingController(text: widget.entry.sender.isRejected ? (widget.entry.sender.note ?? "") : "");
   final TextEditingController _testPhone = TextEditingController();
+
+  // The SMS limit: saved on its own (it has nothing to do with the sender name), the sheet stays open.
+  late SmsUsage _usage = widget.entry.sender.usage;
+  late final TextEditingController _limit = TextEditingController(text: widget.entry.sender.usage.limit?.toString() ?? "");
+  bool _resetUsed = false;
+  bool _savingLimit = false;
+  String? _limitError;
 
   /// A name that is entered here has usually just been approved by the provider, so "approved" is the starting point.
   late String _status = widget.entry.sender.status == "none" ? "approved" : widget.entry.sender.status;
@@ -475,7 +506,90 @@ class _SenderSheetState extends State<_SenderSheet> {
     _apiSecret.dispose();
     _note.dispose();
     _testPhone.dispose();
+    _limit.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveLimit() async {
+    final LocalizationService loc = LocalizationService.instance;
+    final String text = _limit.text.trim();
+    final int? limit = text.isEmpty ? null : int.tryParse(text);
+    if (text.isNotEmpty && (limit == null || limit < 0)) {
+      setState(() => _limitError = loc.translate("sms_limit_invalid"));
+      return;
+    }
+    setState(() {
+      _savingLimit = true;
+      _limitError = null;
+    });
+    try {
+      final SmsUsage usage = await widget.saveLimit(widget.entry.id, limit, _resetUsed);
+      if (!mounted) return;
+      setState(() {
+        _usage = usage;
+        _resetUsed = false;
+        _savingLimit = false;
+      });
+      ThemeConstants.showSuccessSnackBar(context, "${widget.entry.name}: ${loc.translate("sms_limit_saved")} (${usage.badge})");
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _savingLimit = false;
+        _limitError = readableErrorMessage(e);
+      });
+    }
+  }
+
+  Widget _limitSection() {
+    final LocalizationService loc = LocalizationService.instance;
+    return Column(
+      key: const ValueKey<String>("sms_limit_section"),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(loc.translate("sms_limit_section"), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        Text(
+          _usage.hasLimit
+              ? "${loc.translateWith("sms_usage_used_of", <Object?>[_usage.used, _usage.limit])} · ${loc.translateWith("sms_usage_remaining", <Object?>[_usage.remaining ?? 0])}"
+              : loc.translateWith("sms_usage_used_nolimit", <Object?>[_usage.used]),
+          key: const ValueKey<String>("sms_limit_usage"),
+          style: TextStyle(color: _usage.blocked ? Colors.redAccent : Colors.white70, fontSize: 13),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          key: const ValueKey<String>("sms_limit_field"),
+          controller: _limit,
+          enabled: !_savingLimit,
+          keyboardType: TextInputType.number,
+          inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
+          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+          decoration: _decoration(loc.translate("sms_limit_field"), hint: "1000"),
+        ),
+        CheckboxListTile(
+          key: const ValueKey<String>("sms_limit_reset"),
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          value: _resetUsed,
+          onChanged: _savingLimit ? null : (final bool? v) => setState(() => _resetUsed = v ?? false),
+          title: Text(loc.translate("sms_limit_reset"), style: const TextStyle(color: Colors.white, fontSize: 14)),
+        ),
+        Text(loc.translate("sms_limit_help"), style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        if (_limitError != null) ...<Widget>[
+          const SizedBox(height: 8),
+          Text(_limitError!, key: const ValueKey<String>("sms_limit_error"), style: const TextStyle(color: Colors.redAccent)),
+        ],
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            key: const ValueKey<String>("sms_limit_save"),
+            onPressed: _savingLimit ? null : _saveLimit,
+            icon: _savingLimit ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.speed, size: 18),
+            label: Text(loc.translate("sms_limit_save")),
+          ),
+        ),
+      ],
+    );
   }
 
   SmsSenderEdit _edit({final bool clearCredentials = false}) => SmsSenderEdit(
@@ -817,6 +931,8 @@ class _SenderSheetState extends State<_SenderSheet> {
                     label: Text(_sw ? "Ondoa API key" : "Remove API key", style: const TextStyle(color: Colors.redAccent)),
                   ),
                 ),
+              const Divider(color: Colors.white24, height: 28),
+              _limitSection(),
               const Divider(color: Colors.white24, height: 28),
               Text(_sw ? "Jaribu kabla ya kuhifadhi" : "Try it before saving", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
