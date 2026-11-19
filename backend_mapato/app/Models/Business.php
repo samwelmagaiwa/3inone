@@ -54,6 +54,8 @@ class Business extends Model
         'sms_sender_requested_at' => 'datetime',
         'sms_sender_approved_at' => 'datetime',
         'sms_last_sent_at' => 'datetime',
+        'sms_paused' => 'boolean',
+        'sms_paused_at' => 'datetime',
     ];
 
     public function constrainToAccount(Builder $query, User $user): void
@@ -324,6 +326,29 @@ class Business extends Model
         return $this->sms_sender_status === 'approved' && trim((string) $this->sms_last_error) !== '';
     }
 
+    /**
+     * The owner's master switch is off: NOTHING this business sends goes out (receipts, reminders, summaries, campaigns, rent texts) until
+     * the owner turns it on again. Platform texts to the person themself (sign-in codes, password reset, billing) are not the business's and
+     * still go. See {@see \App\Services\SmsService::sendFor()}.
+     */
+    public function smsPaused(): bool
+    {
+        return (bool) ($this->sms_paused ?? false);
+    }
+
+    /** Whether the business someone works for has its texts switched off. False for someone who belongs to no business. */
+    public static function smsPausedForUser(?User $user): bool
+    {
+        if ($user === null || $user->seesAllAccounts()) {
+            return false;
+        }
+
+        return (bool) static::forOwnerId($user->accountHeadId())?->smsPaused();
+    }
+
+    /** The words shown when someone tries to send a text while the owner has switched them off. */
+    public const SMS_PAUSED_MESSAGE = 'SMS za biashara hii zimezimwa na mmiliki. Mmiliki anaweza kuziwasha kwenye Mipangilio > Arifa. / The text messages of this business are switched off by the owner. The owner can switch them on in Settings > Notifications.';
+
     /** What the business's own people see about its sender name. */
     public function smsSenderSummary(): array
     {
@@ -332,6 +357,8 @@ class Business extends Model
             'display_name' => $this->sms_display_name,
             'status' => $this->sms_sender_status ?: 'none',
             'note' => $this->sms_sender_note,
+            'paused' => $this->smsPaused(),
+            'paused_at' => $this->sms_paused_at?->toIso8601String(),
         ];
     }
 

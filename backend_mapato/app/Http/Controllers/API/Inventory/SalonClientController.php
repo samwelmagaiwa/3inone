@@ -156,6 +156,10 @@ class SalonClientController extends Controller
             'inactive_weeks' => 'nullable|integer|min:1|max:104',
         ]);
 
+        if (\App\Models\Business::smsPausedForUser($request->user())) {
+            throw ValidationException::withMessages(['message' => [\App\Models\Business::SMS_PAUSED_MESSAGE]]);
+        }
+
         $recipients = ClientSegments::textable($data['segment'], $this->today(), isset($data['inactive_weeks']) ? (int) $data['inactive_weeks'] : null);
         if ($recipients->isEmpty()) {
             throw ValidationException::withMessages(['segment' => ['Hakuna mteja wa kumtumia ujumbe katika kundi hili. / Nobody in this group can be texted.']]);

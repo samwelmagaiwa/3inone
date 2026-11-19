@@ -35,6 +35,7 @@ class SalonPortalController extends Controller
             $phone = trim((string) ($client->phone ?? ''));
             abort_if($phone === '' || (bool) ($client->sms_opt_out ?? false), 422, 'Mteja huyu hana simu au amekataa ujumbe. / This client has no phone number or asked not to be texted.');
             $business = Business::forUser($request->user());
+            abort_if((bool) $business?->smsPaused(), 422, Business::SMS_PAUSED_MESSAGE);
             try {
                 $sent = SmsService::sendFor($business, $phone, SalonPortal::message((string) $client->name, (string) ($business?->name ?? ''), $url));
             } catch (\Throwable) {

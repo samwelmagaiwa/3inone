@@ -364,6 +364,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // The owner asks for the name customers' phones should show; it then waits for the super admin.
         Route::post('sms-sender', [SmsSenderController::class, 'request']);
         Route::delete('sms-sender', [SmsSenderController::class, 'withdraw']);
+        // The owner's master switch for every text the business sends (owner only, with password; off also needs the word ZIMA).
+        Route::get('sms-switch', [\App\Http\Controllers\API\BusinessSmsSwitchController::class, 'show']);
+        Route::put('sms-switch', [\App\Http\Controllers\API\BusinessSmsSwitchController::class, 'update'])->middleware('throttle:5,1');
         Route::post('logo', [BusinessController::class, 'uploadLogo']);
         Route::delete('logo', [BusinessController::class, 'removeLogo']);
     });

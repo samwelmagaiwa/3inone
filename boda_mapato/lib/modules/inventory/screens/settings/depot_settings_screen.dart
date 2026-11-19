@@ -433,7 +433,7 @@ class _AppSettingsTab extends StatelessWidget {
     final allTiles = <Widget>[
       tile(Icons.notifications, loc.translate('notifications'),
           loc.translate('notifications_subtitle'),
-          () => go(const NotificationsScreen())),
+          () => go(NotificationsScreen())),
       d,
       tile(Icons.language, loc.translate('language'),
           loc.translate('language_subtitle'),

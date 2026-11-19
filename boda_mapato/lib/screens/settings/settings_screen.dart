@@ -250,7 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Icons.notifications_outlined,
                       loc.translate('notifications'),
                       loc.translate('notifications_subtitle'),
-                      () => _navigateToScreen(const NotificationsScreen()),
+                      () => _navigateToScreen(NotificationsScreen()),
                     ),
                     const Divider(color: Colors.white24, height: 1),
                     _buildSettingsTile(

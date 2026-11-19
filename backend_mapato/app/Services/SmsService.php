@@ -59,6 +59,14 @@ class SmsService
      */
     public static function sendFor($business, $phone, $message): bool
     {
+        // The owner's master switch: while it is off nothing this business sends goes out. When only an identity (or nothing) was
+        // given, the business is the one the person acting works for, so a text cannot slip out under the platform's name instead.
+        if (self::pausedFor($business)) {
+            Log::info('SMS not sent: the business has switched its texts off.');
+
+            return false;
+        }
+
         if (!$business instanceof Business) {
             return self::send($phone, $message);
         }
@@ -109,6 +117,20 @@ class SmsService
         } catch (\Throwable $e) {
             Log::warning('SMS for a business could not be sent: ' . $e->getMessage());
 
+            return false;
+        }
+    }
+
+    /** @param  Business|array<string, mixed>|null  $business */
+    private static function pausedFor($business): bool
+    {
+        try {
+            if ($business instanceof Business) {
+                return $business->smsPaused();
+            }
+
+            return Business::smsPausedForUser(\App\Support\Tenancy\TenantContext::viewer());
+        } catch (\Throwable) {
             return false;
         }
     }
