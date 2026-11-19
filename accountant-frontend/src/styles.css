@@ -2031,3 +2031,40 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
 .status-ok { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 900; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; color: #047857; background: #d1fae5; border: 1px solid #a7f3d0; }
 .status-ok::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #10b981; flex: none; }
 .theme-phone .status-ok { color: #6ee7b7; background: rgba(16, 185, 129, .2); border-color: rgba(52, 211, 153, .45); }
+
+/* ═══ Parts drawn only for the light look, made dark teal too (the accountant sees them: the salon dashboard, the chart, the pager,
+   the row menus and the small pop-up lists). Same glass, borders and text colours as the business admin's pages. ═══ */
+/* The salon dashboard (salon-home) */
+.theme-phone .home-card { background: rgba(255,255,255,.1) !important; box-shadow: none !important; color: #fff; }
+.theme-phone :is(.home-title, .home-value, .home-amount, .home-rank, .home-line b) { color: #fff !important; }
+.theme-phone .home-value.tone { color: #7fe0ee !important; }
+.theme-phone :is(.home-times, .home-rank .is-muted) { color: rgba(255,255,255,.6) !important; }
+.theme-phone :is(.home-tile, .home-fact, .home-line) { background: rgba(255,255,255,.07) !important; border-color: rgba(255,255,255,.14) !important; color: #fff !important; }
+.theme-phone :is(.home-fact-ic, .home-avatar) { background: rgba(32,184,206,.18) !important; color: #7fe3f2 !important; }
+.theme-phone .home-fact.is-warn { background: rgba(245,158,11,.14) !important; border-color: rgba(245,158,11,.4) !important; }
+.theme-phone .home-fact.is-warn .home-fact-ic { background: rgba(245,158,11,.2) !important; color: #fcd34d !important; }
+.theme-phone .home-fact.is-warn .home-value { color: #fcd34d !important; }
+.theme-phone .home-fact.is-ok { background: rgba(16,185,129,.14) !important; border-color: rgba(16,185,129,.4) !important; }
+.theme-phone .home-fact.is-ok .home-fact-ic { background: rgba(16,185,129,.2) !important; color: #86efac !important; }
+.theme-phone .home-chip { background: rgba(255,255,255,.1) !important; border-color: rgba(255,255,255,.22) !important; color: #fff !important; }
+.theme-phone .home-chip:hover { background: rgba(32,184,206,.2) !important; border-color: #20b8ce !important; }
+.theme-phone .home-badge { background: rgba(32,184,206,.18) !important; border-color: rgba(32,184,206,.45) !important; color: #bfeff6 !important; }
+.theme-phone .home-track { background: rgba(255,255,255,.15) !important; }
+.theme-phone .home-rank b { background: #20b8ce !important; color: #04121a !important; }
+.theme-phone :is(.home-links, .home-col + .home-col, .home-top .home-figures) { border-color: rgba(255,255,255,.16) !important; }
+/* The bar chart of what earned most */
+.theme-phone .tc-legend { color: rgba(255,255,255,.85) !important; }
+.theme-phone .tc-axis { fill: rgba(255,255,255,.6) !important; }
+.theme-phone .tc-title, .theme-phone .tc-name { fill: rgba(255,255,255,.85) !important; }
+.theme-phone .tc-value { stroke: #0d3d4d !important; }
+/* The pager under a table, the three dots of a row and their menu, the small pop-up lists */
+.theme-phone .pager-box { background: rgba(255,255,255,.08) !important; border-color: rgba(255,255,255,.16) !important; }
+.theme-phone :is(.dots-btn, .menu-label-btn, .unit-toggle, .month-arrow) { background: rgba(255,255,255,.1) !important; border-color: rgba(255,255,255,.22) !important; color: #fff !important; }
+.theme-phone :is(.row-menu, .crr-pop, .unit-list) { background: #0d3d4d !important; border-color: rgba(255,255,255,.2) !important; box-shadow: 0 22px 48px -14px rgba(0,0,0,.6) !important; }
+.theme-phone :is(.row-menu-item, .crr-pop button:not(.btn-primary), .unit-opt) { color: #fff !important; }
+.theme-phone :is(.row-menu-item, .crr-pop button:not(.btn-primary), .unit-opt):hover { background: rgba(255,255,255,.09) !important; }
+.theme-phone .seg-bar { background: rgba(255,255,255,.08) !important; border-color: rgba(255,255,255,.16) !important; box-shadow: none !important; }
+.theme-phone .seg-tab { color: rgba(255,255,255,.8) !important; }
+.theme-phone .seg-tab:hover { background: rgba(255,255,255,.09) !important; }
+.theme-phone .topbar-title { color: #fff !important; }
+.theme-phone .target-fill { background: linear-gradient(90deg, #1ba3c7, #20b8ce) !important; }
