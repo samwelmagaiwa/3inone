@@ -140,20 +140,26 @@ class JoinedSectionsCard extends StatelessWidget {
         decoration: joinedCardBorder(),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              for (int i = 0; i < sections.length; i++) ...<Widget>[
-                if (i > 0) const SectionGlowDivider(),
-                if (sections[i] is FlushSection)
-                  sections[i]
-                else
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
-                    child: sections[i],
-                  ),
+          // The card's fill sits between the page's Material and the sections, so a ListTile in a section (the super
+          // admin's links, for one) would paint its ink behind that fill and Flutter flags it. A transparent Material here
+          // gives every section its own surface to paint on.
+          child: Material(
+            type: MaterialType.transparency,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                for (int i = 0; i < sections.length; i++) ...<Widget>[
+                  if (i > 0) const SectionGlowDivider(),
+                  if (sections[i] is FlushSection)
+                    sections[i]
+                  else
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
+                      child: sections[i],
+                    ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
