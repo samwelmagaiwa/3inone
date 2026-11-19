@@ -2073,3 +2073,9 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
 .theme-phone .share-pill.is-mid { color: #fcd34d !important; background: rgba(245,158,11,.2) !important; }
 .theme-phone .share-pill.is-high { color: #fca5a5 !important; background: rgba(239,68,68,.2) !important; }
 .theme-phone .share-bar { background: rgba(255,255,255,.15) !important; }
+/* Status pills on the dark look (they were pale pills that took the table's white text): "near the limit", "partly paid", "pending",
+   "switched off" become a soft amber; "paid" a soft teal; a neutral one a soft grey. Each with light text of its own colour. */
+.theme-phone .pill-inactive { color: #fcd34d !important; background: rgba(245,158,11,.2) !important; border: 1px solid rgba(245,158,11,.45); }
+.theme-phone .pill-active { color: #7fe3f2 !important; background: rgba(32,184,206,.2) !important; border: 1px solid rgba(32,184,206,.45); }
+.theme-phone .pill-occupied { color: rgba(255,255,255,.85) !important; background: rgba(255,255,255,.12) !important; }
+.theme-phone .pill-critical { border: 1px solid rgba(239,68,68,.45); }
