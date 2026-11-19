@@ -1,3 +1,4 @@
+import 'package:boda_mapato/constants/theme_constants.dart';
 import 'package:boda_mapato/screens/settings/notifications_screen.dart';
 import 'package:boda_mapato/services/api_service.dart';
 import 'package:boda_mapato/services/localization_service.dart';
@@ -67,6 +68,16 @@ Future<void> _open(final WidgetTester t, final _Api api, {final String lang = 'e
   await t.pumpAndSettle();
 }
 
+/// The app's own banner: green, at the TOP of the screen, not a SnackBar at the bottom.
+void _expectGreenBannerAtTop(final WidgetTester t, final String message) {
+  final Finder text = find.text(message);
+  expect(text, findsOneWidget);
+  expect(find.byType(SnackBar), findsNothing);
+  expect(t.getRect(text).top, lessThan(120), reason: 'the banner sits at the top');
+  final Container box = t.widget<Container>(find.ancestor(of: text, matching: find.byType(Container)).first);
+  expect((box.decoration! as BoxDecoration).color, ThemeConstants.successGreen);
+}
+
 Switch _switch(final WidgetTester t) =>
     t.widget<Switch>(find.descendant(of: find.byKey(const ValueKey<String>('sms_master_switch')), matching: find.byType(Switch)));
 
@@ -119,6 +130,8 @@ void main() {
     expect(api.puts.single, <String, dynamic>{'enabled': false, 'password': 'secret1', 'confirm': 'zima'});
     expect(_switch(t).value, isFalse);
     expect(find.textContaining('OFF: no text leaves this business'), findsOneWidget);
+    _expectGreenBannerAtTop(t, 'SMS are off');
+    await t.pump(const Duration(seconds: 4)); // the banner goes away by itself
   });
 
   testWidgets('cancelling changes nothing', (t) async {
@@ -205,5 +218,7 @@ void main() {
     expect(rowSwitch('b1').value, isFalse);
     expect(find.textContaining('SMS OFF (by the platform)'), findsOneWidget, reason: 'only masai mitumba bora is off');
     expect(rowSwitch('b2').value, isTrue, reason: 'every other business keeps sending');
+    _expectGreenBannerAtTop(t, 'masai mitumba bora: SMS are off');
+    await t.pump(const Duration(seconds: 4));
   });
 }

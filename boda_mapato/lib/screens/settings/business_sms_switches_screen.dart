@@ -116,12 +116,11 @@ class _BusinessSmsSwitchesScreenState extends State<BusinessSmsSwitchesScreen> {
           business['sms_sender'] = sms;
         }
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('$name: ${_loc.translate(enable ? 'sms_master_now_on' : 'sms_master_now_off')}'),
-      ));
+      // The app's own green banner at the top, like every other saved change.
+      ThemeConstants.showSuccessSnackBar(context, '$name: ${_loc.translate(enable ? 'sms_master_now_on' : 'sms_master_now_off')}');
     } on Exception catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(readableErrorMessage(e)), backgroundColor: Colors.red));
+        ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
       }
     } finally {
       if (mounted) {
