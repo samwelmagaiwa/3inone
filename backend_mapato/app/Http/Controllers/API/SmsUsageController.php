@@ -115,6 +115,32 @@ class SmsUsageController extends Controller
         return response()->json(['message' => 'Kikomo cha SMS kimehifadhiwa. / SMS limit saved.', 'data' => $this->row($fresh)]);
     }
 
+    #[OA\Get(path: '/admin/users/{id}/sms-controls', summary: 'Every SMS control of the business this person owns, in one answer (super admin only)', security: [['bearerAuth' => []]], tags: ['Admin / SMS'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))], responses: [new OA\Response(response: 200, description: 'Success'), new OA\Response(response: 404, description: 'Not a business owner')])]
+    public function byOwner(string $id): JsonResponse
+    {
+        $user = User::query()->withoutGlobalScopes()->findOrFail($id);
+        $business = Business::withoutAccountScope()->with('owner')->where('owner_id', (string) $user->id)->first();
+        if ($user->isSuperAdmin() || $business === null) {
+            return response()->json(['message' => 'Mtumiaji huyu si mmiliki wa biashara. / This person does not own a business.', 'code' => 'no_business'], 404);
+        }
+        $pausedBy = $business->sms_paused_by ? User::query()->withoutGlobalScopes()->find($business->sms_paused_by) : null;
+
+        // The switch, the counter and limit, the sender name and the texts of the last 3 days. The changes go to the existing
+        // endpoints with business_id: PUT /admin/businesses/{id}/sms-switch and PUT /admin/sms-usage/{id}/limit.
+        return response()->json(['data' => $this->row($business) + [
+            'switch' => [
+                'enabled' => !$business->smsPaused(),
+                'paused_at' => $business->sms_paused_at?->toIso8601String(),
+                'paused_by' => $pausedBy?->name,
+                'paused_by_platform' => $business->smsPaused() && (bool) ($business->sms_paused_by_platform ?? false),
+                'confirm_word' => BusinessSmsSwitchController::CONFIRM_WORD,
+            ],
+            'sender' => $business->smsSenderSummary(),
+            'log_days' => SmsQuota::LOG_DAYS,
+            'recent' => SmsQuota::recent($business, 100),
+        ]]);
+    }
+
     /** @return array<string, mixed> */
     private function row(Business $b): array
     {

@@ -4,6 +4,7 @@ import 'package:boda_mapato/screens/admin/users_control_screen.dart';
 import 'package:boda_mapato/services/api_service.dart';
 import 'package:boda_mapato/services/localization_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -76,11 +77,37 @@ class _Api extends ApiService {
             <String, dynamic>{'name': 'Cashier', 'role': 'sales_officer'},
           ],
           'tables': <String, dynamic>{'inventory_products': 12, 'inventory_sales': 40, 'sms_logs': 3},
-          'confirm_word': 'REMOVE',
+          'confirm_word': 'K7QX3M',
+        },
+      };
+    }
+    if (endpoint == '/admin/users/a1/sms-controls') {
+      return <String, dynamic>{
+        'data': <String, dynamic>{
+          'id': 'b1',
+          'name': 'masai mitumba bora',
+          'usage': <String, dynamic>{'used': 20, 'limit': 1000, 'remaining': 980, 'week_messages': 4, 'week_parts': 5},
+          'switch': <String, dynamic>{'enabled': smsOn, 'paused_by_platform': !smsOn, 'confirm_word': 'ZIMA'},
+          'sender': <String, dynamic>{'sender_id': 'MASAI', 'status': 'approved'},
+          'log_days': 3,
+          'recent': <Map<String, dynamic>>[
+            <String, dynamic>{'id': 1, 'to': '0743519104', 'message': 'Habari Happy', 'parts': 1, 'sent_at': '2026-11-19T10:00:00+03:00'},
+          ],
         },
       };
     }
     throw ApiException('offline');
+  }
+
+  bool smsOn = true;
+
+  @override
+  Future<Map<String, dynamic>> put(String endpoint, Map<String, dynamic> data) async {
+    calls.add('put:$endpoint');
+    lastBody = data;
+    if (endpoint.endsWith('/sms-switch')) smsOn = data['enabled'] == true;
+
+    return <String, dynamic>{'data': <String, dynamic>{}};
   }
 
   @override
@@ -112,7 +139,7 @@ Future<_Api> _open(WidgetTester t) async {
         ChangeNotifierProvider<AuthProvider>(create: (_) => _Auth()),
         ChangeNotifierProvider<LocalizationService>.value(value: LocalizationService.instance),
       ],
-      child: MaterialApp(home: UsersControlScreen(api: api)),
+      child: ScreenUtilInit(designSize: const Size(411, 900), builder: (_, __) => MaterialApp(home: UsersControlScreen(api: api))),
     ),
   );
   await t.pumpAndSettle();
@@ -288,15 +315,19 @@ void main() {
     expect(find.textContaining('2 user(s): Sammy, Cashier'), findsOneWidget);
     expect(find.textContaining('12 product(s)'), findsOneWidget);
     expect(find.textContaining('55 record(s) in 3 table(s)'), findsOneWidget);
+    expect(find.descendant(of: _k('uc_remove_code'), matching: find.text('K7QX3M')), findsOneWidget, reason: 'the code the server made up is shown');
 
     FilledButton yes() => t.widget<FilledButton>(_k('uc_remove_yes'));
     expect(yes().onPressed, isNull);
-    await t.enterText(_k('uc_remove_word'), 'remove');
+    await t.enterText(_k('uc_remove_word'), 'REMOVE');
     await t.enterText(_k('uc_remove_password'), 'superpass');
     await t.enterText(_k('uc_remove_reason'), 'Mteja ameacha huduma');
     await t.pump();
-    expect(yes().onPressed, isNull, reason: 'REMOVE must be typed in capital letters');
-    await t.enterText(_k('uc_remove_word'), 'REMOVE');
+    expect(yes().onPressed, isNull, reason: 'a fixed word no longer works: the generated code is needed');
+    await t.enterText(_k('uc_remove_word'), 'k7qx3m');
+    await t.pump();
+    expect(yes().onPressed, isNull, reason: 'the code is typed exactly');
+    await t.enterText(_k('uc_remove_word'), 'K7QX3M');
     await t.enterText(_k('uc_remove_reason'), 'no');
     await t.pump();
     expect(yes().onPressed, isNull, reason: 'a reason of a few words is needed');
@@ -307,8 +338,49 @@ void main() {
     await t.tap(_k('uc_remove_yes'));
     await t.pumpAndSettle();
     expect(api.calls, contains('post:/admin/users/a1/business-removal'));
-    expect(api.lastBody, <String, dynamic>{'confirm': 'REMOVE', 'password': 'superpass', 'reason': 'Mteja ameacha huduma'});
+    expect(api.lastBody, <String, dynamic>{'confirm': 'K7QX3M', 'password': 'superpass', 'reason': 'Mteja ameacha huduma'});
     expect(api.calls.where((String c) => c.startsWith('delete:')), isEmpty);
+    await _settleMessage(t);
+  });
+
+  testWidgets('SMS controls of a business admin: counter, switch off with ZIMA and password, limit', (WidgetTester t) async {
+    final _Api api = await _open(t);
+
+    await _openActions(t, 'u1');
+    expect(_k('uc_act_sms'), findsNothing, reason: 'staff have no business of their own');
+    await t.tapAt(const Offset(10, 10));
+    await t.pumpAndSettle();
+
+    await _openActions(t, 'a1');
+    await t.tap(_k('uc_act_sms'));
+    await t.pumpAndSettle();
+
+    expect(find.text('20/1000'), findsOneWidget);
+    expect(find.text('ON: its texts go out'), findsOneWidget);
+    expect(find.text('Sender name: MASAI (approved)'), findsOneWidget);
+    expect(find.text('Habari Happy'), findsOneWidget);
+
+    await t.tap(find.descendant(of: find.byKey(const ValueKey<String>('sms_controls_switch')), matching: find.byType(Switch)));
+    await t.pumpAndSettle();
+    expect(find.textContaining('Nothing masai mitumba bora sends will go out'), findsOneWidget);
+    await t.enterText(find.byKey(const ValueKey<String>('sms_master_word')), 'ZIMA');
+    await t.enterText(find.byKey(const ValueKey<String>('sms_master_password')), 'superpass');
+    await t.pump();
+    await t.tap(find.byKey(const ValueKey<String>('sms_master_confirm')));
+    await t.pumpAndSettle();
+    expect(api.calls, contains('put:/admin/businesses/b1/sms-switch'));
+    expect(api.lastBody, <String, dynamic>{'enabled': false, 'password': 'superpass', 'confirm': 'ZIMA'});
+    expect(find.text('OFF by the platform: the owner cannot switch it on'), findsOneWidget);
+    await _settleMessage(t);
+
+    await t.enterText(find.byKey(const ValueKey<String>('sms_controls_limit_field')), '5000');
+    await t.tap(find.byKey(const ValueKey<String>('sms_controls_reset')));
+    await t.pump();
+    await t.ensureVisible(find.byKey(const ValueKey<String>('sms_controls_limit_save')));
+    await t.tap(find.byKey(const ValueKey<String>('sms_controls_limit_save')));
+    await t.pumpAndSettle();
+    expect(api.calls, contains('put:/admin/sms-usage/b1/limit'));
+    expect(api.lastBody, <String, dynamic>{'sms_limit': 5000, 'reset_used': true});
     await _settleMessage(t);
   });
 

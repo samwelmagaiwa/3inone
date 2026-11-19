@@ -9,6 +9,7 @@ import '../../widgets/scrolling_chip_row.dart';
 import '../../modules/inventory/screens/widgets/joined_sections.dart'
     show SectionGlowDivider;
 import '../../utils/server_message.dart';
+import '../settings/business_sms_controls_screen.dart';
 import '../settings/user_permissions_management_screen.dart';
 
 /// The super admin's control of every account on the platform: find anyone, create, edit, change role and services, set access
@@ -699,6 +700,16 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
                       : (_sw ? 'Washa akaunti' : 'Switch on'),
                   enabled: !(me && active)),
               const SectionGlowDivider(lift: false),
+              // Every SMS control of this owner's business on one page: counter, limit, switch, sender name, recent texts.
+              if (_Roles.isOwner(role)) ...<Widget>[
+                item('sms', Icons.sms_rounded,
+                    (_sw ? 'Udhibiti wa SMS' : 'SMS controls'),
+                    color: Colors.lightBlueAccent,
+                    hint: (_sw
+                        ? 'Kihesabu, kikomo, kuzima au kuwasha SMS za biashara hii'
+                        : 'Counter, limit, switch this business\'s SMS off or on')),
+                const SectionGlowDivider(lift: false),
+              ],
               // The owner of a business is removed WITH the business (its people and its data), never alone.
               if (_Roles.isOwner(role))
                 item('remove_business', Icons.domain_disabled_rounded,
@@ -738,6 +749,10 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
         return _delete(u);
       case 'remove_business':
         return _removeBusiness(u);
+      case 'sms':
+        await Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => BusinessSmsControlsScreen(userId: _id(u), title: '${u['name']}', api: _api)));
+        return;
     }
   }
 
@@ -1270,13 +1285,32 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
                     child: Text('•  $l', style: const TextStyle(color: Colors.white, fontSize: 13)),
                   ),
                 const SizedBox(height: 14),
+                // A code the server made up for this removal (new each time the warning opens, good for 15 minutes).
+                Text(_sw ? 'Andika msimbo huu kuthibitisha:' : 'Type this code to confirm:', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                const SizedBox(height: 6),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: ThemeConstants.errorRed.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: ThemeConstants.errorRed.withValues(alpha: 0.6)),
+                  ),
+                  child: SelectableText(
+                    word,
+                    key: const Key('uc_remove_code'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 6),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 TextField(
                   key: const Key('uc_remove_word'),
                   controller: typed,
                   style: white,
                   cursorColor: Colors.white,
                   textCapitalization: TextCapitalization.characters,
-                  decoration: _field(_sw ? 'Andika $word' : 'Type $word', icon: Icons.keyboard_rounded),
+                  decoration: _field(_sw ? 'Andika msimbo' : 'Type the code', icon: Icons.keyboard_rounded),
                   onChanged: (final String _) => setLocal(() {}),
                 ),
                 const SizedBox(height: 10),

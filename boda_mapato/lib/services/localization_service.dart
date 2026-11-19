@@ -691,6 +691,16 @@ class AppLocalizations {
       'sms_limit_saved': 'SMS limit saved',
       'sms_limit_help': 'At 90% the owner and you get an SMS; at the limit its texts stop and you are both told. The owner is texted the new figures when you save.',
       'sms_limit_invalid': 'Enter a whole number, or leave it empty for no limit.',
+      'sms_controls_title': 'SMS controls',
+      'sms_controls_switch': 'Texts of this business',
+      'sms_controls_on': 'ON: its texts go out',
+      'sms_controls_off_platform': 'OFF by the platform: the owner cannot switch it on',
+      'sms_controls_off_owner': 'OFF by the owner',
+      'sms_controls_sender': 'Sender name: {0} ({1})',
+      'sms_controls_sender_none': 'Sender name: none, its texts go under the platform name',
+      'sms_sender_status_approved': 'approved',
+      'sms_sender_status_pending': 'waiting',
+      'sms_sender_status_rejected': 'rejected',
       'system_updates': 'System Updates',
 
       // Security Settings
@@ -3527,6 +3537,16 @@ class AppLocalizations {
       'sms_limit_saved': 'Kikomo cha SMS kimehifadhiwa',
       'sms_limit_help': 'Zikifika 90% mmiliki na wewe mnapata SMS; zikifika kikomo, SMS zake zinasimama na mnaarifiwa. Ukihifadhi, mmiliki anatumiwa SMS ya idadi mpya.',
       'sms_limit_invalid': 'Andika namba kamili, au acha wazi kwa bila kikomo.',
+      'sms_controls_title': 'Udhibiti wa SMS',
+      'sms_controls_switch': 'SMS za biashara hii',
+      'sms_controls_on': 'IMEWASHWA: SMS zake zinatumwa',
+      'sms_controls_off_platform': 'IMEZIMWA na mfumo: mmiliki hawezi kuiwasha',
+      'sms_controls_off_owner': 'IMEZIMWA na mmiliki',
+      'sms_controls_sender': 'Jina la mtumaji: {0} ({1})',
+      'sms_controls_sender_none': 'Jina la mtumaji: hakuna, SMS zake zinatumwa kwa jina la mfumo',
+      'sms_sender_status_approved': 'imeidhinishwa',
+      'sms_sender_status_pending': 'inasubiri',
+      'sms_sender_status_rejected': 'imekataliwa',
       'system_updates': 'Masasisho ya Mfumo',
 
       // Security Settings

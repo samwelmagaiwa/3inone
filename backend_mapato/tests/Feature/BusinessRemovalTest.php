@@ -92,14 +92,15 @@ class BusinessRemovalTest extends TestCase
         $this->assertSame(2, $this->footprint($masai['owner'])['products'], 'one live, one in the Trash');
 
         $plan = $this->api($admin, 'GET', "/api/admin/users/{$masai['owner']->id}/business-removal")->assertOk()
-            ->assertJsonPath('data.business.name', 'masai mitumba bora')->assertJsonPath('data.confirm_word', 'REMOVE')->json('data');
+            ->assertJsonPath('data.business.name', 'masai mitumba bora')->json('data');
+        $this->assertMatchesRegularExpression('/^[A-HJ-NP-Z2-9]{6}$/', $plan['confirm_word'], 'a code made up for this removal');
         $this->assertEqualsCanonicalizing(['masai mitumba bora Owner', 'masai mitumba bora Cashier'], array_column($plan['users'], 'name'));
         $this->assertSame(2, $plan['tables']['inventory_products']);
         $this->assertSame(2, $plan['tables']['sms_logs'], 'the sale receipt to Happy and the text sent by hand');
         $this->assertSame(2, $this->footprint($masai['owner'])['products'], 'looking changes nothing');
 
         $res = $this->api($admin, 'POST', "/api/admin/users/{$masai['owner']->id}/business-removal", [
-            'confirm' => 'REMOVE', 'password' => 'password', 'reason' => 'Mteja ameacha huduma',
+            'confirm' => $plan['confirm_word'], 'password' => 'password', 'reason' => 'Mteja ameacha huduma',
         ])->assertOk()->assertJsonPath('data.users_removed', 2)->assertJsonPath('data.reason', 'Mteja ameacha huduma');
 
         $this->assertSame(['products' => 0, 'customers' => 0, 'sales' => 0, 'properties' => 0, 'users' => 0, 'business' => 0], $this->footprint($masai['owner']));
@@ -120,17 +121,32 @@ class BusinessRemovalTest extends TestCase
         $this->assertTrue(DB::table('inventory_audit_log')->where('action', 'business_removed')->where('summary', 'like', '%Mteja ameacha huduma%')->exists());
     }
 
-    public function test_it_needs_the_word_REMOVE_the_super_admin_password_and_a_reason(): void
+    public function test_it_needs_the_generated_code_the_super_admin_password_and_a_reason(): void
     {
         $admin = $this->superAdmin();
         $masai = $this->shop('masai mitumba bora');
         $url = "/api/admin/users/{$masai['owner']->id}/business-removal";
         $before = $this->footprint($masai['owner']);
+        // Many tries in a row here; the route allows 5 a minute (that limit is the route's, not what this test is about).
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
 
-        $this->api($admin, 'POST', $url, ['confirm' => 'remove', 'password' => 'password', 'reason' => 'Mteja ameacha'])->assertStatus(422)->assertJsonValidationErrors('confirm');
-        $this->api($admin, 'POST', $url, ['confirm' => 'REMOVE', 'password' => 'wrong', 'reason' => 'Mteja ameacha'])->assertStatus(422)->assertJsonValidationErrors('password');
-        $this->api($admin, 'POST', $url, ['confirm' => 'REMOVE', 'password' => 'password'])->assertStatus(422)->assertJsonValidationErrors('reason');
-        $this->api($admin, 'POST', $url, ['confirm' => 'REMOVE', 'password' => 'password', 'reason' => 'no'])->assertStatus(422)->assertJsonValidationErrors('reason');
+        // No warning opened yet: there is no code to type.
+        $this->api($admin, 'POST', $url, ['confirm' => 'REMOVE', 'password' => 'password', 'reason' => 'Mteja ameacha'])->assertStatus(422)->assertJsonValidationErrors('confirm');
+
+        $first = $this->api($admin, 'GET', $url)->assertOk()->json('data.confirm_word');
+        $code = $this->api($admin, 'GET', $url)->assertOk()->json('data.confirm_word');
+        if ($first !== $code) {
+            $this->api($admin, 'POST', $url, ['confirm' => $first, 'password' => 'password', 'reason' => 'Mteja ameacha'])->assertStatus(422)->assertJsonValidationErrors('confirm');
+        }
+        $this->api($admin, 'POST', $url, ['confirm' => strtolower($code), 'password' => 'password', 'reason' => 'Mteja ameacha'])->assertStatus(422)->assertJsonValidationErrors('confirm');
+        $this->api($admin, 'POST', $url, ['confirm' => 'REMOVE', 'password' => 'password', 'reason' => 'Mteja ameacha'])->assertStatus(422)->assertJsonValidationErrors('confirm');
+        $this->api($admin, 'POST', $url, ['confirm' => $code, 'password' => 'wrong', 'reason' => 'Mteja ameacha'])->assertStatus(422)->assertJsonValidationErrors('password');
+        $this->api($admin, 'POST', $url, ['confirm' => $code, 'password' => 'password'])->assertStatus(422)->assertJsonValidationErrors('reason');
+        $this->api($admin, 'POST', $url, ['confirm' => $code, 'password' => 'password', 'reason' => 'no'])->assertStatus(422)->assertJsonValidationErrors('reason');
+
+        // Another super admin's code does not work for this one.
+        $other = User::factory()->create(['role' => 'super_admin', 'is_active' => true]);
+        $this->api($other, 'POST', $url, ['confirm' => $code, 'password' => 'password', 'reason' => 'Mteja ameacha'])->assertStatus(422)->assertJsonValidationErrors('confirm');
 
         $this->assertSame($before, $this->footprint($masai['owner']), 'nothing removed');
         $this->assertSame([], Storage::disk('local')->allFiles('backups'));
@@ -159,13 +175,36 @@ class BusinessRemovalTest extends TestCase
         $this->assertDatabaseMissing('users', ['id' => $masai['staff']->id]);
     }
 
+    public function test_the_super_admin_reads_every_sms_control_of_a_business_admin_in_one_place(): void
+    {
+        $admin = $this->superAdmin();
+        $masai = $this->shop('masai mitumba bora');
+        \App\Support\SmsQuota::setLimit($masai['business']->fresh(), 1000, false);
+
+        $this->api($admin, 'GET', "/api/admin/users/{$masai['owner']->id}/sms-controls")->assertOk()
+            ->assertJsonPath('data.id', $masai['business']->id)
+            ->assertJsonPath('data.name', 'masai mitumba bora')
+            ->assertJsonPath('data.switch.enabled', true)
+            ->assertJsonPath('data.switch.confirm_word', 'ZIMA')
+            ->assertJsonPath('data.usage.limit', 1000)
+            ->assertJsonPath('data.usage.used', 2)
+            ->assertJsonPath('data.sender.status', 'none')
+            ->assertJsonPath('data.log_days', 3)
+            ->assertJsonCount(2, 'data.recent');
+        $this->api($admin, 'GET', "/api/admin/users/{$masai['staff']->id}/sms-controls")->assertNotFound();
+        $this->api($masai['owner'], 'GET', "/api/admin/users/{$masai['owner']->id}/sms-controls")->assertForbidden();
+    }
+
     public function test_an_applicant_never_approved_is_removed_with_its_empty_business(): void
     {
         $admin = $this->superAdmin();
         $applicant = User::factory()->create(['name' => 'samm54', 'role' => 'admin', 'is_active' => false, 'is_applicant' => true]);
         Business::ensureFor($applicant);
 
-        $this->api($admin, 'POST', "/api/admin/users/{$applicant->id}/business-removal", ['confirm' => 'REMOVE', 'password' => 'password', 'reason' => 'Ombi la majaribio'])->assertOk();
+        $code = $this->api($admin, 'GET', "/api/admin/users/{$applicant->id}/business-removal")->assertOk()->json('data.confirm_word');
+        $this->api($admin, 'POST', "/api/admin/users/{$applicant->id}/business-removal", ['confirm' => $code, 'password' => 'password', 'reason' => 'Ombi la majaribio'])->assertOk();
+        // The code is used once.
+        $this->api($admin, 'GET', "/api/admin/users/{$applicant->id}/business-removal")->assertNotFound();
 
         $this->assertDatabaseMissing('users', ['id' => $applicant->id]);
         $this->assertDatabaseMissing('businesses', ['owner_id' => $applicant->id]);

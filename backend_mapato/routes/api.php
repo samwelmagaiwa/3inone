@@ -204,6 +204,8 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/plan-pric
 Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/users')->group(function () {
     Route::get('{id}/business-removal', [\App\Http\Controllers\API\BusinessRemovalController::class, 'show']);
     Route::post('{id}/business-removal', [\App\Http\Controllers\API\BusinessRemovalController::class, 'destroy'])->middleware('throttle:5,1');
+    // Every SMS control of the business this person owns (switch, counter and limit, sender name, recent texts), for Users & access.
+    Route::get('{id}/sms-controls', [\App\Http\Controllers\API\SmsUsageController::class, 'byOwner']);
 });
 
 // SMS COUNTERS -- super admin only: how many SMS each business used against the limit set for it, and its texts of the last 3 days.
