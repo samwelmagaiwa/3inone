@@ -127,6 +127,70 @@ class BusinessSmsSwitchTest extends TestCase
         $this->assertCount(0, $this->sms->sent);
     }
 
+    // ------------------------------------------------------------------ the super admin, for one business
+
+    private function superAdmin(): User
+    {
+        return User::factory()->create(['name' => 'Platform Admin', 'role' => 'super_admin', 'is_active' => true]);
+    }
+
+    public function test_the_super_admin_switches_off_one_business_and_only_that_one_and_the_owner_cannot_undo_it(): void
+    {
+        $admin = $this->superAdmin();
+        $masai = $this->shop('masai mitumba bora');
+        $other = $this->shop('DUKA LA MAMA ASHA');
+        $masaiId = Business::forOwnerId($masai->id)->id;
+
+        $this->api($admin, 'PUT', "/api/admin/businesses/{$masaiId}/sms-switch", ['enabled' => false, 'password' => 'password', 'confirm' => 'ZIMA'])
+            ->assertOk()->assertJsonPath('data.enabled', false)->assertJsonPath('data.paused_by_platform', true)->assertJsonPath('data.business_name', 'masai mitumba bora');
+
+        $this->sellTo($masai, 'Happy', '0711000001');
+        $this->sellTo($other, 'Juma', '0711000002');
+        $this->assertCount(0, $this->sms->to('0711000001'), 'the business the super admin picked sends nothing');
+        $this->assertCount(1, $this->sms->to('0711000002'), 'every other business still sends');
+
+        // The owner sees it is off by the platform and cannot switch it back on.
+        $this->api($masai, 'GET', '/api/business/sms-switch')->assertOk()
+            ->assertJsonPath('data.enabled', false)->assertJsonPath('data.paused_by_platform', true)->assertJsonPath('data.can_change', false);
+        $this->api($masai, 'PUT', '/api/business/sms-switch', ['enabled' => true, 'password' => 'password'])
+            ->assertForbidden()->assertJsonPath('code', 'paused_by_platform');
+        $this->assertTrue(Business::forOwnerId($masai->id)->smsPaused());
+
+        // Only the super admin brings them back.
+        $this->api($admin, 'PUT', "/api/admin/businesses/{$masaiId}/sms-switch", ['enabled' => true, 'password' => 'password'])
+            ->assertOk()->assertJsonPath('data.enabled', true)->assertJsonPath('data.paused_by_platform', false);
+        $this->sellTo($masai, 'Neema', '0711000003');
+        $this->assertCount(1, $this->sms->to('0711000003'));
+        $this->api($masai, 'GET', '/api/business/sms-switch')->assertOk()->assertJsonPath('data.can_change', true);
+    }
+
+    public function test_the_super_admin_needs_their_password_and_the_word_and_nobody_else_reaches_the_admin_switch(): void
+    {
+        $admin = $this->superAdmin();
+        $masai = $this->shop('masai mitumba bora');
+        $id = Business::forOwnerId($masai->id)->id;
+
+        $this->api($admin, 'PUT', "/api/admin/businesses/{$id}/sms-switch", ['enabled' => false, 'password' => 'wrong', 'confirm' => 'ZIMA'])->assertStatus(422);
+        $this->api($admin, 'PUT', "/api/admin/businesses/{$id}/sms-switch", ['enabled' => false, 'password' => 'password'])->assertStatus(422)->assertJsonValidationErrors('confirm');
+        $this->api($masai, 'PUT', "/api/admin/businesses/{$id}/sms-switch", ['enabled' => false, 'password' => 'password', 'confirm' => 'ZIMA'])->assertForbidden();
+        $this->assertFalse(Business::forOwnerId($masai->id)->smsPaused());
+
+        $this->api($admin, 'GET', "/api/admin/businesses/{$id}/sms-switch")->assertOk()->assertJsonPath('data.enabled', true);
+        $this->api($admin, 'GET', '/api/admin/businesses?q=masai')->assertOk()->assertJsonPath('data.0.sms_sender.paused', false);
+    }
+
+    public function test_a_business_the_owner_switched_off_can_be_taken_over_by_the_super_admin(): void
+    {
+        $admin = $this->superAdmin();
+        $masai = $this->shop('masai mitumba bora');
+        $id = Business::forOwnerId($masai->id)->id;
+
+        $this->switchOff($masai);
+        $this->api($admin, 'GET', "/api/admin/businesses/{$id}/sms-switch")->assertOk()->assertJsonPath('data.paused_by', $masai->name)->assertJsonPath('data.paused_by_platform', false);
+        $this->api($admin, 'PUT', "/api/admin/businesses/{$id}/sms-switch", ['enabled' => false, 'password' => 'password', 'confirm' => 'zima'])->assertOk()->assertJsonPath('data.paused_by_platform', true);
+        $this->api($masai, 'PUT', '/api/business/sms-switch', ['enabled' => true, 'password' => 'password'])->assertForbidden();
+    }
+
     public function test_a_text_given_no_business_still_cannot_slip_out_for_a_paused_one_while_platform_texts_go(): void
     {
         $owner = $this->shop('masai mitumba bora');

@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/theme_constants.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../services/localization_service.dart';
+import '../../utils/server_message.dart';
+import 'business_sms_switches_screen.dart';
+import 'sms_confirm_dialog.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  NotificationsScreen({super.key, final ApiService? api}) : api = api ?? ApiService();
+  NotificationsScreen({super.key, final ApiService? api, this.superAdmin}) : api = api ?? ApiService();
 
   /// Where the SMS master switch is read and saved (a fake in tests).
   final ApiService api;
+
+  /// Whether the person is the super admin (then the row opens the list of businesses). Null = read it from the signed-in user.
+  final bool? superAdmin;
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -28,11 +36,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Map<String, dynamic>? _sms;
   bool _smsSaving = false;
 
+  /// The super admin belongs to no business: their row opens the list of businesses instead.
+  bool _superAdmin = false;
+
   @override
   void initState() {
     super.initState();
+    _superAdmin = widget.superAdmin ?? _signedInIsSuperAdmin();
     _loadSettings();
-    _loadSmsSwitch();
+    if (!_superAdmin) {
+      _loadSmsSwitch();
+    }
+  }
+
+  bool _signedInIsSuperAdmin() {
+    try {
+      return Provider.of<AuthProvider>(context, listen: false).user?.isSuperAdmin ?? false;
+    } on Object {
+      return false;
+    }
   }
 
   Future<void> _loadSmsSwitch() async {
@@ -48,10 +70,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   /// stray tap. The server checks both again.
   Future<void> _changeSms(final bool enable) async {
     final String word = (_sms?['confirm_word'] ?? '').toString();
-    final _SmsConfirm? answer = await showDialog<_SmsConfirm>(
+    final SmsConfirm? answer = await showDialog<SmsConfirm>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => _SmsConfirmDialog(enable: enable, word: word),
+      builder: (_) => SmsConfirmDialog(
+        enable: enable,
+        word: word,
+        title: _localizationService.translate(enable ? 'sms_master_on_title' : 'sms_master_off_title'),
+        body: _localizationService.translate(enable ? 'sms_master_on_body' : 'sms_master_off_body'),
+      ),
     );
     if (answer == null || !mounted) {
       return;
@@ -77,7 +104,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ));
     } on Exception catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(readableErrorMessage(e)), backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) {
@@ -209,6 +236,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             const Divider(color: Colors.white24, height: 1),
                             _buildSmsMasterSwitch(_sms!),
                           ],
+                          // The super admin picks a business and switches ITS texts off or on.
+                          if (_superAdmin) ...<Widget>[
+                            const Divider(color: Colors.white24, height: 1),
+                            _buildSuperAdminSmsRow(),
+                          ],
                           const Divider(color: Colors.white24, height: 1),
                           _buildNotificationSwitch(
                             Icons.schedule,
@@ -270,11 +302,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final bool canChange = sms['can_change'] == true;
     final String since = (sms['paused_at'] ?? '').toString();
     final String by = (sms['paused_by'] ?? '').toString();
+    final bool byPlatform = sms['paused_by_platform'] == true;
     final List<String> lines = <String>[
       if (on) _localizationService.translate('sms_master_on_subtitle')
       else _localizationService.translateWith('sms_master_off_subtitle', <Object?>[since.length >= 10 ? since.substring(0, 10) : since]),
-      if (!on && by.isNotEmpty) _localizationService.translateWith('sms_master_off_by', <Object?>[by]),
-      if (!canChange) _localizationService.translate('sms_master_owner_only'),
+      if (!on && byPlatform) _localizationService.translate('sms_master_off_platform')
+      else if (!on && by.isNotEmpty) _localizationService.translateWith('sms_master_off_by', <Object?>[by]),
+      if (!canChange && !byPlatform) _localizationService.translate('sms_master_owner_only'),
     ];
 
     return ListTile(
@@ -300,6 +334,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               inactiveThumbColor: ThemeConstants.textSecondary,
               inactiveTrackColor: Colors.white24,
             ),
+    );
+  }
+
+  Widget _buildSuperAdminSmsRow() {
+    return ListTile(
+      key: const ValueKey<String>('sms_admin_row'),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      leading: const Icon(Icons.sms, color: ThemeConstants.textSecondary, size: 24),
+      title: Text(
+        _localizationService.translate('sms_admin_tile_title'),
+        style: const TextStyle(color: ThemeConstants.textPrimary, fontSize: 16),
+      ),
+      subtitle: Text(
+        _localizationService.translate('sms_admin_tile_subtitle'),
+        style: const TextStyle(color: ThemeConstants.textSecondary, fontSize: 12),
+      ),
+      trailing: const Icon(Icons.chevron_right, color: ThemeConstants.textSecondary),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => BusinessSmsSwitchesScreen(api: widget.api)),
+      ),
     );
   }
 
@@ -339,86 +393,3 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 }
 
-/// What the owner typed to confirm a change of the SMS master switch.
-class _SmsConfirm {
-  const _SmsConfirm(this.password, this.word);
-  final String password;
-  final String word;
-}
-
-/// Asks for the password, and (to switch OFF) the confirm word typed exactly; the button stays grey until both are there.
-class _SmsConfirmDialog extends StatefulWidget {
-  const _SmsConfirmDialog({required this.enable, required this.word});
-
-  final bool enable;
-  final String word;
-
-  @override
-  State<_SmsConfirmDialog> createState() => _SmsConfirmDialogState();
-}
-
-class _SmsConfirmDialogState extends State<_SmsConfirmDialog> {
-  final TextEditingController _password = TextEditingController();
-  final TextEditingController _word = TextEditingController();
-  bool _hide = true;
-
-  @override
-  void dispose() {
-    _password.dispose();
-    _word.dispose();
-    super.dispose();
-  }
-
-  bool get _ready =>
-      _password.text.isNotEmpty && (widget.enable || widget.word.isEmpty || _word.text.trim().toUpperCase() == widget.word.toUpperCase());
-
-  @override
-  Widget build(final BuildContext context) {
-    final LocalizationService loc = LocalizationService.instance;
-    return AlertDialog(
-      title: Row(children: <Widget>[
-        Icon(widget.enable ? Icons.sms : Icons.warning_amber_rounded, color: widget.enable ? Colors.green : Colors.red),
-        const SizedBox(width: 8),
-        Expanded(child: Text(loc.translate(widget.enable ? 'sms_master_on_title' : 'sms_master_off_title'))),
-      ]),
-      content: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-          Text(loc.translate(widget.enable ? 'sms_master_on_body' : 'sms_master_off_body')),
-          const SizedBox(height: 16),
-          if (!widget.enable && widget.word.isNotEmpty) ...<Widget>[
-            TextField(
-              key: const ValueKey<String>('sms_master_word'),
-              controller: _word,
-              textCapitalization: TextCapitalization.characters,
-              decoration: InputDecoration(labelText: loc.translateWith('sms_master_type_word', <Object?>[widget.word])),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 8),
-          ],
-          TextField(
-            key: const ValueKey<String>('sms_master_password'),
-            controller: _password,
-            obscureText: _hide,
-            decoration: InputDecoration(
-              labelText: loc.translate('sms_master_password'),
-              suffixIcon: IconButton(
-                icon: Icon(_hide ? Icons.visibility : Icons.visibility_off),
-                onPressed: () => setState(() => _hide = !_hide),
-              ),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-        ]),
-      ),
-      actions: <Widget>[
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(loc.translate('cancel'))),
-        FilledButton(
-          key: const ValueKey<String>('sms_master_confirm'),
-          style: FilledButton.styleFrom(backgroundColor: widget.enable ? Colors.green : Colors.red),
-          onPressed: _ready ? () => Navigator.of(context).pop(_SmsConfirm(_password.text, _word.text.trim())) : null,
-          child: Text(loc.translate(widget.enable ? 'sms_master_switch_on' : 'sms_master_switch_off')),
-        ),
-      ],
-    );
-  }
-}

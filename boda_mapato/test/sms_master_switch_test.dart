@@ -8,9 +8,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Stands in for the server's /business/sms-switch.
 class _Api extends ApiService {
-  _Api({this.canChange = true, this.enabled = true, this.hasBusiness = true});
+  _Api({this.canChange = true, this.enabled = true, this.hasBusiness = true, this.byPlatform = false});
 
   final bool canChange;
+  final bool byPlatform;
+  final List<String> putUrls = <String>[];
+
+  /// What the super admin's list shows: two businesses, both sending.
+  final List<Map<String, dynamic>> businesses = <Map<String, dynamic>>[
+    <String, dynamic>{'id': 'b1', 'name': 'masai mitumba bora', 'owner': <String, dynamic>{'name': 'Julius', 'email': 'owner1@example.test'}, 'sms_sender': <String, dynamic>{'paused': false}},
+    <String, dynamic>{'id': 'b2', 'name': 'DUKA LA MAMA ASHA', 'owner': <String, dynamic>{'name': 'Asha', 'email': 'owner2@example.test'}, 'sms_sender': <String, dynamic>{'paused': false}},
+  ];
   bool enabled;
   final bool hasBusiness;
   final List<Map<String, dynamic>> puts = <Map<String, dynamic>>[];
@@ -20,8 +28,13 @@ class _Api extends ApiService {
         'paused_at': enabled ? null : '2026-11-19T10:00:00+00:00',
         'paused_by': enabled ? null : 'Julius',
         'can_change': canChange,
+        'paused_by_platform': !enabled && byPlatform,
         'confirm_word': 'ZIMA',
       };
+
+  @override
+  Future<Map<String, dynamic>> get(final String endpoint, {final bool requireAuth = true, final Map<String, dynamic>? queryParams}) async =>
+      <String, dynamic>{'data': endpoint == '/admin/businesses' ? businesses : <dynamic>[]};
 
   @override
   Future<Map<String, dynamic>?> getOrNull(final String endpoint, {final bool requireAuth = true}) async =>
@@ -30,12 +43,17 @@ class _Api extends ApiService {
   @override
   Future<Map<String, dynamic>> put(final String endpoint, final Map<String, dynamic> data) async {
     puts.add(data);
+    putUrls.add(endpoint);
+    if (endpoint.startsWith('/admin/businesses/')) {
+      final bool on = data['enabled'] == true;
+      return <String, dynamic>{'data': <String, dynamic>{'enabled': on, 'paused_at': on ? null : '2026-11-19T10:00:00+00:00', 'paused_by_platform': !on}};
+    }
     enabled = data['enabled'] == true;
     return <String, dynamic>{'data': _data};
   }
 }
 
-Future<void> _open(final WidgetTester t, final _Api api, {final String lang = 'en'}) async {
+Future<void> _open(final WidgetTester t, final _Api api, {final String lang = 'en', final bool superAdmin = false}) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   await LocalizationService.instance.changeLanguage(lang);
   t.view.physicalSize = const Size(411, 1400);
@@ -44,7 +62,7 @@ Future<void> _open(final WidgetTester t, final _Api api, {final String lang = 'e
   await t.pumpWidget(ScreenUtilInit(
     designSize: const Size(411, 1400),
     minTextAdapt: true,
-    builder: (_, __) => MaterialApp(home: NotificationsScreen(api: api)),
+    builder: (_, __) => MaterialApp(home: NotificationsScreen(api: api, superAdmin: superAdmin)),
   ));
   await t.pumpAndSettle();
 }
@@ -130,5 +148,54 @@ void main() {
     await t.pumpAndSettle();
     expect(find.text('Zima SMS zote?'), findsOneWidget);
     expect(find.text('Andika ZIMA kuthibitisha'), findsOneWidget);
+  });
+
+  testWidgets('an owner whose texts the platform switched off is told so and cannot switch them on', (t) async {
+    await _open(t, _Api(canChange: false, enabled: false, byPlatform: true));
+
+    expect(_switch(t).onChanged, isNull);
+    expect(find.textContaining('Switched off by the platform administrator'), findsOneWidget);
+    expect(find.textContaining('Only the business owner'), findsNothing);
+  });
+
+  testWidgets('the super admin picks one business and switches ITS texts off; the others stay on', (t) async {
+    final _Api api = _Api(hasBusiness: false);
+    await _open(t, api, superAdmin: true);
+
+    // Right below Payment Alerts, a row that opens the list of businesses (no switch of their own: they own no business).
+    expect(find.byKey(const ValueKey<String>('sms_master_switch')), findsNothing);
+    final double payment = t.getRect(find.text('Payment Alerts')).top;
+    final double row = t.getRect(find.text('SMS of a business')).top;
+    expect(row, greaterThan(payment));
+    expect(row, lessThan(t.getRect(find.text('Debt Reminders')).top));
+
+    await t.tap(find.text('SMS of a business'));
+    await t.pumpAndSettle();
+    expect(find.text('SMS per business'), findsOneWidget);
+    expect(find.text('masai mitumba bora'), findsOneWidget);
+    expect(find.text('DUKA LA MAMA ASHA'), findsOneWidget);
+
+    Switch rowSwitch(final String id) =>
+        t.widget<Switch>(find.descendant(of: find.byKey(ValueKey<String>('sms_admin_business_$id')), matching: find.byType(Switch)));
+
+    await t.tap(find.descendant(of: find.byKey(const ValueKey<String>('sms_admin_business_b1')), matching: find.byType(Switch)));
+    await t.pumpAndSettle();
+    expect(find.text('Switch off all SMS?'), findsOneWidget);
+    expect(find.textContaining('Nothing masai mitumba bora sends will go out'), findsOneWidget);
+
+    FilledButton button() => t.widget<FilledButton>(find.byKey(const ValueKey<String>('sms_master_confirm')));
+    await t.enterText(find.byKey(const ValueKey<String>('sms_master_password')), 'adminpass');
+    await t.pump();
+    expect(button().onPressed, isNull, reason: 'the word ZIMA is still missing');
+    await t.enterText(find.byKey(const ValueKey<String>('sms_master_word')), 'ZIMA');
+    await t.pump();
+    await t.tap(find.byKey(const ValueKey<String>('sms_master_confirm')));
+    await t.pumpAndSettle();
+
+    expect(api.putUrls.single, '/admin/businesses/b1/sms-switch');
+    expect(api.puts.single, <String, dynamic>{'enabled': false, 'password': 'adminpass', 'confirm': 'ZIMA'});
+    expect(rowSwitch('b1').value, isFalse);
+    expect(find.textContaining('SMS OFF (by the platform)'), findsOneWidget, reason: 'only masai mitumba bora is off');
+    expect(rowSwitch('b2').value, isTrue, reason: 'every other business keeps sending');
   });
 }

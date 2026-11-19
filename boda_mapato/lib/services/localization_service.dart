@@ -659,6 +659,16 @@ class AppLocalizations {
       'sms_master_switch_on': 'Switch on',
       'sms_master_now_off': 'SMS are off',
       'sms_master_now_on': 'SMS are on',
+      'sms_master_off_platform': 'Switched off by the platform administrator. Contact them to switch it on.',
+      'sms_admin_tile_title': 'SMS of a business',
+      'sms_admin_tile_subtitle': 'Pick a business to switch its texts off or on',
+      'sms_admin_screen_title': 'SMS per business',
+      'sms_admin_search': 'Search business, owner, email, phone',
+      'sms_admin_off_body': 'Nothing {0} sends will go out: receipts, reminders, summaries, campaigns, salon and rent texts. Other businesses are not touched. The owner cannot switch them back on; only a super admin can.',
+      'sms_admin_on_body': 'Texts from {0} will go out again, with the settings it had.',
+      'sms_admin_off_platform': 'SMS OFF (by the platform)',
+      'sms_admin_off_owner': 'SMS OFF (by the owner)',
+      'sms_admin_empty': 'No business found',
       'system_updates': 'System Updates',
 
       // Security Settings
@@ -3463,6 +3473,16 @@ class AppLocalizations {
       'sms_master_switch_on': 'Washa',
       'sms_master_now_off': 'SMS zimezimwa',
       'sms_master_now_on': 'SMS zimewashwa',
+      'sms_master_off_platform': 'Imezimwa na msimamizi wa mfumo. Wasiliana naye ili iwashwe.',
+      'sms_admin_tile_title': 'SMS za biashara',
+      'sms_admin_tile_subtitle': 'Chagua biashara kuzima au kuwasha SMS zake',
+      'sms_admin_screen_title': 'SMS kwa kila biashara',
+      'sms_admin_search': 'Tafuta biashara, mmiliki, barua pepe, simu',
+      'sms_admin_off_body': 'Hakuna ujumbe wa {0} utakaotumwa: risiti, ukumbusho, muhtasari, kampeni, ujumbe wa saluni na wa kodi. Biashara nyingine haziguswi. Mmiliki hawezi kuziwasha tena; ni msimamizi wa mfumo tu.',
+      'sms_admin_on_body': 'Ujumbe wa {0} utaanza kutumwa tena, kwa mipangilio iliyokuwa nayo.',
+      'sms_admin_off_platform': 'SMS IMEZIMWA (na mfumo)',
+      'sms_admin_off_owner': 'SMS IMEZIMWA (na mmiliki)',
+      'sms_admin_empty': 'Hakuna biashara iliyopatikana',
       'system_updates': 'Masasisho ya Mfumo',
 
       // Security Settings

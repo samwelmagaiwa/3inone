@@ -187,6 +187,9 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/businesse
     // A payment moves the paid-until date on and opens a held-back business again at once.
     Route::get('{id}/payments', [BusinessSubscriptionController::class, 'adminIndex']);
     Route::post('{id}/payments', [BusinessSubscriptionController::class, 'adminStore']);
+    // Switch ONE business's texts off (or on); the owner cannot undo it. Super admin password; off also needs the word ZIMA.
+    Route::get('{id}/sms-switch', [\App\Http\Controllers\API\BusinessSmsSwitchController::class, 'adminShow']);
+    Route::put('{id}/sms-switch', [\App\Http\Controllers\API\BusinessSmsSwitchController::class, 'adminUpdate'])->middleware('throttle:5,1');
 });
 
 // PLAN PRICES -- super admin only: what each plan costs for 1, 3, 6 and 12 months. The registration form shows

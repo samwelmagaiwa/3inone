@@ -56,6 +56,7 @@ class Business extends Model
         'sms_last_sent_at' => 'datetime',
         'sms_paused' => 'boolean',
         'sms_paused_at' => 'datetime',
+        'sms_paused_by_platform' => 'boolean',
     ];
 
     public function constrainToAccount(Builder $query, User $user): void
@@ -359,6 +360,7 @@ class Business extends Model
             'note' => $this->sms_sender_note,
             'paused' => $this->smsPaused(),
             'paused_at' => $this->sms_paused_at?->toIso8601String(),
+            'paused_by_platform' => $this->smsPaused() && (bool) ($this->sms_paused_by_platform ?? false),
         ];
     }
 
