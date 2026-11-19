@@ -2068,3 +2068,8 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
 .theme-phone .seg-tab:hover { background: rgba(255,255,255,.09) !important; }
 .theme-phone .topbar-title { color: #fff !important; }
 .theme-phone .target-fill { background: linear-gradient(90deg, #1ba3c7, #20b8ce) !important; }
+/* The share of each expense (Expenses page): a soft tint of its colour with light text, readable on the dark glass */
+.theme-phone .share-pill.is-low { color: #86efac !important; background: rgba(16,185,129,.2) !important; }
+.theme-phone .share-pill.is-mid { color: #fcd34d !important; background: rgba(245,158,11,.2) !important; }
+.theme-phone .share-pill.is-high { color: #fca5a5 !important; background: rgba(239,68,68,.2) !important; }
+.theme-phone .share-bar { background: rgba(255,255,255,.15) !important; }
