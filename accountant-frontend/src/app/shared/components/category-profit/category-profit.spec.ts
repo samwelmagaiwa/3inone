@@ -51,6 +51,19 @@ describe('profit by category (web)', () => {
     expect(text(byTestId(el, 'cat-totals-all')!)).toBe('TSH 83,300');
   });
 
+  it('colours each heading by what it sells: services (blue/cyan) or goods only (amber), with a small tag', async () => {
+    const { el } = await show(report());
+
+    const mixed = byTestId(el, 'cat-name-Nywele')!;
+    expect(mixed.classList.contains('is-services')).toBe(true);
+    expect(Array.from(mixed.querySelectorAll('.cp-tag')).map((t) => text(t as HTMLElement))).toEqual(['Services', 'Goods']);
+
+    const goodsOnly = byTestId(el, 'cat-name-none')!;
+    expect(goodsOnly.classList.contains('is-goods')).toBe(true);
+    expect(goodsOnly.classList.contains('is-services')).toBe(false);
+    expect(Array.from(goodsOnly.querySelectorAll('.cp-tag')).map((t) => text(t as HTMLElement))).toEqual(['Goods']);
+  });
+
   it('someone who may not see profit reads what each category sold, with no cost or goods used', async () => {
     const own = report();
     const stripped = { ...own, owner_figures: false } as MonthlyReport;

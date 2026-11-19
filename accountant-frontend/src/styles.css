@@ -2079,3 +2079,10 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
 .theme-phone .pill-active { color: #7fe3f2 !important; background: rgba(32,184,206,.2) !important; border: 1px solid rgba(32,184,206,.45); }
 .theme-phone .pill-occupied { color: rgba(255,255,255,.85) !important; background: rgba(255,255,255,.12) !important; }
 .theme-phone .pill-critical { border: 1px solid rgba(239,68,68,.45); }
+/* Sales by category, on the dark look: a service category's heading in cyan (the title's family), the goods category's in amber, each with
+   its small tag; the "Sales TSH ..." line under it stays a soft white. */
+.theme-phone .cp-name.is-services { color: #7fe3f2 !important; }
+.theme-phone .cp-name.is-goods { color: #fcd34d !important; }
+.theme-phone .cp-name small { color: rgba(255,255,255,.7) !important; opacity: 1 !important; }
+.theme-phone .cp-tag.is-services { color: #7fe3f2 !important; background: rgba(32,184,206,.16) !important; border-color: rgba(32,184,206,.45) !important; }
+.theme-phone .cp-tag.is-goods { color: #fcd34d !important; background: rgba(245,158,11,.16) !important; border-color: rgba(245,158,11,.45) !important; }

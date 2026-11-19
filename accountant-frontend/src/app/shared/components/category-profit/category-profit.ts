@@ -19,7 +19,12 @@ import { ByCategoryData, CategoryBlock, CategoryItem, MonthlyReport, ProfitByCat
         @for (c of blocks(); track $index) {
           <details class="cp-block" [attr.data-testid]="'cat-' + (c.category ?? 'none')">
             <summary class="cp-sum">
-              <span class="cp-name">{{ c.category ?? i18n.t('cat.none') }}<small>{{ i18n.t('cat.sales.of') }} {{ tsh(c.total.sales) }}</small></span>
+              <span class="cp-name" [class.is-services]="!!c.services" [class.is-goods]="!!c.goods && !c.services" [attr.data-testid]="'cat-name-' + (c.category ?? 'none')">
+                {{ c.category ?? i18n.t('cat.none') }}
+                @if (c.services) { <em class="cp-tag is-services">{{ i18n.t('cat.services') }}</em> }
+                @if (c.goods) { <em class="cp-tag is-goods">{{ i18n.t('cat.goods') }}</em> }
+                <small>{{ i18n.t('cat.sales.of') }} {{ tsh(c.total.sales) }}</small>
+              </span>
               <b [attr.data-testid]="'cat-total-' + (c.category ?? 'none')">{{ tsh(val(c.total)) }}</b>
             </summary>
             <div class="cp-body">
@@ -67,7 +72,14 @@ import { ByCategoryData, CategoryBlock, CategoryItem, MonthlyReport, ProfitByCat
       .cp-sum::before { content: '›'; margin-right: 6px; opacity: 0.6; transition: transform 0.15s; }
       .cp-block[open] > .cp-sum::before { transform: rotate(90deg); }
       .cp-name { flex: 1; min-width: 0; font-weight: 800; }
-      .cp-name small { display: block; font-size: 11px; font-weight: 600; opacity: 0.65; }
+      .cp-name small { display: block; font-size: 11px; font-weight: 600; opacity: 0.65; color: inherit; }
+      /* A category's heading takes the colour of what it sells: services in the title's blue, goods in amber, each with a small tag */
+      .cp-name.is-services { color: #2e4dbd; }
+      .cp-name.is-goods { color: #b45309; }
+      .cp-tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 9.5px; font-style: normal; font-weight: 900;
+        letter-spacing: 0.06em; text-transform: uppercase; vertical-align: 2px; }
+      .cp-tag.is-services { color: #2e4dbd; background: rgba(59, 97, 226, 0.12); border: 1px solid rgba(59, 97, 226, 0.35); }
+      .cp-tag.is-goods { color: #b45309; background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.4); }
       .cp-sum b { font-weight: 900; white-space: nowrap; }
       .cp-body { padding: 0 0 8px 14px; }
       .cp-kind { margin: 6px 0 2px; font-size: 10.5px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; color: #20b8ce; }
