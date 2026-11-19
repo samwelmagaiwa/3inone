@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\User;
 use App\Services\Inventory\AuditTrail;
+use App\Support\SmsSwitchNotice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -126,7 +127,10 @@ class BusinessSmsSwitchController extends Controller
             return $refused;
         }
 
-        $this->apply($request, $business, $request->user(), $enable, byPlatform: true);
+        // The owner is told by text, under the platform's name, whenever the super admin really changed their SMS.
+        if ($this->apply($request, $business, $request->user(), $enable, byPlatform: true)) {
+            SmsSwitchNotice::send($business, $enable);
+        }
 
         return response()->json([
             'message' => $enable ? 'SMS zimewashwa. / Text messages are on.' : 'SMS zimezimwa. / Text messages are off.',
@@ -162,14 +166,15 @@ class BusinessSmsSwitchController extends Controller
         return null;
     }
 
-    private function apply(Request $request, Business $business, User $user, bool $enable, bool $byPlatform): void
+    /** Move the switch. True when something changed (false when it already was as asked). */
+    private function apply(Request $request, Business $business, User $user, bool $enable, bool $byPlatform): bool
     {
         $wasPaused = $business->smsPaused();
         $wasPlatform = $this->lockedByPlatform($business);
         $wantPaused = !$enable;
         $wantPlatform = $wantPaused && $byPlatform;
         if ($wasPaused === $wantPaused && $wasPlatform === $wantPlatform) {
-            return; // already as asked
+            return false; // already as asked
         }
 
         $business->forceFill([
@@ -188,6 +193,8 @@ class BusinessSmsSwitchController extends Controller
             ['sms_paused' => !$enable, 'by_platform' => !$enable && $byPlatform],
             "{$user->name} " . ($byPlatform ? '(super admin) ' : '') . ($enable ? 'switched ON' : 'switched OFF') . " the text messages of \"{$business->name}\"",
         );
+
+        return true;
     }
 
     private function lockedByPlatform(Business $business): bool

@@ -191,6 +191,47 @@ class BusinessSmsSwitchTest extends TestCase
         $this->api($masai, 'PUT', '/api/business/sms-switch', ['enabled' => true, 'password' => 'password'])->assertForbidden();
     }
 
+    public function test_the_owner_is_texted_from_the_platform_when_the_super_admin_switches_their_sms_off_and_on(): void
+    {
+        $admin = $this->superAdmin();
+        $masai = $this->shop('masai mitumba bora');
+        $masai->update(['name' => 'Julius Labarani']);
+        $id = Business::forOwnerId($masai->id)->id;
+        $phone = (string) $masai->phone_number;
+
+        $this->api($admin, 'PUT', "/api/admin/businesses/{$id}/sms-switch", ['enabled' => false, 'password' => 'password', 'confirm' => 'ZIMA'])->assertOk();
+
+        $texts = $this->sms->to($phone);
+        $this->assertCount(1, $texts, 'the owner is told, even though the business itself can no longer text');
+        $this->assertNull($texts[0]['sender'], 'under the platform name, not the paused business');
+        $this->assertSame(
+            "Ndugu Julius Labarani, mmiliki wa biashara ya masai mitumba bora,\n\n"
+            . "Tunakujulisha kuwa huduma ya kutuma SMS kwa wateja wako imezimwa kwa muda. Tafadhali wasiliana na Administrator ili huduma hii iweze kurejeshwa na kuruhusu SMS kuendelea kuwafikia wateja wako.\n\n"
+            . "Asante kwa kuwa mteja wetu.\n\n"
+            . "Kwa msaada, wasiliana nasi kupitia:\n0617919104 / 0743519104",
+            $texts[0]['message']
+        );
+
+        // Switching off what is already off says nothing more.
+        $this->api($admin, 'PUT', "/api/admin/businesses/{$id}/sms-switch", ['enabled' => false, 'password' => 'password', 'confirm' => 'ZIMA'])->assertOk();
+        $this->assertCount(1, $this->sms->to($phone));
+
+        $this->api($admin, 'PUT', "/api/admin/businesses/{$id}/sms-switch", ['enabled' => true, 'password' => 'password'])->assertOk();
+        $texts = $this->sms->to($phone);
+        $this->assertCount(2, $texts);
+        $this->assertStringContainsString('imewashwa tena', $texts[1]['message']);
+        $this->assertStringStartsWith('Ndugu Julius Labarani, mmiliki wa biashara ya masai mitumba bora,', $texts[1]['message']);
+    }
+
+    public function test_the_owner_moving_their_own_switch_gets_no_text(): void
+    {
+        $masai = $this->shop('masai mitumba bora');
+        $this->switchOff($masai);
+        $this->api($masai, 'PUT', '/api/business/sms-switch', ['enabled' => true, 'password' => 'password'])->assertOk();
+
+        $this->assertCount(0, $this->sms->to((string) $masai->phone_number));
+    }
+
     public function test_a_text_given_no_business_still_cannot_slip_out_for_a_paused_one_while_platform_texts_go(): void
     {
         $owner = $this->shop('masai mitumba bora');
