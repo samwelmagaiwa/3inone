@@ -41,6 +41,27 @@ class _SmsConfirmDialogState extends State<SmsConfirmDialog> {
     super.dispose();
   }
 
+  // The app-wide field style fills fields with a light surface but writes labels and text in white, which leaves both fields blank-white
+  // on this dark dialog. These fields carry their own dark look so the label and what is typed can be read.
+  static const TextStyle _fieldText = TextStyle(color: Colors.white, fontSize: 16);
+
+  static InputDecoration _field(final String label, final IconData icon) => InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white70),
+        floatingLabelStyle: const TextStyle(color: Colors.white),
+        prefixIcon: Icon(icon, color: Colors.white70),
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.08),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.white38),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.white, width: 1.5),
+        ),
+      );
+
   bool get _ready =>
       _password.text.isNotEmpty && (widget.enable || widget.word.isEmpty || _word.text.trim().toUpperCase() == widget.word.toUpperCase());
 
@@ -62,19 +83,22 @@ class _SmsConfirmDialogState extends State<SmsConfirmDialog> {
               key: const ValueKey<String>('sms_master_word'),
               controller: _word,
               textCapitalization: TextCapitalization.characters,
-              decoration: InputDecoration(labelText: loc.translateWith('sms_master_type_word', <Object?>[widget.word])),
+              style: _fieldText,
+              cursorColor: Colors.white,
+              decoration: _field(loc.translateWith('sms_master_type_word', <Object?>[widget.word]), Icons.keyboard),
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
           ],
           TextField(
             key: const ValueKey<String>('sms_master_password'),
             controller: _password,
             obscureText: _hide,
-            decoration: InputDecoration(
-              labelText: loc.translate('sms_master_password'),
+            style: _fieldText,
+            cursorColor: Colors.white,
+            decoration: _field(loc.translate('sms_master_password'), Icons.lock_outline).copyWith(
               suffixIcon: IconButton(
-                icon: Icon(_hide ? Icons.visibility : Icons.visibility_off),
+                icon: Icon(_hide ? Icons.visibility : Icons.visibility_off, color: Colors.white70),
                 onPressed: () => setState(() => _hide = !_hide),
               ),
             ),

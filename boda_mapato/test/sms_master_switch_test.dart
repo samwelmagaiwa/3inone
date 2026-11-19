@@ -90,6 +90,14 @@ void main() {
     await t.pumpAndSettle();
     expect(find.text('Switch off all SMS?'), findsOneWidget);
 
+    // Readable on the dark dialog: not a light-filled box with white text in it.
+    for (final String key in <String>['sms_master_word', 'sms_master_password']) {
+      final TextField field = t.widget<TextField>(find.byKey(ValueKey<String>(key)));
+      expect(field.style?.color, Colors.white);
+      expect(field.decoration?.fillColor?.a, lessThan(0.2), reason: '$key must not be filled white');
+      expect(field.decoration?.labelText, isNotEmpty);
+    }
+
     FilledButton button() => t.widget<FilledButton>(find.byKey(const ValueKey<String>('sms_master_confirm')));
     expect(button().onPressed, isNull);
 
