@@ -96,8 +96,9 @@ class SuperAdminAccountsTest extends TestCase
     public function test_deleting_a_normal_account_is_unchanged(): void
     {
         $super = $this->user('super_admin');
-        $owner = $this->user('admin');
+        $staff = $this->user('manager');
 
-        $this->api($super, 'DELETE', "/api/admin/users/{$owner->id}")->assertOk();
+        $this->api($super, 'DELETE', "/api/admin/users/{$staff->id}")->assertOk();
+        // A business owner is no longer deleted alone: "Remove this business" removes the whole business (BusinessRemovalTest).
     }
 }

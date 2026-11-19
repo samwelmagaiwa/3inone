@@ -275,6 +275,17 @@ class BackupController extends Controller
      *
      * @return array{filename: string, tables: array<int, string>, rows: int, skipped: array<string, string>}
      */
+    /**
+     * A full snapshot of every table, for an action that cannot be undone otherwise (removing a business). It is listed with the other
+     * backups and restores the same way.
+     *
+     * @return array{filename: string, tables: array<int, string>, rows: int, skipped: array<string, string>}
+     */
+    public function safetySnapshot(string $prefix): array
+    {
+        return $this->writeSnapshot($prefix);
+    }
+
     private function writeSnapshot(string $prefix): array
     {
         $disk = Storage::disk('local');

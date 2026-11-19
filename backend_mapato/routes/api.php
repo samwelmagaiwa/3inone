@@ -199,6 +199,13 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/plan-pric
     Route::put('', [PlanPriceController::class, 'adminUpdate']);
 });
 
+// REMOVE A WHOLE BUSINESS -- super admin only: see what would go, then remove the business, its people and its data (the word REMOVE,
+// the super admin's password and a reason; a full safety backup is written first).
+Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/users')->group(function () {
+    Route::get('{id}/business-removal', [\App\Http\Controllers\API\BusinessRemovalController::class, 'show']);
+    Route::post('{id}/business-removal', [\App\Http\Controllers\API\BusinessRemovalController::class, 'destroy'])->middleware('throttle:5,1');
+});
+
 // SMS COUNTERS -- super admin only: how many SMS each business used against the limit set for it, and its texts of the last 3 days.
 Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/sms-usage')->group(function () {
     Route::get('', [\App\Http\Controllers\API\SmsUsageController::class, 'adminIndex']);

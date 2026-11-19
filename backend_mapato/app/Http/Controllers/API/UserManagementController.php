@@ -637,6 +637,16 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             return $blocked;
         }
 
+        // The owner of a business is never deleted on their own: that would leave the business, its staff and its data behind with no
+        // owner, and take only part of it. "Remove this business" removes the whole business, after a backup.
+        if (\App\Models\Business::withoutAccountScope()->where('owner_id', (string) $user->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'code' => 'use_remove_business',
+                'message' => 'Huyu ni mmiliki wa biashara. Tumia "Ondoa biashara hii" ili kuondoa biashara nzima. / This person owns a business. Use "Remove this business" to remove the whole business.',
+            ], 422);
+        }
+
         $summary = "{$auth->name} deleted {$user->role} account \"{$user->name}\" ({$user->email})";
         $user->tokens()->delete();
         $user->delete();

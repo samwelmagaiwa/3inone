@@ -65,6 +65,33 @@ class _Api extends ApiService {
   }
 
   @override
+  Future<Map<String, dynamic>> get(String endpoint, {bool requireAuth = true, Map<String, dynamic>? queryParams}) async {
+    calls.add('get:$endpoint');
+    if (endpoint == '/admin/users/a1/business-removal') {
+      return <String, dynamic>{
+        'data': <String, dynamic>{
+          'business': <String, dynamic>{'id': 'b1', 'name': 'masai mitumba bora', 'owner': 'Sammy'},
+          'users': <Map<String, dynamic>>[
+            <String, dynamic>{'name': 'Sammy', 'role': 'admin'},
+            <String, dynamic>{'name': 'Cashier', 'role': 'sales_officer'},
+          ],
+          'tables': <String, dynamic>{'inventory_products': 12, 'inventory_sales': 40, 'sms_logs': 3},
+          'confirm_word': 'REMOVE',
+        },
+      };
+    }
+    throw ApiException('offline');
+  }
+
+  @override
+  Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> data, {bool requireAuth = true}) async {
+    calls.add('post:$endpoint');
+    lastBody = data;
+
+    return <String, dynamic>{'message': 'removed'};
+  }
+
+  @override
   Future<Map<String, dynamic>> assignUserToAdmin({required String userId, required String adminId, String? service}) async {
     calls.add('place:$userId->$adminId');
 
@@ -247,6 +274,55 @@ void main() {
     await t.pumpAndSettle();
     expect(api.calls, <String>['delete:u2']);
     await _settleMessage(t);
+  });
+
+  testWidgets('a business owner is removed with the whole business: warning, REMOVE, password and a reason', (WidgetTester t) async {
+    final _Api api = await _open(t);
+
+    await _openActions(t, 'a1');
+    expect(_k('uc_act_delete'), findsNothing, reason: 'an owner is never deleted alone');
+    await t.tap(_k('uc_act_remove_business'));
+    await t.pumpAndSettle();
+
+    expect(find.text('Remove "masai mitumba bora" completely?'), findsOneWidget);
+    expect(find.textContaining('2 user(s): Sammy, Cashier'), findsOneWidget);
+    expect(find.textContaining('12 product(s)'), findsOneWidget);
+    expect(find.textContaining('55 record(s) in 3 table(s)'), findsOneWidget);
+
+    FilledButton yes() => t.widget<FilledButton>(_k('uc_remove_yes'));
+    expect(yes().onPressed, isNull);
+    await t.enterText(_k('uc_remove_word'), 'remove');
+    await t.enterText(_k('uc_remove_password'), 'superpass');
+    await t.enterText(_k('uc_remove_reason'), 'Mteja ameacha huduma');
+    await t.pump();
+    expect(yes().onPressed, isNull, reason: 'REMOVE must be typed in capital letters');
+    await t.enterText(_k('uc_remove_word'), 'REMOVE');
+    await t.enterText(_k('uc_remove_reason'), 'no');
+    await t.pump();
+    expect(yes().onPressed, isNull, reason: 'a reason of a few words is needed');
+    await t.enterText(_k('uc_remove_reason'), 'Mteja ameacha huduma');
+    await t.pump();
+    expect(api.calls.where((String c) => c.startsWith('post:')), isEmpty);
+
+    await t.tap(_k('uc_remove_yes'));
+    await t.pumpAndSettle();
+    expect(api.calls, contains('post:/admin/users/a1/business-removal'));
+    expect(api.lastBody, <String, dynamic>{'confirm': 'REMOVE', 'password': 'superpass', 'reason': 'Mteja ameacha huduma'});
+    expect(api.calls.where((String c) => c.startsWith('delete:')), isEmpty);
+    await _settleMessage(t);
+  });
+
+  testWidgets('cancelling the business removal sends nothing', (WidgetTester t) async {
+    final _Api api = await _open(t);
+
+    await _openActions(t, 'a1');
+    await t.tap(_k('uc_act_remove_business'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Cancel'));
+    await t.pumpAndSettle();
+
+    expect(api.calls.where((String c) => c.startsWith('post:')), isEmpty);
+    await t.pump(const Duration(seconds: 1)); // the closed dialog's text boxes are released a moment later
   });
 
   testWidgets('reset password needs 8 characters; a staff member can be placed under an admin', (WidgetTester t) async {

@@ -699,9 +699,19 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
                       : (_sw ? 'Washa akaunti' : 'Switch on'),
                   enabled: !(me && active)),
               const SectionGlowDivider(lift: false),
-              item('delete', Icons.delete_forever_rounded,
-                  (_sw ? 'Futa' : 'Delete'),
-                  color: ThemeConstants.errorRed, enabled: !me),
+              // The owner of a business is removed WITH the business (its people and its data), never alone.
+              if (_Roles.isOwner(role))
+                item('remove_business', Icons.domain_disabled_rounded,
+                    (_sw ? 'Ondoa biashara hii' : 'Remove this business'),
+                    color: ThemeConstants.errorRed,
+                    enabled: !me,
+                    hint: (_sw
+                        ? 'Biashara, watumiaji wake wote na data yake yote'
+                        : 'The business, all its users and all its data'))
+              else
+                item('delete', Icons.delete_forever_rounded,
+                    (_sw ? 'Futa' : 'Delete'),
+                    color: ThemeConstants.errorRed, enabled: !me),
               const SizedBox(height: 8),
             ]),
           ),
@@ -726,6 +736,8 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
         return _toggleActive(u, active);
       case 'delete':
         return _delete(u);
+      case 'remove_business':
+        return _removeBusiness(u);
     }
   }
 
@@ -1180,6 +1192,147 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
     if (!sure) return;
     await _run(() => _api.deleteUser(_id(u)),
         (_sw ? 'Mtumiaji amefutwa' : 'User deleted'));
+  }
+
+  // ------------------------------------------------------------------ remove a whole business
+
+  /// What would go is read from the server first and shown in the warning; then the word REMOVE (capital letters), the super admin's
+  /// password and a reason are needed before the button works. The server checks all three again and saves a full backup first.
+  Future<void> _removeBusiness(final Map<String, dynamic> u) async {
+    final String id = _id(u);
+    Map<String, dynamic> plan;
+    try {
+      final Map<String, dynamic> res = await _api.get('/admin/users/$id/business-removal');
+      plan = res['data'] is Map ? Map<String, dynamic>.from(res['data'] as Map) : <String, dynamic>{};
+    } on Exception catch (e) {
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
+      return;
+    }
+    if (!mounted) return;
+
+    final Map<String, dynamic> business = plan['business'] is Map ? Map<String, dynamic>.from(plan['business'] as Map) : <String, dynamic>{};
+    final String name = '${business['name'] ?? u['name']}';
+    final String word = '${plan['confirm_word'] ?? 'REMOVE'}';
+    final List<Map<String, dynamic>> people = <Map<String, dynamic>>[
+      if (plan['users'] is List)
+        for (final dynamic p in plan['users'] as List)
+          if (p is Map) Map<String, dynamic>.from(p)
+    ];
+    final Map<String, dynamic> tables = plan['tables'] is Map ? Map<String, dynamic>.from(plan['tables'] as Map) : <String, dynamic>{};
+    int count(final String t) => (tables[t] as num?)?.toInt() ?? 0;
+    final int rows = tables.values.fold<int>(0, (final int a, final dynamic v) => a + ((v as num?)?.toInt() ?? 0));
+
+    final TextEditingController typed = TextEditingController();
+    final TextEditingController password = TextEditingController();
+    final TextEditingController reason = TextEditingController();
+    bool hide = true;
+    const TextStyle white = TextStyle(color: Colors.white);
+    final List<String> lines = <String>[
+      _sw ? 'Watumiaji ${people.length}: ${people.map((final Map<String, dynamic> p) => p['name']).join(', ')}' : '${people.length} user(s): ${people.map((final Map<String, dynamic> p) => p['name']).join(', ')}',
+      if (count('inventory_products') > 0) _sw ? 'Bidhaa ${count('inventory_products')}' : '${count('inventory_products')} product(s)',
+      if (count('inventory_sales') > 0) _sw ? 'Mauzo ${count('inventory_sales')}' : '${count('inventory_sales')} sale(s)',
+      if (count('inventory_customers') > 0) _sw ? 'Wateja ${count('inventory_customers')}' : '${count('inventory_customers')} customer(s)',
+      if (count('rental_properties') > 0) _sw ? 'Majengo ${count('rental_properties')}' : '${count('rental_properties')} rental propert(ies)',
+      if (count('drivers') > 0) _sw ? 'Madereva ${count('drivers')}' : '${count('drivers')} driver(s)',
+      _sw ? 'Jumla ya kumbukumbu $rows katika majedwali ${tables.length}' : '$rows record(s) in ${tables.length} table(s) in all',
+    ];
+
+    final bool? go = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (final BuildContext ctx) => StatefulBuilder(
+        builder: (final BuildContext ctx, final StateSetter setLocal) {
+          final bool ready = typed.text.trim() == word && password.text.isNotEmpty && reason.text.trim().length >= 5;
+          return AlertDialog(
+            key: const Key('uc_remove_business'),
+            backgroundColor: ThemeConstants.bgMid,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            title: Row(children: <Widget>[
+              const Icon(Icons.warning_amber_rounded, color: ThemeConstants.errorRed),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(_sw ? 'Ondoa "$name" yote?' : 'Remove "$name" completely?',
+                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+              ),
+            ]),
+            content: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+                Text(
+                  _sw
+                      ? 'Biashara hii, watumiaji wake wote na data yake yote katika kila huduma vitafutwa. Biashara nyingine haziguswi. Nakala kamili ya usalama inahifadhiwa kwanza.'
+                      : 'This business, all its users and all its data in every service are deleted. Other businesses are not touched. A full safety backup is saved first.',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 10),
+                for (final String l in lines)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: Text('•  $l', style: const TextStyle(color: Colors.white, fontSize: 13)),
+                  ),
+                const SizedBox(height: 14),
+                TextField(
+                  key: const Key('uc_remove_word'),
+                  controller: typed,
+                  style: white,
+                  cursorColor: Colors.white,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: _field(_sw ? 'Andika $word' : 'Type $word', icon: Icons.keyboard_rounded),
+                  onChanged: (final String _) => setLocal(() {}),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  key: const Key('uc_remove_password'),
+                  controller: password,
+                  style: white,
+                  cursorColor: Colors.white,
+                  obscureText: hide,
+                  decoration: _field(_sw ? 'Nywila yako (super admin)' : 'Your super admin password', icon: Icons.lock_outline_rounded).copyWith(
+                    suffixIcon: IconButton(
+                      icon: Icon(hide ? Icons.visibility : Icons.visibility_off, color: Colors.white54),
+                      onPressed: () => setLocal(() => hide = !hide),
+                    ),
+                  ),
+                  onChanged: (final String _) => setLocal(() {}),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  key: const Key('uc_remove_reason'),
+                  controller: reason,
+                  style: white,
+                  cursorColor: Colors.white,
+                  minLines: 2,
+                  maxLines: 4,
+                  maxLength: 500,
+                  decoration: _field(_sw ? 'Sababu ya kuifuta' : 'Why it is being removed', icon: Icons.edit_note_rounded),
+                  onChanged: (final String _) => setLocal(() {}),
+                ),
+              ]),
+            ),
+            actions: <Widget>[
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text((_sw ? 'Ghairi' : 'Cancel'), style: const TextStyle(color: Colors.white60))),
+              FilledButton(
+                key: const Key('uc_remove_yes'),
+                style: FilledButton.styleFrom(backgroundColor: ThemeConstants.errorRed),
+                onPressed: ready ? () => Navigator.pop(ctx, true) : null,
+                child: Text(_sw ? 'Ondoa biashara' : 'Remove business'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    final String word0 = typed.text.trim();
+    final String pass = password.text;
+    final String why = reason.text.trim();
+    _disposeLater(<TextEditingController>[typed, password, reason]);
+    if (go != true || !mounted) return;
+
+    await _run(
+      () => _api.post('/admin/users/$id/business-removal', <String, dynamic>{'confirm': word0, 'password': pass, 'reason': why}),
+      (_sw ? 'Biashara "$name" imeondolewa' : 'Business "$name" removed'),
+    );
   }
 
   // ------------------------------------------------------------------ create
