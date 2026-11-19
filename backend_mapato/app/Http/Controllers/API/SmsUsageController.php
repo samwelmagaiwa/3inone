@@ -43,7 +43,14 @@ class SmsUsageController extends Controller
     #[OA\Get(path: '/admin/sms-usage', summary: 'Every business with its SMS counter (super admin only)', security: [['bearerAuth' => []]], tags: ['Admin / SMS'], responses: [new OA\Response(response: 200, description: 'Success')])]
     public function adminIndex(Request $request): JsonResponse
     {
-        $query = Business::withoutAccountScope()->with('owner');
+        // Business admins only: a business whose owner is a real, active, approved account head with at least one service.
+        // Left out: a business record with no owner, an applicant who was never approved, a switched-off account.
+        $query = Business::withoutAccountScope()->with('owner')->whereHas('owner', function ($owner) {
+            $owner->whereIn('role', User::ACCOUNT_HEAD_ROLES)
+                ->where('is_active', true)
+                ->where(fn ($q) => $q->whereNull('is_applicant')->orWhere('is_applicant', false))
+                ->whereHas('services');
+        });
         if ($search = trim((string) $request->query('q', ''))) {
             $query->where(function ($q) use ($search) {
                 $q->where('businesses.name', 'like', "%{$search}%")

@@ -194,6 +194,27 @@ class SmsQuotaTest extends TestCase
         $this->api($masai, 'GET', '/api/admin/sms-usage')->assertForbidden();
     }
 
+    public function test_the_counter_list_holds_business_admins_only(): void
+    {
+        $admin = $this->superAdmin();
+        $this->owner('masai mitumba bora');
+        $this->owner('MaremaTech Labs');
+
+        // An applicant who was never approved: switched off, no services.
+        $applicant = User::factory()->create(['name' => 'sammi', 'role' => 'admin', 'is_active' => false, 'is_applicant' => true]);
+        Business::ensureFor($applicant)?->update(['name' => 'sammi']);
+        // A switched-off owner who still has a service.
+        $off = $this->owner('closed shop');
+        $off->update(['is_active' => false]);
+        // A business record whose owner account is gone.
+        $ghost = $this->owner('ivan samwel');
+        Business::forOwnerId($ghost->id)->update(['owner_id' => (string) \Illuminate\Support\Str::uuid()]);
+
+        $names = collect($this->api($admin, 'GET', '/api/admin/sms-usage')->assertOk()->json('data'))->pluck('name')->sort()->values()->all();
+
+        $this->assertSame(['MaremaTech Labs', 'masai mitumba bora'], $names);
+    }
+
     public function test_a_reminder_tapped_by_hand_says_the_sms_are_used_up(): void
     {
         $masai = $this->owner('masai mitumba bora');
