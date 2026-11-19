@@ -230,6 +230,21 @@ describe('the menu of the business admin, on a phone and on a computer', () => {
     expect(el.querySelector('[data-testid=nav-phone-title]')).toBeNull();
   });
 
+  it('the business admin sees the dark teal colours of the phone', async () => {
+    const { el } = await open(ADMIN);
+    expect(el.querySelector('.shell-wrap')!.classList.contains('theme-phone')).toBe(true);
+  });
+
+  it('the accountant sees the same dark teal colours as the business admin', async () => {
+    const { el } = await open({ ...ADMIN, role: 'accountant' });
+    expect(el.querySelector('.shell-wrap')!.classList.contains('theme-phone')).toBe(true);
+  });
+
+  it('other staff keep the light look', async () => {
+    const { el } = await open({ ...ADMIN, role: 'sales_officer' });
+    expect(el.querySelector('.shell-wrap')!.classList.contains('theme-phone')).toBe(false);
+  });
+
   it('the dashboard is called the salon dashboard in a salon', async () => {
     const { el } = await open(ADMIN);
     expect(nav(el)).toContain('Salon dashboard');
