@@ -37,7 +37,8 @@ class BackgroundWorkGuardTest extends TestCase
                 $code = (string) file_get_contents($file);
 
                 $touchesInventory = (bool) preg_match("/['\"]inventory_[a-z_]+['\"]/", $code);
-                $namesBusiness = str_contains($code, 'TenantContext') || str_contains($code, 'InventoryOwnership');
+                // (RunsPerBusiness runs every business's share as that business: TenantContext::runAs in the trait)
+                $namesBusiness = str_contains($code, 'TenantContext') || str_contains($code, 'InventoryOwnership') || str_contains($code, 'RunsPerBusiness');
 
                 if ($touchesInventory && !$namesBusiness && !isset(self::EXEMPT[$relative])) {
                     $offenders[] = $relative;

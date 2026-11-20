@@ -2,51 +2,53 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Concerns\RunsPerBusiness;
 use App\Models\Business;
 use App\Services\Inventory\InventoryNotifier;
 use App\Support\Inventory\MonthlyFigures;
 use App\Support\Inventory\MonthlyReport;
-use App\Support\Tenancy\TenantContext;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Every morning, for each shop: remember where the business stands (stock, debts, capital) so a month's closing position
  * is known later; and once a month has ended, tell the owner (in the app) that its report is ready and whether the profit
- * target was reached. Running it twice does nothing twice: what was told is marked first.
+ * target was reached. Running it twice does nothing twice: what was told is marked first. One queued job per shop
+ * ({@see RunsPerBusiness}); the months are fixed when the command starts.
  */
 class CloseInventoryMonth extends Command
 {
+    use RunsPerBusiness;
+
     protected $signature = 'inventory:month-close {--dry-run : show what would be told, tell nobody}';
 
     protected $description = 'Remember each shop\'s position and tell owners how the month ended';
 
     public function handle(): int
     {
-        $dry = (bool) $this->option('dry-run');
-        $told = 0;
-        $seen = 0;
-        $prev = MonthlyFigures::previousMonth(MonthlyFigures::currentMonth());
+        return $this->runPerBusiness('told');
+    }
 
-        foreach (Business::withoutAccountScope()->with('owner')->get() as $business) {
-            $owner = $business->owner;
-            if ($owner === null || !$owner->is_active || !in_array('inventory', $business->serviceTypes(), true) || $business->blocksAccess()) {
-                continue;
-            }
-            $seen++;
-            TenantContext::runAs($owner, function () use ($business, $prev, $dry, &$told) {
-                TenantContext::runInService('inventory', function () use ($business, $prev, $dry, &$told) {
-                    if (!$dry) {
-                        MonthlyFigures::remember(MonthlyFigures::currentMonth());
-                    }
-                    $told += $this->tell($business, $prev, $dry);
-                });
-            });
+    protected function businessService(): string
+    {
+        return 'inventory';
+    }
+
+    protected function businessContext(): array
+    {
+        $current = MonthlyFigures::currentMonth();
+
+        return ['current' => $current, 'previous' => MonthlyFigures::previousMonth($current)];
+    }
+
+    public function forBusiness(Business $business, array $context, bool $dry): array
+    {
+        if (!$dry) {
+            MonthlyFigures::remember((string) $context['current']);
         }
+        $told = $this->tell($business, (string) $context['previous'], $dry);
 
-        $this->info(($dry ? 'dry run: ' : '') . "{$seen} shop(s), {$told} told");
-
-        return self::SUCCESS;
+        return ['found' => $told, 'sent' => $dry ? 0 : $told];
     }
 
     /** The report of the month that has just ended, and the target's verdict, once each. */
@@ -61,7 +63,7 @@ class CloseInventoryMonth extends Command
             $trend = $p['direction'] === 'up' ? 'imepanda / up' : ($p['direction'] === 'down' ? 'imeshuka / down' : 'ile ile / same');
             $body = 'Faida / Profit: TSh ' . number_format($r['figures']['net_profit']) . ' (' . $trend . ($p['percent'] === null ? '' : ' ' . $p['percent'] . '%') . '). Mauzo / Sales: TSh ' . number_format($r['figures']['sales']) . '.';
             if ($dry) {
-                $this->line("would tell {$business->name} ({$month}): {$body}");
+                $this->note("would tell {$business->name} ({$month}): {$body}");
             } else {
                 DB::table('inventory_settings')->updateOrInsert(['key' => $key], ['value' => $month, 'updated_at' => now()]);
                 \App\Support\Inventory\ShopTexts::sendMonth($month, $r);
@@ -79,7 +81,7 @@ class CloseInventoryMonth extends Command
                 ? "{$month}: TSh " . number_format($t['profit']) . ' / ' . number_format($t['profit_target']) . ' (+' . number_format($t['over_by']) . ')'
                 : "{$month}: TSh " . number_format($t['profit']) . ' / ' . number_format($t['profit_target']) . ' (-' . number_format($t['left']) . ')';
             if ($dry) {
-                $this->line("would tell {$business->name}: {$title} {$body}");
+                $this->note("would tell {$business->name}: {$title} {$body}");
             } else {
                 DB::table('inventory_targets')->where('id', $target->id)->update(['judged_at' => now()]);
                 app(InventoryNotifier::class)->notifyByPermission(['inv_view_reports'], 'inventory_target_result', $title, $body, ['month' => $month]);
