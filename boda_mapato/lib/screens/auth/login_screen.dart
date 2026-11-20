@@ -993,7 +993,7 @@ const Color _tzBlack = Color(0xFF000000);
 const Color _tzGreen = Color(0xFF1EB53A);
 const Color _tzBlue = Color(0xFF00A3DD);
 
-/// The name, written in the colours of the flag of Tanzania: the 3 and the One are each a little flag (green above, blue below, the black
+/// The name ("All iN One"), written in the colours of the flag of Tanzania: the All and the One are each a little flag (green above, blue below, the black
 /// band edged in gold running across), with "iN" in gold between them. Each letter has a light edge and a soft shadow so it stands off the page.
 class _FlagText extends StatelessWidget {
   const _FlagText({super.key});
@@ -1038,7 +1038,7 @@ class _FlagText extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
-          _word('3'),
+          _word('All'),
           SizedBox(width: 8.w),
           _word('iN', gradient: const <Color>[Color(0xFFFFE680), _tzGold, Color(0xFFE5A800)], italic: true),
           SizedBox(width: 8.w),

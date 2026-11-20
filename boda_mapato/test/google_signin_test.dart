@@ -55,6 +55,11 @@ void main() {
     await _open(t, const LoginScreen(), AuthProvider());
 
     expect(find.byKey(const ValueKey<String>('login_title_signIn')), findsOneWidget);
+    // The name reads "All iN One" (it used to start with the digit 3); each word is drawn twice (white outline + colour).
+    expect(find.text('All'), findsNWidgets(2));
+    expect(find.text('iN'), findsNWidgets(2));
+    expect(find.text('One'), findsNWidgets(2));
+    expect(find.text('3'), findsNothing);
     expect(find.byType(TextFormField), findsNWidgets(2), reason: 'email and password only');
     expect(find.byKey(const ValueKey<String>('phone_field')), findsNothing);
     expect(find.byKey(const ValueKey<String>('login_button')), findsOneWidget);
