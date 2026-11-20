@@ -1102,12 +1102,17 @@ class ApiService {
   }
 
   // Users management endpoints
+  /// A page of users. [roleGroup] is super / owners / staff, [status] is active / off; [withCounts] adds the numbers over everyone
+  /// (total, active, owners, super) for the top of Users & access.
   Future<Map<String, dynamic>> getUsers(
       {int page = 1,
       int limit = 50,
       String? query,
       String? role,
-      String? serviceType}) async {
+      String? serviceType,
+      String? roleGroup,
+      String? status,
+      bool withCounts = false}) async {
     String q = (query != null && query.isNotEmpty)
         ? "&q=${Uri.encodeComponent(query)}"
         : "";
@@ -1116,6 +1121,15 @@ class ApiService {
     }
     if (serviceType != null && serviceType.isNotEmpty) {
       q += "&service_type=${Uri.encodeComponent(serviceType)}";
+    }
+    if (roleGroup != null && roleGroup.isNotEmpty) {
+      q += "&role_group=${Uri.encodeComponent(roleGroup)}";
+    }
+    if (status != null && status.isNotEmpty) {
+      q += "&status=${Uri.encodeComponent(status)}";
+    }
+    if (withCounts) {
+      q += "&with_counts=1";
     }
     final List<String> endpoints = <String>[
       "/admin/users?page=$page&limit=$limit$q",

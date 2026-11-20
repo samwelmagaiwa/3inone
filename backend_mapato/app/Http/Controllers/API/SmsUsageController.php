@@ -62,9 +62,20 @@ class SmsUsageController extends Controller
             });
         }
 
-        $rows = $query->orderBy('name')->limit(500)->get()->map(fn (Business $b) => $this->row($b))->values();
+        // A page at a time (50 by default, 100 at most): one answer holding every business does not hold at thousands of them.
+        $perPage = min(max((int) $request->query('per_page', 50), 1), 100);
+        $page = $query->orderBy('name')->paginate($perPage);
 
-        return response()->json(['data' => $rows]);
+        return response()->json([
+            'data' => $page->getCollection()->map(fn (Business $b) => $this->row($b))->values(),
+            'meta' => ['pagination' => [
+                'current_page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+                'has_more_pages' => $page->hasMorePages(),
+            ]],
+        ]);
     }
 
     #[OA\Get(path: '/admin/sms-usage/{id}', summary: 'One business: SMS counter, this week and the texts of the last 3 days (super admin only)', security: [['bearerAuth' => []]], tags: ['Admin / SMS'], parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))], responses: [new OA\Response(response: 200, description: 'Success')])]

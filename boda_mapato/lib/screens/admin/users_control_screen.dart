@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -127,6 +129,18 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
   List<Map<String, dynamic>> _users = <Map<String, dynamic>>[];
   bool _loading = true;
   String? _error;
+
+  // A page at a time from the server, with the filters and the search applied there: with thousands of accounts the whole list can no
+  // longer be loaded at once (it used to stop at 500).
+  static const int _pageSize = 50;
+  int _page = 1;
+  bool _hasMore = false;
+  bool _loadingMore = false;
+  int? _matching; // how many match the filters, on the server
+  Map<String, dynamic>? _counts; // the numbers at the top, over everyone
+  List<Map<String, dynamic>>? _adminList; // the business admins to place someone under
+  int _request = 0; // a newer load makes an older answer useless
+  Timer? _searchDelay;
   _RoleFilter _roleFilter = _RoleFilter.all;
   _StatusFilter _statusFilter = _StatusFilter.all;
   String? _serviceFilter;
@@ -152,6 +166,7 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _searchDelay?.cancel();
     _search.dispose();
     super.dispose();
   }
@@ -169,25 +184,103 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
           for (final dynamic s in u['service_types'] as List) '$s'
       ];
 
+  String? get _roleGroup => switch (_roleFilter) {
+        _RoleFilter.all => null,
+        _RoleFilter.superAdmins => 'super',
+        _RoleFilter.owners => 'owners',
+        _RoleFilter.staff => 'staff',
+      };
+
+  String? get _statusParam => switch (_statusFilter) {
+        _StatusFilter.all => null,
+        _StatusFilter.active => 'active',
+        _StatusFilter.off => 'off',
+      };
+
+  Future<Map<String, dynamic>> _fetch(final int page) => _api.getUsers(
+        page: page,
+        limit: _pageSize,
+        query: _search.text.trim(),
+        serviceType: _serviceFilter,
+        roleGroup: _roleGroup,
+        status: _statusParam,
+        withCounts: page == 1,
+      );
+
+  static List<Map<String, dynamic>> _rows(final Map<String, dynamic> res) {
+    final dynamic data = res['data'];
+    final dynamic raw = data is Map ? data['users'] : (res['users'] ?? data);
+    return <Map<String, dynamic>>[
+      if (raw is List)
+        for (final dynamic e in raw)
+          if (e is Map) Map<String, dynamic>.from(e)
+    ];
+  }
+
+  /// The first page for the filters as they are now (and the numbers at the top).
   Future<void> _load() async {
+    final int request = ++_request;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final Map<String, dynamic> res = await _api.getUsers(limit: 500);
+      final Map<String, dynamic> res = await _fetch(1);
+      if (!mounted || request != _request) return;
       final dynamic data = res['data'];
-      final dynamic raw = data is Map ? data['users'] : (res['users'] ?? data);
-      if (!mounted) return;
-      setState(() => _users = <Map<String, dynamic>>[
-            if (raw is List)
-              for (final dynamic e in raw)
-                if (e is Map) Map<String, dynamic>.from(e)
-          ]);
+      final Map<dynamic, dynamic> paging = data is Map && data['pagination'] is Map ? data['pagination'] as Map : <dynamic, dynamic>{};
+      setState(() {
+        _users = _rows(res);
+        _page = 1;
+        _hasMore = paging['has_more_pages'] == true;
+        _matching = (paging['total'] as num?)?.toInt();
+        if (data is Map && data['counts'] is Map) _counts = Map<String, dynamic>.from(data['counts'] as Map);
+      });
     } on Exception catch (e) {
-      if (mounted) setState(() => _error = readableErrorMessage(e));
+      if (mounted && request == _request) setState(() => _error = readableErrorMessage(e));
     }
-    if (mounted) setState(() => _loading = false);
+    if (mounted && request == _request) setState(() => _loading = false);
+    _loadAdmins();
+  }
+
+  /// The next page, added under the ones already shown.
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    final int request = _request;
+    setState(() => _loadingMore = true);
+    try {
+      final Map<String, dynamic> res = await _fetch(_page + 1);
+      if (!mounted || request != _request) return;
+      final dynamic data = res['data'];
+      final Map<dynamic, dynamic> paging = data is Map && data['pagination'] is Map ? data['pagination'] as Map : <dynamic, dynamic>{};
+      final Set<String> have = _users.map(_id).toSet();
+      setState(() {
+        _users = <Map<String, dynamic>>[..._users, ..._rows(res).where((final Map<String, dynamic> u) => !have.contains(_id(u)))];
+        _page += 1;
+        _hasMore = paging['has_more_pages'] == true;
+      });
+    } on Exception catch (e) {
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  /// The business admins someone can be placed under: read on their own, whatever the list shows.
+  Future<void> _loadAdmins() async {
+    try {
+      final Map<String, dynamic> res = await _api.getUsers(limit: 100, roleGroup: 'owners', status: 'active');
+      final List<Map<String, dynamic>> rows = _rows(res).where((final Map<String, dynamic> u) => _Roles.isOwner(_role(u)) && _isActive(u)).toList();
+      if (mounted) setState(() => _adminList = rows);
+    } on Exception {
+      // the pickers fall back to the admins on screen
+    }
+  }
+
+  /// A filter changed: read the first page again from the server.
+  void _refilter(final VoidCallback change) {
+    setState(change);
+    _load();
   }
 
   /// Runs a server action, then reloads and says what happened (or why it was refused).
@@ -231,10 +324,11 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
     }).toList();
   }
 
-  List<Map<String, dynamic>> get _admins => _users
-      .where(
-          (Map<String, dynamic> u) => _Roles.isOwner(_role(u)) && _isActive(u))
-      .toList();
+  List<Map<String, dynamic>> get _admins {
+    final List<Map<String, dynamic>>? loaded = _adminList;
+    if (loaded != null && loaded.isNotEmpty) return loaded;
+    return _users.where((Map<String, dynamic> u) => _Roles.isOwner(_role(u)) && _isActive(u)).toList();
+  }
 
   // ------------------------------------------------------------------ build
 
@@ -278,13 +372,14 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
   }
 
   Widget _stats() {
-    final int active = _users.where(_isActive).length;
-    final int owners = _users
-        .where((Map<String, dynamic> u) => _Roles.isOwner(_role(u)))
-        .length;
-    final int supers = _users
-        .where((Map<String, dynamic> u) => _role(u) == _Roles.superAdmin)
-        .length;
+    // Over everyone, as the server counted them; the list itself is only the pages read so far.
+    final Map<String, dynamic>? c = _counts;
+    final int total = (c?['total'] as num?)?.toInt() ?? _users.length;
+    final int active = (c?['active'] as num?)?.toInt() ?? _users.where(_isActive).length;
+    final int owners = (c?['owners'] as num?)?.toInt() ??
+        _users.where((Map<String, dynamic> u) => _Roles.isOwner(_role(u))).length;
+    final int supers = (c?['super'] as num?)?.toInt() ??
+        _users.where((Map<String, dynamic> u) => _role(u) == _Roles.superAdmin).length;
     Widget tile(final String key, final String label, final int n,
             final IconData icon, final Color color) =>
         Expanded(
@@ -321,7 +416,7 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
       child: Row(children: <Widget>[
-        tile('uc_stat_total', (_sw ? 'Watumiaji' : 'Users'), _users.length,
+        tile('uc_stat_total', (_sw ? 'Watumiaji' : 'Users'), total,
             Icons.groups_rounded, ThemeConstants.invAccent),
         const SizedBox(width: 8),
         tile('uc_stat_active', (_sw ? 'Hai' : 'Active'), active,
@@ -341,7 +436,12 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
         child: TextField(
           key: const Key('uc_search'),
           controller: _search,
-          onChanged: (_) => setState(() {}),
+          onChanged: (_) {
+            setState(() {});
+            // The search runs on the server once typing pauses, not on every letter.
+            _searchDelay?.cancel();
+            _searchDelay = Timer(const Duration(milliseconds: 400), _load);
+          },
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: (_sw
@@ -354,7 +454,7 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
                 : IconButton(
                     icon:
                         const Icon(Icons.close_rounded, color: Colors.white54),
-                    onPressed: () => setState(_search.clear)),
+                    onPressed: () => _refilter(_search.clear)),
             filled: true,
             fillColor: Colors.white.withValues(alpha: 0.08),
             contentPadding: const EdgeInsets.symmetric(vertical: 12),
@@ -397,7 +497,7 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
   bool get _filtered => _roleFilter != _RoleFilter.all || _statusFilter != _StatusFilter.all || _serviceFilter != null || _search.text.isNotEmpty;
 
   /// Back to everyone: no role, status, service or search narrows the list.
-  void _clearFilters() => setState(() {
+  void _clearFilters() => _refilter(() {
         _roleFilter = _RoleFilter.all;
         _statusFilter = _StatusFilter.all;
         _serviceFilter = null;
@@ -412,23 +512,23 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
                   'uc_role_super',
                   'Super Admin',
                   _roleFilter == _RoleFilter.superAdmins,
-                  () => setState(() => _roleFilter = _RoleFilter.superAdmins)),
+                  () => _refilter(() => _roleFilter = _RoleFilter.superAdmins)),
               _chip(
                   'uc_role_owners',
                   (_sw ? 'Wasimamizi' : 'Admins'),
                   _roleFilter == _RoleFilter.owners,
-                  () => setState(() => _roleFilter = _RoleFilter.owners)),
+                  () => _refilter(() => _roleFilter = _RoleFilter.owners)),
               _chip(
                   'uc_role_staff',
                   (_sw ? 'Wafanyakazi' : 'Staff'),
                   _roleFilter == _RoleFilter.staff,
-                  () => setState(() => _roleFilter = _RoleFilter.staff)),
+                  () => _refilter(() => _roleFilter = _RoleFilter.staff)),
               const SizedBox(width: 6),
               _chip(
                   'uc_status_off',
                   (_sw ? 'Waliozimwa' : 'Switched off'),
                   _statusFilter == _StatusFilter.off,
-                  () => setState(() => _statusFilter =
+                  () => _refilter(() => _statusFilter =
                       _statusFilter == _StatusFilter.off
                           ? _StatusFilter.all
                           : _StatusFilter.off)),
@@ -438,7 +538,7 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
                     'uc_svc_$s',
                     _serviceName(s),
                     _serviceFilter == s,
-                    () => setState(
+                    () => _refilter(
                         () => _serviceFilter = _serviceFilter == s ? null : s)),
         ],
       );
@@ -492,13 +592,39 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
       onRefresh: _load,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(14, 6, 14, 96),
-        itemCount: shown.length,
+        itemCount: shown.length + 1,
         // the glowing line of the inventory dashboard between one person and the next
         separatorBuilder: (_, __) => const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: SectionGlowDivider(lift: false)),
-        itemBuilder: (_, int i) => _card(shown[i]),
+        itemBuilder: (_, int i) => i < shown.length ? _card(shown[i]) : _more(shown.length),
       ),
     );
   }
+
+  /// Under the list: how many are shown of how many match, and the button for the next page.
+  Widget _more(final int shown) => Padding(
+        key: const Key('uc_more_row'),
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(children: <Widget>[
+          if (_matching != null)
+            Text(
+              _sw ? 'Unaona $shown kati ya $_matching' : 'Showing $shown of $_matching',
+              key: const Key('uc_showing'),
+              style: const TextStyle(color: Colors.white60, fontSize: 12.5),
+            ),
+          if (_hasMore) ...<Widget>[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              key: const Key('uc_more'),
+              onPressed: _loadingMore ? null : _loadMore,
+              icon: _loadingMore
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.expand_more_rounded),
+              label: Text(_sw ? 'Onyesha zaidi' : 'Show more'),
+              style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white38)),
+            ),
+          ],
+        ]),
+      );
 
   Widget _card(final Map<String, dynamic> u) {
     final String name = '${u['name'] ?? ''}';

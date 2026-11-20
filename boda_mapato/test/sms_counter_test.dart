@@ -26,8 +26,17 @@ class _Api extends ApiService {
   @override
   Future<Map<String, dynamic>> get(final String endpoint, {final bool requireAuth = true, final Map<String, dynamic>? queryParams}) async {
     gets.add(endpoint);
+    if (endpoint == '/admin/sms-usage' && queryParams?['page'] == 2) {
+      return <String, dynamic>{
+        'data': <Map<String, dynamic>>[
+          <String, dynamic>{'id': 'b3', 'name': 'ZURI SALON', 'owner': <String, dynamic>{'name': 'Zuri'}, 'usage': <String, dynamic>{'used': 7, 'limit': 300, 'remaining': 293}},
+        ],
+        'meta': <String, dynamic>{'pagination': <String, dynamic>{'current_page': 2, 'has_more_pages': false}},
+      };
+    }
     if (endpoint == '/admin/sms-usage') {
       return <String, dynamic>{
+        'meta': <String, dynamic>{'pagination': <String, dynamic>{'current_page': 1, 'has_more_pages': true}},
         'data': <Map<String, dynamic>>[
           <String, dynamic>{'id': 'b1', 'name': 'masai mitumba bora', 'owner': <String, dynamic>{'name': 'Julius', 'email': 'owner1@example.test'}, 'usage': <String, dynamic>{'used': 20, 'limit': 1000, 'remaining': 980}},
           <String, dynamic>{'id': 'b2', 'name': 'DUKA LA MAMA ASHA', 'owner': <String, dynamic>{'name': 'Asha'}, 'usage': <String, dynamic>{'used': 5000, 'limit': 5000, 'remaining': 0, 'blocked': true}},
@@ -163,6 +172,21 @@ void main() {
     expect(find.text('Texts of the last 3 days'), findsOneWidget);
     expect(find.text('To 0743519104'), findsOneWidget);
     expect(find.text('Habari Happy, unadaiwa TSh 100,000'), findsOneWidget);
+  });
+
+  testWidgets('the counter list reads 50 businesses at a time; Show more brings the next page', (t) async {
+    final _Api api = _Api();
+    await _pump(t, SmsCountersScreen(api: api));
+
+    expect(find.text('ZURI SALON'), findsNothing);
+    await t.scrollUntilVisible(find.byKey(const ValueKey<String>('sms_counter_more')), 300, scrollable: find.byType(Scrollable).last);
+    await t.tap(find.byKey(const ValueKey<String>('sms_counter_more')));
+    await t.pumpAndSettle();
+
+    expect(find.text('ZURI SALON'), findsOneWidget);
+    expect(find.text('7/300'), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('sms_counter_more')), findsNothing, reason: 'that was the last page');
+    expect(find.text('masai mitumba bora'), findsOneWidget, reason: 'the first page stays');
   });
 
   testWidgets('the super admin sets the SMS limit on SMS Sender Names', (t) async {

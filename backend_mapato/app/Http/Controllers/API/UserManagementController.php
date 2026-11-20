@@ -94,9 +94,36 @@ class UserManagementController extends Controller
             $query->inAccountOf($user);
         }
 
+        // The numbers at the top of Users & access, over everyone this person may see (before any filter): with 10,000 accounts the
+        // list is read a page at a time, so the app can no longer count them itself.
+        $counts = null;
+        if ($request->boolean('with_counts')) {
+            $heads = User::ACCOUNT_HEAD_ROLES;
+            $counts = [
+                'total' => (clone $query)->count(),
+                'active' => (clone $query)->where('is_active', true)->count(),
+                'owners' => (clone $query)->whereIn('role', $heads)->count(),
+                'super' => (clone $query)->where('role', 'super_admin')->count(),
+            ];
+        }
+
         if ($role = $request->query('role')) {
             $query->where('role', $role);
         }
+
+        // super = super admins, owners = business admins (admin / administrator / landlord), staff = everyone else
+        match ((string) $request->query('role_group', '')) {
+            'super' => $query->where('role', 'super_admin'),
+            'owners' => $query->whereIn('role', User::ACCOUNT_HEAD_ROLES),
+            'staff' => $query->whereNotIn('role', array_merge(User::ACCOUNT_HEAD_ROLES, ['super_admin'])),
+            default => null,
+        };
+
+        match ((string) $request->query('status', '')) {
+            'active' => $query->where('is_active', true),
+            'off' => $query->where('is_active', false),
+            default => null,
+        };
 
         if ($serviceType = $request->query('service_type')) {
             $query->whereHas('services', fn ($q) => $q->where('service_type', $serviceType));
@@ -111,7 +138,9 @@ class UserManagementController extends Controller
         }
 
         $page = max((int) $request->query('page', 1), 1);
-        $limit = max((int) $request->query('limit', 20), 1);
+        // One page is at most 500 people (what older apps still ask for): a list of every account in one answer does not hold at 10,000.
+        // Users & access now reads 50 at a time and asks for more.
+        $limit = min(max((int) $request->query('limit', 20), 1), 500);
 
         $total = (clone $query)->count();
         $items = $query->with(['services', 'creator:id,name,email'])
@@ -136,7 +165,7 @@ class UserManagementController extends Controller
                     'total' => $total,
                     'has_more_pages' => ($page * $limit) < $total,
                 ],
-            ],
+            ] + ($counts !== null ? ['counts' => $counts] : []),
         ]);
     }
 

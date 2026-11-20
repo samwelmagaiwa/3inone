@@ -22,8 +22,33 @@ class _Api extends ApiService {
   @override
   Future<void> initialize() async {}
 
+  /// What each users request asked the server for.
+  final List<Map<String, Object?>> userQueries = <Map<String, Object?>>[];
+
+  /// When set, the server answers like the real one with many people: pages of [limit], the numbers over everyone.
+  bool manyPeople = false;
+
   @override
-  Future<Map<String, dynamic>> getUsers({int page = 1, int limit = 50, String? query, String? role, String? serviceType}) async => <String, dynamic>{
+  Future<Map<String, dynamic>> getUsers({int page = 1, int limit = 50, String? query, String? role, String? serviceType, String? roleGroup, String? status, bool withCounts = false}) async {
+    userQueries.add(<String, Object?>{'page': page, 'limit': limit, 'q': query, 'role_group': roleGroup, 'status': status, 'service': serviceType, 'counts': withCounts});
+    if (manyPeople) {
+      final List<Map<String, dynamic>> all = <Map<String, dynamic>>[
+        for (int i = 1; i <= 120; i++)
+          <String, dynamic>{'id': 'p$i', 'name': 'Person $i', 'email': 'p$i@example.test', 'role': 'sales_officer', 'is_active': true, 'service_types': <String>['inventory']},
+      ];
+      final List<Map<String, dynamic>> pageRows = all.skip((page - 1) * limit).take(limit).toList();
+      return <String, dynamic>{
+        'data': <String, dynamic>{
+          'users': pageRows,
+          'pagination': <String, dynamic>{'page': page, 'limit': limit, 'total': all.length, 'has_more_pages': page * limit < all.length},
+          if (withCounts) 'counts': <String, dynamic>{'total': 10450, 'active': 10012, 'owners': 1980, 'super': 2},
+        },
+      };
+    }
+    return _fourPeople;
+  }
+
+  static final Map<String, dynamic> _fourPeople = <String, dynamic>{
         'data': <String, dynamic>{
           'users': <Map<String, dynamic>>[
             <String, dynamic>{'id': 's1', 'name': 'Super', 'email': 'super@example.test', 'phone_number': '0700000001', 'role': 'super_admin', 'is_active': true, 'service_types': <String>[]},
@@ -126,13 +151,14 @@ class _Api extends ApiService {
   }
 }
 
-Future<_Api> _open(WidgetTester t) async {
+Future<_Api> _open(WidgetTester t) => _openWith(t, _Api());
+
+Future<_Api> _openWith(WidgetTester t, _Api api) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   await LocalizationService.instance.changeLanguage('en');
   t.view.physicalSize = const Size(1800, 2400); // wide enough for the whole row of filters
   t.view.devicePixelRatio = 1.0;
   addTearDown(t.view.reset);
-  final _Api api = _Api();
   await t.pumpWidget(
     MultiProvider(
       providers: <ChangeNotifierProvider<ChangeNotifier>>[
@@ -184,13 +210,48 @@ void main() {
 
     await t.tap(_k('uc_svc_salon'));
     await t.enterText(_k('uc_search'), 'zawadi');
+    await t.pump(const Duration(milliseconds: 450)); // the search waits for typing to pause
     await t.pumpAndSettle();
     expect(_k('uc_user_u2'), findsOneWidget);
     expect(_k('uc_user_a1'), findsNothing);
 
     await t.enterText(_k('uc_search'), 'nobody-here');
+    await t.pump(const Duration(milliseconds: 450)); // the search waits for typing to pause
     await t.pumpAndSettle();
     expect(_k('uc_empty'), findsOneWidget);
+  });
+
+  testWidgets('with thousands of accounts: pages of 50 from the server, Show more, the numbers over everyone, filters asked of the server', (WidgetTester t) async {
+    final _Api api = _Api()..manyPeople = true;
+    await _openWith(t, api);
+
+    expect(find.descendant(of: _k('uc_stat_total'), matching: find.text('10450')), findsOneWidget, reason: 'counted by the server, not the pages read');
+    expect(find.descendant(of: _k('uc_stat_owners'), matching: find.text('1980')), findsOneWidget);
+    expect(api.userQueries.first, <String, Object?>{'page': 1, 'limit': 50, 'q': '', 'role_group': null, 'status': null, 'service': null, 'counts': true});
+
+    await t.scrollUntilVisible(_k('uc_more'), 400, scrollable: find.byType(Scrollable).last);
+    expect(find.text('Showing 50 of 120'), findsOneWidget);
+    await t.tap(_k('uc_more'));
+    await t.pumpAndSettle();
+    expect(api.userQueries.any((Map<String, Object?> q) => q['page'] == 2), isTrue);
+    await t.scrollUntilVisible(find.text('Showing 100 of 120'), 400, scrollable: find.byType(Scrollable).last);
+    await t.tap(_k('uc_more'));
+    await t.pumpAndSettle();
+    await t.scrollUntilVisible(find.text('Showing 120 of 120'), 400, scrollable: find.byType(Scrollable).last);
+    expect(_k('uc_more'), findsNothing, reason: 'no more pages');
+
+    // A filter and a search go to the server.
+    await t.scrollUntilVisible(_k('uc_role_owners'), -400, scrollable: find.byType(Scrollable).last);
+    await t.tap(_k('uc_role_owners'));
+    await t.pumpAndSettle();
+    // (the list's own request; the business admins for the pickers are asked for apart)
+    Map<String, Object?> listQuery() => api.userQueries.lastWhere((Map<String, Object?> q) => q['counts'] == true);
+    expect(listQuery()['role_group'], 'owners');
+    await t.enterText(_k('uc_search'), 'asha');
+    await t.pump(const Duration(milliseconds: 450));
+    await t.pumpAndSettle();
+    expect(listQuery()['q'], 'asha');
+    expect(listQuery()['role_group'], 'owners', reason: 'the filter stays with the search');
   });
 
   testWidgets('a tapped filter chip slides to the start of the row so the hidden ones after it can be reached', (WidgetTester t) async {
@@ -213,6 +274,7 @@ void main() {
     await t.tap(_k('uc_status_off'));
     await t.tap(_k('uc_svc_salon'));
     await t.enterText(_k('uc_search'), 'zawadi');
+    await t.pump(const Duration(milliseconds: 450)); // the search waits for typing to pause
     await t.pumpAndSettle();
     expect(_k('uc_empty'), findsOneWidget, reason: 'switched off AND salon AND "zawadi": nobody');
 
@@ -224,6 +286,7 @@ void main() {
 
     await t.tap(_k('uc_status_off'));
     await t.enterText(_k('uc_search'), 'nobody');
+    await t.pump(const Duration(milliseconds: 450)); // the search waits for typing to pause
     await t.pumpAndSettle();
     await t.tap(_k('uc_clear_filters'));
     await t.pumpAndSettle();

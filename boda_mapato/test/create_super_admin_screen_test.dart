@@ -26,7 +26,7 @@ class _Api extends ApiService {
   Future<void> initialize() async {}
 
   @override
-  Future<Map<String, dynamic>> getUsers({int page = 1, int limit = 50, String? query, String? role, String? serviceType}) async => <String, dynamic>{'data': <Map<String, dynamic>>[]};
+  Future<Map<String, dynamic>> getUsers({int page = 1, int limit = 50, String? query, String? role, String? serviceType, String? roleGroup, String? status, bool withCounts = false}) async => <String, dynamic>{'data': <Map<String, dynamic>>[]};
 
   @override
   Future<Map<String, dynamic>> getMyUsers({int page = 1, int limit = 50, String? query, String? serviceType}) async => <String, dynamic>{'data': <Map<String, dynamic>>[]};

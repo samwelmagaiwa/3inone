@@ -160,7 +160,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         $allocated = $oldAllocated + $salesAllocated;
 
         // A shop or depot thanks the customer for what they paid and says what is left.
-        \App\Support\Inventory\ShopTexts::afterDebtPayment($customerId, (float) $allocated);
+        \App\Jobs\SendBusinessTextJob::later(\App\Jobs\SendBusinessTextJob::DEBT_THANKS, [$customerId, (float) $allocated]);
 
         return response()->json([
             'message' => 'Payment recorded',

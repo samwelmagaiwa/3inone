@@ -28,6 +28,10 @@ class _BusinessSmsSwitchesScreenState extends State<BusinessSmsSwitchesScreen> {
   List<Map<String, dynamic>> _items = <Map<String, dynamic>>[];
   bool _loading = true;
   String? _error;
+  // A page at a time (50), "Show more" for the next: with thousands of businesses the list is never read whole.
+  int _page = 1;
+  bool _hasMore = false;
+  bool _loadingMore = false;
   final Set<String> _saving = <String>{};
 
   @override
@@ -49,17 +53,14 @@ class _BusinessSmsSwitchesScreenState extends State<BusinessSmsSwitchesScreen> {
       _error = null;
     });
     try {
-      final String q = _search.text.trim();
-      final Map<String, dynamic> res = await widget.api.get(
-        '/admin/businesses',
-        queryParams: <String, dynamic>{'per_page': 100, if (q.isNotEmpty) 'q': q},
-      );
-      final dynamic data = res['data'];
+      final Map<String, dynamic> res = await _fetch(1);
       if (!mounted) {
         return;
       }
       setState(() {
-        _items = data is List ? data.whereType<Map>().map(Map<String, dynamic>.from).toList() : <Map<String, dynamic>>[];
+        _items = _rows(res);
+        _page = 1;
+        _hasMore = _more(res);
         _loading = false;
       });
     } on Exception catch (e) {
@@ -71,6 +72,56 @@ class _BusinessSmsSwitchesScreenState extends State<BusinessSmsSwitchesScreen> {
       }
     }
   }
+
+  Future<Map<String, dynamic>> _fetch(final int page) {
+    final String q = _search.text.trim();
+    return widget.api.get('/admin/businesses', queryParams: <String, dynamic>{'page': page, 'per_page': 50, if (q.isNotEmpty) 'q': q});
+  }
+
+  static List<Map<String, dynamic>> _rows(final Map<String, dynamic> res) {
+    final dynamic data = res['data'];
+    return data is List ? data.whereType<Map>().map(Map<String, dynamic>.from).toList() : <Map<String, dynamic>>[];
+  }
+
+  static bool _more(final Map<String, dynamic> res) {
+    final Object? meta = res['meta'];
+    final Object? paging = meta is Map ? meta['pagination'] : null;
+    return paging is Map && paging['has_more_pages'] == true;
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final Map<String, dynamic> res = await _fetch(_page + 1);
+      if (!mounted) return;
+      setState(() {
+        _items = <Map<String, dynamic>>[..._items, ..._rows(res)];
+        _page += 1;
+        _hasMore = _more(res);
+      });
+    } on Exception catch (e) {
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  /// The button for the next page, under the list.
+  Widget _moreButton() => Padding(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        child: Center(
+          child: OutlinedButton.icon(
+            key: const ValueKey<String>('sms_admin_more'),
+            onPressed: _loadingMore ? null : _loadMore,
+            icon: _loadingMore
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.expand_more_rounded),
+            label: Text(_loc.translate('list_show_more')),
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white38)),
+          ),
+        ),
+      );
 
   void _onSearch(final String _) {
     _debounce?.cancel();
@@ -173,9 +224,9 @@ class _BusinessSmsSwitchesScreenState extends State<BusinessSmsSwitchesScreen> {
       onRefresh: _load,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        itemCount: _items.length,
+        itemCount: _items.length + (_hasMore ? 1 : 0),
         separatorBuilder: (_, __) => const SizedBox(height: 8),
-        itemBuilder: (_, final int i) => _row(_items[i]),
+        itemBuilder: (_, final int i) => i < _items.length ? _row(_items[i]) : _moreButton(),
       ),
     );
   }
