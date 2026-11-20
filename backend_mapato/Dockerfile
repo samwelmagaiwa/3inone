@@ -1,6 +1,6 @@
 FROM php:8.5.12-fpm-alpine
 
-RUN apk add --no-cache libzip-dev icu-dev oniguruma-dev nginx supervisor \
+RUN apk add --no-cache libzip-dev icu-dev oniguruma-dev nginx supervisor redis \
  && docker-php-ext-install pdo_mysql mbstring zip bcmath intl \
  && rm -rf /var/cache/apk/*
 
@@ -16,6 +16,7 @@ RUN composer dump-autoload --optimize \
 
 COPY docker/nginx-prod.conf /etc/nginx/http.d/default.conf
 COPY docker/supervisord.conf /etc/supervisord.conf
+COPY docker/redis.conf /etc/redis-app.conf
 COPY docker/php-fpm-pool.conf /usr/local/etc/php-fpm.d/zzz-pool-override.conf
 COPY docker/opcache-prod.ini /usr/local/etc/php/conf.d/zz-opcache-prod.ini
 COPY docker/php-prod-errors.ini /usr/local/etc/php/conf.d/zz-prod-errors.ini

@@ -276,9 +276,16 @@ class _BackupScreenState extends State<BackupScreen> {
         if (!mounted) return;
         setState(() => _lastBackupDate = dateStr);
 
+        // The server writes the copy in the background now: it says so, and the copy shows in the list a moment later.
+        final dynamic data = response['data'];
+        final bool queued = data is Map && data['queued'] == true;
         ThemeConstants.showSuccessSnackBar(
           context,
-          _localizationService.translate('backup_successful'),
+          queued
+              ? (_localizationService.isSwahili
+                  ? 'Nakala inaandaliwa; itaonekana kwenye orodha baada ya muda mfupi.'
+                  : 'The backup is being made; it shows in the list in a moment.')
+              : _localizationService.translate('backup_successful'),
         );
       } else {
         throw Exception(response['message'] ?? LocalizationService.instance.translate('backup_failed'));

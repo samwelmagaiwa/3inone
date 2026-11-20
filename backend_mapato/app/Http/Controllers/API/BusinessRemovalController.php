@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\User;
 use App\Services\Inventory\AuditTrail;
+use App\Jobs\RemoveBusinessJob;
 use App\Support\BusinessRemoval;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -107,38 +108,22 @@ class BusinessRemovalController extends Controller
         $plan = BusinessRemoval::plan($business);
         Cache::forget($this->codeKey($request, $id)); // used once
 
-        // A full snapshot first: without it, nothing is deleted.
-        try {
-            $snapshot = app(BackupController::class)->safetySnapshot('before_removing_business');
-        } catch (\Throwable $e) {
-            Log::error('Business removal stopped: the safety snapshot failed: ' . $e->getMessage());
-
-            return response()->json(['message' => 'Nakala ya usalama haikuweza kuandikwa, hivyo hakuna kilichofutwa. / The safety backup could not be written, so nothing was removed.'], 500);
-        }
-
-        try {
-            $result = BusinessRemoval::remove($business);
-        } catch (\Throwable $e) {
-            Log::error('Business removal failed, nothing removed: ' . $e->getMessage(), ['business_id' => $business->id]);
-
-            return response()->json(['message' => 'Biashara haikufutwa: ' . $e->getMessage() . ' / The business was not removed.'], 500);
-        }
-
-        $summary = "{$admin->name} (super admin) REMOVED the business \"{$business->name}\" (owner " . ($plan['business']['owner'] ?? '-') . ', '
-            . count($plan['users']) . ' account(s), ' . array_sum($result['tables']) . " row(s)). Reason: {$reason}. Safety backup: {$snapshot['filename']}";
-        $this->audit->record($request, 'business', null, 'business_removed', $plan['business'] + ['users' => $plan['users']], null, $summary);
-        Log::warning($summary);
+        // The copy of the whole database and the removal take long once the database is big: the queue worker does them (RemoveBusinessJob),
+        // the snapshot first (without it nothing is removed). Its file is named now, so the answer can say which one it will be.
+        $snapshot = BackupController::newFilename('before_removing_business');
+        RemoveBusinessJob::dispatch((string) $business->id, (string) $admin->id, $reason, $snapshot, (string) $request->ip(), $plan);
+        Log::info("{$admin->name} (super admin) asked to remove \"{$business->name}\"; queued", ['business_id' => $business->id]);
 
         return response()->json([
-            'message' => 'Biashara imefutwa. / The business was removed.',
+            'message' => 'Biashara inaondolewa; itatoweka kwenye orodha baada ya muda mfupi. / The business is being removed; it leaves the list in a moment.',
             'data' => [
+                'queued' => true,
                 'business' => $plan['business'],
                 'users_removed' => count($plan['users']),
-                'rows_removed' => $result['tables'],
                 'reason' => $reason,
-                'safety_backup' => $snapshot['filename'],
+                'safety_backup' => $snapshot,
             ],
-        ]);
+        ], 202);
     }
 
     private function codeKey(Request $request, string $userId): string

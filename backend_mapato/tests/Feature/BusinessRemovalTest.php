@@ -101,7 +101,7 @@ class BusinessRemovalTest extends TestCase
 
         $res = $this->api($admin, 'POST', "/api/admin/users/{$masai['owner']->id}/business-removal", [
             'confirm' => $plan['confirm_word'], 'password' => 'password', 'reason' => 'Mteja ameacha huduma',
-        ])->assertOk()->assertJsonPath('data.users_removed', 2)->assertJsonPath('data.reason', 'Mteja ameacha huduma');
+        ])->assertStatus(202)->assertJsonPath('data.queued', true)->assertJsonPath('data.users_removed', 2)->assertJsonPath('data.reason', 'Mteja ameacha huduma');
 
         $this->assertSame(['products' => 0, 'customers' => 0, 'sales' => 0, 'properties' => 0, 'users' => 0, 'business' => 0], $this->footprint($masai['owner']));
         $this->assertDatabaseMissing('users', ['id' => $masai['staff']->id]);
@@ -202,7 +202,7 @@ class BusinessRemovalTest extends TestCase
         Business::ensureFor($applicant);
 
         $code = $this->api($admin, 'GET', "/api/admin/users/{$applicant->id}/business-removal")->assertOk()->json('data.confirm_word');
-        $this->api($admin, 'POST', "/api/admin/users/{$applicant->id}/business-removal", ['confirm' => $code, 'password' => 'password', 'reason' => 'Ombi la majaribio'])->assertOk();
+        $this->api($admin, 'POST', "/api/admin/users/{$applicant->id}/business-removal", ['confirm' => $code, 'password' => 'password', 'reason' => 'Ombi la majaribio'])->assertStatus(202);
         // The code is used once.
         $this->api($admin, 'GET', "/api/admin/users/{$applicant->id}/business-removal")->assertNotFound();
 

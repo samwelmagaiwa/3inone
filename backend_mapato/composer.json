@@ -12,6 +12,7 @@
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.2",
         "laravel/tinker": "^2.9",
+        "predis/predis": "^2.3",
         "zircote/swagger-php": "^5.7"
     },
     "require-dev": {

@@ -1489,10 +1489,15 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
     _disposeLater(<TextEditingController>[typed, password, reason]);
     if (go != true || !mounted) return;
 
+    // The server makes the safety copy and removes the business in the background: it answers at once, and the business leaves the list
+    // a moment later (read again then).
     await _run(
       () => _api.post('/admin/users/$id/business-removal', <String, dynamic>{'confirm': word0, 'password': pass, 'reason': why}),
-      (_sw ? 'Biashara "$name" imeondolewa' : 'Business "$name" removed'),
+      (_sw ? 'Biashara "$name" inaondolewa; itatoweka kwenye orodha baada ya muda mfupi' : 'Business "$name" is being removed; it leaves the list in a moment'),
     );
+    Future<void>.delayed(const Duration(seconds: 6), () {
+      if (mounted) _load();
+    });
   }
 
   // ------------------------------------------------------------------ create

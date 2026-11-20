@@ -37,8 +37,12 @@ services:
       DB_DATABASE: ${DB_DATABASE:-3inone}
       DB_USERNAME: ${DB_USERNAME:-3inone}
       DB_PASSWORD: ${DB_PASSWORD}
-      QUEUE_CONNECTION: database
-      CACHE_STORE: database
+      # Cache, queue and rate limits on Redis (inside the container, see docker/redis.conf), off the database.
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
+      CACHE_STORE: ${CACHE_STORE:-redis}
+      REDIS_CLIENT: predis
+      REDIS_HOST: ${REDIS_HOST:-127.0.0.1}
+      REDIS_PORT: ${REDIS_PORT:-6379}
       # Text messages (password reset codes, registration phone check, receipts). The values live in
       # the .env next to this file on the server, never in git. Without SMS_ENABLED=true and the
       # key/secret, messages are only logged and the app refuses anything that needs a code to reach

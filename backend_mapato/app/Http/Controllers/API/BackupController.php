@@ -111,31 +111,23 @@ class BackupController extends Controller
 
         $user = $request->user();
 
+        // Copying the whole database takes long once it is big: it is done by the queue worker, not while this request waits. The file
+        // is named now, so the answer can say which one it will be; it shows in the list as soon as it is written.
         try {
-            $result = $this->writeSnapshot('backup');
-
-            $this->audit->record(
-                $request, 'system', null, 'backup_created', null,
-                ['filename' => $result['filename'], 'tables' => $result['tables'], 'rows' => $result['rows']],
-                "{$user->name} created a system backup ({$result['rows']} rows in " . count($result['tables']) . ' tables)',
-            );
-
-            Log::info('Backup created', ['user_id' => $user->id, 'filename' => $result['filename'], 'ip' => $request->ip()]);
+            $filename = self::newFilename('backup');
+            \App\Jobs\CreateBackupJob::dispatch($filename, (string) $user->id, (string) $request->ip());
 
             return response()->json([
                 'success' => true,
-                'message' => 'Backup created successfully.',
+                'message' => 'Nakala inaandaliwa; itaonekana kwenye orodha baada ya muda mfupi. / The backup is being made; it shows in the list in a moment.',
                 'data' => [
-                    'filename' => basename($result['filename']),
+                    'filename' => basename($filename),
+                    'queued' => true,
                     'created_at' => now()->toISOString(),
-                    'size_bytes' => Storage::disk('local')->size($result['filename']),
-                    'tables' => count($result['tables']),
-                    'rows' => $result['rows'],
-                    'skipped_tables' => $result['skipped'],
                 ],
             ]);
         } catch (\Throwable $e) {
-            Log::error('Backup failed', ['error' => $e->getMessage(), 'user_id' => $user->id]);
+            Log::error('Backup could not be started', ['error' => $e->getMessage(), 'user_id' => $user->id]);
 
             return response()->json(['success' => false, 'message' => 'Backup failed: ' . $e->getMessage()], 500);
         }
@@ -281,16 +273,43 @@ class BackupController extends Controller
      *
      * @return array{filename: string, tables: array<int, string>, rows: int, skipped: array<string, string>}
      */
-    public function safetySnapshot(string $prefix): array
+    public function safetySnapshot(string $prefix, ?string $filename = null): array
     {
-        return $this->writeSnapshot($prefix);
+        return $this->writeSnapshot($prefix, $filename);
     }
 
-    private function writeSnapshot(string $prefix): array
+    /** The file a snapshot of this kind will be written to: chosen up front, so a backup made in the background can be named at once. */
+    public static function newFilename(string $prefix): string
+    {
+        return 'backups/' . $prefix . '_' . now()->format('Y-m-d_His') . '_' . Str::random(6) . '.json';
+    }
+
+    /** How many snapshots of each kind are kept (backup_, pre_restore_, before_removing_business_): the newest; older ones are deleted. */
+    public static function keep(): int
+    {
+        return max(1, (int) config('backup.keep', 5));
+    }
+
+    /** Delete the older snapshots of this kind, keeping the newest {@see keep()}. Never the one just written. */
+    public static function prune(string $prefix, string $justWritten): void
+    {
+        try {
+            $disk = Storage::disk('local');
+            $mine = array_values(array_filter($disk->files('backups'), fn ($f) => str_starts_with(basename($f), $prefix . '_') && $f !== $justWritten));
+            usort($mine, fn ($a, $b) => $disk->lastModified($b) <=> $disk->lastModified($a) ?: strcmp($b, $a));
+            foreach (array_slice($mine, self::keep() - 1) as $old) {
+                $disk->delete($old);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Old backups could not be cleared: ' . $e->getMessage());
+        }
+    }
+
+    private function writeSnapshot(string $prefix, ?string $filename = null): array
     {
         $disk = Storage::disk('local');
         $disk->makeDirectory('backups');
-        $filename = 'backups/' . $prefix . '_' . now()->format('Y-m-d_His') . '_' . Str::random(6) . '.json';
+        $filename ??= self::newFilename($prefix);
         $absolute = $disk->path($filename);
 
         $plan = $this->plan();
@@ -327,6 +346,9 @@ class BackupController extends Controller
         } finally {
             fclose($handle);
         }
+
+        // Only the newest few of this kind are kept: the disk must not fill up with copies of the whole database.
+        self::prune($prefix, $filename);
 
         return ['filename' => $filename, 'tables' => $plan['include'], 'rows' => $rows, 'skipped' => $plan['skipped']];
     }
@@ -408,7 +430,7 @@ class BackupController extends Controller
                     'filename' => basename($file),
                     'size_bytes' => Storage::disk('local')->size($file),
                     'created_at' => date('Y-m-d\TH:i:s\Z', Storage::disk('local')->lastModified($file)),
-                    'kind' => str_starts_with(basename($file), 'pre_restore_') ? 'pre_restore' : 'backup',
+                    'kind' => str_starts_with(basename($file), 'pre_restore_') ? 'pre_restore' : (str_starts_with(basename($file), 'before_removing_business_') ? 'before_removing_business' : 'backup'),
                 ];
             }
             usort($result, fn ($a, $b) => strcmp($b['created_at'], $a['created_at']));
