@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\API\Groups;
 
 use App\Support\Groups\GroupAccess;
+use App\Support\Groups\GroupContributions;
 use App\Support\Groups\GroupLedger;
 use App\Support\Groups\GroupMembers;
 use App\Support\Groups\GroupOffices;
+use App\Support\Groups\GroupPromises;
 use App\Support\Groups\GroupSettings;
+use App\Support\Groups\GroupStatement;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -33,6 +36,10 @@ class GroupMeController extends Controller
         if (in_array('approve_members', $rights, true)) {
             $waiting['applications'] = DB::table('group_members')->where('status', GroupMembers::SUBMITTED)->count();
         }
+        if (in_array('view_finance', $rights, true)) {
+            $waiting['members_overdue'] = GroupContributions::owing(GroupContributions::query())
+                ->where('o.due_date', '<', now()->toDateString())->distinct()->count('o.member_id');
+        }
 
         $memberId = $member === null ? null : (int) $member['id'];
 
@@ -42,7 +49,11 @@ class GroupMeController extends Controller
             'offices' => GroupOffices::OFFICES,
             'member' => $member === null ? null : GroupMembers::payload($member, true),
             'balances' => $memberId === null ? null : GroupLedger::balances($memberId),
-            'pending' => $memberId === null ? [] : DB::table('group_transactions')->where('member_id', $memberId)->where('status', GroupLedger::PENDING)->count(),
+            'pending' => $memberId === null ? 0 : DB::table('group_transactions')->where('member_id', $memberId)->where('status', GroupLedger::PENDING)->count(),
+            // What they still owe (contributions), oldest first, and the promises they made.
+            'owing' => $memberId === null ? [] : GroupStatement::owing($memberId),
+            'promises' => $memberId === null ? [] : GroupPromises::query()->where('p.member_id', $memberId)->where('p.status', 'open')->orderBy('p.promised_on')->get()
+                ->map(fn ($p) => GroupPromises::payload($p))->values()->all(),
             'settings' => [
                 'joining_fee' => (float) $settings['joining_fee'],
                 'share_amount' => (float) $settings['share_amount'],

@@ -48,6 +48,9 @@ final class GroupOffices
      *   record_payments   record a payment on a member's behalf (it still waits for verification)
      *   verify_payments   verify or reject a submitted payment (never one's own)
      *   reverse_payments  put a verified payment right with a reversal
+     *   manage_contributions  set up contributions and raise a call (a month's JAMII, an event)
+     *   grant_exemptions  excuse a member from a contribution (udhuru), with the reason
+     *   record_payouts    record money going OUT: a savings withdrawal, a group expense (someone else verifies it)
      *   manage_offices    give or take an office
      *   manage_settings   the group's fees and rules
      *   view_audit        the group's activity log
@@ -55,12 +58,13 @@ final class GroupOffices
     public const RIGHTS = [
         'view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance',
         'record_payments', 'verify_payments', 'reverse_payments', 'manage_offices', 'manage_settings', 'view_audit',
+        'manage_contributions', 'grant_exemptions', 'record_payouts',
     ];
 
     private const BY_OFFICE = [
-        'mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit'],
-        'makamu_mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit'],
-        'mweka_hazina' => ['view_members', 'view_sensitive', 'view_finance', 'record_payments', 'verify_payments', 'reverse_payments', 'view_audit'],
+        'mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions'],
+        'makamu_mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions'],
+        'mweka_hazina' => ['view_members', 'view_sensitive', 'view_finance', 'record_payments', 'verify_payments', 'reverse_payments', 'view_audit', 'manage_contributions', 'record_payouts'],
         'mweka_hazina_msaidizi' => ['view_members', 'view_finance', 'record_payments', 'verify_payments'],
         'katibu' => ['view_members', 'manage_members', 'view_sensitive', 'record_payments', 'view_audit'],
         'katibu_msaidizi' => ['view_members', 'manage_members', 'record_payments'],

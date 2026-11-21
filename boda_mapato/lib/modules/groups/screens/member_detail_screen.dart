@@ -12,6 +12,7 @@ import 'group_dashboard_screen.dart';
 import 'groups_text.dart';
 import 'member_form_screen.dart';
 import 'payment_form.dart';
+import 'statement_screen.dart';
 import 'widgets/groups_ui.dart';
 
 /// One member's file: who they are, where their membership stands and the steps that move it, their office, sign-in, money, dependants,
@@ -188,7 +189,16 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
   }
 
   Future<void> _recordPayment(final GroupMemberFile f) async {
-    if (await showPaymentForm(context, api: widget.api, me: widget.me, member: f.member, paid: f.balances ?? const <String, double>{})) await _load();
+    List<GroupObligation> owing = const <GroupObligation>[];
+    if (widget.me.seesContributions) {
+      try {
+        owing = (await widget.api.statement(memberId: f.member.id))?.owing ?? const <GroupObligation>[];
+      } on Exception {
+        owing = const <GroupObligation>[];
+      }
+    }
+    if (!mounted) return;
+    if (await showPaymentForm(context, api: widget.api, me: widget.me, member: f.member, paid: f.balances ?? const <String, double>{}, owing: owing)) await _load();
   }
 
   Future<void> _dependant(final GroupMember m, [final GroupDependant? d]) async {
@@ -219,6 +229,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
         if (me.can('manage_members')) GroupSheetAction(icon: Icons.edit_outlined, label: sw ? 'Badili taarifa' : 'Edit details', value: 'edit'),
         if (me.can('record_payments') && <String>['submitted', 'active', 'suspended'].contains(m.status))
           GroupSheetAction(icon: Icons.payments_outlined, label: sw ? 'Rekodi malipo' : 'Record a payment', value: 'pay'),
+        if (me.seesContributions) GroupSheetAction(icon: Icons.receipt_long_outlined, label: sw ? 'Taarifa ya fedha' : 'Statement', value: 'statement'),
         if (!_isSelf && me.can('manage_offices') && m.isActive) GroupSheetAction(icon: Icons.workspace_premium_outlined, label: sw ? 'Cheo' : 'Office', value: 'office'),
         if (me.can('manage_members') && (m.isActive || m.status == 'suspended'))
           GroupSheetAction(
@@ -242,6 +253,8 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
         await _edit(m);
       case 'pay':
         await _recordPayment(_file!);
+      case 'statement':
+        await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => GroupStatementScreen(api: widget.api, memberId: m.id, memberName: m.fullName)));
       case 'office':
         await _office(m);
       case 'sign_in':

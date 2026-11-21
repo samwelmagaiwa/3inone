@@ -80,7 +80,7 @@ class _FakeApi extends GroupsApi {
       });
 
   @override
-  Future<Map<String, dynamic>> moneySummary() async => <String, dynamic>{
+  Future<Map<String, dynamic>> moneySummary({final String? month}) async => <String, dynamic>{
         'verified': <String, dynamic>{'joining_fee': 160000, 'shares': 0},
         'pending_count': pending.length,
         'pending_amount': 80000,

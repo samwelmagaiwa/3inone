@@ -25,34 +25,82 @@ final class GroupLedger
     public const VERIFIED = 'verified';
     public const REJECTED = 'rejected';
 
-    /** The categories members pay into in this phase. Later phases add savings, contributions, loans, welfare, rental, dividends. */
-    public const CATEGORIES = ['joining_fee', 'shares'];
+    /**
+     * The kinds of money, never mixed: joining fees, project shares, savings (in, and withdrawals out), contributions (each tied to what a
+     * member owes) and the group's own expenses (out, to a payee, no member). Later phases add loans, welfare, rental and dividends.
+     */
+    public const CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution', 'expense'];
+
+    /** What a member can pay for themself (never money out). */
+    public const MEMBER_CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution'];
 
     /** How a payment can be made (the same words the rest of the app uses). */
     public const METHODS = ['cash', 'mpesa', 'mixx', 'airtel_money', 'halopesa', 'bank_transfer', 'other'];
 
     /**
-     * @param  array{member_id: int, category: string, amount: float|int|string, method: string, external_ref?: ?string, paid_on?: ?string, note?: ?string}  $data
+     * Is a payment of [amount] in [category] ([direction]) possible as things stand? Checked when it is sent and again when it is verified,
+     * because the balance it depends on may have moved in between. Throws with the code of what is wrong.
+     */
+    public static function check(string $category, string $direction, float $amount, ?int $memberId, ?int $obligationId, ?int $except = null): void
+    {
+        if ($direction === 'out' && !in_array($category, ['savings', 'expense'], true)) {
+            throw new InvalidArgumentException('cannot_pay_out');
+        }
+        if ($category === 'expense' && $direction !== 'out') {
+            throw new InvalidArgumentException('cannot_pay_out');
+        }
+        if ($category === 'contribution') {
+            $o = $obligationId === null ? null : DB::table('group_obligations')->where('id', $obligationId)->first();
+            if ($o === null || (int) $o->member_id !== (int) $memberId) {
+                throw new InvalidArgumentException('obligation_required');
+            }
+            $waiting = (float) DB::table('group_transactions')->where('obligation_id', $obligationId)->where('status', self::PENDING)
+                ->when($except !== null, fn ($q) => $q->where('id', '!=', $except))->sum('amount');
+            if ($amount > GroupContributions::remaining($obligationId) - ($except === null ? $waiting : 0) + 0.001) {
+                throw new InvalidArgumentException('more_than_owed');
+            }
+        }
+        if ($category === 'savings' && $direction === 'out') {
+            $waitingOut = (float) DB::table('group_transactions')->where('member_id', $memberId)->where('category', 'savings')
+                ->where('direction', 'out')->where('status', self::PENDING)->when($except !== null, fn ($q) => $q->where('id', '!=', $except))->sum('amount');
+            if ($amount > (self::balances((int) $memberId)['savings'] ?? 0) - $waitingOut + 0.001) {
+                throw new InvalidArgumentException('more_than_savings');
+            }
+        }
+    }
+
+    /**
+     * @param  array{member_id: ?int, category: string, amount: float|int|string, method: string, direction?: string, obligation_id?: ?int, payee?: ?string, external_ref?: ?string, paid_on?: ?string, note?: ?string}  $data
      * @return int the new transaction's id
      */
     public static function submit(array $data, string $by): int
     {
         $method = (string) $data['method'];
         $ref = trim((string) ($data['external_ref'] ?? ''));
-        if ($method !== 'cash' && $ref === '') {
+        $direction = (string) ($data['direction'] ?? 'in');
+        $memberId = isset($data['member_id']) ? (int) $data['member_id'] : null;
+        $obligationId = isset($data['obligation_id']) ? (int) $data['obligation_id'] : null;
+        // Money paid IN by mobile money or bank must say its reference; money the group pays OUT is the group's own record.
+        if ($direction === 'in' && $method !== 'cash' && $ref === '') {
             throw new InvalidArgumentException('reference_required');
         }
         if ($ref !== '' && self::duplicateOf($method, $ref) !== null) {
             throw new InvalidArgumentException('duplicate_reference');
         }
+        if ($data['category'] === 'expense' && trim((string) ($data['payee'] ?? '')) === '') {
+            throw new InvalidArgumentException('payee_required');
+        }
+        self::check((string) $data['category'], $direction, (float) $data['amount'], $memberId, $obligationId);
 
         for ($try = 0; $try < 5; $try++) {
             try {
                 return (int) DB::table('group_transactions')->insertGetId([
                     'reference' => 'TRX-' . strtoupper(Str::random(8)),
-                    'member_id' => (int) $data['member_id'],
+                    'member_id' => $memberId,
+                    'obligation_id' => $data['category'] === 'contribution' ? $obligationId : null,
+                    'payee' => $data['category'] === 'expense' ? trim((string) $data['payee']) : null,
                     'category' => (string) $data['category'],
-                    'direction' => 'in',
+                    'direction' => $direction,
                     'amount' => round((float) $data['amount'], 2),
                     'method' => $method,
                     'external_ref' => $ref === '' ? null : $ref,
@@ -98,6 +146,9 @@ final class GroupLedger
 
     public static function verify(object $tx, string $by): string
     {
+        // The balance it depends on may have moved since it was sent (another withdrawal, another payment to the same contribution).
+        self::check((string) $tx->category, (string) $tx->direction, (float) $tx->amount, $tx->member_id === null ? null : (int) $tx->member_id,
+            $tx->obligation_id === null ? null : (int) $tx->obligation_id, (int) $tx->id);
         $receipt = self::nextReceipt();
         for ($try = 0; $try < 5; $try++) {
             try {
@@ -138,6 +189,8 @@ final class GroupLedger
                 'reference' => 'REV-' . strtoupper(Str::random(8)),
                 'receipt_number' => self::nextReceipt(),
                 'member_id' => $tx->member_id,
+                'obligation_id' => $tx->obligation_id,
+                'payee' => $tx->payee,
                 'category' => $tx->category,
                 'direction' => $tx->direction === 'in' ? 'out' : 'in',
                 'amount' => $tx->amount,
@@ -163,6 +216,12 @@ final class GroupLedger
         });
     }
 
+    /** SQL that joins strings: SQLite (tests) has ||, MySQL / MariaDB have CONCAT. */
+    private static function concat(string ...$parts): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite' ? implode(' || ', $parts) : 'CONCAT(' . implode(', ', $parts) . ')';
+    }
+
     /** RC-000001, RC-000002, ... within the group. */
     private static function nextReceipt(): string
     {
@@ -184,12 +243,14 @@ final class GroupLedger
      */
     public static function balances(int $memberId): array
     {
-        $out = array_fill_keys(self::CATEGORIES, 0.0);
+        $out = array_fill_keys(self::MEMBER_CATEGORIES, 0.0);
         $rows = DB::table('group_transactions')->where('member_id', $memberId)->where('status', self::VERIFIED)
             ->selectRaw("category, SUM(CASE WHEN direction = 'in' THEN amount ELSE -amount END) as total")
             ->groupBy('category')->get();
         foreach ($rows as $r) {
-            $out[$r->category] = round((float) $r->total, 2);
+            if (array_key_exists($r->category, $out)) {
+                $out[$r->category] = round((float) $r->total, 2);
+            }
         }
 
         return $out;
@@ -207,6 +268,9 @@ final class GroupLedger
             'reference' => $r->reference,
             'receipt_number' => $r->receipt_number,
             'member_id' => $r->member_id === null ? null : (int) $r->member_id,
+            'obligation_id' => ($r->obligation_id ?? null) === null ? null : (int) $r->obligation_id,
+            'obligation_label' => $r->obligation_label ?? null,
+            'payee' => $r->payee ?? null,
             'member_name' => $r->member_name ?? null,
             'member_number' => $r->member_number ?? null,
             'category' => $r->category,
@@ -234,6 +298,9 @@ final class GroupLedger
             ->leftJoin('group_members as m', 'm.id', '=', 't.member_id')
             ->leftJoin('users as su', 'su.id', '=', 't.submitted_by')
             ->leftJoin('users as vu', 'vu.id', '=', 't.verified_by')
-            ->select('t.*', 'm.full_name as member_name', 'm.member_number', 'su.name as submitted_by_name', 'vu.name as verified_by_name');
+            ->leftJoin('group_obligations as o', 'o.id', '=', 't.obligation_id')
+            ->leftJoin('group_contribution_types as c', 'c.id', '=', 'o.contribution_type_id')
+            ->select('t.*', 'm.full_name as member_name', 'm.member_number', 'su.name as submitted_by_name', 'vu.name as verified_by_name')
+            ->selectRaw("CASE WHEN c.name IS NULL THEN NULL ELSE " . self::concat("c.name", "' · '", "COALESCE(o.label, o.period)") . " END as obligation_label");
     }
 }

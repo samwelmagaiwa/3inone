@@ -145,17 +145,36 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     }
   }
 
+  /// The button: a payment for a member, or -- for whoever records payouts -- a group expense.
+  Future<void> _add() async {
+    final bool sw = context.read<LocalizationService>().isSwahili;
+    if (!widget.me.can('record_payouts')) return _record();
+    final String? picked = await groupActions(context, title: sw ? 'Rekodi' : 'Record', actions: <GroupSheetAction>[
+      if (widget.me.can('record_payments')) GroupSheetAction(icon: Icons.add_card_rounded, label: sw ? 'Malipo ya mwanachama' : "A member's payment", value: 'payment', tone: GroupTone.positive),
+      GroupSheetAction(icon: Icons.receipt_long_rounded, label: sw ? 'Matumizi ya kikundi' : 'A group expense', value: 'expense', tone: GroupTone.danger),
+    ]);
+    if (!mounted) return;
+    if (picked == 'payment') await _record();
+    if (picked == 'expense' && await showExpenseForm(context, api: widget.api)) {
+      await _load();
+      await widget.onChanged();
+    }
+  }
+
   Future<void> _record() async {
     final GroupMember? member = await pickGroupMember(context, api: widget.api, statuses: const <String>{'submitted', 'active', 'suspended'});
     if (member == null || !mounted) return;
     Map<String, double> paid = const <String, double>{};
+    List<GroupObligation> owing = const <GroupObligation>[];
     try {
-      paid = (await widget.api.member(member.id)).balances ?? const <String, double>{};
+      final GroupStatementData? s = await widget.api.statement(memberId: member.id);
+      paid = s?.balances ?? const <String, double>{};
+      owing = s?.owing ?? const <GroupObligation>[];
     } on Exception {
       paid = const <String, double>{};
     }
     if (!mounted) return;
-    if (await showPaymentForm(context, api: widget.api, me: widget.me, member: member, paid: paid)) {
+    if (await showPaymentForm(context, api: widget.api, me: widget.me, member: member, paid: paid, owing: owing)) {
       await _load();
       await widget.onChanged();
     }
@@ -165,6 +184,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   Widget build(final BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     final Map<String, dynamic> verified = _summary['verified'] is Map ? Map<String, dynamic>.from(_summary['verified'] as Map) : <String, dynamic>{};
+    final Map<String, dynamic> month = _summary['contributions'] is Map ? Map<String, dynamic>.from(_summary['contributions'] as Map) : <String, dynamic>{};
     final List<(String?, String)> filters = <(String?, String)>[
       ('pending', sw ? 'Zinasubiri' : 'Waiting'),
       ('verified', sw ? 'Zimethibitishwa' : 'Verified'),
@@ -174,12 +194,12 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: widget.me.can('record_payments')
+      floatingActionButton: widget.me.can('record_payments') || widget.me.can('record_payouts')
           ? FloatingActionButton.extended(
               key: const Key('grp_payment_record'),
               backgroundColor: ThemeConstants.primaryOrange,
               foregroundColor: Colors.white,
-              onPressed: _record,
+              onPressed: _add,
               icon: const Icon(Icons.add_card_rounded),
               label: Text(sw ? 'Rekodi malipo' : 'Record a payment'),
             )
@@ -194,8 +214,15 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                 padding: const EdgeInsets.all(16),
                 children: <Widget>[
                   Wrap(spacing: 24, runSpacing: 10, children: <Widget>[
+                    GroupStat(
+                      key: const Key('grp_cash_stat'),
+                      label: sw ? 'Fedha kwenye kumbukumbu' : 'Cash on record',
+                      value: tsh((_summary['cash_on_record'] as num?) ?? 0),
+                      color: ThemeConstants.invAccent,
+                    ),
                     for (final MapEntry<String, dynamic> e in verified.entries)
-                      GroupStat(label: categoryLabel(sw: sw, category: e.key), value: tsh((e.value as num?) ?? 0)),
+                      if (e.key != 'expense' || ((e.value as num?) ?? 0) != 0)
+                        GroupStat(label: categoryLabel(sw: sw, category: e.key), value: tsh(((e.value as num?) ?? 0).abs())),
                     GroupStat(
                       key: const Key('grp_pay_pending_stat'),
                       label: sw ? 'Zinasubiri' : 'Waiting',
@@ -203,6 +230,20 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       color: ((_summary['pending_count'] as num?) ?? 0) > 0 ? ThemeConstants.warningAmber : null,
                     ),
                   ]),
+                  if (month.isNotEmpty)
+                    Wrap(spacing: 24, runSpacing: 10, children: <Widget>[
+                      GroupStat(
+                        key: const Key('grp_month_stat'),
+                        label: '${sw ? 'Michango' : 'Contributions'} ${_summary['month'] ?? ''}',
+                        value: '${tsh((month['collected'] as num?) ?? 0)} / ${tsh((month['expected'] as num?) ?? 0)}',
+                      ),
+                      GroupStat(
+                        label: sw ? 'Imepita muda' : 'Overdue',
+                        value: '${tsh((month['overdue_amount'] as num?) ?? 0)} · ${month['overdue_members'] ?? 0} ${sw ? 'wanachama' : 'members'}',
+                        color: ((month['overdue_amount'] as num?) ?? 0) > 0 ? ThemeConstants.errorText : null,
+                      ),
+                      GroupStat(label: sw ? 'Matumizi mwezi huu' : 'Spent this month', value: tsh((_summary['expenses_in_month'] as num?) ?? 0)),
+                    ]),
                 ],
               ),
             const SizedBox(height: 10),

@@ -72,6 +72,7 @@ use App\Http\Controllers\API\Rental\BillingController;
 use App\Http\Controllers\API\Rental\CaretakerController;
 use App\Http\Controllers\API\Rental\AgreementController;
 use App\Http\Controllers\API\Rental\MaintenanceController;
+use App\Http\Controllers\API\Groups\GroupContributionController;
 use App\Http\Controllers\API\Groups\GroupMeController;
 use App\Http\Controllers\API\Groups\GroupMemberController;
 use App\Http\Controllers\API\Groups\GroupSettingsController;
@@ -261,6 +262,24 @@ Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(f
         Route::post('transactions/{id}/reject', [GroupTransactionController::class, 'reject'])->whereNumber('id');
     });
     Route::post('transactions/{id}/reverse', [GroupTransactionController::class, 'reverse'])->whereNumber('id')->middleware('group_right:reverse_payments');
+
+    // Contributions, what members owe, udhuru, promises and statements (phase 2).
+    Route::get('me/statement', [GroupContributionController::class, 'myStatement']);
+    Route::post('me/promises', [GroupContributionController::class, 'myPromise'])->middleware('throttle:20,1');
+    Route::post('promises/{id}/cancel', [GroupContributionController::class, 'cancelPromise'])->whereNumber('id');
+    Route::get('contribution-types', [GroupContributionController::class, 'types'])->middleware('group_right:view_finance,manage_contributions,record_payments');
+    Route::middleware('group_right:manage_contributions')->group(function () {
+        Route::post('contribution-types', [GroupContributionController::class, 'saveType']);
+        Route::put('contribution-types/{id}', [GroupContributionController::class, 'saveType'])->whereNumber('id');
+        Route::post('contribution-types/{id}/raise', [GroupContributionController::class, 'raise'])->whereNumber('id');
+    });
+    Route::middleware('group_right:view_finance,record_payments,verify_payments')->group(function () {
+        Route::get('obligations', [GroupContributionController::class, 'obligations']);
+        Route::get('members/{id}/statement', [GroupContributionController::class, 'statement'])->whereNumber('id');
+        Route::get('promises', [GroupContributionController::class, 'promises']);
+    });
+    Route::post('promises', [GroupContributionController::class, 'storePromise'])->middleware('group_right:record_payments');
+    Route::post('obligations/{id}/exempt', [GroupContributionController::class, 'exempt'])->whereNumber('id')->middleware('group_right:grant_exemptions');
 
     Route::put('settings', [GroupSettingsController::class, 'update'])->middleware('group_right:manage_settings');
     Route::get('audit', [GroupSettingsController::class, 'audit'])->middleware('group_right:view_audit');

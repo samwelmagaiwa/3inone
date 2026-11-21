@@ -9,6 +9,7 @@ import '../../../utils/server_message.dart';
 import '../../../widgets/service_switcher_dialog.dart';
 import '../models/group_models.dart';
 import '../services/groups_api.dart';
+import 'contributions_screen.dart';
 import 'group_dashboard_screen.dart';
 import 'group_more_screen.dart';
 import 'members_screen.dart';
@@ -77,6 +78,13 @@ class _GroupsHomeState extends State<GroupsHome> {
             icon: Icons.groups_rounded,
             label: ({required final bool sw}) => sw ? 'Wanachama' : 'Members',
             build: (GroupMe m, Future<void> Function() reload, void Function(String) open) => MembersScreen(me: m, api: _api, onChanged: reload),
+          ),
+        if (me.seesContributions)
+          _Section(
+            key: 'contributions',
+            icon: Icons.savings_rounded,
+            label: ({required final bool sw}) => sw ? 'Michango' : 'Contributions',
+            build: (GroupMe m, Future<void> Function() reload, void Function(String) open) => ContributionsScreen(me: m, api: _api, onChanged: reload),
           ),
         if (me.seesPayments)
           _Section(
@@ -251,8 +259,12 @@ class _GroupsFooter extends StatelessWidget {
 
   @override
   Widget build(final BuildContext context) {
+    const List<String> priority = <String>['home', 'payments', 'contributions', 'members', 'more'];
+    final List<_Section> shown = (List<_Section>.of(sections)..sort((final _Section a, final _Section b) => priority.indexOf(a.key).compareTo(priority.indexOf(b.key))))
+        .take(4)
+        .toList();
     final List<Widget> buttons = <Widget>[
-      for (final _Section s in sections)
+      for (final _Section s in shown)
         _FooterButton(key: Key('grp_footer_${s.key}'), selected: s.key == current, icon: s.icon, label: s.title(sw: sw), onTap: () => onTap(s.key)),
     ];
     buttons.insert(

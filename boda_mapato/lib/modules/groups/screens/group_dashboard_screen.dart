@@ -9,6 +9,8 @@ import '../models/group_models.dart';
 import '../services/groups_api.dart';
 import 'groups_text.dart';
 import 'payment_form.dart';
+import 'promise_form.dart';
+import 'statement_screen.dart';
 import 'widgets/groups_ui.dart';
 
 /// Home: the person's own membership and money, and -- for officers -- what waits for them. Everyone has it; a member sees nothing of anyone else.
@@ -49,9 +51,15 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
     await _loadMine();
   }
 
-  Future<void> _pay() async {
-    if (await showPaymentForm(context, api: widget.api, me: widget.me)) await _refresh();
+  Future<void> _pay([final GroupObligation? o]) async {
+    if (await showPaymentForm(context, api: widget.api, me: widget.me, obligation: o)) await _refresh();
   }
+
+  Future<void> _promise() async {
+    if (await showPromiseForm(context, api: widget.api, owing: widget.me.owing)) await _refresh();
+  }
+
+  Future<void> _statement() => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => GroupStatementScreen(api: widget.api)));
 
   @override
   Widget build(final BuildContext context) {
@@ -111,20 +119,64 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
               children: <Widget>[
                 _DueLine(label: categoryLabel(sw: sw, category: 'joining_fee'), paid: me.balances?['joining_fee'] ?? 0, due: me.joiningFee, sw: sw),
                 _DueLine(label: categoryLabel(sw: sw, category: 'shares'), paid: me.balances?['shares'] ?? 0, due: me.shareAmount, sw: sw),
+                GroupDetailRow(categoryLabel(sw: sw, category: 'savings'), tsh(me.balances?['savings'] ?? 0), valueColor: ThemeConstants.invAccent),
+                if (me.owing.isNotEmpty)
+                  GroupDetailRow(
+                    sw ? 'Deni la michango' : 'Contributions owed',
+                    tsh(me.owing.fold<double>(0, (final double a, final GroupObligation o) => a + o.remaining)),
+                    valueColor: me.owing.any((final GroupObligation o) => o.state == 'overdue') ? ThemeConstants.errorText : ThemeConstants.warningAmber,
+                  ),
                 if (me.pending > 0)
                   GroupDetailRow(sw ? 'Yanasubiri uthibitisho' : 'Waiting for verification', '${me.pending}', valueColor: ThemeConstants.warningAmber),
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: FilledButton.icon(
-                    key: const Key('grp_pay_open'),
-                    style: FilledButton.styleFrom(backgroundColor: ThemeConstants.primaryOrange),
-                    onPressed: _pay,
-                    icon: const Icon(Icons.payments_rounded),
-                    label: Text(sw ? 'Lipa' : 'Pay'),
-                  ),
+                  child: Row(children: <Widget>[
+                    Expanded(
+                      child: FilledButton.icon(
+                        key: const Key('grp_pay_open'),
+                        style: FilledButton.styleFrom(backgroundColor: ThemeConstants.primaryOrange),
+                        onPressed: _pay,
+                        icon: const Icon(Icons.payments_rounded),
+                        label: Text(sw ? 'Lipa' : 'Pay'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        key: const Key('grp_statement_open'),
+                        style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white38)),
+                        onPressed: _statement,
+                        icon: const Icon(Icons.receipt_long_rounded),
+                        label: Text(sw ? 'Taarifa' : 'Statement'),
+                      ),
+                    ),
+                  ]),
                 ),
               ],
             ),
+            if (me.owing.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 12),
+              GlowCard(
+                title: sw ? 'Ninachodaiwa' : 'What I owe',
+                dividerKey: 'grp_owe_div',
+                children: <Widget>[
+                  for (final GroupObligation o in me.owing) ObligationLine(o: o, sw: sw, onTap: () => _pay(o)),
+                  TextButton.icon(
+                    key: const Key('grp_promise_open'),
+                    onPressed: _promise,
+                    icon: const Icon(Icons.handshake_outlined, color: ThemeConstants.primaryOrange),
+                    label: Text(sw ? 'Weka ahadi ya kulipa' : 'Promise to pay', style: const TextStyle(color: ThemeConstants.primaryOrange)),
+                  ),
+                ],
+              ),
+            ],
+            if (me.promises.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 12),
+              GlowCard(
+                title: sw ? 'Ahadi zangu' : 'My promises',
+                children: <Widget>[for (final GroupPromise p in me.promises) PromiseLine(p: p, sw: sw)],
+              ),
+            ],
           ],
           if (me.waiting.isNotEmpty) ...<Widget>[
             const SizedBox(height: 12),
@@ -139,6 +191,14 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                     label: sw ? 'Malipo ya kuthibitisha' : 'Payments to verify',
                     count: me.waiting['payments_to_verify']!,
                     onTap: () => widget.onOpen('payments'),
+                  ),
+                if (me.waiting.containsKey('members_overdue'))
+                  _WaitLine(
+                    key: const Key('grp_wait_overdue'),
+                    icon: Icons.warning_amber_rounded,
+                    label: sw ? 'Wanachama wenye michango iliyopita muda' : 'Members with overdue contributions',
+                    count: me.waiting['members_overdue']!,
+                    onTap: () => widget.onOpen('contributions'),
                   ),
                 if (me.waiting.containsKey('applications'))
                   _WaitLine(
@@ -226,8 +286,9 @@ class GroupTransactionTile extends StatelessWidget {
         key: Key('grp_tx_${t.id}'),
         onTap: onTap,
         title: Text(
-          '${t.isReversal ? (sw ? 'Marekebisho: ' : 'Reversal: ') : ''}${categoryLabel(sw: sw, category: t.category)}'
-          '${showMember && t.memberName != null ? ' · ${t.memberName}' : ''}',
+          '${t.isReversal ? (sw ? 'Marekebisho: ' : 'Reversal: ') : ''}'
+          '${t.category == 'savings' && t.direction == 'out' && !t.isReversal ? (sw ? 'Kutoa akiba' : 'Savings withdrawal') : (t.obligationLabel ?? categoryLabel(sw: sw, category: t.category))}'
+          '${showMember && t.memberName != null ? ' · ${t.memberName}' : ''}${t.payee != null ? ' · ${t.payee}' : ''}',
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
         subtitle: Text(

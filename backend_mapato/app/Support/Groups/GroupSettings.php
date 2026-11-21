@@ -27,6 +27,10 @@ final class GroupSettings
         'loan_multiplier' => ['type' => 'number', 'default' => '3'],
         'member_prefix' => ['type' => 'text', 'default' => 'M'],
         'payment_instructions' => ['type' => 'text', 'default' => ''],
+        // Reminder texts to members (contribution due in 3 days, overdue, a promise's day). Off until the group switches them on: they use
+        // the group's own SMS. Amounts are left out unless the group allows them (a shared phone should not show someone's debts).
+        'sms_reminders' => ['type' => 'choice', 'choices' => ['off', 'on'], 'default' => 'off'],
+        'sms_show_amounts' => ['type' => 'choice', 'choices' => ['off', 'on'], 'default' => 'off'],
     ];
 
     /** @return array<string, string> every setting as it stands on [day] (today when null) */

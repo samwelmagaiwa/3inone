@@ -32,6 +32,12 @@ Schedule::command('salon:remind-rebooking')
     ->dailyAt('06:30')
     ->withoutOverlapping();
 
+// Every morning (09:00 in Tanzania): each group's monthly contributions are raised for the month (once), and -- for a group that
+// switched reminders on -- members are texted about contributions due in 3 days, overdue ones and promises due today.
+Schedule::command('groups:daily')
+    ->dailyAt('06:00')
+    ->withoutOverlapping();
+
 // Every afternoon (18:00 in Tanzania): remind clients of tomorrow's appointments, once each, for salons that switched it on.
 Schedule::command('salon:remind-appointments')
     ->dailyAt('15:00')

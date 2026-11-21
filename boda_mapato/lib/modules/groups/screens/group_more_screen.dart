@@ -69,6 +69,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
   final TextEditingController _prefix = TextEditingController();
   final TextEditingController _instructions = TextEditingController();
   String _sharesFor = 'loans';
+  bool _reminders = false;
+  bool _amounts = false;
   Map<String, dynamic> _current = const <String, dynamic>{};
   List<Map<String, dynamic>> _history = const <Map<String, dynamic>>[];
   DateTime? _from;
@@ -104,6 +106,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
     _prefix.text = '${s['member_prefix'] ?? ''}';
     _instructions.text = '${s['payment_instructions'] ?? ''}';
     _sharesFor = '${s['shares_required_for'] ?? 'loans'}';
+    _reminders = s['sms_reminders'] == 'on';
+    _amounts = s['sms_show_amounts'] == 'on';
     _history = <Map<String, dynamic>>[for (final dynamic h in (data['history'] as List? ?? const <dynamic>[])) Map<String, dynamic>.from(h as Map)];
   }
 
@@ -133,6 +137,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
       'member_prefix': _prefix.text.trim().toUpperCase(),
       'payment_instructions': _instructions.text.trim(),
       'shares_required_for': _sharesFor,
+      'sms_reminders': _reminders ? 'on' : 'off',
+      'sms_show_amounts': _amounts ? 'on' : 'off',
     };
     return <String, dynamic>{
       for (final MapEntry<String, dynamic> e in wanted.entries)
@@ -147,6 +153,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
         'member_prefix' => sw ? 'Mwanzo wa namba ya uanachama' : 'Member number prefix',
         'payment_instructions' => sw ? 'Jinsi ya kulipa' : 'How to pay',
         'shares_required_for' => sw ? 'Hisa zinahitajika kwa' : 'Shares are required for',
+        'sms_reminders' => sw ? 'Ujumbe wa vikumbusho' : 'Reminder texts',
+        'sms_show_amounts' => sw ? 'Kiasi kwenye ujumbe' : 'Amounts in texts',
         _ => key,
       };
 
@@ -273,6 +281,33 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                         ],
                       ),
                       GlowCard(
+                        title: sw ? 'Ujumbe kwa wanachama' : 'Texts to members',
+                        children: <Widget>[
+                          SwitchListTile(
+                            key: const Key('grp_set_reminders'),
+                            contentPadding: EdgeInsets.zero,
+                            value: _reminders,
+                            onChanged: (final bool v) => setState(() => _reminders = v),
+                            title: Text(_label(sw, 'sms_reminders'), style: const TextStyle(color: Colors.white)),
+                            subtitle: Text(
+                              sw ? 'Mchango ukikaribia (siku 3), ukipita muda, na siku ya ahadi. Inatumia SMS za kikundi.' : "A contribution due in 3 days, overdue, and a promise's day. Uses the group's SMS.",
+                              style: const TextStyle(color: Colors.white60, fontSize: 12),
+                            ),
+                          ),
+                          SwitchListTile(
+                            key: const Key('grp_set_amounts'),
+                            contentPadding: EdgeInsets.zero,
+                            value: _amounts,
+                            onChanged: _reminders ? (final bool v) => setState(() => _amounts = v) : null,
+                            title: Text(_label(sw, 'sms_show_amounts'), style: TextStyle(color: _reminders ? Colors.white : Colors.white38)),
+                            subtitle: Text(
+                              sw ? 'Bila hivi, ujumbe hautaji kiasi (simu inaweza kusomwa na wengine).' : 'Off: texts name no amount (a phone may be read by others).',
+                              style: const TextStyle(color: Colors.white60, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                      GlowCard(
                         children: <Widget>[
                           ListTile(
                             key: const Key('grp_set_from'),
@@ -302,7 +337,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                             for (final Map<String, dynamic> h in _history)
                               Text(
                                 '${dateLabel('${h['effective_from']}')} · ${_label(sw, '${h['key']}')}: '
-                                '${h['key'] == 'shares_required_for' ? _sharesForLabel(sw, '${h['value']}') : _plain(h['value'])}'
+                                '${h['key'] == 'shares_required_for' ? _sharesForLabel(sw, '${h['value']}') : (h['value'] == 'on' ? (sw ? 'Imewashwa' : 'On') : h['value'] == 'off' ? (sw ? 'Imezimwa' : 'Off') : _plain(h['value']))}'
                                 '${h['reason'] == null ? '' : ' · ${h['reason']}'}${h['changed_by_name'] == null ? '' : ' · ${h['changed_by_name']}'}',
                                 style: const TextStyle(color: Colors.white70, fontSize: 12),
                               ),

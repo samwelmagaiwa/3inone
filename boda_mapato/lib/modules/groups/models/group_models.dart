@@ -211,6 +211,9 @@ class GroupTransaction {
     this.verifiedAt,
     this.reversesId,
     this.reversedById,
+    this.obligationId,
+    this.obligationLabel,
+    this.payee,
   });
 
   factory GroupTransaction.fromJson(final Map<String, dynamic> j) => GroupTransaction(
@@ -234,6 +237,9 @@ class GroupTransaction {
         verifiedAt: _str(j['verified_at']),
         reversesId: _int(j['reverses_id']),
         reversedById: _int(j['reversed_by_id']),
+        obligationId: _int(j['obligation_id']),
+        obligationLabel: _str(j['obligation_label']),
+        payee: _str(j['payee']),
       );
 
   final int id;
@@ -256,6 +262,13 @@ class GroupTransaction {
   final String? verifiedAt;
   final int? reversesId;
   final int? reversedById;
+
+  /// The contribution it pays ("JAMII · 2026-11").
+  final int? obligationId;
+  final String? obligationLabel;
+
+  /// Who a group expense was paid to.
+  final String? payee;
 
   bool get isPending => status == 'pending';
   bool get isVerified => status == 'verified';
@@ -300,6 +313,8 @@ class GroupMe {
     this.paymentInstructions = '',
     this.waiting = const <String, int>{},
     this.groupName,
+    this.owing = const <GroupObligation>[],
+    this.promises = const <GroupPromise>[],
   });
 
   factory GroupMe.fromJson(final Map<String, dynamic> j) {
@@ -316,6 +331,8 @@ class GroupMe {
       paymentInstructions: '${s['payment_instructions'] ?? ''}',
       waiting: <String, int>{if (j['waiting'] is Map) for (final MapEntry<dynamic, dynamic> e in (j['waiting'] as Map).entries) '${e.key}': _int(e.value) ?? 0},
       groupName: _str(j['group'] is Map ? (j['group'] as Map)['name'] : null),
+      owing: <GroupObligation>[for (final dynamic o in (j['owing'] as List? ?? const <dynamic>[])) GroupObligation.fromJson(Map<String, dynamic>.from(o as Map))],
+      promises: <GroupPromise>[for (final dynamic p in (j['promises'] as List? ?? const <dynamic>[])) GroupPromise.fromJson(Map<String, dynamic>.from(p as Map))],
     );
   }
 
@@ -331,8 +348,197 @@ class GroupMe {
   final Map<String, int> waiting;
   final String? groupName;
 
+  /// The contributions they still owe, oldest first.
+  final List<GroupObligation> owing;
+  final List<GroupPromise> promises;
+
   bool can(final String right) => rights.contains(right);
 
   /// Sees the money of the whole group (the payments section).
   bool get seesPayments => can('view_finance') || can('verify_payments');
+
+  /// Sees who owes what (the contributions section).
+  bool get seesContributions => can('view_finance') || can('record_payments') || can('verify_payments') || can('manage_contributions');
+}
+
+/// A contribution the group asks of its members (monthly JAMII, a one-off, an event call).
+class GroupContributionType {
+  const GroupContributionType({
+    required this.id,
+    required this.name,
+    required this.amount,
+    required this.frequency,
+    this.description,
+    this.dueDay,
+    this.mandatory = true,
+    this.startsOn,
+    this.endsOn,
+    this.active = true,
+  });
+
+  factory GroupContributionType.fromJson(final Map<String, dynamic> j) => GroupContributionType(
+        id: _int(j['id']) ?? 0,
+        name: '${j['name'] ?? ''}',
+        amount: _num(j['amount']),
+        frequency: '${j['frequency'] ?? 'monthly'}',
+        description: _str(j['description']),
+        dueDay: _int(j['due_day']),
+        mandatory: j['mandatory'] != false,
+        startsOn: _str(j['starts_on']),
+        endsOn: _str(j['ends_on']),
+        active: j['active'] != false,
+      );
+
+  final int id;
+  final String name;
+  final double amount;
+  final String frequency;
+  final String? description;
+  final int? dueDay;
+  final bool mandatory;
+  final String? startsOn;
+  final String? endsOn;
+  final bool active;
+}
+
+/// What one member owes for one contribution in one period, and where it stands.
+class GroupObligation {
+  const GroupObligation({
+    required this.id,
+    required this.memberId,
+    required this.period,
+    required this.amountDue,
+    required this.paid,
+    required this.remaining,
+    required this.dueDate,
+    required this.state,
+    this.memberName,
+    this.memberNumber,
+    this.typeName,
+    this.label,
+    this.daysOverdue = 0,
+    this.exemptReason,
+  });
+
+  factory GroupObligation.fromJson(final Map<String, dynamic> j) => GroupObligation(
+        id: _int(j['id']) ?? 0,
+        memberId: _int(j['member_id']) ?? 0,
+        period: '${j['period'] ?? ''}',
+        amountDue: _num(j['amount_due']),
+        paid: _num(j['paid']),
+        remaining: _num(j['remaining']),
+        dueDate: '${j['due_date'] ?? ''}',
+        state: '${j['state'] ?? 'due'}',
+        memberName: _str(j['member_name']),
+        memberNumber: _str(j['member_number']),
+        typeName: _str(j['type_name']),
+        label: _str(j['label']),
+        daysOverdue: _int(j['days_overdue']) ?? 0,
+        exemptReason: _str(j['exempt_reason']),
+      );
+
+  final int id;
+  final int memberId;
+  final String period;
+  final double amountDue;
+  final double paid;
+  final double remaining;
+  final String dueDate;
+
+  /// paid | exempt | cancelled | overdue | due
+  final String state;
+  final String? memberName;
+  final String? memberNumber;
+  final String? typeName;
+  final String? label;
+  final int daysOverdue;
+  final String? exemptReason;
+
+  /// "JAMII · 2026-11" or "Harusi ya Juma".
+  String get title => '${typeName ?? ''} · ${label ?? period}';
+
+  bool get owing => (state == 'due' || state == 'overdue') && remaining > 0;
+}
+
+class GroupObligationPage {
+  const GroupObligationPage({required this.obligations, required this.hasMore});
+
+  factory GroupObligationPage.fromJson(final Map<String, dynamic> res) {
+    final Map<String, dynamic> data = res['data'] is Map ? Map<String, dynamic>.from(res['data'] as Map) : <String, dynamic>{};
+    final Map<String, dynamic> paging = res['meta'] is Map && (res['meta'] as Map)['pagination'] is Map
+        ? Map<String, dynamic>.from((res['meta'] as Map)['pagination'] as Map)
+        : <String, dynamic>{};
+    return GroupObligationPage(
+      obligations: <GroupObligation>[
+        for (final dynamic o in (data['obligations'] as List? ?? const <dynamic>[])) GroupObligation.fromJson(Map<String, dynamic>.from(o as Map)),
+      ],
+      hasMore: paging['has_more'] == true,
+    );
+  }
+
+  final List<GroupObligation> obligations;
+  final bool hasMore;
+}
+
+/// "I will pay 20,000 on the 30th." It never lowers what is owed.
+class GroupPromise {
+  const GroupPromise({required this.id, required this.memberId, required this.amount, required this.promisedOn, required this.state, this.memberName, this.obligationLabel, this.note});
+
+  factory GroupPromise.fromJson(final Map<String, dynamic> j) => GroupPromise(
+        id: _int(j['id']) ?? 0,
+        memberId: _int(j['member_id']) ?? 0,
+        amount: _num(j['amount']),
+        promisedOn: '${j['promised_on'] ?? ''}',
+        state: '${j['state'] ?? 'due'}',
+        memberName: _str(j['member_name']),
+        obligationLabel: _str(j['obligation_label']),
+        note: _str(j['note']),
+      );
+
+  final int id;
+  final int memberId;
+  final double amount;
+  final String promisedOn;
+
+  /// due | overdue | kept | cancelled
+  final String state;
+  final String? memberName;
+  final String? obligationLabel;
+  final String? note;
+}
+
+/// A member's statement: every verified movement with the balance of its kind after it, what is owed, what waits.
+class GroupStatementData {
+  const GroupStatementData({
+    required this.lines,
+    required this.balanceAfter,
+    required this.balances,
+    required this.owing,
+    required this.owingTotal,
+    required this.waiting,
+    required this.promises,
+  });
+
+  factory GroupStatementData.fromJson(final Map<String, dynamic> j) => GroupStatementData(
+        lines: <GroupTransaction>[for (final dynamic t in (j['lines'] as List? ?? const <dynamic>[])) GroupTransaction.fromJson(Map<String, dynamic>.from(t as Map))],
+        balanceAfter: <int, double>{
+          for (final dynamic t in (j['lines'] as List? ?? const <dynamic>[]))
+            if (t is Map && t['balance_after'] != null) _int(t['id']) ?? 0: _num(t['balance_after']),
+        },
+        balances: <String, double>{if (j['balances'] is Map) for (final MapEntry<dynamic, dynamic> e in (j['balances'] as Map).entries) '${e.key}': _num(e.value)},
+        owing: <GroupObligation>[for (final dynamic o in (j['owing'] as List? ?? const <dynamic>[])) GroupObligation.fromJson(Map<String, dynamic>.from(o as Map))],
+        owingTotal: _num(j['owing_total']),
+        waiting: <GroupTransaction>[for (final dynamic t in (j['waiting'] as List? ?? const <dynamic>[])) GroupTransaction.fromJson(Map<String, dynamic>.from(t as Map))],
+        promises: <GroupPromise>[for (final dynamic p in (j['promises'] as List? ?? const <dynamic>[])) GroupPromise.fromJson(Map<String, dynamic>.from(p as Map))],
+      );
+
+  final List<GroupTransaction> lines;
+
+  /// The balance of its kind after each line (by transaction id).
+  final Map<int, double> balanceAfter;
+  final Map<String, double> balances;
+  final List<GroupObligation> owing;
+  final double owingTotal;
+  final List<GroupTransaction> waiting;
+  final List<GroupPromise> promises;
 }

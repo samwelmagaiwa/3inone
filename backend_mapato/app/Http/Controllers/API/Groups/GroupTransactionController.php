@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\Groups;
 
 use App\Support\Groups\GroupAccess;
 use App\Support\Groups\GroupAudit;
+use App\Support\Groups\GroupContributions;
 use App\Support\Groups\GroupLedger;
 use App\Support\Groups\GroupMembers;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +31,12 @@ class GroupTransactionController extends Controller
         'own_submission' => 'Huwezi kuthibitisha malipo uliyoyarekodi mwenyewe. / You cannot verify a payment you recorded yourself.',
         'own_payment' => 'Huwezi kuthibitisha malipo yako mwenyewe. / You cannot verify your own payment.',
         'member_not_open' => 'Mwanachama huyu hawezi kupokelewa malipo. / This member cannot take payments.',
+        'cannot_pay_out' => 'Fedha zinazotoka ni kutoa akiba au matumizi ya kikundi tu. / Money goes out only as a savings withdrawal or a group expense.',
+        'obligation_required' => 'Chagua mchango unaolipwa. / Choose the contribution being paid.',
+        'more_than_owed' => 'Kiasi ni zaidi ya kinachodaiwa kwenye mchango huu. / The amount is more than is owed on this contribution.',
+        'more_than_savings' => 'Kiasi ni zaidi ya akiba iliyopo. / The amount is more than the savings there are.',
+        'payee_required' => 'Andika aliyelipwa. / Write who was paid.',
+        'payout_right_needed' => 'Ni Mweka Hazina tu anayerekodi fedha zinazotoka. / Only the treasurer records money going out.',
         'try_again' => 'Jaribu tena. / Try again.',
     ];
 
@@ -44,6 +51,7 @@ class GroupTransactionController extends Controller
         $data = $request->validate([
             'status' => ['nullable', Rule::in([GroupLedger::PENDING, GroupLedger::VERIFIED, GroupLedger::REJECTED])],
             'category' => ['nullable', Rule::in(GroupLedger::CATEGORIES)],
+            'direction' => ['nullable', Rule::in(['in', 'out'])],
             'member_id' => 'nullable|integer',
             'q' => 'nullable|string|max:100',
             'page' => 'nullable|integer|min:1',
@@ -51,6 +59,7 @@ class GroupTransactionController extends Controller
         $query = GroupLedger::listQuery()
             ->when($data['status'] ?? null, fn ($q, $s) => $q->where('t.status', $s))
             ->when($data['category'] ?? null, fn ($q, $c) => $q->where('t.category', $c))
+            ->when($data['direction'] ?? null, fn ($q, $d) => $q->where('t.direction', $d))
             ->when($data['member_id'] ?? null, fn ($q, $m) => $q->where('t.member_id', (int) $m))
             ->when(trim((string) ($data['q'] ?? '')) !== '', function ($q) use ($data) {
                 $term = '%' . trim((string) $data['q']) . '%';
@@ -70,25 +79,38 @@ class GroupTransactionController extends Controller
         ]);
     }
 
-    /** The group's totals: verified money in each category, and what still waits for verification. */
-    public function summary(): JsonResponse
+    /**
+     * The group's totals: verified money in each category (expenses as money out), what waits for verification, this month's contributions
+     * (expected and collected), what is overdue, and the cash the records say the group holds (all money in minus all money out).
+     */
+    public function summary(Request $request): JsonResponse
     {
+        $request->validate(['month' => ['nullable', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/']]);
+        $month = (string) $request->query('month', now()->format('Y-m'));
         $verified = DB::table('group_transactions')->where('status', GroupLedger::VERIFIED)
             ->selectRaw("category, SUM(CASE WHEN direction = 'in' THEN amount ELSE -amount END) as total")->groupBy('category')->pluck('total', 'category');
         $pending = DB::table('group_transactions')->where('status', GroupLedger::PENDING)->selectRaw('COUNT(*) as n, COALESCE(SUM(amount), 0) as amount')->first();
+        $spentInMonth = (float) DB::table('group_transactions')->where('status', GroupLedger::VERIFIED)->where('category', 'expense')
+            ->whereBetween('paid_on', [$month . '-01', \Illuminate\Support\Carbon::parse($month . '-01')->endOfMonth()->toDateString()])
+            ->selectRaw("COALESCE(SUM(CASE WHEN direction = 'out' THEN amount ELSE -amount END), 0) as spent")->value('spent');
 
         return response()->json(['success' => true, 'data' => [
             'verified' => collect(GroupLedger::CATEGORIES)->mapWithKeys(fn ($c) => [$c => round((float) ($verified[$c] ?? 0), 2)]),
+            'cash_on_record' => round((float) collect($verified)->sum(), 2),
             'pending_count' => (int) $pending->n,
             'pending_amount' => round((float) $pending->amount, 2),
+            'month' => $month,
+            'contributions' => GroupContributions::position($month, now()->toDateString()),
+            'expenses_in_month' => round($spentInMonth, 2),
         ]]);
     }
 
-    /** @return array<string, mixed> */
+    /** @return array<string, mixed> what a member may send for themself */
     public static function paymentRules(): array
     {
         return [
-            'category' => ['required', Rule::in(GroupLedger::CATEGORIES)],
+            'category' => ['required', Rule::in(GroupLedger::MEMBER_CATEGORIES)],
+            'obligation_id' => 'nullable|integer|required_if:category,contribution',
             'amount' => 'required|numeric|min:1|max:1000000000',
             'method' => ['required', Rule::in(GroupLedger::METHODS)],
             'external_ref' => 'nullable|string|max:80',
@@ -97,27 +119,43 @@ class GroupTransactionController extends Controller
         ];
     }
 
-    /** An officer records a payment a member made. It waits for verification like any other. */
+    /**
+     * An officer records money a member paid in -- or, with the payout right, money going out: a member's savings withdrawal, or a group
+     * expense (no member, a payee). Everything waits for someone else's verification.
+     */
     public function store(Request $request): JsonResponse
     {
-        $data = $request->validate(self::paymentRules() + ['member_id' => 'required|integer']);
+        $data = $request->validate([
+            'category' => ['required', Rule::in(GroupLedger::CATEGORIES)],
+            'direction' => ['nullable', Rule::in(['in', 'out'])],
+            'member_id' => 'nullable|integer|required_unless:category,expense',
+            'payee' => 'nullable|string|max:150',
+        ] + array_diff_key(self::paymentRules(), ['category' => true]));
+        $direction = $data['category'] === 'expense' ? 'out' : ($data['direction'] ?? 'in');
+        if ($direction === 'out' && !GroupAccess::can($request->user(), 'record_payouts')) {
+            return $this->fail('payout_right_needed', 403);
+        }
+        $data['direction'] = $direction;
+        if ($data['category'] === 'expense') {
+            return self::submitFor($request, null, $data);
+        }
         $member = DB::table('group_members')->where('id', (int) $data['member_id'])->first();
         if ($member === null || !in_array($member->status, [GroupMembers::SUBMITTED, GroupMembers::ACTIVE, GroupMembers::SUSPENDED], true)) {
             return $this->fail('member_not_open');
         }
 
-        return $this->submitFor($request, $member, $data);
+        return self::submitFor($request, $member, $data);
     }
 
-    /** Shared by the officer's form and a member paying for themself. */
-    public static function submitFor(Request $request, object $member, array $data): JsonResponse
+    /** Shared by the officer's form and a member paying for themself. [member] is null for a group expense. */
+    public static function submitFor(Request $request, ?object $member, array $data): JsonResponse
     {
         try {
-            $id = GroupLedger::submit($data + ['member_id' => (int) $member->id], (string) $request->user()->id);
+            $id = GroupLedger::submit(['member_id' => $member === null ? null : (int) $member->id] + $data, (string) $request->user()->id);
         } catch (InvalidArgumentException $e) {
             return response()->json(['success' => false, 'code' => $e->getMessage(), 'message' => self::WORDS[$e->getMessage()] ?? $e->getMessage()], 422);
         }
-        GroupAudit::record((string) $request->user()->id, 'payment_submitted', 'Payment of ' . number_format((float) $data['amount']) . ' (' . $data['category'] . ', ' . $data['method'] . ') for ' . $member->full_name, 'transaction', $id);
+        GroupAudit::record((string) $request->user()->id, 'payment_submitted', (($data['direction'] ?? 'in') === 'out' ? 'Payout' : 'Payment') . ' of ' . number_format((float) $data['amount']) . ' (' . $data['category'] . ', ' . $data['method'] . ') ' . ($member === null ? 'to ' . ($data['payee'] ?? '') : 'for ' . $member->full_name), 'transaction', $id);
 
         return response()->json(['success' => true, 'data' => ['transaction' => GroupLedger::payload(GroupLedger::listQuery()->where('t.id', $id)->first())]], 201);
     }

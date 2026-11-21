@@ -107,9 +107,13 @@ final class TenantTables
      */
     public const GROUPS = [
         'group_audit_log',
+        'group_contribution_types',
         'group_dependants',
         'group_member_events',
         'group_members',
+        'group_obligations',
+        'group_promises',
+        'group_reminders',
         'group_settings',
         'group_transactions',
     ];

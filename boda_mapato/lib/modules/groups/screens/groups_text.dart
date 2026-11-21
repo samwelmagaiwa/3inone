@@ -127,6 +127,12 @@ String categoryLabel({required final bool sw, required final String category}) {
       return sw ? 'Ada ya kujiunga' : 'Joining fee';
     case 'shares':
       return sw ? 'Hisa za mradi' : 'Project shares';
+    case 'savings':
+      return sw ? 'Akiba' : 'Savings';
+    case 'contribution':
+      return sw ? 'Mchango' : 'Contribution';
+    case 'expense':
+      return sw ? 'Matumizi ya kikundi' : 'Group expense';
     default:
       return category;
   }
@@ -231,7 +237,91 @@ String activityLabel({required final bool sw, required final String action}) {
       return sw ? 'Malipo yamerekebishwa' : 'Payment reversed';
     case 'settings_changed':
       return sw ? 'Mipangilio imebadilishwa' : 'Settings changed';
+    case 'contribution_saved':
+      return sw ? 'Mchango umehifadhiwa' : 'Contribution saved';
+    case 'contribution_raised':
+      return sw ? 'Mchango umeitishwa' : 'Contribution called';
+    case 'obligation_exempted':
+      return sw ? 'Udhuru umetolewa' : 'Member excused';
+    case 'promise_made':
+      return sw ? 'Ahadi imewekwa' : 'Promise made';
+    case 'promise_cancelled':
+      return sw ? 'Ahadi imeondolewa' : 'Promise withdrawn';
     default:
       return action;
   }
 }
+
+/// Where an obligation stands.
+String obligationStateLabel({required final bool sw, required final String state}) {
+  switch (state) {
+    case 'paid':
+      return sw ? 'Imelipwa' : 'Paid';
+    case 'exempt':
+      return sw ? 'Udhuru' : 'Excused';
+    case 'cancelled':
+      return sw ? 'Imefutwa' : 'Cancelled';
+    case 'overdue':
+      return sw ? 'Imepita muda' : 'Overdue';
+    case 'due':
+      return sw ? 'Inadaiwa' : 'Due';
+    default:
+      return state;
+  }
+}
+
+Color obligationStateColor(final String state) {
+  switch (state) {
+    case 'paid':
+      return ThemeConstants.successGreen;
+    case 'overdue':
+      return ThemeConstants.errorRed;
+    case 'due':
+      return ThemeConstants.warningAmber;
+    default:
+      return Colors.white54;
+  }
+}
+
+String promiseStateLabel({required final bool sw, required final String state}) {
+  switch (state) {
+    case 'kept':
+      return sw ? 'Imetimizwa' : 'Kept';
+    case 'overdue':
+      return sw ? 'Imevunjwa' : 'Missed';
+    case 'due':
+      return sw ? 'Inasubiriwa' : 'Pending';
+    case 'cancelled':
+      return sw ? 'Imeondolewa' : 'Withdrawn';
+    default:
+      return state;
+  }
+}
+
+Color promiseStateColor(final String state) => switch (state) {
+      'kept' => ThemeConstants.successGreen,
+      'overdue' => ThemeConstants.errorRed,
+      'due' => ThemeConstants.warningAmber,
+      _ => Colors.white54,
+    };
+
+/// How often a contribution is asked for.
+String frequencyLabel({required final bool sw, required final String frequency, final int? dueDay}) {
+  switch (frequency) {
+    case 'monthly':
+      return dueDay == null ? (sw ? 'Kila mwezi' : 'Monthly') : (sw ? 'Kila mwezi, tarehe $dueDay' : 'Monthly, on the $dueDay${_ordinal(dueDay)}');
+    case 'one_time':
+      return sw ? 'Mara moja' : 'Once';
+    case 'event':
+      return sw ? 'Kwa tukio' : 'Per event';
+    default:
+      return frequency;
+  }
+}
+
+String _ordinal(final int n) {
+  if (n % 100 >= 11 && n % 100 <= 13) return 'th';
+  return switch (n % 10) { 1 => 'st', 2 => 'nd', 3 => 'rd', _ => 'th' };
+}
+
+const List<String> contributionFrequencies = <String>['monthly', 'one_time', 'event'];

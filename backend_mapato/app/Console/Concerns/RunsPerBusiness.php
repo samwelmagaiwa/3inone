@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
  */
 trait RunsPerBusiness
 {
-    /** 'inventory' or 'salon': the books the work reads. */
+    /** 'inventory', 'salon' or 'groups': the books the work reads. */
     abstract protected function businessService(): string;
 
     /** What every business's job carries (plain values only: it is stored with the queued job). @return array<string, mixed> */
@@ -92,6 +92,11 @@ trait RunsPerBusiness
      */
     public function runForBusiness(Business $business, array $context, bool $dry): array
     {
+        // The inventory and the salon share tables split by service; any other service (groups) has its own tables.
+        if (!in_array($this->businessService(), \App\Support\Tenancy\TenantTables::SERVICES, true)) {
+            return TenantContext::runAs($business->owner, fn () => $this->forBusiness($business, $context, $dry));
+        }
+
         return TenantContext::runAs($business->owner, fn () => TenantContext::runInService(
             $this->businessService(),
             fn () => $this->forBusiness($business, $context, $dry),

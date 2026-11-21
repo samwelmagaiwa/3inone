@@ -74,7 +74,7 @@ class GroupsApi {
             'page': '$page',
           })}'));
 
-  Future<Map<String, dynamic>> moneySummary() async => _data(await _api.get('$_base/transactions/summary'));
+  Future<Map<String, dynamic>> moneySummary({final String? month}) async => _data(await _api.get('$_base/transactions/summary${month == null ? '' : '?month=$month'}'));
 
   Future<GroupTransaction> recordPayment(final Map<String, dynamic> payment) async =>
       GroupTransaction.fromJson(Map<String, dynamic>.from(_data(await _api.post('$_base/transactions', payment))['transaction'] as Map));
@@ -87,6 +87,57 @@ class GroupsApi {
 
   Future<GroupTransaction> reverse(final int id, final String reason) async =>
       GroupTransaction.fromJson(Map<String, dynamic>.from(_data(await _api.post('$_base/transactions/$id/reverse', <String, dynamic>{'reason': reason}))['transaction'] as Map));
+
+  // ---------------------------------------------------------------- contributions, promises, statements
+
+  Future<List<GroupContributionType>> contributionTypes() async => <GroupContributionType>[
+        for (final dynamic t in (_data(await _api.get('$_base/contribution-types'))['types'] as List? ?? const <dynamic>[]))
+          GroupContributionType.fromJson(Map<String, dynamic>.from(t as Map)),
+      ];
+
+  Future<GroupContributionType> saveContributionType(final Map<String, dynamic> body, {final int? id}) async => GroupContributionType.fromJson(Map<String, dynamic>.from(
+        _data(id == null ? await _api.post('$_base/contribution-types', body) : await _api.put('$_base/contribution-types/$id', body))['type'] as Map,
+      ));
+
+  /// Raise a call: monthly for [month] (2026-11), once or an event on [dueDate] (an event says what it is for in [label]). Returns how many
+  /// members now owe it.
+  Future<int> raiseContribution(final int typeId, {final String? month, final String? dueDate, final String? label}) async {
+    final Map<String, dynamic> d = _data(await _api.post('$_base/contribution-types/$typeId/raise', <String, dynamic>{
+      if (month != null) 'month': month,
+      if (dueDate != null) 'due_date': dueDate,
+      if (label != null) 'label': label,
+    }));
+    return (d['created'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<GroupObligationPage> obligations({final String state = 'owing', final int? typeId, final int? memberId, final String? query, final int page = 1}) async =>
+      GroupObligationPage.fromJson(await _api.get('$_base/obligations${_query(<String, String?>{
+            'state': state,
+            'type_id': typeId?.toString(),
+            'member_id': memberId?.toString(),
+            'q': query,
+            'page': '$page',
+          })}'));
+
+  Future<void> exempt(final int obligationId, final String reason) async => _api.post('$_base/obligations/$obligationId/exempt', <String, dynamic>{'reason': reason});
+
+  Future<List<GroupPromise>> promises({final int? memberId}) async => <GroupPromise>[
+        for (final dynamic p in (_data(await _api.get('$_base/promises${_query(<String, String?>{'member_id': memberId?.toString()})}'))['promises'] as List? ?? const <dynamic>[]))
+          GroupPromise.fromJson(Map<String, dynamic>.from(p as Map)),
+      ];
+
+  /// A promise for oneself ([memberId] null) or, by an officer, for a member.
+  Future<GroupPromise> makePromise(final Map<String, dynamic> body, {final int? memberId}) async => GroupPromise.fromJson(Map<String, dynamic>.from(
+        _data(memberId == null ? await _api.post('$_base/me/promises', body) : await _api.post('$_base/promises', <String, dynamic>{...body, 'member_id': memberId}))['promise'] as Map,
+      ));
+
+  Future<void> cancelPromise(final int id) async => _api.post('$_base/promises/$id/cancel', <String, dynamic>{});
+
+  /// A member's statement ([memberId]) or one's own (null).
+  Future<GroupStatementData?> statement({final int? memberId}) async {
+    final Map<String, dynamic> res = await _api.get(memberId == null ? '$_base/me/statement' : '$_base/members/$memberId/statement');
+    return res['data'] is Map ? GroupStatementData.fromJson(Map<String, dynamic>.from(res['data'] as Map)) : null;
+  }
 
   // ---------------------------------------------------------------- settings and the log
 

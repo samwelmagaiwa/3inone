@@ -19,6 +19,24 @@ Status: **Phase 1 built (2026-11-22)**; phases 2–5 to come. No APK until the w
   turn down, reverse, totals), More (settings with history, officers, activity log). Yes/No card before every change;
   green/red/orange by what the action does; en/sw throughout. Sign-in field accepts email or phone.
 - Tests: `tests/Feature/GroupsMembershipTest.php` (13), `test/groups_phase1_test.dart` (7).
+- Deployed 2026-11-22 (migration `2026_12_03_000100_create_groups_tables` ran on the live MariaDB after a backup).
+
+**Phase 2 – money core (2026-11-22)**
+- Server: contribution types (monthly on a day / once / per event), raising a call creates one obligation per active member
+  (idempotent, unique per member+type+period); what is paid is READ from verified payments that name the obligation (never
+  stored); udhuru (exemption) with reason, never for oneself (`grant_exemptions`: chair, deputy); promises (state read: due /
+  missed / kept, never change a balance); ledger categories `savings` (in; withdrawals out) , `contribution` (tied to an
+  obligation, never more than owed incl. waiting payments), `expense` (out, payee, no member); money OUT needs
+  `record_payouts` (treasurer) and someone else's verification; balance checks run again at verification; statements
+  with running balance; summary: cash on record, month expected/collected, overdue, spent. `groups:daily` (09:00 TZ, one
+  job per group): raises the month's monthly contributions, and -- only if the group switched `sms_reminders` on -- texts
+  due-in-3-days / overdue (day 1 then weekly) / promise day, claimed in `group_reminders` so never twice, no amounts unless
+  `sms_show_amounts` is on.
+- App: Contributions section (types, call a month/event, owing/overdue/paid/excused/promises, record payment / promise /
+  udhuru from a line), member Home (what I owe → pay it, promise, savings, statement), statement screen, payment form
+  (contribution choice, savings, withdrawal only when savings are known), group expense form, fuller Payments summary,
+  settings switches for reminder texts. Footer shows 4 sections by priority + menu.
+- Tests: `tests/Feature/GroupsMoneyTest.php` (7), `test/groups_phase2_test.dart` (5).
 Source requirement: `GROUPS_MEG_BLUEPRINT.md` (Mongolandege Economic Group, MEG, 22 members). MEG is the first customer;
 the service is built for **any** savings / economic group (VICOBA, VSLA, SACCOS-style groups, office and family groups).
 
