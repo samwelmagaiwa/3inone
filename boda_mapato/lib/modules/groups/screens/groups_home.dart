@@ -12,8 +12,10 @@ import '../services/groups_api.dart';
 import 'contributions_screen.dart';
 import 'group_dashboard_screen.dart';
 import 'group_more_screen.dart';
+import 'loans_screen.dart';
 import 'members_screen.dart';
 import 'payments_screen.dart';
+import 'welfare_screen.dart';
 
 /// A section of the Groups service: shown only to whoever may open it (the server decides the rights; this only follows them).
 class _Section {
@@ -85,6 +87,20 @@ class _GroupsHomeState extends State<GroupsHome> {
             icon: Icons.savings_rounded,
             label: ({required final bool sw}) => sw ? 'Michango' : 'Contributions',
             build: (GroupMe m, Future<void> Function() reload, void Function(String) open) => ContributionsScreen(me: m, api: _api, onChanged: reload),
+          ),
+        if (me.can('view_loans'))
+          _Section(
+            key: 'loans',
+            icon: Icons.request_quote_rounded,
+            label: ({required final bool sw}) => sw ? 'Mikopo' : 'Loans',
+            build: (GroupMe m, Future<void> Function() reload, void Function(String) open) => LoansScreen(me: m, api: _api, onChanged: reload),
+          ),
+        if (me.can('view_benefits'))
+          _Section(
+            key: 'welfare',
+            icon: Icons.volunteer_activism_rounded,
+            label: ({required final bool sw}) => sw ? 'Msaada' : 'Welfare',
+            build: (GroupMe m, Future<void> Function() reload, void Function(String) open) => WelfareScreen(me: m, api: _api, onChanged: reload),
           ),
         if (me.seesPayments)
           _Section(
@@ -259,7 +275,7 @@ class _GroupsFooter extends StatelessWidget {
 
   @override
   Widget build(final BuildContext context) {
-    const List<String> priority = <String>['home', 'payments', 'contributions', 'members', 'more'];
+    const List<String> priority = <String>['home', 'payments', 'loans', 'contributions', 'members', 'welfare', 'more'];
     final List<_Section> shown = (List<_Section>.of(sections)..sort((final _Section a, final _Section b) => priority.indexOf(a.key).compareTo(priority.indexOf(b.key))))
         .take(4)
         .toList();

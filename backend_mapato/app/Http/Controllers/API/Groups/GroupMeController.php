@@ -41,7 +41,28 @@ class GroupMeController extends Controller
                 ->where('o.due_date', '<', now()->toDateString())->distinct()->count('o.member_id');
         }
 
+        if (in_array('recommend_loans', $rights, true)) {
+            $waiting['loans_to_recommend'] = DB::table('group_loans')->where('status', 'under_review')->count();
+        }
+        if (in_array('approve_loans', $rights, true)) {
+            $waiting['loans_to_approve'] = DB::table('group_loans')->where('status', 'recommended')->count();
+        }
+        if (in_array('record_payouts', $rights, true)) {
+            $waiting['loans_to_disburse'] = DB::table('group_loans')->where('status', 'approved')->count();
+        }
+        if (in_array('approve_benefits', $rights, true)) {
+            $waiting['benefits_to_decide'] = DB::table('group_benefit_requests')->where('status', 'submitted')->count();
+        }
+
         $memberId = $member === null ? null : (int) $member['id'];
+        // Anyone asked to guarantee a loan sees it, whatever their office.
+        if ($memberId !== null) {
+            $asked = DB::table('group_loan_guarantors as g')->join('group_loans as l', 'l.id', '=', 'g.loan_id')
+                ->where('g.member_id', $memberId)->where('g.status', 'pending')->where('l.status', 'awaiting_guarantors')->count();
+            if ($asked > 0) {
+                $waiting['guarantees'] = $asked;
+            }
+        }
 
         return response()->json(['success' => true, 'data' => [
             'is_owner' => GroupAccess::isOwner($user),

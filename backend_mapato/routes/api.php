@@ -73,10 +73,12 @@ use App\Http\Controllers\API\Rental\CaretakerController;
 use App\Http\Controllers\API\Rental\AgreementController;
 use App\Http\Controllers\API\Rental\MaintenanceController;
 use App\Http\Controllers\API\Groups\GroupContributionController;
+use App\Http\Controllers\API\Groups\GroupLoanController;
 use App\Http\Controllers\API\Groups\GroupMeController;
 use App\Http\Controllers\API\Groups\GroupMemberController;
 use App\Http\Controllers\API\Groups\GroupSettingsController;
 use App\Http\Controllers\API\Groups\GroupTransactionController;
+use App\Http\Controllers\API\Groups\GroupWelfareController;
 
 
 /*
@@ -280,6 +282,32 @@ Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(f
     });
     Route::post('promises', [GroupContributionController::class, 'storePromise'])->middleware('group_right:record_payments');
     Route::post('obligations/{id}/exempt', [GroupContributionController::class, 'exempt'])->whereNumber('id')->middleware('group_right:grant_exemptions');
+
+    // Loans (phase 3): the member's side, the guarantors, then each officer's step.
+    Route::get('me/loan-eligibility', [GroupLoanController::class, 'myEligibility']);
+    Route::get('me/loans', [GroupLoanController::class, 'mine']);
+    Route::post('me/loans', [GroupLoanController::class, 'applyMine'])->middleware('throttle:10,1');
+    Route::post('me/loans/{id}/guarantors', [GroupLoanController::class, 'addGuarantor'])->whereNumber('id');
+    Route::post('me/loans/{id}/cancel', [GroupLoanController::class, 'cancel'])->whereNumber('id');
+    Route::post('guarantees/{id}/respond', [GroupLoanController::class, 'respond'])->whereNumber('id');
+    Route::get('loans/{id}', [GroupLoanController::class, 'detail'])->whereNumber('id');
+    Route::get('loans', [GroupLoanController::class, 'index'])->middleware('group_right:view_loans');
+    Route::post('loans', [GroupLoanController::class, 'applyForMember'])->middleware('group_right:record_payments');
+    Route::post('loans/{id}/recommend', [GroupLoanController::class, 'recommend'])->whereNumber('id')->middleware('group_right:recommend_loans');
+    Route::post('loans/{id}/approve', [GroupLoanController::class, 'approve'])->whereNumber('id')->middleware('group_right:approve_loans');
+    Route::post('loans/{id}/reject', [GroupLoanController::class, 'reject'])->whereNumber('id')->middleware('group_right:approve_loans,recommend_loans');
+    Route::post('loans/{id}/disburse', [GroupLoanController::class, 'disburse'])->whereNumber('id')->middleware('group_right:record_payouts');
+
+    // Welfare (phase 3).
+    Route::get('benefit-types', [GroupWelfareController::class, 'types']);
+    Route::post('benefit-types', [GroupWelfareController::class, 'saveType'])->middleware('group_right:manage_settings');
+    Route::put('benefit-types/{id}', [GroupWelfareController::class, 'saveType'])->whereNumber('id')->middleware('group_right:manage_settings');
+    Route::get('me/benefits', [GroupWelfareController::class, 'mine']);
+    Route::post('me/benefits', [GroupWelfareController::class, 'apply'])->middleware('throttle:10,1');
+    Route::post('me/benefits/{id}/cancel', [GroupWelfareController::class, 'cancel'])->whereNumber('id');
+    Route::get('benefits', [GroupWelfareController::class, 'index'])->middleware('group_right:view_benefits');
+    Route::post('benefits/{id}/decide', [GroupWelfareController::class, 'decide'])->whereNumber('id')->middleware('group_right:approve_benefits');
+    Route::post('benefits/{id}/pay', [GroupWelfareController::class, 'pay'])->whereNumber('id')->middleware('group_right:record_payouts');
 
     Route::put('settings', [GroupSettingsController::class, 'update'])->middleware('group_right:manage_settings');
     Route::get('audit', [GroupSettingsController::class, 'audit'])->middleware('group_right:view_audit');

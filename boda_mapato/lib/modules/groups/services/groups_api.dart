@@ -1,4 +1,5 @@
 import '../../../services/api_service.dart';
+import '../models/group_loan_models.dart';
 import '../models/group_models.dart';
 
 /// The Groups (Vikundi) service's calls to the server. Screens take one of these so a test can hand them a fake; a failed call throws the
@@ -138,6 +139,81 @@ class GroupsApi {
     final Map<String, dynamic> res = await _api.get(memberId == null ? '$_base/me/statement' : '$_base/members/$memberId/statement');
     return res['data'] is Map ? GroupStatementData.fromJson(Map<String, dynamic>.from(res['data'] as Map)) : null;
   }
+
+  // ---------------------------------------------------------------- loans
+
+  Future<GroupLoanEligibility?> myEligibility() async {
+    final Map<String, dynamic> res = await _api.get('$_base/me/loan-eligibility');
+    return res['data'] is Map ? GroupLoanEligibility.fromJson(Map<String, dynamic>.from(res['data'] as Map)) : null;
+  }
+
+  /// One's own loans and the guarantees others asked of one.
+  Future<(List<GroupLoan>, List<GroupGuarantee>)> myLoans() async {
+    final Map<String, dynamic> d = _data(await _api.get('$_base/me/loans'));
+    return (
+      <GroupLoan>[for (final dynamic l in (d['loans'] as List? ?? const <dynamic>[])) GroupLoan.fromJson(Map<String, dynamic>.from(l as Map))],
+      <GroupGuarantee>[for (final dynamic g in (d['guarantees'] as List? ?? const <dynamic>[])) GroupGuarantee.fromJson(Map<String, dynamic>.from(g as Map))],
+    );
+  }
+
+  GroupLoan _loan(final Map<String, dynamic> res) => GroupLoan.fromJson(Map<String, dynamic>.from(_data(res)['loan'] as Map));
+
+  Future<GroupLoan> applyLoan(final Map<String, dynamic> body) async => _loan(await _api.post('$_base/me/loans', body));
+
+  Future<GroupLoan> addGuarantor(final int loanId, final int memberId) async => _loan(await _api.post('$_base/me/loans/$loanId/guarantors', <String, dynamic>{'member_id': memberId}));
+
+  Future<GroupLoan> cancelLoan(final int loanId) async => _loan(await _api.post('$_base/me/loans/$loanId/cancel', <String, dynamic>{}));
+
+  Future<GroupLoan> respondGuarantee(final int guaranteeId, {required final bool accept, final String? note}) async =>
+      _loan(await _api.post('$_base/guarantees/$guaranteeId/respond', <String, dynamic>{'accept': accept, if (note != null) 'note': note}));
+
+  Future<GroupLoanPage> loans({final String? status, final int page = 1}) async =>
+      GroupLoanPage.fromJson(await _api.get('$_base/loans${_query(<String, String?>{'status': status, 'page': '$page'})}'));
+
+  Future<GroupLoan> loan(final int id) async => _loan(await _api.get('$_base/loans/$id'));
+
+  Future<GroupLoan> recommendLoan(final int id, {required final double amount, required final String note}) async =>
+      _loan(await _api.post('$_base/loans/$id/recommend', <String, dynamic>{'amount': amount, 'note': note}));
+
+  Future<GroupLoan> approveLoan(final int id, {final double? amount}) async => _loan(await _api.post('$_base/loans/$id/approve', <String, dynamic>{if (amount != null) 'amount': amount}));
+
+  Future<GroupLoan> rejectLoan(final int id, final String reason) async => _loan(await _api.post('$_base/loans/$id/reject', <String, dynamic>{'reason': reason}));
+
+  Future<GroupLoan> disburseLoan(final int id, {required final String method, final String? reference}) async =>
+      _loan(await _api.post('$_base/loans/$id/disburse', <String, dynamic>{'method': method, if (reference != null && reference.isNotEmpty) 'external_ref': reference}));
+
+  // ---------------------------------------------------------------- welfare
+
+  Future<List<GroupBenefitType>> benefitTypes() async => <GroupBenefitType>[
+        for (final dynamic t in (_data(await _api.get('$_base/benefit-types'))['types'] as List? ?? const <dynamic>[]))
+          GroupBenefitType.fromJson(Map<String, dynamic>.from(t as Map)),
+      ];
+
+  Future<void> saveBenefitType(final Map<String, dynamic> body, {final int? id}) async {
+    if (id == null) {
+      await _api.post('$_base/benefit-types', body);
+    } else {
+      await _api.put('$_base/benefit-types/$id', body);
+    }
+  }
+
+  List<GroupBenefitRequest> _requests(final Map<String, dynamic> res) => <GroupBenefitRequest>[
+        for (final dynamic r in (_data(res)['requests'] as List? ?? const <dynamic>[])) GroupBenefitRequest.fromJson(Map<String, dynamic>.from(r as Map)),
+      ];
+
+  Future<List<GroupBenefitRequest>> myBenefits() async => _requests(await _api.get('$_base/me/benefits'));
+
+  Future<void> applyBenefit(final Map<String, dynamic> body) async => _api.post('$_base/me/benefits', body);
+
+  Future<void> cancelBenefit(final int id) async => _api.post('$_base/me/benefits/$id/cancel', <String, dynamic>{});
+
+  Future<List<GroupBenefitRequest>> benefits({final String? status}) async => _requests(await _api.get('$_base/benefits${_query(<String, String?>{'status': status})}'));
+
+  Future<void> decideBenefit(final int id, {required final bool approve, final double? amount, final String? note}) async =>
+      _api.post('$_base/benefits/$id/decide', <String, dynamic>{'approve': approve, if (amount != null) 'amount': amount, if (note != null) 'note': note});
+
+  Future<void> payBenefit(final int id, {required final String method, final String? reference}) async =>
+      _api.post('$_base/benefits/$id/pay', <String, dynamic>{'method': method, if (reference != null && reference.isNotEmpty) 'external_ref': reference});
 
   // ---------------------------------------------------------------- settings and the log
 

@@ -27,36 +27,57 @@ final class GroupLedger
 
     /**
      * The kinds of money, never mixed: joining fees, project shares, savings (in, and withdrawals out), contributions (each tied to what a
-     * member owes) and the group's own expenses (out, to a payee, no member). Later phases add loans, welfare, rental and dividends.
+     * member owes), the group's own expenses (out, to a payee, no member), loans (the disbursement out and the repayments in, each tied to
+     * its loan) and welfare payouts (out, tied to an approved request). Later phases add rental and dividends.
      */
-    public const CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution', 'expense'];
+    public const CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution', 'expense', 'loan_disbursement', 'loan_repayment', 'welfare'];
 
     /** What a member can pay for themself (never money out). */
-    public const MEMBER_CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution'];
+    public const MEMBER_CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution', 'loan_repayment'];
+
+    /** What a member holds or has paid in, as their balances show it (a loan repayment is the loan's, not a balance). */
+    public const BALANCE_CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution'];
+
+    /** The kinds that only ever go out. */
+    public const OUT_CATEGORIES = ['expense', 'loan_disbursement', 'welfare'];
 
     /** How a payment can be made (the same words the rest of the app uses). */
     public const METHODS = ['cash', 'mpesa', 'mixx', 'airtel_money', 'halopesa', 'bank_transfer', 'other'];
 
-    /**
-     * Is a payment of [amount] in [category] ([direction]) possible as things stand? Checked when it is sent and again when it is verified,
-     * because the balance it depends on may have moved in between. Throws with the code of what is wrong.
-     */
-    public static function check(string $category, string $direction, float $amount, ?int $memberId, ?int $obligationId, ?int $except = null): void
+    /** Money from (or to) [loanId] in [category] that is pending, or pending and verified, leaving [except] out. */
+    private static function linked(string $column, int $id, string $category, array $statuses, ?int $except): float
     {
-        if ($direction === 'out' && !in_array($category, ['savings', 'expense'], true)) {
+        return (float) DB::table('group_transactions')->where($column, $id)->where('category', $category)->whereIn('status', $statuses)
+            ->when($except !== null, fn ($q) => $q->where('id', '!=', $except))->sum('amount');
+    }
+
+    /**
+     * Is [t] possible as things stand? Checked when it is sent and again when it is verified, because what it depends on (a balance, what is
+     * owed, a decision) may have moved in between. Throws with the code of what is wrong.
+     *
+     * @param  array{category: string, direction: string, amount: float, member_id: ?int, obligation_id?: ?int, loan_id?: ?int, benefit_id?: ?int}  $t
+     */
+    public static function check(array $t, ?int $except = null): void
+    {
+        $category = $t['category'];
+        $direction = $t['direction'];
+        $amount = (float) $t['amount'];
+        $memberId = $t['member_id'] ?? null;
+        $sending = $except === null;
+        if ($direction === 'out' && !in_array($category, array_merge(['savings'], self::OUT_CATEGORIES), true)) {
             throw new InvalidArgumentException('cannot_pay_out');
         }
-        if ($category === 'expense' && $direction !== 'out') {
+        if (in_array($category, self::OUT_CATEGORIES, true) && $direction !== 'out') {
             throw new InvalidArgumentException('cannot_pay_out');
         }
         if ($category === 'contribution') {
+            $obligationId = $t['obligation_id'] ?? null;
             $o = $obligationId === null ? null : DB::table('group_obligations')->where('id', $obligationId)->first();
             if ($o === null || (int) $o->member_id !== (int) $memberId) {
                 throw new InvalidArgumentException('obligation_required');
             }
-            $waiting = (float) DB::table('group_transactions')->where('obligation_id', $obligationId)->where('status', self::PENDING)
-                ->when($except !== null, fn ($q) => $q->where('id', '!=', $except))->sum('amount');
-            if ($amount > GroupContributions::remaining($obligationId) - ($except === null ? $waiting : 0) + 0.001) {
+            $waiting = $sending ? (float) DB::table('group_transactions')->where('obligation_id', $obligationId)->where('status', self::PENDING)->sum('amount') : 0.0;
+            if ($amount > GroupContributions::remaining((int) $obligationId) - $waiting + 0.001) {
                 throw new InvalidArgumentException('more_than_owed');
             }
         }
@@ -67,19 +88,61 @@ final class GroupLedger
                 throw new InvalidArgumentException('more_than_savings');
             }
         }
+        if ($category === 'loan_disbursement' || $category === 'loan_repayment') {
+            $loanId = $t['loan_id'] ?? null;
+            $loan = $loanId === null ? null : DB::table('group_loans')->where('id', $loanId)->first();
+            if ($loan === null || (int) $loan->member_id !== (int) $memberId) {
+                throw new InvalidArgumentException('loan_required');
+            }
+            if ($category === 'loan_disbursement') {
+                // Paid out once, in full, and only once approved.
+                if ($loan->status !== 'approved' || self::linked('loan_id', (int) $loanId, $category, [self::PENDING, self::VERIFIED], $except) > 0) {
+                    throw new InvalidArgumentException('loan_not_ready');
+                }
+                if (abs($amount - (float) $loan->amount_approved) > 0.001) {
+                    throw new InvalidArgumentException('amount_not_approved');
+                }
+            } else {
+                if ($loan->status !== 'active') {
+                    throw new InvalidArgumentException('loan_not_running');
+                }
+                $waiting = $sending ? self::linked('loan_id', (int) $loanId, $category, [self::PENDING], null) : 0.0;
+                if ($amount > GroupLoans::position($loan)['outstanding'] - $waiting + 0.001) {
+                    throw new InvalidArgumentException('more_than_loan');
+                }
+            }
+        }
+        if ($category === 'welfare') {
+            $benefitId = $t['benefit_id'] ?? null;
+            $request = $benefitId === null ? null : DB::table('group_benefit_requests')->where('id', $benefitId)->first();
+            if ($request === null || (int) $request->member_id !== (int) $memberId) {
+                throw new InvalidArgumentException('benefit_required');
+            }
+            if ($request->status !== 'approved' || self::linked('benefit_id', (int) $benefitId, $category, [self::PENDING, self::VERIFIED], $except) > 0) {
+                throw new InvalidArgumentException('benefit_not_ready');
+            }
+            if (abs($amount - (float) $request->amount_approved) > 0.001) {
+                throw new InvalidArgumentException('amount_not_approved');
+            }
+        }
     }
 
     /**
-     * @param  array{member_id: ?int, category: string, amount: float|int|string, method: string, direction?: string, obligation_id?: ?int, payee?: ?string, external_ref?: ?string, paid_on?: ?string, note?: ?string}  $data
+     * @param  array{member_id: ?int, category: string, amount: float|int|string, method: string, direction?: string, obligation_id?: ?int, loan_id?: ?int, benefit_id?: ?int, payee?: ?string, external_ref?: ?string, paid_on?: ?string, note?: ?string}  $data
      * @return int the new transaction's id
      */
     public static function submit(array $data, string $by): int
     {
         $method = (string) $data['method'];
         $ref = trim((string) ($data['external_ref'] ?? ''));
-        $direction = (string) ($data['direction'] ?? 'in');
+        $category = (string) $data['category'];
+        $direction = in_array($category, self::OUT_CATEGORIES, true) ? 'out' : (string) ($data['direction'] ?? 'in');
         $memberId = isset($data['member_id']) ? (int) $data['member_id'] : null;
-        $obligationId = isset($data['obligation_id']) ? (int) $data['obligation_id'] : null;
+        $link = [
+            'obligation_id' => $category === 'contribution' && isset($data['obligation_id']) ? (int) $data['obligation_id'] : null,
+            'loan_id' => in_array($category, ['loan_disbursement', 'loan_repayment'], true) && isset($data['loan_id']) ? (int) $data['loan_id'] : null,
+            'benefit_id' => $category === 'welfare' && isset($data['benefit_id']) ? (int) $data['benefit_id'] : null,
+        ];
         // Money paid IN by mobile money or bank must say its reference; money the group pays OUT is the group's own record.
         if ($direction === 'in' && $method !== 'cash' && $ref === '') {
             throw new InvalidArgumentException('reference_required');
@@ -87,19 +150,18 @@ final class GroupLedger
         if ($ref !== '' && self::duplicateOf($method, $ref) !== null) {
             throw new InvalidArgumentException('duplicate_reference');
         }
-        if ($data['category'] === 'expense' && trim((string) ($data['payee'] ?? '')) === '') {
+        if ($category === 'expense' && trim((string) ($data['payee'] ?? '')) === '') {
             throw new InvalidArgumentException('payee_required');
         }
-        self::check((string) $data['category'], $direction, (float) $data['amount'], $memberId, $obligationId);
+        self::check(['category' => $category, 'direction' => $direction, 'amount' => (float) $data['amount'], 'member_id' => $memberId] + $link);
 
         for ($try = 0; $try < 5; $try++) {
             try {
-                return (int) DB::table('group_transactions')->insertGetId([
+                return (int) DB::table('group_transactions')->insertGetId($link + [
                     'reference' => 'TRX-' . strtoupper(Str::random(8)),
                     'member_id' => $memberId,
-                    'obligation_id' => $data['category'] === 'contribution' ? $obligationId : null,
-                    'payee' => $data['category'] === 'expense' ? trim((string) $data['payee']) : null,
-                    'category' => (string) $data['category'],
+                    'payee' => $category === 'expense' ? trim((string) $data['payee']) : null,
+                    'category' => $category,
                     'direction' => $direction,
                     'amount' => round((float) $data['amount'], 2),
                     'method' => $method,
@@ -147,8 +209,13 @@ final class GroupLedger
     public static function verify(object $tx, string $by): string
     {
         // The balance it depends on may have moved since it was sent (another withdrawal, another payment to the same contribution).
-        self::check((string) $tx->category, (string) $tx->direction, (float) $tx->amount, $tx->member_id === null ? null : (int) $tx->member_id,
-            $tx->obligation_id === null ? null : (int) $tx->obligation_id, (int) $tx->id);
+        self::check([
+            'category' => (string) $tx->category, 'direction' => (string) $tx->direction, 'amount' => (float) $tx->amount,
+            'member_id' => $tx->member_id === null ? null : (int) $tx->member_id,
+            'obligation_id' => $tx->obligation_id === null ? null : (int) $tx->obligation_id,
+            'loan_id' => ($tx->loan_id ?? null) === null ? null : (int) $tx->loan_id,
+            'benefit_id' => ($tx->benefit_id ?? null) === null ? null : (int) $tx->benefit_id,
+        ], (int) $tx->id);
         $receipt = self::nextReceipt();
         for ($try = 0; $try < 5; $try++) {
             try {
@@ -157,6 +224,9 @@ final class GroupLedger
                 ]);
                 if ($done === 0) {
                     throw new InvalidArgumentException('not_pending');
+                }
+                if ($tx->category === 'loan_disbursement' && ($tx->loan_id ?? null) !== null) {
+                    GroupLoans::activate((int) $tx->loan_id, now()->toDateString());
                 }
 
                 return $receipt;
@@ -183,6 +253,9 @@ final class GroupLedger
         if ($tx->status !== self::VERIFIED || $tx->reversed_by_id !== null || $tx->reverses_id !== null) {
             throw new InvalidArgumentException('cannot_reverse');
         }
+        if ($tx->category === 'loan_disbursement' && GroupLoans::repaid((int) $tx->loan_id) > 0) {
+            throw new InvalidArgumentException('loan_has_repayments');
+        }
 
         return DB::transaction(function () use ($tx, $by, $reason) {
             $id = (int) DB::table('group_transactions')->insertGetId([
@@ -190,6 +263,8 @@ final class GroupLedger
                 'receipt_number' => self::nextReceipt(),
                 'member_id' => $tx->member_id,
                 'obligation_id' => $tx->obligation_id,
+                'loan_id' => $tx->loan_id ?? null,
+                'benefit_id' => $tx->benefit_id ?? null,
                 'payee' => $tx->payee,
                 'category' => $tx->category,
                 'direction' => $tx->direction === 'in' ? 'out' : 'in',
@@ -210,6 +285,9 @@ final class GroupLedger
             $linked = DB::table('group_transactions')->where('id', $tx->id)->whereNull('reversed_by_id')->update(['reversed_by_id' => $id]);
             if ($linked === 0) {
                 throw new InvalidArgumentException('cannot_reverse');
+            }
+            if ($tx->category === 'loan_disbursement') {
+                GroupLoans::undoDisbursement((int) $tx->loan_id);
             }
 
             return $id;
@@ -243,7 +321,7 @@ final class GroupLedger
      */
     public static function balances(int $memberId): array
     {
-        $out = array_fill_keys(self::MEMBER_CATEGORIES, 0.0);
+        $out = array_fill_keys(self::BALANCE_CATEGORIES, 0.0);
         $rows = DB::table('group_transactions')->where('member_id', $memberId)->where('status', self::VERIFIED)
             ->selectRaw("category, SUM(CASE WHEN direction = 'in' THEN amount ELSE -amount END) as total")
             ->groupBy('category')->get();
@@ -271,6 +349,8 @@ final class GroupLedger
             'obligation_id' => ($r->obligation_id ?? null) === null ? null : (int) $r->obligation_id,
             'obligation_label' => $r->obligation_label ?? null,
             'payee' => $r->payee ?? null,
+            'loan_id' => ($r->loan_id ?? null) === null ? null : (int) $r->loan_id,
+            'benefit_id' => ($r->benefit_id ?? null) === null ? null : (int) $r->benefit_id,
             'member_name' => $r->member_name ?? null,
             'member_number' => $r->member_number ?? null,
             'category' => $r->category,

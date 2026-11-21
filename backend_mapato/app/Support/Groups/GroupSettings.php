@@ -31,6 +31,12 @@ final class GroupSettings
         // the group's own SMS. Amounts are left out unless the group allows them (a shared phone should not show someone's debts).
         'sms_reminders' => ['type' => 'choice', 'choices' => ['off', 'on'], 'default' => 'off'],
         'sms_show_amounts' => ['type' => 'choice', 'choices' => ['off', 'on'], 'default' => 'off'],
+        // Loan terms. The rate (percent PER MONTH) and the method have NO default: the group must decide them (nothing is assumed), and
+        // nobody can apply for a loan until both are set. Each loan keeps the terms it was applied under.
+        'loan_interest_rate' => ['type' => 'rate', 'default' => ''],
+        'loan_interest_method' => ['type' => 'choice', 'choices' => ['', 'flat', 'reducing'], 'default' => ''],
+        'loan_max_months' => ['type' => 'count', 'min' => 1, 'max' => 120, 'default' => '12'],
+        'loan_guarantors' => ['type' => 'count', 'min' => 0, 'max' => 5, 'default' => '1'],
     ];
 
     /** @return array<string, string> every setting as it stands on [day] (today when null) */
@@ -76,6 +82,12 @@ final class GroupSettings
                 ? (string) round((float) $text, 2)
                 : throw new InvalidArgumentException("{$key}: enter a number above 0."),
             'choice' => in_array($text, $spec['choices'], true) ? $text : throw new InvalidArgumentException("{$key}: not one of the choices."),
+            'rate' => $text === '' || (is_numeric($text) && (float) $text >= 0 && (float) $text <= 100)
+                ? ($text === '' ? '' : (string) round((float) $text, 3))
+                : throw new InvalidArgumentException("{$key}: a percentage from 0 to 100, or empty."),
+            'count' => ctype_digit($text) && (int) $text >= $spec['min'] && (int) $text <= $spec['max']
+                ? (string) (int) $text
+                : throw new InvalidArgumentException("{$key}: a whole number from {$spec['min']} to {$spec['max']}."),
             'text' => $key === 'member_prefix'
                 ? (preg_match('/^[A-Za-z0-9]{1,8}$/', $text) === 1 ? strtoupper($text) : throw new InvalidArgumentException('member_prefix: 1 to 8 letters or digits.'))
                 : mb_substr($text, 0, 255),

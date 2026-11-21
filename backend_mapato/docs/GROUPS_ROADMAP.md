@@ -37,6 +37,29 @@ Status: **Phase 1 built (2026-11-22)**; phases 2–5 to come. No APK until the w
   (contribution choice, savings, withdrawal only when savings are known), group expense form, fuller Payments summary,
   settings switches for reminder texts. Footer shows 4 sections by priority + menu.
 - Tests: `tests/Feature/GroupsMoneyTest.php` (7), `test/groups_phase2_test.dart` (5).
+- Deployed 2026-11-22 (migration `2026_12_04_000100_add_groups_money_core` ran on the live MariaDB after a backup).
+
+**Phase 3 – loans and welfare (2026-11-22)**
+- Loan terms are group settings with NO default for the rate (% per month) and method (flat / reducing): nobody can apply
+  until both are set; each loan copies the terms it was applied under. Also `loan_max_months`, `loan_guarantors`.
+- Flow: member applies (eligible = active, shares paid when required, terms set; ceiling = savings × multiplier − other
+  running loans; one open application at a time) → guarantors accept/decline (borrower can add another) → projects
+  committee (`recommend_loans`: Mwenyekiti wa Miradi, Kamati ya Miradi) recommends an amount ≤ asked and ≤ ceiling →
+  chair/deputy (`approve_loans`) approve at that amount or less → treasurer (`record_payouts`) pays out (a
+  `loan_disbursement` transaction, exactly the approved amount, once) → someone else verifies → loan ACTIVE, schedule made
+  from that day (monthly instalments). Repayments (`loan_repayment`, never more than owed incl. waiting) are applied
+  interest first then principal, instalment by instalment, read from verified rows (never stored). Reject with reason
+  at any step before payout; borrower can withdraw. Nobody recommends/approves/rejects/pays out their own loan. A
+  payout reversed before any repayment puts the loan back to approved; after repayments it cannot be reversed.
+  Portfolio: disbursed, principal and interest outstanding apart, interest received, arrears, overdue count.
+- Welfare: kinds of help with a usual amount (`manage_settings`); member asks (type, beneficiary, relationship, date,
+  private description, amount); chair/deputy (`approve_benefits`) approve with amount or reject with reason; treasurer
+  pays (`welfare` transaction = approved amount, once); paid only when verified by someone else; description shown only
+  to the member, deciders and payers; never one's own request.
+- App: Loans section (portfolio, waiting per step, by stage), loan file with each officer's step, My loans (eligibility
+  sum, apply with guarantors, answer guarantees), Welfare section, My welfare (ask for help), kinds of help, loan terms
+  in settings, Home card "My loans / Welfare" and waiting lines.
+- Tests: `tests/Feature/GroupsLoansWelfareTest.php` (6), `test/groups_phase3_test.dart` (6).
 Source requirement: `GROUPS_MEG_BLUEPRINT.md` (Mongolandege Economic Group, MEG, 22 members). MEG is the first customer;
 the service is built for **any** savings / economic group (VICOBA, VSLA, SACCOS-style groups, office and family groups).
 

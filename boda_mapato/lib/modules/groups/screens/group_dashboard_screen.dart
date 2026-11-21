@@ -8,9 +8,11 @@ import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_models.dart';
 import '../services/groups_api.dart';
 import 'groups_text.dart';
+import 'my_loans_screen.dart';
 import 'payment_form.dart';
 import 'promise_form.dart';
 import 'statement_screen.dart';
+import 'welfare_screen.dart';
 import 'widgets/groups_ui.dart';
 
 /// Home: the person's own membership and money, and -- for officers -- what waits for them. Everyone has it; a member sees nothing of anyone else.
@@ -57,6 +59,16 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
 
   Future<void> _promise() async {
     if (await showPromiseForm(context, api: widget.api, owing: widget.me.owing)) await _refresh();
+  }
+
+  Future<void> _myLoans() async {
+    await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MyLoansScreen(api: widget.api, me: widget.me)));
+    await _refresh();
+  }
+
+  Future<void> _myWelfare() async {
+    await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MyWelfareScreen(api: widget.api)));
+    await _refresh();
   }
 
   Future<void> _statement() => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => GroupStatementScreen(api: widget.api)));
@@ -170,6 +182,27 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                 ],
               ),
             ],
+            const SizedBox(height: 12),
+            GlowListCard(
+              dividerKey: 'grp_help_div',
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              children: <Widget>[
+                ListTile(
+                  key: const Key('grp_my_loans'),
+                  leading: const Icon(Icons.request_quote_rounded, color: ThemeConstants.invAccent),
+                  title: Text(sw ? 'Mikopo yangu' : 'My loans', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                  onTap: _myLoans,
+                ),
+                ListTile(
+                  key: const Key('grp_my_welfare'),
+                  leading: const Icon(Icons.volunteer_activism_rounded, color: ThemeConstants.invAccent),
+                  title: Text(sw ? 'Msaada (ustawi)' : 'Welfare', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                  onTap: _myWelfare,
+                ),
+              ],
+            ),
             if (me.promises.isNotEmpty) ...<Widget>[
               const SizedBox(height: 12),
               GlowCard(
@@ -191,6 +224,46 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                     label: sw ? 'Malipo ya kuthibitisha' : 'Payments to verify',
                     count: me.waiting['payments_to_verify']!,
                     onTap: () => widget.onOpen('payments'),
+                  ),
+                if (me.waiting.containsKey('guarantees'))
+                  _WaitLine(
+                    key: const Key('grp_wait_guarantees'),
+                    icon: Icons.handshake_rounded,
+                    label: sw ? 'Umeombwa kudhamini mkopo' : 'Asked to guarantee a loan',
+                    count: me.waiting['guarantees']!,
+                    onTap: _myLoans,
+                  ),
+                if (me.waiting.containsKey('loans_to_recommend'))
+                  _WaitLine(
+                    key: const Key('grp_wait_recommend'),
+                    icon: Icons.thumb_up_alt_outlined,
+                    label: sw ? 'Mikopo ya kupendekeza' : 'Loans to recommend',
+                    count: me.waiting['loans_to_recommend']!,
+                    onTap: () => widget.onOpen('loans'),
+                  ),
+                if (me.waiting.containsKey('loans_to_approve'))
+                  _WaitLine(
+                    key: const Key('grp_wait_approve'),
+                    icon: Icons.verified_rounded,
+                    label: sw ? 'Mikopo ya kuidhinisha' : 'Loans to approve',
+                    count: me.waiting['loans_to_approve']!,
+                    onTap: () => widget.onOpen('loans'),
+                  ),
+                if (me.waiting.containsKey('loans_to_disburse'))
+                  _WaitLine(
+                    key: const Key('grp_wait_disburse'),
+                    icon: Icons.payments_rounded,
+                    label: sw ? 'Mikopo ya kutoa' : 'Loans to pay out',
+                    count: me.waiting['loans_to_disburse']!,
+                    onTap: () => widget.onOpen('loans'),
+                  ),
+                if (me.waiting.containsKey('benefits_to_decide'))
+                  _WaitLine(
+                    key: const Key('grp_wait_benefits'),
+                    icon: Icons.volunteer_activism_rounded,
+                    label: sw ? 'Maombi ya msaada' : 'Welfare requests',
+                    count: me.waiting['benefits_to_decide']!,
+                    onTap: () => widget.onOpen('welfare'),
                   ),
                 if (me.waiting.containsKey('members_overdue'))
                   _WaitLine(

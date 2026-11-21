@@ -154,7 +154,10 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       GroupSheetAction(icon: Icons.receipt_long_rounded, label: sw ? 'Matumizi ya kikundi' : 'A group expense', value: 'expense', tone: GroupTone.danger),
     ]);
     if (!mounted) return;
-    if (picked == 'payment') await _record();
+    if (picked == 'payment') {
+      await _record();
+      return;
+    }
     if (picked == 'expense' && await showExpenseForm(context, api: widget.api)) {
       await _load();
       await widget.onChanged();

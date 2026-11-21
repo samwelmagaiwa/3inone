@@ -9,6 +9,7 @@ import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_models.dart';
 import '../services/groups_api.dart';
 import 'groups_text.dart';
+import 'welfare_screen.dart';
 import 'widgets/groups_ui.dart';
 
 /// More: the group's settings, who holds which office, and the activity log -- each shown only to whoever may open it.
@@ -42,6 +43,8 @@ class GroupMoreScreen extends StatelessWidget {
           children: <Widget>[
             if (me.can('manage_settings'))
               entry(const Key('grp_more_settings'), Icons.tune_rounded, sw ? 'Mipangilio ya kikundi' : 'Group settings', () => GroupSettingsScreen(api: api)),
+            if (me.can('manage_settings'))
+              entry(const Key('grp_more_btypes'), Icons.volunteer_activism_rounded, sw ? 'Aina za msaada' : 'Kinds of help', () => BenefitTypesScreen(api: api)),
             if (me.can('view_members')) entry(const Key('grp_more_offices'), Icons.workspace_premium_rounded, sw ? 'Viongozi' : 'Officers', () => GroupOfficesScreen(api: api)),
             if (me.can('view_audit')) entry(const Key('grp_more_activity'), Icons.history_rounded, sw ? 'Kumbukumbu za shughuli' : 'Activity log', () => GroupActivityScreen(api: api)),
           ],
@@ -68,6 +71,10 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
   final TextEditingController _multiplier = TextEditingController();
   final TextEditingController _prefix = TextEditingController();
   final TextEditingController _instructions = TextEditingController();
+  final TextEditingController _rate = TextEditingController();
+  final TextEditingController _maxMonths = TextEditingController();
+  final TextEditingController _guarantors = TextEditingController();
+  String _method = '';
   String _sharesFor = 'loans';
   bool _reminders = false;
   bool _amounts = false;
@@ -86,7 +93,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
 
   @override
   void dispose() {
-    for (final TextEditingController c in <TextEditingController>[_joining, _shares, _multiplier, _prefix, _instructions]) {
+    for (final TextEditingController c in <TextEditingController>[_joining, _shares, _multiplier, _prefix, _instructions, _rate, _maxMonths, _guarantors]) {
       c.dispose();
     }
     super.dispose();
@@ -107,6 +114,10 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
     _instructions.text = '${s['payment_instructions'] ?? ''}';
     _sharesFor = '${s['shares_required_for'] ?? 'loans'}';
     _reminders = s['sms_reminders'] == 'on';
+    _rate.text = '${s['loan_interest_rate'] ?? ''}';
+    _method = '${s['loan_interest_method'] ?? ''}';
+    _maxMonths.text = '${s['loan_max_months'] ?? '12'}';
+    _guarantors.text = '${s['loan_guarantors'] ?? '1'}';
     _amounts = s['sms_show_amounts'] == 'on';
     _history = <Map<String, dynamic>>[for (final dynamic h in (data['history'] as List? ?? const <dynamic>[])) Map<String, dynamic>.from(h as Map)];
   }
@@ -139,6 +150,10 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
       'shares_required_for': _sharesFor,
       'sms_reminders': _reminders ? 'on' : 'off',
       'sms_show_amounts': _amounts ? 'on' : 'off',
+      'loan_interest_rate': _rate.text.trim(),
+      'loan_interest_method': _method,
+      'loan_max_months': _maxMonths.text.trim(),
+      'loan_guarantors': _guarantors.text.trim(),
     };
     return <String, dynamic>{
       for (final MapEntry<String, dynamic> e in wanted.entries)
@@ -155,6 +170,10 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
         'shares_required_for' => sw ? 'Hisa zinahitajika kwa' : 'Shares are required for',
         'sms_reminders' => sw ? 'Ujumbe wa vikumbusho' : 'Reminder texts',
         'sms_show_amounts' => sw ? 'Kiasi kwenye ujumbe' : 'Amounts in texts',
+        'loan_interest_rate' => sw ? 'Riba kwa mwezi (%)' : 'Interest a month (%)',
+        'loan_interest_method' => sw ? 'Njia ya riba' : 'Interest method',
+        'loan_max_months' => sw ? 'Muda mrefu zaidi (miezi)' : 'Longest term (months)',
+        'loan_guarantors' => sw ? 'Wadhamini wanaohitajika' : 'Guarantors needed',
         _ => key,
       };
 
@@ -264,6 +283,30 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                         ],
                       ),
                       GlowCard(
+                        title: sw ? 'Masharti ya mikopo' : 'Loan terms',
+                        children: <Widget>[
+                          _money(_rate, _label(sw, 'loan_interest_rate'), const Key('grp_set_rate')),
+                          Text(_label(sw, 'loan_interest_method'), style: const TextStyle(color: Colors.white70)),
+                          Wrap(spacing: 8, children: <Widget>[
+                            for (final String m in const <String>['flat', 'reducing'])
+                              ChoiceChip(
+                                key: Key('grp_set_method_$m'),
+                                label: Text(interestMethodLabel(sw: sw, method: m)),
+                                selected: _method == m,
+                                onSelected: (_) => setState(() => _method = m),
+                              ),
+                          ]),
+                          if (_rate.text.trim().isEmpty || _method.isEmpty)
+                            Text(
+                              sw ? 'Hadi riba na njia yake viwekwe, hakuna anayeweza kuomba mkopo.' : 'Until the rate and the method are set, nobody can apply for a loan.',
+                              key: const Key('grp_set_terms_missing'),
+                              style: const TextStyle(color: ThemeConstants.warningAmber, fontSize: 12),
+                            ),
+                          _money(_maxMonths, _label(sw, 'loan_max_months'), const Key('grp_set_max_months')),
+                          _money(_guarantors, _label(sw, 'loan_guarantors'), const Key('grp_set_guarantors')),
+                        ],
+                      ),
+                      GlowCard(
                         title: _label(sw, 'payment_instructions'),
                         children: <Widget>[
                           TextField(
@@ -337,7 +380,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                             for (final Map<String, dynamic> h in _history)
                               Text(
                                 '${dateLabel('${h['effective_from']}')} · ${_label(sw, '${h['key']}')}: '
-                                '${h['key'] == 'shares_required_for' ? _sharesForLabel(sw, '${h['value']}') : (h['value'] == 'on' ? (sw ? 'Imewashwa' : 'On') : h['value'] == 'off' ? (sw ? 'Imezimwa' : 'Off') : _plain(h['value']))}'
+                                '${h['key'] == 'loan_interest_method' ? interestMethodLabel(sw: sw, method: '${h['value'] ?? ''}') : h['key'] == 'shares_required_for' ? _sharesForLabel(sw, '${h['value']}') : (h['value'] == 'on' ? (sw ? 'Imewashwa' : 'On') : h['value'] == 'off' ? (sw ? 'Imezimwa' : 'Off') : _plain(h['value']))}'
                                 '${h['reason'] == null ? '' : ' · ${h['reason']}'}${h['changed_by_name'] == null ? '' : ' · ${h['changed_by_name']}'}',
                                 style: const TextStyle(color: Colors.white70, fontSize: 12),
                               ),

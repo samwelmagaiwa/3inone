@@ -11,7 +11,7 @@ final class GroupStatement
     /** @return array<string, mixed> */
     public static function for(int $memberId): array
     {
-        $running = array_fill_keys(GroupLedger::MEMBER_CATEGORIES, 0.0);
+        $running = array_fill_keys(GroupLedger::BALANCE_CATEGORIES, 0.0);
         $lines = [];
         $rows = GroupLedger::listQuery()->where('t.member_id', $memberId)->where('t.status', GroupLedger::VERIFIED)
             ->orderBy('t.verified_at')->orderBy('t.id')->get();

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../constants/theme_constants.dart';
 import '../../../services/localization_service.dart';
 import '../../../utils/server_message.dart';
+import '../models/group_loan_models.dart';
 import '../models/group_models.dart';
 import '../services/groups_api.dart';
 import 'groups_text.dart';
@@ -21,6 +22,7 @@ Future<bool> showPaymentForm(
   final Map<String, double>? paid,
   final List<GroupObligation>? owing,
   final GroupObligation? obligation,
+  final GroupLoan? loan,
 }) async {
   final bool? sent = await showModalBottomSheet<bool>(
     context: context,
@@ -36,6 +38,7 @@ Future<bool> showPaymentForm(
         paid: paid ?? (member == null ? me.balances : null) ?? const <String, double>{},
         owing: owing ?? (member == null ? me.owing : const <GroupObligation>[]),
         obligation: obligation,
+        loan: loan,
       ),
     ),
   );
@@ -46,7 +49,7 @@ Future<bool> showPaymentForm(
 const String _withdrawal = 'withdrawal';
 
 class _PaymentForm extends StatefulWidget {
-  const _PaymentForm({required this.api, required this.me, required this.paid, required this.owing, this.member, this.obligation});
+  const _PaymentForm({required this.api, required this.me, required this.paid, required this.owing, this.member, this.obligation, this.loan});
 
   final GroupsApi api;
   final GroupMe me;
@@ -54,6 +57,9 @@ class _PaymentForm extends StatefulWidget {
   final Map<String, double> paid;
   final List<GroupObligation> owing;
   final GroupObligation? obligation;
+
+  /// Given when repaying a loan: the form is for that only.
+  final GroupLoan? loan;
 
   @override
   State<_PaymentForm> createState() => _PaymentFormState();
@@ -63,7 +69,7 @@ class _PaymentFormState extends State<_PaymentForm> {
   final TextEditingController _amount = TextEditingController();
   final TextEditingController _ref = TextEditingController();
   final TextEditingController _note = TextEditingController();
-  late String _kind = widget.obligation != null ? 'contribution' : 'joining_fee';
+  late String _kind = widget.loan != null ? 'loan_repayment' : (widget.obligation != null ? 'contribution' : 'joining_fee');
   late GroupObligation? _obligation = widget.obligation ?? widget.owing.where((final GroupObligation o) => o.owing).firstOrNull;
   String _method = 'mpesa';
   bool _busy = false;
@@ -72,7 +78,9 @@ class _PaymentFormState extends State<_PaymentForm> {
   /// An officer with the payout right, recording for a member whose savings are known, may record a savings withdrawal.
   bool get _mayWithdraw => widget.member != null && widget.me.can('record_payouts') && widget.paid.containsKey('savings');
 
-  List<String> get _kinds => <String>[
+  List<String> get _kinds => widget.loan != null
+      ? const <String>['loan_repayment']
+      : <String>[
         'joining_fee',
         'shares',
         'savings',
@@ -91,6 +99,8 @@ class _PaymentFormState extends State<_PaymentForm> {
         return _obligation?.remaining ?? 0;
       case _withdrawal:
         return widget.paid['savings'] ?? 0;
+      case 'loan_repayment':
+        return widget.loan?.outstanding ?? 0;
       default:
         return null;
     }
@@ -99,7 +109,7 @@ class _PaymentFormState extends State<_PaymentForm> {
   @override
   void initState() {
     super.initState();
-    if (widget.obligation == null) {
+    if (widget.obligation == null && widget.loan == null) {
       // Start where something is still owed: the joining fee, then the shares, then the oldest contribution.
       if ((_limit('joining_fee') ?? 0) <= 0) _kind = (_limit('shares') ?? 0) > 0 ? 'shares' : (_kinds.contains('contribution') ? 'contribution' : 'savings');
     }
@@ -107,7 +117,7 @@ class _PaymentFormState extends State<_PaymentForm> {
   }
 
   void _fillAmount() {
-    final double? l = _limit(_kind);
+    final double? l = _kind == 'loan_repayment' ? (widget.loan?.nextAmount ?? widget.loan?.outstanding) : _limit(_kind);
     _amount.text = l != null && l > 0 && _kind != _withdrawal ? l.toStringAsFixed(0) : '';
   }
 
@@ -129,7 +139,7 @@ class _PaymentFormState extends State<_PaymentForm> {
       return;
     }
     final double? limit = _limit(_kind);
-    if ((_kind == 'contribution' || _kind == _withdrawal) && limit != null && amount > limit + 0.001) {
+    if ((_kind == 'contribution' || _kind == _withdrawal || _kind == 'loan_repayment') && limit != null && amount > limit + 0.001) {
       setState(() => _error = _kind == _withdrawal
           ? (sw ? 'Ni zaidi ya akiba iliyopo (${tsh(limit)}).' : 'More than the savings there are (${tsh(limit)}).')
           : (sw ? 'Ni zaidi ya kinachodaiwa (${tsh(limit)}).' : 'More than is owed (${tsh(limit)}).'));
@@ -140,7 +150,9 @@ class _PaymentFormState extends State<_PaymentForm> {
       return;
     }
     final String who = widget.member == null ? '' : ' (${widget.member!.fullName})';
-    final String what = _kind == 'contribution' && _obligation != null ? _obligation!.title : _kindLabel(sw, _kind);
+    final String what = _kind == 'contribution' && _obligation != null
+        ? _obligation!.title
+        : (_kind == 'loan_repayment' ? '${_kindLabel(sw, _kind)} ${widget.loan?.reference ?? ''}' : _kindLabel(sw, _kind));
     final bool ok = await groupConfirm(
       context,
       title: _kind == _withdrawal ? (sw ? 'Rekodi kutoa akiba?' : 'Record this withdrawal?') : (sw ? 'Tuma malipo?' : 'Send this payment?'),
@@ -158,6 +170,7 @@ class _PaymentFormState extends State<_PaymentForm> {
       'category': _kind == _withdrawal ? 'savings' : _kind,
       if (_kind == _withdrawal) 'direction': 'out',
       if (_kind == 'contribution') 'obligation_id': _obligation?.id,
+      if (_kind == 'loan_repayment') 'loan_id': widget.loan?.id,
       'amount': amount,
       'method': _method,
       if (_ref.text.trim().isNotEmpty) 'external_ref': _ref.text.trim(),
@@ -240,7 +253,11 @@ class _PaymentFormState extends State<_PaymentForm> {
             if (limit != null) ...<Widget>[
               const SizedBox(height: 6),
               Text(
-                _kind == _withdrawal ? '${sw ? 'Akiba iliyopo' : 'Savings there are'}: ${tsh(limit)}' : '${sw ? 'Kinachobaki' : 'Still due'}: ${tsh(limit)}',
+                _kind == _withdrawal
+                    ? '${sw ? 'Akiba iliyopo' : 'Savings there are'}: ${tsh(limit)}'
+                    : _kind == 'loan_repayment'
+                        ? '${sw ? 'Deni la mkopo' : 'Still owed on the loan'}: ${tsh(limit)}'
+                        : '${sw ? 'Kinachobaki' : 'Still due'}: ${tsh(limit)}',
                 key: const Key('grp_pay_limit'),
                 style: const TextStyle(color: Colors.white60, fontSize: 12),
               ),

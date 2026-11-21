@@ -37,8 +37,22 @@ class GroupTransactionController extends Controller
         'more_than_savings' => 'Kiasi ni zaidi ya akiba iliyopo. / The amount is more than the savings there are.',
         'payee_required' => 'Andika aliyelipwa. / Write who was paid.',
         'payout_right_needed' => 'Ni Mweka Hazina tu anayerekodi fedha zinazotoka. / Only the treasurer records money going out.',
+        'loan_required' => 'Chagua mkopo wa mwanachama huyu. / Choose this member\'s loan.',
+        'loan_not_ready' => 'Mkopo huu haujaidhinishwa au tayari umetolewa. / This loan is not approved, or was already paid out.',
+        'amount_not_approved' => 'Kiasi lazima kiwe kile kilichoidhinishwa. / The amount must be the one approved.',
+        'loan_not_running' => 'Mkopo huu hauko hai. / This loan is not running.',
+        'more_than_loan' => 'Kiasi ni zaidi ya deni la mkopo. / The amount is more than is owed on the loan.',
+        'benefit_required' => 'Chagua ombi la msaada. / Choose the welfare request.',
+        'benefit_not_ready' => 'Ombi hili halijaidhinishwa au tayari limelipwa. / This request is not approved, or was already paid.',
+        'loan_has_repayments' => 'Mkopo una marejesho; hauwezi kurudishwa. / The loan has repayments; it cannot be reversed.',
         'try_again' => 'Jaribu tena. / Try again.',
     ];
+
+    /** The words for a refusal code, both languages (for the other group controllers too). */
+    public static function word(string $code): string
+    {
+        return self::WORDS[$code] ?? $code;
+    }
 
     private function fail(string $code, int $status = 422): JsonResponse
     {
@@ -111,6 +125,7 @@ class GroupTransactionController extends Controller
         return [
             'category' => ['required', Rule::in(GroupLedger::MEMBER_CATEGORIES)],
             'obligation_id' => 'nullable|integer|required_if:category,contribution',
+            'loan_id' => 'nullable|integer|required_if:category,loan_repayment',
             'amount' => 'required|numeric|min:1|max:1000000000',
             'method' => ['required', Rule::in(GroupLedger::METHODS)],
             'external_ref' => 'nullable|string|max:80',
@@ -126,7 +141,7 @@ class GroupTransactionController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'category' => ['required', Rule::in(GroupLedger::CATEGORIES)],
+            'category' => ['required', Rule::in(array_diff(GroupLedger::CATEGORIES, ['loan_disbursement', 'welfare']))],
             'direction' => ['nullable', Rule::in(['in', 'out'])],
             'member_id' => 'nullable|integer|required_unless:category,expense',
             'payee' => 'nullable|string|max:150',

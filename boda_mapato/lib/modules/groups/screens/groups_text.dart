@@ -133,6 +133,12 @@ String categoryLabel({required final bool sw, required final String category}) {
       return sw ? 'Mchango' : 'Contribution';
     case 'expense':
       return sw ? 'Matumizi ya kikundi' : 'Group expense';
+    case 'loan_disbursement':
+      return sw ? 'Mkopo uliotolewa' : 'Loan paid out';
+    case 'loan_repayment':
+      return sw ? 'Marejesho ya mkopo' : 'Loan repayment';
+    case 'welfare':
+      return sw ? 'Msaada' : 'Welfare';
     default:
       return category;
   }
@@ -247,6 +253,32 @@ String activityLabel({required final bool sw, required final String action}) {
       return sw ? 'Ahadi imewekwa' : 'Promise made';
     case 'promise_cancelled':
       return sw ? 'Ahadi imeondolewa' : 'Promise withdrawn';
+    case 'loan_applied':
+      return sw ? 'Ombi la mkopo' : 'Loan applied for';
+    case 'guarantee_accepted':
+      return sw ? 'Udhamini umekubaliwa' : 'Guarantee accepted';
+    case 'guarantee_declined':
+      return sw ? 'Udhamini umekataliwa' : 'Guarantee declined';
+    case 'loan_recommended':
+      return sw ? 'Mkopo umependekezwa' : 'Loan recommended';
+    case 'loan_approved':
+      return sw ? 'Mkopo umeidhinishwa' : 'Loan approved';
+    case 'loan_rejected':
+      return sw ? 'Mkopo umekataliwa' : 'Loan turned down';
+    case 'loan_cancelled':
+      return sw ? 'Ombi la mkopo limeondolewa' : 'Loan application withdrawn';
+    case 'loan_disbursed':
+      return sw ? 'Mkopo umetolewa' : 'Loan paid out';
+    case 'benefit_type_saved':
+      return sw ? 'Aina ya msaada imehifadhiwa' : 'Welfare kind saved';
+    case 'benefit_requested':
+      return sw ? 'Ombi la msaada' : 'Welfare requested';
+    case 'benefit_approved':
+      return sw ? 'Msaada umeidhinishwa' : 'Welfare approved';
+    case 'benefit_rejected':
+      return sw ? 'Msaada umekataliwa' : 'Welfare turned down';
+    case 'benefit_paid':
+      return sw ? 'Msaada umelipwa' : 'Welfare paid';
     default:
       return action;
   }
@@ -325,3 +357,89 @@ String _ordinal(final int n) {
 }
 
 const List<String> contributionFrequencies = <String>['monthly', 'one_time', 'event'];
+
+/// Where a loan stands (its status, or for a running loan: active, overdue, repaid).
+String loanStateLabel({required final bool sw, required final String state}) {
+  switch (state) {
+    case 'awaiting_guarantors':
+      return sw ? 'Inasubiri wadhamini' : 'Waiting for guarantors';
+    case 'under_review':
+      return sw ? 'Kwa kamati ya miradi' : 'With the projects committee';
+    case 'recommended':
+      return sw ? 'Imependekezwa' : 'Recommended';
+    case 'approved':
+      return sw ? 'Imeidhinishwa' : 'Approved';
+    case 'active':
+      return sw ? 'Inaendelea' : 'Running';
+    case 'overdue':
+      return sw ? 'Imepita muda' : 'Overdue';
+    case 'repaid':
+      return sw ? 'Imelipwa yote' : 'Repaid';
+    case 'rejected':
+      return sw ? 'Imekataliwa' : 'Turned down';
+    case 'cancelled':
+      return sw ? 'Imeondolewa' : 'Withdrawn';
+    default:
+      return state;
+  }
+}
+
+Color loanStateColor(final String state) => switch (state) {
+      'repaid' || 'active' => ThemeConstants.successGreen,
+      'approved' || 'recommended' => ThemeConstants.invAccent,
+      'awaiting_guarantors' || 'under_review' => ThemeConstants.warningAmber,
+      'overdue' || 'rejected' => ThemeConstants.errorRed,
+      _ => Colors.white54,
+    };
+
+String guarantorStatusLabel({required final bool sw, required final String status}) => switch (status) {
+      'accepted' => sw ? 'Amekubali' : 'Accepted',
+      'declined' => sw ? 'Amekataa' : 'Declined',
+      _ => sw ? 'Anasubiriwa' : 'Waiting',
+    };
+
+Color guarantorStatusColor(final String status) => switch (status) {
+      'accepted' => ThemeConstants.successGreen,
+      'declined' => ThemeConstants.errorRed,
+      _ => ThemeConstants.warningAmber,
+    };
+
+/// Why a member cannot borrow now.
+String eligibilityReasonLabel({required final bool sw, required final String reason}) => switch (reason) {
+      'not_active' => sw ? 'Uanachama wako si hai' : 'Your membership is not active',
+      'terms_not_set' => sw ? 'Kikundi bado hakijaweka masharti ya mikopo (riba na njia yake)' : 'The group has not set its loan terms yet (rate and method)',
+      'shares_unpaid' => sw ? 'Hisa za mradi bado hazijalipwa zote' : 'The project shares are not fully paid',
+      'no_ceiling' => sw ? 'Hakuna kikomo: weka akiba kwanza, au maliza mikopo mingine' : 'No ceiling: save first, or finish other loans',
+      _ => reason,
+    };
+
+String interestMethodLabel({required final bool sw, required final String method}) => switch (method) {
+      'flat' => sw ? 'Riba ya kawaida (flat)' : 'Flat',
+      'reducing' => sw ? 'Riba inayopungua (reducing balance)' : 'Reducing balance',
+      _ => sw ? 'Haijawekwa' : 'Not set',
+    };
+
+/// Where a welfare request stands.
+String benefitStateLabel({required final bool sw, required final String state}) => switch (state) {
+      'submitted' => sw ? 'Inasubiri uamuzi' : 'Waiting for a decision',
+      'approved' => sw ? 'Imeidhinishwa' : 'Approved',
+      'paying' => sw ? 'Malipo yanasubiri uthibitisho' : 'Payment being verified',
+      'paid' => sw ? 'Imelipwa' : 'Paid',
+      'rejected' => sw ? 'Imekataliwa' : 'Turned down',
+      'cancelled' => sw ? 'Imeondolewa' : 'Withdrawn',
+      _ => state,
+    };
+
+Color benefitStateColor(final String state) => switch (state) {
+      'paid' => ThemeConstants.successGreen,
+      'approved' || 'paying' => ThemeConstants.invAccent,
+      'submitted' => ThemeConstants.warningAmber,
+      'rejected' => ThemeConstants.errorRed,
+      _ => Colors.white54,
+    };
+
+/// Who the help is for: the member themself or one of their people.
+const List<String> benefitRelationships = <String>['self', 'parent', 'spouse', 'child', 'parent_in_law', 'other'];
+
+String benefitRelationshipLabel({required final bool sw, required final String relationship}) =>
+    relationship == 'self' ? (sw ? 'Mimi mwenyewe' : 'Myself') : relationshipLabel(sw: sw, relationship: relationship);

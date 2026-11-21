@@ -51,6 +51,11 @@ final class GroupOffices
      *   manage_contributions  set up contributions and raise a call (a month's JAMII, an event)
      *   grant_exemptions  excuse a member from a contribution (udhuru), with the reason
      *   record_payouts    record money going OUT: a savings withdrawal, a group expense (someone else verifies it)
+     *   view_loans        every loan and its decisions
+     *   recommend_loans   the projects committee's recommendation on a loan (amount, note)
+     *   approve_loans     approve or turn down a loan (never one's own)
+     *   view_benefits     every welfare request
+     *   approve_benefits  approve or turn down a welfare request, and the amount (never one's own)
      *   manage_offices    give or take an office
      *   manage_settings   the group's fees and rules
      *   view_audit        the group's activity log
@@ -59,17 +64,18 @@ final class GroupOffices
         'view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance',
         'record_payments', 'verify_payments', 'reverse_payments', 'manage_offices', 'manage_settings', 'view_audit',
         'manage_contributions', 'grant_exemptions', 'record_payouts',
+        'view_loans', 'recommend_loans', 'approve_loans', 'view_benefits', 'approve_benefits',
     ];
 
     private const BY_OFFICE = [
-        'mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions'],
-        'makamu_mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions'],
-        'mweka_hazina' => ['view_members', 'view_sensitive', 'view_finance', 'record_payments', 'verify_payments', 'reverse_payments', 'view_audit', 'manage_contributions', 'record_payouts'],
-        'mweka_hazina_msaidizi' => ['view_members', 'view_finance', 'record_payments', 'verify_payments'],
-        'katibu' => ['view_members', 'manage_members', 'view_sensitive', 'record_payments', 'view_audit'],
+        'mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits'],
+        'makamu_mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits'],
+        'mweka_hazina' => ['view_members', 'view_sensitive', 'view_finance', 'record_payments', 'verify_payments', 'reverse_payments', 'view_audit', 'manage_contributions', 'record_payouts', 'view_loans', 'view_benefits'],
+        'mweka_hazina_msaidizi' => ['view_members', 'view_finance', 'record_payments', 'verify_payments', 'view_loans', 'view_benefits'],
+        'katibu' => ['view_members', 'manage_members', 'view_sensitive', 'record_payments', 'view_audit', 'view_benefits'],
         'katibu_msaidizi' => ['view_members', 'manage_members', 'record_payments'],
-        'mwenyekiti_miradi' => ['view_members', 'view_finance'],
-        'kamati_miradi' => ['view_members'],
+        'mwenyekiti_miradi' => ['view_members', 'view_finance', 'view_loans', 'recommend_loans'],
+        'kamati_miradi' => ['view_members', 'view_loans', 'recommend_loans'],
     ];
 
     /** @return array<int, string> the rights an office holds (none for no office or an unknown one) */
