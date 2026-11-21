@@ -1,3 +1,4 @@
+import 'modules/groups/screens/groups_home.dart';
 import 'modules/inventory/screens/assistant/assistant_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -248,6 +249,9 @@ class BodaMapatoApp extends StatelessWidget {
                 // Salon: the same sales engine and screens as inventory, with the salon's own menu.
                 "/salon": (final BuildContext context) =>
                     const ServiceGuard(service: 'salon', child: InventoryHome(salon: true)),
+                // Groups (Vikundi): a savings / economic group's members and money.
+                "/groups": (final BuildContext context) =>
+                    const ServiceGuard(service: 'groups', child: GroupsHome()),
                 "/coming-soon": (final BuildContext context) =>
                     const ComingSoonScreen(),
                 "/rental/dashboard": (final BuildContext context) =>
@@ -769,6 +773,8 @@ class _ServiceHomeForState extends State<_ServiceHomeFor> {
         return const InventoryHome();
       case 'salon':
         return const InventoryHome(salon: true);
+      case 'groups':
+        return const GroupsHome();
       case 'transport':
         return const ModernDashboardScreen();
       case 'rental':

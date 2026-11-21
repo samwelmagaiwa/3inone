@@ -16,6 +16,6 @@ return [
     'enforce_services' => env('SERVICE_ENFORCEMENT', true),
 
     /** The services a business can be given. Salon runs on the same sales engine as inventory. */
-    'services' => ['inventory', 'rental', 'transport', 'salon'],
+    'services' => ['inventory', 'rental', 'transport', 'salon', 'groups'],
 
 ];

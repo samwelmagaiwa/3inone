@@ -1,6 +1,24 @@
 # Groups (Vikundi) – the 5th service: analysis, design and roadmap
 
-Status: **planned, nothing built yet** (written 2026-11-21).
+Status: **Phase 1 built (2026-11-22)**; phases 2–5 to come. No APK until the whole service is done (user's rule).
+
+## Built so far
+
+**Phase 1 – membership core (2026-11-22)**
+- Server: `group_*` tables scoped per business by the tenant grammar (`TenantTables::GROUPS`, no service column);
+  `App\Support\Groups\` GroupOffices (8 offices → rights), GroupAccess (owner = all rights, a member = their office's rights
+  while active), GroupSettings (effective-dated values + history), GroupMembers (statuses, member numbers PREFIX-0001, NIDA
+  encrypted + keyed hash for duplicates, masked without `view_sensitive`), GroupLedger (submit → verify/reject, reversal
+  only, receipts RC-000001, duplicate reference refused, nobody verifies own submission or own payment), GroupAudit.
+  Routes under `/api/groups` (`service:groups` + `group_right:`). Role `group_member` (not staff; billing applies).
+  Members sign in with their phone (only group-member accounts, only when one account has that phone) and a one-time
+  password; an owner who is also a member is tied to their own account. Exit/death/rejection switch the sign-in off.
+- App: `lib/modules/groups` – GroupsHome (same frame as shop/salon: header ⋮ menu, teal page, pill footer), Home (my
+  file, my money, Pay, "waiting for you"), Members (register, filters, search, paging), member file (approve/reject,
+  suspend/reinstate/exit/deceased with reasons, office, sign-in, dependants, payments, history), Payments (queue, verify,
+  turn down, reverse, totals), More (settings with history, officers, activity log). Yes/No card before every change;
+  green/red/orange by what the action does; en/sw throughout. Sign-in field accepts email or phone.
+- Tests: `tests/Feature/GroupsMembershipTest.php` (13), `test/groups_phase1_test.dart` (7).
 Source requirement: `GROUPS_MEG_BLUEPRINT.md` (Mongolandege Economic Group, MEG, 22 members). MEG is the first customer;
 the service is built for **any** savings / economic group (VICOBA, VSLA, SACCOS-style groups, office and family groups).
 
@@ -92,9 +110,10 @@ notifications + SMS cover Phase 1–4; push and biometrics are later extras.
 
 ## 5. Phases (each ends deployed and tested, like the salon)
 
-1. **Membership core** – group settings; roles + `grp_*` switches; member register (photo, NIDA masked, phone, address,
-   dependants); applications → payment → verification → approval → member number; member sign-in (phone/member no.);
-   member home "my records"; referral parent recorded.
+1. **Membership core** (DONE 2026-11-22) – group settings; offices and their rights; member register (NIDA masked,
+   phone, address, dependants); applications → joining payments (the ledger, joining fee + shares) → verification →
+   approval → member number; member sign-in by phone; member home "my records"; referrer recorded. Member photos and
+   documents were left for a later phase (private uploads).
 2. **Money core** – sub-ledger with categories; payment submission with reference/proof; Treasurer verification queue;
    receipts; savings; shares; contribution types and cycles → member obligations → arrears; promises; reversals;
    Treasurer and Chairperson dashboards; nightly due/overdue reminders.
@@ -103,7 +122,8 @@ notifications + SMS cover Phase 1–4; push and biometrics are later extras.
 4. **Assets and chair hire** – asset register, custody, public asset view for guests, hire requests with date-range
    availability, keeper approval + Treasurer payment, issue/return, late and damage cases.
 5. **Governance** – dividends (period close, approved pool, formula version, credit to savings, never twice), meetings
-   and announcements, bulk SMS to member groups, referral tree view, reports and exports, audit report.
+   and announcements, bulk SMS to member groups, referral tree view, invitation codes and guest self-registration,
+   member photos/documents, reports and exports, audit report.
 
 ## 6. Questions for MEG before the rules are final (blueprint §27, short form)
 

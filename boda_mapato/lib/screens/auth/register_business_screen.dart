@@ -188,6 +188,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
         "inventory" => _loc.translate("inventory_service"),
         "rental" => _loc.translate("rental_service"),
         "salon" => _loc.translate("salon_service"),
+        "groups" => _loc.translate("groups_service"),
         _ => _loc.translate("transport_service"),
       };
 
@@ -195,6 +196,7 @@ class _RegisterBusinessScreenState extends State<RegisterBusinessScreen> {
         "inventory" => Icons.inventory_2_rounded,
         "rental" => Icons.apartment_rounded,
         "salon" => Icons.content_cut_rounded,
+        "groups" => Icons.groups_rounded,
         _ => Icons.local_shipping_rounded,
       };
 

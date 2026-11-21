@@ -192,7 +192,7 @@ class UserManagementController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'phone_number', 'role', 'is_active', 'full_access', 'created_by', 'created_at']);
 
-        $services = ['transport', 'rental', 'inventory', 'salon'];
+        $services = ['transport', 'rental', 'inventory', 'salon', 'groups'];
         $grouped = [];
 
         foreach ($services as $service) {
@@ -286,10 +286,10 @@ class UserManagementController extends Controller
             'role' => 'nullable|string|in:super_admin,admin,driver,landlord,caretaker,tenant,viewer,manager,operator,sales_officer,hair_stylist,nail_technician,lash_makeup_artist,accountant',
             'is_active' => 'nullable|boolean',
             // Legacy single value - still accepted for old clients.
-            'service_type' => 'nullable|string|in:rental,transport,inventory,salon',
+            'service_type' => 'nullable|string|in:rental,transport,inventory,salon,groups',
             // Preferred: a user can be bound to more than one service.
             'service_types' => 'nullable|array',
-            'service_types.*' => 'string|in:rental,transport,inventory,salon',
+            'service_types.*' => 'string|in:rental,transport,inventory,salon,groups',
             'full_access' => 'nullable|boolean',
             'permissions' => 'nullable|array',
             'permissions.*' => 'string|in:' . implode(',', User::grantablePermissions()),
@@ -521,9 +521,9 @@ responses: [new OA\Response(response: 200, description: 'Success')],
             'phone_number' => ['sometimes', 'required', 'string', 'max:50', new UniquePhoneInBusiness(BusinessOwner::ofUser($user->id), (string) $user->id)],
             'role' => 'sometimes|string|in:super_admin,admin,driver,landlord,caretaker,tenant,viewer,manager,operator,sales_officer,hair_stylist,nail_technician,lash_makeup_artist,accountant',
             'is_active' => 'sometimes|boolean',
-            'service_type' => 'nullable|string|in:rental,transport,inventory,salon',
+            'service_type' => 'nullable|string|in:rental,transport,inventory,salon,groups',
             'service_types' => 'nullable|array',
-            'service_types.*' => 'string|in:rental,transport,inventory,salon',
+            'service_types.*' => 'string|in:rental,transport,inventory,salon,groups',
             'full_access' => 'sometimes|boolean',
             'permissions' => 'nullable|array',
             'permissions.*' => 'string|in:' . implode(',', User::grantablePermissions()),
@@ -735,7 +735,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         $validator = Validator::make($request->all(), [
             'service_types'   => 'required|array',
-            'service_types.*' => 'string|in:rental,transport,inventory,salon',
+            'service_types.*' => 'string|in:rental,transport,inventory,salon,groups',
         ]);
         if ($validator->fails()) {
             return response()->json([
@@ -783,7 +783,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
         parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string'))],
         requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['admin_id'], properties: [
             new OA\Property(property: 'admin_id', type: 'string'),
-            new OA\Property(property: 'service', type: 'string', enum: ['rental', 'transport', 'inventory', 'salon'], nullable: true),
+            new OA\Property(property: 'service', type: 'string', enum: ['rental', 'transport', 'inventory', 'salon', 'groups'], nullable: true),
         ])),
         responses: [new OA\Response(response: 200, description: 'Success')],
     )]
@@ -796,7 +796,7 @@ responses: [new OA\Response(response: 200, description: 'Success')],
 
         $data = $request->validate([
             'admin_id' => 'required|string',
-            'service' => 'nullable|string|in:rental,transport,inventory,salon',
+            'service' => 'nullable|string|in:rental,transport,inventory,salon,groups',
         ]);
 
         $target = User::where('id', $id)->firstOrFail();

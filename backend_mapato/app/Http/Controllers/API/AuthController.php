@@ -76,6 +76,19 @@ class AuthController extends Controller
             ),
         ],
     )]
+    /** The one group member account whose phone is [phone] (last nine digits compared), or null when none or more than one has it. */
+    private function groupMemberByPhone(string $phone): ?User
+    {
+        $nine = \App\Rules\UniquePhoneInBusiness::lastNine($phone);
+        if (strlen($nine) !== 9) {
+            return null;
+        }
+        $found = User::query()->withoutGlobalScopes()->where('role', User::GROUP_MEMBER_ROLE)->where('phone_number', 'like', '%' . $nine)->get()
+            ->filter(fn (User $u) => \App\Rules\UniquePhoneInBusiness::lastNine($u->phone_number) === $nine)->values();
+
+        return $found->count() === 1 ? $found->first() : null;
+    }
+
     public function login(Request $request)
     {
         // Log login attempt start
@@ -89,7 +102,12 @@ class AuthController extends Controller
         try {
             $request->validate(
                 [
-                    'email' => 'required|email',
+                    // An email, or -- for a member of a group (Groups service) -- the phone number their sign-in was made with.
+                    'email' => ['required', 'string', 'max:150', function ($attribute, $value, $fail) {
+                        if (!filter_var($value, FILTER_VALIDATE_EMAIL) && preg_match('/^(0\d{9}|\+?\d{9,15})$/', preg_replace('/\s+/', '', (string) $value)) !== 1) {
+                            $fail('The email must be a valid email address.');
+                        }
+                    }],
                     'password' => 'required|string',
                     // Email and password are enough. A phone number is still checked when the app sends one (older versions do).
                     'phone_number' => ['nullable', 'regex:/^(0\d{9}|\+\d{9,15})$/'],
@@ -99,8 +117,11 @@ class AuthController extends Controller
                 ]
             );
 
-            // Find user by email
-            $user = User::where('email', $request->email)->first();
+            // Find user by email -- or, for a group member, by the phone their sign-in was made with. A phone signs in only a group member's
+            // account, and only when exactly one such account has it, so it can never open someone else's.
+            $user = filter_var($request->email, FILTER_VALIDATE_EMAIL)
+                ? User::where('email', $request->email)->first()
+                : $this->groupMemberByPhone((string) $request->email);
 
             if (!$user) {
                 Log::warning('Login failed - User not found', [

@@ -1177,6 +1177,8 @@ class AppLocalizations {
           'Password reset feature is under development. For now, use demo credentials or contact the administrator.',
       'use_database': 'Use Database',
       'email': 'Email',
+      'email_or_phone': 'Email or phone',
+      'enter_valid_email_or_phone': 'Enter a valid email, or the phone number your group gave you',
       'password': 'Password',
       'phone_number': 'Phone Number',
       'signin': 'Sign In',
@@ -1271,6 +1273,7 @@ class AppLocalizations {
       'rental_service': 'Rental',
       'transport_service': 'Transport',
       'salon_service': 'Salon',
+      'groups_service': 'Groups (Vikundi)',
       'coming_soon': 'Coming soon…',
       'switch_service': 'Switch Service',
 
@@ -4042,6 +4045,8 @@ class AppLocalizations {
           'Kipengele cha kurudisha nywila kinatengenezwa. Kwa sasa, tumia taarifa za demo au wasiliana na msimamizi.',
       'use_database': 'Tumia Database',
       'email': 'Barua pepe',
+      'email_or_phone': 'Barua pepe au simu',
+      'enter_valid_email_or_phone': 'Weka barua pepe sahihi, au namba ya simu uliyopewa na kikundi chako',
       'password': 'Neno la siri',
       'phone_number': 'Nambari ya simu',
       'signin': 'Ingia',
@@ -4136,6 +4141,7 @@ class AppLocalizations {
       'rental_service': 'Upangishaji (Rental)',
       'transport_service': 'Usafirishaji (Transport)',
       'salon_service': 'Saluni (Salon)',
+      'groups_service': 'Vikundi (Groups)',
       'coming_soon': 'Inakuja hivi karibuni…',
       'switch_service': 'Badili Huduma',
       // Moduli ya Hesabu

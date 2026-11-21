@@ -35,7 +35,8 @@ class _Roles {
     'administrator',
     'landlord'
   ];
-  static const List<String> outside = <String>['driver', 'tenant', 'vendor'];
+  // A group member is given their sign-in from the Groups service's member register, never added here.
+  static const List<String> outside = <String>['driver', 'tenant', 'vendor', 'group_member'];
   static const List<String> all = <String>[
     'super_admin',
     'admin',
@@ -98,6 +99,7 @@ class _Roles {
         'driver' => sw ? 'Dereva' : 'Driver',
         'tenant' => sw ? 'Mpangaji' : 'Tenant',
         'vendor' => sw ? 'Muuzaji' : 'Vendor',
+        'group_member' => sw ? 'Mwanachama wa kikundi' : 'Group member',
         'viewer' => sw ? 'Mtazamaji' : 'Viewer',
         _ => role,
       };
@@ -115,7 +117,8 @@ const List<String> _services = <String>[
   'inventory',
   'salon',
   'transport',
-  'rental'
+  'rental',
+  'groups'
 ];
 
 enum _RoleFilter { all, superAdmins, owners, staff }
@@ -548,6 +551,7 @@ class _UsersControlScreenState extends State<UsersControlScreen> with WidgetsBin
         'salon' => (_sw ? 'Saluni' : 'Salon'),
         'transport' => (_sw ? 'Usafiri' : 'Transport'),
         'rental' => (_sw ? 'Upangishaji' : 'Rental'),
+        'groups' => (_sw ? 'Vikundi' : 'Groups'),
         _ => s,
       };
 

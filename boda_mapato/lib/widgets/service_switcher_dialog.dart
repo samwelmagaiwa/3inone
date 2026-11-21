@@ -29,6 +29,8 @@ class ServiceSwitcherDialog extends StatelessWidget {
         Navigator.pushReplacementNamed(context, '/rental/dashboard');
       case 'salon':
         Navigator.pushReplacementNamed(context, '/salon');
+      case 'groups':
+        Navigator.pushReplacementNamed(context, '/groups');
       case 'transport':
         Navigator.pushReplacementNamed(context, '/modern-dashboard');
       default:
@@ -103,6 +105,12 @@ class ServiceSwitcherDialog extends StatelessWidget {
                       icon: Icons.content_cut_rounded,
                       label: loc.translate('salon_service'),
                       onTap: () => _switchService(context, 'salon'),
+                    ),
+                  if (allowed.contains('groups'))
+                    _ServiceOption(
+                      icon: Icons.groups_rounded,
+                      label: loc.translate('groups_service'),
+                      onTap: () => _switchService(context, 'groups'),
                     ),
                 ],
               ),

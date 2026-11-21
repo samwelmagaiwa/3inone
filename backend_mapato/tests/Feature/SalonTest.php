@@ -202,9 +202,9 @@ class SalonTest extends TestCase
         $this->api($super, 'GET', '/api/inventory/salon/settings')->assertOk();
     }
 
-    public function test_four_services_are_sold_but_a_plan_covers_at_most_three(): void
+    public function test_five_services_are_sold_but_a_plan_covers_at_most_three(): void
     {
-        $this->assertSame(['transport', 'rental', 'inventory', 'salon'], config('billing.services'));
+        $this->assertSame(['transport', 'rental', 'inventory', 'salon', 'groups'], config('billing.services'));
         $this->assertTrue(PlanCatalog::covers('premium', 3));
         $this->assertFalse(PlanCatalog::covers('premium', 4));
         $this->assertSame('premium', PlanCatalog::planFor(3));

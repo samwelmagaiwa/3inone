@@ -107,6 +107,8 @@ class User extends Authenticatable
         'landlord'      => 'Landlord',
         'caretaker'     => 'Caretaker',
         'tenant'        => 'Tenant',
+        // A member of a savings / economic group (the Groups service). Officers are members too: their office decides what they may do.
+        'group_member'  => 'Group Member',
     ];
 
     /** All known inventory permission keys. Used to validate explicit grants. */
@@ -209,6 +211,13 @@ class User extends Authenticatable
     /** Roles that head their own account: their creator never owns their data. */
     public const ACCOUNT_HEAD_ROLES = ['admin', 'administrator', 'landlord'];
 
+    /**
+     * A member of a group (the Groups service). Not staff: never listed with the business's people or counted as staff, and what they
+     * may do comes from the office they hold in the group (App\Support\Groups\GroupOffices), not from inventory rights. Unlike a
+     * driver or a tenant they ARE the business's own users, so the group's subscription applies to them.
+     */
+    public const GROUP_MEMBER_ROLE = 'group_member';
+
     /** Counterparties who only ever see their own records, never a shared pool. */
     public const PORTAL_ROLES = ['driver', 'tenant', 'vendor'];
 
@@ -292,7 +301,7 @@ class User extends Authenticatable
         $head = $this->accountHeadId();
         $ids = [$head];
         $frontier = [$head];
-        $excluded = array_merge(self::PORTAL_ROLES, self::ACCOUNT_HEAD_ROLES, ['super_admin']);
+        $excluded = array_merge(self::PORTAL_ROLES, self::ACCOUNT_HEAD_ROLES, ['super_admin', self::GROUP_MEMBER_ROLE]);
 
         for ($depth = 0; $depth < 8 && $frontier; $depth++) {
             $next = static::query()
@@ -371,7 +380,7 @@ class User extends Authenticatable
      * without ever getting a binding row) falls back to.
      */
     private const SERVICE_ROLE_DEFAULTS = [
-        'super_admin'   => ['inventory', 'rental', 'transport', 'salon'],
+        'super_admin'   => ['inventory', 'rental', 'transport', 'salon', 'groups'],
         // admin/administrator get NO implicit services -- a super_admin
         // must explicitly bind them, same as the Flutter mapping.
         'admin'         => [],
@@ -388,6 +397,7 @@ class User extends Authenticatable
         'caretaker'     => ['rental'],
         'tenant'        => ['rental'],
         'vendor'        => ['rental'],
+        'group_member'  => ['groups'],
     ];
 
     /**
@@ -467,7 +477,7 @@ class User extends Authenticatable
         }
 
         return $this->effectiveServicesCache = array_values(array_filter(
-            config('tenancy.services', ['inventory', 'rental', 'transport', 'salon']),
+            config('tenancy.services', ['inventory', 'rental', 'transport', 'salon', 'groups']),
             fn (string $service) => $this->canUseService($service)
         ));
     }

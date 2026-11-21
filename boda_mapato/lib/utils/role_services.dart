@@ -14,7 +14,7 @@ List<String> servicesForRole(String role) {
     // super_admin bypasses service bindings entirely (handled in ServiceGuard).
     // admin has NO default services — a super_admin must explicitly assign them.
     case 'super_admin':
-      return ['inventory', 'rental', 'transport', 'salon'];
+      return ['inventory', 'rental', 'transport', 'salon', 'groups'];
     case 'admin':
     case 'administrator':
       return []; // must be bound by super_admin — no implicit access
@@ -34,6 +34,9 @@ List<String> servicesForRole(String role) {
     case 'tenant':
     case 'vendor':
       return ['rental'];
+    // A member of a savings / economic group: their office in the group decides what they see there.
+    case 'group_member':
+      return ['groups'];
     default:
       return [];
   }

@@ -3,7 +3,7 @@
 library;
 
 /// The services a business can be given. Same keys the backend uses.
-const List<String> kBusinessServices = <String>['inventory', 'rental', 'transport', 'salon'];
+const List<String> kBusinessServices = <String>['inventory', 'rental', 'transport', 'salon', 'groups'];
 
 /// What the owner fills in on the registration form.
 class BusinessRegistrationRequest {

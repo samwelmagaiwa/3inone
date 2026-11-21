@@ -71,6 +71,7 @@ void main() {
     'lib/screens/dashboard',
     'lib/screens/settings',
     'lib/modules/inventory',
+    'lib/modules/groups',
     'lib/constants/theme_constants.dart',
     'lib/screens/rental',
     'lib/screens/maintenance',

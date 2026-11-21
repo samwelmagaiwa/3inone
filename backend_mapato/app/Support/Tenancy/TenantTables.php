@@ -98,6 +98,23 @@ final class TenantTables
     ];
 
     /**
+     * The Groups (Vikundi) service's tables. Scoped by owner exactly like the inventory ones, but NOT split by service: a group
+     * runs one set of books, so they carry no service column.
+     *
+     * ADD EVERY NEW group_* TABLE HERE. A test fails if one is missing.
+     *
+     * @var array<int, string>
+     */
+    public const GROUPS = [
+        'group_audit_log',
+        'group_dependants',
+        'group_member_events',
+        'group_members',
+        'group_settings',
+        'group_transactions',
+    ];
+
+    /**
      * inventory_* tables that deliberately have no owner because nothing reads or
      * writes them: an unused sequence table, and the settings table as it was before
      * it became per-business (kept as a rollback backup; drop it by hand later).
@@ -204,14 +221,20 @@ final class TenantTables
     /** @return array<int, string> */
     public static function all(): array
     {
-        return self::INVENTORY;
+        return array_merge(self::INVENTORY, self::GROUPS);
     }
 
     public static function has(string $table): bool
     {
-        self::$lookup ??= array_fill_keys(self::INVENTORY, true);
+        self::$lookup ??= array_fill_keys(self::all(), true);
 
         return isset(self::$lookup[$table]);
+    }
+
+    /** Is [table] one whose rows are split by service (the inventory tables), as opposed to scoped by business only (groups)? */
+    public static function splitsByService(string $table): bool
+    {
+        return in_array($table, self::INVENTORY, true) && self::splitByService();
     }
 
     /**

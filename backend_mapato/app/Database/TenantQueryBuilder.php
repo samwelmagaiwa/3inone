@@ -82,7 +82,7 @@ class TenantQueryBuilder extends Builder
         }
 
         // Which service's books the row goes in (nothing is added until the tables have the column).
-        $service = TenantTables::splitByService() ? TenantContext::service() : null;
+        $service = TenantTables::splitsByService((string) $this->from) ? TenantContext::service() : null;
 
         $restricted = TenantContext::readOwner() !== null;
         $isBatch = is_array(reset($values));

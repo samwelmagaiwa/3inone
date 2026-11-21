@@ -81,7 +81,7 @@ trait ScopesTenantTables
         }
 
         // The service is one of two fixed words, never user text, so it is spliced in like the owner id.
-        $service = TenantTables::splitByService() ? TenantContext::service() : null;
+        $service = TenantTables::splitsByService($table[0]) ? TenantContext::service() : null;
         if ($service !== null && in_array($service, TenantTables::SERVICES, true)) {
             $parts[] = $this->wrap($table[1] . '.' . TenantTables::SERVICE_COLUMN) . " = '" . $service . "'";
         }

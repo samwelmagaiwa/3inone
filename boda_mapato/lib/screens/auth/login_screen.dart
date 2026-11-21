@@ -82,6 +82,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String? _emailError(final String? v) => (v == null || !v.contains('@') || v.trim().length < 5) ? _loc.translate('enter_valid_email') : null;
 
+  /// Signing in takes an email, or -- for a member of a group (the Groups service) -- the phone number their sign-in was made with.
+  String? _emailOrPhoneError(final String? v) =>
+      _phonePattern.hasMatch((v ?? '').replaceAll(' ', '')) ? null : _emailError(v) == null ? null : _loc.translate('enter_valid_email_or_phone');
+
   Future<void> _submit() => switch (_step) {
         _Step.signIn => _handleLogin(),
         _Step.signUp => _handleSignup(),
@@ -93,7 +97,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final String email = _emailController.text.trim();
+    // A phone number is sent without its spaces ("0712 345 678").
+    final String typed = _emailController.text.trim();
+    final String email = _phonePattern.hasMatch(typed.replaceAll(' ', '')) ? typed.replaceAll(' ', '') : typed;
     final String password = _passwordController.text;
     setState(() {
       _isLoading = true;
@@ -711,10 +717,10 @@ class _LoginScreenState extends State<LoginScreen> {
           _pillField(
             fieldKey: const ValueKey<String>('email_field'),
             controller: _emailController,
-            hint: loc.translate('email'),
+            hint: loc.translate(signUp ? 'email' : 'email_or_phone'),
             icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
-            validator: _emailError,
+            validator: signUp ? _emailError : _emailOrPhoneError,
           ),
           _reveal(
             show: signUp,

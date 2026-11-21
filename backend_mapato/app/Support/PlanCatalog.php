@@ -9,7 +9,7 @@ use App\Models\PlanPrice;
  *
  *   basic    one service
  *   standard two services
- *   premium  three services, of the owner's choice (there are four services: Transport, Rental, Inventory, Salon)
+ *   premium  three services, of the owner's choice (there are five services: Transport, Rental, Inventory, Salon, Groups)
  *
  * `trial` and `free` are not sold and have no limit: they are what a business is on before it pays, or what it was
  * given by hand. The prices are the super admin's to set (the plan_prices table); the number of services a plan
@@ -118,7 +118,7 @@ class PlanCatalog
             'currency' => self::currency(),
             'periods' => self::periods(),
             'trial_days' => max((int) config('billing.trial_days', 30), 0),
-            'total_services' => count((array) config('billing.services', ['transport', 'rental', 'inventory', 'salon'])),
+            'total_services' => count((array) config('billing.services', ['transport', 'rental', 'inventory', 'salon', 'groups'])),
             'plans' => $plans,
             // False until the super admin has priced at least one plan: the form then says prices are coming.
             'configured' => collect($prices)->flatten()->filter(fn ($p) => $p !== null)->isNotEmpty(),

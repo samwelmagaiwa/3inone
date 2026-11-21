@@ -32,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'salon_module' => \App\Http\Middleware\EnsureSalonModule::class,
             'attendance_right' => \App\Http\Middleware\EnsureAttendanceRight::class,
             'service'  => \App\Http\Middleware\EnsureServiceAccess::class,
+            'group_right' => \App\Http\Middleware\EnsureGroupRight::class,
         ]);
         
         $middleware->validateCsrfTokens(except: [

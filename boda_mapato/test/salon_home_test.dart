@@ -283,12 +283,13 @@ void main() {
   });
 
   group('the service picker and the guards', () {
-    test('a super admin has all four services, and nobody else gets the salon by role', () {
-      expect(servicesForRole('super_admin'), <String>['inventory', 'rental', 'transport', 'salon']);
+    test('a super admin has all five services, and nobody else gets the salon by role', () {
+      expect(servicesForRole('super_admin'), <String>['inventory', 'rental', 'transport', 'salon', 'groups']);
+      expect(servicesForRole('group_member'), <String>['groups']);
       for (final String role in <String>['admin', 'manager', 'sales_officer', 'operator', 'driver', 'landlord']) {
         expect(servicesForRole(role), isNot(contains('salon')), reason: role);
       }
-      expect(kBusinessServices, <String>['inventory', 'rental', 'transport', 'salon']);
+      expect(kBusinessServices, <String>['inventory', 'rental', 'transport', 'salon', 'groups']);
     });
 
     test('a super admin picks from every service even if their saved list predates the salon; others from what they were given', () {

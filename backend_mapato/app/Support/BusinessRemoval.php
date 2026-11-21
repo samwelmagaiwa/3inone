@@ -159,8 +159,8 @@ final class BusinessRemoval
                 }
             });
 
-            // Inventory / Salon: every row stamped with the owner, Trash included.
-            foreach (TenantTables::INVENTORY as $table) {
+            // Inventory / Salon / Groups: every row stamped with the owner, Trash included.
+            foreach (TenantTables::all() as $table) {
                 if (Schema::hasTable($table) && Schema::hasColumn($table, TenantTables::OWNER_COLUMN)) {
                     $deletes[] = [$table, TenantTables::OWNER_COLUMN, [(string) $owner->id]];
                 }
@@ -169,7 +169,7 @@ final class BusinessRemoval
 
         // Rows of the business itself, and rows keyed to the people who go with it.
         foreach (array_column(Schema::getTables(), 'name') as $table) {
-            if (in_array($table, self::NEVER, true) || in_array($table, TenantTables::INVENTORY, true) || str_starts_with($table, 'sqlite_')) {
+            if (in_array($table, self::NEVER, true) || in_array($table, TenantTables::all(), true) || str_starts_with($table, 'sqlite_')) {
                 continue;
             }
             if (Schema::hasColumn($table, 'business_id')) {
@@ -184,7 +184,7 @@ final class BusinessRemoval
     }
 
     /**
-     * The owner, the staff of the business, and the drivers / tenants they made. Never a super admin, a vendor, or another business's head.
+     * The owner, the staff of the business, and the drivers / tenants / group members they made. Never a super admin, a vendor, or another business's head.
      *
      * @return array<int, string>
      */
@@ -193,7 +193,7 @@ final class BusinessRemoval
         $members = array_map('strval', $owner->accountMemberIds());
         $portal = User::query()->withoutGlobalScopes()
             ->whereIn('created_by', $members)
-            ->whereIn('role', ['driver', 'tenant'])
+            ->whereIn('role', ['driver', 'tenant', User::GROUP_MEMBER_ROLE])
             ->pluck('id')->map(fn ($id) => (string) $id)->all();
 
         $ids = array_values(array_unique(array_merge($members, $portal)));

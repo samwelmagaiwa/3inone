@@ -72,6 +72,10 @@ use App\Http\Controllers\API\Rental\BillingController;
 use App\Http\Controllers\API\Rental\CaretakerController;
 use App\Http\Controllers\API\Rental\AgreementController;
 use App\Http\Controllers\API\Rental\MaintenanceController;
+use App\Http\Controllers\API\Groups\GroupMeController;
+use App\Http\Controllers\API\Groups\GroupMemberController;
+use App\Http\Controllers\API\Groups\GroupSettingsController;
+use App\Http\Controllers\API\Groups\GroupTransactionController;
 
 
 /*
@@ -222,6 +226,44 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/sms-sende
     Route::put('{id}', [SmsSenderController::class, 'update']);
     // One real text under the name: costs a message, so it is limited.
     Route::post('{id}/test', [SmsSenderController::class, 'test'])->middleware('throttle:10,1');
+});
+
+// GROUPS (Vikundi) -- a savings / economic group. Everyone who holds the service reaches /groups/me (their own file and money);
+// everything else needs a right from the office they hold (group_right:...), see App\Support\Groups\GroupOffices.
+Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(function () {
+    Route::get('me', [GroupMeController::class, 'show']);
+    Route::get('me/transactions', [GroupMeController::class, 'transactions']);
+    Route::post('me/payments', [GroupMeController::class, 'pay'])->middleware('throttle:20,1');
+    Route::get('settings', [GroupSettingsController::class, 'show']);
+
+    Route::middleware('group_right:view_members')->group(function () {
+        Route::get('members', [GroupMemberController::class, 'index']);
+        Route::get('members/{id}', [GroupMemberController::class, 'show'])->whereNumber('id');
+    });
+    Route::middleware('group_right:manage_members')->group(function () {
+        Route::post('members', [GroupMemberController::class, 'store']);
+        Route::put('members/{id}', [GroupMemberController::class, 'update'])->whereNumber('id');
+        Route::post('members/{id}/dependants', [GroupMemberController::class, 'saveDependant'])->whereNumber('id');
+        Route::put('members/{id}/dependants/{dependantId}', [GroupMemberController::class, 'saveDependant'])->whereNumber(['id', 'dependantId']);
+        Route::delete('members/{id}/dependants/{dependantId}', [GroupMemberController::class, 'deleteDependant'])->whereNumber(['id', 'dependantId']);
+        Route::post('members/{id}/sign-in', [GroupMemberController::class, 'signIn'])->whereNumber('id')->middleware('throttle:20,1');
+    });
+    Route::post('members/{id}/status', [GroupMemberController::class, 'move'])->whereNumber('id')->middleware('group_right:approve_members');
+    Route::put('members/{id}/office', [GroupMemberController::class, 'office'])->whereNumber('id')->middleware('group_right:manage_offices');
+
+    Route::middleware('group_right:view_finance,verify_payments')->group(function () {
+        Route::get('transactions', [GroupTransactionController::class, 'index']);
+        Route::get('transactions/summary', [GroupTransactionController::class, 'summary']);
+    });
+    Route::post('transactions', [GroupTransactionController::class, 'store'])->middleware(['group_right:record_payments', 'throttle:60,1']);
+    Route::middleware('group_right:verify_payments')->group(function () {
+        Route::post('transactions/{id}/verify', [GroupTransactionController::class, 'verify'])->whereNumber('id');
+        Route::post('transactions/{id}/reject', [GroupTransactionController::class, 'reject'])->whereNumber('id');
+    });
+    Route::post('transactions/{id}/reverse', [GroupTransactionController::class, 'reverse'])->whereNumber('id')->middleware('group_right:reverse_payments');
+
+    Route::put('settings', [GroupSettingsController::class, 'update'])->middleware('group_right:manage_settings');
+    Route::get('audit', [GroupSettingsController::class, 'audit'])->middleware('group_right:view_audit');
 });
 
 // PROTECTED ADMIN ROUTES -- the Transport service
