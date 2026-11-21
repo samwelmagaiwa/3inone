@@ -37,6 +37,23 @@ A setting change keeps its old value with the date it stopped (history), so old 
    repayments, arrears, statements.
 6. **Welfare, dividends, referral tree, meetings/announcements, chair hire** (see the phases).
 
+### 2a. The group's roles (given by the user 2026-11-22 – these replace the blueprint's role list)
+
+| Role (Kiswahili) | English | Responsibility |
+|---|---|---|
+| Mwenyekiti | Chairperson | Approves (anaidhinisha) and calls meetings (kuita vikao) |
+| Makamu Mwenyekiti | Deputy Chairperson | Stands in for the Chairperson |
+| Mweka Hazina | Treasurer | Approves money matters; keeps all the financial records |
+| Mweka Hazina Msaidizi | Assistant Treasurer | Helps the Treasurer |
+| Katibu | Secretary | Coordinates the group's affairs (anaratibu mambo ya chama) |
+| Katibu Msaidizi | Assistant Secretary | Helps the Secretary |
+| Mwenyekiti wa Miradi | Projects Chairperson | Oversees all the group's loans and projects |
+| Kamati ya Miradi | Projects Committee | Works with the Projects Chairperson on loans and projects (the blueprint's "Loan Committee") |
+| Mwanachama | Member | Own records, payments, applications |
+
+Open: the deputies' and assistants' exact powers (assumed: same screens, act when the main officer is away), and whether the
+blueprint's chair keeper / asset custodian is a separate role or a duty given to a member.
+
 ## 3. What is reused (already in the app)
 
 | Need | Reuse |
