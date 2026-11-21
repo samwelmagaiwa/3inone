@@ -106,11 +106,14 @@ final class TenantTables
      * @var array<int, string>
      */
     public const GROUPS = [
+        'group_asset_events',
+        'group_assets',
         'group_audit_log',
         'group_benefit_requests',
         'group_benefit_types',
         'group_contribution_types',
         'group_dependants',
+        'group_hires',
         'group_loan_guarantors',
         'group_loan_schedule',
         'group_loans',

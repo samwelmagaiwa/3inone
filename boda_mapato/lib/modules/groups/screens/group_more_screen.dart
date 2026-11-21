@@ -75,6 +75,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
   final TextEditingController _maxMonths = TextEditingController();
   final TextEditingController _guarantors = TextEditingController();
   String _method = '';
+  String _daysRule = 'both';
   String _sharesFor = 'loans';
   bool _reminders = false;
   bool _amounts = false;
@@ -116,6 +117,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
     _reminders = s['sms_reminders'] == 'on';
     _rate.text = '${s['loan_interest_rate'] ?? ''}';
     _method = '${s['loan_interest_method'] ?? ''}';
+    _daysRule = '${s['hire_days_rule'] ?? 'both'}';
     _maxMonths.text = '${s['loan_max_months'] ?? '12'}';
     _guarantors.text = '${s['loan_guarantors'] ?? '1'}';
     _amounts = s['sms_show_amounts'] == 'on';
@@ -154,6 +156,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
       'loan_interest_method': _method,
       'loan_max_months': _maxMonths.text.trim(),
       'loan_guarantors': _guarantors.text.trim(),
+      'hire_days_rule': _daysRule,
     };
     return <String, dynamic>{
       for (final MapEntry<String, dynamic> e in wanted.entries)
@@ -174,6 +177,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
         'loan_interest_method' => sw ? 'Njia ya riba' : 'Interest method',
         'loan_max_months' => sw ? 'Muda mrefu zaidi (miezi)' : 'Longest term (months)',
         'loan_guarantors' => sw ? 'Wadhamini wanaohitajika' : 'Guarantors needed',
+        'hire_days_rule' => sw ? 'Siku za kukodi zinazohesabiwa' : 'Hire days charged',
         _ => key,
       };
 
@@ -307,6 +311,25 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                         ],
                       ),
                       GlowCard(
+                        title: _label(sw, 'hire_days_rule'),
+                        children: <Widget>[
+                          Wrap(spacing: 8, runSpacing: 4, children: <Widget>[
+                            ChoiceChip(
+                              key: const Key('grp_set_days_both'),
+                              label: Text(sw ? 'Siku ya kuchukua na ya kurudisha' : 'The collection and the return day'),
+                              selected: _daysRule == 'both',
+                              onSelected: (_) => setState(() => _daysRule = 'both'),
+                            ),
+                            ChoiceChip(
+                              key: const Key('grp_set_days_between'),
+                              label: Text(sw ? 'Usiku kati yake tu' : 'Only the nights between'),
+                              selected: _daysRule == 'between',
+                              onSelected: (_) => setState(() => _daysRule = 'between'),
+                            ),
+                          ]),
+                        ],
+                      ),
+                      GlowCard(
                         title: _label(sw, 'payment_instructions'),
                         children: <Widget>[
                           TextField(
@@ -380,7 +403,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                             for (final Map<String, dynamic> h in _history)
                               Text(
                                 '${dateLabel('${h['effective_from']}')} · ${_label(sw, '${h['key']}')}: '
-                                '${h['key'] == 'loan_interest_method' ? interestMethodLabel(sw: sw, method: '${h['value'] ?? ''}') : h['key'] == 'shares_required_for' ? _sharesForLabel(sw, '${h['value']}') : (h['value'] == 'on' ? (sw ? 'Imewashwa' : 'On') : h['value'] == 'off' ? (sw ? 'Imezimwa' : 'Off') : _plain(h['value']))}'
+                                '${h['key'] == 'hire_days_rule' ? (h['value'] == 'between' ? (sw ? 'Usiku kati yake tu' : 'Only the nights between') : (sw ? 'Siku zote mbili' : 'Both days')) : h['key'] == 'loan_interest_method' ? interestMethodLabel(sw: sw, method: '${h['value'] ?? ''}') : h['key'] == 'shares_required_for' ? _sharesForLabel(sw, '${h['value']}') : (h['value'] == 'on' ? (sw ? 'Imewashwa' : 'On') : h['value'] == 'off' ? (sw ? 'Imezimwa' : 'Off') : _plain(h['value']))}'
                                 '${h['reason'] == null ? '' : ' · ${h['reason']}'}${h['changed_by_name'] == null ? '' : ' · ${h['changed_by_name']}'}',
                                 style: const TextStyle(color: Colors.white70, fontSize: 12),
                               ),

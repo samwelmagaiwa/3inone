@@ -1,4 +1,5 @@
 import '../../../services/api_service.dart';
+import '../models/group_asset_models.dart';
 import '../models/group_loan_models.dart';
 import '../models/group_models.dart';
 
@@ -214,6 +215,80 @@ class GroupsApi {
 
   Future<void> payBenefit(final int id, {required final String method, final String? reference}) async =>
       _api.post('$_base/benefits/$id/pay', <String, dynamic>{'method': method, if (reference != null && reference.isNotEmpty) 'external_ref': reference});
+
+  // ---------------------------------------------------------------- assets and hiring out
+
+  /// The assets this person may see, and whether they manage the register.
+  Future<(List<GroupAsset>, bool)> assets() async {
+    final Map<String, dynamic> d = _data(await _api.get('$_base/assets'));
+    return (
+      <GroupAsset>[for (final dynamic a in (d['assets'] as List? ?? const <dynamic>[])) GroupAsset.fromJson(Map<String, dynamic>.from(a as Map))],
+      d['can_manage'] == true,
+    );
+  }
+
+  /// One asset, its history (for its keeper and whoever manages assets) and whether this person handles its hires.
+  Future<(GroupAsset, List<GroupAssetEvent>, bool)> asset(final int id) async {
+    final Map<String, dynamic> d = _data(await _api.get('$_base/assets/$id'));
+    return (
+      GroupAsset.fromJson(Map<String, dynamic>.from(d['asset'] as Map)),
+      <GroupAssetEvent>[for (final dynamic e in (d['events'] as List? ?? const <dynamic>[])) GroupAssetEvent.fromJson(Map<String, dynamic>.from(e as Map))],
+      d['can_handle'] == true,
+    );
+  }
+
+  /// How many are free from [from] to [to], how many days are charged, and the rate.
+  Future<(int, int, double?)> availability(final int assetId, final String from, final String to) async {
+    final Map<String, dynamic> d = _data(await _api.get('$_base/assets/$assetId/availability?from=$from&to=$to'));
+    return ((d['free'] as num?)?.toInt() ?? 0, (d['days'] as num?)?.toInt() ?? 1, (d['rate'] as num?)?.toDouble());
+  }
+
+  Future<void> saveAsset(final Map<String, dynamic> body, {final int? id}) async {
+    if (id == null) {
+      await _api.post('$_base/assets', body);
+    } else {
+      await _api.put('$_base/assets/$id', body);
+    }
+  }
+
+  Future<void> assetEvent(final int id, final Map<String, dynamic> body) async => _api.post('$_base/assets/$id/events', body);
+
+  List<GroupHire> _hires(final Map<String, dynamic> res) =>
+      <GroupHire>[for (final dynamic h in (_data(res)['hires'] as List? ?? const <dynamic>[])) GroupHire.fromJson(Map<String, dynamic>.from(h as Map))];
+
+  GroupHire _hire(final Map<String, dynamic> res) => GroupHire.fromJson(Map<String, dynamic>.from(_data(res)['hire'] as Map));
+
+  Future<List<GroupHire>> myHires() async => _hires(await _api.get('$_base/me/hires'));
+
+  Future<GroupHire> askHire(final Map<String, dynamic> body) async => _hire(await _api.post('$_base/me/hires', body));
+
+  Future<GroupHire> cancelHire(final int id) async => _hire(await _api.post('$_base/me/hires/$id/cancel', <String, dynamic>{}));
+
+  Future<List<GroupHire>> hires({final String? status}) async => _hires(await _api.get('$_base/hires${_query(<String, String?>{'status': status})}'));
+
+  /// The keeper (or an officer) writes down a hire for a member or someone outside the group.
+  Future<GroupHire> askHireFor(final Map<String, dynamic> body) async => _hire(await _api.post('$_base/hires', body));
+
+  Future<GroupHire> decideHire(final int id, {required final bool approve, final String? note}) async =>
+      _hire(await _api.post('$_base/hires/$id/decide', <String, dynamic>{'approve': approve, if (note != null) 'note': note}));
+
+  Future<GroupHire> issueHire(final int id, {required final int quantity, final String? condition}) async =>
+      _hire(await _api.post('$_base/hires/$id/issue', <String, dynamic>{'quantity': quantity, if (condition != null && condition.isNotEmpty) 'condition': condition}));
+
+  Future<GroupHire> returnHire(final int id, {required final int returned, final int damaged = 0, final int missing = 0, final String? note}) async => _hire(await _api.post(
+        '$_base/hires/$id/return',
+        <String, dynamic>{'returned': returned, 'damaged': damaged, 'missing': missing, if (note != null && note.isNotEmpty) 'note': note},
+      ));
+
+  Future<GroupHire> chargeHire(final int id, {required final double amount, required final String note}) async =>
+      _hire(await _api.post('$_base/hires/$id/charge', <String, dynamic>{'amount': amount, 'note': note}));
+
+  Future<GroupHire> payHire(final int id, {required final double amount, required final String method, final String? reference}) async => _hire(await _api.post(
+        '$_base/hires/$id/pay',
+        <String, dynamic>{'amount': amount, 'method': method, if (reference != null && reference.isNotEmpty) 'external_ref': reference},
+      ));
+
+  Future<GroupHire> closeHire(final int id) async => _hire(await _api.post('$_base/hires/$id/close', <String, dynamic>{}));
 
   // ---------------------------------------------------------------- settings and the log
 

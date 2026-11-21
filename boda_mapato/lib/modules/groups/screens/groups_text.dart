@@ -139,6 +139,8 @@ String categoryLabel({required final bool sw, required final String category}) {
       return sw ? 'Marejesho ya mkopo' : 'Loan repayment';
     case 'welfare':
       return sw ? 'Msaada' : 'Welfare';
+    case 'hire':
+      return sw ? 'Ukodishaji' : 'Hire';
     default:
       return category;
   }
@@ -279,6 +281,34 @@ String activityLabel({required final bool sw, required final String action}) {
       return sw ? 'Msaada umekataliwa' : 'Welfare turned down';
     case 'benefit_paid':
       return sw ? 'Msaada umelipwa' : 'Welfare paid';
+    case 'asset_saved':
+      return sw ? 'Mali imehifadhiwa' : 'Asset saved';
+    case 'asset_maintenance':
+      return sw ? 'Matengenezo ya mali' : 'Asset maintenance';
+    case 'asset_damage':
+      return sw ? 'Mali imeharibika' : 'Asset damaged';
+    case 'asset_loss':
+      return sw ? 'Mali imepotea' : 'Asset lost';
+    case 'asset_repair':
+      return sw ? 'Mali imetengenezwa' : 'Asset repaired';
+    case 'asset_adjust':
+      return sw ? 'Idadi imerekebishwa' : 'Count corrected';
+    case 'asset_retire':
+      return sw ? 'Mali imeondolewa kazini' : 'Asset retired';
+    case 'hire_requested':
+      return sw ? 'Ombi la kukodi' : 'Hire requested';
+    case 'hire_approved':
+      return sw ? 'Ukodishaji umekubaliwa' : 'Hire confirmed';
+    case 'hire_declined':
+      return sw ? 'Ukodishaji umekataliwa' : 'Hire declined';
+    case 'hire_issued':
+      return sw ? 'Vimetolewa' : 'Handed over';
+    case 'hire_returned':
+      return sw ? 'Vimerudishwa' : 'Brought back';
+    case 'hire_charged':
+      return sw ? 'Gharama ya uharibifu' : 'Damage charge';
+    case 'hire_closed':
+      return sw ? 'Ukodishaji umefungwa' : 'Hire closed';
     default:
       return action;
   }
@@ -443,3 +473,45 @@ const List<String> benefitRelationships = <String>['self', 'parent', 'spouse', '
 
 String benefitRelationshipLabel({required final bool sw, required final String relationship}) =>
     relationship == 'self' ? (sw ? 'Mimi mwenyewe' : 'Myself') : relationshipLabel(sw: sw, relationship: relationship);
+
+/// Where a hire stands.
+String hireStateLabel({required final bool sw, required final String state}) => switch (state) {
+      'requested' => sw ? 'Ombi jipya' : 'Requested',
+      'waiting_payment' => sw ? 'Inasubiri malipo' : 'Waiting for payment',
+      'confirmed' => sw ? 'Imethibitishwa' : 'Confirmed',
+      'out' => sw ? 'Viko nje' : 'Out',
+      'overdue' => sw ? 'Vimechelewa kurudi' : 'Late back',
+      'damage_pending' => sw ? 'Uharibifu unasubiri uamuzi' : 'Damage to decide',
+      'balance_due' => sw ? 'Kuna deni' : 'Balance due',
+      'settled' => sw ? 'Imelipwa yote' : 'Settled',
+      'closed' => sw ? 'Imefungwa' : 'Closed',
+      'declined' => sw ? 'Imekataliwa' : 'Declined',
+      'cancelled' => sw ? 'Imeondolewa' : 'Withdrawn',
+      _ => state,
+    };
+
+Color hireStateColor(final String state) => switch (state) {
+      'confirmed' || 'settled' || 'closed' => ThemeConstants.successGreen,
+      'out' => ThemeConstants.invAccent,
+      'requested' || 'waiting_payment' || 'balance_due' || 'damage_pending' => ThemeConstants.warningAmber,
+      'overdue' || 'declined' => ThemeConstants.errorRed,
+      _ => Colors.white54,
+    };
+
+String conditionLabel({required final bool sw, required final String condition}) => switch (condition) {
+      'good' => sw ? 'Nzuri' : 'Good',
+      'fair' => sw ? 'Wastani' : 'Fair',
+      'poor' => sw ? 'Mbaya' : 'Poor',
+      _ => condition,
+    };
+
+String assetEventLabel({required final bool sw, required final String kind}) => switch (kind) {
+      'custody' => sw ? 'Mtunzaji amebadilishwa' : 'New keeper',
+      'maintenance' => sw ? 'Matengenezo' : 'Maintenance',
+      'damage' => sw ? 'Uharibifu' : 'Damage',
+      'loss' => sw ? 'Upotevu' : 'Loss',
+      'repair' => sw ? 'Imetengenezwa' : 'Repaired',
+      'adjust' => sw ? 'Marekebisho ya idadi' : 'Count corrected',
+      'retire' => sw ? 'Imeondolewa kazini' : 'Retired',
+      _ => kind,
+    };

@@ -37,6 +37,8 @@ final class GroupSettings
         'loan_interest_method' => ['type' => 'choice', 'choices' => ['', 'flat', 'reducing'], 'default' => ''],
         'loan_max_months' => ['type' => 'count', 'min' => 1, 'max' => 120, 'default' => '12'],
         'loan_guarantors' => ['type' => 'count', 'min' => 0, 'max' => 5, 'default' => '1'],
+        // Hiring out (chairs): are the collection day AND the return day both charged (both), or only the nights between (between)?
+        'hire_days_rule' => ['type' => 'choice', 'choices' => ['both', 'between'], 'default' => 'both'],
     ];
 
     /** @return array<string, string> every setting as it stands on [day] (today when null) */

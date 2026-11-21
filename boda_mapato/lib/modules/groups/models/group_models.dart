@@ -315,6 +315,7 @@ class GroupMe {
     this.groupName,
     this.owing = const <GroupObligation>[],
     this.promises = const <GroupPromise>[],
+    this.keepsAssets = false,
   });
 
   factory GroupMe.fromJson(final Map<String, dynamic> j) {
@@ -333,6 +334,7 @@ class GroupMe {
       groupName: _str(j['group'] is Map ? (j['group'] as Map)['name'] : null),
       owing: <GroupObligation>[for (final dynamic o in (j['owing'] as List? ?? const <dynamic>[])) GroupObligation.fromJson(Map<String, dynamic>.from(o as Map))],
       promises: <GroupPromise>[for (final dynamic p in (j['promises'] as List? ?? const <dynamic>[])) GroupPromise.fromJson(Map<String, dynamic>.from(p as Map))],
+      keepsAssets: j['keeps_assets'] == true,
     );
   }
 
@@ -351,6 +353,9 @@ class GroupMe {
   /// The contributions they still owe, oldest first.
   final List<GroupObligation> owing;
   final List<GroupPromise> promises;
+
+  /// Keeps one of the group's assets (or manages the register): the hires section is theirs.
+  final bool keepsAssets;
 
   bool can(final String right) => rights.contains(right);
 

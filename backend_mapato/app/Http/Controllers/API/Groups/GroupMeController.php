@@ -54,7 +54,25 @@ class GroupMeController extends Controller
             $waiting['benefits_to_decide'] = DB::table('group_benefit_requests')->where('status', 'submitted')->count();
         }
 
+        if (in_array('decide_hire_charges', $rights, true)) {
+            $waiting['hire_charges'] = DB::table('group_hires')->where('status', 'returned')->where('damage_status', 'pending')->count();
+        }
+
         $memberId = $member === null ? null : (int) $member['id'];
+        // Hires waiting for the keeper of an asset (or whoever manages assets): to confirm, or out past their day.
+        $kept = in_array('manage_assets', $rights, true) ? null : ($memberId === null ? [] : DB::table('group_assets')->where('custodian_id', $memberId)->pluck('id')->all());
+        if ($kept === null || $kept !== []) {
+            $hires = DB::table('group_hires')->when($kept !== null, fn ($q) => $q->whereIn('asset_id', $kept));
+            $toDecide = (clone $hires)->where('status', 'requested')->count();
+            $late = (clone $hires)->where('status', 'issued')->where('end_date', '<', now()->toDateString())->count();
+            if ($toDecide > 0 || $kept === null) {
+                $waiting['hires_to_decide'] = $toDecide;
+            }
+            if ($late > 0) {
+                $waiting['hires_overdue'] = $late;
+            }
+        }
+        $isKeeper = $kept === null || $kept !== [];
         // Anyone asked to guarantee a loan sees it, whatever their office.
         if ($memberId !== null) {
             $asked = DB::table('group_loan_guarantors as g')->join('group_loans as l', 'l.id', '=', 'g.loan_id')
@@ -82,6 +100,8 @@ class GroupMeController extends Controller
                 'payment_instructions' => $settings['payment_instructions'],
             ],
             'waiting' => $waiting,
+            // Keeps (or manages) assets: the hires section is theirs.
+            'keeps_assets' => $isKeeper,
             'group' => ['name' => optional(\App\Models\Business::forUser($user))->name],
         ]]);
     }

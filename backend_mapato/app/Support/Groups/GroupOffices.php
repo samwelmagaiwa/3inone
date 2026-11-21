@@ -56,6 +56,9 @@ final class GroupOffices
      *   approve_loans     approve or turn down a loan (never one's own)
      *   view_benefits     every welfare request
      *   approve_benefits  approve or turn down a welfare request, and the amount (never one's own)
+     *   manage_assets     the asset register, and every hire (approve, issue, take back) -- the keeper of an asset may do the hires
+     *                     of THAT asset whatever their office
+     *   decide_hire_charges  the charge for hired things that came back damaged or did not come back
      *   manage_offices    give or take an office
      *   manage_settings   the group's fees and rules
      *   view_audit        the group's activity log
@@ -65,14 +68,15 @@ final class GroupOffices
         'record_payments', 'verify_payments', 'reverse_payments', 'manage_offices', 'manage_settings', 'view_audit',
         'manage_contributions', 'grant_exemptions', 'record_payouts',
         'view_loans', 'recommend_loans', 'approve_loans', 'view_benefits', 'approve_benefits',
+        'manage_assets', 'decide_hire_charges',
     ];
 
     private const BY_OFFICE = [
-        'mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits'],
-        'makamu_mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits'],
+        'mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits', 'manage_assets', 'decide_hire_charges'],
+        'makamu_mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits', 'manage_assets', 'decide_hire_charges'],
         'mweka_hazina' => ['view_members', 'view_sensitive', 'view_finance', 'record_payments', 'verify_payments', 'reverse_payments', 'view_audit', 'manage_contributions', 'record_payouts', 'view_loans', 'view_benefits'],
         'mweka_hazina_msaidizi' => ['view_members', 'view_finance', 'record_payments', 'verify_payments', 'view_loans', 'view_benefits'],
-        'katibu' => ['view_members', 'manage_members', 'view_sensitive', 'record_payments', 'view_audit', 'view_benefits'],
+        'katibu' => ['view_members', 'manage_members', 'view_sensitive', 'record_payments', 'view_audit', 'view_benefits', 'manage_assets'],
         'katibu_msaidizi' => ['view_members', 'manage_members', 'record_payments'],
         'mwenyekiti_miradi' => ['view_members', 'view_finance', 'view_loans', 'recommend_loans'],
         'kamati_miradi' => ['view_members', 'view_loans', 'recommend_loans'],

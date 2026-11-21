@@ -8,13 +8,16 @@ import '../groups_text.dart';
 
 /// An amount (never above [max]) and a note.
 class AmountNoteDialog extends StatefulWidget {
-  const AmountNoteDialog({required this.title, required this.amount, required this.max, super.key, this.noteLabel, this.noteRequired = false});
+  const AmountNoteDialog({required this.title, required this.amount, required this.max, super.key, this.noteLabel, this.noteRequired = false, this.allowZero = false});
 
   final String title;
   final double amount;
   final double max;
   final String? noteLabel;
   final bool noteRequired;
+
+  /// 0 is an answer too (a damage charge decided as nothing).
+  final bool allowZero;
 
   @override
   State<AmountNoteDialog> createState() => _AmountNoteDialogState();
@@ -33,7 +36,7 @@ class _AmountNoteDialogState extends State<AmountNoteDialog> {
 
   double? get _value => double.tryParse(_amount.text.trim());
 
-  bool get _ready => (_value ?? 0) >= 1 && (_value ?? 0) <= widget.max + 0.001 && (!widget.noteRequired || _note.text.trim().length >= 3);
+  bool get _ready => (_value ?? -1) >= (widget.allowZero ? 0 : 1) && (_value ?? 0) <= widget.max + 0.001 && (!widget.noteRequired || _note.text.trim().length >= 3);
 
   @override
   Widget build(final BuildContext context) {

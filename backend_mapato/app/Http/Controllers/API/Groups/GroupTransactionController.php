@@ -44,6 +44,9 @@ class GroupTransactionController extends Controller
         'more_than_loan' => 'Kiasi ni zaidi ya deni la mkopo. / The amount is more than is owed on the loan.',
         'benefit_required' => 'Chagua ombi la msaada. / Choose the welfare request.',
         'benefit_not_ready' => 'Ombi hili halijaidhinishwa au tayari limelipwa. / This request is not approved, or was already paid.',
+        'hire_required' => 'Chagua ukodishaji unaolipwa. / Choose the hire being paid.',
+        'hire_not_open' => 'Ukodishaji huu haupokei malipo. / This hire takes no payments.',
+        'more_than_hire' => 'Kiasi ni zaidi ya kinachodaiwa kwa ukodishaji huu. / The amount is more than is owed for this hire.',
         'loan_has_repayments' => 'Mkopo una marejesho; hauwezi kurudishwa. / The loan has repayments; it cannot be reversed.',
         'try_again' => 'Jaribu tena. / Try again.',
     ];
@@ -126,6 +129,7 @@ class GroupTransactionController extends Controller
             'category' => ['required', Rule::in(GroupLedger::MEMBER_CATEGORIES)],
             'obligation_id' => 'nullable|integer|required_if:category,contribution',
             'loan_id' => 'nullable|integer|required_if:category,loan_repayment',
+            'hire_id' => 'nullable|integer|required_if:category,hire',
             'amount' => 'required|numeric|min:1|max:1000000000',
             'method' => ['required', Rule::in(GroupLedger::METHODS)],
             'external_ref' => 'nullable|string|max:80',
@@ -141,7 +145,7 @@ class GroupTransactionController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'category' => ['required', Rule::in(array_diff(GroupLedger::CATEGORIES, ['loan_disbursement', 'welfare']))],
+            'category' => ['required', Rule::in(array_diff(GroupLedger::CATEGORIES, ['loan_disbursement', 'welfare', 'hire']))],
             'direction' => ['nullable', Rule::in(['in', 'out'])],
             'member_id' => 'nullable|integer|required_unless:category,expense',
             'payee' => 'nullable|string|max:150',

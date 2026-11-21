@@ -7,6 +7,7 @@ import '../../../utils/server_message.dart';
 import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_models.dart';
 import '../services/groups_api.dart';
+import 'assets_screen.dart';
 import 'groups_text.dart';
 import 'my_loans_screen.dart';
 import 'payment_form.dart';
@@ -68,6 +69,11 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
 
   Future<void> _myWelfare() async {
     await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MyWelfareScreen(api: widget.api)));
+    await _refresh();
+  }
+
+  Future<void> _myHires() async {
+    await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MyHiresScreen(api: widget.api, me: widget.me)));
     await _refresh();
   }
 
@@ -195,6 +201,13 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                   onTap: _myLoans,
                 ),
                 ListTile(
+                  key: const Key('grp_my_hires'),
+                  leading: const Icon(Icons.chair_alt_rounded, color: ThemeConstants.invAccent),
+                  title: Text(sw ? 'Kukodi mali ya kikundi' : 'Hire from the group', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                  onTap: _myHires,
+                ),
+                ListTile(
                   key: const Key('grp_my_welfare'),
                   leading: const Icon(Icons.volunteer_activism_rounded, color: ThemeConstants.invAccent),
                   title: Text(sw ? 'Msaada (ustawi)' : 'Welfare', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
@@ -264,6 +277,30 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                     label: sw ? 'Maombi ya msaada' : 'Welfare requests',
                     count: me.waiting['benefits_to_decide']!,
                     onTap: () => widget.onOpen('welfare'),
+                  ),
+                if ((me.waiting['hires_to_decide'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_hires'),
+                    icon: Icons.event_available_rounded,
+                    label: sw ? 'Maombi ya kukodi' : 'Hire requests',
+                    count: me.waiting['hires_to_decide']!,
+                    onTap: () => widget.onOpen('assets'),
+                  ),
+                if (me.waiting.containsKey('hires_overdue'))
+                  _WaitLine(
+                    key: const Key('grp_wait_hires_late'),
+                    icon: Icons.timer_off_outlined,
+                    label: sw ? 'Vitu vilivyochelewa kurudi' : 'Hired things late back',
+                    count: me.waiting['hires_overdue']!,
+                    onTap: () => widget.onOpen('assets'),
+                  ),
+                if ((me.waiting['hire_charges'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_hire_charges'),
+                    icon: Icons.gavel_rounded,
+                    label: sw ? 'Gharama za uharibifu za kuamua' : 'Damage charges to decide',
+                    count: me.waiting['hire_charges']!,
+                    onTap: () => widget.onOpen('assets'),
                   ),
                 if (me.waiting.containsKey('members_overdue'))
                   _WaitLine(

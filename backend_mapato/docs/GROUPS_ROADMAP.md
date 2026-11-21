@@ -60,6 +60,24 @@ Status: **Phase 1 built (2026-11-22)**; phases 2–5 to come. No APK until the w
   sum, apply with guarantors, answer guarantees), Welfare section, My welfare (ask for help), kinds of help, loan terms
   in settings, Home card "My loans / Welfare" and waiting lines.
 - Tests: `tests/Feature/GroupsLoansWelfareTest.php` (6), `test/groups_phase3_test.dart` (6).
+- Deployed 2026-11-22 (migration `2026_12_05_000100_add_groups_loans_and_welfare`).
+
+**Phase 4 – assets and hiring out (2026-11-22)**
+- Asset register (`manage_assets`: chair, deputy, secretary): code, name, usable count, condition, value and storage place
+  (private: only managers and the asset's keeper), keeper = any active member, shown to members or not, hire rate and late
+  rate per unit per day (empty = not for hire / no late charge — never assumed). The count changes only through events
+  (damage, loss, repair, recount up/down, retire, maintenance cost), each with its reason.
+- Hire: member asks (or keeper/officer writes down a hire for a member or someone outside the group) → availability over
+  the dates (approved + handed-over hires hold units; one still out holds them until today) → the KEEPER of that asset
+  (any office) or a manager confirms or declines (never their own) → paid (`hire` payment, verified by someone else) →
+  handed over only once paid → back: returned + missing = handed over, damaged ⊂ returned; late charge = overdue days ×
+  late rate × units; damaged and missing leave the usable count (events) → damage/loss charge decided case by case by
+  `decide_hire_charges` (chair, deputy), 0 allowed → closed when settled. Days: setting `hire_days_rule` both (collection
+  and return day, default) or between.
+- App: Assets section (hires by stage, register), asset file with history and changes, asset form, hire file with each
+  step, member "Hire from the group" (price for the days and free count before asking), waiting lines, days rule in
+  settings.
+- Tests: `tests/Feature/GroupsHireTest.php` (5), `test/groups_phase4_test.dart` (4).
 Source requirement: `GROUPS_MEG_BLUEPRINT.md` (Mongolandege Economic Group, MEG, 22 members). MEG is the first customer;
 the service is built for **any** savings / economic group (VICOBA, VSLA, SACCOS-style groups, office and family groups).
 

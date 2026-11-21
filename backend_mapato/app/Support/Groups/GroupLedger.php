@@ -28,12 +28,12 @@ final class GroupLedger
     /**
      * The kinds of money, never mixed: joining fees, project shares, savings (in, and withdrawals out), contributions (each tied to what a
      * member owes), the group's own expenses (out, to a payee, no member), loans (the disbursement out and the repayments in, each tied to
-     * its loan) and welfare payouts (out, tied to an approved request). Later phases add rental and dividends.
+     * its loan), welfare payouts (out, tied to an approved request) and hire charges (in, tied to the hire). Dividends come last.
      */
-    public const CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution', 'expense', 'loan_disbursement', 'loan_repayment', 'welfare'];
+    public const CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution', 'expense', 'loan_disbursement', 'loan_repayment', 'welfare', 'hire'];
 
     /** What a member can pay for themself (never money out). */
-    public const MEMBER_CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution', 'loan_repayment'];
+    public const MEMBER_CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution', 'loan_repayment', 'hire'];
 
     /** What a member holds or has paid in, as their balances show it (a loan repayment is the loan's, not a balance). */
     public const BALANCE_CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution'];
@@ -112,6 +112,20 @@ final class GroupLedger
                 }
             }
         }
+        if ($category === 'hire') {
+            $hireId = $t['hire_id'] ?? null;
+            $hire = $hireId === null ? null : DB::table('group_hires')->where('id', $hireId)->first();
+            if ($hire === null || ($hire->member_id === null ? $memberId !== null : (int) $hire->member_id !== (int) $memberId)) {
+                throw new InvalidArgumentException('hire_required');
+            }
+            if (!in_array($hire->status, ['approved', 'issued', 'returned'], true)) {
+                throw new InvalidArgumentException('hire_not_open');
+            }
+            $waiting = $sending ? self::linked('hire_id', (int) $hireId, $category, [self::PENDING], null) : 0.0;
+            if ($amount > GroupHires::total($hire) - GroupHires::paid((int) $hireId) - $waiting + 0.001) {
+                throw new InvalidArgumentException('more_than_hire');
+            }
+        }
         if ($category === 'welfare') {
             $benefitId = $t['benefit_id'] ?? null;
             $request = $benefitId === null ? null : DB::table('group_benefit_requests')->where('id', $benefitId)->first();
@@ -142,6 +156,7 @@ final class GroupLedger
             'obligation_id' => $category === 'contribution' && isset($data['obligation_id']) ? (int) $data['obligation_id'] : null,
             'loan_id' => in_array($category, ['loan_disbursement', 'loan_repayment'], true) && isset($data['loan_id']) ? (int) $data['loan_id'] : null,
             'benefit_id' => $category === 'welfare' && isset($data['benefit_id']) ? (int) $data['benefit_id'] : null,
+            'hire_id' => $category === 'hire' && isset($data['hire_id']) ? (int) $data['hire_id'] : null,
         ];
         // Money paid IN by mobile money or bank must say its reference; money the group pays OUT is the group's own record.
         if ($direction === 'in' && $method !== 'cash' && $ref === '') {
@@ -215,6 +230,7 @@ final class GroupLedger
             'obligation_id' => $tx->obligation_id === null ? null : (int) $tx->obligation_id,
             'loan_id' => ($tx->loan_id ?? null) === null ? null : (int) $tx->loan_id,
             'benefit_id' => ($tx->benefit_id ?? null) === null ? null : (int) $tx->benefit_id,
+            'hire_id' => ($tx->hire_id ?? null) === null ? null : (int) $tx->hire_id,
         ], (int) $tx->id);
         $receipt = self::nextReceipt();
         for ($try = 0; $try < 5; $try++) {
@@ -265,6 +281,7 @@ final class GroupLedger
                 'obligation_id' => $tx->obligation_id,
                 'loan_id' => $tx->loan_id ?? null,
                 'benefit_id' => $tx->benefit_id ?? null,
+                'hire_id' => $tx->hire_id ?? null,
                 'payee' => $tx->payee,
                 'category' => $tx->category,
                 'direction' => $tx->direction === 'in' ? 'out' : 'in',
@@ -351,6 +368,7 @@ final class GroupLedger
             'payee' => $r->payee ?? null,
             'loan_id' => ($r->loan_id ?? null) === null ? null : (int) $r->loan_id,
             'benefit_id' => ($r->benefit_id ?? null) === null ? null : (int) $r->benefit_id,
+            'hire_id' => ($r->hire_id ?? null) === null ? null : (int) $r->hire_id,
             'member_name' => $r->member_name ?? null,
             'member_number' => $r->member_number ?? null,
             'category' => $r->category,

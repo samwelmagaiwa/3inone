@@ -72,7 +72,9 @@ use App\Http\Controllers\API\Rental\BillingController;
 use App\Http\Controllers\API\Rental\CaretakerController;
 use App\Http\Controllers\API\Rental\AgreementController;
 use App\Http\Controllers\API\Rental\MaintenanceController;
+use App\Http\Controllers\API\Groups\GroupAssetController;
 use App\Http\Controllers\API\Groups\GroupContributionController;
+use App\Http\Controllers\API\Groups\GroupHireController;
 use App\Http\Controllers\API\Groups\GroupLoanController;
 use App\Http\Controllers\API\Groups\GroupMeController;
 use App\Http\Controllers\API\Groups\GroupMemberController;
@@ -308,6 +310,25 @@ Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(f
     Route::get('benefits', [GroupWelfareController::class, 'index'])->middleware('group_right:view_benefits');
     Route::post('benefits/{id}/decide', [GroupWelfareController::class, 'decide'])->whereNumber('id')->middleware('group_right:approve_benefits');
     Route::post('benefits/{id}/pay', [GroupWelfareController::class, 'pay'])->whereNumber('id')->middleware('group_right:record_payouts');
+
+    // Assets and hiring them out (phase 4). The keeper of an asset handles its hires; the controllers check that.
+    Route::get('assets', [GroupAssetController::class, 'index']);
+    Route::get('assets/{id}', [GroupAssetController::class, 'show'])->whereNumber('id');
+    Route::get('assets/{id}/availability', [GroupAssetController::class, 'availability'])->whereNumber('id');
+    Route::post('assets', [GroupAssetController::class, 'save'])->middleware('group_right:manage_assets');
+    Route::put('assets/{id}', [GroupAssetController::class, 'save'])->whereNumber('id')->middleware('group_right:manage_assets');
+    Route::post('assets/{id}/events', [GroupAssetController::class, 'event'])->whereNumber('id')->middleware('group_right:manage_assets');
+    Route::get('me/hires', [GroupHireController::class, 'mine']);
+    Route::post('me/hires', [GroupHireController::class, 'askMine'])->middleware('throttle:20,1');
+    Route::post('me/hires/{id}/cancel', [GroupHireController::class, 'cancelMine'])->whereNumber('id');
+    Route::get('hires', [GroupHireController::class, 'index']);
+    Route::post('hires', [GroupHireController::class, 'askFor'])->middleware('throttle:60,1');
+    Route::post('hires/{id}/decide', [GroupHireController::class, 'decide'])->whereNumber('id');
+    Route::post('hires/{id}/issue', [GroupHireController::class, 'issue'])->whereNumber('id');
+    Route::post('hires/{id}/return', [GroupHireController::class, 'return'])->whereNumber('id');
+    Route::post('hires/{id}/pay', [GroupHireController::class, 'pay'])->whereNumber('id')->middleware('throttle:60,1');
+    Route::post('hires/{id}/close', [GroupHireController::class, 'close'])->whereNumber('id');
+    Route::post('hires/{id}/charge', [GroupHireController::class, 'charge'])->whereNumber('id')->middleware('group_right:decide_hire_charges');
 
     Route::put('settings', [GroupSettingsController::class, 'update'])->middleware('group_right:manage_settings');
     Route::get('audit', [GroupSettingsController::class, 'audit'])->middleware('group_right:view_audit');
