@@ -59,6 +59,12 @@ final class GroupOffices
      *   manage_assets     the asset register, and every hire (approve, issue, take back) -- the keeper of an asset may do the hires
      *                     of THAT asset whatever their office
      *   decide_hire_charges  the charge for hired things that came back damaged or did not come back
+     *   prepare_dividends prepare a dividend run (its period, formula and the approved profit), never post it
+     *   approve_dividends approve and post a dividend run someone else prepared
+     *   call_meetings     call (and cancel) a meeting
+     *   record_meetings   attendance and minutes of a meeting
+     *   post_announcements  notices to members
+     *   send_texts        a text to many members at once (uses the group's SMS)
      *   manage_offices    give or take an office
      *   manage_settings   the group's fees and rules
      *   view_audit        the group's activity log
@@ -69,15 +75,16 @@ final class GroupOffices
         'manage_contributions', 'grant_exemptions', 'record_payouts',
         'view_loans', 'recommend_loans', 'approve_loans', 'view_benefits', 'approve_benefits',
         'manage_assets', 'decide_hire_charges',
+        'prepare_dividends', 'approve_dividends', 'call_meetings', 'record_meetings', 'post_announcements', 'send_texts',
     ];
 
     private const BY_OFFICE = [
-        'mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits', 'manage_assets', 'decide_hire_charges'],
-        'makamu_mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits', 'manage_assets', 'decide_hire_charges'],
-        'mweka_hazina' => ['view_members', 'view_sensitive', 'view_finance', 'record_payments', 'verify_payments', 'reverse_payments', 'view_audit', 'manage_contributions', 'record_payouts', 'view_loans', 'view_benefits'],
+        'mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits', 'manage_assets', 'decide_hire_charges', 'approve_dividends', 'call_meetings', 'record_meetings', 'post_announcements', 'send_texts'],
+        'makamu_mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits', 'manage_assets', 'decide_hire_charges', 'approve_dividends', 'call_meetings', 'record_meetings', 'post_announcements', 'send_texts'],
+        'mweka_hazina' => ['view_members', 'view_sensitive', 'view_finance', 'record_payments', 'verify_payments', 'reverse_payments', 'view_audit', 'manage_contributions', 'record_payouts', 'view_loans', 'view_benefits', 'prepare_dividends'],
         'mweka_hazina_msaidizi' => ['view_members', 'view_finance', 'record_payments', 'verify_payments', 'view_loans', 'view_benefits'],
-        'katibu' => ['view_members', 'manage_members', 'view_sensitive', 'record_payments', 'view_audit', 'view_benefits', 'manage_assets'],
-        'katibu_msaidizi' => ['view_members', 'manage_members', 'record_payments'],
+        'katibu' => ['view_members', 'manage_members', 'view_sensitive', 'record_payments', 'view_audit', 'view_benefits', 'manage_assets', 'record_meetings', 'post_announcements', 'send_texts'],
+        'katibu_msaidizi' => ['view_members', 'manage_members', 'record_payments', 'record_meetings', 'post_announcements'],
         'mwenyekiti_miradi' => ['view_members', 'view_finance', 'view_loans', 'recommend_loans'],
         'kamati_miradi' => ['view_members', 'view_loans', 'recommend_loans'],
     ];

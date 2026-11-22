@@ -145,7 +145,7 @@ class GroupTransactionController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'category' => ['required', Rule::in(array_diff(GroupLedger::CATEGORIES, ['loan_disbursement', 'welfare', 'hire']))],
+            'category' => ['required', Rule::in(array_diff(GroupLedger::CATEGORIES, ['loan_disbursement', 'welfare', 'hire', 'dividend']))],
             'direction' => ['nullable', Rule::in(['in', 'out'])],
             'member_id' => 'nullable|integer|required_unless:category,expense',
             'payee' => 'nullable|string|max:150',

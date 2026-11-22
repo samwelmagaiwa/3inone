@@ -78,6 +78,25 @@ Status: **Phase 1 built (2026-11-22)**; phases 2–5 to come. No APK until the w
   step, member "Hire from the group" (price for the days and free count before asking), waiting lines, days rule in
   settings.
 - Tests: `tests/Feature/GroupsHireTest.php` (5), `test/groups_phase4_test.dart` (4).
+- Deployed 2026-11-22 (migration `2026_12_06_000100_add_groups_assets_and_hire`).
+
+**Phase 5a – dividends, meetings, notices, texts (2026-11-22)**
+- Dividends: the formula is chosen per run, never assumed — base `closing` (savings incl. dividends at the period end)
+  or `average` (day-by-day average over the period); method `rate` (rate% of the base; refused if the total passes the
+  approved profit) or `share` (the approved profit shared by base). Members active and joined by the period end. Prepared
+  as a DRAFT with every line by `prepare_dividends` (treasurer), approved and POSTED by `approve_dividends` (chair, deputy)
+  — never the person who prepared it. Posting writes verified `dividend` rows (own category, counted in the savings
+  balance, so loans see them); a period overlapping a posted run is refused.
+- Meetings: `call_meetings` (chair, deputy) calls (optional SMS to all active members) and cancels with a reason;
+  `record_meetings` (secretary, assistant secretary, chair, deputy) records attendance + minutes once it has started
+  (correctable, logged). Members see meetings and whether they attended.
+- Notices: `post_announcements` (chair, deputy, secretaries), to all or officers only, optional expiry; taken down by
+  expiring (logged). Texts: `send_texts` (chair, deputy, secretary) to all / officers / overdue / chosen; the estimate
+  (people, SMS parts) is shown before sending; sent in the queue (`SendGroupMessageJob`, each recipient claimed once,
+  group's own SMS switch and limit).
+- App: "Meetings" section for everyone (meetings, notices, texts), meeting file with attendance/minutes, dividends (runs,
+  prepare form, run with lines, post/discard), "My dividends", next meeting and notices on Home, sections load on first open.
+- Tests: `tests/Feature/GroupsDividendsMeetingsTest.php` (5), `test/groups_phase5a_test.dart` (4).
 Source requirement: `GROUPS_MEG_BLUEPRINT.md` (Mongolandege Economic Group, MEG, 22 members). MEG is the first customer;
 the service is built for **any** savings / economic group (VICOBA, VSLA, SACCOS-style groups, office and family groups).
 

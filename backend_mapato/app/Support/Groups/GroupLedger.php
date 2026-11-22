@@ -30,7 +30,7 @@ final class GroupLedger
      * member owes), the group's own expenses (out, to a payee, no member), loans (the disbursement out and the repayments in, each tied to
      * its loan), welfare payouts (out, tied to an approved request) and hire charges (in, tied to the hire). Dividends come last.
      */
-    public const CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution', 'expense', 'loan_disbursement', 'loan_repayment', 'welfare', 'hire'];
+    public const CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution', 'expense', 'loan_disbursement', 'loan_repayment', 'welfare', 'hire', 'dividend'];
 
     /** What a member can pay for themself (never money out). */
     public const MEMBER_CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution', 'loan_repayment', 'hire'];
@@ -342,11 +342,17 @@ final class GroupLedger
         $rows = DB::table('group_transactions')->where('member_id', $memberId)->where('status', self::VERIFIED)
             ->selectRaw("category, SUM(CASE WHEN direction = 'in' THEN amount ELSE -amount END) as total")
             ->groupBy('category')->get();
+        $dividends = 0.0;
         foreach ($rows as $r) {
             if (array_key_exists($r->category, $out)) {
                 $out[$r->category] = round((float) $r->total, 2);
             }
+            if ($r->category === 'dividend') {
+                $dividends += (float) $r->total;
+            }
         }
+        // A dividend is credited to savings: kept as its own kind of row (never mixed with deposits), counted in the savings balance.
+        $out['savings'] = round($out['savings'] + $dividends, 2);
 
         return $out;
     }

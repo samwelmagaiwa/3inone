@@ -73,7 +73,9 @@ use App\Http\Controllers\API\Rental\CaretakerController;
 use App\Http\Controllers\API\Rental\AgreementController;
 use App\Http\Controllers\API\Rental\MaintenanceController;
 use App\Http\Controllers\API\Groups\GroupAssetController;
+use App\Http\Controllers\API\Groups\GroupCommunicationController;
 use App\Http\Controllers\API\Groups\GroupContributionController;
+use App\Http\Controllers\API\Groups\GroupDividendController;
 use App\Http\Controllers\API\Groups\GroupHireController;
 use App\Http\Controllers\API\Groups\GroupLoanController;
 use App\Http\Controllers\API\Groups\GroupMeController;
@@ -329,6 +331,26 @@ Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(f
     Route::post('hires/{id}/pay', [GroupHireController::class, 'pay'])->whereNumber('id')->middleware('throttle:60,1');
     Route::post('hires/{id}/close', [GroupHireController::class, 'close'])->whereNumber('id');
     Route::post('hires/{id}/charge', [GroupHireController::class, 'charge'])->whereNumber('id')->middleware('group_right:decide_hire_charges');
+
+    // Dividends, meetings, announcements and texts to members (phase 5a).
+    Route::get('me/dividends', [GroupDividendController::class, 'mine']);
+    Route::get('dividends', [GroupDividendController::class, 'index'])->middleware('group_right:prepare_dividends,approve_dividends,view_finance');
+    Route::get('dividends/{id}', [GroupDividendController::class, 'show'])->whereNumber('id')->middleware('group_right:prepare_dividends,approve_dividends,view_finance');
+    Route::post('dividends', [GroupDividendController::class, 'prepare'])->middleware('group_right:prepare_dividends');
+    Route::post('dividends/{id}/discard', [GroupDividendController::class, 'discard'])->whereNumber('id')->middleware('group_right:prepare_dividends');
+    Route::post('dividends/{id}/post', [GroupDividendController::class, 'post'])->whereNumber('id')->middleware('group_right:approve_dividends');
+    Route::get('meetings', [GroupCommunicationController::class, 'meetings']);
+    Route::post('meetings', [GroupCommunicationController::class, 'callMeeting'])->middleware('group_right:call_meetings');
+    Route::post('meetings/{id}/cancel', [GroupCommunicationController::class, 'cancelMeeting'])->whereNumber('id')->middleware('group_right:call_meetings');
+    Route::post('meetings/{id}/record', [GroupCommunicationController::class, 'recordMeeting'])->whereNumber('id')->middleware('group_right:record_meetings');
+    Route::get('announcements', [GroupCommunicationController::class, 'announcements']);
+    Route::post('announcements', [GroupCommunicationController::class, 'postAnnouncement'])->middleware('group_right:post_announcements');
+    Route::post('announcements/{id}/remove', [GroupCommunicationController::class, 'removeAnnouncement'])->whereNumber('id')->middleware('group_right:post_announcements');
+    Route::middleware('group_right:send_texts')->group(function () {
+        Route::post('messages/estimate', [GroupCommunicationController::class, 'estimate']);
+        Route::post('messages', [GroupCommunicationController::class, 'send'])->middleware('throttle:10,1');
+        Route::get('messages', [GroupCommunicationController::class, 'messages']);
+    });
 
     Route::put('settings', [GroupSettingsController::class, 'update'])->middleware('group_right:manage_settings');
     Route::get('audit', [GroupSettingsController::class, 'audit'])->middleware('group_right:view_audit');

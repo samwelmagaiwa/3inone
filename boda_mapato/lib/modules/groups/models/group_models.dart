@@ -316,6 +316,10 @@ class GroupMe {
     this.owing = const <GroupObligation>[],
     this.promises = const <GroupPromise>[],
     this.keepsAssets = false,
+    this.nextMeetingTitle,
+    this.nextMeetingAt,
+    this.nextMeetingVenue,
+    this.notices = 0,
   });
 
   factory GroupMe.fromJson(final Map<String, dynamic> j) {
@@ -335,6 +339,10 @@ class GroupMe {
       owing: <GroupObligation>[for (final dynamic o in (j['owing'] as List? ?? const <dynamic>[])) GroupObligation.fromJson(Map<String, dynamic>.from(o as Map))],
       promises: <GroupPromise>[for (final dynamic p in (j['promises'] as List? ?? const <dynamic>[])) GroupPromise.fromJson(Map<String, dynamic>.from(p as Map))],
       keepsAssets: j['keeps_assets'] == true,
+      nextMeetingTitle: _str(j['next_meeting'] is Map ? (j['next_meeting'] as Map)['title'] : null),
+      nextMeetingAt: _str(j['next_meeting'] is Map ? (j['next_meeting'] as Map)['starts_at'] : null),
+      nextMeetingVenue: _str(j['next_meeting'] is Map ? (j['next_meeting'] as Map)['venue'] : null),
+      notices: _int(j['notices']) ?? 0,
     );
   }
 
@@ -356,6 +364,14 @@ class GroupMe {
 
   /// Keeps one of the group's assets (or manages the register): the hires section is theirs.
   final bool keepsAssets;
+
+  /// The next meeting, if one is called.
+  final String? nextMeetingTitle;
+  final String? nextMeetingAt;
+  final String? nextMeetingVenue;
+
+  /// How many notices are up for this person.
+  final int notices;
 
   bool can(final String right) => rights.contains(right);
 

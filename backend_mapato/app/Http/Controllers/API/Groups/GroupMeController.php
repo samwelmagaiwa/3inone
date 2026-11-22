@@ -54,6 +54,12 @@ class GroupMeController extends Controller
             $waiting['benefits_to_decide'] = DB::table('group_benefit_requests')->where('status', 'submitted')->count();
         }
 
+        if (in_array('approve_dividends', $rights, true)) {
+            $waiting['dividends_to_approve'] = DB::table('group_dividend_runs')->where('status', 'draft')->count();
+        }
+        if (in_array('record_meetings', $rights, true)) {
+            $waiting['meetings_to_record'] = DB::table('group_meetings')->where('status', 'scheduled')->where('starts_at', '<', now())->count();
+        }
         if (in_array('decide_hire_charges', $rights, true)) {
             $waiting['hire_charges'] = DB::table('group_hires')->where('status', 'returned')->where('damage_status', 'pending')->count();
         }
@@ -102,6 +108,12 @@ class GroupMeController extends Controller
             'waiting' => $waiting,
             // Keeps (or manages) assets: the hires section is theirs.
             'keeps_assets' => $isKeeper,
+            // The next meeting and the newest notice, for everyone's home.
+            'next_meeting' => DB::table('group_meetings')->where('status', 'scheduled')->where('starts_at', '>=', now())->orderBy('starts_at')
+                ->first(['id', 'title', 'starts_at', 'venue']),
+            'notices' => DB::table('group_announcements')
+                ->when(!($member !== null && !empty($member['office'])) && !GroupAccess::isOwner($user), fn ($q) => $q->where('audience', 'all'))
+                ->where(fn ($q) => $q->whereNull('expires_on')->orWhere('expires_on', '>=', now()->toDateString()))->count(),
             'group' => ['name' => optional(\App\Models\Business::forUser($user))->name],
         ]]);
     }

@@ -8,6 +8,8 @@ import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_models.dart';
 import '../services/groups_api.dart';
 import 'assets_screen.dart';
+import 'community_screen.dart' show dateTimeLabel;
+import 'dividends_screen.dart';
 import 'groups_text.dart';
 import 'my_loans_screen.dart';
 import 'payment_form.dart';
@@ -76,6 +78,8 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
     await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MyHiresScreen(api: widget.api, me: widget.me)));
     await _refresh();
   }
+
+  Future<void> _myDividends() => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MyDividendsScreen(api: widget.api)));
 
   Future<void> _statement() => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => GroupStatementScreen(api: widget.api)));
 
@@ -201,6 +205,13 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                   onTap: _myLoans,
                 ),
                 ListTile(
+                  key: const Key('grp_my_dividends'),
+                  leading: const Icon(Icons.savings_rounded, color: ThemeConstants.invAccent),
+                  title: Text(sw ? 'Gawio langu' : 'My dividends', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                  onTap: _myDividends,
+                ),
+                ListTile(
                   key: const Key('grp_my_hires'),
                   leading: const Icon(Icons.chair_alt_rounded, color: ThemeConstants.invAccent),
                   title: Text(sw ? 'Kukodi mali ya kikundi' : 'Hire from the group', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
@@ -223,6 +234,33 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                 children: <Widget>[for (final GroupPromise p in me.promises) PromiseLine(p: p, sw: sw)],
               ),
             ],
+          ],
+          if (me.nextMeetingTitle != null || me.notices > 0) ...<Widget>[
+            const SizedBox(height: 12),
+            GlowListCard(
+              dividerKey: 'grp_news_div',
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              children: <Widget>[
+                if (me.nextMeetingTitle != null)
+                  ListTile(
+                    key: const Key('grp_next_meeting'),
+                    leading: const Icon(Icons.event_rounded, color: ThemeConstants.invAccent),
+                    title: Text(me.nextMeetingTitle!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                    subtitle: Text('${dateTimeLabel(me.nextMeetingAt ?? '')}${me.nextMeetingVenue == null ? '' : ' · ${me.nextMeetingVenue}'}',
+                        style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                    trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                    onTap: () => widget.onOpen('community'),
+                  ),
+                if (me.notices > 0)
+                  ListTile(
+                    key: const Key('grp_notices'),
+                    leading: const Icon(Icons.campaign_rounded, color: ThemeConstants.invAccent),
+                    title: Text(sw ? 'Matangazo' : 'Notices', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                    trailing: Text('${me.notices}', style: const TextStyle(color: ThemeConstants.warningAmber, fontWeight: FontWeight.w800, fontSize: 16)),
+                    onTap: () => widget.onOpen('community'),
+                  ),
+              ],
+            ),
           ],
           if (me.waiting.isNotEmpty) ...<Widget>[
             const SizedBox(height: 12),
@@ -301,6 +339,22 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                     label: sw ? 'Gharama za uharibifu za kuamua' : 'Damage charges to decide',
                     count: me.waiting['hire_charges']!,
                     onTap: () => widget.onOpen('assets'),
+                  ),
+                if ((me.waiting['dividends_to_approve'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_dividends'),
+                    icon: Icons.savings_rounded,
+                    label: sw ? 'Gawio la kuidhinisha' : 'Dividends to approve',
+                    count: me.waiting['dividends_to_approve']!,
+                    onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => DividendsScreen(api: widget.api, me: widget.me))),
+                  ),
+                if ((me.waiting['meetings_to_record'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_meetings'),
+                    icon: Icons.fact_check_rounded,
+                    label: sw ? 'Vikao vya kurekodi' : 'Meetings to record',
+                    count: me.waiting['meetings_to_record']!,
+                    onTap: () => widget.onOpen('community'),
                   ),
                 if (me.waiting.containsKey('members_overdue'))
                   _WaitLine(

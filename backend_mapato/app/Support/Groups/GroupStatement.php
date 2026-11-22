@@ -17,10 +17,11 @@ final class GroupStatement
             ->orderBy('t.verified_at')->orderBy('t.id')->get();
         foreach ($rows as $r) {
             $signed = $r->direction === 'in' ? (float) $r->amount : -(float) $r->amount;
-            if (array_key_exists($r->category, $running)) {
-                $running[$r->category] = round($running[$r->category] + $signed, 2);
+            $kind = $r->category === 'dividend' ? 'savings' : $r->category;
+            if (array_key_exists($kind, $running)) {
+                $running[$kind] = round($running[$kind] + $signed, 2);
             }
-            $lines[] = GroupLedger::payload($r) + ['balance_after' => $running[$r->category] ?? null];
+            $lines[] = GroupLedger::payload($r) + ['balance_after' => $running[$kind] ?? null];
         }
 
         $today = now()->toDateString();

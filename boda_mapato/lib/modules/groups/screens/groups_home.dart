@@ -10,6 +10,7 @@ import '../../../widgets/service_switcher_dialog.dart';
 import '../models/group_models.dart';
 import '../services/groups_api.dart';
 import 'assets_screen.dart';
+import 'community_screen.dart';
 import 'contributions_screen.dart';
 import 'group_dashboard_screen.dart';
 import 'group_more_screen.dart';
@@ -48,6 +49,9 @@ class _GroupsHomeState extends State<GroupsHome> {
   String? _error;
   String _current = 'home';
 
+  /// The sections opened so far: only those are built (a section loads its data the first time it is opened, then keeps it).
+  final Set<String> _opened = <String>{'home'};
+
   @override
   void initState() {
     super.initState();
@@ -74,6 +78,12 @@ class _GroupsHomeState extends State<GroupsHome> {
           icon: Icons.dashboard_rounded,
           label: ({required final bool sw}) => sw ? 'Mwanzo' : 'Home',
           build: (GroupMe m, Future<void> Function() reload, void Function(String) open) => GroupDashboardScreen(me: m, api: _api, onChanged: reload, onOpen: open),
+        ),
+        _Section(
+          key: 'community',
+          icon: Icons.forum_rounded,
+          label: ({required final bool sw}) => sw ? 'Vikao' : 'Meetings',
+          build: (GroupMe m, Future<void> Function() reload, void Function(String) open) => CommunityScreen(me: m, api: _api, onChanged: reload),
         ),
         if (me.can('view_members'))
           _Section(
@@ -126,7 +136,10 @@ class _GroupsHomeState extends State<GroupsHome> {
           ),
       ];
 
-  void _open(final String key) => setState(() => _current = key);
+  void _open(final String key) => setState(() {
+        _current = key;
+        _opened.add(key);
+      });
 
   Future<void> _logout() async {
     await Provider.of<AuthProvider>(context, listen: false).logout();
@@ -255,7 +268,13 @@ class _GroupsHomeState extends State<GroupsHome> {
                   ))
             : IndexedStack(
                 index: sections.indexOf(current!),
-                children: <Widget>[for (final _Section s in sections) KeyedSubtree(key: ValueKey<String>('grp_section_${s.key}'), child: s.build(me, _load, _open))],
+                children: <Widget>[
+                  for (final _Section s in sections)
+                    KeyedSubtree(
+                      key: ValueKey<String>('grp_section_${s.key}'),
+                      child: _opened.contains(s.key) || s.key == current.key ? s.build(me, _load, _open) : const SizedBox.shrink(),
+                    ),
+                ],
               ),
       ),
       bottomNavigationBar: me == null
@@ -283,7 +302,7 @@ class _GroupsFooter extends StatelessWidget {
 
   @override
   Widget build(final BuildContext context) {
-    const List<String> priority = <String>['home', 'payments', 'loans', 'contributions', 'members', 'assets', 'welfare', 'more'];
+    const List<String> priority = <String>['home', 'payments', 'loans', 'contributions', 'members', 'community', 'assets', 'welfare', 'more'];
     final List<_Section> shown = (List<_Section>.of(sections)..sort((final _Section a, final _Section b) => priority.indexOf(a.key).compareTo(priority.indexOf(b.key))))
         .take(4)
         .toList();

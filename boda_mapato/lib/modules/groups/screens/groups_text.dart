@@ -141,6 +141,8 @@ String categoryLabel({required final bool sw, required final String category}) {
       return sw ? 'Msaada' : 'Welfare';
     case 'hire':
       return sw ? 'Ukodishaji' : 'Hire';
+    case 'dividend':
+      return sw ? 'Gawio' : 'Dividend';
     default:
       return category;
   }
@@ -309,6 +311,24 @@ String activityLabel({required final bool sw, required final String action}) {
       return sw ? 'Gharama ya uharibifu' : 'Damage charge';
     case 'hire_closed':
       return sw ? 'Ukodishaji umefungwa' : 'Hire closed';
+    case 'dividend_prepared':
+      return sw ? 'Gawio limeandaliwa' : 'Dividend prepared';
+    case 'dividend_posted':
+      return sw ? 'Gawio limelipwa kwenye akiba' : 'Dividend credited';
+    case 'dividend_discarded':
+      return sw ? 'Rasimu ya gawio imeachwa' : 'Dividend draft discarded';
+    case 'meeting_called':
+      return sw ? 'Kikao kimeitishwa' : 'Meeting called';
+    case 'meeting_cancelled':
+      return sw ? 'Kikao kimesitishwa' : 'Meeting cancelled';
+    case 'meeting_recorded':
+      return sw ? 'Kikao kimerekodiwa' : 'Meeting recorded';
+    case 'announcement_posted':
+      return sw ? 'Tangazo limewekwa' : 'Notice posted';
+    case 'announcement_removed':
+      return sw ? 'Tangazo limeondolewa' : 'Notice taken down';
+    case 'texts_sent':
+      return sw ? 'Ujumbe umetumwa' : 'Text sent';
     default:
       return action;
   }

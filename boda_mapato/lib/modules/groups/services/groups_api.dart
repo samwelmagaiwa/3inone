@@ -1,5 +1,6 @@
 import '../../../services/api_service.dart';
 import '../models/group_asset_models.dart';
+import '../models/group_governance_models.dart';
 import '../models/group_loan_models.dart';
 import '../models/group_models.dart';
 
@@ -289,6 +290,61 @@ class GroupsApi {
       ));
 
   Future<GroupHire> closeHire(final int id) async => _hire(await _api.post('$_base/hires/$id/close', <String, dynamic>{}));
+
+  // ---------------------------------------------------------------- dividends
+
+  Future<List<GroupDividendRun>> dividendRuns() async => <GroupDividendRun>[
+        for (final dynamic r in (_data(await _api.get('$_base/dividends'))['runs'] as List? ?? const <dynamic>[])) GroupDividendRun.fromJson(Map<String, dynamic>.from(r as Map)),
+      ];
+
+  GroupDividendRun _run(final Map<String, dynamic> res) => GroupDividendRun.fromJson(Map<String, dynamic>.from(_data(res)['run'] as Map));
+
+  Future<GroupDividendRun> dividendRun(final int id) async => _run(await _api.get('$_base/dividends/$id'));
+
+  Future<GroupDividendRun> prepareDividend(final Map<String, dynamic> body) async => _run(await _api.post('$_base/dividends', body));
+
+  Future<GroupDividendRun> postDividend(final int id) async => _run(await _api.post('$_base/dividends/$id/post', <String, dynamic>{}));
+
+  Future<GroupDividendRun> discardDividend(final int id) async => _run(await _api.post('$_base/dividends/$id/discard', <String, dynamic>{}));
+
+  Future<List<GroupMyDividend>> myDividends() async => <GroupMyDividend>[
+        for (final dynamic d in (_data(await _api.get('$_base/me/dividends'))['dividends'] as List? ?? const <dynamic>[])) GroupMyDividend.fromJson(Map<String, dynamic>.from(d as Map)),
+      ];
+
+  // ---------------------------------------------------------------- meetings, notices, texts
+
+  Future<List<GroupMeeting>> meetings() async => <GroupMeeting>[
+        for (final dynamic m in (_data(await _api.get('$_base/meetings'))['meetings'] as List? ?? const <dynamic>[])) GroupMeeting.fromJson(Map<String, dynamic>.from(m as Map)),
+      ];
+
+  Future<void> callMeeting(final Map<String, dynamic> body) async => _api.post('$_base/meetings', body);
+
+  Future<void> cancelMeeting(final int id, final String reason) async => _api.post('$_base/meetings/$id/cancel', <String, dynamic>{'reason': reason});
+
+  Future<void> recordMeeting(final int id, {required final List<int> presentIds, final String? minutes}) async =>
+      _api.post('$_base/meetings/$id/record', <String, dynamic>{'present_ids': presentIds, if (minutes != null) 'minutes': minutes});
+
+  Future<List<GroupAnnouncement>> announcements() async => <GroupAnnouncement>[
+        for (final dynamic a in (_data(await _api.get('$_base/announcements'))['announcements'] as List? ?? const <dynamic>[]))
+          GroupAnnouncement.fromJson(Map<String, dynamic>.from(a as Map)),
+      ];
+
+  Future<void> postAnnouncement(final Map<String, dynamic> body) async => _api.post('$_base/announcements', body);
+
+  Future<void> removeAnnouncement(final int id) async => _api.post('$_base/announcements/$id/remove', <String, dynamic>{});
+
+  /// How many people and SMS parts a text would take: (people, parts each, parts in all).
+  Future<(int, int, int)> estimateText({required final String audience, required final String body, final List<int>? memberIds}) async {
+    final Map<String, dynamic> d = _data(await _api.post('$_base/messages/estimate', <String, dynamic>{'audience': audience, 'body': body, if (memberIds != null) 'member_ids': memberIds}));
+    return ((d['recipients'] as num?)?.toInt() ?? 0, (d['parts_each'] as num?)?.toInt() ?? 1, (d['parts_total'] as num?)?.toInt() ?? 0);
+  }
+
+  Future<void> sendText({required final String audience, required final String body, final List<int>? memberIds}) async =>
+      _api.post('$_base/messages', <String, dynamic>{'audience': audience, 'body': body, if (memberIds != null) 'member_ids': memberIds});
+
+  Future<List<GroupMessage>> texts() async => <GroupMessage>[
+        for (final dynamic m in (_data(await _api.get('$_base/messages'))['messages'] as List? ?? const <dynamic>[])) GroupMessage.fromJson(Map<String, dynamic>.from(m as Map)),
+      ];
 
   // ---------------------------------------------------------------- settings and the log
 

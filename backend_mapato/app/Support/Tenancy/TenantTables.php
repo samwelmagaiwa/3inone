@@ -106,6 +106,7 @@ final class TenantTables
      * @var array<int, string>
      */
     public const GROUPS = [
+        'group_announcements',
         'group_asset_events',
         'group_assets',
         'group_audit_log',
@@ -113,12 +114,18 @@ final class TenantTables
         'group_benefit_types',
         'group_contribution_types',
         'group_dependants',
+        'group_dividend_lines',
+        'group_dividend_runs',
         'group_hires',
         'group_loan_guarantors',
         'group_loan_schedule',
         'group_loans',
+        'group_meeting_attendance',
+        'group_meetings',
         'group_member_events',
         'group_members',
+        'group_message_recipients',
+        'group_messages',
         'group_obligations',
         'group_promises',
         'group_reminders',
