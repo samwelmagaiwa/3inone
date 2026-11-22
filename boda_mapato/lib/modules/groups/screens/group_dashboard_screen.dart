@@ -10,6 +10,7 @@ import '../services/groups_api.dart';
 import 'assets_screen.dart';
 import 'community_screen.dart' show dateTimeLabel;
 import 'dividends_screen.dart';
+import 'group_overview_dashboard.dart';
 import 'groups_text.dart';
 import 'my_loans_screen.dart';
 import 'payment_form.dart';
@@ -35,6 +36,7 @@ class GroupDashboardScreen extends StatefulWidget {
 class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
   List<GroupTransaction> _mine = const <GroupTransaction>[];
   String? _error;
+  final GlobalKey<GroupOverviewDashboardState> _overview = GlobalKey<GroupOverviewDashboardState>();
 
   @override
   void initState() {
@@ -55,6 +57,7 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
   Future<void> _refresh() async {
     await widget.onChanged();
     await _loadMine();
+    await _overview.currentState?.load();
   }
 
   Future<void> _pay([final GroupObligation? o]) async {
@@ -95,6 +98,12 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: <Widget>[
+          // The group at a glance, for its officers.
+          if (me.can('view_finance') || me.can('view_members')) ...<Widget>[
+            GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen),
+            const SizedBox(height: 12),
+            const Divider(color: Colors.white24, height: 24),
+          ],
           // Who I am in the group.
           GlowListCard(
             dividerKey: 'grp_me_div',

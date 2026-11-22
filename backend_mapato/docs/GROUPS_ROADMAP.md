@@ -115,6 +115,16 @@ Status: **Phase 1 built (2026-11-22)**; phases 2–5 to come. No APK until the w
   loans now, meetings held; CSV exports (members register: NIDA masked without `view_sensitive`; payments of a period),
   BOM for Excel, cells starting with = + - @ written as text, each export logged.
 - Tests: `tests/Feature/GroupsInvitationsRecordsTest.php` (6), `test/groups_phase5b_test.dart` (4).
+
+**Officers' dashboard (2026-11-22)** – the other services' dashboards combined into one on Home, above the person's own card
+- One call `GET /api/groups/dashboard?month=YYYY-MM` (`view_members` or `view_finance`): member counts and the next meeting
+  for both; the money part only with `view_finance` (null otherwise), from verified rows only.
+- App (`group_overview_dashboard.dart`): transport-style glass card (cash on record, the month's in/out, payments waiting);
+  rental-style ring (share of the month's contributions collected); bento tiles (members, savings, loans owed, overdue);
+  inventory-style glowing chart card with the months and a line/bars toggle (12 months in vs out, or the month by kind);
+  wide rows for the year's welfare, dividends, hire income, spending; quick actions shown only per right. Every tile opens
+  its section. The secretary sees the membership part only.
+- Tests: `tests/Feature/GroupsDashboardTest.php`, `test/groups_dashboard_test.dart` (2).
 Source requirement: `GROUPS_MEG_BLUEPRINT.md` (Mongolandege Economic Group, MEG, 22 members). MEG is the first customer;
 the service is built for **any** savings / economic group (VICOBA, VSLA, SACCOS-style groups, office and family groups).
 

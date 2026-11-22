@@ -75,6 +75,7 @@ use App\Http\Controllers\API\Rental\MaintenanceController;
 use App\Http\Controllers\API\Groups\GroupAssetController;
 use App\Http\Controllers\API\Groups\GroupCommunicationController;
 use App\Http\Controllers\API\Groups\GroupContributionController;
+use App\Http\Controllers\API\Groups\GroupDashboardController;
 use App\Http\Controllers\API\Groups\GroupDividendController;
 use App\Http\Controllers\API\Groups\GroupHireController;
 use App\Http\Controllers\API\Groups\GroupLoanController;
@@ -250,6 +251,8 @@ Route::prefix('public/groups')->middleware('throttle:30,1,public-groups')->group
 // everything else needs a right from the office they hold (group_right:...), see App\Support\Groups\GroupOffices.
 Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(function () {
     Route::get('me', [GroupMeController::class, 'show']);
+    // The officers' dashboard: members for whoever sees them, money only for whoever sees the group's money.
+    Route::get('dashboard', [GroupDashboardController::class, 'show'])->middleware('group_right:view_members,view_finance');
     Route::get('me/transactions', [GroupMeController::class, 'transactions']);
     Route::post('me/payments', [GroupMeController::class, 'pay'])->middleware('throttle:20,1');
     Route::get('settings', [GroupSettingsController::class, 'show']);

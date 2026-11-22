@@ -394,6 +394,10 @@ class GroupsApi {
   /// The verified payments of a period as a CSV file.
   Future<Uint8List> exportPayments({required final String from, required final String to}) => _api.getFileBytes('$_base/reports/transactions.csv?from=$from&to=$to');
 
+  /// The officers' dashboard for [month] (2026-11; this month when null).
+  Future<GroupDashboardData> dashboard({final String? month}) async =>
+      GroupDashboardData.fromJson(_data(await _api.get('$_base/dashboard${month == null ? '' : '?month=$month'}')));
+
   // ---------------------------------------------------------------- someone outside the group, with a code (no sign-in)
 
   static String _code(final String code) => Uri.encodeComponent(code.trim().toUpperCase());
