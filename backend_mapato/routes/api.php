@@ -87,6 +87,7 @@ use App\Http\Controllers\API\Groups\GroupSettingsController;
 use App\Http\Controllers\API\Groups\GroupTransactionController;
 use App\Http\Controllers\API\Groups\GroupExpenseController;
 use App\Http\Controllers\API\Groups\GroupProjectController;
+use App\Http\Controllers\API\Groups\GroupReceiptController;
 use App\Http\Controllers\API\Groups\GroupWelfareController;
 
 
@@ -243,6 +244,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/sms-sende
 // GROUPS (Vikundi), for someone OUTSIDE the group holding an invitation code: the group's name, applying to join, asking to hire.
 // No sign-in; limited per address; nothing else of the group is shown.
 Route::prefix('public/groups')->middleware('throttle:30,1,public-groups')->group(function () {
+    Route::get('receipts/{token}', [GroupReceiptController::class, 'verify'])->where('token', '[A-Za-z0-9.\-]{20,120}');
     Route::get('{code}', [GroupPublicController::class, 'show'])->where('code', '[A-Za-z0-9]{6,12}');
     Route::get('{code}/assets/{assetId}/availability', [GroupPublicController::class, 'availability'])->where('code', '[A-Za-z0-9]{6,12}')->whereNumber('assetId');
     Route::post('{code}/apply', [GroupPublicController::class, 'apply'])->where('code', '[A-Za-z0-9]{6,12}')->middleware('throttle:5,10,public-groups-apply');
@@ -339,6 +341,8 @@ Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(f
     Route::post('projects/{id}/progress', [GroupProjectController::class, 'progress'])->whereNumber('id');
     Route::post('projects/{id}/close', [GroupProjectController::class, 'close'])->whereNumber('id')->middleware('group_right:manage_projects');
     // Expenses (matumizi): an official asks, the treasurer or chair approves, the treasurer pays, someone else verifies.
+    // Receipts: the receipt of a verified payment (one's own, or any for whoever sees the finances).
+    Route::get('receipts/{id}', [GroupReceiptController::class, 'show'])->whereNumber('id');
     Route::get('expenses', [GroupExpenseController::class, 'index']);
     Route::post('expenses', [GroupExpenseController::class, 'store'])->middleware(['group_right:request_expenses', 'throttle:20,1']);
     Route::post('expenses/{id}/cancel', [GroupExpenseController::class, 'cancel'])->whereNumber('id');

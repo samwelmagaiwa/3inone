@@ -265,3 +265,14 @@ A project's approved spending never passes its budget (`over_budget`: raise the 
 Decision still owed by MEG: the treasurer's older direct "record an expense" (Payments > Out > Expense) still works for small cash
 spending without a request. Closing it (every expense needs an approved request, or a limit under which it is allowed) needs MEG's rule.
 Not built: supporting document / receipt photo on a request.
+
+## 9. Receipts and statements – added 2026-11-22
+
+Built: `GET /groups/receipts/{id}` (a member's own verified payment, or any for `view_finance`) returns the payment, the group's name and
+a signed verification link; `GET /api/public/groups/receipts/{token}` (no sign-in, throttled) says whether a receipt is genuine (HMAC over
+group, number, amount, kind, direction) and shows only group, number, kind, amount, date and "reversed" -- a browser gets a small page, an
+app gets JSON. On the phone (`group_documents.dart`): receipt PDF with a QR code of that link, member statement PDF (balances, everything
+owed incl. running loans, verified payments with balances), loan statement PDF with the repayment schedule; shared through the share
+sheet. Entry points: a verified line in the statement, "Receipt (PDF)" on a verified payment, the PDF button on the statement and on a loan.
+Not built: MEG's logo on receipts (no approved logo supplied), a stored copy of each receipt on the server, Swahili/English letters outside
+Latin-1 in the PDFs, a scanner screen (the QR opens the check page in any phone camera / browser).

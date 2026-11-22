@@ -7,6 +7,7 @@ import '../../../utils/server_message.dart';
 import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_loan_models.dart';
 import '../models/group_models.dart';
+import '../services/group_documents.dart';
 import '../services/groups_api.dart';
 import 'groups_text.dart';
 import 'payment_form.dart';
@@ -52,6 +53,17 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
       }
     } on Exception catch (e) {
       if (mounted) setState(() => _error = readableErrorMessage(e));
+    }
+  }
+
+  /// The loan's statement and repayment schedule as a PDF, to share.
+  Future<void> _share(final GroupLoan l) async {
+    final bool sw = _sw;
+    try {
+      final GroupMe me = await widget.api.me();
+      await GroupDocuments.share(await GroupDocuments.loanStatement(l, sw: sw, group: me.groupName ?? ''), '${l.reference}.pdf');
+    } on Exception catch (e) {
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
     }
   }
 
@@ -151,7 +163,14 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
     final GroupLoan? l = _loan;
     return Scaffold(
       backgroundColor: ThemeConstants.primaryBlue,
-      appBar: ThemeConstants.buildAppBar(l?.reference ?? (sw ? 'Mkopo' : 'Loan'), flat: true),
+      appBar: ThemeConstants.buildAppBar(
+        l?.reference ?? (sw ? 'Mkopo' : 'Loan'),
+        flat: true,
+        actions: <Widget>[
+          if (l != null && l.instalments.isNotEmpty && l.previewTotal == null)
+            IconButton(key: const Key('grp_loan_pdf'), tooltip: sw ? 'Taarifa ya mkopo (PDF)' : 'Loan statement (PDF)', icon: const Icon(Icons.picture_as_pdf_rounded), onPressed: () => _share(l)),
+        ],
+      ),
       body: SafeArea(
         child: l == null
             ? Center(child: _error == null ? const CircularProgressIndicator() : GroupEmpty(_error!))

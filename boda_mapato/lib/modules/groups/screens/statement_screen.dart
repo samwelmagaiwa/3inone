@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,6 +8,8 @@ import '../../../services/localization_service.dart';
 import '../../../utils/server_message.dart';
 import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_models.dart';
+import '../models/group_loan_models.dart';
+import '../services/group_documents.dart';
 import '../services/groups_api.dart';
 import 'group_dashboard_screen.dart';
 import 'groups_text.dart';
@@ -53,13 +57,38 @@ class _GroupStatementScreenState extends State<GroupStatementScreen> {
     }
   }
 
+  /// Makes the statement as a PDF (with the loans still owed, for one's own) and opens the share sheet.
+  Future<void> _share() async {
+    final bool sw = context.read<LocalizationService>().isSwahili;
+    final GroupStatementData? d = _data;
+    if (d == null) return;
+    try {
+      final GroupMe me = await widget.api.me();
+      List<GroupLoan> loans = const <GroupLoan>[];
+      if (widget.memberId == null) {
+        loans = (await widget.api.myLoans()).$1;
+      }
+      final Uint8List bytes = await GroupDocuments.statement(d, sw: sw, group: me.groupName ?? '', memberName: widget.memberName ?? me.member?.fullName ?? '', loans: loans);
+      await GroupDocuments.share(bytes, 'statement.pdf');
+    } on Exception catch (e) {
+      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
+    }
+  }
+
   @override
   Widget build(final BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     final GroupStatementData? d = _data;
     return Scaffold(
       backgroundColor: ThemeConstants.primaryBlue,
-      appBar: ThemeConstants.buildAppBar(widget.memberName ?? (sw ? 'Taarifa yangu ya fedha' : 'My statement'), flat: true),
+      appBar: ThemeConstants.buildAppBar(
+        widget.memberName ?? (sw ? 'Taarifa yangu ya fedha' : 'My statement'),
+        flat: true,
+        actions: <Widget>[
+          if (d != null)
+            IconButton(key: const Key('grp_stmt_pdf'), tooltip: sw ? 'Shiriki (PDF)' : 'Share (PDF)', icon: const Icon(Icons.picture_as_pdf_rounded), onPressed: _share),
+        ],
+      ),
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
@@ -104,7 +133,11 @@ class _GroupStatementScreenState extends State<GroupStatementScreen> {
                             children: <Widget>[
                               for (final GroupTransaction t in d.lines)
                                 Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-                                  GroupTransactionTile(t: t, sw: sw),
+                                  GroupTransactionTile(
+                                    t: t,
+                                    sw: sw,
+                                    onTap: t.receiptNumber == null ? null : () => GroupDocuments.shareReceipt(context, widget.api, t.id, sw: sw),
+                                  ),
                                   if (d.balanceAfter[t.id] != null)
                                     Padding(
                                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),

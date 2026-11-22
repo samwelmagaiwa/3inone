@@ -8,6 +8,7 @@ import '../../../services/localization_service.dart';
 import '../../../utils/server_message.dart';
 import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_models.dart';
+import '../services/group_documents.dart';
 import '../services/groups_api.dart';
 import 'group_dashboard_screen.dart';
 import 'groups_text.dart';
@@ -94,6 +95,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       context,
       title: '${categoryLabel(sw: sw, category: t.category)} · ${t.memberName ?? ''} · ${tsh(t.amount)}',
       actions: <GroupSheetAction>[
+        if (t.isVerified && t.receiptNumber != null) GroupSheetAction(icon: Icons.receipt_long_rounded, label: sw ? 'Risiti (PDF)' : 'Receipt (PDF)', value: 'receipt'),
         if (t.isPending && me.can('verify_payments') && !mine) ...<GroupSheetAction>[
           GroupSheetAction(icon: Icons.verified_rounded, label: sw ? 'Thibitisha' : 'Verify', value: 'verify', tone: GroupTone.positive),
           GroupSheetAction(icon: Icons.block_rounded, label: sw ? 'Kataa' : 'Turn down', value: 'reject', tone: GroupTone.danger),
@@ -105,6 +107,8 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     if (picked == null || !mounted) return;
     try {
       switch (picked) {
+        case 'receipt':
+          await GroupDocuments.shareReceipt(context, widget.api, t.id, sw: sw);
         case 'verify':
           final bool ok = await groupConfirm(
             context,

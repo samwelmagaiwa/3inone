@@ -7,6 +7,7 @@ import '../models/group_governance_models.dart';
 import '../models/group_loan_models.dart';
 import '../models/group_models.dart';
 import '../models/group_project_models.dart';
+import '../models/group_receipt_models.dart';
 import '../models/group_records_models.dart';
 
 /// The Groups (Vikundi) service's calls to the server. Screens take one of these so a test can hand them a fake; a failed call throws the
@@ -433,6 +434,11 @@ class GroupsApi {
         for (final dynamic e in (_data(await _api.get('$_base/audit${before == null ? '' : '?before=$before'}'))['entries'] as List? ?? const <dynamic>[]))
           Map<String, dynamic>.from(e as Map),
       ];
+
+  // ---------------------------------------------------------------- receipts
+
+  /// The receipt of a verified payment (one's own, or any for whoever sees the finances).
+  Future<GroupReceipt> receipt(final int id) async => GroupReceipt.fromJson(Map<String, dynamic>.from(_data(await _api.get('$_base/receipts/$id'))['receipt'] as Map));
 
   // ---------------------------------------------------------------- expenses (matumizi)
 

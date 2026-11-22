@@ -135,6 +135,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (final BuildContext c) => Padding(padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom), child: ExpenseForm(api: widget.api)),
     );
+    if (!mounted) return;
     if (sent ?? false) await _done(context.read<LocalizationService>().isSwahili ? 'Ombi limetumwa.' : 'Request sent.');
   }
 
