@@ -90,20 +90,28 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         if (m != null) ...<Widget>[
-          IntrinsicHeight(
-            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-              Expanded(child: _BalanceCard(cash: m.cash, monthIn: m.monthIn, monthOut: m.monthOut, pending: m.pendingCount, sw: sw, onTap: () => widget.onOpen('payments'))),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _RingTile(
-                  key: const Key('grp_overview_ring'),
-                  title: sw ? 'Michango iliyolipwa mwezi huu' : 'Contributions collected this month',
-                  rate: m.collectionRate,
-                  detail: '${tsh(m.collected)} / ${tsh(m.expected)}',
-                  onTap: () => widget.onOpen('contributions'),
-                ),
+          DecoratedBox(
+            key: const Key('grp_overview_joined'),
+            decoration: joinedCardDecoration(),
+            child: DecoratedBox(
+              decoration: joinedCardBorder(),
+              child: IntrinsicHeight(
+                child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+                  Expanded(child: _BalanceCard(joined: true, cash: m.cash, monthIn: m.monthIn, monthOut: m.monthOut, pending: m.pendingCount, sw: sw, onTap: () => widget.onOpen('payments'))),
+                  Container(width: 1, margin: const EdgeInsets.symmetric(vertical: 16), color: Colors.white.withValues(alpha: 0.14)),
+                  Expanded(
+                    child: _RingTile(
+                      key: const Key('grp_overview_ring'),
+                      joined: true,
+                      title: sw ? 'Michango iliyolipwa mwezi huu' : 'Contributions collected this month',
+                      rate: m.collectionRate,
+                      detail: '${tsh(m.collected)} / ${tsh(m.expected)}',
+                      onTap: () => widget.onOpen('contributions'),
+                    ),
+                  ),
+                ]),
               ),
-            ]),
+            ),
           ),
           const SizedBox(height: 10),
         ],
@@ -405,8 +413,10 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
 
 /// The transport dashboard's glass balance card.
 class _BalanceCard extends StatelessWidget {
-  const _BalanceCard({required this.cash, required this.monthIn, required this.monthOut, required this.pending, required this.sw, required this.onTap});
+  const _BalanceCard({required this.cash, required this.monthIn, required this.monthOut, required this.pending, required this.sw, required this.onTap, this.joined = false});
 
+  /// Part of one joined card: no frame of its own.
+  final bool joined;
   final double cash;
   final double monthIn;
   final double monthOut;
@@ -417,9 +427,9 @@ class _BalanceCard extends StatelessWidget {
   @override
   Widget build(final BuildContext context) => DecoratedBox(
         key: const Key('grp_overview_balance'),
-        decoration: joinedCardDecoration(),
+        decoration: joined ? const BoxDecoration() : joinedCardDecoration(),
         child: DecoratedBox(
-          decoration: joinedCardBorder(),
+          decoration: joined ? const BoxDecoration() : joinedCardBorder(),
           child: Material(
             type: MaterialType.transparency,
             child: InkWell(
@@ -472,7 +482,10 @@ class _BalanceCard extends StatelessWidget {
 
 /// The rental dashboard's ring tile: a rate as a ring with its figure.
 class _RingTile extends StatelessWidget {
-  const _RingTile({required this.title, required this.rate, required this.detail, required this.onTap, super.key});
+  const _RingTile({required this.title, required this.rate, required this.detail, required this.onTap, super.key, this.joined = false});
+
+  /// Part of one joined card: no frame of its own.
+  final bool joined;
 
   final String title;
   final double? rate;
@@ -490,11 +503,13 @@ class _RingTile extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            color: Colors.white.withValues(alpha: 0.04),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-          ),
+          decoration: joined
+              ? null
+              : BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  color: Colors.white.withValues(alpha: 0.04),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
             Row(children: <Widget>[
               Stack(alignment: Alignment.center, children: <Widget>[
