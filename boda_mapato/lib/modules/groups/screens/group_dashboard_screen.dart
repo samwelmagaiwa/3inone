@@ -104,7 +104,8 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
             GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen),
             const SizedBox(height: 22),
           ],
-          // Who I am in the group.
+          // Who I am in the group (an administrator with no member record has nothing to show).
+          if (m != null)
           GlowListCard(
             dividerKey: 'grp_me_div',
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
