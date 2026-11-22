@@ -154,6 +154,9 @@ void main() {
     await _pump(t, _me(<String>[], <String, int>{}));
 
     expect(find.byKey(const Key('grp_my_glance')), findsOneWidget);
+    expect(find.byKey(const Key('grp_my_account')), findsOneWidget);
+    expect(find.text('My account · MEG-0001'), findsOneWidget);
+    expect(find.text('TSH 300,000'), findsOneWidget, reason: 'savings and shares held for them');
     expect(find.byKey(const Key('grp_my_savings')), findsOneWidget);
     expect(find.byKey(const Key('grp_my_shares')), findsOneWidget);
     expect(find.byKey(const Key('grp_my_owed')), findsOneWidget);

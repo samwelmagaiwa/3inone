@@ -147,7 +147,7 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
           // The member's own figures at a glance: every member has this, whatever their office.
           if (m != null) ...<Widget>[
             const SizedBox(height: 12),
-            _MyGlance(me: me, sw: sw),
+            _MyGlance(me: me, sw: sw, onStatement: _statement),
           ],
           if (me.waiting.isNotEmpty) ...<Widget>[
             const SizedBox(height: 12),
@@ -485,17 +485,46 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
 
 /// A member's own money in four tiles, the same design as the group's: savings, shares, what is owed, what waits for verification.
 class _MyGlance extends StatelessWidget {
-  const _MyGlance({required this.me, required this.sw});
+  const _MyGlance({required this.me, required this.sw, required this.onStatement});
 
   final GroupMe me;
   final bool sw;
+  final VoidCallback onStatement;
 
   @override
   Widget build(final BuildContext context) {
     final double owed = me.owing.fold<double>(0, (final double a, final GroupObligation o) => a + o.remaining);
     final bool late = me.owing.any((final GroupObligation o) => o.state == 'overdue');
     final double shares = me.balances?['shares'] ?? 0;
+    final double savings = me.balances?['savings'] ?? 0;
+    final String? number = me.member?.memberNumber ?? me.member?.applicationRef;
     return Column(key: const Key('grp_my_glance'), crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+      // The member's account: what the group holds for them, with its number, opening the statement.
+      Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          key: const Key('grp_my_account'),
+          borderRadius: BorderRadius.circular(20),
+          onTap: onStatement,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: Colors.white.withValues(alpha: 0.03), border: Border.all(color: Colors.white.withValues(alpha: 0.06))),
+            child: Row(children: <Widget>[
+              Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: ThemeConstants.invAccent.withValues(alpha: 0.12), shape: BoxShape.circle), child: const Icon(Icons.account_balance_wallet_rounded, color: ThemeConstants.invAccent, size: 18)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: <Widget>[
+                  FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(tsh(savings + shares), key: const Key('grp_my_account_total'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900))),
+                  Text('${sw ? 'Akaunti yangu' : 'My account'}${number == null ? '' : ' · $number'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w500)),
+                ]),
+              ),
+              Text(sw ? 'Taarifa' : 'Statement', style: const TextStyle(color: ThemeConstants.invAccent, fontSize: 12, fontWeight: FontWeight.w700)),
+              const Icon(Icons.chevron_right, color: Colors.white38),
+            ]),
+          ),
+        ),
+      ),
+      const SizedBox(height: 10),
       Row(children: <Widget>[
         Expanded(child: GroupBento(key: const Key('grp_my_savings'), icon: Icons.savings_rounded, color: ThemeConstants.successGreen, value: GroupOverviewDashboardState.short(me.balances?['savings'] ?? 0), label: sw ? 'Akiba yangu' : 'My savings')),
         const SizedBox(width: 10),
