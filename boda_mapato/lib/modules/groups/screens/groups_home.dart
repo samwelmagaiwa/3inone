@@ -17,6 +17,7 @@ import 'group_more_screen.dart';
 import 'loans_screen.dart';
 import 'members_screen.dart';
 import 'payments_screen.dart';
+import 'projects_screen.dart';
 import 'welfare_screen.dart';
 
 /// A section of the Groups service: shown only to whoever may open it (the server decides the rights; this only follows them).
@@ -112,6 +113,13 @@ class _GroupsHomeState extends State<GroupsHome> {
             icon: Icons.volunteer_activism_rounded,
             label: ({required final bool sw}) => sw ? 'Msaada' : 'Welfare',
             build: (GroupMe m, Future<void> Function() reload, void Function(String) open) => WelfareScreen(me: m, api: _api, onChanged: reload),
+          ),
+        if (me.member != null || me.can('view_projects'))
+          _Section(
+            key: 'projects',
+            icon: Icons.business_center_rounded,
+            label: ({required final bool sw}) => sw ? 'Miradi' : 'Projects',
+            build: (GroupMe m, Future<void> Function() reload, void Function(String) open) => ProjectsScreen(me: m, api: _api, onChanged: reload),
           ),
         if (me.keepsAssets || me.can('manage_assets'))
           _Section(
@@ -302,7 +310,7 @@ class _GroupsFooter extends StatelessWidget {
 
   @override
   Widget build(final BuildContext context) {
-    const List<String> priority = <String>['home', 'payments', 'loans', 'contributions', 'members', 'community', 'assets', 'welfare', 'more'];
+    const List<String> priority = <String>['home', 'payments', 'loans', 'contributions', 'members', 'community', 'assets', 'welfare', 'projects', 'more'];
     final List<_Section> shown = (List<_Section>.of(sections)..sort((final _Section a, final _Section b) => priority.indexOf(a.key).compareTo(priority.indexOf(b.key))))
         .take(4)
         .toList();

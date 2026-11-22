@@ -242,3 +242,15 @@ Who may send bulk SMS? What asset details guests see? Founding members without r
 full double entry?
 
 Phase 1 needs only: fee, shares rule, roles, who approves members. Interest (Phase 3) must be answered before Phase 3.
+
+## 7. Projects (miradi) – added 2026-11-22
+
+The gap analysis against the MEG blueprint and the offices (Mwenyekiti wa Miradi "oversees all the group's loans and projects")
+found no projects module. Built: `group_projects`, `group_project_reviews`, `group_project_updates`; rights `view_projects`,
+`recommend_projects` (committee), `approve_projects` (chair and deputy), `manage_projects` (Projects Chairperson).
+Flow: any active member proposes → the committee recommends (yes/no with reason, never on its own proposal) → the chair
+approves (needs at least one "yes"; never their own) or turns down with a reason → the Projects Chairperson names a manager,
+logs progress (the manager may too) and closes it as completed or cancelled. Members see running and finished projects and
+their own proposals; officers see every proposal. The budget is a plan: money still moves only through the verified ledger.
+Still open: expense request → treasurer approval (spending against a project), loan arrears follow-up by the Projects
+Chairperson, loan penalties/grace/rescheduling (waiting for MEG's rules).

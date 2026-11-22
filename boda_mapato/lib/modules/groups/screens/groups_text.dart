@@ -500,6 +500,24 @@ Color benefitStateColor(final String state) => switch (state) {
       _ => Colors.white54,
     };
 
+/// Where a project stands.
+String projectStateLabel({required final bool sw, required final String state}) => switch (state) {
+      'proposed' => sw ? 'Pendekezo' : 'Proposed',
+      'active' => sw ? 'Unaendelea' : 'Running',
+      'completed' => sw ? 'Umekamilika' : 'Completed',
+      'rejected' => sw ? 'Umekataliwa' : 'Turned down',
+      'cancelled' => sw ? 'Umefutwa' : 'Cancelled',
+      _ => state,
+    };
+
+Color projectStateColor(final String state) => switch (state) {
+      'completed' => ThemeConstants.successGreen,
+      'active' => ThemeConstants.invAccent,
+      'proposed' => ThemeConstants.warningAmber,
+      'rejected' => ThemeConstants.errorRed,
+      _ => Colors.white54,
+    };
+
 /// Who the help is for: the member themself or one of their people.
 const List<String> benefitRelationships = <String>['self', 'parent', 'spouse', 'child', 'parent_in_law', 'other'];
 

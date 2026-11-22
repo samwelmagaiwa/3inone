@@ -85,6 +85,7 @@ use App\Http\Controllers\API\Groups\GroupPublicController;
 use App\Http\Controllers\API\Groups\GroupRecordsController;
 use App\Http\Controllers\API\Groups\GroupSettingsController;
 use App\Http\Controllers\API\Groups\GroupTransactionController;
+use App\Http\Controllers\API\Groups\GroupProjectController;
 use App\Http\Controllers\API\Groups\GroupWelfareController;
 
 
@@ -326,6 +327,16 @@ Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(f
     Route::get('benefits', [GroupWelfareController::class, 'index'])->middleware('group_right:view_benefits');
     Route::post('benefits/{id}/decide', [GroupWelfareController::class, 'decide'])->whereNumber('id')->middleware('group_right:approve_benefits');
     Route::post('benefits/{id}/pay', [GroupWelfareController::class, 'pay'])->whereNumber('id')->middleware('group_right:record_payouts');
+    // Projects (miradi): members see the running ones; the committee reviews, the chair decides, the Projects Chairperson runs them.
+    Route::get('projects', [GroupProjectController::class, 'index']);
+    Route::get('projects/{id}', [GroupProjectController::class, 'show'])->whereNumber('id');
+    Route::post('projects', [GroupProjectController::class, 'propose'])->middleware('throttle:10,1');
+    Route::post('projects/{id}/withdraw', [GroupProjectController::class, 'withdraw'])->whereNumber('id');
+    Route::post('projects/{id}/review', [GroupProjectController::class, 'review'])->whereNumber('id')->middleware('group_right:recommend_projects');
+    Route::post('projects/{id}/decide', [GroupProjectController::class, 'decide'])->whereNumber('id')->middleware('group_right:approve_projects');
+    Route::put('projects/{id}', [GroupProjectController::class, 'update'])->whereNumber('id')->middleware('group_right:manage_projects');
+    Route::post('projects/{id}/progress', [GroupProjectController::class, 'progress'])->whereNumber('id');
+    Route::post('projects/{id}/close', [GroupProjectController::class, 'close'])->whereNumber('id')->middleware('group_right:manage_projects');
 
     // Assets and hiring them out (phase 4). The keeper of an asset handles its hires; the controllers check that.
     Route::get('assets', [GroupAssetController::class, 'index']);

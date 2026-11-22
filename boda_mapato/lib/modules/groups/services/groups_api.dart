@@ -5,6 +5,7 @@ import '../models/group_asset_models.dart';
 import '../models/group_governance_models.dart';
 import '../models/group_loan_models.dart';
 import '../models/group_models.dart';
+import '../models/group_project_models.dart';
 import '../models/group_records_models.dart';
 
 /// The Groups (Vikundi) service's calls to the server. Screens take one of these so a test can hand them a fake; a failed call throws the
@@ -431,4 +432,33 @@ class GroupsApi {
         for (final dynamic e in (_data(await _api.get('$_base/audit${before == null ? '' : '?before=$before'}'))['entries'] as List? ?? const <dynamic>[]))
           Map<String, dynamic>.from(e as Map),
       ];
+
+  // ---------------------------------------------------------------- projects (miradi)
+
+  Future<List<GroupProject>> projects({final String? status}) async => <GroupProject>[
+        for (final dynamic p in (_data(await _api.get('$_base/projects${_query(<String, String?>{'status': status})}'))['projects'] as List? ?? const <dynamic>[]))
+          GroupProject.fromJson(Map<String, dynamic>.from(p as Map)),
+      ];
+
+  GroupProject _project(final Map<String, dynamic> res) => GroupProject.fromJson(Map<String, dynamic>.from(_data(res)['project'] as Map));
+
+  Future<GroupProject> project(final int id) async => _project(await _api.get('$_base/projects/$id'));
+
+  Future<GroupProject> proposeProject(final Map<String, dynamic> body) async => _project(await _api.post('$_base/projects', body));
+
+  Future<void> withdrawProject(final int id) async => _api.post('$_base/projects/$id/withdraw', <String, dynamic>{});
+
+  Future<GroupProject> reviewProject(final int id, {required final bool supports, final String? note}) async =>
+      _project(await _api.post('$_base/projects/$id/review', <String, dynamic>{'supports': supports, if (note != null) 'note': note}));
+
+  Future<GroupProject> decideProject(final int id, {required final bool approve, final String? note}) async =>
+      _project(await _api.post('$_base/projects/$id/decide', <String, dynamic>{'approve': approve, if (note != null) 'note': note}));
+
+  Future<GroupProject> updateProject(final int id, final Map<String, dynamic> body) async => _project(await _api.put('$_base/projects/$id', body));
+
+  Future<GroupProject> logProjectProgress(final int id, {required final int progress, required final String note}) async =>
+      _project(await _api.post('$_base/projects/$id/progress', <String, dynamic>{'progress': progress, 'note': note}));
+
+  Future<GroupProject> closeProject(final int id, {required final String outcome, required final String note}) async =>
+      _project(await _api.post('$_base/projects/$id/close', <String, dynamic>{'outcome': outcome, 'note': note}));
 }
