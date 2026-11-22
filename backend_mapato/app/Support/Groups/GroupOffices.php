@@ -62,7 +62,8 @@ final class GroupOffices
      *   prepare_dividends prepare a dividend run (its period, formula and the approved profit), never post it
      *   approve_dividends approve and post a dividend run someone else prepared
      *   call_meetings     call (and cancel) a meeting
-     *   record_meetings   attendance and minutes of a meeting
+     *   record_meetings   attendance, minutes, resolutions and actions of a meeting; follow the actions up
+     *   approve_minutes   approve the secretary's minutes (never one's own), or reopen approved ones
      *   post_announcements  notices to members
      *   send_texts        a text to many members at once (uses the group's SMS)
      *   manage_offices    give or take an office
@@ -84,12 +85,12 @@ final class GroupOffices
         'manage_assets', 'decide_hire_charges',
         'prepare_dividends', 'approve_dividends', 'call_meetings', 'record_meetings', 'post_announcements', 'send_texts',
         'view_projects', 'manage_projects', 'recommend_projects', 'approve_projects',
-        'request_expenses', 'view_expenses', 'approve_expenses',
+        'request_expenses', 'view_expenses', 'approve_expenses', 'approve_minutes',
     ];
 
     private const BY_OFFICE = [
-        'mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits', 'manage_assets', 'decide_hire_charges', 'approve_dividends', 'call_meetings', 'record_meetings', 'post_announcements', 'send_texts', 'view_projects', 'approve_projects', 'request_expenses', 'view_expenses', 'approve_expenses'],
-        'makamu_mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits', 'manage_assets', 'decide_hire_charges', 'approve_dividends', 'call_meetings', 'record_meetings', 'post_announcements', 'send_texts', 'view_projects', 'approve_projects', 'request_expenses', 'view_expenses', 'approve_expenses'],
+        'mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits', 'manage_assets', 'decide_hire_charges', 'approve_dividends', 'call_meetings', 'record_meetings', 'post_announcements', 'send_texts', 'view_projects', 'approve_projects', 'request_expenses', 'view_expenses', 'approve_expenses', 'approve_minutes'],
+        'makamu_mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits', 'manage_assets', 'decide_hire_charges', 'approve_dividends', 'call_meetings', 'record_meetings', 'post_announcements', 'send_texts', 'view_projects', 'approve_projects', 'request_expenses', 'view_expenses', 'approve_expenses', 'approve_minutes'],
         'mweka_hazina' => ['view_members', 'view_sensitive', 'view_finance', 'record_payments', 'verify_payments', 'reverse_payments', 'view_audit', 'manage_contributions', 'record_payouts', 'view_loans', 'view_benefits', 'prepare_dividends', 'view_projects', 'request_expenses', 'view_expenses', 'approve_expenses'],
         'mweka_hazina_msaidizi' => ['view_members', 'view_finance', 'record_payments', 'verify_payments', 'view_loans', 'view_benefits', 'view_projects', 'request_expenses', 'view_expenses', 'approve_expenses'],
         'katibu' => ['view_members', 'manage_members', 'view_sensitive', 'record_payments', 'view_audit', 'view_benefits', 'manage_assets', 'record_meetings', 'post_announcements', 'send_texts', 'view_projects', 'request_expenses'],

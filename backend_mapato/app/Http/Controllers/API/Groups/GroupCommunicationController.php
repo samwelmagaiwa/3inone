@@ -25,6 +25,12 @@ class GroupCommunicationController extends Controller
         return response()->json(['success' => false, 'code' => $code, 'message' => $message], $status);
     }
 
+    /** Does this person hold an office (or run the group)? Officers see draft minutes; members only the approved ones. */
+    public static function officer(Request $request): bool
+    {
+        return self::isOfficer($request);
+    }
+
     private static function isOfficer(Request $request): bool
     {
         if (GroupAccess::isOwner($request->user())) {
@@ -40,6 +46,19 @@ class GroupCommunicationController extends Controller
     /** @return array<string, mixed> */
     private static function meeting(object $m, ?int $myId): array
     {
+        return self::meetingFor($m, $myId, true);
+    }
+
+    /**
+     * A meeting as one person may see it: the minutes, resolutions and actions are a draft until the chair approves them, so only officers see
+     * them before that.
+     *
+     * @return array<string, mixed>
+     */
+    public static function meetingFor(object $m, ?int $myId, bool $officer): array
+    {
+        $approved = ($m->minutes_approved_at ?? null) !== null;
+        $see = $officer || $approved;
         $present = DB::table('group_meeting_attendance')->where('meeting_id', $m->id)->where('present', true)->pluck('member_id')->map(fn ($id) => (int) $id)->all();
 
         return [
@@ -49,7 +68,11 @@ class GroupCommunicationController extends Controller
             'starts_at' => (string) $m->starts_at,
             'venue' => $m->venue,
             'status' => $m->status,
-            'minutes' => $m->minutes,
+            'minutes' => $see ? $m->minutes : null,
+            'minutes_status' => $m->status !== 'held' ? 'none' : ($approved ? 'approved' : 'draft'),
+            'minutes_approved_by_name' => $m->approved_by_name ?? null,
+            'minutes_approved_at' => $approved ? (string) $m->minutes_approved_at : null,
+            'items' => $see ? GroupMeetingRecordController::itemsOf((int) $m->id) : [],
             'cancel_reason' => $m->cancel_reason,
             'called_by_name' => $m->called_by_name ?? null,
             'present_count' => count($present),
@@ -61,9 +84,11 @@ class GroupCommunicationController extends Controller
     public function meetings(Request $request): JsonResponse
     {
         $me = GroupAccess::member($request->user());
-        $rows = DB::table('group_meetings as g')->leftJoin('users as u', 'u.id', '=', 'g.called_by')->orderByDesc('g.starts_at')->limit(100)->get(['g.*', 'u.name as called_by_name']);
+        $rows = DB::table('group_meetings as g')->leftJoin('users as u', 'u.id', '=', 'g.called_by')->leftJoin('users as v', 'v.id', '=', 'g.minutes_approved_by')
+            ->orderByDesc('g.starts_at')->limit(100)->get(['g.*', 'u.name as called_by_name', 'v.name as approved_by_name']);
+        $officer = self::isOfficer($request);
 
-        return response()->json(['success' => true, 'data' => ['meetings' => $rows->map(fn ($m) => self::meeting($m, $me === null ? null : (int) $me['id']))->values()]]);
+        return response()->json(['success' => true, 'data' => ['meetings' => $rows->map(fn ($m) => self::meetingFor($m, $me === null ? null : (int) $me['id'], $officer))->values()]]);
     }
 
     /** The chair calls a meeting; members can be told by text (it uses the group's SMS). */
@@ -115,6 +140,9 @@ class GroupCommunicationController extends Controller
         }
         if (\Illuminate\Support\Carbon::parse((string) $meeting->starts_at)->isFuture()) {
             return $this->fail('not_yet', 'Kikao bado hakijafanyika. / The meeting has not happened yet.', 409);
+        }
+        if ($meeting->minutes_approved_at !== null) {
+            return $this->fail('minutes_approved', 'Muhtasari umeidhinishwa; Mwenyekiti afungue upya kwanza. / The minutes are approved: the chair must reopen them first.', 409);
         }
         $valid = DB::table('group_members')->whereIn('id', $data['present_ids'])->pluck('id')->map(fn ($v) => (int) $v)->all();
         DB::transaction(function () use ($id, $valid, $data, $request) {

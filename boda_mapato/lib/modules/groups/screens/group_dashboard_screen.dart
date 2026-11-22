@@ -12,6 +12,7 @@ import 'community_screen.dart' show dateTimeLabel;
 import 'dividends_screen.dart';
 import 'group_overview_dashboard.dart';
 import 'groups_text.dart';
+import 'meeting_record_screen.dart';
 import 'my_loans_screen.dart';
 import 'payment_form.dart';
 import 'promise_form.dart';
@@ -339,6 +340,30 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                     label: sw ? 'Maombi ya msaada' : 'Welfare requests',
                     count: me.waiting['benefits_to_decide']!,
                     onTap: () => widget.onOpen('welfare'),
+                  ),
+                if ((me.waiting['minutes_to_approve'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_minutes'),
+                    icon: Icons.fact_check_rounded,
+                    label: sw ? 'Muhtasari wa kuidhinisha' : 'Minutes to approve',
+                    count: me.waiting['minutes_to_approve']!,
+                    onTap: () => widget.onOpen('community'),
+                  ),
+                if ((me.waiting['actions_overdue'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_actions_overdue'),
+                    icon: Icons.assignment_late_rounded,
+                    label: sw ? 'Kazi za vikao zilizochelewa' : 'Meeting actions overdue',
+                    count: me.waiting['actions_overdue']!,
+                    onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MeetingActionsScreen(api: widget.api, all: true))),
+                  ),
+                if ((me.waiting['my_actions'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_my_actions'),
+                    icon: Icons.assignment_turned_in_rounded,
+                    label: sw ? 'Kazi zangu za vikao' : 'My meeting actions',
+                    count: me.waiting['my_actions']!,
+                    onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MeetingActionsScreen(api: widget.api, all: false))),
                   ),
                 if ((me.waiting['expenses_to_approve'] ?? 0) > 0)
                   _WaitLine(

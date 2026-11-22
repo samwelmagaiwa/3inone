@@ -327,6 +327,22 @@ class GroupsApi {
 
   Future<void> cancelMeeting(final int id, final String reason) async => _api.post('$_base/meetings/$id/cancel', <String, dynamic>{'reason': reason});
 
+  Future<void> addMeetingItem(final int id, final Map<String, dynamic> body) async => _api.post('$_base/meetings/$id/items', body);
+
+  Future<void> removeMeetingItem(final int id, final int itemId) async => _api.delete('$_base/meetings/$id/items/$itemId');
+
+  Future<void> completeMeetingItem(final int id, final int itemId) async => _api.post('$_base/meetings/$id/items/$itemId/done', <String, dynamic>{});
+
+  Future<void> approveMinutes(final int id) async => _api.post('$_base/meetings/$id/approve-minutes', <String, dynamic>{});
+
+  Future<void> reopenMinutes(final int id, final String reason) async => _api.post('$_base/meetings/$id/reopen-minutes', <String, dynamic>{'reason': reason});
+
+  /// Open actions of approved minutes: one's own, or everyone's (for whoever records meetings).
+  Future<List<GroupMeetingItem>> meetingActions({final bool all = false}) async => <GroupMeetingItem>[
+        for (final dynamic a in (_data(await _api.get('$_base/meeting-actions${all ? '?scope=all' : ''}'))['actions'] as List? ?? const <dynamic>[]))
+          GroupMeetingItem.fromJson(Map<String, dynamic>.from(a as Map)),
+      ];
+
   Future<void> recordMeeting(final int id, {required final List<int> presentIds, final String? minutes}) async =>
       _api.post('$_base/meetings/$id/record', <String, dynamic>{'present_ids': presentIds, if (minutes != null) 'minutes': minutes});
 

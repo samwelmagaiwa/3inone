@@ -86,6 +86,7 @@ use App\Http\Controllers\API\Groups\GroupRecordsController;
 use App\Http\Controllers\API\Groups\GroupSettingsController;
 use App\Http\Controllers\API\Groups\GroupTransactionController;
 use App\Http\Controllers\API\Groups\GroupExpenseController;
+use App\Http\Controllers\API\Groups\GroupMeetingRecordController;
 use App\Http\Controllers\API\Groups\GroupProjectController;
 use App\Http\Controllers\API\Groups\GroupReceiptController;
 use App\Http\Controllers\API\Groups\GroupWelfareController;
@@ -379,6 +380,13 @@ Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(f
     Route::post('meetings', [GroupCommunicationController::class, 'callMeeting'])->middleware('group_right:call_meetings');
     Route::post('meetings/{id}/cancel', [GroupCommunicationController::class, 'cancelMeeting'])->whereNumber('id')->middleware('group_right:call_meetings');
     Route::post('meetings/{id}/record', [GroupCommunicationController::class, 'recordMeeting'])->whereNumber('id')->middleware('group_right:record_meetings');
+    // The record of a meeting: resolutions and actions, the chair's approval of the minutes, and the follow-up of the actions.
+    Route::post('meetings/{id}/items', [GroupMeetingRecordController::class, 'addItem'])->whereNumber('id')->middleware('group_right:record_meetings');
+    Route::delete('meetings/{id}/items/{itemId}', [GroupMeetingRecordController::class, 'removeItem'])->whereNumber('id')->whereNumber('itemId')->middleware('group_right:record_meetings');
+    Route::post('meetings/{id}/items/{itemId}/done', [GroupMeetingRecordController::class, 'completeItem'])->whereNumber('id')->whereNumber('itemId');
+    Route::post('meetings/{id}/approve-minutes', [GroupMeetingRecordController::class, 'approveMinutes'])->whereNumber('id')->middleware('group_right:approve_minutes');
+    Route::post('meetings/{id}/reopen-minutes', [GroupMeetingRecordController::class, 'reopenMinutes'])->whereNumber('id')->middleware('group_right:approve_minutes');
+    Route::get('meeting-actions', [GroupMeetingRecordController::class, 'actions']);
     Route::get('announcements', [GroupCommunicationController::class, 'announcements']);
     Route::post('announcements', [GroupCommunicationController::class, 'postAnnouncement'])->middleware('group_right:post_announcements');
     Route::post('announcements/{id}/remove', [GroupCommunicationController::class, 'removeAnnouncement'])->whereNumber('id')->middleware('group_right:post_announcements');

@@ -103,6 +103,41 @@ class GroupMyDividend {
   final double? rate;
 }
 
+/// A resolution or an action of a meeting's minutes.
+class GroupMeetingItem {
+  const GroupMeetingItem({required this.id, required this.meetingId, required this.kind, required this.text, required this.status, this.meetingTitle, this.assigneeId, this.assigneeName, this.dueDate, this.overdue = false});
+
+  factory GroupMeetingItem.fromJson(final Map<String, dynamic> j) => GroupMeetingItem(
+        id: _int(j['id']) ?? 0,
+        meetingId: _int(j['meeting_id']) ?? 0,
+        meetingTitle: _str(j['meeting_title']),
+        kind: '${j['kind'] ?? 'resolution'}',
+        text: '${j['text'] ?? ''}',
+        assigneeId: _int(j['assignee_id']),
+        assigneeName: _str(j['assignee_name']),
+        dueDate: _str(j['due_date']),
+        status: '${j['status'] ?? 'open'}',
+        overdue: j['overdue'] == true,
+      );
+
+  final int id;
+  final int meetingId;
+  final String? meetingTitle;
+
+  /// resolution | action
+  final String kind;
+  final String text;
+  final int? assigneeId;
+  final String? assigneeName;
+  final String? dueDate;
+
+  /// open | done
+  final String status;
+  final bool overdue;
+
+  bool get done => status == 'done';
+}
+
 class GroupMeeting {
   const GroupMeeting({
     required this.id,
@@ -117,6 +152,9 @@ class GroupMeeting {
     this.presentCount = 0,
     this.presentIds = const <int>[],
     this.iWasThere,
+    this.minutesStatus = 'none',
+    this.minutesApprovedByName,
+    this.items = const <GroupMeetingItem>[],
   });
 
   factory GroupMeeting.fromJson(final Map<String, dynamic> j) => GroupMeeting(
@@ -132,6 +170,9 @@ class GroupMeeting {
         presentCount: _int(j['present_count']) ?? 0,
         presentIds: <int>[for (final dynamic i in (j['present_ids'] as List? ?? const <dynamic>[])) _int(i) ?? 0],
         iWasThere: j['i_was_there'] is bool ? j['i_was_there'] as bool : null,
+        minutesStatus: '${j['minutes_status'] ?? 'none'}',
+        minutesApprovedByName: _str(j['minutes_approved_by_name']),
+        items: <GroupMeetingItem>[for (final dynamic i in (j['items'] as List? ?? const <dynamic>[])) GroupMeetingItem.fromJson(Map<String, dynamic>.from(i as Map))],
       );
 
   final int id;
@@ -148,6 +189,11 @@ class GroupMeeting {
   final int presentCount;
   final List<int> presentIds;
   final bool? iWasThere;
+
+  /// none (not held) | draft (the chair has not approved it) | approved
+  final String minutesStatus;
+  final String? minutesApprovedByName;
+  final List<GroupMeetingItem> items;
 
   DateTime? get when => DateTime.tryParse(startsAt);
 }

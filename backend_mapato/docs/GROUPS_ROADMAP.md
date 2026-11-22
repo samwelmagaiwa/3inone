@@ -276,3 +276,12 @@ owed incl. running loans, verified payments with balances), loan statement PDF w
 sheet. Entry points: a verified line in the statement, "Receipt (PDF)" on a verified payment, the PDF button on the statement and on a loan.
 Not built: MEG's logo on receipts (no approved logo supplied), a stored copy of each receipt on the server, Swahili/English letters outside
 Latin-1 in the PDFs, a scanner screen (the QR opens the check page in any phone camera / browser).
+
+## 10. Meeting record – added 2026-11-22
+
+Built on the existing meetings (title, agenda, when, venue, attendance, minutes): resolutions and actions (who must do what, by when) in
+`group_meeting_items`; the chair's approval of the secretary's minutes (`approve_minutes`: Mwenyekiti and Makamu; never ones they wrote;
+reopening needs a reason). Until approved the minutes, resolutions and actions are a DRAFT only officers see; once approved members see
+them, nothing is edited without the chair reopening, and an action is ticked off by its owner or by whoever records meetings.
+Follow-up: `GET /groups/meeting-actions` (own, or all for `record_meetings`); Home shows "Minutes to approve", "My meeting actions" and
+"Meeting actions overdue". Not built: meeting attachments (files), reminders before a meeting, absent-with-apology in attendance.

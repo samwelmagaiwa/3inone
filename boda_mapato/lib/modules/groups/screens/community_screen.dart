@@ -9,6 +9,7 @@ import '../models/group_governance_models.dart';
 import '../models/group_models.dart';
 import '../services/groups_api.dart';
 import 'groups_text.dart';
+import 'meeting_record_screen.dart';
 import 'widgets/groups_ui.dart';
 
 String meetingStatusLabel({required final bool sw, required final String status}) => switch (status) {
@@ -349,6 +350,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
           ]),
           if (_m.agenda != null) GlowCard(title: sw ? 'Ajenda' : 'Agenda', children: <Widget>[Text(_m.agenda!, style: const TextStyle(color: Colors.white))]),
           if (_m.minutes != null) GlowCard(title: sw ? 'Muhtasari wa kikao' : 'Minutes', children: <Widget>[Text(_m.minutes!, key: const Key('grp_minutes'), style: const TextStyle(color: Colors.white))]),
+          MeetingRecordSection(api: widget.api, me: widget.me, meeting: _m, onChanged: _reload),
           const SizedBox(height: 12),
           if (widget.me.can('record_meetings') && _m.status != 'cancelled' && started)
             FilledButton.icon(

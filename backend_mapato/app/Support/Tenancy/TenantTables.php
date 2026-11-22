@@ -123,6 +123,7 @@ final class TenantTables
         'group_loan_schedule',
         'group_loans',
         'group_meeting_attendance',
+        'group_meeting_items',
         'group_meetings',
         'group_member_documents',
         'group_member_events',

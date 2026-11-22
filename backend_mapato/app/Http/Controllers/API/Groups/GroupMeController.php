@@ -71,6 +71,23 @@ class GroupMeController extends Controller
         if (in_array('approve_dividends', $rights, true)) {
             $waiting['dividends_to_approve'] = DB::table('group_dividend_runs')->where('status', 'draft')->count();
         }
+        if (in_array('approve_minutes', $rights, true)) {
+            $waiting['minutes_to_approve'] = DB::table('group_meetings')->where('status', 'held')->whereNull('minutes_approved_at')->count();
+        }
+        if (in_array('record_meetings', $rights, true)) {
+            $overdue = DB::table('group_meeting_items as i')->join('group_meetings as g', 'g.id', '=', 'i.meeting_id')->where('i.kind', 'action')->where('i.status', 'open')
+                ->whereNotNull('g.minutes_approved_at')->whereNotNull('i.due_date')->where('i.due_date', '<', now()->toDateString())->count();
+            if ($overdue > 0) {
+                $waiting['actions_overdue'] = $overdue;
+            }
+        }
+        if (GroupAccess::member($user) !== null) {
+            $mine = DB::table('group_meeting_items as i')->join('group_meetings as g', 'g.id', '=', 'i.meeting_id')->where('i.kind', 'action')->where('i.status', 'open')
+                ->whereNotNull('g.minutes_approved_at')->where('i.assignee_member_id', (int) GroupAccess::member($user)['id'])->count();
+            if ($mine > 0) {
+                $waiting['my_actions'] = $mine;
+            }
+        }
         if (in_array('record_meetings', $rights, true)) {
             $waiting['meetings_to_record'] = DB::table('group_meetings')->where('status', 'scheduled')->where('starts_at', '<', now())->count();
         }
