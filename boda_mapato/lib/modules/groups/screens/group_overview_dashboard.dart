@@ -90,14 +90,20 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         if (m != null) ...<Widget>[
-          _BalanceCard(cash: m.cash, monthIn: m.monthIn, monthOut: m.monthOut, pending: m.pendingCount, sw: sw, onTap: () => widget.onOpen('payments')),
-          const SizedBox(height: 12),
-          _RingTile(
-            key: const Key('grp_overview_ring'),
-            title: sw ? 'Michango iliyolipwa mwezi huu' : 'Contributions collected this month',
-            rate: m.collectionRate,
-            detail: '${tsh(m.collected)} / ${tsh(m.expected)}',
-            onTap: () => widget.onOpen('contributions'),
+          IntrinsicHeight(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+              Expanded(child: _BalanceCard(cash: m.cash, monthIn: m.monthIn, monthOut: m.monthOut, pending: m.pendingCount, sw: sw, onTap: () => widget.onOpen('payments'))),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _RingTile(
+                  key: const Key('grp_overview_ring'),
+                  title: sw ? 'Michango iliyolipwa mwezi huu' : 'Contributions collected this month',
+                  rate: m.collectionRate,
+                  detail: '${tsh(m.collected)} / ${tsh(m.expected)}',
+                  onTap: () => widget.onOpen('contributions'),
+                ),
+              ),
+            ]),
           ),
           const SizedBox(height: 10),
         ],
@@ -420,7 +426,7 @@ class _BalanceCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               onTap: onTap,
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
                   Row(children: <Widget>[
                     Container(
@@ -441,7 +447,7 @@ class _BalanceCard extends StatelessWidget {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
-                    child: Text(tsh(cash), key: const Key('grp_overview_cash'), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
+                    child: Text(tsh(cash), key: const Key('grp_overview_cash'), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
                   ),
                   Text(sw ? 'Fedha kwenye kumbukumbu' : 'Cash on record', style: const TextStyle(color: Colors.white60)),
                   const SizedBox(height: 10),
@@ -449,7 +455,9 @@ class _BalanceCard extends StatelessWidget {
                     const Icon(Icons.south_west_rounded, color: ThemeConstants.successGreen, size: 16),
                     const SizedBox(width: 4),
                     Flexible(child: Text('${sw ? 'Ndani' : 'In'} ${tsh(monthIn)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
-                    const SizedBox(width: 16),
+                  ]),
+                  const SizedBox(height: 4),
+                  Row(children: <Widget>[
                     const Icon(Icons.north_east_rounded, color: ThemeConstants.errorText, size: 16),
                     const SizedBox(width: 4),
                     Flexible(child: Text('${sw ? 'Nje' : 'Out'} ${tsh(monthOut)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
@@ -481,29 +489,35 @@ class _RingTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
             color: Colors.white.withValues(alpha: 0.04),
             border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
-          child: Row(children: <Widget>[
-            Stack(alignment: Alignment.center, children: <Widget>[
-              SizedBox(
-                width: 56,
-                height: 56,
-                child: CircularProgressIndicator(value: r, strokeWidth: 6, backgroundColor: Colors.white.withValues(alpha: 0.06), valueColor: AlwaysStoppedAnimation<Color>(c), strokeCap: StrokeCap.round),
-              ),
-              const Icon(Icons.savings_rounded, color: Colors.white, size: 20),
-            ]),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-                Text(title, style: const TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.w600)),
-                Text(rate == null ? '—' : '${(r * 100).toStringAsFixed(0)}%', key: const Key('grp_overview_rate'), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
-                Text(detail, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            Row(children: <Widget>[
+              Stack(alignment: Alignment.center, children: <Widget>[
+                SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: CircularProgressIndicator(value: r, strokeWidth: 5, backgroundColor: Colors.white.withValues(alpha: 0.06), valueColor: AlwaysStoppedAnimation<Color>(c), strokeCap: StrokeCap.round),
+                ),
+                const Icon(Icons.savings_rounded, color: Colors.white, size: 18),
               ]),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(rate == null ? '—' : '${(r * 100).toStringAsFixed(0)}%', key: const Key('grp_overview_rate'), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            Text(title, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.w600)),
+            const Spacer(),
+            FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(detail, style: const TextStyle(color: Colors.white54, fontSize: 12))),
           ]),
         ),
       ),
