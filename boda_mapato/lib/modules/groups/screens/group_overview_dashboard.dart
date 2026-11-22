@@ -107,29 +107,22 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
             },
           ),
           const SizedBox(height: 10),
-          // 3. the headline: cash and the month's collection, one joined card
-          DecoratedBox(
+          // 3. the headline: cash and the month's collection, two tiles in one row
+          IntrinsicHeight(
             key: const Key('grp_overview_joined'),
-            decoration: joinedCardDecoration(),
-            child: DecoratedBox(
-              decoration: joinedCardBorder(),
-              child: IntrinsicHeight(
-                child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-                  Expanded(child: _BalanceCard(joined: true, cash: m.cash, monthIn: m.monthIn, monthOut: m.monthOut, pending: m.pendingCount, sw: sw, onTap: () => widget.onOpen('payments'))),
-                  Container(width: 1, margin: const EdgeInsets.symmetric(vertical: 16), color: Colors.white.withValues(alpha: 0.14)),
-                  Expanded(
-                    child: _RingTile(
-                      key: const Key('grp_overview_ring'),
-                      joined: true,
-                      title: sw ? 'Michango iliyolipwa mwezi huu' : 'Contributions collected this month',
-                      rate: m.collectionRate,
-                      detail: '${tsh(m.collected)} / ${tsh(m.expected)}',
-                      onTap: () => widget.onOpen('contributions'),
-                    ),
-                  ),
-                ]),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+              Expanded(child: _BalanceCard(cash: m.cash, monthIn: m.monthIn, monthOut: m.monthOut, pending: m.pendingCount, sw: sw, onTap: () => widget.onOpen('payments'))),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _RingTile(
+                  key: const Key('grp_overview_ring'),
+                  title: sw ? 'Michango iliyolipwa mwezi huu' : 'Contributions collected this month',
+                  rate: m.collectionRate,
+                  detail: '${tsh(m.collected)} / ${tsh(m.expected)}',
+                  onTap: () => widget.onOpen('contributions'),
+                ),
               ),
-            ),
+            ]),
           ),
           const SizedBox(height: 10),
         ] else
@@ -433,12 +426,20 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
   }
 }
 
-/// The transport dashboard's glass balance card.
-class _BalanceCard extends StatelessWidget {
-  const _BalanceCard({required this.cash, required this.monthIn, required this.monthOut, required this.pending, required this.sw, required this.onTap, this.joined = false});
+/// The frame every tile on this screen shares.
+BoxDecoration _tileFrame() => BoxDecoration(
+      borderRadius: BorderRadius.circular(20),
+      color: Colors.white.withValues(alpha: 0.03),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+    );
 
-  /// Part of one joined card: no frame of its own.
-  final bool joined;
+Widget _tileIcon(final IconData icon, final Color color) =>
+    Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle), child: Icon(icon, color: color, size: 18));
+
+/// Cash on record, with what came in and went out this month.
+class _BalanceCard extends StatelessWidget {
+  const _BalanceCard({required this.cash, required this.monthIn, required this.monthOut, required this.pending, required this.sw, required this.onTap});
+
   final double cash;
   final double monthIn;
   final double monthOut;
@@ -447,72 +448,62 @@ class _BalanceCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(final BuildContext context) => DecoratedBox(
+  Widget build(final BuildContext context) => Material(
         key: const Key('grp_overview_balance'),
-        decoration: joined ? const BoxDecoration() : joinedCardDecoration(),
-        child: DecoratedBox(
-          decoration: joined ? const BoxDecoration() : joinedCardBorder(),
-          child: Material(
-            type: MaterialType.transparency,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-                  Row(children: <Widget>[
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), shape: BoxShape.circle),
-                      child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white),
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: _tileFrame(),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+              Row(children: <Widget>[
+                _tileIcon(Icons.account_balance_wallet_rounded, ThemeConstants.invAccent),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: <Widget>[
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(tsh(cash), key: const Key('grp_overview_cash'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
                     ),
-                    const Spacer(),
-                    if (pending > 0)
-                      Flexible(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(color: ThemeConstants.warningAmber.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(10)),
-                            child: Text('$pending ${sw ? 'zinasubiri' : 'waiting'}', style: const TextStyle(color: ThemeConstants.warningAmber, fontSize: 11, fontWeight: FontWeight.w700)),
-                          ),
-                        ),
-                      ),
+                    Text(sw ? 'Fedha kwenye kumbukumbu' : 'Cash on record', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w500)),
                   ]),
-                  const SizedBox(height: 12),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(tsh(cash), key: const Key('grp_overview_cash'), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
+                ),
+              ]),
+              const SizedBox(height: 10),
+              Row(children: <Widget>[
+                const Icon(Icons.south_west_rounded, color: ThemeConstants.successGreen, size: 14),
+                const SizedBox(width: 4),
+                Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: Text('${sw ? 'Ndani' : 'In'} ${tsh(monthIn)}', style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)))),
+              ]),
+              const SizedBox(height: 4),
+              Row(children: <Widget>[
+                const Icon(Icons.north_east_rounded, color: ThemeConstants.errorText, size: 14),
+                const SizedBox(width: 4),
+                Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: Text('${sw ? 'Nje' : 'Out'} ${tsh(monthOut)}', style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)))),
+              ]),
+              if (pending > 0) ...<Widget>[
+                const SizedBox(height: 6),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: ThemeConstants.warningAmber.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(10)),
+                    child: Text('$pending ${sw ? 'zinasubiri' : 'waiting'}', style: const TextStyle(color: ThemeConstants.warningAmber, fontSize: 11, fontWeight: FontWeight.w700)),
                   ),
-                  Text(sw ? 'Fedha kwenye kumbukumbu' : 'Cash on record', style: const TextStyle(color: Colors.white60)),
-                  const SizedBox(height: 10),
-                  Row(children: <Widget>[
-                    const Icon(Icons.south_west_rounded, color: ThemeConstants.successGreen, size: 16),
-                    const SizedBox(width: 4),
-                    Flexible(child: Text('${sw ? 'Ndani' : 'In'} ${tsh(monthIn)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
-                  ]),
-                  const SizedBox(height: 4),
-                  Row(children: <Widget>[
-                    const Icon(Icons.north_east_rounded, color: ThemeConstants.errorText, size: 16),
-                    const SizedBox(width: 4),
-                    Flexible(child: Text('${sw ? 'Nje' : 'Out'} ${tsh(monthOut)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
-                  ]),
-                ]),
-              ),
-            ),
+                ),
+              ],
+            ]),
           ),
         ),
       );
 }
 
-/// The rental dashboard's ring tile: a rate as a ring with its figure.
+/// The month's collection as a ring with its figure.
 class _RingTile extends StatelessWidget {
-  const _RingTile({required this.title, required this.rate, required this.detail, required this.onTap, super.key, this.joined = false});
-
-  /// Part of one joined card: no frame of its own.
-  final bool joined;
+  const _RingTile({required this.title, required this.rate, required this.detail, required this.onTap, super.key});
 
   final String title;
   final double? rate;
@@ -526,40 +517,34 @@ class _RingTile extends StatelessWidget {
     return Material(
       type: MaterialType.transparency,
       child: InkWell(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: joined
-              ? null
-              : BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  color: Colors.white.withValues(alpha: 0.04),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: _tileFrame(),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
             Row(children: <Widget>[
               Stack(alignment: Alignment.center, children: <Widget>[
                 SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: CircularProgressIndicator(value: r, strokeWidth: 5, backgroundColor: Colors.white.withValues(alpha: 0.06), valueColor: AlwaysStoppedAnimation<Color>(c), strokeCap: StrokeCap.round),
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(value: r, strokeWidth: 4, backgroundColor: Colors.white.withValues(alpha: 0.08), valueColor: AlwaysStoppedAnimation<Color>(c), strokeCap: StrokeCap.round),
                 ),
-                const Icon(Icons.savings_rounded, color: Colors.white, size: 18),
+                Icon(Icons.savings_rounded, color: c, size: 14),
               ]),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
-                  child: Text(rate == null ? '—' : '${(r * 100).toStringAsFixed(0)}%', key: const Key('grp_overview_rate'), style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
+                  child: Text(rate == null ? '—' : '${(r * 100).toStringAsFixed(0)}%', key: const Key('grp_overview_rate'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
                 ),
               ),
             ]),
             const SizedBox(height: 10),
-            Text(title, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.w600)),
+            Text(title, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w500)),
             const Spacer(),
-            FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(detail, style: const TextStyle(color: Colors.white54, fontSize: 12))),
+            FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(detail, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600))),
           ]),
         ),
       ),
