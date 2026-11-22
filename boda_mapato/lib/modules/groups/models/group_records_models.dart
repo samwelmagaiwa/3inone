@@ -112,12 +112,20 @@ class GroupPublicInfo {
 
 /// The officers' dashboard in one go. [money] is null for whoever may not see the group's money.
 class GroupDashboardData {
-  const GroupDashboardData({required this.month, required this.active, required this.applications, required this.suspended, required this.joinedInMonth, this.money, this.nextMeetingTitle, this.nextMeetingAt});
+  const GroupDashboardData({required this.month, required this.active, required this.applications, required this.suspended, required this.joinedInMonth, this.money, this.nextMeetingTitle, this.nextMeetingAt, this.loansDesk, this.projectsDesk, this.meetingsDesk});
 
   factory GroupDashboardData.fromJson(final Map<String, dynamic> j) {
     final Map<String, dynamic> m = j['members'] is Map ? Map<String, dynamic>.from(j['members'] as Map) : <String, dynamic>{};
     final Map<String, dynamic>? meeting = j['next_meeting'] is Map ? Map<String, dynamic>.from(j['next_meeting'] as Map) : null;
+    Map<String, double>? desk(final String k) {
+      final Object? d = j['desk'] is Map ? (j['desk'] as Map)[k] : null;
+      return d is Map ? <String, double>{for (final MapEntry<dynamic, dynamic> e in d.entries) '${e.key}': _num(e.value)} : null;
+    }
+
     return GroupDashboardData(
+      loansDesk: desk('loans'),
+      projectsDesk: desk('projects'),
+      meetingsDesk: desk('meetings'),
       month: '${j['month'] ?? ''}',
       active: _int(m['active']) ?? 0,
       applications: _int(m['applications']) ?? 0,
@@ -137,6 +145,11 @@ class GroupDashboardData {
   final GroupDashboardMoney? money;
   final String? nextMeetingTitle;
   final String? nextMeetingAt;
+
+  /// What the person's office oversees, whether or not they see the money: the loan pipeline, the projects, the meetings (null when not theirs).
+  final Map<String, double>? loansDesk;
+  final Map<String, double>? projectsDesk;
+  final Map<String, double>? meetingsDesk;
 }
 
 class GroupDashboardMoney {

@@ -29,9 +29,15 @@ class GroupMeController extends Controller
         $rights = GroupAccess::rights($user);
         $settings = GroupSettings::all();
 
+        // What waits for THIS person: never their own request, payment or loan, which they may not decide.
+        $mid = $member === null ? null : (int) $member['id'];
+        $uid = (string) $user->id;
+        $notMine = fn ($q, string $column) => $mid === null ? $q : $q->where(fn ($w) => $w->whereNull($column)->orWhere($column, '!=', $mid));
+
         $waiting = [];
         if (in_array('verify_payments', $rights, true)) {
-            $waiting['payments_to_verify'] = DB::table('group_transactions')->where('status', GroupLedger::PENDING)->count();
+            $waiting['payments_to_verify'] = $notMine(DB::table('group_transactions')->where('status', GroupLedger::PENDING)
+                ->where(fn ($w) => $w->whereNull('submitted_by')->orWhere('submitted_by', '!=', $uid)), 'member_id')->count();
         }
         if (in_array('approve_members', $rights, true)) {
             $waiting['applications'] = DB::table('group_members')->where('status', GroupMembers::SUBMITTED)->count();
@@ -42,29 +48,31 @@ class GroupMeController extends Controller
         }
 
         if (in_array('recommend_loans', $rights, true)) {
-            $waiting['loans_to_recommend'] = DB::table('group_loans')->where('status', 'under_review')->count();
+            $waiting['loans_to_recommend'] = $notMine(DB::table('group_loans')->where('status', 'under_review'), 'member_id')->count();
         }
         if (in_array('approve_loans', $rights, true)) {
-            $waiting['loans_to_approve'] = DB::table('group_loans')->where('status', 'recommended')->count();
+            $waiting['loans_to_approve'] = $notMine(DB::table('group_loans')->where('status', 'recommended'), 'member_id')->count();
         }
         if (in_array('record_payouts', $rights, true)) {
-            $waiting['loans_to_disburse'] = DB::table('group_loans')->where('status', 'approved')->count();
+            $waiting['loans_to_disburse'] = $notMine(DB::table('group_loans')->where('status', 'approved'), 'member_id')->count();
         }
         if (in_array('approve_benefits', $rights, true)) {
-            $waiting['benefits_to_decide'] = DB::table('group_benefit_requests')->where('status', 'submitted')->count();
+            $waiting['benefits_to_decide'] = $notMine(DB::table('group_benefit_requests')->where('status', 'submitted'), 'member_id')->count();
         }
 
         if (in_array('recommend_projects', $rights, true)) {
-            $waiting['projects_to_review'] = DB::table('group_projects')->where('status', 'proposed')->count();
+            $waiting['projects_to_review'] = $notMine(DB::table('group_projects')->where('status', 'proposed'), 'proposed_by_member_id')->count();
         }
         if (in_array('approve_projects', $rights, true)) {
-            $waiting['projects_to_approve'] = DB::table('group_projects')->where('status', 'proposed')->count();
+            $waiting['projects_to_approve'] = $notMine(DB::table('group_projects')->where('status', 'proposed'), 'proposed_by_member_id')->count();
         }
         if (in_array('approve_expenses', $rights, true)) {
-            $waiting['expenses_to_approve'] = DB::table('group_expense_requests')->where('status', 'requested')->count();
+            $waiting['expenses_to_approve'] = $notMine(DB::table('group_expense_requests')->where('status', 'requested')
+                ->where(fn ($w) => $w->whereNull('requested_by')->orWhere('requested_by', '!=', $uid)), 'requested_by_member_id')->count();
         }
         if (in_array('record_payouts', $rights, true)) {
-            $waiting['expenses_to_pay'] = DB::table('group_expense_requests as e')->where('e.status', 'approved')
+            $waiting['expenses_to_pay'] = $notMine(DB::table('group_expense_requests as e')->where('e.status', 'approved')
+                ->where(fn ($w) => $w->whereNull('e.requested_by')->orWhere('e.requested_by', '!=', $uid)), 'e.requested_by_member_id')
                 ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('group_transactions as t')->whereColumn('t.expense_id', 'e.id')->where('t.direction', 'out')
                     ->whereIn('t.status', ['pending', 'verified'])->whereNull('t.reversed_by_id')->whereNull('t.reverses_id'))->count();
         }

@@ -11,6 +11,11 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeApi extends GroupsApi {
+  _FakeApi({this.withMoney = true, this.desk});
+
+  final bool withMoney;
+  final Map<String, dynamic>? desk;
+
   @override
   Future<List<GroupTransaction>> myTransactions() async => const <GroupTransaction>[];
 
@@ -18,7 +23,8 @@ class _FakeApi extends GroupsApi {
   Future<GroupDashboardData> dashboard({final String? month}) async => GroupDashboardData.fromJson(<String, dynamic>{
         'month': month,
         'members': <String, dynamic>{'active': 24, 'applications': 3, 'suspended': 1, 'joined_in_month': 2},
-        'money': <String, dynamic>{
+        'desk': desk,
+        'money': !withMoney ? null : <String, dynamic>{
           'cash_on_record': 1250000,
           'month_in': 400000,
           'month_out': 90000,
@@ -45,7 +51,7 @@ GroupMe _me(final List<String> rights, final Map<String, int> waiting) => GroupM
       'waiting': waiting,
     });
 
-Future<void> _pump(final WidgetTester t, final GroupMe me, {final double width = 411}) async {
+Future<void> _pump(final WidgetTester t, final GroupMe me, {final double width = 411, final _FakeApi? api}) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   await LocalizationService.instance.changeLanguage('en');
   t.view.physicalSize = Size(width, 3000);
@@ -57,7 +63,7 @@ Future<void> _pump(final WidgetTester t, final GroupMe me, {final double width =
       child: ScreenUtilInit(
         designSize: const Size(411, 3000),
         minTextAdapt: true,
-        builder: (_, __) => MaterialApp(home: Scaffold(body: GroupDashboardScreen(me: me, api: _FakeApi(), onChanged: () async {}, onOpen: (_) {}))),
+        builder: (_, __) => MaterialApp(home: Scaffold(body: GroupDashboardScreen(me: me, api: api ?? _FakeApi(), onChanged: () async {}, onOpen: (_) {}))),
       ),
     ),
   );
@@ -108,5 +114,51 @@ void main() {
     expect(t.takeException(), isNull);
     expect(find.byKey(const Key('grp_overview_joined')), findsOneWidget);
     expect(find.byType(GroupOverviewDashboard), findsOneWidget);
+  });
+
+  testWidgets('the projects office sees the projects and the loan pipeline without any money', (final WidgetTester t) async {
+    await _pump(
+      t,
+      _me(<String>['view_members', 'view_loans', 'recommend_loans', 'view_projects', 'recommend_projects', 'request_expenses'], <String, int>{}),
+      api: _FakeApi(withMoney: false, desk: <String, dynamic>{
+        'projects': <String, dynamic>{'proposed': 2, 'active': 1, 'completed': 3, 'budget': 5000000, 'spent': 1200000, 'committed': 300000},
+        'loans': <String, dynamic>{'under_review': 4, 'recommended': 1, 'approved': 0, 'active': 6},
+      }),
+    );
+
+    expect(find.byKey(const Key('grp_desk_proposed')), findsOneWidget);
+    expect(find.byKey(const Key('grp_desk_spent')), findsOneWidget);
+    expect(find.byKey(const Key('grp_desk_loan_review')), findsOneWidget);
+    expect(find.byKey(const Key('grp_overview_joined')), findsNothing, reason: 'no money for this office');
+    expect(find.byKey(const Key('grp_desk_to_record')), findsNothing, reason: 'meetings are not theirs');
+    expect(find.byKey(const Key('grp_qa_projects')), findsOneWidget);
+    expect(find.byKey(const Key('grp_qa_expenses')), findsOneWidget);
+  });
+
+  testWidgets('the secretary sees the meetings and records, not the money', (final WidgetTester t) async {
+    await _pump(
+      t,
+      _me(<String>['view_members', 'manage_members', 'record_meetings', 'post_announcements'], <String, int>{}),
+      api: _FakeApi(withMoney: false, desk: <String, dynamic>{
+        'meetings': <String, dynamic>{'to_record': 1, 'minutes_open': 2, 'open_actions': 5, 'overdue_actions': 1},
+      }),
+    );
+
+    expect(find.byKey(const Key('grp_desk_to_record')), findsOneWidget);
+    expect(find.byKey(const Key('grp_desk_late')), findsOneWidget);
+    expect(find.byKey(const Key('grp_desk_proposed')), findsNothing);
+    expect(find.byKey(const Key('grp_overview_joined')), findsNothing);
+  });
+
+  testWidgets('an ordinary member has a dashboard of their own: savings, shares, what is owed, what waits', (final WidgetTester t) async {
+    await _pump(t, _me(<String>[], <String, int>{}));
+
+    expect(find.byKey(const Key('grp_my_glance')), findsOneWidget);
+    expect(find.byKey(const Key('grp_my_savings')), findsOneWidget);
+    expect(find.byKey(const Key('grp_my_shares')), findsOneWidget);
+    expect(find.byKey(const Key('grp_my_owed')), findsOneWidget);
+    expect(find.byKey(const Key('grp_my_pending')), findsOneWidget);
+    expect(find.byKey(const Key('grp_overview')), findsNothing, reason: 'no officers figures for a member');
+    expect(find.text('100K'), findsOneWidget, reason: 'their savings');
   });
 }

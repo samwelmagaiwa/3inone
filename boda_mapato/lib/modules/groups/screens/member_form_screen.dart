@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../constants/theme_constants.dart';
 import '../../../services/localization_service.dart';
 import '../../../utils/server_message.dart';
+import '../../../widgets/place_picker.dart';
 import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_models.dart';
 import '../services/groups_api.dart';
@@ -13,7 +14,10 @@ import 'widgets/member_picker.dart';
 /// Register a person or change their details. A new person is an APPLICATION (waits for payments and approval), unless whoever approves
 /// members enters them as someone who was ALREADY a member before the group used the app. Returns the saved file.
 class MemberFormScreen extends StatefulWidget {
-  const MemberFormScreen({required this.api, required this.me, super.key, this.member});
+  const MemberFormScreen({required this.api, required this.me, super.key, this.member, this.placeSource});
+
+  /// Where the region, district, ward and street lists come from (the server's imported Tanzania locations unless a test says otherwise).
+  final PlaceSource? placeSource;
 
   final GroupsApi api;
   final GroupMe me;
@@ -205,10 +209,31 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
                   _field(_phone, sw ? 'Namba ya simu' : 'Phone number', validator: phone, keyboard: TextInputType.phone, key: const Key('grp_f_phone')),
                   _field(_altPhone, sw ? 'Namba nyingine (hiari)' : 'Other number (optional)', validator: optionalPhone, keyboard: TextInputType.phone),
                   _field(_email, sw ? 'Barua pepe (hiari)' : 'Email (optional)', keyboard: TextInputType.emailAddress),
-                  _field(_region, sw ? 'Mkoa' : 'Region'),
-                  _field(_district, sw ? 'Wilaya' : 'District'),
-                  _field(_ward, sw ? 'Kata' : 'Ward'),
-                  _field(_street, sw ? 'Mtaa' : 'Street'),
+                  // Region, district, ward and street: chosen from the imported Tanzania locations (typed only when the list has nothing).
+                  if (_editing && <String?>[_region.text, _district.text, _ward.text, _street.text].any((final String? s) => (s ?? '').trim().isNotEmpty))
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text(
+                        '${sw ? 'Makazi ya sasa' : 'Current address'}: ${<String>[_street.text, _ward.text, _district.text, _region.text].where((final String s) => s.trim().isNotEmpty).join(', ')}',
+                        key: const Key('grp_f_address_now'),
+                        style: const TextStyle(color: Colors.white60, fontSize: 12),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: PlacePicker(
+                      key: const Key('grp_f_place'),
+                      source: widget.placeSource,
+                      onChanged: (final PlaceChoice c) {
+                        // Nothing chosen yet leaves the address as it was.
+                        if (c.region == null) return;
+                        _region.text = c.region ?? '';
+                        _district.text = c.district ?? '';
+                        _ward.text = c.ward ?? '';
+                        _street.text = c.street ?? '';
+                      },
+                    ),
+                  ),
                   _field(_occupation, sw ? 'Kazi' : 'Occupation'),
                 ],
               ),

@@ -130,7 +130,7 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
         // 4. the four numbers to watch
         Row(children: <Widget>[
           Expanded(
-            child: _Bento(
+            child: GroupBento(
               key: const Key('grp_overview_members'),
               icon: Icons.groups_rounded,
               color: ThemeConstants.invAccent,
@@ -142,8 +142,8 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
           const SizedBox(width: 10),
           Expanded(
             child: m == null
-                ? _Bento(icon: Icons.person_add_alt_1_rounded, color: ThemeConstants.successGreen, value: '${d.joinedInMonth}', label: sw ? 'Waliojiunga mwezi huu' : 'Joined this month')
-                : _Bento(
+                ? GroupBento(icon: Icons.person_add_alt_1_rounded, color: ThemeConstants.successGreen, value: '${d.joinedInMonth}', label: sw ? 'Waliojiunga mwezi huu' : 'Joined this month')
+                : GroupBento(
                     key: const Key('grp_overview_savings'),
                     icon: Icons.savings_rounded,
                     color: ThemeConstants.successGreen,
@@ -157,7 +157,7 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
           const SizedBox(height: 10),
           Row(children: <Widget>[
             Expanded(
-              child: _Bento(
+              child: GroupBento(
                 key: const Key('grp_overview_loans'),
                 icon: Icons.request_quote_rounded,
                 color: ThemeConstants.primaryOrange,
@@ -168,7 +168,7 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: _Bento(
+              child: GroupBento(
                 key: const Key('grp_overview_overdue'),
                 icon: Icons.warning_amber_rounded,
                 color: (m.overdueAmount + m.loanArrears) > 0 ? ThemeConstants.errorRed : ThemeConstants.successGreen,
@@ -183,15 +183,15 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
           _title(sw ? 'Mwaka huu' : 'This year so far'),
           const SizedBox(height: 8),
           Row(children: <Widget>[
-            Expanded(child: _Bento(icon: Icons.volunteer_activism_rounded, color: ThemeConstants.invAccent, value: short(m.welfarePaid), label: sw ? 'Msaada' : 'Welfare paid', onTap: () => widget.onOpen('welfare'))),
+            Expanded(child: GroupBento(icon: Icons.volunteer_activism_rounded, color: ThemeConstants.invAccent, value: short(m.welfarePaid), label: sw ? 'Msaada' : 'Welfare paid', onTap: () => widget.onOpen('welfare'))),
             const SizedBox(width: 10),
-            Expanded(child: _Bento(icon: Icons.savings_outlined, color: ThemeConstants.successGreen, value: short(m.dividends), label: sw ? 'Gawio' : 'Dividends')),
+            Expanded(child: GroupBento(icon: Icons.savings_outlined, color: ThemeConstants.successGreen, value: short(m.dividends), label: sw ? 'Gawio' : 'Dividends')),
           ]),
           const SizedBox(height: 10),
           Row(children: <Widget>[
-            Expanded(child: _Bento(icon: Icons.chair_alt_rounded, color: ThemeConstants.primaryOrange, value: short(m.hireIncome), label: sw ? 'Mapato ya kukodisha' : 'Hire income', onTap: () => widget.onOpen('assets'))),
+            Expanded(child: GroupBento(icon: Icons.chair_alt_rounded, color: ThemeConstants.primaryOrange, value: short(m.hireIncome), label: sw ? 'Mapato ya kukodisha' : 'Hire income', onTap: () => widget.onOpen('assets'))),
             const SizedBox(width: 10),
-            Expanded(child: _Bento(icon: Icons.receipt_long_rounded, color: ThemeConstants.errorRed, value: short(m.expenses), label: sw ? 'Matumizi' : 'Spending', onTap: () => widget.onOpen('payments'))),
+            Expanded(child: GroupBento(icon: Icons.receipt_long_rounded, color: ThemeConstants.errorRed, value: short(m.expenses), label: sw ? 'Matumizi' : 'Spending', onTap: () => widget.onOpen('payments'))),
           ]),
           // 6. the trend, last of the figures
           const SizedBox(height: 22),
@@ -199,8 +199,67 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
           const SizedBox(height: 8),
           _chartCard(sw, m),
         ],
+        ..._desk(sw, d, hasMoney: m != null),
       ],
     );
+  }
+
+  /// What the person's office oversees, from the server's `desk`: only the sections their rights open.
+  List<Widget> _desk(final bool sw, final GroupDashboardData d, {required final bool hasMoney}) {
+    final Map<String, double>? pr = d.projectsDesk;
+    final Map<String, double>? ln = d.loansDesk;
+    final Map<String, double>? mt = d.meetingsDesk;
+    int n(final Map<String, double> m, final String k) => (m[k] ?? 0).round();
+    return <Widget>[
+      if (pr != null) ...<Widget>[
+        const SizedBox(height: 22),
+        _title(sw ? 'Miradi' : 'Projects'),
+        const SizedBox(height: 8),
+        Row(children: <Widget>[
+          Expanded(child: GroupBento(key: const Key('grp_desk_proposed'), icon: Icons.lightbulb_outline_rounded, color: ThemeConstants.warningAmber, value: '${n(pr, 'proposed')}', label: sw ? 'Mapendekezo' : 'Proposals', onTap: () => widget.onOpen('projects'))),
+          const SizedBox(width: 10),
+          Expanded(child: GroupBento(key: const Key('grp_desk_running'), icon: Icons.play_circle_outline_rounded, color: ThemeConstants.invAccent, value: '${n(pr, 'active')}', label: sw ? 'Inayoendelea' : 'Running', onTap: () => widget.onOpen('projects'))),
+        ]),
+        const SizedBox(height: 10),
+        Row(children: <Widget>[
+          Expanded(child: GroupBento(key: const Key('grp_desk_spent'), icon: Icons.payments_rounded, color: ThemeConstants.errorRed, value: '${short(pr['spent'] ?? 0)} / ${short(pr['budget'] ?? 0)}', label: sw ? 'Imetumika / bajeti' : 'Spent / budget', onTap: () => widget.onOpen('projects'))),
+          const SizedBox(width: 10),
+          Expanded(child: GroupBento(key: const Key('grp_desk_done'), icon: Icons.task_alt_rounded, color: ThemeConstants.successGreen, value: '${n(pr, 'completed')}', label: sw ? 'Iliyokamilika' : 'Completed', onTap: () => widget.onOpen('projects'))),
+        ]),
+      ],
+      if (ln != null && !hasMoney) ...<Widget>[
+        const SizedBox(height: 22),
+        _title(sw ? 'Mikopo' : 'Loans'),
+        const SizedBox(height: 8),
+        Row(children: <Widget>[
+          Expanded(child: GroupBento(key: const Key('grp_desk_loan_review'), icon: Icons.thumb_up_alt_outlined, color: ThemeConstants.warningAmber, value: '${n(ln, 'under_review')}', label: sw ? 'Ya kupendekeza' : 'To recommend', onTap: () => widget.onOpen('loans'))),
+          const SizedBox(width: 10),
+          Expanded(child: GroupBento(key: const Key('grp_desk_loan_approve'), icon: Icons.verified_rounded, color: ThemeConstants.invAccent, value: '${n(ln, 'recommended')}', label: sw ? 'Ya kuidhinisha' : 'To approve', onTap: () => widget.onOpen('loans'))),
+        ]),
+        const SizedBox(height: 10),
+        Row(children: <Widget>[
+          Expanded(child: GroupBento(key: const Key('grp_desk_loan_pay'), icon: Icons.payments_rounded, color: ThemeConstants.primaryOrange, value: '${n(ln, 'approved')}', label: sw ? 'Ya kutoa' : 'To pay out', onTap: () => widget.onOpen('loans'))),
+          const SizedBox(width: 10),
+          Expanded(child: GroupBento(key: const Key('grp_desk_loan_running'), icon: Icons.request_quote_rounded, color: ThemeConstants.successGreen, value: '${n(ln, 'active')}', label: sw ? 'Inayolipwa' : 'Running', onTap: () => widget.onOpen('loans'))),
+        ]),
+      ],
+      if (mt != null) ...<Widget>[
+        const SizedBox(height: 22),
+        _title(sw ? 'Vikao na kumbukumbu' : 'Meetings and records'),
+        const SizedBox(height: 8),
+        Row(children: <Widget>[
+          Expanded(child: GroupBento(key: const Key('grp_desk_to_record'), icon: Icons.edit_note_rounded, color: ThemeConstants.warningAmber, value: '${n(mt, 'to_record')}', label: sw ? 'Vikao vya kurekodi' : 'To record', onTap: () => widget.onOpen('community'))),
+          const SizedBox(width: 10),
+          Expanded(child: GroupBento(key: const Key('grp_desk_minutes'), icon: Icons.fact_check_rounded, color: ThemeConstants.invAccent, value: '${n(mt, 'minutes_open')}', label: sw ? 'Muhtasari haujaidhinishwa' : 'Minutes unapproved', onTap: () => widget.onOpen('community'))),
+        ]),
+        const SizedBox(height: 10),
+        Row(children: <Widget>[
+          Expanded(child: GroupBento(key: const Key('grp_desk_actions'), icon: Icons.assignment_turned_in_rounded, color: ThemeConstants.successGreen, value: '${n(mt, 'open_actions')}', label: sw ? 'Kazi zilizo wazi' : 'Open actions', onTap: () => widget.onOpen('community'))),
+          const SizedBox(width: 10),
+          Expanded(child: GroupBento(key: const Key('grp_desk_late'), icon: Icons.assignment_late_rounded, color: ThemeConstants.errorRed, value: '${n(mt, 'overdue_actions')}', label: sw ? 'Zilizochelewa' : 'Overdue', onTap: () => widget.onOpen('community'))),
+        ]),
+      ],
+    ];
   }
 
   /// A small heading that names the group of cards under it.
@@ -396,10 +455,14 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
       if (me.can('manage_contributions')) (const Key('grp_qa_contribution'), Icons.campaign_rounded, ThemeConstants.primaryOrange, sw ? 'Mchango' : 'Contribution', 'contributions'),
       if (me.can('call_meetings') || me.can('send_texts')) (const Key('grp_qa_meeting'), Icons.forum_rounded, ThemeConstants.warningAmber, sw ? 'Vikao' : 'Meetings', 'community'),
       if (me.can('view_loans')) (const Key('grp_qa_loans'), Icons.request_quote_rounded, ThemeConstants.errorRed, sw ? 'Mikopo' : 'Loans', 'loans'),
+      if (me.can('view_projects')) (const Key('grp_qa_projects'), Icons.business_center_rounded, ThemeConstants.invAccent, sw ? 'Miradi' : 'Projects', 'projects'),
+      if (me.can('request_expenses') || me.can('view_expenses')) (const Key('grp_qa_expenses'), Icons.receipt_long_rounded, ThemeConstants.warningAmber, sw ? 'Matumizi' : 'Expenses', 'expenses'),
     ];
     if (items.isEmpty) return const SizedBox.shrink();
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
+    return Wrap(
+      alignment: WrapAlignment.spaceAround,
+      runSpacing: 12,
+      spacing: 8,
       children: <Widget>[
         for (final (Key, IconData, Color, String, String) a in items)
           InkResponse(
@@ -553,8 +616,8 @@ class _RingTile extends StatelessWidget {
 }
 
 /// The rental dashboard's bento tile.
-class _Bento extends StatelessWidget {
-  const _Bento({required this.icon, required this.color, required this.value, required this.label, super.key, this.onTap});
+class GroupBento extends StatelessWidget {
+  const GroupBento({required this.icon, required this.color, required this.value, required this.label, super.key, this.onTap});
 
   final IconData icon;
   final Color color;

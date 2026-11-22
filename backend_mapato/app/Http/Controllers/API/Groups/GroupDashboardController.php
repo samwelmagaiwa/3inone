@@ -40,7 +40,44 @@ class GroupDashboardController extends Controller
             ],
             'next_meeting' => DB::table('group_meetings')->where('status', 'scheduled')->where('starts_at', '>=', now())->orderBy('starts_at')->first(['id', 'title', 'starts_at', 'venue']),
             'money' => null,
+            'desk' => null,
         ];
+
+        // What the person's office oversees, whether or not they see the group's money: the loans, the projects, the meetings.
+        $desk = [];
+        if (GroupAccess::can($user, 'view_loans')) {
+            $byStatus = DB::table('group_loans')->selectRaw('status, COUNT(*) as n')->groupBy('status')->pluck('n', 'status');
+            $desk['loans'] = [
+                'awaiting_guarantors' => (int) ($byStatus['awaiting_guarantors'] ?? 0),
+                'under_review' => (int) ($byStatus['under_review'] ?? 0),
+                'recommended' => (int) ($byStatus['recommended'] ?? 0),
+                'approved' => (int) ($byStatus['approved'] ?? 0),
+                'active' => (int) ($byStatus['active'] ?? 0),
+            ];
+        }
+        if (GroupAccess::can($user, 'view_projects')) {
+            $byStatus = DB::table('group_projects')->selectRaw('status, COUNT(*) as n')->groupBy('status')->pluck('n', 'status');
+            $ids = DB::table('group_projects')->where('status', 'active')->pluck('id');
+            $desk['projects'] = [
+                'proposed' => (int) ($byStatus['proposed'] ?? 0),
+                'active' => (int) ($byStatus['active'] ?? 0),
+                'completed' => (int) ($byStatus['completed'] ?? 0),
+                'budget' => round((float) DB::table('group_projects')->where('status', 'active')->sum('budget'), 2),
+                'spent' => round((float) $ids->sum(fn ($id) => GroupProjectController::spent((int) $id)), 2),
+                'committed' => round((float) $ids->sum(fn ($id) => GroupProjectController::committed((int) $id)), 2),
+            ];
+        }
+        if (GroupAccess::can($user, 'record_meetings') || GroupAccess::can($user, 'approve_minutes')) {
+            $open = fn () => DB::table('group_meeting_items as i')->join('group_meetings as g', 'g.id', '=', 'i.meeting_id')->where('i.kind', 'action')->where('i.status', 'open')
+                ->whereNotNull('g.minutes_approved_at');
+            $desk['meetings'] = [
+                'to_record' => DB::table('group_meetings')->where('status', 'scheduled')->where('starts_at', '<', now())->count(),
+                'minutes_open' => DB::table('group_meetings')->where('status', 'held')->whereNull('minutes_approved_at')->count(),
+                'open_actions' => $open()->count(),
+                'overdue_actions' => $open()->whereNotNull('i.due_date')->where('i.due_date', '<', $today)->count(),
+            ];
+        }
+        $out['desk'] = $desk === [] ? null : $desk;
 
         if (GroupAccess::can($user, 'view_finance')) {
             $verified = fn () => DB::table('group_transactions')->where('status', GroupLedger::VERIFIED);

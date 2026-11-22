@@ -144,6 +144,11 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                 Text(m.statusReason!, style: const TextStyle(color: Colors.white70, fontSize: 12)),
             ],
           ),
+          // The member's own figures at a glance: every member has this, whatever their office.
+          if (m != null) ...<Widget>[
+            const SizedBox(height: 12),
+            _MyGlance(me: me, sw: sw),
+          ],
           if (me.waiting.isNotEmpty) ...<Widget>[
             const SizedBox(height: 12),
             _WaitingCard(
@@ -475,6 +480,50 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
         ],
       ),
     );
+  }
+}
+
+/// A member's own money in four tiles, the same design as the group's: savings, shares, what is owed, what waits for verification.
+class _MyGlance extends StatelessWidget {
+  const _MyGlance({required this.me, required this.sw});
+
+  final GroupMe me;
+  final bool sw;
+
+  @override
+  Widget build(final BuildContext context) {
+    final double owed = me.owing.fold<double>(0, (final double a, final GroupObligation o) => a + o.remaining);
+    final bool late = me.owing.any((final GroupObligation o) => o.state == 'overdue');
+    final double shares = me.balances?['shares'] ?? 0;
+    return Column(key: const Key('grp_my_glance'), crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+      Row(children: <Widget>[
+        Expanded(child: GroupBento(key: const Key('grp_my_savings'), icon: Icons.savings_rounded, color: ThemeConstants.successGreen, value: GroupOverviewDashboardState.short(me.balances?['savings'] ?? 0), label: sw ? 'Akiba yangu' : 'My savings')),
+        const SizedBox(width: 10),
+        Expanded(
+          child: GroupBento(
+            key: const Key('grp_my_shares'),
+            icon: Icons.pie_chart_rounded,
+            color: ThemeConstants.invAccent,
+            value: me.shareAmount > 0 ? '${GroupOverviewDashboardState.short(shares)} / ${GroupOverviewDashboardState.short(me.shareAmount)}' : GroupOverviewDashboardState.short(shares),
+            label: sw ? 'Hisa zangu' : 'My shares',
+          ),
+        ),
+      ]),
+      const SizedBox(height: 10),
+      Row(children: <Widget>[
+        Expanded(
+          child: GroupBento(
+            key: const Key('grp_my_owed'),
+            icon: owed > 0 ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded,
+            color: owed <= 0 ? ThemeConstants.successGreen : (late ? ThemeConstants.errorRed : ThemeConstants.warningAmber),
+            value: GroupOverviewDashboardState.short(owed),
+            label: sw ? 'Deni langu' : 'Due from me',
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: GroupBento(key: const Key('grp_my_pending'), icon: Icons.hourglass_bottom_rounded, color: ThemeConstants.warningAmber, value: '${me.pending}', label: sw ? 'Yanasubiri uthibitisho' : 'Waiting for verification')),
+      ]),
+    ]);
   }
 }
 

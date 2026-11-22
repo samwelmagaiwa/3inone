@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../constants/theme_constants.dart';
 import '../../../services/localization_service.dart';
 import '../../../utils/server_message.dart';
+import '../../../widgets/place_picker.dart';
 import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_records_models.dart';
 import '../services/groups_api.dart';
@@ -14,9 +15,12 @@ import 'widgets/groups_ui.dart';
 /// For someone who is NOT signed in and holds a group's invitation code: see which group it is (and who invited them), apply to join, or ask
 /// to hire what the group hires out. Nothing else of the group is shown.
 class GuestGroupScreen extends StatefulWidget {
-  const GuestGroupScreen({super.key, this.api, this.code});
+  const GuestGroupScreen({super.key, this.api, this.code, this.placeSource});
 
   final GroupsApi? api;
+
+  /// Where the region and district lists come from (the server's imported Tanzania locations unless a test says otherwise).
+  final PlaceSource? placeSource;
 
   /// A code already known (from a shared message).
   final String? code;
@@ -118,7 +122,7 @@ class _GuestGroupScreenState extends State<GuestGroupScreen> {
               ),
             const SizedBox(height: 12),
             if (_mode == 'join')
-              _JoinForm(api: _api, code: _code.text, onDone: (final String ref) => setState(() => _done = sw
+              _JoinForm(api: _api, code: _code.text, placeSource: widget.placeSource, onDone: (final String ref) => setState(() => _done = sw
                   ? 'Ombi lako limepokelewa (namba $ref). Kikundi kitakuelekeza kulipa ada ya kujiunga; utaidhinishwa baada ya hapo.'
                   : 'Your application is in (number $ref). The group will tell you how to pay the joining fee; you are approved after that.'))
             else
@@ -133,8 +137,9 @@ class _GuestGroupScreenState extends State<GuestGroupScreen> {
 }
 
 class _JoinForm extends StatefulWidget {
-  const _JoinForm({required this.api, required this.code, required this.onDone});
+  const _JoinForm({required this.api, required this.code, required this.onDone, this.placeSource});
 
+  final PlaceSource? placeSource;
   final GroupsApi api;
   final String code;
   final ValueChanged<String> onDone;
@@ -149,6 +154,8 @@ class _JoinFormState extends State<_JoinForm> {
   final TextEditingController _nida = TextEditingController();
   final TextEditingController _region = TextEditingController();
   final TextEditingController _district = TextEditingController();
+  String? _ward;
+  String? _street;
   String? _gender;
   bool _consent = false;
   bool _busy = false;
@@ -187,6 +194,8 @@ class _JoinFormState extends State<_JoinForm> {
         if (_gender != null) 'gender': _gender,
         if (t(_region) != null) 'region': t(_region),
         if (t(_district) != null) 'district': t(_district),
+        if (_ward != null) 'ward': _ward,
+        if (_street != null) 'street': _street,
         'consent': true,
       });
       widget.onDone(ref);
@@ -216,8 +225,19 @@ class _JoinFormState extends State<_JoinForm> {
           ChoiceChip(label: Text(g == 'male' ? (sw ? 'Mwanaume' : 'Male') : (sw ? 'Mwanamke' : 'Female')), selected: _gender == g, onSelected: (final bool on) => setState(() => _gender = on ? g : null)),
       ]),
       const SizedBox(height: 10),
-      f(_region, sw ? 'Mkoa' : 'Region'),
-      f(_district, sw ? 'Wilaya' : 'District'),
+      Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: PlacePicker(
+          key: const Key('grp_guest_place'),
+          source: widget.placeSource,
+          onChanged: (final PlaceChoice c) {
+            _region.text = c.region ?? '';
+            _district.text = c.district ?? '';
+            _ward = c.ward;
+            _street = c.street;
+          },
+        ),
+      ),
       CheckboxListTile(
         key: const Key('grp_guest_consent'),
         contentPadding: EdgeInsets.zero,
