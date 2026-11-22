@@ -99,6 +99,11 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: <Widget>[
+          // The group at a glance, for its officers: quick actions, the month, the headline figures, the year, the trend.
+          if (me.can('view_finance') || me.can('view_members')) ...<Widget>[
+            GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen),
+            const SizedBox(height: 22),
+          ],
           // Who I am in the group.
           GlowListCard(
             dividerKey: 'grp_me_div',
@@ -332,11 +337,6 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                   ),
               ],
             ),
-          ],
-          // The group at a glance, for its officers: quick actions, the month, the headline figures, the trend, the year.
-          if (me.can('view_finance') || me.can('view_members')) ...<Widget>[
-            const SizedBox(height: 12),
-            GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen),
           ],
           if (m != null) ...<Widget>[
             const SizedBox(height: 22),

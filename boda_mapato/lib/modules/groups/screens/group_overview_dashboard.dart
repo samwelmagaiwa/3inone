@@ -178,12 +178,7 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
               ),
             ),
           ]),
-          // 5. the trend (the detail behind the headline)
-          const SizedBox(height: 22),
-          _title(sw ? 'Mwenendo wa fedha' : 'Money over time'),
-          const SizedBox(height: 8),
-          _chartCard(sw, m),
-          // 6. the year, in four short tiles instead of four long rows
+          // 5. the year, in four short tiles instead of four long rows
           const SizedBox(height: 22),
           _title(sw ? 'Mwaka huu' : 'This year so far'),
           const SizedBox(height: 8),
@@ -198,6 +193,11 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
             const SizedBox(width: 10),
             Expanded(child: _Bento(icon: Icons.receipt_long_rounded, color: ThemeConstants.errorRed, value: short(m.expenses), label: sw ? 'Matumizi' : 'Spending', onTap: () => widget.onOpen('payments'))),
           ]),
+          // 6. the trend, last of the figures
+          const SizedBox(height: 22),
+          _title(sw ? 'Mwenendo wa fedha' : 'Money over time'),
+          const SizedBox(height: 8),
+          _chartCard(sw, m),
         ],
       ],
     );
