@@ -114,6 +114,7 @@ final class TenantTables
         'group_benefit_types',
         'group_contribution_types',
         'group_dependants',
+        'group_expense_requests',
         'group_dividend_lines',
         'group_dividend_runs',
         'group_hires',

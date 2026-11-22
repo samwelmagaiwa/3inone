@@ -530,6 +530,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           const SizedBox(height: 8),
                           GroupDetailRow(
                               sw ? 'Bajeti' : 'Budget', tsh(p.budget)),
+                          if (p.status == 'active' || p.status == 'completed') ...<Widget>[
+                            GroupDetailRow(sw ? 'Imeidhinishwa kutumika' : 'Approved to spend', tsh(p.committed)),
+                            GroupDetailRow(sw ? 'Imelipwa' : 'Paid out', tsh(p.spent)),
+                          ],
                           GroupDetailRow(
                               sw ? 'Namba' : 'Reference', p.reference),
                           if (p.proposerName != null)

@@ -340,6 +340,22 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                     count: me.waiting['benefits_to_decide']!,
                     onTap: () => widget.onOpen('welfare'),
                   ),
+                if ((me.waiting['expenses_to_approve'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_expenses_approve'),
+                    icon: Icons.receipt_long_rounded,
+                    label: sw ? 'Matumizi ya kuidhinisha' : 'Expenses to approve',
+                    count: me.waiting['expenses_to_approve']!,
+                    onTap: () => widget.onOpen('expenses'),
+                  ),
+                if ((me.waiting['expenses_to_pay'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_expenses_pay'),
+                    icon: Icons.payments_rounded,
+                    label: sw ? 'Matumizi ya kulipa' : 'Expenses to pay out',
+                    count: me.waiting['expenses_to_pay']!,
+                    onTap: () => widget.onOpen('expenses'),
+                  ),
                 if ((me.waiting['projects_to_review'] ?? 0) > 0)
                   _WaitLine(
                     key: const Key('grp_wait_projects_review'),

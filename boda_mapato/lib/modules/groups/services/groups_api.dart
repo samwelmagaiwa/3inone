@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import '../../../services/api_service.dart';
 import '../models/group_asset_models.dart';
+import '../models/group_expense_models.dart';
 import '../models/group_governance_models.dart';
 import '../models/group_loan_models.dart';
 import '../models/group_models.dart';
@@ -432,6 +433,23 @@ class GroupsApi {
         for (final dynamic e in (_data(await _api.get('$_base/audit${before == null ? '' : '?before=$before'}'))['entries'] as List? ?? const <dynamic>[]))
           Map<String, dynamic>.from(e as Map),
       ];
+
+  // ---------------------------------------------------------------- expenses (matumizi)
+
+  Future<List<GroupExpense>> expenses({final String? status}) async => <GroupExpense>[
+        for (final dynamic r in (_data(await _api.get('$_base/expenses${_query(<String, String?>{'status': status})}'))['requests'] as List? ?? const <dynamic>[]))
+          GroupExpense.fromJson(Map<String, dynamic>.from(r as Map)),
+      ];
+
+  Future<void> requestExpense(final Map<String, dynamic> body) async => _api.post('$_base/expenses', body);
+
+  Future<void> cancelExpense(final int id) async => _api.post('$_base/expenses/$id/cancel', <String, dynamic>{});
+
+  Future<void> decideExpense(final int id, {required final bool approve, final double? amount, final String? note}) async =>
+      _api.post('$_base/expenses/$id/decide', <String, dynamic>{'approve': approve, if (amount != null) 'amount': amount, if (note != null) 'note': note});
+
+  Future<void> payExpense(final int id, {required final String method, final String? reference}) async =>
+      _api.post('$_base/expenses/$id/pay', <String, dynamic>{'method': method, if (reference != null && reference.isNotEmpty) 'external_ref': reference});
 
   // ---------------------------------------------------------------- projects (miradi)
 

@@ -55,7 +55,7 @@ final class GroupLedger
      * Is [t] possible as things stand? Checked when it is sent and again when it is verified, because what it depends on (a balance, what is
      * owed, a decision) may have moved in between. Throws with the code of what is wrong.
      *
-     * @param  array{category: string, direction: string, amount: float, member_id: ?int, obligation_id?: ?int, loan_id?: ?int, benefit_id?: ?int}  $t
+     * @param  array{category: string, direction: string, amount: float, member_id: ?int, obligation_id?: ?int, loan_id?: ?int, benefit_id?: ?int, expense_id?: ?int}  $t
      */
     public static function check(array $t, ?int $except = null): void
     {
@@ -126,6 +126,17 @@ final class GroupLedger
                 throw new InvalidArgumentException('more_than_hire');
             }
         }
+        if ($category === 'expense' && ($t['expense_id'] ?? null) !== null) {
+            $req = DB::table('group_expense_requests')->where('id', (int) $t['expense_id'])->first();
+            $live = $req === null ? 0 : DB::table('group_transactions')->where('expense_id', $req->id)->where('direction', 'out')->whereIn('status', [self::PENDING, self::VERIFIED])
+                ->whereNull('reversed_by_id')->whereNull('reverses_id')->when($except !== null, fn ($q) => $q->where('id', '!=', $except))->count();
+            if ($req === null || $req->status !== 'approved' || $live > 0) {
+                throw new InvalidArgumentException('expense_not_ready');
+            }
+            if (abs($amount - (float) $req->amount_approved) > 0.001) {
+                throw new InvalidArgumentException('amount_not_approved');
+            }
+        }
         if ($category === 'welfare') {
             $benefitId = $t['benefit_id'] ?? null;
             $request = $benefitId === null ? null : DB::table('group_benefit_requests')->where('id', $benefitId)->first();
@@ -157,6 +168,7 @@ final class GroupLedger
             'loan_id' => in_array($category, ['loan_disbursement', 'loan_repayment'], true) && isset($data['loan_id']) ? (int) $data['loan_id'] : null,
             'benefit_id' => $category === 'welfare' && isset($data['benefit_id']) ? (int) $data['benefit_id'] : null,
             'hire_id' => $category === 'hire' && isset($data['hire_id']) ? (int) $data['hire_id'] : null,
+            'expense_id' => $category === 'expense' && isset($data['expense_id']) ? (int) $data['expense_id'] : null,
         ];
         // Money paid IN by mobile money or bank must say its reference; money the group pays OUT is the group's own record.
         if ($direction === 'in' && $method !== 'cash' && $ref === '') {
@@ -231,6 +243,7 @@ final class GroupLedger
             'loan_id' => ($tx->loan_id ?? null) === null ? null : (int) $tx->loan_id,
             'benefit_id' => ($tx->benefit_id ?? null) === null ? null : (int) $tx->benefit_id,
             'hire_id' => ($tx->hire_id ?? null) === null ? null : (int) $tx->hire_id,
+            'expense_id' => ($tx->expense_id ?? null) === null ? null : (int) $tx->expense_id,
         ], (int) $tx->id);
         $receipt = self::nextReceipt();
         for ($try = 0; $try < 5; $try++) {
@@ -282,6 +295,7 @@ final class GroupLedger
                 'loan_id' => $tx->loan_id ?? null,
                 'benefit_id' => $tx->benefit_id ?? null,
                 'hire_id' => $tx->hire_id ?? null,
+                'expense_id' => $tx->expense_id ?? null,
                 'payee' => $tx->payee,
                 'category' => $tx->category,
                 'direction' => $tx->direction === 'in' ? 'out' : 'in',
@@ -375,6 +389,7 @@ final class GroupLedger
             'loan_id' => ($r->loan_id ?? null) === null ? null : (int) $r->loan_id,
             'benefit_id' => ($r->benefit_id ?? null) === null ? null : (int) $r->benefit_id,
             'hire_id' => ($r->hire_id ?? null) === null ? null : (int) $r->hire_id,
+            'expense_id' => ($r->expense_id ?? null) === null ? null : (int) $r->expense_id,
             'member_name' => $r->member_name ?? null,
             'member_number' => $r->member_number ?? null,
             'category' => $r->category,

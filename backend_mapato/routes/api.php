@@ -85,6 +85,7 @@ use App\Http\Controllers\API\Groups\GroupPublicController;
 use App\Http\Controllers\API\Groups\GroupRecordsController;
 use App\Http\Controllers\API\Groups\GroupSettingsController;
 use App\Http\Controllers\API\Groups\GroupTransactionController;
+use App\Http\Controllers\API\Groups\GroupExpenseController;
 use App\Http\Controllers\API\Groups\GroupProjectController;
 use App\Http\Controllers\API\Groups\GroupWelfareController;
 
@@ -337,6 +338,12 @@ Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(f
     Route::put('projects/{id}', [GroupProjectController::class, 'update'])->whereNumber('id')->middleware('group_right:manage_projects');
     Route::post('projects/{id}/progress', [GroupProjectController::class, 'progress'])->whereNumber('id');
     Route::post('projects/{id}/close', [GroupProjectController::class, 'close'])->whereNumber('id')->middleware('group_right:manage_projects');
+    // Expenses (matumizi): an official asks, the treasurer or chair approves, the treasurer pays, someone else verifies.
+    Route::get('expenses', [GroupExpenseController::class, 'index']);
+    Route::post('expenses', [GroupExpenseController::class, 'store'])->middleware(['group_right:request_expenses', 'throttle:20,1']);
+    Route::post('expenses/{id}/cancel', [GroupExpenseController::class, 'cancel'])->whereNumber('id');
+    Route::post('expenses/{id}/decide', [GroupExpenseController::class, 'decide'])->whereNumber('id')->middleware('group_right:approve_expenses');
+    Route::post('expenses/{id}/pay', [GroupExpenseController::class, 'pay'])->whereNumber('id')->middleware('group_right:record_payouts');
 
     // Assets and hiring them out (phase 4). The keeper of an asset handles its hires; the controllers check that.
     Route::get('assets', [GroupAssetController::class, 'index']);

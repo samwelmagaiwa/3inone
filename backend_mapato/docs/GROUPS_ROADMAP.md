@@ -254,3 +254,14 @@ logs progress (the manager may too) and closes it as completed or cancelled. Mem
 their own proposals; officers see every proposal. The budget is a plan: money still moves only through the verified ledger.
 Still open: expense request → treasurer approval (spending against a project), loan arrears follow-up by the Projects
 Chairperson, loan penalties/grace/rescheduling (waiting for MEG's rules).
+
+## 8. Expenses (matumizi) – added 2026-11-22
+
+Built: `group_expense_requests` + `group_transactions.expense_id`; rights `request_expenses`, `view_expenses`, `approve_expenses`.
+Flow: an official asks (purpose, kind, payee, amount, optionally a running project) → the treasurer / assistant or the chair / deputy
+approves (the amount asked or less) or turns down with a reason; never their own → the treasurer pays it out through the ledger
+(only the approved amount, once) → someone else verifies → PAID. Approved is not paid; a reversed payout makes it payable again.
+A project's approved spending never passes its budget (`over_budget`: raise the budget first); the project shows approved and paid.
+Decision still owed by MEG: the treasurer's older direct "record an expense" (Payments > Out > Expense) still works for small cash
+spending without a request. Closing it (every expense needs an approved request, or a limit under which it is allowed) needs MEG's rule.
+Not built: supporting document / receipt photo on a request.

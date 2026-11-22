@@ -59,6 +59,8 @@ class GroupProject {
     required this.progress,
     required this.supports,
     required this.opposes,
+    this.spent = 0,
+    this.committed = 0,
     this.description,
     this.startDate,
     this.endDate,
@@ -88,6 +90,8 @@ class GroupProject {
         progress: _int(j['progress']) ?? 0,
         supports: _int(j['supports']) ?? 0,
         opposes: _int(j['opposes']) ?? 0,
+        spent: _num(j['spent']),
+        committed: _num(j['committed']),
         decisionNote: _str(j['decision_note']),
         closingNote: _str(j['closing_note']),
         updates: <GroupProjectUpdate>[
@@ -117,6 +121,10 @@ class GroupProject {
   final int progress;
   final int supports;
   final int opposes;
+
+  /// Paid out (verified) and approved for spending (paid or not), against [budget].
+  final double spent;
+  final double committed;
   final String? decisionNote;
   final String? closingNote;
   final List<GroupProjectUpdate> updates;

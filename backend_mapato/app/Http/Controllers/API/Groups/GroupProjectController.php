@@ -61,12 +61,27 @@ class GroupProjectController extends Controller
             'manager_name' => $p->manager_name ?? null,
             'status' => $p->status,
             'progress' => (int) $p->progress,
+            'spent' => self::spent((int) $p->id),
+            'committed' => self::committed((int) $p->id),
             'supports' => (clone $reviews)->where('supports', true)->count(),
             'opposes' => (clone $reviews)->where('supports', false)->count(),
             'decision_note' => $p->decision_note,
             'closing_note' => $p->closing_note,
             'created_at' => (string) $p->created_at,
         ];
+    }
+
+    /** Money actually paid out for the project: verified payouts of its expense requests, not reversed. */
+    public static function spent(int $id): float
+    {
+        return round((float) DB::table('group_transactions as t')->join('group_expense_requests as e', 'e.id', '=', 't.expense_id')->where('e.project_id', $id)
+            ->where('t.direction', 'out')->where('t.status', 'verified')->whereNull('t.reversed_by_id')->whereNull('t.reverses_id')->sum('t.amount'), 2);
+    }
+
+    /** Money asked for and approved for the project (paid or not yet), the figure the budget is held against. */
+    public static function committed(int $id): float
+    {
+        return round((float) DB::table('group_expense_requests')->where('project_id', $id)->where('status', 'approved')->sum('amount_approved'), 2);
     }
 
     private function mayRun(Request $request, object $p): bool

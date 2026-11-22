@@ -500,6 +500,34 @@ Color benefitStateColor(final String state) => switch (state) {
       _ => Colors.white54,
     };
 
+/// Where an expense request stands.
+String expenseStateLabel({required final bool sw, required final String state}) => switch (state) {
+      'requested' => sw ? 'Inasubiri uamuzi' : 'Waiting for a decision',
+      'approved' => sw ? 'Imeidhinishwa' : 'Approved',
+      'paying' => sw ? 'Malipo yanasubiri uthibitisho' : 'Payment being verified',
+      'paid' => sw ? 'Imelipwa' : 'Paid',
+      'rejected' => sw ? 'Imekataliwa' : 'Turned down',
+      'cancelled' => sw ? 'Imeondolewa' : 'Withdrawn',
+      _ => state,
+    };
+
+Color expenseStateColor(final String state) => switch (state) {
+      'paid' => ThemeConstants.successGreen,
+      'approved' || 'paying' => ThemeConstants.invAccent,
+      'requested' => ThemeConstants.warningAmber,
+      'rejected' => ThemeConstants.errorRed,
+      _ => Colors.white54,
+    };
+
+String expenseCategoryLabel({required final bool sw, required final String category}) => switch (category) {
+      'project' => sw ? 'Mradi' : 'Project',
+      'office' => sw ? 'Ofisi' : 'Office',
+      'meeting' => sw ? 'Kikao' : 'Meeting',
+      'transport' => sw ? 'Usafiri' : 'Transport',
+      'event' => sw ? 'Tukio' : 'Event',
+      _ => sw ? 'Nyingine' : 'Other',
+    };
+
 /// Where a project stands.
 String projectStateLabel({required final bool sw, required final String state}) => switch (state) {
       'proposed' => sw ? 'Pendekezo' : 'Proposed',

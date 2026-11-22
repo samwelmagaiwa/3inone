@@ -48,6 +48,7 @@ class GroupTransactionController extends Controller
         'hire_not_open' => 'Ukodishaji huu haupokei malipo. / This hire takes no payments.',
         'more_than_hire' => 'Kiasi ni zaidi ya kinachodaiwa kwa ukodishaji huu. / The amount is more than is owed for this hire.',
         'loan_has_repayments' => 'Mkopo una marejesho; hauwezi kurudishwa. / The loan has repayments; it cannot be reversed.',
+        'expense_not_ready' => 'Ombi hili la matumizi halijaidhinishwa au tayari limelipwa. / This expense request is not approved, or was already paid.',
         'try_again' => 'Jaribu tena. / Try again.',
     ];
 

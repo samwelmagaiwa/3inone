@@ -60,6 +60,14 @@ class GroupMeController extends Controller
         if (in_array('approve_projects', $rights, true)) {
             $waiting['projects_to_approve'] = DB::table('group_projects')->where('status', 'proposed')->count();
         }
+        if (in_array('approve_expenses', $rights, true)) {
+            $waiting['expenses_to_approve'] = DB::table('group_expense_requests')->where('status', 'requested')->count();
+        }
+        if (in_array('record_payouts', $rights, true)) {
+            $waiting['expenses_to_pay'] = DB::table('group_expense_requests as e')->where('e.status', 'approved')
+                ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('group_transactions as t')->whereColumn('t.expense_id', 'e.id')->where('t.direction', 'out')
+                    ->whereIn('t.status', ['pending', 'verified'])->whereNull('t.reversed_by_id')->whereNull('t.reverses_id'))->count();
+        }
         if (in_array('approve_dividends', $rights, true)) {
             $waiting['dividends_to_approve'] = DB::table('group_dividend_runs')->where('status', 'draft')->count();
         }
