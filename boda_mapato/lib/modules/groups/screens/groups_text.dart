@@ -329,6 +329,18 @@ String activityLabel({required final bool sw, required final String action}) {
       return sw ? 'Tangazo limeondolewa' : 'Notice taken down';
     case 'texts_sent':
       return sw ? 'Ujumbe umetumwa' : 'Text sent';
+    case 'invitation_created':
+      return sw ? 'Namba ya mwaliko imetengenezwa' : 'Invitation code made';
+    case 'invitation_stopped':
+      return sw ? 'Namba ya mwaliko imesitishwa' : 'Invitation code stopped';
+    case 'document_kept':
+      return sw ? 'Faili imehifadhiwa' : 'File kept';
+    case 'document_removed':
+      return sw ? 'Faili imeondolewa' : 'File removed';
+    case 'export_members':
+      return sw ? 'Daftari la wanachama limetolewa' : 'Member register exported';
+    case 'export_transactions':
+      return sw ? 'Malipo yametolewa (CSV)' : 'Payments exported';
     default:
       return action;
   }

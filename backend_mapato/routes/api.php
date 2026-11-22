@@ -80,6 +80,8 @@ use App\Http\Controllers\API\Groups\GroupHireController;
 use App\Http\Controllers\API\Groups\GroupLoanController;
 use App\Http\Controllers\API\Groups\GroupMeController;
 use App\Http\Controllers\API\Groups\GroupMemberController;
+use App\Http\Controllers\API\Groups\GroupPublicController;
+use App\Http\Controllers\API\Groups\GroupRecordsController;
 use App\Http\Controllers\API\Groups\GroupSettingsController;
 use App\Http\Controllers\API\Groups\GroupTransactionController;
 use App\Http\Controllers\API\Groups\GroupWelfareController;
@@ -235,6 +237,15 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->prefix('admin/sms-sende
     Route::post('{id}/test', [SmsSenderController::class, 'test'])->middleware('throttle:10,1');
 });
 
+// GROUPS (Vikundi), for someone OUTSIDE the group holding an invitation code: the group's name, applying to join, asking to hire.
+// No sign-in; limited per address; nothing else of the group is shown.
+Route::prefix('public/groups')->middleware('throttle:30,1,public-groups')->group(function () {
+    Route::get('{code}', [GroupPublicController::class, 'show'])->where('code', '[A-Za-z0-9]{6,12}');
+    Route::get('{code}/assets/{assetId}/availability', [GroupPublicController::class, 'availability'])->where('code', '[A-Za-z0-9]{6,12}')->whereNumber('assetId');
+    Route::post('{code}/apply', [GroupPublicController::class, 'apply'])->where('code', '[A-Za-z0-9]{6,12}')->middleware('throttle:5,10,public-groups-apply');
+    Route::post('{code}/hire', [GroupPublicController::class, 'hire'])->where('code', '[A-Za-z0-9]{6,12}')->middleware('throttle:5,10,public-groups-hire');
+});
+
 // GROUPS (Vikundi) -- a savings / economic group. Everyone who holds the service reaches /groups/me (their own file and money);
 // everything else needs a right from the office they hold (group_right:...), see App\Support\Groups\GroupOffices.
 Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(function () {
@@ -351,6 +362,21 @@ Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(f
         Route::post('messages', [GroupCommunicationController::class, 'send'])->middleware('throttle:10,1');
         Route::get('messages', [GroupCommunicationController::class, 'messages']);
     });
+
+    // Invitations, the referral tree, documents, reports (phase 5b).
+    Route::get('invitations', [GroupRecordsController::class, 'invitations']);
+    Route::post('invitations', [GroupRecordsController::class, 'newGroupCode'])->middleware('group_right:manage_members');
+    Route::post('invitations/{id}/stop', [GroupRecordsController::class, 'stopCode'])->whereNumber('id');
+    Route::get('me/referrals', [GroupRecordsController::class, 'myBranch']);
+    Route::get('tree', [GroupRecordsController::class, 'tree'])->middleware('group_right:view_members');
+    Route::get('members/{id}/documents', [GroupRecordsController::class, 'documents'])->whereNumber('id')->middleware('group_right:view_members');
+    Route::post('members/{id}/documents', [GroupRecordsController::class, 'upload'])->whereNumber('id')->middleware(['group_right:manage_members', 'throttle:30,1']);
+    Route::delete('members/{id}/documents/{documentId}', [GroupRecordsController::class, 'removeDocument'])->whereNumber(['id', 'documentId'])->middleware('group_right:manage_members');
+    Route::middleware('group_right:view_finance')->group(function () {
+        Route::get('reports/summary', [GroupRecordsController::class, 'summary']);
+        Route::get('reports/transactions.csv', [GroupRecordsController::class, 'exportTransactions']);
+    });
+    Route::get('reports/members.csv', [GroupRecordsController::class, 'exportMembers'])->middleware('group_right:view_members');
 
     Route::put('settings', [GroupSettingsController::class, 'update'])->middleware('group_right:manage_settings');
     Route::get('audit', [GroupSettingsController::class, 'audit'])->middleware('group_right:view_audit');

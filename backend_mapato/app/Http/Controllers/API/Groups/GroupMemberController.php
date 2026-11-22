@@ -96,13 +96,16 @@ class GroupMemberController extends Controller
             'dependants' => DB::table('group_dependants')->where('member_id', $id)->orderBy('id')->get(['id', 'name', 'relationship', 'phone', 'date_of_birth', 'notes']),
             'events' => $events,
             'referrals' => DB::table('group_members')->where('referrer_id', $id)->orderBy('full_name')->get(['id', 'full_name', 'member_number', 'status']),
+            'documents' => GroupRecordsController::documentsFor($request, $id),
+            'photo_url' => \App\Support\PrivateFile::url($row->photo_path ?? null),
+            'source' => $row->source ?? null,
             'balances' => GroupAccess::can($user, 'view_finance') ? GroupLedger::balances($id) : null,
             'approval_blockers' => $row->status === GroupMembers::SUBMITTED ? GroupMembers::approvalBlockers($id) : [],
         ]]);
     }
 
     /** @return array<string, mixed> the rules for a member's own details (shared by register and edit) */
-    private function detailRules(bool $creating): array
+    public function detailRules(bool $creating): array
     {
         $req = $creating ? 'required' : 'sometimes';
 
@@ -125,7 +128,7 @@ class GroupMemberController extends Controller
     }
 
     /** Problems with the phone, NIDA and referrer that the plain rules cannot see; null when all is well. */
-    private function checkDetails(array $data, ?int $self): ?JsonResponse
+    public function checkDetails(array $data, ?int $self): ?JsonResponse
     {
         $alive = fn ($q) => $q->whereNotIn('status', [GroupMembers::REJECTED, GroupMembers::EXITED, GroupMembers::DECEASED])
             ->when($self !== null, fn ($w) => $w->where('id', '!=', $self));
@@ -158,7 +161,7 @@ class GroupMemberController extends Controller
     }
 
     /** @return array<string, mixed> the columns written from validated details */
-    private function columns(array $data): array
+    public function columns(array $data): array
     {
         $out = [];
         foreach (['full_name', 'phone', 'alt_phone', 'email', 'date_of_birth', 'gender', 'region', 'district', 'ward', 'street', 'occupation', 'notes'] as $k) {

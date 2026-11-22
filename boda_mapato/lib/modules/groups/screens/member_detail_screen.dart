@@ -14,6 +14,7 @@ import 'member_form_screen.dart';
 import 'payment_form.dart';
 import 'statement_screen.dart';
 import 'widgets/groups_ui.dart';
+import 'widgets/member_documents_card.dart';
 
 /// One member's file: who they are, where their membership stands and the steps that move it, their office, sign-in, money, dependants,
 /// whom they brought in and the history of every change. Each step shows only to whoever holds its right, and asks Yes / No first.
@@ -291,6 +292,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                     _headCard(f.member, sw),
                     if (f.member.isApplication) _applicationCard(f, sw),
                     _detailsCard(f.member, sw),
+                    MemberDocumentsCard(api: widget.api, me: widget.me, memberId: f.member.id, documents: f.documents, photoUrl: f.photoUrl, onChanged: _load),
                     if (f.balances != null) _moneyCard(f, sw),
                     _dependantsCard(f, sw),
                     if (f.referrals.isNotEmpty) _referralsCard(f, sw),

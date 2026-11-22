@@ -142,6 +142,9 @@ class GroupMemberFile {
     this.referrals = const <GroupMember>[],
     this.balances,
     this.approvalBlockers = const <String>[],
+    this.documents = const <Map<String, dynamic>>[],
+    this.photoUrl,
+    this.source,
   });
 
   factory GroupMemberFile.fromJson(final Map<String, dynamic> j) => GroupMemberFile(
@@ -151,6 +154,9 @@ class GroupMemberFile {
         referrals: <GroupMember>[for (final dynamic r in (j['referrals'] as List? ?? const <dynamic>[])) GroupMember.fromJson(Map<String, dynamic>.from(r as Map))],
         balances: j['balances'] is Map ? <String, double>{for (final MapEntry<dynamic, dynamic> e in (j['balances'] as Map).entries) '${e.key}': _num(e.value)} : null,
         approvalBlockers: <String>[for (final dynamic b in (j['approval_blockers'] as List? ?? const <dynamic>[])) '$b'],
+        documents: <Map<String, dynamic>>[for (final dynamic d in (j['documents'] as List? ?? const <dynamic>[])) if (d is Map) Map<String, dynamic>.from(d)],
+        photoUrl: _str(j['photo_url']),
+        source: _str(j['source']),
       );
 
   final GroupMember member;
@@ -163,6 +169,13 @@ class GroupMemberFile {
 
   /// Why an application cannot be approved yet (joining_fee_unpaid, shares_unpaid).
   final List<String> approvalBlockers;
+
+  /// Photos and papers this person may see (raw: see GroupDocument).
+  final List<Map<String, dynamic>> documents;
+  final String? photoUrl;
+
+  /// officer | invitation | group_code
+  final String? source;
 }
 
 /// A page of the member register.

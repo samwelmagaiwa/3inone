@@ -10,6 +10,7 @@ import '../models/group_models.dart';
 import '../services/groups_api.dart';
 import 'dividends_screen.dart';
 import 'groups_text.dart';
+import 'records_screens.dart';
 import 'welfare_screen.dart';
 import 'widgets/groups_ui.dart';
 
@@ -44,6 +45,9 @@ class GroupMoreScreen extends StatelessWidget {
           children: <Widget>[
             if (me.can('manage_settings'))
               entry(const Key('grp_more_settings'), Icons.tune_rounded, sw ? 'Mipangilio ya kikundi' : 'Group settings', () => GroupSettingsScreen(api: api)),
+            if (me.can('view_finance')) entry(const Key('grp_more_reports'), Icons.insights_rounded, sw ? 'Ripoti na nakala' : 'Reports and exports', () => GroupReportsScreen(api: api, me: me)),
+            if (me.can('view_members')) entry(const Key('grp_more_tree'), Icons.account_tree_rounded, sw ? 'Mti wa uanachama' : 'Membership tree', () => ReferralTreeScreen(api: api, whole: true)),
+            if (me.can('manage_members')) entry(const Key('grp_more_codes'), Icons.qr_code_rounded, sw ? 'Namba za mwaliko' : 'Invitation codes', () => InviteScreen(api: api, me: me)),
             if (me.can('prepare_dividends') || me.can('approve_dividends') || me.can('view_finance'))
               entry(const Key('grp_more_dividends'), Icons.savings_rounded, sw ? 'Gawio' : 'Dividends', () => DividendsScreen(api: api, me: me)),
             if (me.can('manage_settings'))

@@ -14,6 +14,7 @@ import 'groups_text.dart';
 import 'my_loans_screen.dart';
 import 'payment_form.dart';
 import 'promise_form.dart';
+import 'records_screens.dart';
 import 'statement_screen.dart';
 import 'welfare_screen.dart';
 import 'widgets/groups_ui.dart';
@@ -203,6 +204,20 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                   title: Text(sw ? 'Mikopo yangu' : 'My loans', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                   trailing: const Icon(Icons.chevron_right, color: Colors.white38),
                   onTap: _myLoans,
+                ),
+                ListTile(
+                  key: const Key('grp_invite'),
+                  leading: const Icon(Icons.person_add_alt_1_rounded, color: ThemeConstants.invAccent),
+                  title: Text(sw ? 'Alika mwanachama' : 'Invite a member', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                  onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => InviteScreen(api: widget.api, me: widget.me))),
+                ),
+                ListTile(
+                  key: const Key('grp_my_branch'),
+                  leading: const Icon(Icons.account_tree_rounded, color: ThemeConstants.invAccent),
+                  title: Text(sw ? 'Niliowaleta' : 'Whom I brought in', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                  onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => ReferralTreeScreen(api: widget.api, whole: false))),
                 ),
                 ListTile(
                   key: const Key('grp_my_dividends'),

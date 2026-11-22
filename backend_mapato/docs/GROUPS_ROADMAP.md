@@ -97,6 +97,24 @@ Status: **Phase 1 built (2026-11-22)**; phases 2–5 to come. No APK until the w
 - App: "Meetings" section for everyone (meetings, notices, texts), meeting file with attendance/minutes, dividends (runs,
   prepare form, run with lines, post/discard), "My dividends", next meeting and notices on Home, sections load on first open.
 - Tests: `tests/Feature/GroupsDividendsMeetingsTest.php` (5), `test/groups_phase5a_test.dart` (4).
+- Deployed 2026-11-22 (migration `2026_12_07_000100_add_groups_dividends_meetings_messages`).
+
+**Phase 5b – invitations, guests, tree, documents, reports (2026-11-22)**
+- Invitation codes (8 letters/digits, unique across all groups so a code finds its group): every active member has an
+  own code (made on first ask; an applicant using it gets that member as referrer); `manage_members` makes group codes
+  (no referrer) and can stop any; a member can stop their own.
+- Public, no sign-in, rate-limited (`/api/public/groups/{code}`): the group's name + inviter's first name + what is for
+  hire (nothing else); apply to join (same duplicate checks, consent required → a normal application, source
+  invitation/group_code); ask to hire (availability checked → a normal requested hire for the keeper). Written as the
+  code's group (`TenantContext::runAs`). App: "Have a group code? Join a group" link on the sign-in page.
+- Referral tree: officers get the whole tree (flat nodes the app nests, search with the path from the top, growth by
+  month); a member gets their own branch. Applications appear only once approved.
+- Photos and papers per member, private (`group_documents`, signed links); ID copies only uploaded/seen by
+  `view_sensitive`; photo becomes the member's photo.
+- Reports for a period (`view_finance`): members by status/joined, verified money in/out per kind, contributions,
+  loans now, meetings held; CSV exports (members register: NIDA masked without `view_sensitive`; payments of a period),
+  BOM for Excel, cells starting with = + - @ written as text, each export logged.
+- Tests: `tests/Feature/GroupsInvitationsRecordsTest.php` (6), `test/groups_phase5b_test.dart` (4).
 Source requirement: `GROUPS_MEG_BLUEPRINT.md` (Mongolandege Economic Group, MEG, 22 members). MEG is the first customer;
 the service is built for **any** savings / economic group (VICOBA, VSLA, SACCOS-style groups, office and family groups).
 

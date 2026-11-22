@@ -9,6 +9,7 @@ import "../../constants/colors.dart";
 import "../../constants/theme_constants.dart";
 import "../../providers/auth_provider.dart";
 import "../../services/auth_service.dart";
+import "../../modules/groups/screens/guest_group_screen.dart";
 import "../../modules/inventory/screens/widgets/joined_sections.dart";
 import "../../services/localization_service.dart";
 import "../../widgets/service_art.dart";
@@ -922,6 +923,19 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
           SizedBox(height: 6.h),
+          // Someone who is not a user yet but holds a group's invitation code: apply to join it, or ask to hire from it.
+          GestureDetector(
+            key: const ValueKey<String>('join_group_link'),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const GuestGroupScreen())),
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 4.h),
+              child: Text(
+                loc.translate('join_a_group_with_code'),
+                style: TextStyle(color: _blue, fontSize: 12.sp, fontWeight: FontWeight.w800, decoration: TextDecoration.underline),
+              ),
+            ),
+          ),
+          SizedBox(height: 4.h),
           Container(height: 1, margin: EdgeInsets.symmetric(horizontal: 30.w), decoration: BoxDecoration(gradient: LinearGradient(colors: <Color>[Colors.transparent, _navy.withValues(alpha: 0.35), Colors.transparent]))),
           SizedBox(height: 5.h),
           Text.rich(

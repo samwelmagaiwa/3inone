@@ -1,8 +1,11 @@
+import 'dart:typed_data';
+
 import '../../../services/api_service.dart';
 import '../models/group_asset_models.dart';
 import '../models/group_governance_models.dart';
 import '../models/group_loan_models.dart';
 import '../models/group_models.dart';
+import '../models/group_records_models.dart';
 
 /// The Groups (Vikundi) service's calls to the server. Screens take one of these so a test can hand them a fake; a failed call throws the
 /// [ApiException] carrying the server's own words.
@@ -345,6 +348,73 @@ class GroupsApi {
   Future<List<GroupMessage>> texts() async => <GroupMessage>[
         for (final dynamic m in (_data(await _api.get('$_base/messages'))['messages'] as List? ?? const <dynamic>[])) GroupMessage.fromJson(Map<String, dynamic>.from(m as Map)),
       ];
+
+  // ---------------------------------------------------------------- invitations, the tree, documents, reports
+
+  /// One's own invitation code (made the first time) and, for whoever registers members, the group's codes.
+  Future<(GroupInvitation?, List<GroupInvitation>)> invitations() async {
+    final Map<String, dynamic> d = _data(await _api.get('$_base/invitations'));
+    return (
+      d['mine'] is Map ? GroupInvitation.fromJson(Map<String, dynamic>.from(d['mine'] as Map)) : null,
+      <GroupInvitation>[for (final dynamic i in (d['group'] as List? ?? const <dynamic>[])) GroupInvitation.fromJson(Map<String, dynamic>.from(i as Map))],
+    );
+  }
+
+  Future<void> newGroupCode() async => _api.post('$_base/invitations', <String, dynamic>{});
+
+  Future<void> stopCode(final int id) async => _api.post('$_base/invitations/$id/stop', <String, dynamic>{});
+
+  List<GroupTreeNode> _nodes(final Map<String, dynamic> d) =>
+      <GroupTreeNode>[for (final dynamic n in (d['nodes'] as List? ?? const <dynamic>[])) GroupTreeNode.fromJson(Map<String, dynamic>.from(n as Map))];
+
+  /// The whole tree (officers).
+  Future<List<GroupTreeNode>> tree() async => _nodes(_data(await _api.get('$_base/tree')));
+
+  /// One's own branch and its root.
+  Future<(List<GroupTreeNode>, int?)> myBranch() async {
+    final Map<String, dynamic> d = _data(await _api.get('$_base/me/referrals'));
+    return (_nodes(d), (d['root'] as num?)?.toInt());
+  }
+
+  List<GroupDocument> _docs(final Map<String, dynamic> d) =>
+      <GroupDocument>[for (final dynamic x in (d['documents'] as List? ?? const <dynamic>[])) GroupDocument.fromJson(Map<String, dynamic>.from(x as Map))];
+
+  Future<List<GroupDocument>> documents(final int memberId) async => _docs(_data(await _api.get('$_base/members/$memberId/documents')));
+
+  Future<List<GroupDocument>> uploadDocument(final int memberId, final Uint8List bytes, final String filename, {required final String kind, final String? caption}) async =>
+      _docs(_data(await _api.uploadFile('$_base/members/$memberId/documents', 'file', bytes, filename, fields: <String, String>{'kind': kind, if (caption != null) 'caption': caption})));
+
+  Future<List<GroupDocument>> removeDocument(final int memberId, final int id) async => _docs(_data(await _api.delete('$_base/members/$memberId/documents/$id')));
+
+  Future<GroupReport> report({required final String from, required final String to}) async => GroupReport.fromJson(_data(await _api.get('$_base/reports/summary?from=$from&to=$to')));
+
+  /// The member register as a CSV file.
+  Future<Uint8List> exportMembers() => _api.getFileBytes('$_base/reports/members.csv');
+
+  /// The verified payments of a period as a CSV file.
+  Future<Uint8List> exportPayments({required final String from, required final String to}) => _api.getFileBytes('$_base/reports/transactions.csv?from=$from&to=$to');
+
+  // ---------------------------------------------------------------- someone outside the group, with a code (no sign-in)
+
+  static String _code(final String code) => Uri.encodeComponent(code.trim().toUpperCase());
+
+  Future<GroupPublicInfo> publicGroup(final String code) async =>
+      GroupPublicInfo.fromJson(_data(await _api.get('/public/groups/${_code(code)}', requireAuth: false)));
+
+  Future<(int, int, double)> publicAvailability(final String code, final int assetId, final String from, final String to) async {
+    final Map<String, dynamic> d = _data(await _api.get('/public/groups/${_code(code)}/assets/$assetId/availability?from=$from&to=$to', requireAuth: false));
+    return ((d['free'] as num?)?.toInt() ?? 0, (d['days'] as num?)?.toInt() ?? 1, (d['rate'] as num?)?.toDouble() ?? 0);
+  }
+
+  /// Apply to join; the answer is the application's reference.
+  Future<String> publicApply(final String code, final Map<String, dynamic> body) async =>
+      '${_data(await _api.post('/public/groups/${_code(code)}/apply', body, requireAuth: false))['application_ref'] ?? ''}';
+
+  /// Ask to hire; the answer is (reference, amount).
+  Future<(String, double)> publicHire(final String code, final Map<String, dynamic> body) async {
+    final Map<String, dynamic> d = _data(await _api.post('/public/groups/${_code(code)}/hire', body, requireAuth: false));
+    return ('${d['reference'] ?? ''}', (d['amount'] as num?)?.toDouble() ?? 0);
+  }
 
   // ---------------------------------------------------------------- settings and the log
 
