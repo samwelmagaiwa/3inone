@@ -99,12 +99,6 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: <Widget>[
-          // The group at a glance, for its officers.
-          if (me.can('view_finance') || me.can('view_members')) ...<Widget>[
-            GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen),
-            const SizedBox(height: 12),
-            const Divider(color: Colors.white24, height: 24),
-          ],
           // Who I am in the group.
           GlowListCard(
             dividerKey: 'grp_me_div',
@@ -144,155 +138,11 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                 Text(m.statusReason!, style: const TextStyle(color: Colors.white70, fontSize: 12)),
             ],
           ),
-          if (m != null) ...<Widget>[
-            const SizedBox(height: 12),
-            GlowCard(
-              title: sw ? 'Malipo yangu' : 'My payments',
-              dividerKey: 'grp_mypay_div',
-              children: <Widget>[
-                _DueLine(label: categoryLabel(sw: sw, category: 'joining_fee'), paid: me.balances?['joining_fee'] ?? 0, due: me.joiningFee, sw: sw),
-                _DueLine(label: categoryLabel(sw: sw, category: 'shares'), paid: me.balances?['shares'] ?? 0, due: me.shareAmount, sw: sw),
-                GroupDetailRow(categoryLabel(sw: sw, category: 'savings'), tsh(me.balances?['savings'] ?? 0), valueColor: ThemeConstants.invAccent),
-                if (me.owing.isNotEmpty)
-                  GroupDetailRow(
-                    sw ? 'Deni la michango' : 'Contributions owed',
-                    tsh(me.owing.fold<double>(0, (final double a, final GroupObligation o) => a + o.remaining)),
-                    valueColor: me.owing.any((final GroupObligation o) => o.state == 'overdue') ? ThemeConstants.errorText : ThemeConstants.warningAmber,
-                  ),
-                if (me.pending > 0)
-                  GroupDetailRow(sw ? 'Yanasubiri uthibitisho' : 'Waiting for verification', '${me.pending}', valueColor: ThemeConstants.warningAmber),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Row(children: <Widget>[
-                    Expanded(
-                      child: FilledButton.icon(
-                        key: const Key('grp_pay_open'),
-                        style: FilledButton.styleFrom(backgroundColor: ThemeConstants.primaryOrange),
-                        onPressed: _pay,
-                        icon: const Icon(Icons.payments_rounded),
-                        label: Text(sw ? 'Lipa' : 'Pay'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        key: const Key('grp_statement_open'),
-                        style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white38)),
-                        onPressed: _statement,
-                        icon: const Icon(Icons.receipt_long_rounded),
-                        label: Text(sw ? 'Taarifa' : 'Statement'),
-                      ),
-                    ),
-                  ]),
-                ),
-              ],
-            ),
-            if (me.owing.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 12),
-              GlowCard(
-                title: sw ? 'Ninachodaiwa' : 'What I owe',
-                dividerKey: 'grp_owe_div',
-                children: <Widget>[
-                  for (final GroupObligation o in me.owing) ObligationLine(o: o, sw: sw, onTap: () => _pay(o)),
-                  TextButton.icon(
-                    key: const Key('grp_promise_open'),
-                    onPressed: _promise,
-                    icon: const Icon(Icons.handshake_outlined, color: ThemeConstants.primaryOrange),
-                    label: Text(sw ? 'Weka ahadi ya kulipa' : 'Promise to pay', style: const TextStyle(color: ThemeConstants.primaryOrange)),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 12),
-            GlowListCard(
-              dividerKey: 'grp_help_div',
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              children: <Widget>[
-                ListTile(
-                  key: const Key('grp_my_loans'),
-                  leading: const Icon(Icons.request_quote_rounded, color: ThemeConstants.invAccent),
-                  title: Text(sw ? 'Mikopo yangu' : 'My loans', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-                  onTap: _myLoans,
-                ),
-                ListTile(
-                  key: const Key('grp_invite'),
-                  leading: const Icon(Icons.person_add_alt_1_rounded, color: ThemeConstants.invAccent),
-                  title: Text(sw ? 'Alika mwanachama' : 'Invite a member', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-                  onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => InviteScreen(api: widget.api, me: widget.me))),
-                ),
-                ListTile(
-                  key: const Key('grp_my_branch'),
-                  leading: const Icon(Icons.account_tree_rounded, color: ThemeConstants.invAccent),
-                  title: Text(sw ? 'Niliowaleta' : 'Whom I brought in', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-                  onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => ReferralTreeScreen(api: widget.api, whole: false))),
-                ),
-                ListTile(
-                  key: const Key('grp_my_dividends'),
-                  leading: const Icon(Icons.savings_rounded, color: ThemeConstants.invAccent),
-                  title: Text(sw ? 'Gawio langu' : 'My dividends', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-                  onTap: _myDividends,
-                ),
-                ListTile(
-                  key: const Key('grp_my_hires'),
-                  leading: const Icon(Icons.chair_alt_rounded, color: ThemeConstants.invAccent),
-                  title: Text(sw ? 'Kukodi mali ya kikundi' : 'Hire from the group', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-                  onTap: _myHires,
-                ),
-                ListTile(
-                  key: const Key('grp_my_welfare'),
-                  leading: const Icon(Icons.volunteer_activism_rounded, color: ThemeConstants.invAccent),
-                  title: Text(sw ? 'Msaada (ustawi)' : 'Welfare', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-                  onTap: _myWelfare,
-                ),
-              ],
-            ),
-            if (me.promises.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 12),
-              GlowCard(
-                title: sw ? 'Ahadi zangu' : 'My promises',
-                children: <Widget>[for (final GroupPromise p in me.promises) PromiseLine(p: p, sw: sw)],
-              ),
-            ],
-          ],
-          if (me.nextMeetingTitle != null || me.notices > 0) ...<Widget>[
-            const SizedBox(height: 12),
-            GlowListCard(
-              dividerKey: 'grp_news_div',
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              children: <Widget>[
-                if (me.nextMeetingTitle != null)
-                  ListTile(
-                    key: const Key('grp_next_meeting'),
-                    leading: const Icon(Icons.event_rounded, color: ThemeConstants.invAccent),
-                    title: Text(me.nextMeetingTitle!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                    subtitle: Text('${dateTimeLabel(me.nextMeetingAt ?? '')}${me.nextMeetingVenue == null ? '' : ' · ${me.nextMeetingVenue}'}',
-                        style: const TextStyle(color: Colors.white60, fontSize: 12)),
-                    trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-                    onTap: () => widget.onOpen('community'),
-                  ),
-                if (me.notices > 0)
-                  ListTile(
-                    key: const Key('grp_notices'),
-                    leading: const Icon(Icons.campaign_rounded, color: ThemeConstants.invAccent),
-                    title: Text(sw ? 'Matangazo' : 'Notices', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                    trailing: Text('${me.notices}', style: const TextStyle(color: ThemeConstants.warningAmber, fontWeight: FontWeight.w800, fontSize: 16)),
-                    onTap: () => widget.onOpen('community'),
-                  ),
-              ],
-            ),
-          ],
           if (me.waiting.isNotEmpty) ...<Widget>[
             const SizedBox(height: 12),
-            GlowCard(
-              title: sw ? 'Yanayokusubiri' : 'Waiting for you',
-              dividerKey: 'grp_wait_div',
-              children: <Widget>[
+            _WaitingCard(
+              sw: sw,
+              lines: <Widget>[
                 if (me.waiting.containsKey('payments_to_verify'))
                   _WaitLine(
                     key: const Key('grp_wait_payments'),
@@ -456,8 +306,160 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
               ],
             ),
           ],
-          if (m != null) ...<Widget>[
+          if (me.nextMeetingTitle != null || me.notices > 0) ...<Widget>[
             const SizedBox(height: 12),
+            GlowListCard(
+              dividerKey: 'grp_news_div',
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              children: <Widget>[
+                if (me.nextMeetingTitle != null)
+                  ListTile(
+                    key: const Key('grp_next_meeting'),
+                    leading: const Icon(Icons.event_rounded, color: ThemeConstants.invAccent),
+                    title: Text(me.nextMeetingTitle!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                    subtitle: Text('${dateTimeLabel(me.nextMeetingAt ?? '')}${me.nextMeetingVenue == null ? '' : ' · ${me.nextMeetingVenue}'}',
+                        style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                    trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                    onTap: () => widget.onOpen('community'),
+                  ),
+                if (me.notices > 0)
+                  ListTile(
+                    key: const Key('grp_notices'),
+                    leading: const Icon(Icons.campaign_rounded, color: ThemeConstants.invAccent),
+                    title: Text(sw ? 'Matangazo' : 'Notices', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                    trailing: Text('${me.notices}', style: const TextStyle(color: ThemeConstants.warningAmber, fontWeight: FontWeight.w800, fontSize: 16)),
+                    onTap: () => widget.onOpen('community'),
+                  ),
+              ],
+            ),
+          ],
+          // The group at a glance, for its officers: quick actions, the month, the headline figures, the trend, the year.
+          if (me.can('view_finance') || me.can('view_members')) ...<Widget>[
+            const SizedBox(height: 12),
+            GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen),
+          ],
+          if (m != null) ...<Widget>[
+            const SizedBox(height: 22),
+            _SectionTitle(sw ? 'Fedha zangu' : 'My money'),
+            const SizedBox(height: 8),
+            GlowCard(
+              title: sw ? 'Malipo yangu' : 'My payments',
+              dividerKey: 'grp_mypay_div',
+              children: <Widget>[
+                _DueLine(label: categoryLabel(sw: sw, category: 'joining_fee'), paid: me.balances?['joining_fee'] ?? 0, due: me.joiningFee, sw: sw),
+                _DueLine(label: categoryLabel(sw: sw, category: 'shares'), paid: me.balances?['shares'] ?? 0, due: me.shareAmount, sw: sw),
+                GroupDetailRow(categoryLabel(sw: sw, category: 'savings'), tsh(me.balances?['savings'] ?? 0), valueColor: ThemeConstants.invAccent),
+                if (me.owing.isNotEmpty)
+                  GroupDetailRow(
+                    sw ? 'Deni la michango' : 'Contributions owed',
+                    tsh(me.owing.fold<double>(0, (final double a, final GroupObligation o) => a + o.remaining)),
+                    valueColor: me.owing.any((final GroupObligation o) => o.state == 'overdue') ? ThemeConstants.errorText : ThemeConstants.warningAmber,
+                  ),
+                if (me.pending > 0)
+                  GroupDetailRow(sw ? 'Yanasubiri uthibitisho' : 'Waiting for verification', '${me.pending}', valueColor: ThemeConstants.warningAmber),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(children: <Widget>[
+                    Expanded(
+                      child: FilledButton.icon(
+                        key: const Key('grp_pay_open'),
+                        style: FilledButton.styleFrom(backgroundColor: ThemeConstants.primaryOrange),
+                        onPressed: _pay,
+                        icon: const Icon(Icons.payments_rounded),
+                        label: Text(sw ? 'Lipa' : 'Pay'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        key: const Key('grp_statement_open'),
+                        style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white38)),
+                        onPressed: _statement,
+                        icon: const Icon(Icons.receipt_long_rounded),
+                        label: Text(sw ? 'Taarifa' : 'Statement'),
+                      ),
+                    ),
+                  ]),
+                ),
+              ],
+            ),
+            if (me.owing.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 12),
+              GlowCard(
+                title: sw ? 'Ninachodaiwa' : 'What I owe',
+                dividerKey: 'grp_owe_div',
+                children: <Widget>[
+                  for (final GroupObligation o in me.owing) ObligationLine(o: o, sw: sw, onTap: () => _pay(o)),
+                  TextButton.icon(
+                    key: const Key('grp_promise_open'),
+                    onPressed: _promise,
+                    icon: const Icon(Icons.handshake_outlined, color: ThemeConstants.primaryOrange),
+                    label: Text(sw ? 'Weka ahadi ya kulipa' : 'Promise to pay', style: const TextStyle(color: ThemeConstants.primaryOrange)),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 12),
+            GlowListCard(
+              dividerKey: 'grp_help_div',
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              children: <Widget>[
+                ListTile(
+                  key: const Key('grp_my_loans'),
+                  leading: const Icon(Icons.request_quote_rounded, color: ThemeConstants.invAccent),
+                  title: Text(sw ? 'Mikopo yangu' : 'My loans', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                  onTap: _myLoans,
+                ),
+                ListTile(
+                  key: const Key('grp_invite'),
+                  leading: const Icon(Icons.person_add_alt_1_rounded, color: ThemeConstants.invAccent),
+                  title: Text(sw ? 'Alika mwanachama' : 'Invite a member', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                  onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => InviteScreen(api: widget.api, me: widget.me))),
+                ),
+                ListTile(
+                  key: const Key('grp_my_branch'),
+                  leading: const Icon(Icons.account_tree_rounded, color: ThemeConstants.invAccent),
+                  title: Text(sw ? 'Niliowaleta' : 'Whom I brought in', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                  onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => ReferralTreeScreen(api: widget.api, whole: false))),
+                ),
+                ListTile(
+                  key: const Key('grp_my_dividends'),
+                  leading: const Icon(Icons.savings_rounded, color: ThemeConstants.invAccent),
+                  title: Text(sw ? 'Gawio langu' : 'My dividends', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                  onTap: _myDividends,
+                ),
+                ListTile(
+                  key: const Key('grp_my_hires'),
+                  leading: const Icon(Icons.chair_alt_rounded, color: ThemeConstants.invAccent),
+                  title: Text(sw ? 'Kukodi mali ya kikundi' : 'Hire from the group', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                  onTap: _myHires,
+                ),
+                ListTile(
+                  key: const Key('grp_my_welfare'),
+                  leading: const Icon(Icons.volunteer_activism_rounded, color: ThemeConstants.invAccent),
+                  title: Text(sw ? 'Msaada (ustawi)' : 'Welfare', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                  onTap: _myWelfare,
+                ),
+              ],
+            ),
+            if (me.promises.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 12),
+              GlowCard(
+                title: sw ? 'Ahadi zangu' : 'My promises',
+                children: <Widget>[for (final GroupPromise p in me.promises) PromiseLine(p: p, sw: sw)],
+              ),
+            ],
+          ],
+          if (m != null) ...<Widget>[
+            const SizedBox(height: 22),
+            _SectionTitle(sw ? 'Malipo yangu ya hivi karibuni' : 'My latest payments'),
+            const SizedBox(height: 8),
             if (_error != null) GroupEmpty(_error!),
             if (_mine.isEmpty && _error == null) GroupEmpty(sw ? 'Bado hujatuma malipo.' : 'No payments sent yet.'),
             if (_mine.isNotEmpty)
@@ -560,4 +562,67 @@ class GroupTransactionTile extends StatelessWidget {
           ],
         ),
       );
+}
+
+/// A small heading that names the group of cards under it.
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(final BuildContext context) => Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
+      );
+}
+
+/// What waits for this person, most urgent first: only what has something in it, five lines until asked for the rest. When nothing waits it
+/// says so, calmly, so the person knows the screen is not simply empty.
+class _WaitingCard extends StatefulWidget {
+  const _WaitingCard({required this.sw, required this.lines});
+
+  final bool sw;
+  final List<Widget> lines;
+
+  @override
+  State<_WaitingCard> createState() => _WaitingCardState();
+}
+
+class _WaitingCardState extends State<_WaitingCard> {
+  static const int _shown = 5;
+  bool _all = false;
+
+  @override
+  Widget build(final BuildContext context) {
+    final bool sw = widget.sw;
+    final List<Widget> live = widget.lines.where((final Widget w) => w is! _WaitLine || w.count > 0).toList();
+    if (live.isEmpty) {
+      return GlowCard(
+        title: sw ? 'Yanayokusubiri' : 'Waiting for you',
+        dividerKey: 'grp_wait_div',
+        children: <Widget>[
+          Row(children: <Widget>[
+            const Icon(Icons.check_circle_rounded, color: ThemeConstants.successGreen, size: 20),
+            const SizedBox(width: 10),
+            Expanded(child: Text(sw ? 'Hakuna kinachokusubiri. Kila kitu kiko sawa.' : 'Nothing is waiting for you. You are all caught up.', style: const TextStyle(color: Colors.white70))),
+          ]),
+        ],
+      );
+    }
+    final bool more = live.length > _shown;
+    return GlowCard(
+      title: sw ? 'Yanayokusubiri' : 'Waiting for you',
+      dividerKey: 'grp_wait_div',
+      children: <Widget>[
+        ...(_all || !more ? live : live.take(_shown)),
+        if (more)
+          TextButton(
+            key: const Key('grp_wait_more'),
+            onPressed: () => setState(() => _all = !_all),
+            child: Text(_all ? (sw ? 'Onyesha chache' : 'Show fewer') : (sw ? 'Onyesha zote (${live.length})' : 'Show all (${live.length})'), style: const TextStyle(color: ThemeConstants.primaryOrange)),
+          ),
+      ],
+    );
+  }
 }

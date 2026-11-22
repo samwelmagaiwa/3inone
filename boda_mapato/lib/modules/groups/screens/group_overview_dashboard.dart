@@ -89,7 +89,25 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
       key: const Key('grp_overview'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        // 1. what can be done now
+        _actions(sw),
+        // 2. the month all the figures below are for
         if (m != null) ...<Widget>[
+          const SizedBox(height: 18),
+          _title(sw ? 'Hali ya kikundi' : 'The group at a glance'),
+          const SizedBox(height: 8),
+          MonthSelector(
+            months: _months,
+            selectedMonth: _month,
+            selectedColor: Colors.white,
+            unselectedColor: Colors.white60,
+            onSelected: (final int month) {
+              setState(() => _month = month);
+              load();
+            },
+          ),
+          const SizedBox(height: 10),
+          // 3. the headline: cash and the month's collection, one joined card
           DecoratedBox(
             key: const Key('grp_overview_joined'),
             decoration: joinedCardDecoration(),
@@ -114,7 +132,9 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
             ),
           ),
           const SizedBox(height: 10),
-        ],
+        ] else
+          const SizedBox(height: 18),
+        // 4. the four numbers to watch
         Row(children: <Widget>[
           Expanded(
             child: _Bento(
@@ -165,22 +185,36 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
               ),
             ),
           ]),
-          const SizedBox(height: 12),
+          // 5. the trend (the detail behind the headline)
+          const SizedBox(height: 22),
+          _title(sw ? 'Mwenendo wa fedha' : 'Money over time'),
+          const SizedBox(height: 8),
           _chartCard(sw, m),
-          const SizedBox(height: 12),
-          _WideRow(icon: Icons.volunteer_activism_rounded, color: ThemeConstants.invAccent, label: sw ? 'Msaada uliolipwa mwaka huu' : 'Welfare paid this year', value: tsh(m.welfarePaid), onTap: () => widget.onOpen('welfare')),
+          // 6. the year, in four short tiles instead of four long rows
+          const SizedBox(height: 22),
+          _title(sw ? 'Mwaka huu' : 'This year so far'),
           const SizedBox(height: 8),
-          _WideRow(icon: Icons.savings_outlined, color: ThemeConstants.successGreen, label: sw ? 'Gawio mwaka huu' : 'Dividends this year', value: tsh(m.dividends)),
-          const SizedBox(height: 8),
-          _WideRow(icon: Icons.chair_alt_rounded, color: ThemeConstants.primaryOrange, label: sw ? 'Mapato ya kukodisha mwaka huu' : 'Hire income this year', value: tsh(m.hireIncome), onTap: () => widget.onOpen('assets')),
-          const SizedBox(height: 8),
-          _WideRow(icon: Icons.receipt_long_rounded, color: ThemeConstants.errorRed, label: sw ? 'Matumizi ya kikundi mwaka huu' : 'Group spending this year', value: tsh(m.expenses), onTap: () => widget.onOpen('payments')),
+          Row(children: <Widget>[
+            Expanded(child: _Bento(icon: Icons.volunteer_activism_rounded, color: ThemeConstants.invAccent, value: short(m.welfarePaid), label: sw ? 'Msaada' : 'Welfare paid', onTap: () => widget.onOpen('welfare'))),
+            const SizedBox(width: 10),
+            Expanded(child: _Bento(icon: Icons.savings_outlined, color: ThemeConstants.successGreen, value: short(m.dividends), label: sw ? 'Gawio' : 'Dividends')),
+          ]),
+          const SizedBox(height: 10),
+          Row(children: <Widget>[
+            Expanded(child: _Bento(icon: Icons.chair_alt_rounded, color: ThemeConstants.primaryOrange, value: short(m.hireIncome), label: sw ? 'Mapato ya kukodisha' : 'Hire income', onTap: () => widget.onOpen('assets'))),
+            const SizedBox(width: 10),
+            Expanded(child: _Bento(icon: Icons.receipt_long_rounded, color: ThemeConstants.errorRed, value: short(m.expenses), label: sw ? 'Matumizi' : 'Spending', onTap: () => widget.onOpen('payments'))),
+          ]),
         ],
-        const SizedBox(height: 12),
-        _actions(sw),
       ],
     );
   }
+
+  /// A small heading that names the group of cards under it.
+  Widget _title(final String text) => Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
+      );
 
   /// The inventory dashboard's glowing chart card: the months above, the line (12 months of money in and out) or the bars (the month by kind).
   Widget _chartCard(final bool sw, final GroupDashboardMoney m) => DecoratedBox(
@@ -192,19 +226,7 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
             padding: const EdgeInsets.all(12),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
               Row(children: <Widget>[
-                Expanded(
-                  child: MonthSelector(
-                    months: _months,
-                    selectedMonth: _month,
-                    selectedColor: Colors.white,
-                    unselectedColor: Colors.white60,
-                    onSelected: (final int month) {
-                      setState(() => _month = month);
-                      load();
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
+                Expanded(child: Text(_bars ? (sw ? 'Mwezi huu kwa aina' : 'This month, by kind') : (sw ? 'Miezi 12' : 'Last 12 months'), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600))),
                 _toggle(sw),
               ]),
               const SizedBox(height: 16),
@@ -447,10 +469,15 @@ class _BalanceCard extends StatelessWidget {
                     ),
                     const Spacer(),
                     if (pending > 0)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: ThemeConstants.warningAmber.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(10)),
-                        child: Text('$pending ${sw ? 'zinasubiri' : 'waiting'}', style: const TextStyle(color: ThemeConstants.warningAmber, fontSize: 11, fontWeight: FontWeight.w700)),
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: ThemeConstants.warningAmber.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(10)),
+                            child: Text('$pending ${sw ? 'zinasubiri' : 'waiting'}', style: const TextStyle(color: ThemeConstants.warningAmber, fontSize: 11, fontWeight: FontWeight.w700)),
+                          ),
+                        ),
                       ),
                   ]),
                   const SizedBox(height: 12),
@@ -572,42 +599,6 @@ class _Bento extends StatelessWidget {
                   Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w500)),
                 ]),
               ),
-            ]),
-          ),
-        ),
-      );
-}
-
-/// The rental dashboard's wide row with a chevron.
-class _WideRow extends StatelessWidget {
-  const _WideRow({required this.icon, required this.color, required this.label, required this.value, this.onTap});
-
-  final IconData icon;
-  final Color color;
-  final String label;
-  final String value;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(final BuildContext context) => Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: Colors.white.withValues(alpha: 0.03),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-            ),
-            child: Row(children: <Widget>[
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 12),
-              Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.w600))),
-              const SizedBox(width: 8),
-              Text(value, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
-              if (onTap != null) ...<Widget>[const SizedBox(width: 4), const Icon(Icons.chevron_right, color: Colors.white24, size: 20)],
             ]),
           ),
         ),
