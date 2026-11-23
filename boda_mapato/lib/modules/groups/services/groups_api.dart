@@ -9,6 +9,7 @@ import '../models/group_models.dart';
 import '../models/group_project_models.dart';
 import '../models/group_receipt_models.dart';
 import '../models/group_records_models.dart';
+import '../models/group_voting_models.dart';
 
 /// The Groups (Vikundi) service's calls to the server. Screens take one of these so a test can hand them a fake; a failed call throws the
 /// [ApiException] carrying the server's own words.
@@ -404,6 +405,47 @@ class GroupsApi {
       _docs(_data(await _api.uploadFile('$_base/members/$memberId/documents', 'file', bytes, filename, fields: <String, String>{'kind': kind, if (caption != null) 'caption': caption})));
 
   Future<List<GroupDocument>> removeDocument(final int memberId, final int id) async => _docs(_data(await _api.delete('$_base/members/$memberId/documents/$id')));
+
+  // ---------------------------------------------------------------- voting
+
+  GroupVoting _voting(final Map<String, dynamic> res) => GroupVoting.fromJson(Map<String, dynamic>.from(_data(res)['voting'] as Map));
+
+  Future<List<GroupVoting>> votings() async => <GroupVoting>[
+        for (final dynamic v in (_data(await _api.get('$_base/votings'))['votings'] as List? ?? const <dynamic>[])) GroupVoting.fromJson(Map<String, dynamic>.from(v as Map)),
+      ];
+
+  Future<GroupVoting> voting(final int id) async => _voting(await _api.get('$_base/votings/$id'));
+
+  /// Casts (or, where the voting allows it, changes) the member's vote in THIS voting.
+  Future<GroupVoting> vote(final int id, final int optionId) async => _voting(await _api.post('$_base/votings/$id/vote', <String, dynamic>{'option_id': optionId}));
+
+  Future<GroupVoting> createVoting(final Map<String, dynamic> body) async => _voting(await _api.post('$_base/votings', body));
+
+  Future<GroupVoting> updateVoting(final int id, final Map<String, dynamic> body) async => _voting(await _api.put('$_base/votings/$id', body));
+
+  Future<void> deleteVoting(final int id) async {
+    await _api.delete('$_base/votings/$id');
+  }
+
+  /// publish | pause | resume | close | cancel | extend | publish-results
+  Future<GroupVoting> votingAction(final int id, final String action, {final Map<String, dynamic> body = const <String, dynamic>{}}) async =>
+      _voting(await _api.post('$_base/votings/$id/$action', body));
+
+  Future<VotingReport> votingReport(final int id) async => VotingReport.fromJson(_data(await _api.get('$_base/votings/$id/report')));
+
+  Future<Uint8List> votingReportCsv(final int id) => _api.getFileBytes('$_base/votings/$id/report.csv');
+
+  Future<(List<GroupNotice>, int)> notifications() async {
+    final Map<String, dynamic> d = _data(await _api.get('$_base/me/notifications'));
+    return (
+      <GroupNotice>[for (final dynamic n in (d['notifications'] as List? ?? const <dynamic>[])) GroupNotice.fromJson(Map<String, dynamic>.from(n as Map))],
+      d['unread'] is num ? (d['unread'] as num).toInt() : 0,
+    );
+  }
+
+  Future<void> readNotifications({final List<int>? ids, final bool all = false}) async {
+    await _api.post('$_base/me/notifications/read', <String, dynamic>{if (ids != null) 'ids': ids, if (all) 'all': true});
+  }
 
   Future<GroupReport> report({required final String from, required final String to}) async => GroupReport.fromJson(_data(await _api.get('$_base/reports/summary?from=$from&to=$to')));
 

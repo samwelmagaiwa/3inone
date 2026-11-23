@@ -139,6 +139,14 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
             _WaitingCard(
               sw: sw,
               lines: <Widget>[
+                if ((me.waiting['votes_to_cast'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_votes'),
+                    icon: Icons.how_to_vote_rounded,
+                    label: sw ? 'Kura za kupiga' : 'Votings waiting for your vote',
+                    count: me.waiting['votes_to_cast']!,
+                    onTap: () => widget.onOpen('voting'),
+                  ),
                 if (me.waiting.containsKey('payments_to_verify'))
                   _WaitLine(
                     key: const Key('grp_wait_payments'),

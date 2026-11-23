@@ -463,6 +463,7 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
       if (me.can('manage_contributions')) (const Key('grp_qa_contribution'), Icons.campaign_rounded, ThemeConstants.primaryOrange, sw ? 'Mchango' : 'Contribution', 'contributions'),
       if (me.can('call_meetings') || me.can('send_texts')) (const Key('grp_qa_meeting'), Icons.forum_rounded, ThemeConstants.warningAmber, sw ? 'Vikao' : 'Meetings', 'community'),
       if (me.can('view_loans')) (const Key('grp_qa_loans'), Icons.request_quote_rounded, ThemeConstants.errorRed, sw ? 'Mikopo' : 'Loans', 'loans'),
+      if (me.member != null) (const Key('grp_qa_voting'), Icons.how_to_vote_rounded, ThemeConstants.successGreen, sw ? 'Kura' : 'Voting', 'voting'),
       if (me.can('view_projects')) (const Key('grp_qa_projects'), Icons.business_center_rounded, ThemeConstants.invAccent, sw ? 'Miradi' : 'Projects', 'projects'),
       if (me.can('request_expenses') || me.can('view_expenses')) (const Key('grp_qa_expenses'), Icons.receipt_long_rounded, ThemeConstants.warningAmber, sw ? 'Matumizi' : 'Expenses', 'expenses'),
     ];
