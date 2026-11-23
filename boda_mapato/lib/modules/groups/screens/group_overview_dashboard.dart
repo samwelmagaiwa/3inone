@@ -224,49 +224,43 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
         const SizedBox(height: 22),
         _title(sw ? 'Miradi' : 'Projects'),
         const SizedBox(height: 8),
-        Row(children: <Widget>[
-          Expanded(child: GroupBento(key: const Key('grp_desk_proposed'), icon: Icons.lightbulb_outline_rounded, color: ThemeConstants.warningAmber, value: '${n(pr, 'proposed')}', label: sw ? 'Mapendekezo' : 'Proposals', onTap: () => widget.onOpen('projects'))),
-          const SizedBox(width: 10),
-          Expanded(child: GroupBento(key: const Key('grp_desk_running'), icon: Icons.play_circle_outline_rounded, color: ThemeConstants.invAccent, value: '${n(pr, 'active')}', label: sw ? 'Inayoendelea' : 'Running', onTap: () => widget.onOpen('projects'))),
-        ]),
-        const SizedBox(height: 10),
-        Row(children: <Widget>[
-          Expanded(child: GroupBento(key: const Key('grp_desk_spent'), icon: Icons.payments_rounded, color: ThemeConstants.errorRed, value: '${short(pr['spent'] ?? 0)} / ${short(pr['budget'] ?? 0)}', label: sw ? 'Imetumika / bajeti' : 'Spent / budget', onTap: () => widget.onOpen('projects'))),
-          const SizedBox(width: 10),
-          Expanded(child: GroupBento(key: const Key('grp_desk_done'), icon: Icons.task_alt_rounded, color: ThemeConstants.successGreen, value: '${n(pr, 'completed')}', label: sw ? 'Iliyokamilika' : 'Completed', onTap: () => widget.onOpen('projects'))),
-        ]),
+        GroupTileGrid(
+          dividerKey: 'grp_desk_div',
+          tiles: <GroupGridTile>[
+            GroupGridTile(tileKey: const Key('grp_desk_proposed'), icon: Icons.lightbulb_outline_rounded, color: ThemeConstants.warningAmber, value: '${n(pr, 'proposed')}', label: sw ? 'Mapendekezo' : 'Proposals', onTap: () => widget.onOpen('projects')),
+            GroupGridTile(tileKey: const Key('grp_desk_running'), icon: Icons.play_circle_outline_rounded, color: ThemeConstants.invAccent, value: '${n(pr, 'active')}', label: sw ? 'Inayoendelea' : 'Running', onTap: () => widget.onOpen('projects')),
+            GroupGridTile(tileKey: const Key('grp_desk_spent'), icon: Icons.payments_rounded, color: ThemeConstants.errorRed, value: '${short(pr['spent'] ?? 0)} / ${short(pr['budget'] ?? 0)}', label: sw ? 'Imetumika / bajeti' : 'Spent / budget', onTap: () => widget.onOpen('projects')),
+            GroupGridTile(tileKey: const Key('grp_desk_done'), icon: Icons.task_alt_rounded, color: ThemeConstants.successGreen, value: '${n(pr, 'completed')}', label: sw ? 'Iliyokamilika' : 'Completed', onTap: () => widget.onOpen('projects')),
+          ],
+        ),
       ],
       if (ln != null && !hasMoney) ...<Widget>[
         const SizedBox(height: 22),
         _title(sw ? 'Mikopo' : 'Loans'),
         const SizedBox(height: 8),
-        Row(children: <Widget>[
-          Expanded(child: GroupBento(key: const Key('grp_desk_loan_review'), icon: Icons.thumb_up_alt_outlined, color: ThemeConstants.warningAmber, value: '${n(ln, 'under_review')}', label: sw ? 'Ya kupendekeza' : 'To recommend', onTap: () => widget.onOpen('loans'))),
-          const SizedBox(width: 10),
-          Expanded(child: GroupBento(key: const Key('grp_desk_loan_approve'), icon: Icons.verified_rounded, color: ThemeConstants.invAccent, value: '${n(ln, 'recommended')}', label: sw ? 'Ya kuidhinisha' : 'To approve', onTap: () => widget.onOpen('loans'))),
-        ]),
-        const SizedBox(height: 10),
-        Row(children: <Widget>[
-          Expanded(child: GroupBento(key: const Key('grp_desk_loan_pay'), icon: Icons.payments_rounded, color: ThemeConstants.primaryOrange, value: '${n(ln, 'approved')}', label: sw ? 'Ya kutoa' : 'To pay out', onTap: () => widget.onOpen('loans'))),
-          const SizedBox(width: 10),
-          Expanded(child: GroupBento(key: const Key('grp_desk_loan_running'), icon: Icons.request_quote_rounded, color: ThemeConstants.successGreen, value: '${n(ln, 'active')}', label: sw ? 'Inayolipwa' : 'Running', onTap: () => widget.onOpen('loans'))),
-        ]),
+        GroupTileGrid(
+          dividerKey: 'grp_desk_div',
+          tiles: <GroupGridTile>[
+            GroupGridTile(tileKey: const Key('grp_desk_loan_review'), icon: Icons.thumb_up_alt_outlined, color: ThemeConstants.warningAmber, value: '${n(ln, 'under_review')}', label: sw ? 'Ya kupendekeza' : 'To recommend', onTap: () => widget.onOpen('loans')),
+            GroupGridTile(tileKey: const Key('grp_desk_loan_approve'), icon: Icons.verified_rounded, color: ThemeConstants.invAccent, value: '${n(ln, 'recommended')}', label: sw ? 'Ya kuidhinisha' : 'To approve', onTap: () => widget.onOpen('loans')),
+            GroupGridTile(tileKey: const Key('grp_desk_loan_pay'), icon: Icons.payments_rounded, color: ThemeConstants.primaryOrange, value: '${n(ln, 'approved')}', label: sw ? 'Ya kutoa' : 'To pay out', onTap: () => widget.onOpen('loans')),
+            GroupGridTile(tileKey: const Key('grp_desk_loan_running'), icon: Icons.request_quote_rounded, color: ThemeConstants.successGreen, value: '${n(ln, 'active')}', label: sw ? 'Inayolipwa' : 'Running', onTap: () => widget.onOpen('loans')),
+          ],
+        ),
       ],
       if (mt != null) ...<Widget>[
         const SizedBox(height: 22),
         _title(sw ? 'Vikao na kumbukumbu' : 'Meetings and records'),
         const SizedBox(height: 8),
-        Row(children: <Widget>[
-          Expanded(child: GroupBento(key: const Key('grp_desk_to_record'), icon: Icons.edit_note_rounded, color: ThemeConstants.warningAmber, value: '${n(mt, 'to_record')}', label: sw ? 'Vikao vya kurekodi' : 'To record', onTap: () => widget.onOpen('community'))),
-          const SizedBox(width: 10),
-          Expanded(child: GroupBento(key: const Key('grp_desk_minutes'), icon: Icons.fact_check_rounded, color: ThemeConstants.invAccent, value: '${n(mt, 'minutes_open')}', label: sw ? 'Muhtasari haujaidhinishwa' : 'Minutes unapproved', onTap: () => widget.onOpen('community'))),
-        ]),
-        const SizedBox(height: 10),
-        Row(children: <Widget>[
-          Expanded(child: GroupBento(key: const Key('grp_desk_actions'), icon: Icons.assignment_turned_in_rounded, color: ThemeConstants.successGreen, value: '${n(mt, 'open_actions')}', label: sw ? 'Kazi zilizo wazi' : 'Open actions', onTap: () => widget.onOpen('community'))),
-          const SizedBox(width: 10),
-          Expanded(child: GroupBento(key: const Key('grp_desk_late'), icon: Icons.assignment_late_rounded, color: ThemeConstants.errorRed, value: '${n(mt, 'overdue_actions')}', label: sw ? 'Zilizochelewa' : 'Overdue', onTap: () => widget.onOpen('community'))),
-        ]),
+        GroupTileGrid(
+          dividerKey: 'grp_desk_div',
+          tiles: <GroupGridTile>[
+            GroupGridTile(tileKey: const Key('grp_desk_to_record'), icon: Icons.edit_note_rounded, color: ThemeConstants.warningAmber, value: '${n(mt, 'to_record')}', label: sw ? 'Vikao vya kurekodi' : 'To record', onTap: () => widget.onOpen('community')),
+            GroupGridTile(tileKey: const Key('grp_desk_minutes'), icon: Icons.fact_check_rounded, color: ThemeConstants.invAccent, value: '${n(mt, 'minutes_open')}', label: sw ? 'Muhtasari haujaidhinishwa' : 'Minutes unapproved', onTap: () => widget.onOpen('community')),
+            GroupGridTile(tileKey: const Key('grp_desk_actions'), icon: Icons.assignment_turned_in_rounded, color: ThemeConstants.successGreen, value: '${n(mt, 'open_actions')}', label: sw ? 'Kazi zilizo wazi' : 'Open actions', onTap: () => widget.onOpen('community')),
+            GroupGridTile(tileKey: const Key('grp_desk_late'), icon: Icons.assignment_late_rounded, color: ThemeConstants.errorRed, value: '${n(mt, 'overdue_actions')}', label: sw ? 'Zilizochelewa' : 'Overdue', onTap: () => widget.onOpen('community')),
+          ],
+        ),
       ],
     ];
   }
