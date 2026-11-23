@@ -14,16 +14,24 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeApi extends GroupsApi {
-  _FakeApi({this.withMoney = true, this.desk});
+  _FakeApi({this.withMoney = true, this.desk, this.failing = false});
 
   final bool withMoney;
   final Map<String, dynamic>? desk;
+
+  /// The group's figures cannot be loaded.
+  final bool failing;
 
   @override
   Future<List<GroupTransaction>> myTransactions() async => const <GroupTransaction>[];
 
   @override
-  Future<GroupDashboardData> dashboard({final String? month}) async => GroupDashboardData.fromJson(<String, dynamic>{
+  Future<GroupDashboardData> dashboard({final String? month}) async {
+    if (failing) throw Exception('offline');
+    return _dashboard(month);
+  }
+
+  GroupDashboardData _dashboard(final String? month) => GroupDashboardData.fromJson(<String, dynamic>{
         'month': month,
         'members': <String, dynamic>{'active': 24, 'applications': 3, 'suspended': 1, 'joined_in_month': 2},
         'desk': desk,
@@ -104,6 +112,45 @@ void main() {
       expect(find.text(title), findsOneWidget, reason: title);
     }
     expect(find.byKey(const Key('grp_overview_chart')), findsOneWidget);
+  });
+
+  testWidgets('every member has the account at the top, whatever the office: treasurer, secretary, chair, and a member with none', (final WidgetTester t) async {
+    for (final (String office, List<String> r) in <(String, List<String>)>[
+      ('mweka_hazina', rights),
+      ('katibu', <String>['view_members']),
+      ('mwenyekiti', <String>['view_members', 'view_finance', 'manage_payment_methods']),
+      ('', <String>[]),
+    ]) {
+      final GroupMe me = GroupMe.fromJson(<String, dynamic>{
+        'rights': r,
+        'member': <String, dynamic>{'id': 1, 'full_name': 'Asha Juma', 'phone': '0713000001', 'status': 'active', 'office': office.isEmpty ? null : office, 'member_number': 'MEG-0001'},
+        'group': <String, dynamic>{'name': 'MEG'},
+        'balances': <String, double>{'joining_fee': 80000, 'shares': 200000, 'savings': 100000, 'contribution': 0},
+        'settings': <String, dynamic>{'joining_fee': 80000, 'share_amount': 200000},
+        'waiting': <String, int>{},
+      });
+      await _pump(t, me);
+      expect(find.byKey(const Key('grp_my_account')), findsOneWidget, reason: 'office: $office');
+      expect(find.text('No. MEG-0001'), findsOneWidget, reason: 'office: $office');
+      expect(find.text('TSh ••••••'), findsOneWidget, reason: 'office: $office');
+      expect(find.byKey(const Key('grp_my_account_none')), findsNothing);
+      // It is the first part on the screen.
+      expect(_top(t, find.byKey(const Key('grp_my_account'))), lessThan(_top(t, find.byKey(const Key('grp_my_glance')))), reason: 'office: $office');
+    }
+  });
+
+  testWidgets('someone who runs the group without being registered as a member is told there is no account for them, instead of an empty place', (final WidgetTester t) async {
+    final GroupMe me = GroupMe.fromJson(<String, dynamic>{'rights': rights, 'group': <String, dynamic>{'name': 'MEG'}, 'waiting': <String, int>{}});
+    await _pump(t, me);
+    expect(find.byKey(const Key('grp_my_account_none')), findsOneWidget);
+    expect(find.byKey(const Key('grp_my_account')), findsNothing);
+  });
+
+  testWidgets('when the group figures cannot be loaded the account still comes first', (final WidgetTester t) async {
+    await _pump(t, _me(rights, <String, int>{}), api: _FakeApi(failing: true));
+    expect(find.byKey(const Key('grp_my_account')), findsOneWidget);
+    expect(find.text('No. MEG-0001'), findsOneWidget);
+    expect(find.byKey(const Key('grp_my_glance')), findsOneWidget);
   });
 
   testWidgets('a count of zero is not shown, and when nothing waits the screen says so', (final WidgetTester t) async {

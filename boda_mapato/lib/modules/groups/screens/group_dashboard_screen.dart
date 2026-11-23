@@ -383,7 +383,7 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
     // The member's own figures in tiles (not a card), shown before the joined sections.
     final List<Widget> lead = <Widget>[if (m != null) _MyGlance(me: me, sw: sw, onStatement: _statement)];
     // The account comes first, on every screen of every role that has a member record.
-    final Widget? account = m == null ? null : GroupAccountSection(me: me, onStatement: _statement);
+    final Widget account = GroupAccountSection(me: me, onStatement: _statement);
 
     return RefreshIndicator(
       onRefresh: _refresh,
@@ -396,7 +396,7 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
             GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen, account: account, lead: lead, beforeChart: personal, afterChart: afterChart)
           else ...<Widget>[
             // Everyone else: the same ONE joined card, from the account down.
-            ...joinGlowCards(<Widget>[if (account != null) account, ...lead, ...personal, ...afterChart]),
+            ...joinGlowCards(<Widget>[account, ...lead, ...personal, ...afterChart]),
           ],
         ],
       ),

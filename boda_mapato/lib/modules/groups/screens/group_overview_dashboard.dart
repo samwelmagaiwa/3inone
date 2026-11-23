@@ -97,7 +97,8 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
           padding: const EdgeInsets.all(24),
           child: Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!, style: const TextStyle(color: Colors.white70))),
         ),
-        if (_error != null) ...joinGlowCards(<Widget>[...widget.beforeChart, ...widget.afterChart]),
+        // Even when the group's figures cannot be loaded, the person's own account comes first.
+        if (_error != null) ...joinGlowCards(<Widget>[if (widget.account != null) widget.account!, ...widget.lead, ...widget.beforeChart, ...widget.afterChart]),
       ]);
     }
     final GroupDashboardMoney? m = d.money;

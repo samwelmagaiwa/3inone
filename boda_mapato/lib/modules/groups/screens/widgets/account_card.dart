@@ -92,6 +92,21 @@ class GroupAccountSection extends StatelessWidget with GlowSectionWidget {
   @override
   Widget build(final BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
+    // Every member of the group, whatever their office, has an account. Someone who runs the group without being registered as a member
+    // has none, and the screen says so instead of leaving the place empty.
+    if (me.member == null) {
+      return GlowCard(
+        title: sw ? 'Akaunti' : 'Account',
+        children: <Widget>[
+          Text(
+            sw ? 'Hujasajiliwa kama mwanachama, kwa hiyo huna akaunti ya uanachama. Jisajili kama mwanachama ili uwe na akaunti na namba yake.' : 'You are not registered as a member, so there is no member account for you. Register as a member to have an account and its number.',
+            key: const Key('grp_my_account_none'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70, height: 1.35),
+          ),
+        ],
+      );
+    }
     return GlowCard(title: sw ? 'Akaunti' : 'Account', children: <Widget>[GroupAccountCard(me: me, onStatement: onStatement)]);
   }
 }
