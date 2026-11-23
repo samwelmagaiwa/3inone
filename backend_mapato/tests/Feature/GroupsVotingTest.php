@@ -130,6 +130,22 @@ class GroupsVotingTest extends TestCase
         $this->assertSame(count($this->people), DB::table('group_voting_turnout')->where('voting_id', $id)->count(), 'every member of every office voted once');
     }
 
+    public function test_the_database_itself_refuses_a_second_vote_in_the_same_voting(): void
+    {
+        $id = $this->agenda('Jambo la ulinzi');
+        $this->open($id);
+        $this->api($this->people['asha'], 'POST', "/votings/{$id}/vote", ['option_id' => $this->optionOf($id, 'Approve')])->assertCreated();
+
+        // Even code that skipped every check could not add a second turnout row for the same member in the same voting ...
+        $this->expectException(\Illuminate\Database\QueryException::class);
+        try {
+            DB::table('group_voting_turnout')->insert(['voting_id' => $id, 'member_id' => $this->ids['asha'], 'voted_on' => '2026-05-03']);
+        } finally {
+            // ... and the same member is still counted once, in this voting only.
+            $this->assertSame(1, DB::table('group_voting_turnout')->where('voting_id', $id)->where('member_id', $this->ids['asha'])->count());
+        }
+    }
+
     public function test_an_election_has_its_own_candidates_and_a_decision_has_approve_reject_abstain(): void
     {
         $e = $this->election('Mwenyekiti', ['asha', 'juma', 'rehema']);
