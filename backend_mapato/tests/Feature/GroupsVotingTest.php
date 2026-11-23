@@ -109,6 +109,27 @@ class GroupsVotingTest extends TestCase
         $this->api($this->people['asha'], 'POST', '/votings', [])->assertForbidden();
     }
 
+    public function test_every_member_votes_whatever_their_office(): void
+    {
+        // The four offices not made in setUp, so all eight offices and an ordinary member are covered.
+        foreach ([['assistant', '0712000011', 'mweka_hazina_msaidizi'], ['deputysec', '0712000012', 'katibu_msaidizi'], ['projects', '0712000013', 'mwenyekiti_miradi'], ['committee', '0712000014', 'kamati_miradi']] as [$key, $phone, $office]) {
+            $id = $this->api($this->owner, 'POST', '/members', ['full_name' => ucfirst($key) . ' Member', 'phone' => $phone, 'existing' => true])->assertCreated()->json('data.member.id');
+            $this->api($this->owner, 'PUT', "/members/{$id}/office", ['office' => $office])->assertOk();
+            $this->api($this->owner, 'POST', "/members/{$id}/sign-in")->assertCreated();
+            $this->people[$key] = User::query()->find(DB::table('group_members')->where('id', $id)->value('user_id'));
+        }
+        $id = $this->agenda('Jambo la wote');
+        $this->open($id);
+        $yes = ['option_id' => $this->optionOf($id, 'Approve')];
+
+        foreach (array_keys($this->people) as $who) {
+            $this->api($this->people[$who], 'GET', '/votings')->assertOk();
+            $this->assertSame('pending', $this->api($this->people[$who], 'GET', "/votings/{$id}")->json('data.voting.my.state'), "{$who} may vote");
+            $this->api($this->people[$who], 'POST', "/votings/{$id}/vote", $yes)->assertCreated();
+        }
+        $this->assertSame(count($this->people), DB::table('group_voting_turnout')->where('voting_id', $id)->count(), 'every member of every office voted once');
+    }
+
     public function test_an_election_has_its_own_candidates_and_a_decision_has_approve_reject_abstain(): void
     {
         $e = $this->election('Mwenyekiti', ['asha', 'juma', 'rehema']);
