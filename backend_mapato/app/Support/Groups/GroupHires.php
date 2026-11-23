@@ -71,15 +71,27 @@ final class GroupHires
         return round((float) $hire->amount + (float) $hire->late_charge + (float) $hire->damage_charge, 2);
     }
 
-    /** The late charge if [hire] comes back on [on]: overdue days x the asset's late rate x the units out (0 when no late rate is set). */
+    /**
+     * The nights a hire has run past its return day by [on]: the first is the night after the return date ended. Nothing before that.
+     */
+    public static function lateNights(object $hire, string $on): int
+    {
+        return max(0, (int) Carbon::parse((string) $hire->end_date)->diffInDays(Carbon::parse($on), false));
+    }
+
+    /**
+     * The late charge if [hire] comes back on [on]: every night past the return date x the late rate x the units out. An asset with no late
+     * rate of its own is charged its normal hire rate for each extra night (a late rate of 0 means no charge for lateness at all).
+     */
     public static function lateCharge(object $hire, object $asset, string $on): float
     {
-        $late = (int) Carbon::parse((string) $hire->end_date)->diffInDays(Carbon::parse($on), false);
-        if ($late <= 0 || $asset->late_rate === null) {
+        $nights = self::lateNights($hire, $on);
+        $rate = $asset->late_rate ?? $asset->hire_rate;
+        if ($nights <= 0 || $rate === null) {
             return 0.0;
         }
 
-        return round($late * (float) $asset->late_rate * (int) ($hire->issued_quantity ?? $hire->quantity), 2);
+        return round($nights * (float) $rate * (int) ($hire->issued_quantity ?? $hire->quantity), 2);
     }
 
     /** Where it stands, read rather than stored: waiting_payment / confirmed / out / overdue / returned / closed / ... */
@@ -110,7 +122,7 @@ final class GroupHires
     public static function query(): \Illuminate\Database\Query\Builder
     {
         return DB::table('group_hires as h')->join('group_assets as a', 'a.id', '=', 'h.asset_id')->leftJoin('group_members as m', 'm.id', '=', 'h.member_id')
-            ->select('h.*', 'a.name as asset_name', 'a.custodian_id', 'm.full_name as member_name', 'm.phone as member_phone');
+            ->select('h.*', 'a.name as asset_name', 'a.custodian_id', 'a.late_rate as asset_late_rate', 'a.hire_rate as asset_hire_rate', 'm.full_name as member_name', 'm.phone as member_phone');
     }
 
     /** @return array<string, mixed> */
@@ -134,6 +146,9 @@ final class GroupHires
             'rate' => (float) $h->rate,
             'amount' => (float) $h->amount,
             'late_charge' => (float) $h->late_charge,
+            // While it is still out past its return day: the nights so far and what they come to now (settled when it comes back).
+            'late_nights' => $h->status === 'issued' ? self::lateNights($h, now()->toDateString()) : (($h->returned_on ?? null) === null ? 0 : self::lateNights($h, (string) $h->returned_on)),
+            'late_charge_now' => $h->status === 'issued' ? self::lateCharge($h, (object) ['late_rate' => $h->asset_late_rate ?? null, 'hire_rate' => $h->asset_hire_rate ?? $h->rate], now()->toDateString()) : (float) $h->late_charge,
             'damage_charge' => (float) $h->damage_charge,
             'damage_note' => $h->damage_note,
             'total' => self::total($h),

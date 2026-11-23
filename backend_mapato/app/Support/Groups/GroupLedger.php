@@ -159,6 +159,10 @@ final class GroupLedger
     public static function submit(array $data, string $by): int
     {
         $method = (string) $data['method'];
+        // Once the group has chosen its payment methods, money is recorded only by those (in or out).
+        if (!GroupPaymentMethods::permits($method)) {
+            throw new InvalidArgumentException('method_not_authorized');
+        }
         $ref = trim((string) ($data['external_ref'] ?? ''));
         $category = (string) $data['category'];
         $direction = in_array($category, self::OUT_CATEGORIES, true) ? 'out' : (string) ($data['direction'] ?? 'in');

@@ -133,6 +133,7 @@ final class TenantTables
         'group_messages',
         'group_notifications',
         'group_obligations',
+        'group_payment_methods',
         'group_project_reviews',
         'group_project_updates',
         'group_projects',

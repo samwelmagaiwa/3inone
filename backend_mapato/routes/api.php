@@ -82,6 +82,7 @@ use App\Http\Controllers\API\Groups\GroupLoanController;
 use App\Http\Controllers\API\Groups\GroupMeController;
 use App\Http\Controllers\API\Groups\GroupMemberController;
 use App\Http\Controllers\API\Groups\GroupPublicController;
+use App\Http\Controllers\API\Groups\GroupPaymentMethodController;
 use App\Http\Controllers\API\Groups\GroupRecordsController;
 use App\Http\Controllers\API\Groups\GroupVotingController;
 use App\Http\Controllers\API\Groups\GroupSettingsController;
@@ -412,6 +413,9 @@ Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(f
     });
     Route::get('reports/members.csv', [GroupRecordsController::class, 'exportMembers'])->middleware('group_right:view_members');
 
+    // The payment methods the group authorises and where each is paid: everyone reads them, the Mwenyekiti and the Makamu choose them.
+    Route::get('payment-methods', [GroupPaymentMethodController::class, 'index']);
+    Route::put('payment-methods', [GroupPaymentMethodController::class, 'update'])->middleware('group_right:manage_payment_methods');
     // Voting: many independent processes. Every member sees them and votes in the ones they may; officers prepare and run them.
     Route::get('votings', [GroupVotingController::class, 'index']);
     Route::get('votings/{id}', [GroupVotingController::class, 'show'])->whereNumber('id');

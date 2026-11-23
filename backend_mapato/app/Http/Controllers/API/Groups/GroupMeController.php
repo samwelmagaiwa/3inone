@@ -154,6 +154,8 @@ class GroupMeController extends Controller
                 'shares_required_for' => $settings['shares_required_for'],
                 'payment_instructions' => $settings['payment_instructions'],
             ],
+            // Where to pay, for each method the group authorises (empty until the group has chosen: then every method is accepted).
+            'payment_methods' => \App\Support\Groups\GroupPaymentMethods::payload(),
             'waiting' => $waiting,
             // Keeps (or manages) assets: the hires section is theirs.
             'keeps_assets' => $isKeeper,

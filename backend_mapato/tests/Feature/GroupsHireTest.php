@@ -48,7 +48,7 @@ class GroupsHireTest extends TestCase
         }
         $this->chairs = $this->api($this->people['chair'], 'POST', '/assets', [
             'code' => 'VT-01', 'name' => 'Viti vya plastiki', 'category' => 'Viti', 'quantity' => 100, 'cost' => 1500000, 'location' => 'Stoo ya Mwenyekiti',
-            'custodian_id' => $this->ids['keeper'], 'hire_rate' => 300,
+            'custodian_id' => $this->ids['keeper'], 'hire_rate' => 300, 'late_rate' => 0,
         ])->assertOk()->json('data.asset.id');
     }
 
@@ -108,7 +108,7 @@ class GroupsHireTest extends TestCase
 
         $this->api($this->people['keeper'], 'POST', "/hires/{$hire}/issue", ['quantity' => 60, 'condition' => 'Nzuri'])->assertOk()->assertJsonPath('data.hire.state', 'out');
 
-        // Back two days late: no late rate set, so no late charge. 55 back (2 of them broken), 5 missing.
+        // Back two days late: this asset's late rate is 0, so lateness costs nothing. 55 back (2 of them broken), 5 missing.
         Carbon::setTestNow(Carbon::parse('2026-11-24 10:00:00'));
         $this->api($this->people['keeper'], 'POST', "/hires/{$hire}/return", ['returned' => 50, 'missing' => 5])->assertStatus(422)->assertJsonPath('code', 'counts_do_not_add_up');
         $this->api($this->people['keeper'], 'POST', "/hires/{$hire}/return", ['returned' => 55, 'damaged' => 2, 'missing' => 5, 'note' => '2 zimevunjika'])
@@ -141,6 +141,27 @@ class GroupsHireTest extends TestCase
         $this->api($this->people['chair'], 'GET', '/me')->assertJsonPath('data.waiting.hires_overdue', 1);
         $this->api($this->people['keeper'], 'POST', "/hires/{$hire}/return", ['returned' => 10])->assertOk()
             ->assertJsonPath('data.hire.late_charge', 9000)->assertJsonPath('data.hire.state', 'balance_due');
+    }
+
+    public function test_lateness_is_charged_from_the_night_after_the_return_date_at_the_hire_rate_when_the_asset_has_no_late_rate(): void
+    {
+        $this->api($this->people['chair'], 'PUT', "/assets/{$this->chairs}", ['code' => 'VT-01', 'name' => 'Viti vya plastiki', 'custodian_id' => $this->ids['keeper'], 'hire_rate' => 300, 'late_rate' => null])->assertOk();
+        $hire = $this->api($this->people['asha'], 'POST', '/me/hires', ['asset_id' => $this->chairs, 'quantity' => 10, 'start_date' => '2026-11-20', 'end_date' => '2026-11-22'])->assertJsonPath('data.hire.amount', 9000)->json('data.hire.id');
+        $this->api($this->people['keeper'], 'POST', "/hires/{$hire}/decide", ['approve' => true])->assertOk();
+        $this->api($this->people['asha'], 'POST', '/me/payments', ['category' => 'hire', 'hire_id' => $hire, 'amount' => 9000, 'method' => 'cash'])->assertCreated();
+        $this->verifyLast();
+        $this->api($this->people['keeper'], 'POST', "/hires/{$hire}/issue", ['quantity' => 10])->assertOk();
+
+        // On the return day itself nothing is late; the first late night is the night after it.
+        Carbon::setTestNow(Carbon::parse('2026-11-22 18:00:00'));
+        $this->api($this->people['keeper'], 'GET', '/hires?status=open')->assertJsonPath('data.hires.0.late_nights', 0)->assertJsonPath('data.hires.0.late_charge_now', 0);
+        Carbon::setTestNow(Carbon::parse('2026-11-23 08:00:00'));
+        $this->api($this->people['keeper'], 'GET', '/hires?status=open')->assertJsonPath('data.hires.0.late_nights', 1)->assertJsonPath('data.hires.0.late_charge_now', 3000);
+        // It keeps running while it is out: three nights over by the 25th, 10 chairs x 300.
+        Carbon::setTestNow(Carbon::parse('2026-11-25 09:00:00'));
+        $this->api($this->people['keeper'], 'GET', '/hires?status=open')->assertJsonPath('data.hires.0.late_nights', 3)->assertJsonPath('data.hires.0.late_charge_now', 9000);
+        $this->api($this->people['keeper'], 'POST', "/hires/{$hire}/return", ['returned' => 10])->assertOk()
+            ->assertJsonPath('data.hire.late_charge', 9000)->assertJsonPath('data.hire.late_nights', 3)->assertJsonPath('data.hire.state', 'balance_due');
     }
 
     public function test_someone_outside_the_group_hires_through_the_keeper_who_records_their_payment(): void

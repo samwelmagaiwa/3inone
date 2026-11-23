@@ -24,6 +24,7 @@ class GroupTransactionController extends Controller
 
     /** The words for each refusal the ledger can give, both languages. */
     private const WORDS = [
+        'method_not_authorized' => 'Njia hii ya malipo haijaidhinishwa na kikundi. / This payment method is not authorised by the group.',
         'reference_required' => 'Weka namba ya muamala (reference) kwa malipo yasiyo ya taslimu. / Enter the transaction reference for a non-cash payment.',
         'duplicate_reference' => 'Muamala wenye namba hii tayari umerekodiwa. / A payment with this reference is already recorded.',
         'not_pending' => 'Malipo haya hayasubiri tena uthibitisho. / This payment is no longer waiting for verification.',
