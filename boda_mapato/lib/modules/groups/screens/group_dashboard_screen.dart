@@ -94,16 +94,8 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
     final GroupMe me = widget.me;
     final GroupMember? m = me.member;
 
-    return RefreshIndicator(
-      onRefresh: _refresh,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        children: <Widget>[
-          // The group at a glance, for its officers: quick actions, the month, the headline figures, the year, the trend.
-          if (me.can('view_finance') || me.can('view_members')) ...<Widget>[
-            GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen),
-            const SizedBox(height: 22),
-          ],
+    final bool officer = me.can('view_finance') || me.can('view_members');
+    final List<Widget> personal = <Widget>[
           // Who I am in the group (an administrator with no member record has nothing to show).
           if (m != null)
           GlowListCard(
@@ -317,6 +309,18 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
               ],
             ),
           ],
+    ];
+
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        children: <Widget>[
+          // The group at a glance, for its officers, with who I am and what waits for me before the trend; everyone else starts with who they are.
+          if (officer)
+            GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen, between: personal)
+          else
+            ...personal,
           if (me.nextMeetingTitle != null || me.notices > 0) ...<Widget>[
             const SizedBox(height: 12),
             GlowListCard(

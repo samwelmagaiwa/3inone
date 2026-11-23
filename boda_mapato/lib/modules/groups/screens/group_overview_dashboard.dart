@@ -26,7 +26,10 @@ import 'groups_text.dart';
 ///
 /// Money appears only for whoever sees the group's money; the secretary sees the membership part.
 class GroupOverviewDashboard extends StatefulWidget {
-  const GroupOverviewDashboard({required this.api, required this.me, required this.onOpen, super.key});
+  const GroupOverviewDashboard({required this.api, required this.me, required this.onOpen, super.key, this.between = const <Widget>[]});
+
+  /// What the screen puts between the figures and the trend (who I am, what waits for me): the trend is the last thing on the page.
+  final List<Widget> between;
 
   final GroupsApi api;
   final GroupMe me;
@@ -79,10 +82,13 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     final GroupDashboardData? d = _d;
     if (d == null) {
-      return Padding(
-        padding: const EdgeInsets.all(24),
-        child: Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!, style: const TextStyle(color: Colors.white70))),
-      );
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!, style: const TextStyle(color: Colors.white70))),
+        ),
+        ...widget.between,
+      ]);
     }
     final GroupDashboardMoney? m = d.money;
     return Column(
@@ -193,13 +199,16 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
             const SizedBox(width: 10),
             Expanded(child: GroupBento(icon: Icons.receipt_long_rounded, color: ThemeConstants.errorRed, value: short(m.expenses), label: sw ? 'Matumizi' : 'Spending', onTap: () => widget.onOpen('payments'))),
           ]),
-          // 6. the trend, last of the figures
+        ],
+        ..._desk(sw, d, hasMoney: m != null),
+        if (widget.between.isNotEmpty) ...<Widget>[const SizedBox(height: 22), ...widget.between],
+        // 6. the trend: the last thing on the page, after who I am and what waits
+        if (m != null) ...<Widget>[
           const SizedBox(height: 22),
           _title(sw ? 'Mwenendo wa fedha' : 'Money over time'),
           const SizedBox(height: 8),
           _chartCard(sw, m),
         ],
-        ..._desk(sw, d, hasMoney: m != null),
       ],
     );
   }

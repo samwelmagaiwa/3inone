@@ -75,7 +75,7 @@ double _top(final WidgetTester t, final Finder f) => t.getTopLeft(f).dy;
 void main() {
   const List<String> rights = <String>['view_members', 'view_finance', 'record_payments', 'verify_payments', 'view_loans'];
 
-  testWidgets('the figures of the group come first with the trend last, then who the person is and what waits, then their own money', (final WidgetTester t) async {
+  testWidgets('the figures of the group come first, then who the person is and what waits, then the trend, then their own money', (final WidgetTester t) async {
     await _pump(t, _me(rights, <String, int>{'payments_to_verify': 3, 'loans_to_recommend': 0, 'applications': 2}));
 
     final double who = _top(t, find.byKey(const Key('grp_me_name')));
@@ -84,7 +84,7 @@ void main() {
     final double headline = _top(t, find.byKey(const Key('grp_overview_joined')));
     final double chart = _top(t, find.byKey(const Key('grp_overview_chart')));
     final double mine = _top(t, find.text('My payments'));
-    expect(<double>[actions, headline, chart, who, waiting, mine], orderedEquals(<double>[actions, headline, chart, who, waiting, mine]..sort()), reason: 'actions, headline, trend, then who I am, waiting, my money');
+    expect(<double>[actions, headline, who, waiting, chart, mine], orderedEquals(<double>[actions, headline, who, waiting, chart, mine]..sort()), reason: 'actions, headline, who I am, waiting, then the trend, then my money');
     expect(find.byKey(const Key('grp_wait_payments')), findsOneWidget);
     expect(find.byKey(const Key('grp_wait_applications')), findsOneWidget);
     expect(find.byKey(const Key('grp_overview_chart')), findsOneWidget);
