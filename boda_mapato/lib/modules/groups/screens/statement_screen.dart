@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -57,7 +56,7 @@ class _GroupStatementScreenState extends State<GroupStatementScreen> {
     }
   }
 
-  /// Makes the statement as a PDF (with the loans still owed, for one's own) and opens the share sheet.
+  /// Makes the statement as a PDF, picture or Word file (with the loans still owed, for one's own) and opens the share sheet.
   Future<void> _share() async {
     final bool sw = context.read<LocalizationService>().isSwahili;
     final GroupStatementData? d = _data;
@@ -68,8 +67,8 @@ class _GroupStatementScreenState extends State<GroupStatementScreen> {
       if (widget.memberId == null) {
         loans = (await widget.api.myLoans()).$1;
       }
-      final Uint8List bytes = await GroupDocuments.statement(d, sw: sw, group: me.groupName ?? '', memberName: widget.memberName ?? me.member?.fullName ?? '', loans: loans);
-      await GroupDocuments.share(bytes, 'statement.pdf');
+      if (!mounted) return;
+      await GroupDocuments.shareDoc(context, GroupDocuments.statementDoc(d, sw: sw, group: me.groupName ?? '', memberName: widget.memberName ?? me.member?.fullName ?? '', loans: loans), sw: sw);
     } on Exception catch (e) {
       if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
     }
@@ -86,7 +85,7 @@ class _GroupStatementScreenState extends State<GroupStatementScreen> {
         flat: true,
         actions: <Widget>[
           if (d != null)
-            IconButton(key: const Key('grp_stmt_pdf'), tooltip: sw ? 'Shiriki (PDF)' : 'Share (PDF)', icon: const Icon(Icons.picture_as_pdf_rounded), onPressed: _share),
+            IconButton(key: const Key('grp_stmt_pdf'), tooltip: sw ? 'Shiriki (PDF, picha, Word)' : 'Share (PDF, picture, Word)', icon: const Icon(Icons.picture_as_pdf_rounded), onPressed: _share),
         ],
       ),
       body: SafeArea(

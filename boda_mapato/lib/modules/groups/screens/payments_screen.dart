@@ -96,7 +96,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       context,
       title: '${categoryLabel(sw: sw, category: t.category)} · ${t.memberName ?? ''} · ${tsh(t.amount)}',
       actions: <GroupSheetAction>[
-        if (t.isVerified && t.receiptNumber != null) GroupSheetAction(icon: Icons.receipt_long_rounded, label: sw ? 'Risiti (PDF)' : 'Receipt (PDF)', value: 'receipt'),
+        if (t.isVerified && t.receiptNumber != null) GroupSheetAction(icon: Icons.receipt_long_rounded, label: sw ? 'Tuma risiti (SMS, WhatsApp, PDF, Word)' : 'Send receipt (SMS, WhatsApp, PDF, Word)', value: 'receipt'),
         if (t.isPending && me.can('verify_payments') && !mine) ...<GroupSheetAction>[
           GroupSheetAction(icon: Icons.verified_rounded, label: sw ? 'Thibitisha' : 'Verify', value: 'verify', tone: GroupTone.positive),
           GroupSheetAction(icon: Icons.block_rounded, label: sw ? 'Kataa' : 'Turn down', value: 'reject', tone: GroupTone.danger),
@@ -122,6 +122,17 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
           if (!ok) return;
           final GroupTransaction done = await widget.api.verify(t.id);
           await _afterChange('${sw ? 'Imethibitishwa' : 'Verified'} · ${done.receiptNumber ?? ''}');
+          // The payment is done: offer to send the receipt to the member right away (not for money paid out).
+          if (mounted && done.receiptNumber != null && done.memberName != null) {
+            final bool send = await groupConfirm(
+              context,
+              title: sw ? 'Tuma risiti kwa mwanachama?' : 'Send the receipt to the member?',
+              message: '${done.memberName}: ${tsh(done.amount)} · ${done.receiptNumber}',
+              yes: sw ? 'Tuma' : 'Send',
+              tone: GroupTone.positive,
+            );
+            if (send && mounted) await GroupDocuments.shareReceipt(context, widget.api, done.id, sw: sw);
+          }
         case 'reject':
           final String? reason = await groupReason(
             context,

@@ -39,6 +39,8 @@ class GroupReceiptController extends Controller
             'group' => $this->groupName((string) $row->owner_id),
             'verify_url' => GroupReceipts::url($row),
             'reversed' => $row->reversed_by_id !== null,
+            // So the receipt can be sent to the member: the one it is for, or whoever sees the group's finances (checked above).
+            'member_phone' => $row->member_id === null ? null : DB::table('group_members')->where('id', $row->member_id)->value('phone'),
         ]]]);
     }
 

@@ -1,16 +1,14 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../constants/theme_constants.dart';
 import '../../../services/localization_service.dart';
 import '../../../utils/server_message.dart';
 import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_voting_models.dart';
+import '../services/group_documents.dart';
 import '../services/groups_api.dart';
 import 'voting_common.dart';
 import 'widgets/groups_ui.dart';
@@ -52,11 +50,11 @@ class _VotingReportScreenState extends State<VotingReportScreen> {
     if (!ok || !mounted) return;
     try {
       final Uint8List bytes = await widget.api.votingReportCsv(v.id);
-      final Directory dir = await getTemporaryDirectory();
-      final String name = 'kura_${v.reference}.csv';
-      final File file = File('${dir.path}/$name');
-      await file.writeAsBytes(bytes, flush: true);
-      await Share.shareXFiles(<XFile>[XFile(file.path, mimeType: 'text/csv')], subject: name);
+      final VotingReport? r = _r;
+      if (r == null || !mounted) return;
+      final String group = (await widget.api.me()).groupName ?? '';
+      if (!mounted) return;
+      await GroupDocuments.shareDoc(context, GroupDocuments.votingDoc(r, sw: sw, group: group, decisionLabel: votingDecisionLabel(sw: sw, decision: r.decision)), sw: sw, csv: bytes);
     } on Exception catch (e) {
       if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
     }
@@ -84,7 +82,7 @@ class _VotingReportScreenState extends State<VotingReportScreen> {
                         style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white38), padding: const EdgeInsets.symmetric(vertical: 12)),
                         onPressed: () => _export(r.voting),
                         icon: const Icon(Icons.table_view_rounded),
-                        label: Text(sw ? 'Hamisha (CSV)' : 'Export (CSV)'),
+                        label: Text(sw ? 'Hamisha (PDF, Word, CSV)' : 'Export (PDF, Word, CSV)'),
                       ),
                     ),
                     const SizedBox(height: 12),

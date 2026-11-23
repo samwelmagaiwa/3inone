@@ -57,12 +57,12 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
     }
   }
 
-  /// The loan's statement and repayment schedule as a PDF, to share.
+  /// The loan's statement and repayment schedule as a PDF, picture or Word file, to share.
   Future<void> _share(final GroupLoan l) async {
     final bool sw = _sw;
     try {
       final GroupMe me = await widget.api.me();
-      await GroupDocuments.share(await GroupDocuments.loanStatement(l, sw: sw, group: me.groupName ?? ''), '${l.reference}.pdf');
+      if (mounted) await GroupDocuments.shareDoc(context, GroupDocuments.loanDoc(l, sw: sw, group: me.groupName ?? ''), sw: sw);
     } on Exception catch (e) {
       if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
     }
@@ -169,7 +169,7 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
         flat: true,
         actions: <Widget>[
           if (l != null && l.instalments.isNotEmpty && l.previewTotal == null)
-            IconButton(key: const Key('grp_loan_pdf'), tooltip: sw ? 'Taarifa ya mkopo (PDF)' : 'Loan statement (PDF)', icon: const Icon(Icons.picture_as_pdf_rounded), onPressed: () => _share(l)),
+            IconButton(key: const Key('grp_loan_pdf'), tooltip: sw ? 'Taarifa ya mkopo (PDF, picha, Word)' : 'Loan statement (PDF, picture, Word)', icon: const Icon(Icons.picture_as_pdf_rounded), onPressed: () => _share(l)),
         ],
       ),
       body: SafeArea(

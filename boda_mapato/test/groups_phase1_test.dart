@@ -1,4 +1,5 @@
 import 'package:boda_mapato/modules/groups/models/group_models.dart';
+import 'package:boda_mapato/modules/groups/models/group_receipt_models.dart';
 import 'package:boda_mapato/modules/groups/screens/groups_home.dart';
 import 'package:boda_mapato/modules/groups/screens/member_detail_screen.dart';
 import 'package:boda_mapato/modules/groups/services/groups_api.dart';
@@ -91,6 +92,17 @@ class _FakeApi extends GroupsApi {
     calls.add('verify:$id');
     pending = <Map<String, dynamic>>[];
     return GroupTransaction.fromJson(_tx(id, status: 'verified')..['receipt_number'] = 'RC-000001');
+  }
+
+  @override
+  Future<GroupReceipt> receipt(final int id) async {
+    calls.add('receipt:$id');
+    return GroupReceipt.fromJson(<String, dynamic>{
+      'transaction': _tx(id, status: 'verified')..['receipt_number'] = 'RC-000001',
+      'group': 'MEG Group',
+      'verify_url': 'https://3inone.example/api/public/groups/receipts/abc.RC-000001.0123',
+      'member_phone': '0713000001',
+    });
   }
 
   @override
@@ -201,6 +213,16 @@ void main() {
     await t.pumpAndSettle();
     expect(api.calls, <String>['verify:11']);
     expect(find.text('Nothing waits for verification.'), findsOneWidget);
+    // The payment is done: the treasurer is asked whether to send the receipt to the member now.
+    expect(find.text('Send the receipt to the member?'), findsOneWidget);
+    expect(find.textContaining('Asha Juma'), findsWidgets);
+    await t.tap(find.byKey(const Key('grp_confirm_yes')));
+    await t.pumpAndSettle();
+    expect(api.calls, <String>['verify:11', 'receipt:11']);
+    expect(find.textContaining('Text message (SMS) to 0713000001'), findsOneWidget);
+    expect(find.textContaining('WhatsApp 0713000001'), findsOneWidget);
+    await t.tapAt(const Offset(10, 10));
+    await t.pumpAndSettle();
     await _banner(t);
   });
 

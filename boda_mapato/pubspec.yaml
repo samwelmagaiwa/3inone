@@ -74,6 +74,8 @@ dependencies:
   
   # PDF generation
   pdf: ^3.10.7
+  # Word (.docx) files are zips
+  archive: ^3.6.1
   # Google Fonts helper and printing utilities for PDFs
   printing: ^5.13.4
   qr_flutter: ^4.1.0

@@ -1,8 +1,6 @@
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -12,6 +10,7 @@ import '../../../utils/server_message.dart';
 import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_models.dart';
 import '../models/group_records_models.dart';
+import '../services/group_documents.dart';
 import '../services/groups_api.dart';
 import 'groups_text.dart';
 import 'widgets/groups_ui.dart';
@@ -364,14 +363,18 @@ class _GroupReportsScreenState extends State<GroupReportsScreen> {
     }
   }
 
-  /// Fetch a CSV, keep it for a moment and hand it to the phone's share sheet (WhatsApp, email, Drive ...).
-  Future<void> _export(final Future<Uint8List> Function() fetch, final String name) async {
+  /// Fetch a CSV and offer it as a spreadsheet, a PDF or a Word file through the phone's share sheet (WhatsApp, email, Drive ...).
+  Future<void> _export(final Future<Uint8List> Function() fetch, final String name, final String title) async {
     try {
       final Uint8List bytes = await fetch();
-      final Directory dir = await getTemporaryDirectory();
-      final File file = File('${dir.path}/$name');
-      await file.writeAsBytes(bytes, flush: true);
-      await Share.shareXFiles(<XFile>[XFile(file.path, mimeType: 'text/csv')], subject: name);
+      if (!mounted) return;
+      final bool sw = context.read<LocalizationService>().isSwahili;
+      await GroupDocuments.shareDoc(
+        context,
+        GroupDocuments.csvDoc(bytes, group: widget.me.groupName ?? '', title: title, fileName: name.replaceAll('.csv', '')),
+        sw: sw,
+        csv: bytes,
+      );
     } on Exception catch (e) {
       if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
     }
@@ -405,6 +408,14 @@ class _GroupReportsScreenState extends State<GroupReportsScreen> {
             date(sw ? 'Kuanzia' : 'From', _from, (final DateTime d) => _from = d, const Key('grp_rep_from')),
             date(sw ? 'Hadi' : 'To', _to, (final DateTime d) => _to = d, const Key('grp_rep_to')),
           ]),
+          if (r != null && !_loading)
+            OutlinedButton.icon(
+              key: const Key('grp_share_report'),
+              style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white38), padding: const EdgeInsets.symmetric(vertical: 12)),
+              onPressed: () => GroupDocuments.shareDoc(context, GroupDocuments.reportDoc(r, sw: sw, group: widget.me.groupName ?? '', from: _iso(_from), to: _iso(_to)), sw: sw),
+              icon: const Icon(Icons.ios_share_rounded),
+              label: Text(sw ? 'Tuma ripoti (PDF, picha, Word)' : 'Share the report (PDF, picture, Word)'),
+            ),
           if (_loading) const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator())),
           if (_error != null) GroupEmpty(_error!),
           if (r != null && !_loading) ...<Widget>[
@@ -439,17 +450,17 @@ class _GroupReportsScreenState extends State<GroupReportsScreen> {
             OutlinedButton.icon(
               key: const Key('grp_export_members'),
               style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white38), padding: const EdgeInsets.symmetric(vertical: 12)),
-              onPressed: () => _export(widget.api.exportMembers, 'wanachama.csv'),
+              onPressed: () => _export(widget.api.exportMembers, 'wanachama.csv', sw ? 'Daftari la wanachama' : 'Member register'),
               icon: const Icon(Icons.table_view_rounded),
-              label: Text(sw ? 'Daftari la wanachama (CSV)' : 'Member register (CSV)'),
+              label: Text(sw ? 'Daftari la wanachama (PDF, Word, CSV)' : 'Member register (PDF, Word, CSV)'),
             ),
           const SizedBox(height: 10),
           OutlinedButton.icon(
             key: const Key('grp_export_payments'),
             style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white38), padding: const EdgeInsets.symmetric(vertical: 12)),
-            onPressed: () => _export(() => widget.api.exportPayments(from: _iso(_from), to: _iso(_to)), 'malipo_${_iso(_from)}_${_iso(_to)}.csv'),
+            onPressed: () => _export(() => widget.api.exportPayments(from: _iso(_from), to: _iso(_to)), 'malipo_${_iso(_from)}_${_iso(_to)}.csv', '${sw ? 'Malipo ya kipindi' : 'Payments of the period'} ${dateLabel(_iso(_from))} - ${dateLabel(_iso(_to))}'),
             icon: const Icon(Icons.receipt_long_rounded),
-            label: Text(sw ? 'Malipo ya kipindi (CSV)' : 'Payments of the period (CSV)'),
+            label: Text(sw ? 'Malipo ya kipindi (PDF, Word, CSV)' : 'Payments of the period (PDF, Word, CSV)'),
           ),
         ])),
       ),

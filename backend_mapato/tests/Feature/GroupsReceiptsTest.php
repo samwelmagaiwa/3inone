@@ -72,7 +72,9 @@ class GroupsReceiptsTest extends TestCase
         $this->assertStringContainsString('/api/public/groups/receipts/', $r->json('data.receipt.verify_url'));
         $this->assertNotNull($r->json('data.receipt.transaction.receipt_number'));
         $this->assertSame('Assistant Member', $r->json('data.receipt.transaction.verified_by_name'));
-        $this->api($this->people['treasurer'], 'GET', "/receipts/{$id}")->assertOk();
+        // The receipt carries the member's number, so it can be sent to them (by text message or WhatsApp).
+        $this->assertSame('0713000001', $r->json('data.receipt.member_phone'));
+        $this->api($this->people['treasurer'], 'GET', "/receipts/{$id}")->assertOk()->assertJsonPath('data.receipt.member_phone', '0713000001');
         $this->api($this->people['juma'], 'GET', "/receipts/{$id}")->assertNotFound();
         $this->api($this->people['secretary'], 'GET', "/receipts/{$id}")->assertNotFound();
     }
