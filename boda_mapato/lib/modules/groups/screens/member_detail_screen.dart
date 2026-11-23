@@ -14,6 +14,7 @@ import 'member_form_screen.dart';
 import 'payment_form.dart';
 import 'statement_screen.dart';
 import 'widgets/groups_ui.dart';
+import 'widgets/member_avatar.dart';
 import 'widgets/member_documents_card.dart';
 
 /// One member's file: who they are, where their membership stands and the steps that move it, their office, sign-in, money, dependants,
@@ -293,7 +294,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                     GlowSections(
                       key: const Key('grp_member_sections'),
                       children: <Widget>[
-                        _headCard(f.member, sw),
+                        _headCard(f, sw),
                         if (f.member.isApplication) _applicationCard(f, sw),
                         _detailsCard(f.member, sw),
                         MemberDocumentsCard(api: widget.api, me: widget.me, memberId: f.member.id, documents: f.documents, photoUrl: f.photoUrl, onChanged: _load),
@@ -310,23 +311,51 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     );
   }
 
-  Widget _headCard(final GroupMember m, final bool sw) => GlowCard(
+  /// The photo, in its frame, opens a larger view or lets whoever registers members change it.
+  Future<void> _photoTap(final GroupMemberFile f, final bool sw) async {
+    final bool mayEdit = widget.me.can('manage_members');
+    final String? pick = await groupActions(context, title: f.member.fullName, actions: <GroupSheetAction>[
+      if (f.photoUrl != null) GroupSheetAction(icon: Icons.zoom_in_rounded, label: sw ? 'Ona picha kubwa' : 'View the photo', value: 'view'),
+      if (mayEdit) GroupSheetAction(icon: Icons.photo_camera_outlined, label: f.photoUrl == null ? (sw ? 'Weka picha' : 'Add a photo') : (sw ? 'Badilisha picha' : 'Change the photo'), value: 'change'),
+    ]);
+    if (pick == null || !mounted) return;
+    if (pick == 'view') {
+      await showDialog<void>(
+        context: context,
+        builder: (final BuildContext c) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(20),
+          child: ClipRRect(borderRadius: BorderRadius.circular(20), child: InteractiveViewer(child: Image.network(f.photoUrl!, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox(height: 200, child: Icon(Icons.person_rounded, color: Colors.white38, size: 80))))),
+        ),
+      );
+    } else if (await addMemberDocument(context, api: widget.api, me: widget.me, memberId: f.member.id, photoOnly: true)) {
+      await _load();
+    }
+  }
+
+  Widget _headCard(final GroupMemberFile f, final bool sw) {
+    final GroupMember m = f.member;
+    return GlowCard(
         children: <Widget>[
-          Row(children: <Widget>[
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
                 Text(m.memberNumber ?? m.applicationRef ?? '', key: const Key('grp_detail_number'), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 2),
                 Text(officeLabel(sw: sw, office: m.office), style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                const SizedBox(height: 10),
+                Align(alignment: Alignment.centerLeft, child: GroupPill(statusLabel(sw: sw, status: m.status), color: statusColor(m.status))),
               ]),
             ),
-            GroupPill(statusLabel(sw: sw, status: m.status), color: statusColor(m.status)),
+            const SizedBox(width: 12),
+            MemberAvatar(name: m.fullName, photoUrl: f.photoUrl, ringColor: statusColor(m.status), editable: widget.me.can('manage_members'), onTap: () => _photoTap(f, sw)),
           ]),
           if (m.statusReason != null) GroupDetailRow(sw ? 'Sababu' : 'Reason', m.statusReason!),
           if (m.joinedOn != null) GroupDetailRow(sw ? 'Alijiunga' : 'Joined', dateLabel(m.joinedOn)),
           GroupDetailRow(sw ? 'Akaunti ya kuingia' : 'Sign-in', m.hasSignIn ? (sw ? 'Anayo' : 'Yes') : (sw ? 'Hana' : 'None')),
         ],
       );
+  }
 
   Widget _applicationCard(final GroupMemberFile f, final bool sw) {
     final GroupMember m = f.member;

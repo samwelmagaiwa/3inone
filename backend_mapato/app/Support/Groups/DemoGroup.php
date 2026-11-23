@@ -1098,9 +1098,18 @@ final class DemoGroup
         $this->documents();
     }
 
+    /** A real PNG of [side] by [side] pixels, one soft colour (no image library needed). */
+    public static function solidPng(int $side = 240): string
+    {
+        $row = "\0" . str_repeat("\x1f\x6f\x8a", $side);
+        $chunk = fn (string $type, string $data) => pack('N', strlen($data)) . $type . $data . pack('N', crc32($type . $data));
+
+        return "\x89PNG\r\n\x1a\n" . $chunk('IHDR', pack('NNCCCCC', $side, $side, 8, 2, 0, 0, 0)) . $chunk('IDAT', gzcompress(str_repeat($row, $side))) . $chunk('IEND', '');
+    }
+
     private function documents(): void
     {
-        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
+        $png = self::solidPng(240);
         $at = $this->end->copy()->subDays(10)->setTime(12, 0);
         // The officers who register members share the work (an upload is limited to 30 a minute for each person).
         $uploaders = ['neema', 'rehema', 'juma'];

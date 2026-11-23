@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +22,90 @@ String documentKindLabel({required final bool sw, required final String kind}) =
       _ => sw ? 'Hati nyingine' : 'Other paper',
     };
 
+/// The biggest a profile photo may be, and the smallest each side of it (a face must be recognisable). Other papers may be up to 5 MB.
+const int memberPhotoMaxBytes = 2 * 1024 * 1024;
+const int memberPaperMaxBytes = 5 * 1024 * 1024;
+const int memberPhotoMinSide = 200;
+
+/// What is wrong with a photo, in words for the person, or null when it is fine: a JPG or PNG, up to 2 MB, at least 200 x 200 pixels.
+Future<String?> memberPhotoProblem({required final Uint8List bytes, required final String name, required final bool sw}) async {
+  final String lower = name.toLowerCase();
+  if (!(lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png'))) {
+    return sw ? 'Picha lazima iwe JPG au PNG.' : 'A photo must be a JPG or PNG.';
+  }
+  if (bytes.length > memberPhotoMaxBytes) {
+    return sw ? 'Picha ni kubwa mno (zaidi ya MB 2). Chagua ndogo zaidi.' : 'The photo is too big (over 2 MB). Choose a smaller one.';
+  }
+  try {
+    final ui.Image image = await decodeImageFromList(bytes);
+    final bool small = image.width < memberPhotoMinSide || image.height < memberPhotoMinSide;
+    image.dispose();
+    if (small) return sw ? 'Picha ni ndogo mno; iwe angalau pikseli 200 kwa 200.' : 'The photo is too small; it must be at least 200 by 200 pixels.';
+  } on Exception {
+    return sw ? 'Faili hii si picha inayosomeka.' : 'This file is not a readable picture.';
+  }
+  return null;
+}
+
+/// Picks a file (a photo from the camera or the phone, or a paper), checks it, asks Yes/No and sends it. [photoOnly] goes straight to a photo
+/// (the profile picture). True when something was kept.
+Future<bool> addMemberDocument(
+  final BuildContext context, {
+  required final GroupsApi api,
+  required final GroupMe me,
+  required final int memberId,
+  final bool photoOnly = false,
+}) async {
+  final bool sw = context.read<LocalizationService>().isSwahili;
+  final String? kind = await groupActions(context, title: photoOnly ? (sw ? 'Picha ya wasifu' : 'Profile photo') : (sw ? 'Ongeza' : 'Add'), actions: <GroupSheetAction>[
+    GroupSheetAction(icon: Icons.photo_camera_outlined, label: sw ? 'Picha (kamera)' : 'Photo (camera)', value: 'photo_camera'),
+    GroupSheetAction(icon: Icons.photo_library_outlined, label: sw ? 'Picha (kwenye simu)' : 'Photo (from the phone)', value: 'photo_gallery'),
+    if (!photoOnly && me.can('view_sensitive')) GroupSheetAction(icon: Icons.badge_outlined, label: documentKindLabel(sw: sw, kind: 'id'), value: 'id'),
+    if (!photoOnly) GroupSheetAction(icon: Icons.description_outlined, label: documentKindLabel(sw: sw, kind: 'other'), value: 'other'),
+  ]);
+  if (kind == null || !context.mounted) return false;
+  Uint8List? bytes;
+  String name = 'file';
+  final bool isPhoto = kind.startsWith('photo');
+  if (isPhoto) {
+    final XFile? f = await ImagePicker().pickImage(source: kind == 'photo_camera' ? ImageSource.camera : ImageSource.gallery, imageQuality: 80, maxWidth: 1600);
+    if (f == null) return false;
+    bytes = await f.readAsBytes();
+    name = f.name.toLowerCase().endsWith('.png') ? f.name : (f.name.toLowerCase().endsWith('.jpeg') ? f.name : 'photo.jpg');
+  } else {
+    final FilePickerResult? r = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: <String>['jpg', 'jpeg', 'png', 'pdf'], withData: true);
+    final PlatformFile? f = r?.files.firstOrNull;
+    if (f?.bytes == null) return false;
+    bytes = f!.bytes;
+    name = f.name;
+  }
+  if (!context.mounted || bytes == null) return false;
+  final String? problem = isPhoto
+      ? await memberPhotoProblem(bytes: bytes, name: name, sw: sw)
+      : (bytes.length > memberPaperMaxBytes ? (sw ? 'Faili ni kubwa mno (zaidi ya MB 5).' : 'The file is too big (over 5 MB).') : null);
+  if (problem != null) {
+    if (context.mounted) ThemeConstants.showErrorSnackBar(context, problem);
+    return false;
+  }
+  if (!context.mounted) return false;
+  final bool ok = await groupConfirm(
+    context,
+    title: isPhoto ? (sw ? 'Weka kuwa picha ya wasifu?' : 'Keep as the profile photo?') : (sw ? 'Hifadhi faili?' : 'Keep this file?'),
+    message: '${documentKindLabel(sw: sw, kind: isPhoto ? 'photo' : kind)} · $name',
+    yes: sw ? 'Hifadhi' : 'Keep',
+    tone: GroupTone.positive,
+  );
+  if (!ok || !context.mounted) return false;
+  try {
+    await api.uploadDocument(memberId, bytes, name, kind: isPhoto ? 'photo' : kind);
+    if (context.mounted) ThemeConstants.showSuccessSnackBar(context, sw ? 'Imehifadhiwa.' : 'Kept.');
+    return true;
+  } on Exception catch (e) {
+    if (context.mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
+    return false;
+  }
+}
+
 /// A member's photo and papers, kept privately (links expire). Whoever registers members adds and removes them; an ID copy only by whoever
 /// may see NIDA numbers (the server hides ID copies from everyone else).
 class MemberDocumentsCard extends StatefulWidget {
@@ -41,51 +126,12 @@ class _MemberDocumentsCardState extends State<MemberDocumentsCard> {
   bool _busy = false;
 
   Future<void> _add() async {
-    final bool sw = context.read<LocalizationService>().isSwahili;
-    final String? kind = await groupActions(context, title: sw ? 'Ongeza' : 'Add', actions: <GroupSheetAction>[
-      GroupSheetAction(icon: Icons.photo_camera_outlined, label: sw ? 'Picha (kamera)' : 'Photo (camera)', value: 'photo_camera'),
-      GroupSheetAction(icon: Icons.photo_library_outlined, label: sw ? 'Picha (kwenye simu)' : 'Photo (from the phone)', value: 'photo_gallery'),
-      if (widget.me.can('view_sensitive')) GroupSheetAction(icon: Icons.badge_outlined, label: documentKindLabel(sw: sw, kind: 'id'), value: 'id'),
-      GroupSheetAction(icon: Icons.description_outlined, label: documentKindLabel(sw: sw, kind: 'other'), value: 'other'),
-    ]);
-    if (kind == null || !mounted) return;
-    Uint8List? bytes;
-    String name = 'file';
-    if (kind.startsWith('photo')) {
-      final XFile? f = await ImagePicker().pickImage(source: kind == 'photo_camera' ? ImageSource.camera : ImageSource.gallery, imageQuality: 75, maxWidth: 1600);
-      if (f == null) return;
-      bytes = await f.readAsBytes();
-      name = f.name.toLowerCase().endsWith('.png') ? f.name : 'photo.jpg';
-    } else {
-      final FilePickerResult? r = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: <String>['jpg', 'jpeg', 'png', 'pdf'], withData: true);
-      final PlatformFile? f = r?.files.firstOrNull;
-      if (f?.bytes == null) return;
-      bytes = f!.bytes;
-      name = f.name;
-    }
-    if (!mounted || bytes == null) return;
-    if (bytes.length > 5 * 1024 * 1024) {
-      ThemeConstants.showErrorSnackBar(context, sw ? 'Faili ni kubwa mno (zaidi ya MB 5).' : 'The file is too big (over 5 MB).');
-      return;
-    }
-    final bool ok = await groupConfirm(
-      context,
-      title: sw ? 'Hifadhi faili?' : 'Keep this file?',
-      message: '${documentKindLabel(sw: sw, kind: kind.startsWith('photo') ? 'photo' : kind)} · $name',
-      yes: sw ? 'Hifadhi' : 'Keep',
-      tone: GroupTone.positive,
-    );
-    if (!ok) return;
     setState(() => _busy = true);
     try {
-      await widget.api.uploadDocument(widget.memberId, bytes, name, kind: kind.startsWith('photo') ? 'photo' : kind);
-      if (!mounted) return;
-      ThemeConstants.showSuccessSnackBar(context, sw ? 'Imehifadhiwa.' : 'Kept.');
-      await widget.onChanged();
-    } on Exception catch (e) {
-      if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
+      if (await addMemberDocument(context, api: widget.api, me: widget.me, memberId: widget.memberId)) await widget.onChanged();
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    if (mounted) setState(() => _busy = false);
   }
 
   Future<void> _remove(final GroupDocument d) async {
@@ -108,14 +154,6 @@ class _MemberDocumentsCardState extends State<MemberDocumentsCard> {
     return GlowCard(
       title: sw ? 'Picha na hati' : 'Photo and papers',
       children: <Widget>[
-        if (widget.photoUrl != null)
-          Center(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(48),
-              child: Image.network(widget.photoUrl!, key: const Key('grp_member_photo'), width: 96, height: 96, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.person_rounded, color: Colors.white38, size: 64)),
-            ),
-          ),
         if (docs.isEmpty) Text(sw ? 'Hakuna faili.' : 'No files.', style: const TextStyle(color: Colors.white60)),
         for (final GroupDocument d in docs)
           ListTile(

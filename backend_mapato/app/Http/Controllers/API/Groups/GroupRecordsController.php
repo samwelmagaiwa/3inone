@@ -27,6 +27,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class GroupRecordsController extends Controller
 {
+    /** A profile photo: at most 2 MB, and at least this many pixels on each side. */
+    private const PHOTO_MAX_BYTES = 2 * 1024 * 1024;
+
+    private const PHOTO_MIN_SIDE = 200;
+
     private function fail(string $code, string $message, int $status = 422): JsonResponse
     {
         return response()->json(['success' => false, 'code' => $code, 'message' => $message], $status);
@@ -206,8 +211,19 @@ class GroupRecordsController extends Controller
         if ($data['kind'] === 'id' && !GroupAccess::can($request->user(), 'view_sensitive')) {
             return $this->fail('sensitive_right_needed', 'Ni wenye ruhusa ya NIDA tu wanaoweka nakala ya kitambulisho. / Only those who may see NIDA numbers keep ID copies.', 403);
         }
-        if ($data['kind'] === 'photo' && !str_starts_with((string) $request->file('file')->getMimeType(), 'image/')) {
-            return $this->fail('not_an_image', 'Picha lazima iwe JPG au PNG. / A photo must be a JPG or PNG.');
+        if ($data['kind'] === 'photo') {
+            // A profile photo: a JPG or PNG, up to 2 MB, and big enough to be a face (at least 200 x 200 pixels). Other papers may be a PDF up to 5 MB.
+            $file = $request->file('file');
+            if (!in_array((string) $file->getMimeType(), ['image/jpeg', 'image/png'], true)) {
+                return $this->fail('not_an_image', 'Picha lazima iwe JPG au PNG. / A photo must be a JPG or PNG.');
+            }
+            if ($file->getSize() > self::PHOTO_MAX_BYTES) {
+                return $this->fail('photo_too_big', 'Picha ni kubwa mno; isizidi MB 2. / The photo is too big; it must not be over 2 MB.');
+            }
+            $size = @getimagesize($file->getRealPath());
+            if ($size === false || $size[0] < self::PHOTO_MIN_SIDE || $size[1] < self::PHOTO_MIN_SIDE) {
+                return $this->fail('photo_too_small', 'Picha ni ndogo mno; iwe angalau pikseli 200 kwa 200. / The photo is too small; it must be at least 200 by 200 pixels.');
+            }
         }
         $path = PrivateFile::store($request->file('file'), 'group_documents/' . Str::lower(Str::random(2)));
         DB::table('group_member_documents')->insert([

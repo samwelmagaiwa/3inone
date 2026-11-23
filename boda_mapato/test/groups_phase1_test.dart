@@ -240,6 +240,9 @@ void main() {
     final GroupMe me = await api.me();
     await _pump(t, MemberDetailScreen(api: api, me: me, memberId: 2));
 
+    // The member's picture sits in the top corner of the page: initials until a photo is kept, and the camera for whoever may change it.
+    expect(find.byKey(const Key('grp_member_avatar')), findsOneWidget);
+    expect(find.byKey(const Key('grp_member_initials')), findsOneWidget);
     expect(find.byKey(const Key('grp_blocker_joining_fee_unpaid')), findsOneWidget);
     expect(t.widget<FilledButton>(find.byKey(const Key('grp_app_approve'))).onPressed, isNull);
     expect(find.byKey(const Key('grp_app_record_payment')), findsOneWidget);

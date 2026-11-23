@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Business;
 use App\Models\User;
+use App\Support\Groups\DemoGroup;
 use App\Support\Groups\GroupAccess;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -78,7 +79,7 @@ class GroupsInvitationsRecordsTest extends TestCase
     private function png(string $name): UploadedFile
     {
         $path = tempnam(sys_get_temp_dir(), 'png');
-        file_put_contents($path, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='));
+        file_put_contents($path, \App\Support\Groups\DemoGroup::solidPng(240));
 
         return new UploadedFile($path, $name, 'image/png', null, true);
     }
@@ -145,6 +146,32 @@ class GroupsInvitationsRecordsTest extends TestCase
         $tree = $this->api($this->people['chair'], 'GET', '/tree')->assertOk()->json('data');
         $this->assertSame(6, $tree['stats']['members']);
         $this->assertSame(5, $tree['stats']['no_referrer']);
+    }
+
+    public function test_a_profile_photo_must_be_a_jpg_or_png_up_to_2_mb_and_at_least_200_pixels(): void
+    {
+        $asha = $this->ids['asha'];
+        $as = $this->people['assistant'];
+
+        // A PDF is a paper, not a photo.
+        $this->api($as, 'POST', "/members/{$asha}/documents", ['file' => UploadedFile::fake()->create('x.pdf', 100, 'application/pdf'), 'kind' => 'photo'])
+            ->assertStatus(422)->assertJsonPath('code', 'not_an_image');
+
+        // Too small: 1 x 1 pixel.
+        $tiny = tempnam(sys_get_temp_dir(), 'png');
+        file_put_contents($tiny, DemoGroup::solidPng(1));
+        $this->api($as, 'POST', "/members/{$asha}/documents", ['file' => new UploadedFile($tiny, 'tiny.png', 'image/png', null, true), 'kind' => 'photo'])
+            ->assertStatus(422)->assertJsonPath('code', 'photo_too_small');
+
+        // Too big: a real PNG padded past 2 MB.
+        $big = tempnam(sys_get_temp_dir(), 'png');
+        file_put_contents($big, DemoGroup::solidPng(240) . str_repeat('0', 2 * 1024 * 1024));
+        $this->api($as, 'POST', "/members/{$asha}/documents", ['file' => new UploadedFile($big, 'big.png', 'image/png', null, true), 'kind' => 'photo'])
+            ->assertStatus(422)->assertJsonPath('code', 'photo_too_big');
+
+        // A good one is kept and becomes the profile photo.
+        $this->api($as, 'POST', "/members/{$asha}/documents", ['file' => $this->png('ok.png'), 'kind' => 'photo'])->assertCreated();
+        $this->assertNotNull(DB::table('group_members')->where('id', $asha)->value('photo_path'));
     }
 
     public function test_photos_and_papers_are_kept_privately_and_id_copies_only_for_those_who_may_see_nida(): void
