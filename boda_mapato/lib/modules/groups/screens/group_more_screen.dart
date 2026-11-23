@@ -13,6 +13,7 @@ import 'groups_text.dart';
 import 'records_screens.dart';
 import 'welfare_screen.dart';
 import 'widgets/groups_ui.dart';
+import 'widgets/repayment_schedule.dart';
 
 /// More: the group's settings, who holds which office, and the activity log -- each shown only to whoever may open it.
 class GroupMoreScreen extends StatelessWidget {
@@ -82,6 +83,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
   final TextEditingController _maxMonths = TextEditingController();
   final TextEditingController _guarantors = TextEditingController();
   String _method = '';
+  String _repay = 'monthly';
+  int _repayDays = 30;
   String _daysRule = 'both';
   String _sharesFor = 'loans';
   bool _reminders = false;
@@ -124,6 +127,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
     _reminders = s['sms_reminders'] == 'on';
     _rate.text = '${s['loan_interest_rate'] ?? ''}';
     _method = '${s['loan_interest_method'] ?? ''}';
+    _repay = '${s['loan_repayment'] ?? 'monthly'}';
+    _repayDays = int.tryParse('${s['loan_repayment_days'] ?? '30'}') ?? 30;
     _daysRule = '${s['hire_days_rule'] ?? 'both'}';
     _maxMonths.text = '${s['loan_max_months'] ?? '12'}';
     _guarantors.text = '${s['loan_guarantors'] ?? '1'}';
@@ -161,6 +166,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
       'sms_show_amounts': _amounts ? 'on' : 'off',
       'loan_interest_rate': _rate.text.trim(),
       'loan_interest_method': _method,
+      'loan_repayment': _repay,
+      if (_repay == 'custom') 'loan_repayment_days': '$_repayDays',
       'loan_max_months': _maxMonths.text.trim(),
       'loan_guarantors': _guarantors.text.trim(),
       'hire_days_rule': _daysRule,
@@ -182,6 +189,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
         'sms_show_amounts' => sw ? 'Kiasi kwenye ujumbe' : 'Amounts in texts',
         'loan_interest_rate' => sw ? 'Riba kwa mwezi (%)' : 'Interest a month (%)',
         'loan_interest_method' => sw ? 'Njia ya riba' : 'Interest method',
+        'loan_repayment' => sw ? 'Ratiba ya marejesho' : 'Repayment schedule',
+        'loan_repayment_days' => sw ? 'Siku kati ya malipo' : 'Days between payments',
         'loan_max_months' => sw ? 'Muda mrefu zaidi (miezi)' : 'Longest term (months)',
         'loan_guarantors' => sw ? 'Wadhamini wanaohitajika' : 'Guarantors needed',
         'hire_days_rule' => sw ? 'Siku za kukodi zinazohesabiwa' : 'Hire days charged',
@@ -313,6 +322,22 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                               key: const Key('grp_set_terms_missing'),
                               style: const TextStyle(color: ThemeConstants.warningAmber, fontSize: 12),
                             ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: RepaymentTile(
+                              every: _repay,
+                              days: _repayDays,
+                              onTap: () async {
+                                final (String, int)? picked = await showRepaymentPicker(context, every: _repay, days: _repayDays);
+                                if (picked != null) {
+                                  setState(() {
+                                    _repay = picked.$1;
+                                    _repayDays = picked.$2;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
                           _money(_maxMonths, _label(sw, 'loan_max_months'), const Key('grp_set_max_months')),
                           _money(_guarantors, _label(sw, 'loan_guarantors'), const Key('grp_set_guarantors')),
                         ],

@@ -111,6 +111,9 @@ class GroupLoanController extends Controller
         if ((int) $data['term_months'] > $eligibility['terms']['max_months']) {
             return $this->fail('term_too_long');
         }
+        if (GroupLoans::instalmentCount((int) $data['term_months'], $eligibility['terms']['repayment'], $eligibility['terms']['repayment_days']) > GroupLoans::MAX_INSTALMENTS) {
+            return $this->fail('too_many_instalments', 422, ['max' => GroupLoans::MAX_INSTALMENTS]);
+        }
         if (DB::table('group_loans')->where('member_id', $memberId)->whereIn('status', GroupLoans::OPEN_STATUSES)->exists()) {
             return $this->fail('open_application', 409);
         }
@@ -133,6 +136,8 @@ class GroupLoanController extends Controller
                 'term_months' => (int) $data['term_months'],
                 'interest_rate' => $terms['rate'],
                 'interest_method' => $terms['method'],
+                'repayment_every' => $terms['repayment'],
+                'repayment_days' => $terms['repayment'] === 'custom' ? $terms['repayment_days'] : null,
                 'ceiling' => $eligibility['ceiling'],
                 'status' => $guarantors === [] ? 'under_review' : 'awaiting_guarantors',
                 'created_by' => (string) $request->user()->id,

@@ -23,6 +23,12 @@ final class GroupLoans
 {
     public const OPEN_STATUSES = ['awaiting_guarantors', 'under_review', 'recommended', 'approved'];
 
+    /** How often a loan is repaid. `custom` is every N days (the group sets N). */
+    public const REPAYMENTS = ['daily', 'weekly', 'every_2_weeks', 'monthly', 'every_2_months', 'quarterly', 'every_6_months', 'custom'];
+
+    /** More instalments than this is a mistake (a year of daily payments is 365). */
+    public const MAX_INSTALMENTS = 400;
+
     public static function newReference(): string
     {
         do {
@@ -32,7 +38,7 @@ final class GroupLoans
         return $ref;
     }
 
-    /** @return array{rate: ?float, method: ?string, max_months: int, guarantors: int} the group's loan terms now */
+    /** @return array{rate: ?float, method: ?string, max_months: int, guarantors: int, repayment: string, repayment_days: int} the group's loan terms now */
     public static function terms(): array
     {
         $s = GroupSettings::all();
@@ -42,7 +48,41 @@ final class GroupLoans
             'method' => $s['loan_interest_method'] === '' ? null : $s['loan_interest_method'],
             'max_months' => (int) $s['loan_max_months'],
             'guarantors' => (int) $s['loan_guarantors'],
+            'repayment' => $s['loan_repayment'],
+            'repayment_days' => (int) $s['loan_repayment_days'],
         ];
+    }
+
+    /**
+     * The length of one repayment period: whole months for the month-based rhythms, days for the others.
+     *
+     * @return array{months: int, days: int} one of the two is 0
+     */
+    public static function period(string $every, ?int $days = null): array
+    {
+        return match ($every) {
+            'daily' => ['months' => 0, 'days' => 1],
+            'weekly' => ['months' => 0, 'days' => 7],
+            'every_2_weeks' => ['months' => 0, 'days' => 14],
+            'every_2_months' => ['months' => 2, 'days' => 0],
+            'quarterly' => ['months' => 3, 'days' => 0],
+            'every_6_months' => ['months' => 6, 'days' => 0],
+            'custom' => ['months' => 0, 'days' => max(1, min(365, (int) ($days ?? 30)))],
+            default => ['months' => 1, 'days' => 0],
+        };
+    }
+
+    /** How many instalments a loan of [months] has at this rhythm. */
+    public static function instalmentCount(int $months, string $every = 'monthly', ?int $days = null, ?string $start = null): int
+    {
+        $p = self::period($every, $days);
+        if ($p['months'] > 0) {
+            return max(1, intdiv($months, $p['months']));
+        }
+        $from = Carbon::parse($start ?? now()->toDateString());
+        $total = (int) $from->diffInDays($from->copy()->addMonthsNoOverflow($months));
+
+        return max(1, intdiv($total, $p['days']));
     }
 
     /**
@@ -93,33 +133,45 @@ final class GroupLoans
     }
 
     /**
-     * The instalments of [principal] over [months] at [rate]% a month: flat (the same interest every month on the whole amount) or
-     * reducing (equal instalments; interest on what is still owed). The last instalment takes the rounding.
+     * The instalments of [principal] over [months] at [rate]% a month, one every [every] (daily, weekly, ... or every N days): flat (the same
+     * share of the whole interest each time) or reducing (equal instalments; interest on what is still owed, for the length of the period).
+     * The first instalment falls one period after [start] (a daily loan taken today is first paid tomorrow); the last falls on the day the loan
+     * ends and takes the rounding. The interest of a loan is its rate for its months, whatever the rhythm.
      *
      * @return array<int, array{number: int, due_date: string, principal_due: float, interest_due: float}>
      */
-    public static function schedule(float $principal, float $rate, string $method, int $months, string $start): array
+    public static function schedule(float $principal, float $rate, string $method, int $months, string $start, string $every = 'monthly', ?int $days = null): array
     {
         $r = $rate / 100;
+        $p = self::period($every, $days);
+        $from = Carbon::parse($start);
+        $end = $from->copy()->addMonthsNoOverflow($months);
+        $n = self::instalmentCount($months, $every, $days, $start);
+        // One period, in months, for the rate of a reducing loan.
+        $periodMonths = $p['months'] > 0 ? (float) $p['months'] : $p['days'] / 30;
+        $rp = $r * $periodMonths;
+        $instalment = $method === 'reducing' && $rp > 0 ? $principal * $rp / (1 - (1 + $rp) ** (-$n)) : null;
+        $flatInterest = round($principal * $r * $months, 2);
         $rows = [];
         $left = $principal;
-        $instalment = $method === 'reducing' && $r > 0 ? $principal * $r / (1 - (1 + $r) ** (-$months)) : null;
-        for ($n = 1; $n <= $months; $n++) {
-            $interest = $method === 'reducing' ? round($left * $r, 2) : round($principal * $r, 2);
-            $capital = $n === $months ? $left : round($instalment === null ? $principal / $months : $instalment - $left * $r, 2);
+        $interestLeft = $flatInterest;
+        for ($k = 1; $k <= $n; $k++) {
+            if ($method === 'reducing') {
+                $interest = round($left * $rp, 2);
+            } else {
+                $interest = $k === $n ? round($interestLeft, 2) : round($flatInterest / $n, 2);
+                $interestLeft = round($interestLeft - $interest, 2);
+            }
+            $capital = $k === $n ? $left : round($instalment === null ? $principal / $n : $instalment - $left * $rp, 2);
             $left = round($left - $capital, 2);
-            $rows[] = [
-                'number' => $n,
-                'due_date' => Carbon::parse($start)->addMonthsNoOverflow($n)->toDateString(),
-                'principal_due' => round($capital, 2),
-                'interest_due' => $interest,
-            ];
+            $due = $k === $n ? $end : ($p['months'] > 0 ? $from->copy()->addMonthsNoOverflow($k * $p['months']) : $from->copy()->addDays($k * $p['days']));
+            $rows[] = ['number' => $k, 'due_date' => $due->toDateString(), 'principal_due' => round($capital, 2), 'interest_due' => $interest];
         }
 
         return $rows;
     }
 
-    /** The disbursement was verified: the loan is running, its instalments start a month after [on]. */
+    /** The disbursement was verified: the loan is running, its first instalment falls one period (a day, a week, a month ...) after [on]. */
     public static function activate(int $loanId, string $on): void
     {
         $loan = DB::table('group_loans')->where('id', $loanId)->first();
@@ -128,7 +180,7 @@ final class GroupLoans
         }
         DB::transaction(function () use ($loan, $on) {
             DB::table('group_loan_schedule')->where('loan_id', $loan->id)->delete();
-            foreach (self::schedule((float) $loan->amount_approved, (float) $loan->interest_rate, $loan->interest_method, (int) $loan->term_months, $on) as $row) {
+            foreach (self::schedule((float) $loan->amount_approved, (float) $loan->interest_rate, $loan->interest_method, (int) $loan->term_months, $on, (string) ($loan->repayment_every ?? 'monthly'), $loan->repayment_days === null ? null : (int) $loan->repayment_days) as $row) {
                 DB::table('group_loan_schedule')->insert($row + ['loan_id' => $loan->id]);
             }
             DB::table('group_loans')->where('id', $loan->id)->update(['status' => 'active', 'disbursed_on' => $on, 'updated_at' => now()]);
@@ -244,6 +296,8 @@ final class GroupLoans
             'amount_approved' => $loan->amount_approved === null ? null : (float) $loan->amount_approved,
             'purpose' => $loan->purpose,
             'term_months' => (int) $loan->term_months,
+            'repayment_every' => (string) ($loan->repayment_every ?? 'monthly'),
+            'repayment_days' => $loan->repayment_days === null ? null : (int) $loan->repayment_days,
             'interest_rate' => (float) $loan->interest_rate,
             'interest_method' => $loan->interest_method,
             'ceiling' => $loan->ceiling === null ? null : (float) $loan->ceiling,
@@ -266,7 +320,7 @@ final class GroupLoans
             // What it would look like, before it is paid out: the instalments it would have from today.
             if ($position === null && in_array($loan->status, self::OPEN_STATUSES, true)) {
                 $amount = (float) ($loan->amount_approved ?? $loan->amount_requested);
-                $preview = self::schedule($amount, (float) $loan->interest_rate, $loan->interest_method, (int) $loan->term_months, now()->toDateString());
+                $preview = self::schedule($amount, (float) $loan->interest_rate, $loan->interest_method, (int) $loan->term_months, now()->toDateString(), (string) ($loan->repayment_every ?? 'monthly'), $loan->repayment_days === null ? null : (int) $loan->repayment_days);
                 $out['preview'] = [
                     'instalments' => $preview,
                     'total_interest' => round(array_sum(array_column($preview, 'interest_due')), 2),

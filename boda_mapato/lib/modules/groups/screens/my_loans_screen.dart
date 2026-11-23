@@ -12,6 +12,7 @@ import '../services/groups_api.dart';
 import 'groups_text.dart';
 import 'loan_detail_screen.dart';
 import 'widgets/groups_ui.dart';
+import 'widgets/repayment_schedule.dart';
 import 'widgets/member_picker.dart';
 
 /// The member's loans: whether they can borrow and up to how much (the sum shown, never only the answer), applying, their loans, and the
@@ -159,6 +160,7 @@ class _MyLoansScreenState extends State<MyLoansScreen> {
                               ? (sw ? 'Bado hayajawekwa' : 'Not set yet')
                               : '${e.rate}% ${sw ? 'kwa mwezi' : 'a month'} · ${interestMethodLabel(sw: sw, method: e.method!)} · ${sw ? 'hadi miezi' : 'up to'} ${e.maxMonths}${sw ? '' : ' months'}',
                         ),
+                        GroupDetailRow(sw ? 'Marejesho' : 'Repayment', repaymentLabel(sw: sw, every: e.repayment, days: e.repaymentDays)),
                         for (final String r in e.reasons)
                           Row(children: <Widget>[
                             const Icon(Icons.info_outline, color: ThemeConstants.warningAmber, size: 18),

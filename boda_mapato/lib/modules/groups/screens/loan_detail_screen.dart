@@ -13,6 +13,7 @@ import 'groups_text.dart';
 import 'payment_form.dart';
 import 'widgets/amount_dialogs.dart';
 import 'widgets/groups_ui.dart';
+import 'widgets/repayment_schedule.dart';
 import 'widgets/member_picker.dart';
 
 /// One loan: amounts and terms, guarantors, the committee's recommendation, the instalments (or what they would be), and the next step --
@@ -188,6 +189,7 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
                       if (l.amountApproved != null) GroupDetailRow(sw ? 'Kiasi kilichokubaliwa' : 'Agreed amount', tsh(l.amountApproved!), valueColor: ThemeConstants.successGreen),
                       GroupDetailRow(sw ? 'Muda' : 'Term', '${l.termMonths} ${sw ? 'miezi' : 'month(s)'}'),
                       GroupDetailRow(sw ? 'Riba' : 'Interest', '${l.interestRate}% ${sw ? 'kwa mwezi' : 'a month'} · ${interestMethodLabel(sw: sw, method: l.interestMethod)}'),
+                      GroupDetailRow(sw ? 'Marejesho' : 'Repayment', repaymentLabel(sw: sw, every: l.repaymentEvery, days: l.repaymentDays)),
                       GroupDetailRow(sw ? 'Matumizi ya mkopo' : 'Purpose', l.purpose),
                       if (l.ceiling != null) GroupDetailRow(sw ? 'Kikomo alipoomba' : 'Ceiling when applied', tsh(l.ceiling!)),
                       if (l.recommendation != null) GroupDetailRow(sw ? 'Pendekezo la kamati' : "Committee's note", l.recommendation!),

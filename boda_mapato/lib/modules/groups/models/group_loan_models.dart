@@ -24,6 +24,8 @@ class GroupLoanEligibility {
     this.method,
     this.maxMonths = 12,
     this.guarantors = 1,
+    this.repayment = 'monthly',
+    this.repaymentDays,
   });
 
   factory GroupLoanEligibility.fromJson(final Map<String, dynamic> j) {
@@ -41,6 +43,8 @@ class GroupLoanEligibility {
       method: _str(t['method']),
       maxMonths: _int(t['max_months']) ?? 12,
       guarantors: _int(t['guarantors']) ?? 1,
+      repayment: _str(t['repayment']) ?? 'monthly',
+      repaymentDays: _int(t['repayment_days']),
     );
   }
 
@@ -56,6 +60,10 @@ class GroupLoanEligibility {
   final String? method;
   final int maxMonths;
   final int guarantors;
+
+  /// How often a loan is repaid: daily | weekly | every_2_weeks | monthly | every_2_months | quarterly | every_6_months | custom (every [repaymentDays] days).
+  final String repayment;
+  final int? repaymentDays;
 }
 
 /// One instalment of a loan (or of the preview before it is paid out).
@@ -111,6 +119,8 @@ class GroupLoan {
     required this.termMonths,
     required this.interestRate,
     required this.interestMethod,
+    this.repaymentEvery = 'monthly',
+    this.repaymentDays,
     required this.status,
     required this.state,
     this.memberName,
@@ -149,6 +159,8 @@ class GroupLoan {
       termMonths: _int(j['term_months']) ?? 1,
       interestRate: _num(j['interest_rate']),
       interestMethod: '${j['interest_method'] ?? 'flat'}',
+      repaymentEvery: _str(j['repayment_every']) ?? 'monthly',
+      repaymentDays: _int(j['repayment_days']),
       ceiling: j['ceiling'] == null ? null : _num(j['ceiling']),
       status: '${j['status'] ?? ''}',
       state: '${j['state'] ?? ''}',
@@ -180,6 +192,10 @@ class GroupLoan {
   final int termMonths;
   final double interestRate;
   final String interestMethod;
+
+  /// The rhythm this loan was applied under (daily, weekly ... or `custom`: every [repaymentDays] days).
+  final String repaymentEvery;
+  final int? repaymentDays;
   final double? ceiling;
 
   /// awaiting_guarantors | under_review | recommended | approved | active | rejected | cancelled

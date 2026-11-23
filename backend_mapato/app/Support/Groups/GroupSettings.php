@@ -37,6 +37,10 @@ final class GroupSettings
         'loan_interest_method' => ['type' => 'choice', 'choices' => ['', 'flat', 'reducing'], 'default' => ''],
         'loan_max_months' => ['type' => 'count', 'min' => 1, 'max' => 120, 'default' => '12'],
         'loan_guarantors' => ['type' => 'count', 'min' => 0, 'max' => 5, 'default' => '1'],
+        // How often a loan is repaid: every day (from tomorrow), week, two weeks, month, two months, three months, six months, or every N days.
+        // Each loan keeps the rhythm it was applied under.
+        'loan_repayment' => ['type' => 'choice', 'choices' => ['daily', 'weekly', 'every_2_weeks', 'monthly', 'every_2_months', 'quarterly', 'every_6_months', 'custom'], 'default' => 'monthly'],
+        'loan_repayment_days' => ['type' => 'count', 'min' => 1, 'max' => 365, 'default' => '30'],
         // Hiring out (chairs): are the collection day AND the return day both charged (both), or only the nights between (between)?
         'hire_days_rule' => ['type' => 'choice', 'choices' => ['both', 'between'], 'default' => 'both'],
     ];
