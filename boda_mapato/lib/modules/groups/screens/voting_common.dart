@@ -91,7 +91,7 @@ String votingEligibilityLabel({required final bool sw, required final GroupVotin
 
 String votingVisibilityLabel({required final bool sw, required final String visibility}) => switch (visibility) {
       'live' => sw ? 'Matokeo yanaonekana wakati kura inaendelea' : 'Results show while the voting runs',
-      'after_publish' => sw ? 'Matokeo yanaonekana baada ya kutangazwa rasmi' : 'Results show once announced by the officers',
+      'after_publish' => sw ? 'Matokeo yanaonekana baada ya kutangazwa rasmi' : 'Results show once the group's leaders announce them',
       _ => sw ? 'Matokeo yanaonekana kura ikifungwa' : 'Results show when the voting closes',
     };
 
