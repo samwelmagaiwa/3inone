@@ -116,6 +116,11 @@ final class DemoGroup
 
     public ?string $password = null;
 
+    /** The chairperson's own e-mail and phone, when the demo should sign in with them (null: made up). */
+    public ?string $chairEmail = null;
+
+    public ?string $chairPhone = null;
+
     /** @var callable|null */
     private $progress = null;
 
@@ -270,6 +275,7 @@ final class DemoGroup
         // The whole history is made in a few minutes of real time, which the app's per-minute limits (20 payments a minute and so on) would
         // refuse. This command gets a limiter of its own that lives in memory and is emptied before each call: nothing else is affected.
         $this->limits = Cache::store('array');
+        $original = app(RateLimiter::class);
         app()->forgetInstance(RateLimiter::class);
         app()->singleton(RateLimiter::class, fn () => new RateLimiter($this->limits));
         $this->password ??= $this->randomPassword();
@@ -287,6 +293,7 @@ final class DemoGroup
             $this->say('Applications, notices, texts, the current month ...');
             $this->finish();
         } finally {
+            app()->instance(RateLimiter::class, $original);
             Carbon::setTestNow();
             TenantContext::reset();
             foreach (User::query()->withoutGlobalScopes()->whereIn('id', $this->demoUserIds())->get() as $u) {
@@ -347,7 +354,7 @@ final class DemoGroup
         $this->call('admin', 'PUT', '/settings', ['reason' => 'Masharti ya kikundi yaliyopitishwa na mkutano mkuu', 'values' => [
             'joining_fee' => 80000, 'share_amount' => 200000, 'shares_required_for' => 'loans', 'loan_multiplier' => 3, 'member_prefix' => 'UWM',
             'payment_instructions' => 'Lipa kwa M-Pesa namba 0754 100 200 (Umoja wa Wajasiriamali Mikocheni) au NMB akaunti 2051234567. Weka namba ya muamala kwenye malipo.',
-            'sms_reminders' => 'on', 'sms_show_amounts' => 'off',
+            'sms_reminders' => 'off', 'sms_show_amounts' => 'off',
             'loan_interest_rate' => 2, 'loan_interest_method' => 'flat', 'loan_max_months' => 12, 'loan_guarantors' => 1, 'hire_days_rule' => 'both',
         ]], $this->start->copy()->setTime(9, 5));
     }
@@ -372,6 +379,11 @@ final class DemoGroup
         $i = 0;
         foreach (self::MEMBERS as $key => [$name, $gender, $born, $office, $joined, $ref, $occupation]) {
             $body = $this->memberBody($name, $gender, $born, $occupation, $i, $ref === null ? null : $this->ids[$ref]) + ['existing' => true, 'founding' => $i < 9, 'joined_on' => $joined];
+            if ($office === 'mwenyekiti') {
+                $body['email'] = $this->chairEmail ?? $body['email'];
+                $body['phone'] = $this->chairPhone ?? $body['phone'];
+                $this->usedPhones[$body['phone']] = 1;
+            }
             $id = (int) $this->call('admin', 'POST', '/members', $body, $this->start->copy()->setTime(9, 10 + $i))['data']['member']['id'];
             $this->ids[$key] = $id;
             $this->phones[$key] = $body['phone'];

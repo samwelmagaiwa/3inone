@@ -18,6 +18,8 @@ class GroupsDemo extends Command
         {--months=12 : how many months of history to make (12 to 18)}
         {--seed=2026 : the same number always makes the same group}
         {--password= : the password every demo person signs in with (made up when left out)}
+        {--chair-email= : the e-mail of the chairperson (made up when left out)}
+        {--chair-phone= : the phone of the chairperson (made up when left out)}
         {--fresh : take the demo group away first, if it is already here}
         {--remove : only take the demo group away}
         {--force : needed on a live server (production), where this adds a business to the real database}';
@@ -53,6 +55,8 @@ class GroupsDemo extends Command
         if ((string) $this->option('password') !== '') {
             $demo->password = (string) $this->option('password');
         }
+        $demo->chairEmail = (string) $this->option('chair-email') !== '' ? (string) $this->option('chair-email') : null;
+        $demo->chairPhone = (string) $this->option('chair-phone') !== '' ? (string) $this->option('chair-phone') : null;
         $demo->onProgress(fn (string $line) => $this->line($line));
 
         $this->info('Making the demo group. This takes a few minutes: every payment goes through the app like a real one.');

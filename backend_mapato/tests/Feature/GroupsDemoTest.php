@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\Sms\SmsGateway;
 use App\Support\Groups\DemoGroup;
 use App\Support\Groups\GroupAccess;
+use App\Support\Groups\GroupSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -88,6 +89,20 @@ class GroupsDemoTest extends TestCase
         $this->assertGreaterThan(500000, $me->json('data.balances.savings'));
         $this->assertNotEmpty($me->json('data.member.member_number'));
         $this->api($asha, 'GET', '/me/statement')->assertOk();
+    }
+
+    public function test_the_chair_signs_in_with_the_email_phone_and_password_given(): void
+    {
+        $demo = new DemoGroup(12, 2026, Carbon::parse('2026-11-23', 'Africa/Dar_es_Salaam'));
+        $demo->password = '12345678';
+        $demo->chairEmail = 'mwenyekiti@gmail.com';
+        $demo->chairPhone = '0743519101';
+        $demo->build();
+
+        $this->flushHeaders();
+        $this->postJson('/api/auth/login', ['email' => 'mwenyekiti@gmail.com', 'password' => '12345678'])->assertOk();
+        $this->assertSame('0743519101', DB::table('group_members')->where('office', 'mwenyekiti')->value('phone'));
+        $this->assertSame('off', GroupSettings::get('sms_reminders'), 'no reminder text can reach a demo phone');
     }
 
     public function test_it_sends_no_text_and_refuses_to_run_twice(): void
