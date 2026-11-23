@@ -131,7 +131,7 @@ final class GroupVotings
         ]);
         GroupAudit::record($userId, 'voting_closed', $v->reference . ' closed: ' . $res['decision'] . ' (' . $res['turnout'] . ' of ' . $res['eligible'] . ' voted)', 'voting', (int) $v->id);
         self::notifyEligible($v, 'voting_closed', 'Kura ya ' . self::target($v) . ' imefungwa', 'Voting on ' . self::target($v) . ' has closed',
-            'Kura zimefungwa. Matokeo yatatangazwa na viongozi.', 'Voting is over. The results will be announced by the group's leaders.');
+            'Kura zimefungwa. Matokeo yatatangazwa na viongozi.', 'Voting is over. The results will be announced by the leaders of the group.');
     }
 
     // ------------------------------------------------------------------------------------------------ results

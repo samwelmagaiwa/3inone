@@ -239,7 +239,7 @@ class _VotingDetailScreenState extends State<VotingDetailScreen> {
           GroupDetailRow(sw ? 'Inafunguliwa' : 'Opens', votingWhen(v.opensAt)),
           GroupDetailRow(sw ? 'Inafungwa' : 'Closes', votingWhen(v.closesAt)),
           GroupDetailRow(sw ? 'Wanaoruhusiwa' : 'Who may vote', votingEligibilityLabel(sw: sw, v: v)),
-          GroupDetailRow(sw ? 'Aina ya kura' : 'Ballot', v.secret ? (sw ? 'Ya siri: hakuna anayejua ulichagua nini' : 'Secret: nobody sees what you chose') : (sw ? 'Wazi: viongozi wanaweza kuona kila kura' : 'Open: the group's leaders can see each vote')),
+          GroupDetailRow(sw ? 'Aina ya kura' : 'Ballot', v.secret ? (sw ? 'Ya siri: hakuna anayejua ulichagua nini' : 'Secret: nobody sees what you chose') : (sw ? 'Wazi: viongozi wanaweza kuona kila kura' : 'Open: the leaders of the group can see each vote')),
           if (v.quorumPercent > 0) GroupDetailRow(sw ? 'Idadi ya chini ya wapiga kura' : 'Quorum', '${v.quorumPercent.toStringAsFixed(0)}%'),
           if (!v.isElection) GroupDetailRow(sw ? 'Kiwango cha kupita' : 'Approval needed', '${v.thresholdPercent.toStringAsFixed(1)}%'),
           GroupDetailRow(sw ? 'Matokeo' : 'Results', votingVisibilityLabel(sw: sw, visibility: v.resultsVisibility)),
