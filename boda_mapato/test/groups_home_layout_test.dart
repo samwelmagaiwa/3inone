@@ -99,6 +99,10 @@ void main() {
     await t.pageBack();
     await t.pumpAndSettle();
     expect(find.byType(GlowSections), findsOneWidget, reason: 'who I am, the buttons, the trend and the news are ONE joined card');
+    // Every part of the dashboard, the top ones too, is a titled part of that one card.
+    for (final String title in <String>['Account', 'The group at a glance', 'Members and money']) {
+      expect(find.text(title), findsOneWidget, reason: title);
+    }
     expect(find.byKey(const Key('grp_overview_chart')), findsOneWidget);
   });
 
@@ -171,6 +175,9 @@ void main() {
     await _pump(t, _me(<String>[], <String, int>{}));
 
     expect(find.byKey(const Key('grp_my_glance')), findsOneWidget);
+    expect(find.byType(GlowSections), findsOneWidget, reason: 'an ordinary member has ONE joined card too');
+    expect(find.text('Account'), findsOneWidget);
+    expect(find.text('My standing'), findsOneWidget);
     expect(find.byKey(const Key('grp_my_account')), findsOneWidget);
     expect(find.byKey(const Key('grp_my_account_number')), findsOneWidget);
     expect(find.text('No. MEG-0001'), findsOneWidget, reason: 'the account number sits beside the amount');

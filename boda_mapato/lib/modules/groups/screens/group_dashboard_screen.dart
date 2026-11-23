@@ -383,7 +383,7 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
     // The member's own figures in tiles (not a card), shown before the joined sections.
     final List<Widget> lead = <Widget>[if (m != null) _MyGlance(me: me, sw: sw, onStatement: _statement)];
     // The account comes first, on every screen of every role that has a member record.
-    final Widget? account = m == null ? null : GroupAccountCard(me: me, onStatement: _statement);
+    final Widget? account = m == null ? null : GroupAccountSection(me: me, onStatement: _statement);
 
     return RefreshIndicator(
       onRefresh: _refresh,
@@ -395,10 +395,8 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
           if (officer)
             GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen, account: account, lead: lead, beforeChart: personal, afterChart: afterChart)
           else ...<Widget>[
-            if (account != null) ...<Widget>[account, const SizedBox(height: 10)],
-            ...lead,
-            if (lead.isNotEmpty) const SizedBox(height: 12),
-            ...joinGlowCards(<Widget>[...personal, ...afterChart]),
+            // Everyone else: the same ONE joined card, from the account down.
+            ...joinGlowCards(<Widget>[if (account != null) account, ...lead, ...personal, ...afterChart]),
           ],
         ],
       ),
@@ -407,7 +405,7 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
 }
 
 /// A member's own money in four tiles, the same design as the group's: savings, shares, what is owed, what waits for verification.
-class _MyGlance extends StatelessWidget {
+class _MyGlance extends StatelessWidget with GlowSectionWidget {
   const _MyGlance({required this.me, required this.sw, required this.onStatement});
 
   final GroupMe me;
@@ -422,7 +420,8 @@ class _MyGlance extends StatelessWidget {
     final double savings = me.balances?['savings'] ?? 0;
     return GroupTileGrid(
       key: const Key('grp_my_glance'),
-      dividerKey: 'grp_glance_div',
+      title: sw ? 'Hali yangu' : 'My standing',
+      dividerKey: 'grp_my_glance_div',
       tiles: <GroupGridTile>[
         GroupGridTile(tileKey: const Key('grp_my_savings'), icon: Icons.savings_rounded, color: ThemeConstants.successGreen, value: GroupOverviewDashboardState.short(savings), label: sw ? 'Akiba yangu' : 'My savings'),
         GroupGridTile(

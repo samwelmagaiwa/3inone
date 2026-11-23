@@ -101,50 +101,47 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
       ]);
     }
     final GroupDashboardMoney? m = d.money;
-    return Column(
-      key: const Key('grp_overview'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        // 1. the person's account (the eye shows or hides the balance)
-        if (widget.account != null) widget.account!,
-        // 2. the month all the figures below are for
-        if (m != null) ...<Widget>[
-          const SizedBox(height: 18),
-          _title(sw ? 'Hali ya kikundi' : 'The group at a glance'),
-          const SizedBox(height: 8),
-          MonthSelector(
-            months: _months,
-            selectedMonth: _month,
-            selectedColor: Colors.white,
-            unselectedColor: Colors.white60,
-            onSelected: (final int month) {
-              setState(() => _month = month);
-              load();
-            },
-          ),
-          const SizedBox(height: 10),
-          // 3. the headline: cash and the month's collection, two tiles in one row
-          IntrinsicHeight(
-            key: const Key('grp_overview_joined'),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-              Expanded(child: _BalanceCard(cash: m.cash, monthIn: m.monthIn, monthOut: m.monthOut, pending: m.pendingCount, sw: sw, onTap: () => widget.onOpen('payments'))),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _RingTile(
-                  key: const Key('grp_overview_ring'),
-                  title: sw ? 'Michango iliyolipwa mwezi huu' : 'Contributions collected this month',
-                  rate: m.collectionRate,
-                  detail: '${tsh(m.collected)} / ${tsh(m.expected)}',
-                  onTap: () => widget.onOpen('contributions'),
+    // Every part is a titled section; they are all joined into ONE card below, told apart by the glowing line and each gold title.
+    final List<Widget> sections = <Widget>[
+      // 1. the person's account (the eye shows or hides the balance)
+      if (widget.account != null) widget.account!,
+      // 2. the month all the figures below are for, then the headline: cash and the month's collection
+      if (m != null)
+        GlowCard(
+          title: sw ? 'Hali ya kikundi' : 'The group at a glance',
+          dividerKey: 'grp_glance_div',
+          children: <Widget>[
+            MonthSelector(
+              months: _months,
+              selectedMonth: _month,
+              selectedColor: Colors.white,
+              unselectedColor: Colors.white60,
+              onSelected: (final int month) {
+                setState(() => _month = month);
+                load();
+              },
+            ),
+            IntrinsicHeight(
+              key: const Key('grp_overview_joined'),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+                Expanded(child: _BalanceCard(cash: m.cash, monthIn: m.monthIn, monthOut: m.monthOut, pending: m.pendingCount, sw: sw, onTap: () => widget.onOpen('payments'))),
+                Container(width: 1, margin: const EdgeInsets.symmetric(vertical: 6), color: Colors.white.withValues(alpha: 0.15)),
+                Expanded(
+                  child: _RingTile(
+                    key: const Key('grp_overview_ring'),
+                    title: sw ? 'Michango iliyolipwa mwezi huu' : 'Contributions collected this month',
+                    rate: m.collectionRate,
+                    detail: '${tsh(m.collected)} / ${tsh(m.expected)}',
+                    onTap: () => widget.onOpen('contributions'),
+                  ),
                 ),
-              ),
-            ]),
-          ),
-          const SizedBox(height: 10),
-        ] else
-          const SizedBox(height: 18),
+              ]),
+            ),
+          ],
+        ),
         // 4. the numbers to watch, in ONE card: a thin line between the tiles of a row, the glowing line between the rows
         GroupTileGrid(
+          title: m == null ? (sw ? 'Wanachama' : 'Members') : (sw ? 'Wanachama na fedha' : 'Members and money'),
           dividerKey: 'grp_figures_div',
           tiles: <GroupGridTile>[
             GroupGridTile(
@@ -187,10 +184,8 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
         ),
         if (m != null) ...<Widget>[
           // 5. the year, in four short tiles
-          const SizedBox(height: 14),
-          _title(sw ? 'Mwaka huu' : 'This year so far'),
-          const SizedBox(height: 8),
           GroupTileGrid(
+            title: sw ? 'Mwaka huu' : 'This year so far',
             dividerKey: 'grp_year_div',
             tiles: <GroupGridTile>[
               GroupGridTile(icon: Icons.volunteer_activism_rounded, color: ThemeConstants.invAccent, value: short(m.welfarePaid), label: sw ? 'Msaada' : 'Welfare paid', onTap: () => widget.onOpen('welfare')),
@@ -201,16 +196,12 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
           ),
         ],
         ..._desk(sw, d, hasMoney: m != null),
-        if (widget.lead.isNotEmpty) ...<Widget>[const SizedBox(height: 22), ...widget.lead],
-        // ONE joined card: who I am, what waits, the trend, then news and my money, told apart by the glowing line and each part's gold title.
-        const SizedBox(height: 22),
-        ...joinGlowCards(<Widget>[
-          ...widget.beforeChart,
-          if (m != null) _ChartSection(title: sw ? 'Mwenendo wa fedha' : 'Money over time', child: _chartBody(sw, m)),
-          ...widget.afterChart,
-        ]),
-      ],
-    );
+        ...widget.lead,
+        ...widget.beforeChart,
+        if (m != null) _ChartSection(title: sw ? 'Mwenendo wa fedha' : 'Money over time', child: _chartBody(sw, m)),
+        ...widget.afterChart,
+    ];
+    return Column(key: const Key('grp_overview'), crossAxisAlignment: CrossAxisAlignment.stretch, children: joinGlowCards(sections));
   }
 
   /// What the person's office oversees, from the server's `desk`: only the sections their rights open.
@@ -221,10 +212,8 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
     int n(final Map<String, double> m, final String k) => (m[k] ?? 0).round();
     return <Widget>[
       if (pr != null) ...<Widget>[
-        const SizedBox(height: 22),
-        _title(sw ? 'Miradi' : 'Projects'),
-        const SizedBox(height: 8),
         GroupTileGrid(
+          title: sw ? 'Miradi' : 'Projects',
           dividerKey: 'grp_desk_div',
           tiles: <GroupGridTile>[
             GroupGridTile(tileKey: const Key('grp_desk_proposed'), icon: Icons.lightbulb_outline_rounded, color: ThemeConstants.warningAmber, value: '${n(pr, 'proposed')}', label: sw ? 'Mapendekezo' : 'Proposals', onTap: () => widget.onOpen('projects')),
@@ -235,10 +224,8 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
         ),
       ],
       if (ln != null && !hasMoney) ...<Widget>[
-        const SizedBox(height: 22),
-        _title(sw ? 'Mikopo' : 'Loans'),
-        const SizedBox(height: 8),
         GroupTileGrid(
+          title: sw ? 'Mikopo' : 'Loans',
           dividerKey: 'grp_desk_div',
           tiles: <GroupGridTile>[
             GroupGridTile(tileKey: const Key('grp_desk_loan_review'), icon: Icons.thumb_up_alt_outlined, color: ThemeConstants.warningAmber, value: '${n(ln, 'under_review')}', label: sw ? 'Ya kupendekeza' : 'To recommend', onTap: () => widget.onOpen('loans')),
@@ -249,10 +236,8 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
         ),
       ],
       if (mt != null) ...<Widget>[
-        const SizedBox(height: 22),
-        _title(sw ? 'Vikao na kumbukumbu' : 'Meetings and records'),
-        const SizedBox(height: 8),
         GroupTileGrid(
+          title: sw ? 'Vikao na kumbukumbu' : 'Meetings and records',
           dividerKey: 'grp_desk_div',
           tiles: <GroupGridTile>[
             GroupGridTile(tileKey: const Key('grp_desk_to_record'), icon: Icons.edit_note_rounded, color: ThemeConstants.warningAmber, value: '${n(mt, 'to_record')}', label: sw ? 'Vikao vya kurekodi' : 'To record', onTap: () => widget.onOpen('community')),
@@ -473,7 +458,7 @@ class _BalanceCard extends StatelessWidget {
           onTap: onTap,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: _tileFrame(),
+            decoration: GlowSections.joined(context) ? null : _tileFrame(),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
               Row(children: <Widget>[
                 _tileIcon(Icons.account_balance_wallet_rounded, ThemeConstants.invAccent),
@@ -538,7 +523,7 @@ class _RingTile extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: _tileFrame(),
+          decoration: GlowSections.joined(context) ? null : _tileFrame(),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
             Row(children: <Widget>[
               Stack(alignment: Alignment.center, children: <Widget>[

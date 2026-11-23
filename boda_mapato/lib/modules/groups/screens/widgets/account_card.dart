@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../constants/theme_constants.dart';
 import '../../../../services/localization_service.dart';
+import '../../../inventory/screens/widgets/glow_list_card.dart';
 import '../../models/group_models.dart';
 import '../groups_text.dart';
 
@@ -36,7 +37,8 @@ class _GroupAccountCardState extends State<GroupAccountCard> {
         onTap: widget.onStatement,
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: Colors.white.withValues(alpha: 0.03), border: Border.all(color: Colors.white.withValues(alpha: 0.06))),
+          // Inside the joined card the card's own frame is dropped: the glowing lines and the gold title tell it apart.
+          decoration: GlowSections.joined(context) ? null : BoxDecoration(borderRadius: BorderRadius.circular(20), color: Colors.white.withValues(alpha: 0.03), border: Border.all(color: Colors.white.withValues(alpha: 0.06))),
           child: Row(children: <Widget>[
             Container(
               padding: const EdgeInsets.all(8),
@@ -77,5 +79,19 @@ class _GroupAccountCardState extends State<GroupAccountCard> {
         ),
       ),
     );
+  }
+}
+
+/// The account as a titled section, so it joins the sections under it into one card.
+class GroupAccountSection extends StatelessWidget with GlowSectionWidget {
+  const GroupAccountSection({required this.me, required this.onStatement, super.key});
+
+  final GroupMe me;
+  final VoidCallback onStatement;
+
+  @override
+  Widget build(final BuildContext context) {
+    final bool sw = context.watch<LocalizationService>().isSwahili;
+    return GlowCard(title: sw ? 'Akaunti' : 'Account', children: <Widget>[GroupAccountCard(me: me, onStatement: onStatement)]);
   }
 }
