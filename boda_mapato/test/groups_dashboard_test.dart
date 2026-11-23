@@ -74,7 +74,7 @@ Future<List<String>> _pump(final WidgetTester t, final GroupsApi api, final Grou
 }
 
 void main() {
-  testWidgets('the treasurer sees the cash, the collection ring, the tiles, the chart and the actions, and each leads to its section', (final WidgetTester t) async {
+  testWidgets('the treasurer sees the cash, the collection ring, the tiles and the chart, and each leads to its section', (final WidgetTester t) async {
     final _FakeApi api = _FakeApi(withMoney: true);
     final List<String> opened = await _pump(t, api, _me(<String>['view_members', 'view_finance', 'record_payments', 'view_loans']));
 
@@ -94,15 +94,14 @@ void main() {
     await t.tap(find.byKey(const ValueKey<String>('grp_chart_line')));
     await t.pumpAndSettle();
 
-    // Only the actions this person may take.
-    expect(find.byKey(const Key('grp_qa_payment')), findsOneWidget);
-    expect(find.byKey(const Key('grp_qa_loans')), findsOneWidget);
-    expect(find.byKey(const Key('grp_qa_member')), findsNothing);
+    // The row of shortcut buttons is gone: the account takes its place (see the layout test).
+    for (final String k in <String>['payment', 'loans', 'member', 'contribution', 'meeting', 'voting', 'projects', 'expenses']) {
+      expect(find.byKey(Key('grp_qa_$k')), findsNothing, reason: k);
+    }
 
     await t.tap(find.byKey(const Key('grp_overview_ring')));
     await t.tap(find.byKey(const Key('grp_overview_loans')));
-    await t.tap(find.byKey(const Key('grp_qa_payment')));
-    expect(opened, <String>['contributions', 'loans', 'payments']);
+    expect(opened, <String>['contributions', 'loans']);
     expect(api.months.single, matches(RegExp(r'^\d{4}-\d{2}$')));
   });
 
@@ -115,6 +114,6 @@ void main() {
     expect(find.byKey(const Key('grp_overview_balance')), findsNothing);
     expect(find.byKey(const Key('grp_overview_ring')), findsNothing);
     expect(find.byKey(const Key('grp_overview_chart')), findsNothing);
-    expect(find.byKey(const Key('grp_qa_member')), findsOneWidget);
+    expect(find.byKey(const Key('grp_qa_member')), findsNothing);
   });
 }

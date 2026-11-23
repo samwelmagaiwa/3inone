@@ -19,6 +19,7 @@ import 'promise_form.dart';
 import 'records_screens.dart';
 import 'statement_screen.dart';
 import 'welfare_screen.dart';
+import 'widgets/account_card.dart';
 import 'widgets/groups_ui.dart';
 
 /// Home: the person's own membership and money, and -- for officers -- what waits for them. Everyone has it; a member sees nothing of anyone else.
@@ -469,6 +470,8 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
     ];
     // The member's own figures in tiles (not a card), shown before the joined sections.
     final List<Widget> lead = <Widget>[if (m != null) _MyGlance(me: me, sw: sw, onStatement: _statement)];
+    // The account comes first, on every screen of every role that has a member record.
+    final Widget? account = m == null ? null : GroupAccountCard(me: me, onStatement: _statement);
 
     return RefreshIndicator(
       onRefresh: _refresh,
@@ -478,8 +481,9 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
           // The officers: the group's figures, then ONE joined card (who I am, what waits, the trend, news, my money). Everyone else: the same
           // joined card without the trend. The person's own tiles come before it.
           if (officer)
-            GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen, lead: lead, beforeChart: personal, afterChart: afterChart)
+            GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen, account: account, lead: lead, beforeChart: personal, afterChart: afterChart)
           else ...<Widget>[
+            if (account != null) ...<Widget>[account, const SizedBox(height: 10)],
             ...lead,
             if (lead.isNotEmpty) const SizedBox(height: 12),
             ...joinGlowCards(<Widget>[...personal, ...afterChart]),
@@ -504,34 +508,7 @@ class _MyGlance extends StatelessWidget {
     final bool late = me.owing.any((final GroupObligation o) => o.state == 'overdue');
     final double shares = me.balances?['shares'] ?? 0;
     final double savings = me.balances?['savings'] ?? 0;
-    final String? number = me.member?.memberNumber ?? me.member?.applicationRef;
     return Column(key: const Key('grp_my_glance'), crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      // The member's account: what the group holds for them, with its number, opening the statement.
-      Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          key: const Key('grp_my_account'),
-          borderRadius: BorderRadius.circular(20),
-          onTap: onStatement,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: Colors.white.withValues(alpha: 0.03), border: Border.all(color: Colors.white.withValues(alpha: 0.06))),
-            child: Row(children: <Widget>[
-              Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: ThemeConstants.invAccent.withValues(alpha: 0.12), shape: BoxShape.circle), child: const Icon(Icons.account_balance_wallet_rounded, color: ThemeConstants.invAccent, size: 18)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: <Widget>[
-                  FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(tsh(savings + shares), key: const Key('grp_my_account_total'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900))),
-                  Text('${sw ? 'Akaunti yangu' : 'My account'}${number == null ? '' : ' · $number'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w500)),
-                ]),
-              ),
-              Text(sw ? 'Taarifa' : 'Statement', style: const TextStyle(color: ThemeConstants.invAccent, fontSize: 12, fontWeight: FontWeight.w700)),
-              const Icon(Icons.chevron_right, color: Colors.white38),
-            ]),
-          ),
-        ),
-      ),
-      const SizedBox(height: 10),
       Row(children: <Widget>[
         Expanded(child: GroupBento(key: const Key('grp_my_savings'), icon: Icons.savings_rounded, color: ThemeConstants.successGreen, value: GroupOverviewDashboardState.short(me.balances?['savings'] ?? 0), label: sw ? 'Akiba yangu' : 'My savings')),
         const SizedBox(width: 10),

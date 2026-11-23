@@ -22,11 +22,14 @@ import 'groups_text.dart';
 ///   - the inventory dashboard's glowing chart card with its months and the line / bars toggle: 12 months of money in and out, or the
 ///     month's money by kind;
 ///   - the rental wide rows: the year's welfare, dividends, hire income and spending;
-///   - quick actions, each shown only to whoever may do it.
+///   - the person's account first (hidden until its eye is tapped).
 ///
 /// Money appears only for whoever sees the group's money; the secretary sees the membership part.
 class GroupOverviewDashboard extends StatefulWidget {
-  const GroupOverviewDashboard({required this.api, required this.me, required this.onOpen, super.key, this.lead = const <Widget>[], this.beforeChart = const <Widget>[], this.afterChart = const <Widget>[]});
+  const GroupOverviewDashboard({required this.api, required this.me, required this.onOpen, super.key, this.account, this.lead = const <Widget>[], this.beforeChart = const <Widget>[], this.afterChart = const <Widget>[]});
+
+  /// The person's account, first on the screen.
+  final Widget? account;
 
   /// Plain widgets shown after the figures and before the joined card (the person's own tiles).
   final List<Widget> lead;
@@ -101,8 +104,8 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
       key: const Key('grp_overview'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        // 1. what can be done now
-        _actions(sw),
+        // 1. the person's account (the eye shows or hides the balance)
+        if (widget.account != null) widget.account!,
         // 2. the month all the figures below are for
         if (m != null) ...<Widget>[
           const SizedBox(height: 18),
@@ -451,49 +454,6 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
             ]),
         ],
       ),
-    );
-  }
-
-  /// The rental dashboard's action icons, each only for whoever may do it.
-  Widget _actions(final bool sw) {
-    final GroupMe me = widget.me;
-    final List<(Key, IconData, Color, String, String)> items = <(Key, IconData, Color, String, String)>[
-      if (me.can('record_payments')) (const Key('grp_qa_payment'), Icons.add_card_rounded, ThemeConstants.successGreen, sw ? 'Malipo' : 'Payment', 'payments'),
-      if (me.can('manage_members')) (const Key('grp_qa_member'), Icons.person_add_alt_1_rounded, ThemeConstants.invAccent, sw ? 'Mwanachama' : 'Member', 'members'),
-      if (me.can('manage_contributions')) (const Key('grp_qa_contribution'), Icons.campaign_rounded, ThemeConstants.primaryOrange, sw ? 'Mchango' : 'Contribution', 'contributions'),
-      if (me.can('call_meetings') || me.can('send_texts')) (const Key('grp_qa_meeting'), Icons.forum_rounded, ThemeConstants.warningAmber, sw ? 'Vikao' : 'Meetings', 'community'),
-      if (me.can('view_loans')) (const Key('grp_qa_loans'), Icons.request_quote_rounded, ThemeConstants.errorRed, sw ? 'Mikopo' : 'Loans', 'loans'),
-      if (me.member != null) (const Key('grp_qa_voting'), Icons.how_to_vote_rounded, ThemeConstants.successGreen, sw ? 'Kura' : 'Voting', 'voting'),
-      if (me.can('view_projects')) (const Key('grp_qa_projects'), Icons.business_center_rounded, ThemeConstants.invAccent, sw ? 'Miradi' : 'Projects', 'projects'),
-      if (me.can('request_expenses') || me.can('view_expenses')) (const Key('grp_qa_expenses'), Icons.receipt_long_rounded, ThemeConstants.warningAmber, sw ? 'Matumizi' : 'Expenses', 'expenses'),
-    ];
-    if (items.isEmpty) return const SizedBox.shrink();
-    return Wrap(
-      alignment: WrapAlignment.spaceAround,
-      runSpacing: 12,
-      spacing: 8,
-      children: <Widget>[
-        for (final (Key, IconData, Color, String, String) a in items)
-          InkResponse(
-            key: a.$1,
-            onTap: () => widget.onOpen(a.$5),
-            radius: 32,
-            child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: a.$3.withValues(alpha: 0.16),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: a.$3.withValues(alpha: 0.5)),
-                ),
-                child: Icon(a.$2, color: a.$3, size: 22),
-              ),
-              const SizedBox(height: 4),
-              Text(a.$4, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
-            ]),
-          ),
-      ],
     );
   }
 }

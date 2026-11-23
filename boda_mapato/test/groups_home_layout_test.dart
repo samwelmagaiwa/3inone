@@ -83,11 +83,12 @@ void main() {
 
     final double who = _top(t, find.byKey(const Key('grp_me_name')));
     final double waiting = _top(t, find.text('Waiting for you'));
-    final double actions = _top(t, find.byKey(const Key('grp_qa_payment')));
+    final double account = _top(t, find.byKey(const Key('grp_my_account')));
+    expect(find.byKey(const Key('grp_qa_payment')), findsNothing, reason: 'the shortcut buttons are gone');
     final double headline = _top(t, find.byKey(const Key('grp_overview_joined')));
     final double chart = _top(t, find.byKey(const Key('grp_overview_chart')));
     final double mine = _top(t, find.text('My payments'));
-    expect(<double>[actions, headline, who, waiting, chart, mine], orderedEquals(<double>[actions, headline, who, waiting, chart, mine]..sort()), reason: 'actions, headline, who I am, waiting, then the trend, then my money');
+    expect(<double>[account, headline, who, waiting, chart, mine], orderedEquals(<double>[account, headline, who, waiting, chart, mine]..sort()), reason: 'the account, headline, who I am, waiting, then the trend, then my money');
     expect(find.byKey(const Key('grp_wait_payments')), findsOneWidget);
     expect(find.byKey(const Key('grp_wait_applications')), findsOneWidget);
     expect(find.byType(GlowSections), findsOneWidget, reason: 'who I am, what waits, the trend, news and my money are ONE joined card');
@@ -135,8 +136,8 @@ void main() {
     expect(find.byKey(const Key('grp_desk_loan_review')), findsOneWidget);
     expect(find.byKey(const Key('grp_overview_joined')), findsNothing, reason: 'no money for this office');
     expect(find.byKey(const Key('grp_desk_to_record')), findsNothing, reason: 'meetings are not theirs');
-    expect(find.byKey(const Key('grp_qa_projects')), findsOneWidget);
-    expect(find.byKey(const Key('grp_qa_expenses')), findsOneWidget);
+    expect(find.byKey(const Key('grp_qa_projects')), findsNothing);
+    expect(find.byKey(const Key('grp_qa_expenses')), findsNothing);
   });
 
   testWidgets('the secretary sees the meetings and records, not the money', (final WidgetTester t) async {
@@ -159,8 +160,19 @@ void main() {
 
     expect(find.byKey(const Key('grp_my_glance')), findsOneWidget);
     expect(find.byKey(const Key('grp_my_account')), findsOneWidget);
-    expect(find.text('My account · MEG-0001'), findsOneWidget);
+    expect(find.byKey(const Key('grp_my_account_number')), findsOneWidget);
+    expect(find.text('No. MEG-0001'), findsOneWidget, reason: 'the account number sits beside the amount');
+    expect(find.text('TSh ••••••'), findsOneWidget, reason: 'the balance is hidden until the eye is tapped');
+    expect(find.text('TSH 300,000'), findsNothing);
+    await t.tap(find.byKey(const Key('grp_my_account_eye')));
+    await t.pump();
     expect(find.text('TSH 300,000'), findsOneWidget, reason: 'savings and shares held for them');
+    await t.tap(find.byKey(const Key('grp_my_account_eye')));
+    await t.pump();
+    expect(find.text('TSH 300,000'), findsNothing, reason: 'hidden again on the next tap');
+    expect(find.text('TSh ••••••'), findsOneWidget);
+    await t.tap(find.byKey(const Key('grp_my_account_eye')));
+    await t.pump();
     expect(find.byKey(const Key('grp_my_savings')), findsOneWidget);
     expect(find.byKey(const Key('grp_my_shares')), findsOneWidget);
     expect(find.byKey(const Key('grp_my_owed')), findsOneWidget);
