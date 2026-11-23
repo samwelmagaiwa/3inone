@@ -134,7 +134,7 @@ class _WelfareScreenState extends State<WelfareScreen> {
       onRefresh: _load,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-        children: <Widget>[
+        children: joinGlowCards(<Widget>[
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(children: <Widget>[
@@ -290,7 +290,7 @@ class _MyWelfareScreenState extends State<MyWelfareScreen> {
                 onRefresh: _load,
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                  children: <Widget>[
+                  children: joinGlowCards(<Widget>[
                     if (_error != null) GroupEmpty(_error!),
                     if (_types.isEmpty && _error == null) GroupEmpty(sw ? 'Kikundi bado hakijaweka aina za msaada.' : 'The group has not set up any kind of help yet.'),
                     if (_rows.isEmpty && _types.isNotEmpty) GroupEmpty(sw ? 'Bado hujaomba msaada.' : 'No requests yet.'),
@@ -513,7 +513,7 @@ class _BenefitTypesScreenState extends State<BenefitTypesScreen> {
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 96), children: <Widget>[
+            : ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 96), children: joinGlowCards(<Widget>[
                 if (_types.isEmpty) GroupEmpty(sw ? 'Bado hakuna. Mfano: Msiba, Ugonjwa, Sherehe.' : 'None yet. For example: Bereavement, Illness, Celebration.'),
                 if (_types.isNotEmpty)
                   GlowListCard(

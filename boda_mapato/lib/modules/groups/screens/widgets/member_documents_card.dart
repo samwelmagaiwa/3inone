@@ -108,7 +108,7 @@ Future<bool> addMemberDocument(
 
 /// A member's photo and papers, kept privately (links expire). Whoever registers members adds and removes them; an ID copy only by whoever
 /// may see NIDA numbers (the server hides ID copies from everyone else).
-class MemberDocumentsCard extends StatefulWidget {
+class MemberDocumentsCard extends StatefulWidget with GlowSectionWidget {
   const MemberDocumentsCard({required this.api, required this.me, required this.memberId, required this.documents, required this.onChanged, super.key, this.photoUrl});
 
   final GroupsApi api;

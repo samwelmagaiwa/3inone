@@ -112,7 +112,7 @@ class _DividendsScreenState extends State<DividendsScreen> {
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
                 onRefresh: _load,
-                child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 96), children: <Widget>[
+                child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 96), children: joinGlowCards(<Widget>[
                   if (_error != null) GroupEmpty(_error!),
                   if (_runs.isEmpty && _error == null) GroupEmpty(sw ? 'Bado hakuna gawio.' : 'No dividends yet.'),
                   if (_runs.isNotEmpty)
@@ -130,7 +130,7 @@ class _DividendsScreenState extends State<DividendsScreen> {
                           ),
                       ],
                     ),
-                ]),
+                ])),
               ),
       ),
     );
@@ -211,7 +211,7 @@ class _DividendRunScreenState extends State<DividendRunScreen> {
       body: SafeArea(
         child: r == null
             ? Center(child: _error == null ? const CircularProgressIndicator() : GroupEmpty(_error!))
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: <Widget>[
+            : ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: joinGlowCards(<Widget>[
                 GlowCard(children: <Widget>[
                   Row(children: <Widget>[
                     Expanded(child: Text('${dateLabel(r.periodFrom)} – ${dateLabel(r.periodTo)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800))),
@@ -256,7 +256,7 @@ class _DividendRunScreenState extends State<DividendRunScreen> {
                     label: Text(sw ? 'Acha rasimu' : 'Discard the draft'),
                   ),
                 ],
-              ]),
+              ])),
       ),
     );
   }
@@ -439,7 +439,7 @@ class _MyDividendsScreenState extends State<MyDividendsScreen> {
       body: SafeArea(
         child: rows == null
             ? Center(child: _error == null ? const CircularProgressIndicator() : GroupEmpty(_error!))
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: <Widget>[
+            : ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: joinGlowCards(<Widget>[
                 if (rows.isEmpty) GroupEmpty(sw ? 'Bado hujapata gawio.' : 'No dividends yet.'),
                 if (rows.isNotEmpty)
                   GlowListCard(
@@ -454,7 +454,7 @@ class _MyDividendsScreenState extends State<MyDividendsScreen> {
                         ),
                     ],
                   ),
-              ]),
+              ])),
       ),
     );
   }

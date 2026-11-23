@@ -91,7 +91,7 @@ class _LoansScreenState extends State<LoansScreen> {
       onRefresh: _load,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-        children: <Widget>[
+        children: joinGlowCards(<Widget>[
           if (_page != null)
             GlowListCard(padding: const EdgeInsets.all(16), children: <Widget>[
               Wrap(spacing: 24, runSpacing: 10, children: <Widget>[
@@ -145,7 +145,7 @@ class _LoansScreenState extends State<LoansScreen> {
               onPressed: () => _load(more: true),
               child: Text(LocalizationService.instance.translate('list_show_more'), style: const TextStyle(color: ThemeConstants.primaryOrange)),
             ),
-        ],
+        ]),
       ),
     );
   }

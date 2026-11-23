@@ -116,7 +116,7 @@ class _MyLoansScreenState extends State<MyLoansScreen> {
                 onRefresh: _load,
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                  children: <Widget>[
+                  children: joinGlowCards(<Widget>[
                     if (_error != null) GroupEmpty(_error!),
                     if (waiting.isNotEmpty)
                       GlowCard(title: sw ? 'Umeombwa kudhamini' : 'Asked to guarantee', children: <Widget>[
@@ -181,7 +181,7 @@ class _MyLoansScreenState extends State<MyLoansScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         children: <Widget>[for (final GroupLoan l in _loans) LoanTile(loan: l, sw: sw, onTap: () => _open(l.id))],
                       ),
-                  ],
+                  ]),
                 ),
               ),
       ),

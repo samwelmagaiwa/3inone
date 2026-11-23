@@ -80,7 +80,7 @@ class _GuestGroupScreenState extends State<GuestGroupScreen> {
       backgroundColor: ThemeConstants.primaryBlue,
       appBar: ThemeConstants.buildAppBar(sw ? 'Jiunga na kikundi' : 'Join a group', flat: true),
       body: SafeArea(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: <Widget>[
+        child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: joinGlowCards(<Widget>[
           if (_done != null)
             GlowCard(children: <Widget>[
               const Center(child: Icon(Icons.check_circle_rounded, color: ThemeConstants.successGreen, size: 56)),
@@ -130,7 +130,7 @@ class _GuestGroupScreenState extends State<GuestGroupScreen> {
                   ? 'Ombi lako la kukodi limepokelewa (namba $ref, ${tsh(amount)}). Mtunzaji atakupigia kuthibitisha na kukuelekeza kulipa.'
                   : 'Your hire request is in (number $ref, ${tsh(amount)}). The keeper will call you to confirm and tell you how to pay.')),
           ],
-        ]),
+        ])),
       ),
     );
   }

@@ -160,11 +160,11 @@ class _InviteScreenState extends State<InviteScreen> {
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
                 onRefresh: _load,
-                child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 96), children: <Widget>[
+                child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 96), children: joinGlowCards(<Widget>[
                   if (_error != null) GroupEmpty(_error!),
                   if (_mine != null) _codeCard(sw, _mine!, title: sw ? 'Namba yangu ya mwaliko' : 'My invitation code'),
                   for (final GroupInvitation g in _group.where((final GroupInvitation g) => g.active)) _codeCard(sw, g, title: sw ? 'Namba ya kikundi' : 'Group code'),
-                ]),
+                ])),
               ),
       ),
     );
@@ -290,7 +290,7 @@ class _ReferralTreeScreenState extends State<ReferralTreeScreen> {
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: <Widget>[
+            : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: joinGlowCards(<Widget>[
                 if (widget.whole)
                   TextField(
                     key: const Key('grp_tree_search'),
@@ -311,7 +311,7 @@ class _ReferralTreeScreenState extends State<ReferralTreeScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     children: <Widget>[for (final GroupTreeNode r in roots) Material(type: MaterialType.transparency, child: _node(r, children, sw, 0))],
                   ),
-              ]),
+              ])),
       ),
     );
   }
@@ -400,7 +400,7 @@ class _GroupReportsScreenState extends State<GroupReportsScreen> {
       backgroundColor: ThemeConstants.primaryBlue,
       appBar: ThemeConstants.buildAppBar(sw ? 'Ripoti za kikundi' : 'Group reports', flat: true),
       body: SafeArea(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: <Widget>[
+        child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: joinGlowCards(<Widget>[
           Row(children: <Widget>[
             date(sw ? 'Kuanzia' : 'From', _from, (final DateTime d) => _from = d, const Key('grp_rep_from')),
             date(sw ? 'Hadi' : 'To', _to, (final DateTime d) => _to = d, const Key('grp_rep_to')),
@@ -451,7 +451,7 @@ class _GroupReportsScreenState extends State<GroupReportsScreen> {
             icon: const Icon(Icons.receipt_long_rounded),
             label: Text(sw ? 'Malipo ya kipindi (CSV)' : 'Payments of the period (CSV)'),
           ),
-        ]),
+        ])),
       ),
     );
   }

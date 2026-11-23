@@ -131,3 +131,46 @@ class GlowCard extends StatelessWidget {
         ),
       );
 }
+
+/// Marks a widget that is one section card (it builds a [GlowCard] inside), so [joinGlowCards] treats it like one.
+mixin GlowSectionWidget {}
+
+/// Turns the runs of section cards in a list of children into ONE joined card each ([GlowSections]): the cards, and the plain spacers between
+/// them, become parts of a single frame told apart by the glowing line and each part's gold title. Anything else (a button, a heading, a gap
+/// that is not between two cards) stays where it is and ends the run. A single card on its own is left as it is.
+List<Widget> joinGlowCards(final List<Widget> children) {
+  bool isCard(final Widget w) => w is GlowCard || w is GlowListCard || w is GlowSectionWidget;
+  bool isSpacer(final Widget w) => w is SizedBox && w.child == null && w.width == null && (w.height ?? 0) <= 24;
+  final List<Widget> out = <Widget>[];
+  final List<Widget> run = <Widget>[];
+  void flush() {
+    if (run.length >= 2) {
+      out.add(GlowSections(children: List<Widget>.of(run)));
+    } else {
+      out.addAll(run);
+    }
+    run.clear();
+  }
+
+  for (int i = 0; i < children.length; i++) {
+    final Widget w = children[i];
+    if (isCard(w)) {
+      run.add(w);
+      continue;
+    }
+    if (run.isNotEmpty && isSpacer(w)) {
+      int j = i;
+      while (j < children.length && isSpacer(children[j])) {
+        j++;
+      }
+      if (j < children.length && isCard(children[j])) {
+        i = j - 1;
+        continue;
+      }
+    }
+    flush();
+    out.add(w);
+  }
+  flush();
+  return out;
+}

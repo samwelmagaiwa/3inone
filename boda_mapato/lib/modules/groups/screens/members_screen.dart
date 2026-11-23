@@ -125,7 +125,7 @@ class _MembersScreenState extends State<MembersScreen> {
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-          children: <Widget>[
+          children: joinGlowCards(<Widget>[
             TextField(
               key: const Key('grp_member_search'),
               controller: _search,
@@ -168,7 +168,7 @@ class _MembersScreenState extends State<MembersScreen> {
                 onPressed: () => _load(more: true),
                 child: Text(LocalizationService.instance.translate('list_show_more'), style: const TextStyle(color: ThemeConstants.primaryOrange)),
               ),
-          ],
+          ]),
         ),
       ),
     );

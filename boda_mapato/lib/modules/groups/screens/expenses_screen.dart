@@ -164,7 +164,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-          children: <Widget>[
+          children: joinGlowCards(<Widget>[
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(children: <Widget>[
@@ -193,7 +193,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 children: <Widget>[for (final GroupExpense r in _rows) ExpenseTile(r: r, sw: sw, onTap: () => _act(r))],
               ),
             if (_loading) const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator())),
-          ],
+          ]),
         ),
       ),
     );

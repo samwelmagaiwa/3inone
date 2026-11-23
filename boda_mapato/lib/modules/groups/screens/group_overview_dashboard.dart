@@ -8,6 +8,7 @@ import '../../../constants/theme_constants.dart';
 import '../../../services/localization_service.dart';
 import '../../../utils/server_message.dart';
 import '../../../widgets/month_selector.dart';
+import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../../inventory/screens/widgets/joined_sections.dart';
 import '../models/group_models.dart';
 import '../models/group_records_models.dart';
@@ -87,7 +88,7 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
           padding: const EdgeInsets.all(24),
           child: Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!, style: const TextStyle(color: Colors.white70))),
         ),
-        ...widget.between,
+        ...joinGlowCards(widget.between),
       ]);
     }
     final GroupDashboardMoney? m = d.money;
@@ -201,7 +202,7 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
           ]),
         ],
         ..._desk(sw, d, hasMoney: m != null),
-        if (widget.between.isNotEmpty) ...<Widget>[const SizedBox(height: 22), ...widget.between],
+        if (widget.between.isNotEmpty) ...<Widget>[const SizedBox(height: 22), ...joinGlowCards(widget.between)],
         // 6. the trend: the last thing on the page, after who I am and what waits
         if (m != null) ...<Widget>[
           const SizedBox(height: 22),

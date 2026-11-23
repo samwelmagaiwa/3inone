@@ -215,7 +215,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-          children: <Widget>[
+          children: joinGlowCards(<Widget>[
             if (widget.me.can('view_finance') && _summary.isNotEmpty)
               GlowListCard(
                 padding: const EdgeInsets.all(16),
@@ -299,7 +299,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                 onPressed: () => _load(more: true),
                 child: Text(LocalizationService.instance.translate('list_show_more'), style: const TextStyle(color: ThemeConstants.primaryOrange)),
               ),
-          ],
+          ]),
         ),
       ),
     );

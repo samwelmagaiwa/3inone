@@ -315,7 +315,7 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
       onRefresh: _refresh,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        children: <Widget>[
+        children: joinGlowCards(<Widget>[
           // The group at a glance, for its officers, with who I am and what waits for me before the trend; everyone else starts with who they are.
           if (officer)
             GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen, between: personal)
@@ -481,7 +481,7 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                 ],
               ),
           ],
-        ],
+        ]),
       ),
     );
   }
@@ -662,7 +662,7 @@ class _SectionTitle extends StatelessWidget {
 
 /// What waits for this person, most urgent first: only what has something in it, five lines until asked for the rest. When nothing waits it
 /// says so, calmly, so the person knows the screen is not simply empty.
-class _WaitingCard extends StatefulWidget {
+class _WaitingCard extends StatefulWidget with GlowSectionWidget {
   const _WaitingCard({required this.sw, required this.lines});
 
   final bool sw;

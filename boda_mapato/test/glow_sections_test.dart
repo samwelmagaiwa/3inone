@@ -30,4 +30,25 @@ void main() {
     expect(find.text('Alone'), findsOneWidget);
     expect(find.byType(GlowSections), findsNothing);
   });
+
+  testWidgets('joinGlowCards joins runs of cards (dropping the spacers between them) and leaves everything else where it is', (final WidgetTester t) async {
+    final List<Widget> out = joinGlowCards(const <Widget>[
+      GlowCard(title: 'A', children: <Widget>[Text('a')]),
+      SizedBox(height: 12),
+      GlowCard(title: 'B', children: <Widget>[Text('b')]),
+      Text('heading'),
+      GlowCard(title: 'C', children: <Widget>[Text('c')]),
+      SizedBox(height: 90),
+      GlowCard(title: 'D', children: <Widget>[Text('d')]),
+    ]);
+
+    // A and B joined; the heading stays; C alone; the tall gap is not a spacer, so D is alone too.
+    expect(out.length, 5);
+    expect(out[0], isA<GlowSections>());
+    expect((out[0] as GlowSections).children.length, 2);
+    expect(out[1], isA<Text>());
+    expect(out[2], isA<GlowCard>());
+    expect(out[3], isA<SizedBox>());
+    expect(out[4], isA<GlowCard>());
+  });
 }

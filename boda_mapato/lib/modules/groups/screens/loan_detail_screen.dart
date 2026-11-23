@@ -178,7 +178,7 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
                 onRefresh: _load,
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                  children: <Widget>[
+                  children: joinGlowCards(<Widget>[
                     GlowCard(children: <Widget>[
                       Row(children: <Widget>[
                         Expanded(child: Text(l.memberName ?? '', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800))),
@@ -233,7 +233,7 @@ class _LoanDetailScreenState extends State<LoanDetailScreen> {
                       ),
                     const SizedBox(height: 12),
                     ..._actions(l, sw),
-                  ],
+                  ]),
                 ),
               ),
       ),

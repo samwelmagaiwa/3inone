@@ -201,7 +201,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       floatingActionButton: fab,
       body: RefreshIndicator(
         onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: <Widget>[
+        child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: joinGlowCards(<Widget>[
           SegmentedButton<String>(
             key: const Key('grp_community_tabs'),
             segments: <ButtonSegment<String>>[
@@ -334,7 +334,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
       backgroundColor: ThemeConstants.primaryBlue,
       appBar: ThemeConstants.buildAppBar(_m.title, flat: true),
       body: SafeArea(
-        child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: <Widget>[
+        child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: joinGlowCards(<Widget>[
           GlowCard(children: <Widget>[
             Row(children: <Widget>[
               Expanded(child: Text(dateTimeLabel(_m.startsAt), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800))),
@@ -451,7 +451,7 @@ class _RecordMeetingScreenState extends State<_RecordMeetingScreen> {
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: <Widget>[
+            : ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: joinGlowCards(<Widget>[
                 GlowListCard(
                   dividerKey: 'grp_attend_div',
                   padding: const EdgeInsets.symmetric(horizontal: 4),

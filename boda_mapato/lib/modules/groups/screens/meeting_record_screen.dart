@@ -315,7 +315,7 @@ class _MeetingActionsScreenState extends State<MeetingActionsScreen> {
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
                 onRefresh: _load,
-                child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: <Widget>[
+                child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: joinGlowCards(<Widget>[
                   if (_error != null) GroupEmpty(_error!),
                   if (_error == null && _rows.isEmpty) GroupEmpty(sw ? 'Hakuna kazi zinazosubiri.' : 'Nothing waiting.'),
                   if (_rows.isNotEmpty)
@@ -344,7 +344,7 @@ class _MeetingActionsScreenState extends State<MeetingActionsScreen> {
                           ),
                       ],
                     ),
-                ]),
+                ])),
               ),
       ),
     );

@@ -289,7 +289,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                 onRefresh: _load,
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                  children: <Widget>[
+                  children: joinGlowCards(<Widget>[
                     // One card: the parts are told apart by the glowing line and their gold titles, with no gap between.
                     GlowSections(
                       key: const Key('grp_member_sections'),

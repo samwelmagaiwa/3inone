@@ -172,7 +172,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
           key: _form,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-            children: <Widget>[
+            children: joinGlowCards(<Widget>[
               GlowCard(
                 title: sw ? 'Utambulisho' : 'Identity',
                 children: <Widget>[
@@ -302,7 +302,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
                 icon: _busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.save_rounded),
                 label: Text(sw ? 'Hifadhi' : 'Save'),
               ),
-            ],
+            ]),
           ),
         ),
       ),

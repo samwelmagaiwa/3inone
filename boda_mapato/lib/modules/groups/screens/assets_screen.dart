@@ -135,7 +135,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-          children: <Widget>[
+          children: joinGlowCards(<Widget>[
             SegmentedButton<bool>(
               key: const Key('grp_assets_tabs'),
               segments: <ButtonSegment<bool>>[
@@ -306,7 +306,7 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
             ? Center(child: _error == null ? const CircularProgressIndicator() : GroupEmpty(_error!))
             : RefreshIndicator(
                 onRefresh: _load,
-                child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: <Widget>[
+                child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: joinGlowCards(<Widget>[
                   GlowCard(children: <Widget>[
                     GroupDetailRow(sw ? 'Namba' : 'Code', a.code),
                     if (a.category != null) GroupDetailRow(sw ? 'Aina' : 'Category', a.category!),
@@ -852,7 +852,7 @@ class _MyHiresScreenState extends State<MyHiresScreen> {
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
                 onRefresh: _load,
-                child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: <Widget>[
+                child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 32), children: joinGlowCards(<Widget>[
                   if (_error != null) GroupEmpty(_error!),
                   if (_assets.isEmpty && _error == null) GroupEmpty(sw ? 'Hakuna kinachokodishwa kwa sasa.' : 'Nothing is for hire now.'),
                   if (_assets.isNotEmpty)

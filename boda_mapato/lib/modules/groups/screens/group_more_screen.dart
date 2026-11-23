@@ -38,7 +38,7 @@ class GroupMoreScreen extends StatelessWidget {
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-      children: <Widget>[
+      children: joinGlowCards(<Widget>[
         GlowListCard(
           dividerKey: 'grp_more_div',
           padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -56,7 +56,7 @@ class GroupMoreScreen extends StatelessWidget {
             if (me.can('view_audit')) entry(const Key('grp_more_activity'), Icons.history_rounded, sw ? 'Kumbukumbu za shughuli' : 'Activity log', () => GroupActivityScreen(api: api)),
           ],
         ),
-      ],
+      ]),
     );
   }
 }
@@ -258,7 +258,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                 ? GroupEmpty(_error!)
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                    children: <Widget>[
+                    children: joinGlowCards(<Widget>[
                       GlowCard(
                         title: sw ? 'Ada na hisa' : 'Fees and shares',
                         children: <Widget>[
@@ -416,7 +416,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                               ),
                           ],
                         ),
-                    ],
+                    ]),
                   ),
       ),
     );
@@ -476,7 +476,7 @@ class _GroupOfficesScreenState extends State<GroupOfficesScreen> {
                 ? GroupEmpty(_error!)
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    children: <Widget>[
+                    children: joinGlowCards(<Widget>[
                       GlowListCard(
                         dividerKey: 'grp_offices_div',
                         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -497,7 +497,7 @@ class _GroupOfficesScreenState extends State<GroupOfficesScreen> {
                             ),
                         ],
                       ),
-                    ],
+                    ]),
                   ),
       ),
     );
@@ -563,7 +563,7 @@ class _GroupActivityScreenState extends State<GroupActivityScreen> {
           onRefresh: _load,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            children: <Widget>[
+            children: joinGlowCards(<Widget>[
               if (_error != null) GroupEmpty(_error!),
               if (!_loading && _error == null && _entries.isEmpty) GroupEmpty(sw ? 'Bado hakuna shughuli.' : 'Nothing done yet.'),
               if (_entries.isNotEmpty)
@@ -585,7 +585,7 @@ class _GroupActivityScreenState extends State<GroupActivityScreen> {
                   onPressed: () => _load(more: true),
                   child: Text(LocalizationService.instance.translate('list_show_more'), style: const TextStyle(color: ThemeConstants.primaryOrange)),
                 ),
-            ],
+            ]),
           ),
         ),
       ),

@@ -98,7 +98,7 @@ class _GroupStatementScreenState extends State<GroupStatementScreen> {
                     onRefresh: _load,
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                      children: <Widget>[
+                      children: joinGlowCards(<Widget>[
                         GlowCard(
                           title: sw ? 'Salio' : 'Balances',
                           children: <Widget>[
@@ -150,7 +150,7 @@ class _GroupStatementScreenState extends State<GroupStatementScreen> {
                                 ]),
                             ],
                           ),
-                      ],
+                      ]),
                     ),
                   ),
       ),

@@ -123,7 +123,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-          children: <Widget>[
+          children: joinGlowCards(<Widget>[
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(children: <Widget>[
@@ -159,7 +159,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               const Padding(
                   padding: EdgeInsets.all(16),
                   child: Center(child: CircularProgressIndicator())),
-          ],
+          ]),
         ),
       ),
     );
@@ -511,7 +511,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 onRefresh: _load,
                 child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                    children: <Widget>[
+                    children: joinGlowCards(<Widget>[
                       GlowListCard(
                         dividerKey: 'grp_project_detail_div',
                         padding: const EdgeInsets.all(14),
@@ -636,7 +636,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           ],
                         ),
                       ],
-                    ]),
+                    ])),
               ),
       ),
     );

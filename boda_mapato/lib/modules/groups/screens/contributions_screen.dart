@@ -232,7 +232,7 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-          children: <Widget>[
+          children: joinGlowCards(<Widget>[
             if (_types.isNotEmpty)
               GlowListCard(
                 dividerKey: 'grp_types_div',

@@ -172,7 +172,7 @@ class _HireDetailScreenState extends State<HireDetailScreen> {
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-          children: <Widget>[
+          children: joinGlowCards(<Widget>[
             GlowCard(children: <Widget>[
               Row(children: <Widget>[
                 Expanded(child: Text('${h.quantity} × ${h.assetName ?? ''}', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800))),
