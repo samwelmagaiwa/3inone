@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -231,7 +233,7 @@ class GroupDocuments {
 
   /// A CSV from the server (a member register, a period's payments) as a table, so it too can be a PDF or a Word file.
   static GroupDoc csvDoc(final Uint8List csv, {required final String group, required final String title, required final String fileName}) {
-    final List<List<String>> rows = parseCsv(String.fromCharCodes(csv.length >= 3 && csv[0] == 0xEF && csv[1] == 0xBB && csv[2] == 0xBF ? csv.sublist(3) : csv));
+    final List<List<String>> rows = parseCsv(utf8.decode(csv.length >= 3 && csv[0] == 0xEF && csv[1] == 0xBB && csv[2] == 0xBF ? csv.sublist(3) : csv, allowMalformed: true));
     final List<String> head = rows.isEmpty ? const <String>[] : rows.first;
     return GroupDoc(
       group: group,
@@ -293,58 +295,171 @@ class GroupDocuments {
 
   // ------------------------------------------------------------------------------------------------ making the files
 
-  static pw.Widget _row(final DocRow r) => pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 3),
+  // The group's colours on paper: the dark teal of the app, and its gold for headings.
+  static const PdfColor _teal = PdfColor.fromInt(0xFF0D3D4D);
+  static const PdfColor _gold = PdfColor.fromInt(0xFFF5C451);
+  static const PdfColor _tint = PdfColor.fromInt(0xFFE8F1F3);
+  static const PdfColor _zebra = PdfColor.fromInt(0xFFF6F9FA);
+
+  static ({pw.Font regular, pw.Font bold})? _fontCache;
+
+  /// The app's own Noto Sans (every letter, Swahili names too); the PDF's plain built-in font when the asset cannot be read.
+  static Future<({pw.Font regular, pw.Font bold})?> _fonts() async {
+    if (_fontCache != null) return _fontCache;
+    try {
+      final ByteData regular = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
+      final ByteData bold = await rootBundle.load('assets/fonts/NotoSans-Bold.ttf');
+      return _fontCache = (regular: pw.Font.ttf(regular), bold: pw.Font.ttf(bold));
+    } on Object {
+      return null;
+    }
+  }
+
+  static final RegExp _figure = RegExp(r'^[+\-−]?\s*(TSH|TSh|Tsh)?\s*[+\-−]?[0-9][0-9,.]*\s*%?$');
+
+  /// A column of figures is set against its right edge so the digits line up.
+  static bool _numeric(final DocTable t, final int col) {
+    final List<String> cells = <String>[for (final List<String> r in t.rows) if (col < r.length && r[col].trim().isNotEmpty) r[col].trim()];
+    return cells.isNotEmpty && cells.every(_figure.hasMatch);
+  }
+
+  static pw.Widget _row(final DocRow r, {required final bool boxed}) => pw.Container(
+        padding: const pw.EdgeInsets.symmetric(vertical: 4),
+        decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: _line, width: 0.4))),
         child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: <pw.Widget>[
-          pw.SizedBox(width: 130, child: pw.Text(r.label, style: const pw.TextStyle(color: _muted, fontSize: 10))),
-          pw.Expanded(child: pw.Text(r.value, style: pw.TextStyle(color: _ink, fontSize: 11, fontWeight: r.bold ? pw.FontWeight.bold : pw.FontWeight.normal))),
+          pw.SizedBox(width: boxed ? 110 : 150, child: pw.Text(r.label, style: const pw.TextStyle(color: _muted, fontSize: 9.5))),
+          pw.Expanded(child: pw.Text(r.value, style: pw.TextStyle(color: _ink, fontSize: r.bold ? 12 : 10.5, fontWeight: r.bold ? pw.FontWeight.bold : pw.FontWeight.normal))),
         ]),
       );
 
-  static pw.Widget _table(final DocTable t) => pw.Table(
-        border: const pw.TableBorder(horizontalInside: pw.BorderSide(color: _line, width: 0.5), bottom: pw.BorderSide(color: _line, width: 0.5)),
-        columnWidths: <int, pw.TableColumnWidth>{if (t.widths != null) for (final MapEntry<int, double> w in t.widths!.entries) w.key: pw.FixedColumnWidth(w.value)},
-        children: <pw.TableRow>[
-          pw.TableRow(children: <pw.Widget>[for (final String h in t.head) pw.Padding(padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 2), child: pw.Text(h, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _ink)))]),
-          for (final List<String> r in t.rows)
-            pw.TableRow(children: <pw.Widget>[for (final String c in r) pw.Padding(padding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 2), child: pw.Text(c, style: const pw.TextStyle(fontSize: 9, color: _ink)))]),
-        ],
-      );
+  static pw.Widget _table(final DocTable t) {
+    final List<bool> right = <bool>[for (int c = 0; c < t.head.length; c++) _numeric(t, c)];
+    pw.Widget cell(final String text, final int c, {final bool head = false}) => pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+          child: pw.Align(
+            alignment: right[c] ? pw.Alignment.centerRight : pw.Alignment.centerLeft,
+            child: pw.Text(text, style: pw.TextStyle(fontSize: 9, color: head ? _teal : _ink, fontWeight: head ? pw.FontWeight.bold : pw.FontWeight.normal)),
+          ),
+        );
+    return pw.Table(
+      columnWidths: <int, pw.TableColumnWidth>{if (t.widths != null) for (final MapEntry<int, double> w in t.widths!.entries) w.key: pw.FixedColumnWidth(w.value)},
+      border: const pw.TableBorder(bottom: pw.BorderSide(color: _teal, width: 0.8), horizontalInside: pw.BorderSide(color: _line, width: 0.3)),
+      children: <pw.TableRow>[
+        // The header line comes again at the top of every page the table runs over.
+        pw.TableRow(repeat: true, decoration: const pw.BoxDecoration(color: _tint), children: <pw.Widget>[for (int c = 0; c < t.head.length; c++) cell(t.head[c], c, head: true)]),
+        for (int i = 0; i < t.rows.length; i++)
+          pw.TableRow(
+            decoration: pw.BoxDecoration(color: i.isOdd ? _zebra : PdfColors.white),
+            children: <pw.Widget>[for (int c = 0; c < t.head.length; c++) cell(c < t.rows[i].length ? t.rows[i][c] : '', c)],
+          ),
+      ],
+    );
+  }
 
-  static pw.Widget _block(final DocBlock b) {
+  static pw.Widget _block(final DocBlock b, {required final bool boxed}) {
     switch (b) {
       case DocHeading():
-        return pw.Padding(padding: const pw.EdgeInsets.only(top: 12, bottom: 4), child: pw.Text(b.text, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: _ink)));
+        return pw.Padding(
+          padding: const pw.EdgeInsets.only(top: 14, bottom: 6),
+          child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: <pw.Widget>[
+            pw.Text(b.text, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: _teal)),
+            pw.SizedBox(height: 2),
+            pw.Container(width: 36, height: 2, color: _gold),
+          ]),
+        );
       case DocRows():
-        return pw.Column(children: <pw.Widget>[for (final DocRow r in b.rows) _row(r)]);
+        return pw.Column(children: <pw.Widget>[for (final DocRow r in b.rows) _row(r, boxed: boxed)]);
       case DocTable():
-        return pw.Padding(padding: const pw.EdgeInsets.only(top: 6), child: _table(b));
+        return pw.Padding(padding: const pw.EdgeInsets.only(top: 4), child: _table(b));
       case DocNote():
-        return pw.Padding(padding: const pw.EdgeInsets.only(top: 6), child: pw.Text(b.text, style: const pw.TextStyle(fontSize: 8, color: _muted)));
+        return pw.Padding(padding: const pw.EdgeInsets.only(top: 8), child: pw.Text(b.text, style: const pw.TextStyle(fontSize: 8, color: _muted)));
       case DocQr():
         return pw.Padding(
-          padding: const pw.EdgeInsets.only(top: 10),
-          child: pw.Row(children: <pw.Widget>[
-            pw.SizedBox(width: 90, height: 90, child: pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: b.data)),
+          padding: const pw.EdgeInsets.only(top: 12),
+          child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.center, children: <pw.Widget>[
+            pw.Container(
+              padding: const pw.EdgeInsets.all(4),
+              decoration: pw.BoxDecoration(border: pw.Border.all(color: _line, width: 0.6), borderRadius: pw.BorderRadius.circular(3)),
+              child: pw.SizedBox(width: 78, height: 78, child: pw.BarcodeWidget(barcode: pw.Barcode.qrCode(), data: b.data)),
+            ),
             pw.SizedBox(width: 10),
-            pw.Expanded(child: pw.Text(b.caption, style: const pw.TextStyle(fontSize: 8, color: _muted))),
+            pw.Expanded(child: pw.Text(b.caption, style: const pw.TextStyle(fontSize: 8.5, color: _muted))),
           ]),
         );
     }
   }
 
-  /// The PDF of [d] (several pages when it is long).
+  /// The letterhead: the group's name on a band of the app's teal with a gold rule, then the document's title and the date.
+  static pw.Widget _letterhead(final GroupDoc d) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: <pw.Widget>[
+        pw.Container(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: const pw.BoxDecoration(color: _teal, borderRadius: pw.BorderRadius.only(topLeft: pw.Radius.circular(4), topRight: pw.Radius.circular(4))),
+          child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.center, children: <pw.Widget>[
+            pw.Container(
+              width: 34,
+              height: 34,
+              alignment: pw.Alignment.center,
+              decoration: const pw.BoxDecoration(color: _gold, shape: pw.BoxShape.circle),
+              child: pw.Text(d.group.trim().isEmpty ? 'G' : d.group.trim().substring(0, 1).toUpperCase(), style: pw.TextStyle(fontSize: 17, fontWeight: pw.FontWeight.bold, color: _teal)),
+            ),
+            pw.SizedBox(width: 12),
+            pw.Expanded(child: pw.Text(d.group, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.white))),
+          ]),
+        ),
+        pw.Container(height: 3, color: _gold),
+        pw.SizedBox(height: 10),
+        pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: <pw.Widget>[
+          pw.Expanded(child: pw.Text(d.title, style: pw.TextStyle(fontSize: d.small ? 15 : 14, fontWeight: pw.FontWeight.bold, color: _ink))),
+          pw.Text(_date(DateTime.now().toIso8601String()), style: const pw.TextStyle(fontSize: 9, color: _muted)),
+        ]),
+        pw.SizedBox(height: 6),
+        pw.Divider(color: _line, thickness: 0.6),
+      ]);
+
+  /// The PDF of [d]: a letterhead on the first page, a short running head and page numbers after, tables that keep their header line.
   static Future<Uint8List> pdf(final GroupDoc d) async {
-    final pw.Document doc = pw.Document(title: d.title);
+    final ({pw.Font bold, pw.Font regular})? f = await _fonts();
+    final pw.Document doc = pw.Document(
+      title: d.title,
+      author: d.group,
+      creator: d.group,
+      theme: f == null ? null : pw.ThemeData.withFont(base: f.regular, bold: f.bold, italic: f.regular, boldItalic: f.bold),
+    );
+    final PdfPageFormat format = d.small ? PdfPageFormat.a5 : (d.wide ? PdfPageFormat.a4.landscape : PdfPageFormat.a4);
     doc.addPage(pw.MultiPage(
-      pageFormat: d.small ? PdfPageFormat.a5 : (d.wide ? PdfPageFormat.a4.landscape : PdfPageFormat.a4),
-      margin: pw.EdgeInsets.all(d.small ? 28 : 32),
+      pageFormat: format,
+      margin: pw.EdgeInsets.fromLTRB(d.small ? 28 : 36, d.small ? 28 : 32, d.small ? 28 : 36, d.small ? 28 : 32),
+      header: (final pw.Context ctx) => ctx.pageNumber == 1
+          ? pw.SizedBox()
+          : pw.Padding(
+              padding: const pw.EdgeInsets.only(bottom: 10),
+              child: pw.Column(children: <pw.Widget>[
+                pw.Row(children: <pw.Widget>[
+                  pw.Expanded(child: pw.Text(d.group, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _teal))),
+                  pw.Text(d.title, style: const pw.TextStyle(fontSize: 8, color: _muted)),
+                ]),
+                pw.SizedBox(height: 3),
+                pw.Container(height: 1.5, color: _gold),
+              ]),
+            ),
+      footer: (final pw.Context ctx) => pw.Padding(
+        padding: const pw.EdgeInsets.only(top: 8),
+        child: pw.Row(children: <pw.Widget>[
+          pw.Expanded(child: pw.Text(d.group, style: const pw.TextStyle(fontSize: 7.5, color: _muted))),
+          pw.Text('${ctx.pageNumber} / ${ctx.pagesCount}', style: const pw.TextStyle(fontSize: 8, color: _muted)),
+        ]),
+      ),
       build: (_) => <pw.Widget>[
-        pw.Text(d.group, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: _ink)),
-        pw.SizedBox(height: 2),
-        pw.Text(d.title, style: const pw.TextStyle(fontSize: 12, color: _muted)),
-        pw.Divider(color: _line),
-        for (final DocBlock b in d.blocks) _block(b),
+        _letterhead(d),
+        if (d.small)
+          // A receipt sits in a framed card.
+          pw.Container(
+            padding: const pw.EdgeInsets.all(12),
+            decoration: pw.BoxDecoration(border: pw.Border.all(color: _teal, width: 0.8), borderRadius: pw.BorderRadius.circular(4)),
+            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: <pw.Widget>[for (final DocBlock b in d.blocks) _block(b, boxed: true)]),
+          )
+        else
+          for (final DocBlock b in d.blocks) _block(b, boxed: false),
       ],
     ));
     return doc.save();

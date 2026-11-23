@@ -142,6 +142,18 @@ void main() {
     expect((d.blocks.single as DocTable).head, <String>['Jina', 'Simu']);
   });
 
+  test('a long table runs over several pages, each with its header line, and names with any letter are made without the plain-font warning', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final StringBuffer csv = StringBuffer('Namba,Jina,Kiasi\n');
+    for (int i = 1; i <= 120; i++) {
+      csv.writeln('UWM-$i,Wanging’ombe Émile ŋgowi $i,"TSH ${i * 1000}"');
+    }
+    final Uint8List pdf = await GroupDocuments.pdf(GroupDocuments.csvDoc(Uint8List.fromList(utf8.encode(csv.toString())), group: 'Umoja – Mikocheni', title: 'Register', fileName: 'x'));
+    final String text = String.fromCharCodes(pdf);
+    expect(RegExp(r'/Type\s*/Page(?!s)').allMatches(text).length, greaterThan(2));
+    expect(text, contains('NotoSans'));
+  });
+
   test('a short row in a CSV is filled so the table stays square', () {
     final GroupDoc d = GroupDocuments.csvDoc(Uint8List.fromList(utf8.encode('A,B,C\n1,2\n')), group: 'G', title: 'T', fileName: 'x');
     expect((d.blocks.single as DocTable).rows.single, <String>['1', '2', '']);
