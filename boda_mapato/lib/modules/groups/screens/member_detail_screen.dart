@@ -289,14 +289,20 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   children: <Widget>[
-                    _headCard(f.member, sw),
-                    if (f.member.isApplication) _applicationCard(f, sw),
-                    _detailsCard(f.member, sw),
-                    MemberDocumentsCard(api: widget.api, me: widget.me, memberId: f.member.id, documents: f.documents, photoUrl: f.photoUrl, onChanged: _load),
-                    if (f.balances != null) _moneyCard(f, sw),
-                    _dependantsCard(f, sw),
-                    if (f.referrals.isNotEmpty) _referralsCard(f, sw),
-                    if (f.events.isNotEmpty) _historyCard(f, sw),
+                    // One card: the parts are told apart by the glowing line and their gold titles, with no gap between.
+                    GlowSections(
+                      key: const Key('grp_member_sections'),
+                      children: <Widget>[
+                        _headCard(f.member, sw),
+                        if (f.member.isApplication) _applicationCard(f, sw),
+                        _detailsCard(f.member, sw),
+                        MemberDocumentsCard(api: widget.api, me: widget.me, memberId: f.member.id, documents: f.documents, photoUrl: f.photoUrl, onChanged: _load),
+                        if (f.balances != null) _moneyCard(f, sw),
+                        _dependantsCard(f, sw),
+                        if (f.referrals.isNotEmpty) _referralsCard(f, sw),
+                        if (f.events.isNotEmpty) _historyCard(f, sw),
+                      ],
+                    ),
                   ],
                 ),
               ),

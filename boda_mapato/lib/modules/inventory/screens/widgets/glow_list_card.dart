@@ -17,6 +17,8 @@ class GlowListCard extends StatelessWidget {
 
   @override
   Widget build(final BuildContext context) {
+    // Inside GlowSections the frame belongs to the whole stack: this part is only its rows.
+    if (GlowSections.joined(context)) return _rows(context);
     return DecoratedBox(
       decoration: joinedCardDecoration(),
       child: DecoratedBox(
@@ -24,22 +26,70 @@ class GlowListCard extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
           // A transparent Material, so a ListTile or button in a row paints its touch ripple on the card instead of being hidden by it.
-          child: Material(
-            type: MaterialType.transparency,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                for (int i = 0; i < children.length; i++) ...<Widget>[
-                  if (i > 0) SectionGlowDivider(key: dividerKey == null ? null : ValueKey<String>('${dividerKey}_$i'), lift: false),
-                  Padding(padding: padding, child: children[i]),
-                ],
-              ],
-            ),
-          ),
+          child: Material(type: MaterialType.transparency, child: _rows(context)),
         ),
       ),
     );
   }
+
+  Widget _rows(final BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          for (int i = 0; i < children.length; i++) ...<Widget>[
+            if (i > 0) SectionGlowDivider(key: dividerKey == null ? null : ValueKey<String>('${dividerKey}_$i'), lift: false),
+            Padding(padding: padding, child: children[i]),
+          ],
+        ],
+      );
+}
+
+/// Several [GlowCard]s (or [GlowListCard]s) as ONE card: one frame around all of them, no gap between, and the glowing line and each part's gold
+/// title showing where one ends and the next begins. A card inside it drops its own frame and the air below it.
+class GlowSections extends StatelessWidget {
+  const GlowSections({super.key, required this.children, this.bottom = 10});
+
+  final List<Widget> children;
+
+  /// Air below the whole stack.
+  final double bottom;
+
+  /// Is this card inside a [GlowSections]?
+  static bool joined(final BuildContext context) => context.dependOnInheritedWidgetOfExactType<_JoinedScope>() != null;
+
+  @override
+  Widget build(final BuildContext context) => Padding(
+        padding: EdgeInsets.only(bottom: bottom),
+        child: DecoratedBox(
+          decoration: joinedCardDecoration(),
+          child: DecoratedBox(
+            decoration: joinedCardBorder(),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Material(
+                type: MaterialType.transparency,
+                child: _JoinedScope(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      for (int i = 0; i < children.length; i++) ...<Widget>[
+                        if (i > 0) const Padding(padding: EdgeInsets.symmetric(vertical: 2), child: SectionGlowDivider(lift: false)),
+                        children[i],
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
+class _JoinedScope extends InheritedWidget {
+  const _JoinedScope({required super.child});
+
+  @override
+  bool updateShouldNotify(final _JoinedScope oldWidget) => false;
 }
 
 /// The rows of a card as [GlowListCard] wants them: the spacers and plain dividers that separated lines in the older cards are left out, because
@@ -73,7 +123,7 @@ class GlowCard extends StatelessWidget {
 
   @override
   Widget build(final BuildContext context) => Padding(
-        padding: EdgeInsets.only(bottom: bottom),
+        padding: EdgeInsets.only(bottom: GlowSections.joined(context) ? 0 : bottom),
         child: GlowListCard(
           dividerKey: dividerKey,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
