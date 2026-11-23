@@ -80,7 +80,7 @@ class _FakeApi extends GroupsApi {
   Future<List<GroupPromise>> promises({final int? memberId}) async => const <GroupPromise>[];
 
   @override
-  Future<GroupStatementData?> statement({final int? memberId}) async => GroupStatementData.fromJson(<String, dynamic>{
+  Future<GroupStatementData?> statement({final int? memberId, final String? from, final String? to}) async => GroupStatementData.fromJson(<String, dynamic>{
         'balances': <String, dynamic>{'joining_fee': 80000, 'shares': 200000, 'savings': 30000, 'contribution': 0},
         'owing': <dynamic>[_obligation(41, memberId: 5, name: 'Asha Juma')],
       });

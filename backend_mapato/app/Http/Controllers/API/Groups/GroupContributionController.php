@@ -262,19 +262,34 @@ class GroupContributionController extends Controller
 
     // ---------------------------------------------------------------- statements
 
-    public function statement(int $id): JsonResponse
+    /** The period asked for (?from=2026-01-01&to=2026-03-31); a bad or reversed pair is ignored (the whole history). @return array{0: ?string, 1: ?string} */
+    private function period(Request $request): array
+    {
+        $ok = fn ($v) => is_string($v) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) === 1 && strtotime($v) !== false;
+        $from = $ok($request->query('from')) ? (string) $request->query('from') : null;
+        $to = $ok($request->query('to')) ? (string) $request->query('to') : null;
+        if ($from !== null && $to !== null && $from > $to) {
+            return [null, null];
+        }
+
+        return [$from, $to];
+    }
+
+    public function statement(Request $request, int $id): JsonResponse
     {
         if (!DB::table('group_members')->where('id', $id)->exists()) {
             return $this->fail('not_found', 'Mwanachama hayupo. / Member not found.', 404);
         }
+        [$from, $to] = $this->period($request);
 
-        return response()->json(['success' => true, 'data' => GroupStatement::for($id)]);
+        return response()->json(['success' => true, 'data' => GroupStatement::for($id, $from, $to)]);
     }
 
     public function myStatement(Request $request): JsonResponse
     {
         $member = GroupAccess::member($request->user());
+        [$from, $to] = $this->period($request);
 
-        return response()->json(['success' => true, 'data' => $member === null ? null : GroupStatement::for((int) $member['id'])]);
+        return response()->json(['success' => true, 'data' => $member === null ? null : GroupStatement::for((int) $member['id'], $from, $to)]);
     }
 }

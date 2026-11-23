@@ -79,7 +79,7 @@ class _FakeApi extends GroupsApi {
   final List<String> calls = <String>[];
 
   @override
-  Future<GroupStatementData?> statement({final int? memberId}) async => _statement();
+  Future<GroupStatementData?> statement({final int? memberId, final String? from, final String? to}) async => _statement();
 
   @override
   Future<GroupReceipt> receipt(final int id) async {

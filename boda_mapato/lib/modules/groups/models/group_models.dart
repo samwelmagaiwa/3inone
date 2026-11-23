@@ -1,6 +1,8 @@
 /// What the Groups (Vikundi) screens read from the server, typed once here so the screens never dig in raw maps.
 library;
 
+import 'group_loan_models.dart';
+
 double _num(final Object? v) => v is num ? v.toDouble() : double.tryParse('${v ?? ''}') ?? 0;
 
 int? _int(final Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}');
@@ -575,8 +577,60 @@ class GroupPromise {
 }
 
 /// A member's statement: every verified movement with the balance of its kind after it, what is owed, what waits.
+/// Who a statement is for.
+class GroupStatementMember {
+  const GroupStatementMember({required this.fullName, required this.phone, this.memberNumber, this.applicationRef, this.status, this.office, this.joinedOn});
+
+  factory GroupStatementMember.fromJson(final Map<String, dynamic> j) => GroupStatementMember(
+        fullName: '${j['full_name'] ?? ''}',
+        phone: '${j['phone'] ?? ''}',
+        memberNumber: _str(j['member_number']),
+        applicationRef: _str(j['application_ref']),
+        status: _str(j['status']),
+        office: _str(j['office']),
+        joinedOn: _str(j['joined_on']),
+      );
+
+  final String fullName;
+  final String phone;
+  final String? memberNumber;
+  final String? applicationRef;
+  final String? status;
+  final String? office;
+  final String? joinedOn;
+}
+
+/// The totals of the period a statement shows: what the account held when it began and when it ended, and the money that moved.
+class GroupStatementPeriod {
+  const GroupStatementPeriod({this.from, this.to, this.opening = 0, this.closing = 0, this.moneyIn = 0, this.moneyOut = 0, this.count = 0});
+
+  factory GroupStatementPeriod.fromJson(final Map<String, dynamic> j) => GroupStatementPeriod(
+        from: _str(j['from']),
+        to: _str(j['to']),
+        opening: _num(j['opening']),
+        closing: _num(j['closing']),
+        moneyIn: _num(j['in']),
+        moneyOut: _num(j['out']),
+        count: _int(j['count']) ?? 0,
+      );
+
+  final String? from;
+  final String? to;
+  final double opening;
+  final double closing;
+  final double moneyIn;
+  final double moneyOut;
+  final int count;
+}
+
 class GroupStatementData {
   const GroupStatementData({
+    this.member,
+    this.account = 0,
+    this.period = const GroupStatementPeriod(),
+    this.declined = const <GroupTransaction>[],
+    this.loans = const <GroupLoan>[],
+    this.accountAfter = const <int, double>{},
     required this.lines,
     required this.balanceAfter,
     required this.balances,
@@ -587,6 +641,15 @@ class GroupStatementData {
   });
 
   factory GroupStatementData.fromJson(final Map<String, dynamic> j) => GroupStatementData(
+        member: j['member'] is Map ? GroupStatementMember.fromJson(Map<String, dynamic>.from(j['member'] as Map)) : null,
+        account: _num(j['account']),
+        period: j['period'] is Map ? GroupStatementPeriod.fromJson(Map<String, dynamic>.from(j['period'] as Map)) : const GroupStatementPeriod(),
+        declined: <GroupTransaction>[for (final dynamic t in (j['declined'] as List? ?? const <dynamic>[])) GroupTransaction.fromJson(Map<String, dynamic>.from(t as Map))],
+        loans: <GroupLoan>[for (final dynamic l in (j['loans'] as List? ?? const <dynamic>[])) GroupLoan.fromJson(Map<String, dynamic>.from(l as Map))],
+        accountAfter: <int, double>{
+          for (final dynamic t in (j['lines'] as List? ?? const <dynamic>[]))
+            if (t is Map && t['account_after'] != null) _int(t['id']) ?? 0: _num(t['account_after']),
+        },
         lines: <GroupTransaction>[for (final dynamic t in (j['lines'] as List? ?? const <dynamic>[])) GroupTransaction.fromJson(Map<String, dynamic>.from(t as Map))],
         balanceAfter: <int, double>{
           for (final dynamic t in (j['lines'] as List? ?? const <dynamic>[]))
@@ -599,6 +662,19 @@ class GroupStatementData {
         promises: <GroupPromise>[for (final dynamic p in (j['promises'] as List? ?? const <dynamic>[])) GroupPromise.fromJson(Map<String, dynamic>.from(p as Map))],
       );
 
+  /// Who it is for (null for an old server).
+  final GroupStatementMember? member;
+
+  /// What the group holds for the member now: savings (with dividends) and shares, whatever the period shown.
+  final double account;
+  final GroupStatementPeriod period;
+
+  /// Payments turned down, so every transaction can be seen.
+  final List<GroupTransaction> declined;
+  final List<GroupLoan> loans;
+
+  /// What the account held after each line (by transaction id).
+  final Map<int, double> accountAfter;
   final List<GroupTransaction> lines;
 
   /// The balance of its kind after each line (by transaction id).

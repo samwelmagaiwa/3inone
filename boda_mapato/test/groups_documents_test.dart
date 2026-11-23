@@ -6,6 +6,7 @@ import 'package:boda_mapato/modules/groups/models/group_models.dart';
 import 'package:boda_mapato/modules/groups/models/group_receipt_models.dart';
 import 'package:boda_mapato/modules/groups/models/group_records_models.dart';
 import 'package:boda_mapato/modules/groups/screens/records_screens.dart';
+import 'package:boda_mapato/modules/groups/screens/statement_screen.dart';
 import 'package:boda_mapato/modules/groups/services/group_doc.dart';
 import 'package:boda_mapato/modules/groups/services/group_documents.dart';
 import 'package:boda_mapato/modules/groups/services/groups_api.dart';
@@ -58,6 +59,61 @@ Map<String, String> _unzip(final Uint8List bytes) {
   return <String, String>{for (final ArchiveFile f in zip) f.name: utf8.decode(f.content as List<int>)};
 }
 
+Map<String, dynamic> _line(final int id, final String category, final String direction, final num amount, final String day, final num account, {final String? receipt}) => <String, dynamic>{
+      'id': id,
+      'reference': 'TRX-$id',
+      'receipt_number': receipt ?? 'RC-00000$id',
+      'category': category,
+      'direction': direction,
+      'amount': amount,
+      'method': 'mpesa',
+      'external_ref': 'MP$id',
+      'paid_on': day,
+      'status': 'verified',
+      'member_name': 'Asha Juma',
+      'verified_at': '$day 10:00:00',
+      'balance_after': account,
+      'account_after': account,
+    };
+
+Map<String, dynamic> _statementJson() => <String, dynamic>{
+      'member': <String, dynamic>{'id': 5, 'full_name': 'Asha Juma', 'member_number': 'UWM-0005', 'phone': '0713000001', 'status': 'active', 'office': null, 'joined_on': '2026-01-05'},
+      'account': 70000,
+      'balances': <String, dynamic>{'joining_fee': 80000, 'shares': 20000, 'savings': 50000, 'contribution': 10000},
+      'period': <String, dynamic>{'from': null, 'to': null, 'opening': 0, 'closing': 70000, 'in': 70000, 'out': 0, 'count': 2},
+      'lines': <dynamic>[
+        _line(2, 'shares', 'in', 20000, '2026-11-02', 70000),
+        _line(1, 'savings', 'in', 50000, '2026-01-10', 50000),
+      ],
+      'owing_total': 10000,
+      'owing': <dynamic>[
+        <String, dynamic>{'id': 4, 'member_id': 5, 'period': '2026-11', 'amount_due': 10000, 'paid': 0, 'remaining': 10000, 'due_date': '2026-11-05', 'state': 'overdue', 'type_name': 'JAMII'},
+      ],
+      'waiting': <dynamic>[
+        <String, dynamic>{..._line(8, 'savings', 'in', 1000, '2026-11-20', 0), 'status': 'pending', 'receipt_number': null},
+      ],
+      'declined': <dynamic>[
+        <String, dynamic>{..._line(9, 'savings', 'in', 2000, '2026-11-21', 0), 'status': 'rejected', 'receipt_number': null, 'reject_reason': 'Not received'},
+      ],
+      'loans': <dynamic>[
+        <String, dynamic>{
+          'id': 9, 'reference': 'LN-0009', 'member_id': 5, 'member_name': 'Asha Juma', 'amount_requested': 300000, 'amount_approved': 300000, 'purpose': 'Duka', 'term_months': 3,
+          'interest_rate': 2, 'interest_method': 'flat', 'status': 'active', 'state': 'active', 'outstanding': 212000,
+        },
+      ],
+      'promises': <dynamic>[],
+    };
+
+class _StmtApi extends GroupsApi {
+  final List<String> calls = <String>[];
+
+  @override
+  Future<GroupStatementData?> statement({final int? memberId, final String? from, final String? to}) async {
+    calls.add('${from ?? '-'}..${to ?? '-'}');
+    return GroupStatementData.fromJson(_statementJson());
+  }
+}
+
 class _Api extends GroupsApi {
   @override
   Future<GroupReport> report({required final String from, required final String to}) async => _report();
@@ -85,6 +141,14 @@ Future<void> _pump(final WidgetTester t, final Widget child) async {
       child: ScreenUtilInit(designSize: const Size(411, 1400), minTextAdapt: true, builder: (_, __) => MaterialApp(home: child)),
     ),
   );
+  await t.pumpAndSettle();
+}
+
+/// A filter chip may be past the edge of its sliding row: bring it into view, then tap it a little off its centre (the arrow may cover the edge).
+Future<void> _tapChip(final WidgetTester t, final Finder chip) async {
+  await t.ensureVisible(chip);
+  await t.pumpAndSettle();
+  await t.tapAt(t.getCenter(chip) - const Offset(8, 0));
   await t.pumpAndSettle();
 }
 
@@ -152,6 +216,60 @@ void main() {
     final String text = String.fromCharCodes(pdf);
     expect(RegExp(r'/Type\s*/Page(?!s)').allMatches(text).length, greaterThan(2));
     expect(text, contains('NotoSans'));
+  });
+
+  test('the statement document has everything: the member, the account, the period, what is owed, the loans, every transaction with the account after it, what waited or was turned down', () async {
+    final GroupStatementData d = GroupStatementData.fromJson(_statementJson());
+    for (final bool sw in <bool>[true, false]) {
+      final GroupDoc doc = GroupDocuments.statementDoc(d, sw: sw, group: 'MEG Group', memberName: 'Asha Juma', loans: d.loans);
+      final String text = _unzip(GroupDocuments.docx(doc))['word/document.xml']!;
+      for (final String s in <String>['Asha Juma', 'UWM-0005', '0713000001', '70,000', '80,000', '10,000', 'LN-0009', '212,000', 'RC-000001', 'RC-000002', 'MP1', 'Not received', '1,000', '2,000']) {
+        expect(text, contains(s), reason: s);
+      }
+      expect(text, contains(sw ? 'Anachoshikiliwa na kikundi hadi sasa' : 'Held for the member by the group so far'));
+      expect(String.fromCharCodes((await GroupDocuments.pdf(doc)).sublist(0, 5)), '%PDF-');
+    }
+  });
+
+  testWidgets('the statement opens with the account: what the group holds for the member so far, and every transaction below', (final WidgetTester t) async {
+    final _StmtApi api = _StmtApi();
+    await _pump(t, GroupStatementScreen(api: api));
+    expect(find.byKey(const Key('grp_stmt_account')), findsOneWidget);
+    expect(t.widget<Text>(find.byKey(const Key('grp_stmt_account'))).data, contains('70,000'));
+    expect(find.text('Held for you by the group so far (savings and shares)'), findsOneWidget);
+    expect(find.text('Asha Juma · UWM-0005'), findsOneWidget);
+    expect(find.byKey(const Key('grp_tx_1')), findsOneWidget);
+    expect(find.byKey(const Key('grp_tx_2')), findsOneWidget);
+    expect(find.byKey(const Key('grp_stmt_declined')), findsOneWidget);
+    expect(api.calls, <String>['-..-'], reason: 'all time to begin with');
+  });
+
+  testWidgets('the buttons at the top choose the period (asked of the server) and the kind of money (filtered on the phone)', (final WidgetTester t) async {
+    final _StmtApi api = _StmtApi();
+    await _pump(t, GroupStatementScreen(api: api));
+    final DateTime now = DateTime.now();
+    String iso(final DateTime d) => '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+    await _tapChip(t, find.byKey(const Key('grp_stmt_range_month')));
+    await t.pumpAndSettle();
+    expect(api.calls.last, '${iso(DateTime(now.year, now.month))}..${iso(now)}');
+    await _tapChip(t, find.byKey(const Key('grp_stmt_range_year')));
+    await t.pumpAndSettle();
+    expect(api.calls.last, '${iso(DateTime(now.year))}..${iso(now)}');
+    await _tapChip(t, find.byKey(const Key('grp_stmt_range_all')));
+    await t.pumpAndSettle();
+    expect(api.calls.last, '-..-');
+
+    await _tapChip(t, find.byKey(const Key('grp_stmt_kind_shares')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('grp_tx_2')), findsOneWidget);
+    expect(find.byKey(const Key('grp_tx_1')), findsNothing, reason: 'a savings line is hidden under Shares');
+    await _tapChip(t, find.byKey(const Key('grp_stmt_kind_loans')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('grp_stmt_none')), findsOneWidget);
+    await _tapChip(t, find.byKey(const Key('grp_stmt_kind_all')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('grp_tx_1')), findsOneWidget);
   });
 
   test('a short row in a CSV is filled so the table stays square', () {

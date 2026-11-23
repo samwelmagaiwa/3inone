@@ -66,7 +66,8 @@ class GroupDocuments {
     );
   }
 
-  /// A member's statement: balances, what is owed (contributions, and loans when [loans] are given), and every verified movement.
+  /// A member's statement with everything in it: who they are, the account (what the group holds for them), the period's totals, what is
+  /// owed, the loans, every transaction with the account after it, what waits or was turned down, and the promises.
   static GroupDoc statementDoc(
     final GroupStatementData d, {
     required final bool sw,
@@ -74,50 +75,117 @@ class GroupDocuments {
     required final String memberName,
     final List<GroupLoan> loans = const <GroupLoan>[],
   }) {
-    final List<GroupLoan> running = loans.where((final GroupLoan l) => l.status == 'active').toList();
-    final double loansOwed = running.fold<double>(0, (final double s, final GroupLoan l) => s + (l.outstanding ?? 0));
+    final GroupStatementMember? m = d.member;
+    final GroupStatementPeriod p = d.period;
+    final String periodText = p.from == null && p.to == null ? (sw ? 'Muda wote' : 'All time') : '${_date(p.from)} - ${_date(p.to ?? DateTime.now().toIso8601String())}';
+    String what(final GroupTransaction t) => <String>[
+          '${t.isReversal ? (sw ? 'Marekebisho: ' : 'Reversal: ') : ''}${t.category == 'savings' && t.direction == 'out' && !t.isReversal ? (sw ? 'Kutoa akiba' : 'Savings withdrawal') : (t.obligationLabel ?? categoryLabel(sw: sw, category: t.category))}',
+          methodLabel(sw: sw, method: t.method),
+          if (t.externalRef != null) t.externalRef!,
+        ].join(' - ');
+    String money(final double v) => v == 0 ? '' : tsh(v);
     return GroupDoc(
       group: group,
       title: '${sw ? 'Taarifa ya fedha' : 'Statement'} - $memberName',
       fileName: 'statement',
       blocks: <DocBlock>[
-        DocNote('${sw ? 'Imetolewa' : 'Printed'} ${_date(DateTime.now().toIso8601String())}'),
-        DocHeading(sw ? 'Salio' : 'Balances'),
-        DocRows(<DocRow>[for (final MapEntry<String, double> b in d.balances.entries) DocRow(categoryLabel(sw: sw, category: b.key), tsh(b.value))]),
-        DocHeading(sw ? 'Madeni yote' : 'Everything owed'),
+        DocHeading(sw ? 'Mwanachama' : 'Member'),
         DocRows(<DocRow>[
-          DocRow(sw ? 'Michango' : 'Contributions', tsh(d.owingTotal)),
-          if (loans.isNotEmpty) DocRow(sw ? 'Mikopo' : 'Loans', tsh(loansOwed)),
-          DocRow(sw ? 'Jumla' : 'Total', tsh(d.owingTotal + loansOwed), bold: true),
+          DocRow(sw ? 'Jina' : 'Name', m?.fullName ?? memberName, bold: true),
+          if (m?.memberNumber != null || m?.applicationRef != null) DocRow(sw ? 'Namba ya uanachama' : 'Member number', m!.memberNumber ?? m.applicationRef!),
+          if (m != null && m.phone.isNotEmpty) DocRow(sw ? 'Simu' : 'Phone', m.phone),
+          if (m?.status != null) DocRow(sw ? 'Hali' : 'Status', statusLabel(sw: sw, status: m!.status!)),
+          if (m?.joinedOn != null) DocRow(sw ? 'Alijiunga' : 'Joined', _date(m!.joinedOn)),
+          DocRow(sw ? 'Kipindi' : 'Period', periodText),
+          DocRow(sw ? 'Imetolewa' : 'Printed', _date(DateTime.now().toIso8601String())),
         ]),
-        if (d.owing.isNotEmpty)
+        DocHeading(sw ? 'Akaunti' : 'Account'),
+        DocRows(<DocRow>[
+          DocRow(sw ? 'Anachoshikiliwa na kikundi hadi sasa' : 'Held for the member by the group so far', tsh(d.account), bold: true),
+          DocRow(categoryLabel(sw: sw, category: 'savings'), tsh(d.balances['savings'] ?? 0)),
+          DocRow(categoryLabel(sw: sw, category: 'shares'), tsh(d.balances['shares'] ?? 0)),
+          DocRow(sw ? 'Zilizolipwa kwa kikundi: ada ya kujiunga' : 'Paid to the group: joining fee', tsh(d.balances['joining_fee'] ?? 0)),
+          DocRow(sw ? 'Zilizolipwa kwa kikundi: michango' : 'Paid to the group: contributions', tsh(d.balances['contribution'] ?? 0)),
+          DocRow(sw ? 'Deni la michango' : 'Contributions owed', tsh(d.owingTotal)),
+        ]),
+        DocHeading('${sw ? 'Muhtasari wa kipindi' : 'Summary of the period'} - $periodText'),
+        DocRows(<DocRow>[
+          if (p.from != null) DocRow(sw ? 'Akaunti mwanzoni' : 'Account at the start', tsh(p.opening)),
+          DocRow(sw ? 'Iliyoingia' : 'Money in', tsh(p.moneyIn)),
+          DocRow(sw ? 'Iliyotoka' : 'Money out', tsh(p.moneyOut)),
+          DocRow(sw ? 'Akaunti mwishoni' : 'Account at the end', tsh(p.closing), bold: true),
+          DocRow(sw ? 'Idadi ya miamala' : 'Number of transactions', '${p.count}'),
+        ]),
+        if (d.owing.isNotEmpty) ...<DocBlock>[
+          DocHeading(sw ? 'Kinachodaiwa' : 'Owed'),
           DocTable(
-            <String>[sw ? 'Mchango' : 'Contribution', sw ? 'Mwisho' : 'Due', sw ? 'Imebaki' : 'Left'],
-            <List<String>>[for (final GroupObligation o in d.owing) <String>[o.title, _date(o.dueDate), tsh(o.remaining)]],
+            <String>[sw ? 'Mchango' : 'Contribution', sw ? 'Mwisho' : 'Due', sw ? 'Hali' : 'State', sw ? 'Imelipwa' : 'Paid', sw ? 'Imebaki' : 'Left'],
+            <List<String>>[for (final GroupObligation o in d.owing) <String>[o.title, _date(o.dueDate), obligationStateLabel(sw: sw, state: o.state), tsh(o.paid), tsh(o.remaining)]],
           ),
-        if (running.isNotEmpty)
+        ],
+        if (loans.isNotEmpty) ...<DocBlock>[
+          DocHeading(sw ? 'Mikopo' : 'Loans'),
           DocTable(
-            <String>[sw ? 'Mkopo' : 'Loan', sw ? 'Msingi uliobaki' : 'Principal left', sw ? 'Riba iliyobaki' : 'Interest left', sw ? 'Imepita muda' : 'Overdue', sw ? 'Jumla' : 'Total'],
-            <List<String>>[for (final GroupLoan l in running) <String>[l.reference, tsh(l.outstandingPrincipal), tsh(l.outstandingInterest), tsh(l.arrears ?? 0), tsh(l.outstanding ?? 0)]],
-          ),
-        DocHeading(sw ? 'Malipo yaliyothibitishwa' : 'Verified payments'),
-        if (d.lines.isEmpty)
-          DocNote(sw ? 'Bado hakuna.' : 'None yet.')
-        else
-          DocTable(
-            <String>[sw ? 'Tarehe' : 'Date', sw ? 'Kuhusu' : 'For', sw ? 'Risiti' : 'Receipt', sw ? 'Kiasi' : 'Amount', sw ? 'Salio' : 'Balance'],
+            <String>[sw ? 'Mkopo' : 'Loan', sw ? 'Kiasi' : 'Amount', sw ? 'Muda' : 'Term', sw ? 'Riba' : 'Interest', sw ? 'Hali' : 'Status', sw ? 'Imepita muda' : 'Overdue', sw ? 'Deni' : 'Owed'],
             <List<String>>[
-              for (final GroupTransaction t in d.lines)
+              for (final GroupLoan l in loans)
                 <String>[
-                  _date(t.paidOn),
-                  '${t.isReversal ? (sw ? 'Marekebisho: ' : 'Reversal: ') : ''}${t.obligationLabel ?? categoryLabel(sw: sw, category: t.category)}',
-                  t.receiptNumber ?? '',
-                  tsh(t.signedAmount),
-                  d.balanceAfter[t.id] == null ? '' : tsh(d.balanceAfter[t.id]!),
+                  l.reference,
+                  tsh(l.amountApproved ?? l.amountRequested),
+                  '${l.termMonths} ${sw ? 'mi.' : 'mo.'}',
+                  '${l.interestRate}%',
+                  loanStateLabel(sw: sw, state: l.state),
+                  tsh(l.arrears ?? 0),
+                  tsh(l.status == 'active' ? (l.outstanding ?? 0) : 0),
                 ],
             ],
-            widths: <int, double>{0: 60, 2: 60, 3: 80, 4: 80},
           ),
+        ],
+        DocHeading(sw ? 'Miamala yote iliyothibitishwa' : 'Every verified transaction'),
+        if (d.lines.isEmpty)
+          DocNote(sw ? 'Hakuna katika kipindi hiki.' : 'None in this period.')
+        else
+          DocTable(
+            <String>[sw ? 'Tarehe' : 'Date', sw ? 'Risiti' : 'Receipt', sw ? 'Kuhusu' : 'For', sw ? 'Imeingia' : 'In', sw ? 'Imetoka' : 'Out', sw ? 'Akaunti' : 'Account'],
+            <List<String>>[
+              for (final GroupTransaction t in d.lines.reversed)
+                <String>[
+                  _date(t.verifiedAt ?? t.paidOn),
+                  t.receiptNumber ?? t.reference,
+                  what(t),
+                  t.signedAmount > 0 ? money(t.signedAmount) : '',
+                  t.signedAmount < 0 ? money(-t.signedAmount) : '',
+                  d.accountAfter[t.id] == null ? '' : tsh(d.accountAfter[t.id]!),
+                ],
+            ],
+            widths: <int, double>{0: 56, 1: 62, 3: 62, 4: 62, 5: 66},
+          ),
+        if (d.waiting.isNotEmpty) ...<DocBlock>[
+          DocHeading(sw ? 'Yanasubiri uthibitisho (bado hayajaingia kwenye akaunti)' : 'Waiting for verification (not in the account yet)'),
+          DocTable(
+            <String>[sw ? 'Tarehe' : 'Date', sw ? 'Kuhusu' : 'For', sw ? 'Kiasi' : 'Amount'],
+            <List<String>>[for (final GroupTransaction t in d.waiting) <String>[_date(t.paidOn), what(t), tsh(t.amount)]],
+            widths: <int, double>{0: 60, 2: 80},
+          ),
+        ],
+        if (d.declined.isNotEmpty) ...<DocBlock>[
+          DocHeading(sw ? 'Yaliyokataliwa' : 'Turned down'),
+          DocTable(
+            <String>[sw ? 'Tarehe' : 'Date', sw ? 'Kuhusu' : 'For', sw ? 'Kiasi' : 'Amount', sw ? 'Sababu' : 'Reason'],
+            <List<String>>[for (final GroupTransaction t in d.declined) <String>[_date(t.paidOn), what(t), tsh(t.amount), t.rejectReason ?? '']],
+            widths: <int, double>{0: 60, 2: 80},
+          ),
+        ],
+        if (d.promises.isNotEmpty) ...<DocBlock>[
+          DocHeading(sw ? 'Ahadi' : 'Promises'),
+          DocTable(
+            <String>[sw ? 'Tarehe' : 'Date', sw ? 'Kiasi' : 'Amount', sw ? 'Kuhusu' : 'For', sw ? 'Hali' : 'State'],
+            <List<String>>[for (final GroupPromise pr in d.promises) <String>[_date(pr.promisedOn), tsh(pr.amount), pr.obligationLabel ?? pr.note ?? '', promiseStateLabel(sw: sw, state: pr.state)]],
+          ),
+        ],
+        DocNote(sw
+            ? 'Akaunti ni akiba (pamoja na gawio) na hisa za mwanachama. Ada ya kujiunga na michango ni malipo kwa kikundi. Malipo yanayosubiri au yaliyokataliwa hayajabadilisha akaunti.'
+            : 'The account is the member\'s savings (with dividends) and shares. The joining fee and contributions are payments to the group. Payments waiting or turned down have not changed the account.'),
       ],
     );
   }

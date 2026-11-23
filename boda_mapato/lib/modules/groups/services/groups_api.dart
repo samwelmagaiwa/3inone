@@ -144,8 +144,9 @@ class GroupsApi {
   Future<void> cancelPromise(final int id) async => _api.post('$_base/promises/$id/cancel', <String, dynamic>{});
 
   /// A member's statement ([memberId]) or one's own (null).
-  Future<GroupStatementData?> statement({final int? memberId}) async {
-    final Map<String, dynamic> res = await _api.get(memberId == null ? '$_base/me/statement' : '$_base/members/$memberId/statement');
+  Future<GroupStatementData?> statement({final int? memberId, final String? from, final String? to}) async {
+    final String query = <String>[if (from != null) 'from=$from', if (to != null) 'to=$to'].join('&');
+    final Map<String, dynamic> res = await _api.get('${memberId == null ? '$_base/me/statement' : '$_base/members/$memberId/statement'}${query.isEmpty ? '' : '?$query'}');
     return res['data'] is Map ? GroupStatementData.fromJson(Map<String, dynamic>.from(res['data'] as Map)) : null;
   }
 
