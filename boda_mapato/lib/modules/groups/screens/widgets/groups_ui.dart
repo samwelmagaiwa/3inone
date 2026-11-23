@@ -132,15 +132,18 @@ class GroupPill extends StatelessWidget {
   final String text;
   final Color color;
 
+  /// The text is the colour lightened toward white: the plain colour (a red above all) is too dim to read on the dark cards.
+  static Color readable(final Color c) => Color.lerp(c, Colors.white, 0.74) ?? c;
+
   @override
   Widget build(final BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.18),
+          color: color.withValues(alpha: 0.24),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.55)),
+          border: Border.all(color: color.withValues(alpha: 0.85)),
         ),
-        child: Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700)),
+        child: Text(text, style: TextStyle(color: readable(color), fontSize: 11.5, fontWeight: FontWeight.w800)),
       );
 }
 
