@@ -104,6 +104,16 @@ class GroupMeController extends Controller
         }
 
         $memberId = $member === null ? null : (int) $member['id'];
+        // Open votings this member may vote in and has not voted in yet.
+        if ($memberId !== null) {
+            $toVote = DB::table('group_votings as v')->join('group_voting_eligible as e', function ($j) use ($memberId) {
+                $j->on('e.voting_id', '=', 'v.id')->where('e.member_id', '=', $memberId);
+            })->where('v.status', 'open')->where('v.closes_at', '>', now())
+                ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('group_voting_turnout as t')->whereColumn('t.voting_id', 'v.id')->where('t.member_id', $memberId))->count();
+            if ($toVote > 0) {
+                $waiting['votes_to_cast'] = $toVote;
+            }
+        }
         // Hires waiting for the keeper of an asset (or whoever manages assets): to confirm, or out past their day.
         $kept = in_array('manage_assets', $rights, true) ? null : ($memberId === null ? [] : DB::table('group_assets')->where('custodian_id', $memberId)->pluck('id')->all());
         if ($kept === null || $kept !== []) {

@@ -76,6 +76,9 @@ final class GroupOffices
      *   request_expenses  ask for money to be spent (a purpose, a payee, an amount, optionally a project)
      *   view_expenses     every expense request and what became of it (a requester always sees their own)
      *   approve_expenses  approve or turn down an expense request (never one's own); paying it is the payout right, verifying it is someone else's
+     *   manage_votings   create, edit, publish, pause, resume, extend, close or cancel a voting process (never one the person stands in as a candidate)
+     *   publish_voting_results  announce the final result of a closed voting process (never one the person stands in)
+     *   view_voting_reports  the participation, result and decision report of a process, and its individual votes when the ballot is not secret
      */
     public const RIGHTS = [
         'view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance',
@@ -86,15 +89,16 @@ final class GroupOffices
         'prepare_dividends', 'approve_dividends', 'call_meetings', 'record_meetings', 'post_announcements', 'send_texts',
         'view_projects', 'manage_projects', 'recommend_projects', 'approve_projects',
         'request_expenses', 'view_expenses', 'approve_expenses', 'approve_minutes',
+        'manage_votings', 'publish_voting_results', 'view_voting_reports',
     ];
 
     private const BY_OFFICE = [
-        'mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits', 'manage_assets', 'decide_hire_charges', 'approve_dividends', 'call_meetings', 'record_meetings', 'post_announcements', 'send_texts', 'view_projects', 'approve_projects', 'request_expenses', 'view_expenses', 'approve_expenses', 'approve_minutes'],
-        'makamu_mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits', 'manage_assets', 'decide_hire_charges', 'approve_dividends', 'call_meetings', 'record_meetings', 'post_announcements', 'send_texts', 'view_projects', 'approve_projects', 'request_expenses', 'view_expenses', 'approve_expenses', 'approve_minutes'],
+        'mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits', 'manage_assets', 'decide_hire_charges', 'approve_dividends', 'call_meetings', 'record_meetings', 'post_announcements', 'send_texts', 'view_projects', 'approve_projects', 'request_expenses', 'view_expenses', 'approve_expenses', 'approve_minutes', 'manage_votings', 'publish_voting_results', 'view_voting_reports'],
+        'makamu_mwenyekiti' => ['view_members', 'manage_members', 'approve_members', 'view_sensitive', 'view_finance', 'manage_offices', 'manage_settings', 'view_audit', 'manage_contributions', 'grant_exemptions', 'view_loans', 'approve_loans', 'view_benefits', 'approve_benefits', 'manage_assets', 'decide_hire_charges', 'approve_dividends', 'call_meetings', 'record_meetings', 'post_announcements', 'send_texts', 'view_projects', 'approve_projects', 'request_expenses', 'view_expenses', 'approve_expenses', 'approve_minutes', 'manage_votings', 'publish_voting_results', 'view_voting_reports'],
         'mweka_hazina' => ['view_members', 'view_sensitive', 'view_finance', 'record_payments', 'verify_payments', 'reverse_payments', 'view_audit', 'manage_contributions', 'record_payouts', 'view_loans', 'view_benefits', 'prepare_dividends', 'view_projects', 'request_expenses', 'view_expenses', 'approve_expenses'],
         'mweka_hazina_msaidizi' => ['view_members', 'view_finance', 'record_payments', 'verify_payments', 'view_loans', 'view_benefits', 'view_projects', 'request_expenses', 'view_expenses', 'approve_expenses'],
-        'katibu' => ['view_members', 'manage_members', 'view_sensitive', 'record_payments', 'view_audit', 'view_benefits', 'manage_assets', 'record_meetings', 'post_announcements', 'send_texts', 'view_projects', 'request_expenses'],
-        'katibu_msaidizi' => ['view_members', 'manage_members', 'record_payments', 'record_meetings', 'post_announcements', 'request_expenses'],
+        'katibu' => ['view_members', 'manage_members', 'view_sensitive', 'record_payments', 'view_audit', 'view_benefits', 'manage_assets', 'record_meetings', 'post_announcements', 'send_texts', 'view_projects', 'request_expenses', 'manage_votings', 'view_voting_reports'],
+        'katibu_msaidizi' => ['view_members', 'manage_members', 'record_payments', 'record_meetings', 'post_announcements', 'request_expenses', 'manage_votings', 'view_voting_reports'],
         'mwenyekiti_miradi' => ['view_members', 'view_finance', 'view_loans', 'recommend_loans', 'view_projects', 'manage_projects', 'recommend_projects', 'request_expenses', 'view_expenses'],
         'kamati_miradi' => ['view_members', 'view_loans', 'recommend_loans', 'view_projects', 'recommend_projects', 'request_expenses'],
     ];

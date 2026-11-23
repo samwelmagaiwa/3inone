@@ -83,6 +83,7 @@ use App\Http\Controllers\API\Groups\GroupMeController;
 use App\Http\Controllers\API\Groups\GroupMemberController;
 use App\Http\Controllers\API\Groups\GroupPublicController;
 use App\Http\Controllers\API\Groups\GroupRecordsController;
+use App\Http\Controllers\API\Groups\GroupVotingController;
 use App\Http\Controllers\API\Groups\GroupSettingsController;
 use App\Http\Controllers\API\Groups\GroupTransactionController;
 use App\Http\Controllers\API\Groups\GroupExpenseController;
@@ -410,6 +411,29 @@ Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(f
         Route::get('reports/transactions.csv', [GroupRecordsController::class, 'exportTransactions']);
     });
     Route::get('reports/members.csv', [GroupRecordsController::class, 'exportMembers'])->middleware('group_right:view_members');
+
+    // Voting: many independent processes. Every member sees them and votes in the ones they may; officers prepare and run them.
+    Route::get('votings', [GroupVotingController::class, 'index']);
+    Route::get('votings/{id}', [GroupVotingController::class, 'show'])->whereNumber('id');
+    Route::post('votings/{id}/vote', [GroupVotingController::class, 'vote'])->whereNumber('id')->middleware('throttle:60,1');
+    Route::get('me/notifications', [GroupVotingController::class, 'notifications']);
+    Route::post('me/notifications/read', [GroupVotingController::class, 'readNotifications']);
+    Route::middleware('group_right:manage_votings')->group(function () {
+        Route::post('votings', [GroupVotingController::class, 'store']);
+        Route::put('votings/{id}', [GroupVotingController::class, 'update'])->whereNumber('id');
+        Route::delete('votings/{id}', [GroupVotingController::class, 'destroy'])->whereNumber('id');
+        Route::post('votings/{id}/publish', [GroupVotingController::class, 'publish'])->whereNumber('id');
+        Route::post('votings/{id}/pause', [GroupVotingController::class, 'pause'])->whereNumber('id');
+        Route::post('votings/{id}/resume', [GroupVotingController::class, 'resume'])->whereNumber('id');
+        Route::post('votings/{id}/close', [GroupVotingController::class, 'close'])->whereNumber('id');
+        Route::post('votings/{id}/cancel', [GroupVotingController::class, 'cancel'])->whereNumber('id');
+        Route::post('votings/{id}/extend', [GroupVotingController::class, 'extend'])->whereNumber('id');
+    });
+    Route::post('votings/{id}/publish-results', [GroupVotingController::class, 'publishResults'])->whereNumber('id')->middleware('group_right:publish_voting_results');
+    Route::middleware('group_right:view_voting_reports')->group(function () {
+        Route::get('votings/{id}/report', [GroupVotingController::class, 'reportShow'])->whereNumber('id');
+        Route::get('votings/{id}/report.csv', [GroupVotingController::class, 'reportCsv'])->whereNumber('id');
+    });
 
     Route::put('settings', [GroupSettingsController::class, 'update'])->middleware('group_right:manage_settings');
     Route::get('audit', [GroupSettingsController::class, 'audit'])->middleware('group_right:view_audit');

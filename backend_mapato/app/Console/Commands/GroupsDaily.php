@@ -7,6 +7,7 @@ use App\Models\Business;
 use App\Services\SmsService;
 use App\Support\Groups\GroupContributions;
 use App\Support\Groups\GroupSettings;
+use App\Support\Groups\GroupVotings;
 use Illuminate\Console\Command;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
@@ -60,6 +61,12 @@ class GroupsDaily extends Command
             if ($raised > 0) {
                 $this->note("{$business->name}: raised {$raised} contribution(s) for " . substr($today, 0, 7));
             }
+        }
+
+        if (!$dry) {
+            // Votings open and close by their own dates; whoever has not voted is told a day before it closes.
+            GroupVotings::syncAll();
+            GroupVotings::remindClosing();
         }
 
         $settings = GroupSettings::all($today);

@@ -107,6 +107,7 @@ final class TenantTables
      */
     public const GROUPS = [
         'group_announcements',
+        'group_ballots',
         'group_asset_events',
         'group_assets',
         'group_audit_log',
@@ -130,6 +131,7 @@ final class TenantTables
         'group_members',
         'group_message_recipients',
         'group_messages',
+        'group_notifications',
         'group_obligations',
         'group_project_reviews',
         'group_project_updates',
@@ -138,6 +140,10 @@ final class TenantTables
         'group_reminders',
         'group_settings',
         'group_transactions',
+        'group_voting_eligible',
+        'group_voting_options',
+        'group_voting_turnout',
+        'group_votings',
     ];
 
     /**
