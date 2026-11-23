@@ -10,9 +10,11 @@ use App\Services\Sms\SmsGateway;
 use App\Support\Tenancy\TenantContext;
 use App\Support\Tenancy\TenantTables;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
@@ -119,6 +121,8 @@ final class DemoGroup
 
     private int $typeJamii = 0;
 
+    private ?\Illuminate\Contracts\Cache\Repository $limits = null;
+
     public function __construct(int $months = 12, int $seed = 2026, ?Carbon $today = null)
     {
         $this->months = max(12, min(18, $months));
@@ -153,6 +157,7 @@ final class DemoGroup
             Carbon::setTestNow($at);
         }
         TenantContext::reset();
+        $this->limits?->flush();
         app('auth')->forgetGuards();
         GroupAccess::forget();
         $server = ['HTTP_AUTHORIZATION' => 'Bearer ' . $this->tokens[$who], 'HTTP_ACCEPT' => 'application/json', 'HTTP_X_SERVICE' => 'groups'];
@@ -262,6 +267,11 @@ final class DemoGroup
     public function build(): array
     {
         app()->instance(SmsGateway::class, new LogSmsGateway());
+        // The whole history is made in a few minutes of real time, which the app's per-minute limits (20 payments a minute and so on) would
+        // refuse. This command gets a limiter of its own that lives in memory and is emptied before each call: nothing else is affected.
+        $this->limits = Cache::store('array');
+        app()->forgetInstance(RateLimiter::class);
+        app()->singleton(RateLimiter::class, fn () => new RateLimiter($this->limits));
         $this->password ??= $this->randomPassword();
 
         try {
@@ -989,6 +999,7 @@ final class DemoGroup
         unset($body['referrer_id'], $body['notes']);
         Carbon::setTestNow($at);
         TenantContext::reset();
+        $this->limits?->flush();
         app('auth')->forgetGuards();
         GroupAccess::forget();
         $request = Request::create("/api/public/groups/{$code}/apply", 'POST', [], [], [], ['HTTP_ACCEPT' => 'application/json', 'CONTENT_TYPE' => 'application/json'], json_encode($body + ['consent' => true]));
@@ -1080,7 +1091,7 @@ final class DemoGroup
         $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
         $at = $this->end->copy()->subDays(10)->setTime(12, 0);
         // The officers who register members share the work (an upload is limited to 30 a minute for each person).
-        $uploaders = ['neema', 'hassan', 'juma'];
+        $uploaders = ['neema', 'rehema', 'juma'];
         $n = 0;
         foreach ($this->ids as $key => $id) {
             foreach ([['photo', 'Picha ya pasipoti'], ['id', 'Kitambulisho cha NIDA']] as [$kind, $caption]) {
