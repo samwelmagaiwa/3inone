@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:boda_mapato/modules/groups/models/group_models.dart';
 import 'package:boda_mapato/modules/groups/models/group_records_models.dart';
 import 'package:boda_mapato/modules/groups/screens/group_dashboard_screen.dart';
@@ -164,4 +166,47 @@ void main() {
     expect(find.byKey(const Key('grp_overview')), findsNothing, reason: 'no officers figures for a member');
     expect(find.text('100K'), findsOneWidget, reason: 'their savings');
   });
+
+  testWidgets('while the officers figures load there is only a spinner: the page appears once, in its final order', (final WidgetTester t) async {
+    final Completer<void> gate = Completer<void>();
+    final _FakeApi api = _SlowApi(gate.future);
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    await LocalizationService.instance.changeLanguage('en');
+    t.view.physicalSize = const Size(411, 3000);
+    t.view.devicePixelRatio = 1.0;
+    addTearDown(t.view.reset);
+    await t.pumpWidget(
+      ChangeNotifierProvider<LocalizationService>.value(
+        value: LocalizationService.instance,
+        child: ScreenUtilInit(
+          designSize: const Size(411, 3000),
+          minTextAdapt: true,
+          builder: (_, __) => MaterialApp(home: Scaffold(body: GroupDashboardScreen(me: _me(rights, <String, int>{'payments_to_verify': 1}), api: api, onChanged: () async {}, onOpen: (_) {}))),
+        ),
+      ),
+    );
+    await t.pump(const Duration(milliseconds: 100));
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byKey(const Key('grp_me_name')), findsNothing, reason: 'no personal cards before the figures');
+    expect(find.text('Waiting for you'), findsNothing);
+
+    gate.complete();
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('grp_me_name')), findsOneWidget);
+    expect(find.byKey(const Key('grp_overview_joined')), findsOneWidget);
+  });
+}
+
+class _SlowApi extends _FakeApi {
+  _SlowApi(this._gate);
+
+  final Future<void> _gate;
+
+  @override
+  Future<GroupDashboardData> dashboard({final String? month}) async {
+    await _gate;
+
+    return super.dashboard(month: month);
+  }
 }

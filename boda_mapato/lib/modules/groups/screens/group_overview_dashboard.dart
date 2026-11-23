@@ -83,12 +83,14 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     final GroupDashboardData? d = _d;
     if (d == null) {
+      // While it loads, only a spinner: the person's own cards wait for the figures, so the page appears once, in its final order. If the
+      // figures cannot be loaded, the message shows and the person's own cards still appear under it.
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
         Padding(
           padding: const EdgeInsets.all(24),
           child: Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!, style: const TextStyle(color: Colors.white70))),
         ),
-        ...joinGlowCards(widget.between),
+        if (_error != null) ...joinGlowCards(widget.between),
       ]);
     }
     final GroupDashboardMoney? m = d.money;
