@@ -347,20 +347,16 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                       GlowCard(
                         title: _label(sw, 'hire_days_rule'),
                         children: <Widget>[
-                          Wrap(spacing: 8, runSpacing: 4, children: <Widget>[
-                            ChoiceChip(
-                              key: const Key('grp_set_days_both'),
-                              label: Text(sw ? 'Siku ya kuchukua na ya kurudisha' : 'The collection and the return day'),
-                              selected: _daysRule == 'both',
-                              onSelected: (_) => setState(() => _daysRule = 'both'),
+                          Padding(
+                            key: const Key('grp_set_days_rule'),
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Text(
+                              sw
+                                  ? 'Kila ukodishaji lazima uwe na tarehe ya kuchukua na ya kurudisha. Gharama ya kuchelewa huhesabiwa kuanzia usiku unaofuata siku ya kurudisha, na inaendelea kila usiku hadi kitu kirudishwe.'
+                                  : 'Every hire must have a collection date and a return date. Lateness is charged from the night after the return day, and keeps counting every night until the item is back.',
+                              style: const TextStyle(color: Colors.white70, height: 1.35),
                             ),
-                            ChoiceChip(
-                              key: const Key('grp_set_days_between'),
-                              label: Text(sw ? 'Usiku kati yake tu' : 'Only the nights between'),
-                              selected: _daysRule == 'between',
-                              onSelected: (_) => setState(() => _daysRule = 'between'),
-                            ),
-                          ]),
+                          ),
                         ],
                       ),
                       GlowCard(
