@@ -157,6 +157,10 @@ void main() {
     final _FakeApi api = _FakeApi(_me(owing: <dynamic>[_obligation(31)]));
     await _pump(t, GroupsHome(api: api));
 
+    // What they owe is on the Malipo yangu screen, behind a button that carries the number owed.
+    await t.ensureVisible(find.byKey(const Key('grp_my_money')));
+    await t.tap(find.byKey(const Key('grp_my_money')));
+    await t.pumpAndSettle();
     expect(find.text('What I owe'), findsOneWidget);
     expect(find.byKey(const Key('grp_obl_31')), findsOneWidget);
     expect(find.text('Savings'), findsOneWidget);
@@ -181,6 +185,9 @@ void main() {
     final _FakeApi api = _FakeApi(_me(owing: <dynamic>[_obligation(31)]));
     await _pump(t, GroupsHome(api: api));
 
+    await t.ensureVisible(find.byKey(const Key('grp_my_money')));
+    await t.tap(find.byKey(const Key('grp_my_money')));
+    await t.pumpAndSettle();
     await t.ensureVisible(find.byKey(const Key('grp_promise_open')));
     await t.tap(find.byKey(const Key('grp_promise_open')));
     await t.pumpAndSettle();

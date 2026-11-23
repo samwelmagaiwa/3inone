@@ -133,6 +133,9 @@ void main() {
     final _FakeApi api = _FakeApi(_me(keeper: true, memberId: 9));
     await _pump(t, GroupsHome(api: api));
 
+    await t.ensureVisible(find.byKey(const Key('grp_waiting_open')));
+    await t.tap(find.byKey(const Key('grp_waiting_open')));
+    await t.pumpAndSettle();
     expect(find.byKey(const Key('grp_wait_hires')), findsOneWidget);
     await t.tap(find.byKey(const Key('grp_wait_hires')));
     await t.pumpAndSettle();

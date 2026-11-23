@@ -13,6 +13,7 @@ import '../models/group_models.dart';
 import '../models/group_records_models.dart';
 import '../services/groups_api.dart';
 import 'groups_text.dart';
+import 'widgets/group_tile_grid.dart';
 
 /// The group at a glance for its officers, built from the other services' dashboards:
 ///
@@ -142,72 +143,62 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
           const SizedBox(height: 10),
         ] else
           const SizedBox(height: 18),
-        // 4. the four numbers to watch
-        Row(children: <Widget>[
-          Expanded(
-            child: GroupBento(
-              key: const Key('grp_overview_members'),
+        // 4. the numbers to watch, in ONE card: a thin line between the tiles of a row, the glowing line between the rows
+        GroupTileGrid(
+          dividerKey: 'grp_figures_div',
+          tiles: <GroupGridTile>[
+            GroupGridTile(
+              tileKey: const Key('grp_overview_members'),
               icon: Icons.groups_rounded,
               color: ThemeConstants.invAccent,
               value: '${d.active}',
               label: d.applications > 0 ? '${sw ? 'Wanachama' : 'Members'} · ${d.applications} ${sw ? 'maombi' : 'applying'}' : (sw ? 'Wanachama hai' : 'Active members'),
               onTap: () => widget.onOpen('members'),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: m == null
-                ? GroupBento(icon: Icons.person_add_alt_1_rounded, color: ThemeConstants.successGreen, value: '${d.joinedInMonth}', label: sw ? 'Waliojiunga mwezi huu' : 'Joined this month')
-                : GroupBento(
-                    key: const Key('grp_overview_savings'),
-                    icon: Icons.savings_rounded,
-                    color: ThemeConstants.successGreen,
-                    value: short(m.savings),
-                    label: sw ? 'Akiba yote' : 'All savings',
-                    onTap: () => widget.onOpen('payments'),
-                  ),
-          ),
-        ]),
-        if (m != null) ...<Widget>[
-          const SizedBox(height: 10),
-          Row(children: <Widget>[
-            Expanded(
-              child: GroupBento(
-                key: const Key('grp_overview_loans'),
+            if (m == null)
+              GroupGridTile(icon: Icons.person_add_alt_1_rounded, color: ThemeConstants.successGreen, value: '${d.joinedInMonth}', label: sw ? 'Waliojiunga mwezi huu' : 'Joined this month')
+            else ...<GroupGridTile>[
+              GroupGridTile(
+                tileKey: const Key('grp_overview_savings'),
+                icon: Icons.savings_rounded,
+                color: ThemeConstants.successGreen,
+                value: short(m.savings),
+                label: sw ? 'Akiba yote' : 'All savings',
+                onTap: () => widget.onOpen('payments'),
+              ),
+              GroupGridTile(
+                tileKey: const Key('grp_overview_loans'),
                 icon: Icons.request_quote_rounded,
                 color: ThemeConstants.primaryOrange,
                 value: short(m.loanPrincipal + m.loanInterest),
                 label: '${sw ? 'Mikopo inadaiwa' : 'Loans owed'} · ${m.loansRunning}',
                 onTap: () => widget.onOpen('loans'),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: GroupBento(
-                key: const Key('grp_overview_overdue'),
+              GroupGridTile(
+                tileKey: const Key('grp_overview_overdue'),
                 icon: Icons.warning_amber_rounded,
                 color: (m.overdueAmount + m.loanArrears) > 0 ? ThemeConstants.errorRed : ThemeConstants.successGreen,
                 value: short(m.overdueAmount + m.loanArrears),
                 label: sw ? 'Imepita muda' : 'Overdue',
                 onTap: () => widget.onOpen('contributions'),
               ),
-            ),
-          ]),
-          // 5. the year, in four short tiles instead of four long rows
-          const SizedBox(height: 22),
+            ],
+          ],
+        ),
+        if (m != null) ...<Widget>[
+          // 5. the year, in four short tiles
+          const SizedBox(height: 14),
           _title(sw ? 'Mwaka huu' : 'This year so far'),
           const SizedBox(height: 8),
-          Row(children: <Widget>[
-            Expanded(child: GroupBento(icon: Icons.volunteer_activism_rounded, color: ThemeConstants.invAccent, value: short(m.welfarePaid), label: sw ? 'Msaada' : 'Welfare paid', onTap: () => widget.onOpen('welfare'))),
-            const SizedBox(width: 10),
-            Expanded(child: GroupBento(icon: Icons.savings_outlined, color: ThemeConstants.successGreen, value: short(m.dividends), label: sw ? 'Gawio' : 'Dividends')),
-          ]),
-          const SizedBox(height: 10),
-          Row(children: <Widget>[
-            Expanded(child: GroupBento(icon: Icons.chair_alt_rounded, color: ThemeConstants.primaryOrange, value: short(m.hireIncome), label: sw ? 'Mapato ya kukodisha' : 'Hire income', onTap: () => widget.onOpen('assets'))),
-            const SizedBox(width: 10),
-            Expanded(child: GroupBento(icon: Icons.receipt_long_rounded, color: ThemeConstants.errorRed, value: short(m.expenses), label: sw ? 'Matumizi' : 'Spending', onTap: () => widget.onOpen('payments'))),
-          ]),
+          GroupTileGrid(
+            dividerKey: 'grp_year_div',
+            tiles: <GroupGridTile>[
+              GroupGridTile(icon: Icons.volunteer_activism_rounded, color: ThemeConstants.invAccent, value: short(m.welfarePaid), label: sw ? 'Msaada' : 'Welfare paid', onTap: () => widget.onOpen('welfare')),
+              GroupGridTile(icon: Icons.savings_outlined, color: ThemeConstants.successGreen, value: short(m.dividends), label: sw ? 'Gawio' : 'Dividends'),
+              GroupGridTile(icon: Icons.chair_alt_rounded, color: ThemeConstants.primaryOrange, value: short(m.hireIncome), label: sw ? 'Mapato ya kukodisha' : 'Hire income', onTap: () => widget.onOpen('assets')),
+              GroupGridTile(icon: Icons.receipt_long_rounded, color: ThemeConstants.errorRed, value: short(m.expenses), label: sw ? 'Matumizi' : 'Spending', onTap: () => widget.onOpen('payments')),
+            ],
+          ),
         ],
         ..._desk(sw, d, hasMoney: m != null),
         if (widget.lead.isNotEmpty) ...<Widget>[const SizedBox(height: 22), ...widget.lead],

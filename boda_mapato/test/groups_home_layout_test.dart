@@ -82,35 +82,47 @@ void main() {
     await _pump(t, _me(rights, <String, int>{'payments_to_verify': 3, 'loans_to_recommend': 0, 'applications': 2}));
 
     final double who = _top(t, find.byKey(const Key('grp_me_name')));
-    final double waiting = _top(t, find.text('Waiting for you'));
+    final double waiting = _top(t, find.byKey(const Key('grp_waiting_open')));
     final double account = _top(t, find.byKey(const Key('grp_my_account')));
     expect(find.byKey(const Key('grp_qa_payment')), findsNothing, reason: 'the shortcut buttons are gone');
     final double headline = _top(t, find.byKey(const Key('grp_overview_joined')));
     final double chart = _top(t, find.byKey(const Key('grp_overview_chart')));
-    final double mine = _top(t, find.text('My payments'));
-    expect(<double>[account, headline, who, waiting, chart, mine], orderedEquals(<double>[account, headline, who, waiting, chart, mine]..sort()), reason: 'the account, headline, who I am, waiting, then the trend, then my money');
+    expect(<double>[account, headline, who, waiting, chart], orderedEquals(<double>[account, headline, who, waiting, chart]..sort()), reason: 'the account, headline, who I am, the buttons (waiting first), then the trend');
+    // What waits is not listed on Home any more: a button with the count leads to it.
+    expect(find.byKey(const Key('grp_wait_payments')), findsNothing);
+    expect(find.text('5'), findsWidgets, reason: 'the total on the button: 3 payments and 2 applications');
+    await t.ensureVisible(find.byKey(const Key('grp_waiting_open')));
+    await t.tap(find.byKey(const Key('grp_waiting_open')));
+    await t.pumpAndSettle();
     expect(find.byKey(const Key('grp_wait_payments')), findsOneWidget);
     expect(find.byKey(const Key('grp_wait_applications')), findsOneWidget);
-    expect(find.byType(GlowSections), findsOneWidget, reason: 'who I am, what waits, the trend, news and my money are ONE joined card');
+    await t.pageBack();
+    await t.pumpAndSettle();
+    expect(find.byType(GlowSections), findsOneWidget, reason: 'who I am, the buttons, the trend and the news are ONE joined card');
     expect(find.byKey(const Key('grp_overview_chart')), findsOneWidget);
   });
 
-  testWidgets('a count of zero is not shown, and when nothing waits the card says so', (final WidgetTester t) async {
+  testWidgets('a count of zero is not shown, and when nothing waits the screen says so', (final WidgetTester t) async {
     await _pump(t, _me(rights, <String, int>{'payments_to_verify': 0, 'loans_to_recommend': 0}));
 
+    await t.ensureVisible(find.byKey(const Key('grp_waiting_open')));
+    await t.tap(find.byKey(const Key('grp_waiting_open')));
+    await t.pumpAndSettle();
     expect(find.byKey(const Key('grp_wait_payments')), findsNothing);
     expect(find.text('Nothing is waiting for you. You are all caught up.'), findsOneWidget);
   });
 
-  testWidgets('more than five things waiting: five first, the rest after Show all', (final WidgetTester t) async {
+  testWidgets('many things waiting: one button on Home carrying the total, and every line on its own screen', (final WidgetTester t) async {
     await _pump(t, _me(rights, <String, int>{'payments_to_verify': 3, 'applications': 2, 'members_overdue': 4, 'hires_to_decide': 1, 'dividends_to_approve': 1, 'meetings_to_record': 1, 'expenses_to_approve': 2}));
 
-    expect(find.byKey(const Key('grp_wait_more')), findsOneWidget);
-    expect(find.byKey(const Key('grp_wait_applications')), findsNothing, reason: 'the last line waits for Show all');
-    await t.ensureVisible(find.byKey(const Key('grp_wait_more')));
-    await t.tap(find.byKey(const Key('grp_wait_more')));
+    expect(find.text('14'), findsWidgets, reason: 'the total on the button');
+    expect(find.byKey(const Key('grp_wait_applications')), findsNothing, reason: 'nothing is listed on Home');
+    await t.ensureVisible(find.byKey(const Key('grp_waiting_open')));
+    await t.tap(find.byKey(const Key('grp_waiting_open')));
     await t.pumpAndSettle();
     expect(find.byKey(const Key('grp_wait_applications')), findsOneWidget);
+    expect(find.byKey(const Key('grp_wait_overdue')), findsOneWidget);
+    expect(find.byKey(const Key('grp_wait_more')), findsNothing, reason: 'no Show all: the screen has room for all of them');
   });
 
   testWidgets('a narrow phone shows the same layout without anything overflowing', (final WidgetTester t) async {

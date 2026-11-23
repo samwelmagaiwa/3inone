@@ -20,6 +20,7 @@ import 'records_screens.dart';
 import 'statement_screen.dart';
 import 'welfare_screen.dart';
 import 'widgets/account_card.dart';
+import 'widgets/group_tile_grid.dart';
 import 'widgets/groups_ui.dart';
 
 /// Home: the person's own membership and money, and -- for officers -- what waits for them. Everyone has it; a member sees nothing of anyone else.
@@ -87,6 +88,194 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
 
   Future<void> _myDividends() => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MyDividendsScreen(api: widget.api)));
 
+  /// What waits for this person, as the detail screen shows it: [go] closes that screen, then does what the line opens.
+  List<Widget> _waitingLinesFor(final GroupMe me, final bool sw, final void Function(VoidCallback) go) => <Widget>[
+                if ((me.waiting['votes_to_cast'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_votes'),
+                    icon: Icons.how_to_vote_rounded,
+                    label: sw ? 'Kura za kupiga' : 'Votings waiting for your vote',
+                    count: me.waiting['votes_to_cast']!,
+                    onTap: () => go(() => widget.onOpen('voting')),
+                  ),
+                if (me.waiting.containsKey('payments_to_verify'))
+                  _WaitLine(
+                    key: const Key('grp_wait_payments'),
+                    icon: Icons.fact_check_rounded,
+                    label: sw ? 'Malipo ya kuthibitisha' : 'Payments to verify',
+                    count: me.waiting['payments_to_verify']!,
+                    onTap: () => go(() => widget.onOpen('payments')),
+                  ),
+                if (me.waiting.containsKey('guarantees'))
+                  _WaitLine(
+                    key: const Key('grp_wait_guarantees'),
+                    icon: Icons.handshake_rounded,
+                    label: sw ? 'Umeombwa kudhamini mkopo' : 'Asked to guarantee a loan',
+                    count: me.waiting['guarantees']!,
+                    onTap: () => go(_myLoans),
+                  ),
+                if (me.waiting.containsKey('loans_to_recommend'))
+                  _WaitLine(
+                    key: const Key('grp_wait_recommend'),
+                    icon: Icons.thumb_up_alt_outlined,
+                    label: sw ? 'Mikopo ya kupendekeza' : 'Loans to recommend',
+                    count: me.waiting['loans_to_recommend']!,
+                    onTap: () => go(() => widget.onOpen('loans')),
+                  ),
+                if (me.waiting.containsKey('loans_to_approve'))
+                  _WaitLine(
+                    key: const Key('grp_wait_approve'),
+                    icon: Icons.verified_rounded,
+                    label: sw ? 'Mikopo ya kuidhinisha' : 'Loans to approve',
+                    count: me.waiting['loans_to_approve']!,
+                    onTap: () => go(() => widget.onOpen('loans')),
+                  ),
+                if (me.waiting.containsKey('loans_to_disburse'))
+                  _WaitLine(
+                    key: const Key('grp_wait_disburse'),
+                    icon: Icons.payments_rounded,
+                    label: sw ? 'Mikopo ya kutoa' : 'Loans to pay out',
+                    count: me.waiting['loans_to_disburse']!,
+                    onTap: () => go(() => widget.onOpen('loans')),
+                  ),
+                if (me.waiting.containsKey('benefits_to_decide'))
+                  _WaitLine(
+                    key: const Key('grp_wait_benefits'),
+                    icon: Icons.volunteer_activism_rounded,
+                    label: sw ? 'Maombi ya msaada' : 'Welfare requests',
+                    count: me.waiting['benefits_to_decide']!,
+                    onTap: () => go(() => widget.onOpen('welfare')),
+                  ),
+                if ((me.waiting['minutes_to_approve'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_minutes'),
+                    icon: Icons.fact_check_rounded,
+                    label: sw ? 'Muhtasari wa kuidhinisha' : 'Minutes to approve',
+                    count: me.waiting['minutes_to_approve']!,
+                    onTap: () => go(() => widget.onOpen('community')),
+                  ),
+                if ((me.waiting['actions_overdue'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_actions_overdue'),
+                    icon: Icons.assignment_late_rounded,
+                    label: sw ? 'Kazi za vikao zilizochelewa' : 'Meeting actions overdue',
+                    count: me.waiting['actions_overdue']!,
+                    onTap: () => go(() => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MeetingActionsScreen(api: widget.api, all: true)))),
+                  ),
+                if ((me.waiting['my_actions'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_my_actions'),
+                    icon: Icons.assignment_turned_in_rounded,
+                    label: sw ? 'Kazi zangu za vikao' : 'My meeting actions',
+                    count: me.waiting['my_actions']!,
+                    onTap: () => go(() => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MeetingActionsScreen(api: widget.api, all: false)))),
+                  ),
+                if ((me.waiting['expenses_to_approve'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_expenses_approve'),
+                    icon: Icons.receipt_long_rounded,
+                    label: sw ? 'Matumizi ya kuidhinisha' : 'Expenses to approve',
+                    count: me.waiting['expenses_to_approve']!,
+                    onTap: () => go(() => widget.onOpen('expenses')),
+                  ),
+                if ((me.waiting['expenses_to_pay'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_expenses_pay'),
+                    icon: Icons.payments_rounded,
+                    label: sw ? 'Matumizi ya kulipa' : 'Expenses to pay out',
+                    count: me.waiting['expenses_to_pay']!,
+                    onTap: () => go(() => widget.onOpen('expenses')),
+                  ),
+                if ((me.waiting['projects_to_review'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_projects_review'),
+                    icon: Icons.business_center_rounded,
+                    label: sw ? 'Miradi ya kupendekeza' : 'Projects to review',
+                    count: me.waiting['projects_to_review']!,
+                    onTap: () => go(() => widget.onOpen('projects')),
+                  ),
+                if ((me.waiting['projects_to_approve'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_projects_approve'),
+                    icon: Icons.business_center_rounded,
+                    label: sw ? 'Miradi ya kuidhinisha' : 'Projects to approve',
+                    count: me.waiting['projects_to_approve']!,
+                    onTap: () => go(() => widget.onOpen('projects')),
+                  ),
+                if ((me.waiting['hires_to_decide'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_hires'),
+                    icon: Icons.event_available_rounded,
+                    label: sw ? 'Maombi ya kukodi' : 'Hire requests',
+                    count: me.waiting['hires_to_decide']!,
+                    onTap: () => go(() => widget.onOpen('assets')),
+                  ),
+                if (me.waiting.containsKey('hires_overdue'))
+                  _WaitLine(
+                    key: const Key('grp_wait_hires_late'),
+                    icon: Icons.timer_off_outlined,
+                    label: sw ? 'Vitu vilivyochelewa kurudi' : 'Hired things late back',
+                    count: me.waiting['hires_overdue']!,
+                    onTap: () => go(() => widget.onOpen('assets')),
+                  ),
+                if ((me.waiting['hire_charges'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_hire_charges'),
+                    icon: Icons.gavel_rounded,
+                    label: sw ? 'Gharama za uharibifu za kuamua' : 'Damage charges to decide',
+                    count: me.waiting['hire_charges']!,
+                    onTap: () => go(() => widget.onOpen('assets')),
+                  ),
+                if ((me.waiting['dividends_to_approve'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_dividends'),
+                    icon: Icons.savings_rounded,
+                    label: sw ? 'Gawio la kuidhinisha' : 'Dividends to approve',
+                    count: me.waiting['dividends_to_approve']!,
+                    onTap: () => go(() => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => DividendsScreen(api: widget.api, me: widget.me)))),
+                  ),
+                if ((me.waiting['meetings_to_record'] ?? 0) > 0)
+                  _WaitLine(
+                    key: const Key('grp_wait_meetings'),
+                    icon: Icons.fact_check_rounded,
+                    label: sw ? 'Vikao vya kurekodi' : 'Meetings to record',
+                    count: me.waiting['meetings_to_record']!,
+                    onTap: () => go(() => widget.onOpen('community')),
+                  ),
+                if (me.waiting.containsKey('members_overdue'))
+                  _WaitLine(
+                    key: const Key('grp_wait_overdue'),
+                    icon: Icons.warning_amber_rounded,
+                    label: sw ? 'Wanachama wenye michango iliyopita muda' : 'Members with overdue contributions',
+                    count: me.waiting['members_overdue']!,
+                    onTap: () => go(() => widget.onOpen('contributions')),
+                  ),
+                if (me.waiting.containsKey('applications'))
+                  _WaitLine(
+                    key: const Key('grp_wait_applications'),
+                    icon: Icons.how_to_reg_rounded,
+                    label: sw ? 'Maombi ya uanachama' : 'Membership applications',
+                    count: me.waiting['applications']!,
+                    onTap: () => go(() => widget.onOpen('members')),
+                  ),
+      ];
+
+  Future<void> _openWaiting() async {
+    final GroupMe me = widget.me;
+    final bool sw = LocalizationService.instance.isSwahili;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(builder: (_) => WaitingScreen(sw: sw, linesFor: (final void Function(VoidCallback) go) => _waitingLinesFor(me, sw, go))),
+    );
+    await _refresh();
+  }
+
+  Future<void> _openMyMoney() async {
+    await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MyMoneyScreen(api: widget.api, me: widget.me, onChanged: _refresh)));
+  }
+
+  Future<void> _openMyPayments() => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MyPaymentsScreen(api: widget.api)));
+
   Future<void> _statement() => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => GroupStatementScreen(api: widget.api)));
 
   @override
@@ -96,6 +285,7 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
     final GroupMember? m = me.member;
 
     final bool officer = me.can('view_finance') || me.can('view_members');
+    final int waitingCount = me.waiting.values.fold<int>(0, (final int a, final int b) => a + (b > 0 ? b : 0));
     final List<Widget> personal = <Widget>[
           // Who I am in the group (an administrator with no member record has nothing to show).
           if (m != null)
@@ -135,182 +325,29 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                 Text(m.statusReason!, style: const TextStyle(color: Colors.white70, fontSize: 12)),
             ],
           ),
-          if (me.waiting.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 12),
-            _WaitingCard(
-              sw: sw,
-              lines: <Widget>[
-                if ((me.waiting['votes_to_cast'] ?? 0) > 0)
-                  _WaitLine(
-                    key: const Key('grp_wait_votes'),
-                    icon: Icons.how_to_vote_rounded,
-                    label: sw ? 'Kura za kupiga' : 'Votings waiting for your vote',
-                    count: me.waiting['votes_to_cast']!,
-                    onTap: () => widget.onOpen('voting'),
-                  ),
-                if (me.waiting.containsKey('payments_to_verify'))
-                  _WaitLine(
-                    key: const Key('grp_wait_payments'),
-                    icon: Icons.fact_check_rounded,
-                    label: sw ? 'Malipo ya kuthibitisha' : 'Payments to verify',
-                    count: me.waiting['payments_to_verify']!,
-                    onTap: () => widget.onOpen('payments'),
-                  ),
-                if (me.waiting.containsKey('guarantees'))
-                  _WaitLine(
-                    key: const Key('grp_wait_guarantees'),
-                    icon: Icons.handshake_rounded,
-                    label: sw ? 'Umeombwa kudhamini mkopo' : 'Asked to guarantee a loan',
-                    count: me.waiting['guarantees']!,
-                    onTap: _myLoans,
-                  ),
-                if (me.waiting.containsKey('loans_to_recommend'))
-                  _WaitLine(
-                    key: const Key('grp_wait_recommend'),
-                    icon: Icons.thumb_up_alt_outlined,
-                    label: sw ? 'Mikopo ya kupendekeza' : 'Loans to recommend',
-                    count: me.waiting['loans_to_recommend']!,
-                    onTap: () => widget.onOpen('loans'),
-                  ),
-                if (me.waiting.containsKey('loans_to_approve'))
-                  _WaitLine(
-                    key: const Key('grp_wait_approve'),
-                    icon: Icons.verified_rounded,
-                    label: sw ? 'Mikopo ya kuidhinisha' : 'Loans to approve',
-                    count: me.waiting['loans_to_approve']!,
-                    onTap: () => widget.onOpen('loans'),
-                  ),
-                if (me.waiting.containsKey('loans_to_disburse'))
-                  _WaitLine(
-                    key: const Key('grp_wait_disburse'),
-                    icon: Icons.payments_rounded,
-                    label: sw ? 'Mikopo ya kutoa' : 'Loans to pay out',
-                    count: me.waiting['loans_to_disburse']!,
-                    onTap: () => widget.onOpen('loans'),
-                  ),
-                if (me.waiting.containsKey('benefits_to_decide'))
-                  _WaitLine(
-                    key: const Key('grp_wait_benefits'),
-                    icon: Icons.volunteer_activism_rounded,
-                    label: sw ? 'Maombi ya msaada' : 'Welfare requests',
-                    count: me.waiting['benefits_to_decide']!,
-                    onTap: () => widget.onOpen('welfare'),
-                  ),
-                if ((me.waiting['minutes_to_approve'] ?? 0) > 0)
-                  _WaitLine(
-                    key: const Key('grp_wait_minutes'),
-                    icon: Icons.fact_check_rounded,
-                    label: sw ? 'Muhtasari wa kuidhinisha' : 'Minutes to approve',
-                    count: me.waiting['minutes_to_approve']!,
-                    onTap: () => widget.onOpen('community'),
-                  ),
-                if ((me.waiting['actions_overdue'] ?? 0) > 0)
-                  _WaitLine(
-                    key: const Key('grp_wait_actions_overdue'),
-                    icon: Icons.assignment_late_rounded,
-                    label: sw ? 'Kazi za vikao zilizochelewa' : 'Meeting actions overdue',
-                    count: me.waiting['actions_overdue']!,
-                    onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MeetingActionsScreen(api: widget.api, all: true))),
-                  ),
-                if ((me.waiting['my_actions'] ?? 0) > 0)
-                  _WaitLine(
-                    key: const Key('grp_wait_my_actions'),
-                    icon: Icons.assignment_turned_in_rounded,
-                    label: sw ? 'Kazi zangu za vikao' : 'My meeting actions',
-                    count: me.waiting['my_actions']!,
-                    onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MeetingActionsScreen(api: widget.api, all: false))),
-                  ),
-                if ((me.waiting['expenses_to_approve'] ?? 0) > 0)
-                  _WaitLine(
-                    key: const Key('grp_wait_expenses_approve'),
-                    icon: Icons.receipt_long_rounded,
-                    label: sw ? 'Matumizi ya kuidhinisha' : 'Expenses to approve',
-                    count: me.waiting['expenses_to_approve']!,
-                    onTap: () => widget.onOpen('expenses'),
-                  ),
-                if ((me.waiting['expenses_to_pay'] ?? 0) > 0)
-                  _WaitLine(
-                    key: const Key('grp_wait_expenses_pay'),
-                    icon: Icons.payments_rounded,
-                    label: sw ? 'Matumizi ya kulipa' : 'Expenses to pay out',
-                    count: me.waiting['expenses_to_pay']!,
-                    onTap: () => widget.onOpen('expenses'),
-                  ),
-                if ((me.waiting['projects_to_review'] ?? 0) > 0)
-                  _WaitLine(
-                    key: const Key('grp_wait_projects_review'),
-                    icon: Icons.business_center_rounded,
-                    label: sw ? 'Miradi ya kupendekeza' : 'Projects to review',
-                    count: me.waiting['projects_to_review']!,
-                    onTap: () => widget.onOpen('projects'),
-                  ),
-                if ((me.waiting['projects_to_approve'] ?? 0) > 0)
-                  _WaitLine(
-                    key: const Key('grp_wait_projects_approve'),
-                    icon: Icons.business_center_rounded,
-                    label: sw ? 'Miradi ya kuidhinisha' : 'Projects to approve',
-                    count: me.waiting['projects_to_approve']!,
-                    onTap: () => widget.onOpen('projects'),
-                  ),
-                if ((me.waiting['hires_to_decide'] ?? 0) > 0)
-                  _WaitLine(
-                    key: const Key('grp_wait_hires'),
-                    icon: Icons.event_available_rounded,
-                    label: sw ? 'Maombi ya kukodi' : 'Hire requests',
-                    count: me.waiting['hires_to_decide']!,
-                    onTap: () => widget.onOpen('assets'),
-                  ),
-                if (me.waiting.containsKey('hires_overdue'))
-                  _WaitLine(
-                    key: const Key('grp_wait_hires_late'),
-                    icon: Icons.timer_off_outlined,
-                    label: sw ? 'Vitu vilivyochelewa kurudi' : 'Hired things late back',
-                    count: me.waiting['hires_overdue']!,
-                    onTap: () => widget.onOpen('assets'),
-                  ),
-                if ((me.waiting['hire_charges'] ?? 0) > 0)
-                  _WaitLine(
-                    key: const Key('grp_wait_hire_charges'),
-                    icon: Icons.gavel_rounded,
-                    label: sw ? 'Gharama za uharibifu za kuamua' : 'Damage charges to decide',
-                    count: me.waiting['hire_charges']!,
-                    onTap: () => widget.onOpen('assets'),
-                  ),
-                if ((me.waiting['dividends_to_approve'] ?? 0) > 0)
-                  _WaitLine(
-                    key: const Key('grp_wait_dividends'),
-                    icon: Icons.savings_rounded,
-                    label: sw ? 'Gawio la kuidhinisha' : 'Dividends to approve',
-                    count: me.waiting['dividends_to_approve']!,
-                    onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => DividendsScreen(api: widget.api, me: widget.me))),
-                  ),
-                if ((me.waiting['meetings_to_record'] ?? 0) > 0)
-                  _WaitLine(
-                    key: const Key('grp_wait_meetings'),
-                    icon: Icons.fact_check_rounded,
-                    label: sw ? 'Vikao vya kurekodi' : 'Meetings to record',
-                    count: me.waiting['meetings_to_record']!,
-                    onTap: () => widget.onOpen('community'),
-                  ),
-                if (me.waiting.containsKey('members_overdue'))
-                  _WaitLine(
-                    key: const Key('grp_wait_overdue'),
-                    icon: Icons.warning_amber_rounded,
-                    label: sw ? 'Wanachama wenye michango iliyopita muda' : 'Members with overdue contributions',
-                    count: me.waiting['members_overdue']!,
-                    onTap: () => widget.onOpen('contributions'),
-                  ),
-                if (me.waiting.containsKey('applications'))
-                  _WaitLine(
-                    key: const Key('grp_wait_applications'),
-                    icon: Icons.how_to_reg_rounded,
-                    label: sw ? 'Maombi ya uanachama' : 'Membership applications',
-                    count: me.waiting['applications']!,
-                    onTap: () => widget.onOpen('members'),
-                  ),
+          if (m != null)
+            GroupTileGrid(
+              dividerKey: 'grp_menu_div',
+              columns: 3,
+              tiles: <GroupGridTile>[
+                GroupGridTile(tileKey: const Key('grp_waiting_open'), icon: Icons.notifications_active_rounded, color: ThemeConstants.warningAmber, label: sw ? 'Yanayokusubiri' : 'Waiting for you', badge: waitingCount, onTap: _openWaiting),
+                GroupGridTile(tileKey: const Key('grp_my_money'), icon: Icons.account_balance_wallet_rounded, color: ThemeConstants.successGreen, label: sw ? 'Malipo yangu' : 'My payments', badge: me.owing.length, badgeColor: ThemeConstants.errorRed, onTap: _openMyMoney),
+                GroupGridTile(tileKey: const Key('grp_my_payments'), icon: Icons.history_rounded, color: ThemeConstants.invAccent, label: sw ? 'Malipo yangu ya hivi karibuni' : 'My latest payments', onTap: _openMyPayments),
+                GroupGridTile(tileKey: const Key('grp_my_loans'), icon: Icons.request_quote_rounded, color: ThemeConstants.errorRed, label: sw ? 'Mikopo yangu' : 'My loans', onTap: _myLoans),
+                GroupGridTile(tileKey: const Key('grp_my_dividends'), icon: Icons.savings_rounded, color: ThemeConstants.successGreen, label: sw ? 'Gawio langu' : 'My dividends', onTap: _myDividends),
+                GroupGridTile(tileKey: const Key('grp_my_welfare'), icon: Icons.volunteer_activism_rounded, color: ThemeConstants.invAccent, label: sw ? 'Msaada (ustawi)' : 'Welfare', onTap: _myWelfare),
+                GroupGridTile(tileKey: const Key('grp_invite'), icon: Icons.person_add_alt_1_rounded, color: ThemeConstants.invAccent, label: sw ? 'Alika mwanachama' : 'Invite a member', onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => InviteScreen(api: widget.api, me: widget.me)))),
+                GroupGridTile(tileKey: const Key('grp_my_branch'), icon: Icons.account_tree_rounded, color: ThemeConstants.primaryOrange, label: sw ? 'Niliowaleta' : 'Whom I brought in', onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => ReferralTreeScreen(api: widget.api, whole: false)))),
+                GroupGridTile(tileKey: const Key('grp_my_hires'), icon: Icons.chair_alt_rounded, color: ThemeConstants.primaryOrange, label: sw ? 'Kukodi mali ya kikundi' : 'Hire from the group', onTap: _myHires),
               ],
+              footer: FilledButton.icon(
+                key: const Key('grp_pay_open'),
+                style: FilledButton.styleFrom(backgroundColor: ThemeConstants.primaryOrange, minimumSize: const Size.fromHeight(46)),
+                onPressed: _pay,
+                icon: const Icon(Icons.payments_rounded),
+                label: Text(sw ? 'Lipa' : 'Pay'),
+              ),
             ),
-          ],
     ];
 
     // What follows the figures' trend: next meeting and notices, then the person's own money and payments.
@@ -342,131 +379,6 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
               ],
             ),
           ],
-          if (m != null) ...<Widget>[
-            GlowCard(
-              title: sw ? 'Malipo yangu' : 'My payments',
-              dividerKey: 'grp_mypay_div',
-              children: <Widget>[
-                _DueLine(label: categoryLabel(sw: sw, category: 'joining_fee'), paid: me.balances?['joining_fee'] ?? 0, due: me.joiningFee, sw: sw),
-                _DueLine(label: categoryLabel(sw: sw, category: 'shares'), paid: me.balances?['shares'] ?? 0, due: me.shareAmount, sw: sw),
-                GroupDetailRow(categoryLabel(sw: sw, category: 'savings'), tsh(me.balances?['savings'] ?? 0), valueColor: ThemeConstants.invAccent),
-                if (me.owing.isNotEmpty)
-                  GroupDetailRow(
-                    sw ? 'Deni la michango' : 'Contributions owed',
-                    tsh(me.owing.fold<double>(0, (final double a, final GroupObligation o) => a + o.remaining)),
-                    valueColor: me.owing.any((final GroupObligation o) => o.state == 'overdue') ? ThemeConstants.errorText : ThemeConstants.warningAmber,
-                  ),
-                if (me.pending > 0)
-                  GroupDetailRow(sw ? 'Yanasubiri uthibitisho' : 'Waiting for verification', '${me.pending}', valueColor: ThemeConstants.warningAmber),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Row(children: <Widget>[
-                    Expanded(
-                      child: FilledButton.icon(
-                        key: const Key('grp_pay_open'),
-                        style: FilledButton.styleFrom(backgroundColor: ThemeConstants.primaryOrange),
-                        onPressed: _pay,
-                        icon: const Icon(Icons.payments_rounded),
-                        label: Text(sw ? 'Lipa' : 'Pay'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        key: const Key('grp_statement_open'),
-                        style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white38)),
-                        onPressed: _statement,
-                        icon: const Icon(Icons.receipt_long_rounded),
-                        label: Text(sw ? 'Taarifa' : 'Statement'),
-                      ),
-                    ),
-                  ]),
-                ),
-              ],
-            ),
-            if (me.owing.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 12),
-              GlowCard(
-                title: sw ? 'Ninachodaiwa' : 'What I owe',
-                dividerKey: 'grp_owe_div',
-                children: <Widget>[
-                  for (final GroupObligation o in me.owing) ObligationLine(o: o, sw: sw, onTap: () => _pay(o)),
-                  TextButton.icon(
-                    key: const Key('grp_promise_open'),
-                    onPressed: _promise,
-                    icon: const Icon(Icons.handshake_outlined, color: ThemeConstants.primaryOrange),
-                    label: Text(sw ? 'Weka ahadi ya kulipa' : 'Promise to pay', style: const TextStyle(color: ThemeConstants.primaryOrange)),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 12),
-            GlowListCard(
-              dividerKey: 'grp_help_div',
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              children: <Widget>[
-                ListTile(
-                  key: const Key('grp_my_loans'),
-                  leading: const Icon(Icons.request_quote_rounded, color: ThemeConstants.invAccent),
-                  title: Text(sw ? 'Mikopo yangu' : 'My loans', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-                  onTap: _myLoans,
-                ),
-                ListTile(
-                  key: const Key('grp_invite'),
-                  leading: const Icon(Icons.person_add_alt_1_rounded, color: ThemeConstants.invAccent),
-                  title: Text(sw ? 'Alika mwanachama' : 'Invite a member', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-                  onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => InviteScreen(api: widget.api, me: widget.me))),
-                ),
-                ListTile(
-                  key: const Key('grp_my_branch'),
-                  leading: const Icon(Icons.account_tree_rounded, color: ThemeConstants.invAccent),
-                  title: Text(sw ? 'Niliowaleta' : 'Whom I brought in', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-                  onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => ReferralTreeScreen(api: widget.api, whole: false))),
-                ),
-                ListTile(
-                  key: const Key('grp_my_dividends'),
-                  leading: const Icon(Icons.savings_rounded, color: ThemeConstants.invAccent),
-                  title: Text(sw ? 'Gawio langu' : 'My dividends', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-                  onTap: _myDividends,
-                ),
-                ListTile(
-                  key: const Key('grp_my_hires'),
-                  leading: const Icon(Icons.chair_alt_rounded, color: ThemeConstants.invAccent),
-                  title: Text(sw ? 'Kukodi mali ya kikundi' : 'Hire from the group', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-                  onTap: _myHires,
-                ),
-                ListTile(
-                  key: const Key('grp_my_welfare'),
-                  leading: const Icon(Icons.volunteer_activism_rounded, color: ThemeConstants.invAccent),
-                  title: Text(sw ? 'Msaada (ustawi)' : 'Welfare', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
-                  onTap: _myWelfare,
-                ),
-              ],
-            ),
-            if (me.promises.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 12),
-              GlowCard(
-                title: sw ? 'Ahadi zangu' : 'My promises',
-                children: <Widget>[for (final GroupPromise p in me.promises) PromiseLine(p: p, sw: sw)],
-              ),
-            ],
-          ],
-          if (m != null)
-            GlowCard(
-              title: sw ? 'Malipo yangu ya hivi karibuni' : 'My latest payments',
-              dividerKey: 'grp_mine_div',
-              children: <Widget>[
-                if (_error != null) GroupEmpty(_error!),
-                if (_mine.isEmpty && _error == null) GroupEmpty(sw ? 'Bado hujatuma malipo.' : 'No payments sent yet.'),
-                for (final GroupTransaction t in _mine.take(20)) GroupTransactionTile(t: t, sw: sw),
-              ],
-            ),
     ];
     // The member's own figures in tiles (not a card), shown before the joined sections.
     final List<Widget> lead = <Widget>[if (m != null) _MyGlance(me: me, sw: sw, onStatement: _statement)];
@@ -508,35 +420,28 @@ class _MyGlance extends StatelessWidget {
     final bool late = me.owing.any((final GroupObligation o) => o.state == 'overdue');
     final double shares = me.balances?['shares'] ?? 0;
     final double savings = me.balances?['savings'] ?? 0;
-    return Column(key: const Key('grp_my_glance'), crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
-      Row(children: <Widget>[
-        Expanded(child: GroupBento(key: const Key('grp_my_savings'), icon: Icons.savings_rounded, color: ThemeConstants.successGreen, value: GroupOverviewDashboardState.short(me.balances?['savings'] ?? 0), label: sw ? 'Akiba yangu' : 'My savings')),
-        const SizedBox(width: 10),
-        Expanded(
-          child: GroupBento(
-            key: const Key('grp_my_shares'),
-            icon: Icons.pie_chart_rounded,
-            color: ThemeConstants.invAccent,
-            value: me.shareAmount > 0 ? '${GroupOverviewDashboardState.short(shares)} / ${GroupOverviewDashboardState.short(me.shareAmount)}' : GroupOverviewDashboardState.short(shares),
-            label: sw ? 'Hisa zangu' : 'My shares',
-          ),
+    return GroupTileGrid(
+      key: const Key('grp_my_glance'),
+      dividerKey: 'grp_glance_div',
+      tiles: <GroupGridTile>[
+        GroupGridTile(tileKey: const Key('grp_my_savings'), icon: Icons.savings_rounded, color: ThemeConstants.successGreen, value: GroupOverviewDashboardState.short(savings), label: sw ? 'Akiba yangu' : 'My savings'),
+        GroupGridTile(
+          tileKey: const Key('grp_my_shares'),
+          icon: Icons.pie_chart_rounded,
+          color: ThemeConstants.invAccent,
+          value: me.shareAmount > 0 ? '${GroupOverviewDashboardState.short(shares)} / ${GroupOverviewDashboardState.short(me.shareAmount)}' : GroupOverviewDashboardState.short(shares),
+          label: sw ? 'Hisa zangu' : 'My shares',
         ),
-      ]),
-      const SizedBox(height: 10),
-      Row(children: <Widget>[
-        Expanded(
-          child: GroupBento(
-            key: const Key('grp_my_owed'),
-            icon: owed > 0 ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded,
-            color: owed <= 0 ? ThemeConstants.successGreen : (late ? ThemeConstants.errorRed : ThemeConstants.warningAmber),
-            value: GroupOverviewDashboardState.short(owed),
-            label: sw ? 'Deni langu' : 'Due from me',
-          ),
+        GroupGridTile(
+          tileKey: const Key('grp_my_owed'),
+          icon: owed > 0 ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded,
+          color: owed <= 0 ? ThemeConstants.successGreen : (late ? ThemeConstants.errorRed : ThemeConstants.warningAmber),
+          value: GroupOverviewDashboardState.short(owed),
+          label: sw ? 'Deni langu' : 'Due from me',
         ),
-        const SizedBox(width: 10),
-        Expanded(child: GroupBento(key: const Key('grp_my_pending'), icon: Icons.hourglass_bottom_rounded, color: ThemeConstants.warningAmber, value: '${me.pending}', label: sw ? 'Yanasubiri uthibitisho' : 'Waiting for verification')),
-      ]),
-    ]);
+        GroupGridTile(tileKey: const Key('grp_my_pending'), icon: Icons.hourglass_bottom_rounded, color: ThemeConstants.warningAmber, value: '${me.pending}', label: sw ? 'Yanasubiri uthibitisho' : 'Waiting for verification'),
+      ],
+    );
   }
 }
 
@@ -629,50 +534,217 @@ class GroupTransactionTile extends StatelessWidget {
 
 /// What waits for this person, most urgent first: only what has something in it, five lines until asked for the rest. When nothing waits it
 /// says so, calmly, so the person knows the screen is not simply empty.
-class _WaitingCard extends StatefulWidget with GlowSectionWidget {
-  const _WaitingCard({required this.sw, required this.lines});
+
+/// Everything that waits for this person, one line each (the count of each in gold). Tapping a line closes this screen and opens what it
+/// is about; the Home screen shows only the button that leads here.
+class WaitingScreen extends StatelessWidget {
+  const WaitingScreen({required this.sw, required this.linesFor, super.key});
 
   final bool sw;
-  final List<Widget> lines;
 
-  @override
-  State<_WaitingCard> createState() => _WaitingCardState();
-}
-
-class _WaitingCardState extends State<_WaitingCard> {
-  static const int _shown = 5;
-  bool _all = false;
+  /// The lines, given the function that closes this screen and then does what a line opens.
+  final List<Widget> Function(void Function(VoidCallback go) go) linesFor;
 
   @override
   Widget build(final BuildContext context) {
-    final bool sw = widget.sw;
-    final List<Widget> live = widget.lines.where((final Widget w) => w is! _WaitLine || w.count > 0).toList();
-    if (live.isEmpty) {
-      return GlowCard(
-        title: sw ? 'Yanayokusubiri' : 'Waiting for you',
-        dividerKey: 'grp_wait_div',
-        children: <Widget>[
-          Row(children: <Widget>[
-            const Icon(Icons.check_circle_rounded, color: ThemeConstants.successGreen, size: 20),
-            const SizedBox(width: 10),
-            Expanded(child: Text(sw ? 'Hakuna kinachokusubiri. Kila kitu kiko sawa.' : 'Nothing is waiting for you. You are all caught up.', style: const TextStyle(color: Colors.white70))),
-          ]),
-        ],
-      );
+    final List<Widget> live = linesFor((final VoidCallback f) {
+      Navigator.pop(context);
+      f();
+    }).where((final Widget w) => w is! _WaitLine || w.count > 0).toList();
+    return Scaffold(
+      backgroundColor: ThemeConstants.primaryBlue,
+      appBar: ThemeConstants.buildAppBar(sw ? 'Yanayokusubiri' : 'Waiting for you', flat: true),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          children: <Widget>[
+            GlowCard(
+              title: sw ? 'Yanayokusubiri' : 'Waiting for you',
+              dividerKey: 'grp_wait_div',
+              children: <Widget>[
+                if (live.isEmpty)
+                  Row(key: const Key('grp_wait_none'), children: <Widget>[
+                    const Icon(Icons.check_circle_rounded, color: ThemeConstants.successGreen, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(sw ? 'Hakuna kinachokusubiri. Kila kitu kiko sawa.' : 'Nothing is waiting for you. You are all caught up.', style: const TextStyle(color: Colors.white70))),
+                  ])
+                else
+                  ...live,
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "My payments": the buttons first (pay, statement), then what has been paid against what is due, what is owed and the promises made.
+class MyMoneyScreen extends StatefulWidget {
+  const MyMoneyScreen({required this.api, required this.me, required this.onChanged, super.key});
+
+  final GroupsApi api;
+  final GroupMe me;
+  final Future<void> Function() onChanged;
+
+  @override
+  State<MyMoneyScreen> createState() => _MyMoneyScreenState();
+}
+
+class _MyMoneyScreenState extends State<MyMoneyScreen> {
+  /// After money or a promise is sent the figures here are old: go back to Home, which reloads them.
+  Future<void> _done() async {
+    await widget.onChanged();
+    if (mounted) Navigator.pop(context);
+  }
+
+  Future<void> _pay([final GroupObligation? o]) async {
+    if (await showPaymentForm(context, api: widget.api, me: widget.me, obligation: o)) await _done();
+  }
+
+  Future<void> _promise() async {
+    if (await showPromiseForm(context, api: widget.api, owing: widget.me.owing)) await _done();
+  }
+
+  @override
+  Widget build(final BuildContext context) {
+    final bool sw = context.watch<LocalizationService>().isSwahili;
+    final GroupMe me = widget.me;
+    return Scaffold(
+      backgroundColor: ThemeConstants.primaryBlue,
+      appBar: ThemeConstants.buildAppBar(sw ? 'Malipo yangu' : 'My payments', flat: true),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          children: <Widget>[
+            Row(children: <Widget>[
+              Expanded(
+                child: FilledButton.icon(
+                  key: const Key('grp_money_pay'),
+                  style: FilledButton.styleFrom(backgroundColor: ThemeConstants.primaryOrange),
+                  onPressed: _pay,
+                  icon: const Icon(Icons.payments_rounded),
+                  label: Text(sw ? 'Lipa' : 'Pay'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('grp_statement_open'),
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white38)),
+                  onPressed: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => GroupStatementScreen(api: widget.api))),
+                  icon: const Icon(Icons.receipt_long_rounded),
+                  label: Text(sw ? 'Taarifa' : 'Statement'),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 12),
+            ...joinGlowCards(<Widget>[
+              GlowCard(
+                title: sw ? 'Malipo yangu' : 'My payments',
+                dividerKey: 'grp_mypay_div',
+                children: <Widget>[
+                  _DueLine(label: categoryLabel(sw: sw, category: 'joining_fee'), paid: me.balances?['joining_fee'] ?? 0, due: me.joiningFee, sw: sw),
+                  _DueLine(label: categoryLabel(sw: sw, category: 'shares'), paid: me.balances?['shares'] ?? 0, due: me.shareAmount, sw: sw),
+                  GroupDetailRow(categoryLabel(sw: sw, category: 'savings'), tsh(me.balances?['savings'] ?? 0), valueColor: ThemeConstants.invAccent),
+                  if (me.owing.isNotEmpty)
+                    GroupDetailRow(
+                      sw ? 'Deni la michango' : 'Contributions owed',
+                      tsh(me.owing.fold<double>(0, (final double a, final GroupObligation o) => a + o.remaining)),
+                      valueColor: me.owing.any((final GroupObligation o) => o.state == 'overdue') ? ThemeConstants.errorText : ThemeConstants.warningAmber,
+                    ),
+                  if (me.pending > 0) GroupDetailRow(sw ? 'Yanasubiri uthibitisho' : 'Waiting for verification', '${me.pending}', valueColor: ThemeConstants.warningAmber),
+                ],
+              ),
+              if (me.owing.isNotEmpty)
+                GlowCard(
+                  title: sw ? 'Ninachodaiwa' : 'What I owe',
+                  dividerKey: 'grp_owe_div',
+                  children: <Widget>[
+                    for (final GroupObligation o in me.owing) ObligationLine(o: o, sw: sw, onTap: () => _pay(o)),
+                    TextButton.icon(
+                      key: const Key('grp_promise_open'),
+                      onPressed: _promise,
+                      icon: const Icon(Icons.handshake_outlined, color: ThemeConstants.primaryOrange),
+                      label: Text(sw ? 'Weka ahadi ya kulipa' : 'Promise to pay', style: const TextStyle(color: ThemeConstants.primaryOrange)),
+                    ),
+                  ],
+                ),
+              if (me.promises.isNotEmpty)
+                GlowCard(
+                  title: sw ? 'Ahadi zangu' : 'My promises',
+                  children: <Widget>[for (final GroupPromise p in me.promises) PromiseLine(p: p, sw: sw)],
+                ),
+            ]),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "My latest payments": what this person has sent, newest first, with where each stands.
+class MyPaymentsScreen extends StatefulWidget {
+  const MyPaymentsScreen({required this.api, super.key});
+
+  final GroupsApi api;
+
+  @override
+  State<MyPaymentsScreen> createState() => _MyPaymentsScreenState();
+}
+
+class _MyPaymentsScreenState extends State<MyPaymentsScreen> {
+  List<GroupTransaction>? _mine;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    try {
+      final List<GroupTransaction> mine = await widget.api.myTransactions();
+      if (mounted) {
+        setState(() {
+          _mine = mine;
+          _error = null;
+        });
+      }
+    } on Exception catch (e) {
+      if (mounted) setState(() => _error = readableErrorMessage(e));
     }
-    final bool more = live.length > _shown;
-    return GlowCard(
-      title: sw ? 'Yanayokusubiri' : 'Waiting for you',
-      dividerKey: 'grp_wait_div',
-      children: <Widget>[
-        ...(_all || !more ? live : live.take(_shown)),
-        if (more)
-          TextButton(
-            key: const Key('grp_wait_more'),
-            onPressed: () => setState(() => _all = !_all),
-            child: Text(_all ? (sw ? 'Onyesha chache' : 'Show fewer') : (sw ? 'Onyesha zote (${live.length})' : 'Show all (${live.length})'), style: const TextStyle(color: ThemeConstants.primaryOrange)),
-          ),
-      ],
+  }
+
+  @override
+  Widget build(final BuildContext context) {
+    final bool sw = context.watch<LocalizationService>().isSwahili;
+    final List<GroupTransaction>? mine = _mine;
+    return Scaffold(
+      backgroundColor: ThemeConstants.primaryBlue,
+      appBar: ThemeConstants.buildAppBar(sw ? 'Malipo yangu ya hivi karibuni' : 'My latest payments', flat: true),
+      body: SafeArea(
+        child: mine == null && _error == null
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _load,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  children: <Widget>[
+                    GlowCard(
+                      title: sw ? 'Malipo yangu ya hivi karibuni' : 'My latest payments',
+                      dividerKey: 'grp_mine_div',
+                      children: <Widget>[
+                        if (_error != null) GroupEmpty(_error!),
+                        if (mine != null && mine.isEmpty && _error == null) GroupEmpty(sw ? 'Bado hujatuma malipo.' : 'No payments sent yet.'),
+                        for (final GroupTransaction t in (mine ?? const <GroupTransaction>[]).take(50)) GroupTransactionTile(t: t, sw: sw),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+      ),
     );
   }
 }

@@ -154,8 +154,16 @@ void main() {
     expect(find.byKey(const Key('grp_footer_home')), findsOneWidget);
     expect(find.byKey(const Key('grp_footer_members')), findsNothing, reason: 'no office, no register');
     expect(find.byKey(const Key('grp_footer_payments')), findsNothing);
-    expect(find.text('TSH 50,000 / TSH 200,000'), findsOneWidget, reason: 'shares paid of what is due');
     expect(find.byKey(const Key('grp_pay_open')), findsOneWidget);
+    // Their money is on its own screen, behind a button.
+    await t.ensureVisible(find.byKey(const Key('grp_my_money')));
+    await t.tap(find.byKey(const Key('grp_my_money')));
+    await t.pumpAndSettle();
+    expect(find.text('TSH 50,000 / TSH 200,000'), findsOneWidget, reason: 'shares paid of what is due');
+    expect(find.byKey(const Key('grp_money_pay')), findsOneWidget);
+    expect(find.byKey(const Key('grp_statement_open')), findsOneWidget);
+    await t.pageBack();
+    await t.pumpAndSettle();
     expect(find.byKey(const Key('grp_wait_payments')), findsNothing);
   });
 
@@ -198,6 +206,10 @@ void main() {
     );
     await _pump(t, GroupsHome(api: api));
 
+    expect(find.byKey(const Key('grp_wait_payments')), findsNothing, reason: 'Home has the button, the lines are on its screen');
+    await t.ensureVisible(find.byKey(const Key('grp_waiting_open')));
+    await t.tap(find.byKey(const Key('grp_waiting_open')));
+    await t.pumpAndSettle();
     expect(find.byKey(const Key('grp_wait_payments')), findsOneWidget);
     await t.tap(find.byKey(const Key('grp_wait_payments')));
     await t.pumpAndSettle();
