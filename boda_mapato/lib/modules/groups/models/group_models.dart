@@ -312,6 +312,34 @@ class GroupTransactionPage {
   final bool hasMore;
 }
 
+/// A payment method the group authorises and where to pay for it (the number, who it is paid to, the bank).
+class GroupPayMethod {
+  const GroupPayMethod({required this.method, this.number, this.accountName, this.bankName, this.monthIn, this.monthOut, this.monthCount});
+
+  factory GroupPayMethod.fromJson(final Map<String, dynamic> j) {
+    final Map<String, dynamic>? month = j['month'] is Map ? Map<String, dynamic>.from(j['month'] as Map) : null;
+    return GroupPayMethod(
+      method: '${j['method'] ?? ''}',
+      number: _str(j['number']),
+      accountName: _str(j['account_name']),
+      bankName: _str(j['bank_name']),
+      monthIn: month == null ? null : _num(month['in']),
+      monthOut: month == null ? null : _num(month['out']),
+      monthCount: month == null ? null : _int(month['count']),
+    );
+  }
+
+  final String method;
+  final String? number;
+  final String? accountName;
+  final String? bankName;
+
+  /// The month's verified money by this method: only for those who read the group's finances.
+  final double? monthIn;
+  final double? monthOut;
+  final int? monthCount;
+}
+
 /// Who the signed-in person is in their group, what they may do, and what waits for them.
 class GroupMe {
   const GroupMe({
@@ -324,6 +352,7 @@ class GroupMe {
     this.shareAmount = 0,
     this.sharesRequiredFor = 'loans',
     this.paymentInstructions = '',
+    this.paymentMethods = const <GroupPayMethod>[],
     this.waiting = const <String, int>{},
     this.groupName,
     this.owing = const <GroupObligation>[],
@@ -347,6 +376,7 @@ class GroupMe {
       shareAmount: _num(s['share_amount']),
       sharesRequiredFor: '${s['shares_required_for'] ?? 'loans'}',
       paymentInstructions: '${s['payment_instructions'] ?? ''}',
+      paymentMethods: <GroupPayMethod>[for (final dynamic m in (j['payment_methods'] as List? ?? const <dynamic>[])) GroupPayMethod.fromJson(Map<String, dynamic>.from(m as Map))],
       waiting: <String, int>{if (j['waiting'] is Map) for (final MapEntry<dynamic, dynamic> e in (j['waiting'] as Map).entries) '${e.key}': _int(e.value) ?? 0},
       groupName: _str(j['group'] is Map ? (j['group'] as Map)['name'] : null),
       owing: <GroupObligation>[for (final dynamic o in (j['owing'] as List? ?? const <dynamic>[])) GroupObligation.fromJson(Map<String, dynamic>.from(o as Map))],
@@ -368,6 +398,9 @@ class GroupMe {
   final double shareAmount;
   final String sharesRequiredFor;
   final String paymentInstructions;
+
+  /// The methods the group authorises, with where to pay; empty until the group has chosen (then every method is accepted).
+  final List<GroupPayMethod> paymentMethods;
   final Map<String, int> waiting;
   final String? groupName;
 

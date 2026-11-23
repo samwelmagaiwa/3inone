@@ -9,6 +9,7 @@ import '../models/group_loan_models.dart';
 import '../models/group_models.dart';
 import '../services/groups_api.dart';
 import 'groups_text.dart';
+import 'payment_methods_screen.dart';
 import 'widgets/groups_ui.dart';
 
 /// The form for money a member pays in -- by the member for themself ([member] null), or by an officer for a member -- and, for whoever
@@ -71,9 +72,12 @@ class _PaymentFormState extends State<_PaymentForm> {
   final TextEditingController _note = TextEditingController();
   late String _kind = widget.loan != null ? 'loan_repayment' : (widget.obligation != null ? 'contribution' : 'joining_fee');
   late GroupObligation? _obligation = widget.obligation ?? widget.owing.where((final GroupObligation o) => o.owing).firstOrNull;
-  String _method = 'mpesa';
+  late String _method = widget.me.paymentMethods.isEmpty ? 'mpesa' : widget.me.paymentMethods.first.method;
   bool _busy = false;
   String? _error;
+
+  /// The methods the group authorises (all of them until it has chosen).
+  List<String> get _methods => widget.me.paymentMethods.isEmpty ? paymentMethods : <String>[for (final GroupPayMethod m in widget.me.paymentMethods) m.method];
 
   /// An officer with the payout right, recording for a member whose savings are known, may record a savings withdrawal.
   bool get _mayWithdraw => widget.member != null && widget.me.can('record_payouts') && widget.paid.containsKey('savings');
@@ -284,10 +288,22 @@ class _PaymentFormState extends State<_PaymentForm> {
               style: const TextStyle(color: Colors.white),
               decoration: ThemeConstants.darkField(_kind == _withdrawal ? (sw ? 'Amelipwa kwa' : 'Paid out by') : (sw ? 'Njia ya malipo' : 'Paid by')),
               items: <DropdownMenuItem<String>>[
-                for (final String m in paymentMethods) DropdownMenuItem<String>(value: m, child: Text(methodLabel(sw: sw, method: m))),
+                for (final String m in _methods) DropdownMenuItem<String>(value: m, child: Text(methodLabel(sw: sw, method: m))),
               ],
               onChanged: (final String? v) => setState(() => _method = v ?? 'cash'),
             ),
+            if (_kind != _withdrawal && widget.me.paymentMethods.any((final GroupPayMethod m) => m.method == _method && m.number != null)) ...<Widget>[
+              const SizedBox(height: 10),
+              PayToCard(method: widget.me.paymentMethods.firstWhere((final GroupPayMethod m) => m.method == _method)),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  key: const Key('grp_pay_all_numbers'),
+                  onPressed: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => PaymentMethodsScreen(api: widget.api, me: widget.me))),
+                  child: Text(sw ? 'Namba zote za kulipia' : 'All the numbers to pay to', style: const TextStyle(color: ThemeConstants.primaryOrange)),
+                ),
+              ),
+            ],
             if (_method != 'cash') ...<Widget>[
               const SizedBox(height: 12),
               TextField(
@@ -361,8 +377,27 @@ class _ExpenseFormState extends State<_ExpenseForm> {
   final TextEditingController _note = TextEditingController();
   final TextEditingController _ref = TextEditingController();
   String _method = 'cash';
+  List<String> _methods = paymentMethods;
   bool _busy = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        final ({bool configured, bool canManage, List<GroupPayMethod> methods}) r = await widget.api.paymentMethods();
+        if (mounted && r.methods.isNotEmpty) {
+          setState(() {
+            _methods = <String>[for (final GroupPayMethod m in r.methods) m.method];
+            _method = _methods.first;
+          });
+        }
+      } on Exception {
+        // the form still works with every method
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -445,7 +480,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
               dropdownColor: ThemeConstants.bgMid,
               style: const TextStyle(color: Colors.white),
               decoration: ThemeConstants.darkField(sw ? 'Amelipwa kwa' : 'Paid out by'),
-              items: <DropdownMenuItem<String>>[for (final String m in paymentMethods) DropdownMenuItem<String>(value: m, child: Text(methodLabel(sw: sw, method: m)))],
+              items: <DropdownMenuItem<String>>[for (final String m in _methods) DropdownMenuItem<String>(value: m, child: Text(methodLabel(sw: sw, method: m)))],
               onChanged: (final String? v) => setState(() => _method = v ?? 'cash'),
             ),
             if (_method != 'cash') ...<Widget>[

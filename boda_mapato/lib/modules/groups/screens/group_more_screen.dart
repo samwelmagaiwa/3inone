@@ -12,6 +12,7 @@ import 'dividends_screen.dart';
 import 'groups_text.dart';
 import 'records_screens.dart';
 import 'welfare_screen.dart';
+import 'payment_methods_screen.dart';
 import 'widgets/groups_ui.dart';
 import 'widgets/repayment_schedule.dart';
 
@@ -46,6 +47,7 @@ class GroupMoreScreen extends StatelessWidget {
           children: <Widget>[
             if (me.can('manage_settings'))
               entry(const Key('grp_more_settings'), Icons.tune_rounded, sw ? 'Mipangilio ya kikundi' : 'Group settings', () => GroupSettingsScreen(api: api)),
+            entry(const Key('grp_more_paymethods'), Icons.account_balance_wallet_rounded, sw ? 'Njia za malipo' : 'Payment methods', () => PaymentMethodsScreen(api: api, me: me)),
             if (me.can('view_finance')) entry(const Key('grp_more_reports'), Icons.insights_rounded, sw ? 'Ripoti na nakala' : 'Reports and exports', () => GroupReportsScreen(api: api, me: me)),
             if (me.can('view_members')) entry(const Key('grp_more_tree'), Icons.account_tree_rounded, sw ? 'Mti wa uanachama' : 'Membership tree', () => ReferralTreeScreen(api: api, whole: true)),
             if (me.can('manage_members')) entry(const Key('grp_more_codes'), Icons.qr_code_rounded, sw ? 'Namba za mwaliko' : 'Invitation codes', () => InviteScreen(api: api, me: me)),
@@ -364,6 +366,16 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                       GlowCard(
                         title: _label(sw, 'payment_instructions'),
                         children: <Widget>[
+                          // The methods and where to pay for each are chosen on their own screen.
+                          ListTile(
+                            key: const Key('grp_set_paymethods'),
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.account_balance_wallet_rounded, color: ThemeConstants.invAccent),
+                            title: Text(sw ? 'Njia za malipo na namba' : 'Payment methods and numbers', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                            subtitle: Text(sw ? 'Benki, M-Pesa, Mixx by Yas, HaloPesa, Airtel Money' : 'Bank, M-Pesa, Mixx by Yas, HaloPesa, Airtel Money', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                            trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                            onTap: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => PaymentMethodsScreen(api: widget.api))),
+                          ),
                           TextField(
                             key: const Key('grp_set_instructions'),
                             controller: _instructions,

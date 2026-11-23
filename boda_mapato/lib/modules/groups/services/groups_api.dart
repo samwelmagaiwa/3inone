@@ -406,6 +406,23 @@ class GroupsApi {
 
   Future<List<GroupDocument>> removeDocument(final int memberId, final int id) async => _docs(_data(await _api.delete('$_base/members/$memberId/documents/$id')));
 
+  // ---------------------------------------------------------------- payment methods
+
+  /// The authorised payment methods and where to pay; [configured] is false until the group has chosen (then every method is accepted).
+  Future<({bool configured, bool canManage, List<GroupPayMethod> methods})> paymentMethods() async {
+    final Map<String, dynamic> d = _data(await _api.get('$_base/payment-methods'));
+    return (
+      configured: d['configured'] == true,
+      canManage: d['can_manage'] == true,
+      methods: <GroupPayMethod>[for (final dynamic m in (d['methods'] as List? ?? const <dynamic>[])) GroupPayMethod.fromJson(Map<String, dynamic>.from(m as Map))],
+    );
+  }
+
+  /// Replaces the list of authorised methods (the Mwenyekiti or the Makamu); the reason goes to the activity log.
+  Future<void> savePaymentMethods(final List<Map<String, dynamic>> methods, {required final String reason}) async {
+    await _api.put('$_base/payment-methods', <String, dynamic>{'methods': methods, 'reason': reason});
+  }
+
   // ---------------------------------------------------------------- voting
 
   GroupVoting _voting(final Map<String, dynamic> res) => GroupVoting.fromJson(Map<String, dynamic>.from(_data(res)['voting'] as Map));

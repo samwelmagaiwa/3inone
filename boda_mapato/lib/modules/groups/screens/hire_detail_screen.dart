@@ -185,7 +185,14 @@ class _HireDetailScreenState extends State<HireDetailScreen> {
             ]),
             GlowCard(title: sw ? 'Fedha' : 'Money', children: <Widget>[
               GroupDetailRow(sw ? 'Gharama' : 'Charge', '${h.quantity} × ${tsh(h.rate)} × ${h.days} = ${tsh(h.amount)}'),
-              if (h.lateCharge > 0) GroupDetailRow(sw ? 'Kuchelewa' : 'Late', tsh(h.lateCharge), valueColor: ThemeConstants.errorText),
+              if (h.lateNights > 0)
+                GroupDetailRow(
+                  sw ? 'Usiku uliopita siku ya kurudisha' : 'Nights past the return day',
+                  '${h.lateNights} · ${tsh(h.status == 'issued' ? h.lateChargeNow : h.lateCharge)}',
+                  valueColor: ThemeConstants.errorText,
+                )
+              else if (h.lateCharge > 0)
+                GroupDetailRow(sw ? 'Kuchelewa' : 'Late', tsh(h.lateCharge), valueColor: ThemeConstants.errorText),
               if (h.damageCharge > 0 || h.damageNote != null) GroupDetailRow(sw ? 'Uharibifu' : 'Damage', '${tsh(h.damageCharge)}${h.damageNote == null ? '' : ' · ${h.damageNote}'}', valueColor: ThemeConstants.errorText),
               GroupDetailRow(sw ? 'Imelipwa' : 'Paid', tsh(h.paid), valueColor: ThemeConstants.successGreen),
               GroupDetailRow(sw ? 'Inadaiwa' : 'Owed', tsh(h.balance), valueColor: h.balance > 0 ? ThemeConstants.warningAmber : ThemeConstants.successGreen),

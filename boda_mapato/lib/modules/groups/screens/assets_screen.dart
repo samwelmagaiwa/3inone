@@ -532,7 +532,7 @@ class _AssetFormState extends State<_AssetForm> {
           _f(_cost, sw ? 'Thamani (hiari)' : 'Value (optional)', number: true),
           _f(_location, sw ? 'Mahali inapotunzwa (siri)' : 'Where it is kept (private)'),
           _f(_rate, sw ? 'Bei ya kukodi: kimoja kwa siku (acha wazi kama haikodishwi)' : 'Hire rate: each a day (empty if not for hire)', key: const Key('grp_asset_rate'), number: true),
-          _f(_late, sw ? 'Gharama ya kuchelewa: kimoja kwa siku (hiari)' : 'Late rate: each a day (optional)', number: true),
+          _f(_late, sw ? 'Gharama ya kuchelewa: kimoja kwa usiku (hiari; tupu = bei ya kukodi)' : 'Late rate: each a night (optional; empty = the hire rate)', number: true),
           ListTile(
             key: const Key('grp_asset_keeper'),
             contentPadding: EdgeInsets.zero,

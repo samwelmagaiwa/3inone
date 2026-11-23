@@ -118,6 +118,8 @@ class GroupHire {
     this.phone,
     this.purpose,
     this.lateCharge = 0,
+    this.lateNights = 0,
+    this.lateChargeNow = 0,
     this.damageCharge = 0,
     this.damageNote,
     this.decisionNote,
@@ -146,6 +148,8 @@ class GroupHire {
         rate: _num(j['rate']),
         amount: _num(j['amount']),
         lateCharge: _num(j['late_charge']),
+        lateNights: _int(j['late_nights']) ?? 0,
+        lateChargeNow: _num(j['late_charge_now']),
         damageCharge: _num(j['damage_charge']),
         damageNote: _str(j['damage_note']),
         total: _num(j['total']),
@@ -180,6 +184,10 @@ class GroupHire {
   final double rate;
   final double amount;
   final double lateCharge;
+
+  /// The nights past the return date (the first is the night after it), and what they come to now while the hire is still out.
+  final int lateNights;
+  final double lateChargeNow;
   final double damageCharge;
   final String? damageNote;
   final double total;
