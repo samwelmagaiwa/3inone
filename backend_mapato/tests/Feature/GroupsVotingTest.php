@@ -211,15 +211,17 @@ class GroupsVotingTest extends TestCase
 
     public function test_only_eligible_members_vote(): void
     {
-        $officers = $this->agenda('Jambo la viongozi', ['eligibility' => 'officers']);
+        $this->api($this->people['secretary'], 'POST', '/votings', ['title' => 'Viongozi pekee', 'category' => 'general', 'kind' => 'decision', 'eligibility' => 'officers',
+            'opens_at' => '2026-05-02 08:00:00', 'closes_at' => '2026-05-09 08:00:00'])->assertStatus(422);
+        $everyone = $this->agenda('Jambo la wote');
         $selected = $this->agenda('Jambo la wachache', ['eligibility' => 'selected', 'member_ids' => [$this->ids['asha'], $this->ids['juma']]]);
-        $this->publish($officers);
+        $this->publish($everyone);
         $this->publish($selected);
         Carbon::setTestNow(Carbon::parse('2026-05-03 09:00:00'));
 
         $yes = fn (int $v) => ['option_id' => $this->optionOf($v, 'Approve')];
-        $this->api($this->people['asha'], 'POST', "/votings/{$officers}/vote", $yes($officers))->assertForbidden()->assertJsonPath('code', 'not_eligible');
-        $this->api($this->people['treasurer'], 'POST', "/votings/{$officers}/vote", $yes($officers))->assertCreated();
+        $this->api($this->people['asha'], 'POST', "/votings/{$everyone}/vote", $yes($everyone))->assertCreated();
+        $this->api($this->people['treasurer'], 'POST', "/votings/{$everyone}/vote", $yes($everyone))->assertCreated();
         $this->api($this->people['asha'], 'POST', "/votings/{$selected}/vote", $yes($selected))->assertCreated();
         $this->api($this->people['rehema'], 'POST', "/votings/{$selected}/vote", $yes($selected))->assertForbidden()->assertJsonPath('code', 'not_eligible');
         $this->assertSame('not_eligible', $this->api($this->people['rehema'], 'GET', "/votings/{$selected}")->json('data.voting.my.state'));

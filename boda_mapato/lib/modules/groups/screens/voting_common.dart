@@ -85,7 +85,6 @@ Color votingOptionColor(final String? role) => switch (role) {
     };
 
 String votingEligibilityLabel({required final bool sw, required final GroupVoting v}) => switch (v.eligibility) {
-      'officers' => sw ? 'Viongozi pekee (${v.eligibleCount})' : 'Officers only (${v.eligibleCount})',
       'selected' => sw ? 'Wanachama waliochaguliwa (${v.eligibleCount})' : 'Selected members (${v.eligibleCount})',
       _ => sw ? 'Wanachama wote hai (${v.eligibleCount})' : 'All active members (${v.eligibleCount})',
     };

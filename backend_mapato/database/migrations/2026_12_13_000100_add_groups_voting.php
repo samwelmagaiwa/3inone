@@ -34,7 +34,7 @@ return new class extends Migration
                 $table->string('title', 150);
                 $table->text('description')->nullable();
                 $table->string('position', 100)->nullable(); // the position an election is for
-                $table->string('eligibility', 10)->default('active'); // active | officers | selected
+                $table->string('eligibility', 10)->default('active'); // active (every active member) | selected
                 $table->decimal('quorum_percent', 5, 2)->default(0);
                 $table->decimal('threshold_percent', 5, 2)->default(50);
                 $table->boolean('secret')->default(true);

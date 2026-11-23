@@ -200,7 +200,7 @@ class GroupVoting {
   /// The exact thing voted on, as the server names it.
   final String target;
 
-  /// active | officers | selected
+  /// active (every member) | selected
   final String eligibility;
   final double quorumPercent;
   final double thresholdPercent;

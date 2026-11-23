@@ -20,7 +20,8 @@ final class GroupVotings
 
     public const KINDS = ['election', 'decision'];
 
-    public const ELIGIBILITY = ['active', 'officers', 'selected'];
+    /** Every active member votes whatever their office; a voting may be limited to chosen members (a committee's own matter). */
+    public const ELIGIBILITY = ['active', 'selected'];
 
     public const VISIBILITY = ['live', 'after_close', 'after_publish'];
 
@@ -36,9 +37,7 @@ final class GroupVotings
     public static function eligibleIds(string $eligibility, array $selected = []): array
     {
         $q = DB::table('group_members')->where('status', GroupMembers::ACTIVE);
-        if ($eligibility === 'officers') {
-            $q->whereNotNull('office');
-        } elseif ($eligibility === 'selected') {
+        if ($eligibility === 'selected') {
             $q->whereIn('id', array_map('intval', $selected));
         }
 

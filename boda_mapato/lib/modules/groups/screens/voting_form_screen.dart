@@ -286,9 +286,8 @@ class _VotingFormScreenState extends State<VotingFormScreen> {
                     SegmentedButton<String>(
                       key: const Key('grp_vf_eligibility'),
                       segments: <ButtonSegment<String>>[
-                        ButtonSegment<String>(value: 'active', label: Text(sw ? 'Wote' : 'All')),
-                        ButtonSegment<String>(value: 'officers', label: Text(sw ? 'Viongozi' : 'Officers')),
-                        ButtonSegment<String>(value: 'selected', label: Text(sw ? 'Chagua' : 'Choose')),
+                        ButtonSegment<String>(value: 'active', label: Text(sw ? 'Wanachama wote' : 'All members')),
+                        ButtonSegment<String>(value: 'selected', label: Text(sw ? 'Chagua wachache' : 'Choose some')),
                       ],
                       selected: <String>{_eligibility},
                       onSelectionChanged: (final Set<String> v) => setState(() => _eligibility = v.first),
