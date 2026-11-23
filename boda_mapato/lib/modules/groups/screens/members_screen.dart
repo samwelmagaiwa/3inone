@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../constants/theme_constants.dart';
 import '../../../services/localization_service.dart';
+import '../../../widgets/scrolling_chip_row.dart';
 import '../../../utils/server_message.dart';
 import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_models.dart';
@@ -134,24 +135,17 @@ class _MembersScreenState extends State<MembersScreen> {
               decoration: ThemeConstants.darkField(sw ? 'Tafuta jina, simu au namba' : 'Search name, phone or number', prefix: const Icon(Icons.search, color: Colors.white54)),
             ),
             const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(children: <Widget>[
+            ScrollingChipRow(padding: EdgeInsets.zero, children: <Widget>[
                 for (final (String?, String) f in filters)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      key: Key('grp_member_filter_${f.$1 ?? 'all'}'),
-                      label: Text(f.$2),
+                  ScrollChoiceChip(chipKey: Key('grp_member_filter_${f.$1 ?? 'all'}'),
+                      label: f.$2,
                       selected: _status == f.$1,
                       onSelected: (_) {
                         setState(() => _status = f.$1);
                         _load();
                       },
                     ),
-                  ),
               ]),
-            ),
             const SizedBox(height: 10),
             if (_error != null) GroupEmpty(_error!),
             if (!_loading && _error == null && _members.isEmpty) GroupEmpty(sw ? 'Hakuna mwanachama hapa bado.' : 'No members here yet.'),

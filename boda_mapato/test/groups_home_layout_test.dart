@@ -5,6 +5,7 @@ import 'package:boda_mapato/modules/groups/models/group_records_models.dart';
 import 'package:boda_mapato/modules/groups/screens/group_dashboard_screen.dart';
 import 'package:boda_mapato/modules/groups/screens/group_overview_dashboard.dart';
 import 'package:boda_mapato/modules/groups/services/groups_api.dart';
+import 'package:boda_mapato/modules/inventory/screens/widgets/glow_list_card.dart';
 import 'package:boda_mapato/services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -89,6 +90,7 @@ void main() {
     expect(<double>[actions, headline, who, waiting, chart, mine], orderedEquals(<double>[actions, headline, who, waiting, chart, mine]..sort()), reason: 'actions, headline, who I am, waiting, then the trend, then my money');
     expect(find.byKey(const Key('grp_wait_payments')), findsOneWidget);
     expect(find.byKey(const Key('grp_wait_applications')), findsOneWidget);
+    expect(find.byType(GlowSections), findsOneWidget, reason: 'who I am, what waits, the trend, news and my money are ONE joined card');
     expect(find.byKey(const Key('grp_overview_chart')), findsOneWidget);
   });
 

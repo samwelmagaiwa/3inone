@@ -115,32 +115,25 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
-                          m?.fullName ?? (me.groupName ?? (sw ? 'Kikundi' : 'Group')),
+                          m.fullName,
                           key: const Key('grp_me_name'),
                           style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          m == null
-                              ? (sw ? 'Msimamizi wa kikundi' : 'Group administrator')
-                              : '${officeLabel(sw: sw, office: m.office)} · ${m.memberNumber ?? m.applicationRef ?? ''}',
+                          '${officeLabel(sw: sw, office: m.office)} · ${m.memberNumber ?? m.applicationRef ?? ''}',
                           style: const TextStyle(color: Colors.white60, fontSize: 12),
                         ),
                       ],
                     ),
                   ),
-                  if (m != null) GroupPill(statusLabel(sw: sw, status: m.status), color: statusColor(m.status)),
+                  GroupPill(statusLabel(sw: sw, status: m.status), color: statusColor(m.status)),
                 ],
               ),
-              if (m?.statusReason != null && m!.status != 'active')
+              if (m.statusReason != null && m.status != 'active')
                 Text(m.statusReason!, style: const TextStyle(color: Colors.white70, fontSize: 12)),
             ],
           ),
-          // The member's own figures at a glance: every member has this, whatever their office.
-          if (m != null) ...<Widget>[
-            const SizedBox(height: 12),
-            _MyGlance(me: me, sw: sw, onStatement: _statement),
-          ],
           if (me.waiting.isNotEmpty) ...<Widget>[
             const SizedBox(height: 12),
             _WaitingCard(
@@ -311,16 +304,8 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
           ],
     ];
 
-    return RefreshIndicator(
-      onRefresh: _refresh,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        children: joinGlowCards(<Widget>[
-          // The group at a glance, for its officers, with who I am and what waits for me before the trend; everyone else starts with who they are.
-          if (officer)
-            GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen, between: personal)
-          else
-            ...personal,
+    // What follows the figures' trend: next meeting and notices, then the person's own money and payments.
+    final List<Widget> afterChart = <Widget>[
           if (me.nextMeetingTitle != null || me.notices > 0) ...<Widget>[
             const SizedBox(height: 12),
             GlowListCard(
@@ -349,9 +334,6 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
             ),
           ],
           if (m != null) ...<Widget>[
-            const SizedBox(height: 22),
-            _SectionTitle(sw ? 'Fedha zangu' : 'My money'),
-            const SizedBox(height: 8),
             GlowCard(
               title: sw ? 'Malipo yangu' : 'My payments',
               dividerKey: 'grp_mypay_div',
@@ -466,22 +448,35 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
               ),
             ],
           ],
-          if (m != null) ...<Widget>[
-            const SizedBox(height: 22),
-            _SectionTitle(sw ? 'Malipo yangu ya hivi karibuni' : 'My latest payments'),
-            const SizedBox(height: 8),
-            if (_error != null) GroupEmpty(_error!),
-            if (_mine.isEmpty && _error == null) GroupEmpty(sw ? 'Bado hujatuma malipo.' : 'No payments sent yet.'),
-            if (_mine.isNotEmpty)
-              GlowListCard(
-                dividerKey: 'grp_mine_div',
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                children: <Widget>[
-                  for (final GroupTransaction t in _mine.take(20)) GroupTransactionTile(t: t, sw: sw),
-                ],
-              ),
+          if (m != null)
+            GlowCard(
+              title: sw ? 'Malipo yangu ya hivi karibuni' : 'My latest payments',
+              dividerKey: 'grp_mine_div',
+              children: <Widget>[
+                if (_error != null) GroupEmpty(_error!),
+                if (_mine.isEmpty && _error == null) GroupEmpty(sw ? 'Bado hujatuma malipo.' : 'No payments sent yet.'),
+                for (final GroupTransaction t in _mine.take(20)) GroupTransactionTile(t: t, sw: sw),
+              ],
+            ),
+    ];
+    // The member's own figures in tiles (not a card), shown before the joined sections.
+    final List<Widget> lead = <Widget>[if (m != null) _MyGlance(me: me, sw: sw, onStatement: _statement)];
+
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        children: <Widget>[
+          // The officers: the group's figures, then ONE joined card (who I am, what waits, the trend, news, my money). Everyone else: the same
+          // joined card without the trend. The person's own tiles come before it.
+          if (officer)
+            GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen, lead: lead, beforeChart: personal, afterChart: afterChart)
+          else ...<Widget>[
+            ...lead,
+            if (lead.isNotEmpty) const SizedBox(height: 12),
+            ...joinGlowCards(<Widget>[...personal, ...afterChart]),
           ],
-        ]),
+        ],
       ),
     );
   }
@@ -644,19 +639,6 @@ class GroupTransactionTile extends StatelessWidget {
             GroupPill(paymentStatusLabel(sw: sw, status: t.status), color: paymentStatusColor(t.status)),
           ],
         ),
-      );
-}
-
-/// A small heading that names the group of cards under it.
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-
-  final String text;
-
-  @override
-  Widget build(final BuildContext context) => Padding(
-        padding: const EdgeInsets.only(left: 4),
-        child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
       );
 }
 

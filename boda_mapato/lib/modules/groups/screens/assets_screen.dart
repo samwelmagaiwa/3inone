@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../constants/theme_constants.dart';
 import '../../../services/localization_service.dart';
+import '../../../widgets/scrolling_chip_row.dart';
 import '../../../utils/server_message.dart';
 import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_asset_models.dart';
@@ -147,24 +148,18 @@ class _AssetsScreenState extends State<AssetsScreen> {
             ),
             const SizedBox(height: 10),
             if (!_register)
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(children: <Widget>[
-                  for (final (String?, String) f in filters)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        key: Key('grp_hire_filter_${f.$1 ?? 'all'}'),
-                        label: Text(f.$2),
-                        selected: _status == f.$1,
-                        onSelected: (_) {
-                          setState(() => _status = f.$1);
-                          _load();
-                        },
-                      ),
-                    ),
-                ]),
-              ),
+              ScrollingChipRow(padding: EdgeInsets.zero, children: <Widget>[
+                for (final (String?, String) f in filters)
+                  ScrollChoiceChip(
+                    chipKey: Key('grp_hire_filter_${f.$1 ?? 'all'}'),
+                    label: f.$2,
+                    selected: _status == f.$1,
+                    onSelected: (_) {
+                      setState(() => _status = f.$1);
+                      _load();
+                    },
+                  ),
+              ]),
             const SizedBox(height: 10),
             if (_error != null) GroupEmpty(_error!),
             if (_loading) const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator())),

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../constants/theme_constants.dart';
 import '../../../services/localization_service.dart';
+import '../../../widgets/scrolling_chip_row.dart';
 import '../../../utils/server_message.dart';
 import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_models.dart';
@@ -124,24 +125,17 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
           children: joinGlowCards(<Widget>[
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(children: <Widget>[
+            ScrollingChipRow(padding: EdgeInsets.zero, children: <Widget>[
                 for (final (String?, String) f in filters)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      key: Key('grp_project_filter_${f.$1 ?? 'all'}'),
-                      label: Text(f.$2),
+                  ScrollChoiceChip(chipKey: Key('grp_project_filter_${f.$1 ?? 'all'}'),
+                      label: f.$2,
                       selected: _status == f.$1,
                       onSelected: (_) {
                         setState(() => _status = f.$1);
                         _load();
                       },
                     ),
-                  ),
               ]),
-            ),
             const SizedBox(height: 10),
             if (_error != null) GroupEmpty(_error!),
             if (!_loading && _error == null && _rows.isEmpty)

@@ -120,7 +120,10 @@ class _ScrollingChipRowState extends State<ScrollingChipRow> {
 
 /// A filter chip for a [ScrollingChipRow]: choosing it also slides the row so the next chips come into view.
 class ScrollChoiceChip extends StatelessWidget {
-  const ScrollChoiceChip({super.key, required this.label, required this.selected, required this.onSelected});
+  const ScrollChoiceChip({super.key, required this.label, required this.selected, required this.onSelected, this.chipKey});
+
+  /// The key of the chip itself (so a test can find and tap it).
+  final Key? chipKey;
 
   final String label;
   final bool selected;
@@ -131,6 +134,7 @@ class ScrollChoiceChip extends StatelessWidget {
         padding: const EdgeInsets.only(right: 8),
         child: Builder(
           builder: (final BuildContext chipContext) => ChoiceChip(
+            key: chipKey,
             label: Text(label),
             selected: selected,
             onSelected: (final bool value) {

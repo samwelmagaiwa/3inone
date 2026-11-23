@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../constants/theme_constants.dart';
 import '../../../services/localization_service.dart';
+import '../../../widgets/scrolling_chip_row.dart';
 import '../../../utils/server_message.dart';
 import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_models.dart';
@@ -216,6 +217,29 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
           children: joinGlowCards(<Widget>[
+            TextField(
+              key: const Key('grp_pay_search'),
+              controller: _search,
+              onChanged: (_) {
+                _debounce?.cancel();
+                _debounce = Timer(const Duration(milliseconds: 400), _load);
+              },
+              style: const TextStyle(color: Colors.white),
+              decoration: ThemeConstants.darkField(sw ? 'Tafuta jina, namba au reference' : 'Search name, number or reference', prefix: const Icon(Icons.search, color: Colors.white54)),
+            ),
+            const SizedBox(height: 8),
+            ScrollingChipRow(padding: EdgeInsets.zero, children: <Widget>[
+                for (final (String?, String) f in filters)
+                  ScrollChoiceChip(chipKey: Key('grp_pay_filter_${f.$1 ?? 'all'}'),
+                      label: f.$2,
+                      selected: _status == f.$1,
+                      onSelected: (_) {
+                        setState(() => _status = f.$1);
+                        _load();
+                      },
+                    ),
+              ]),
+            const SizedBox(height: 10),
             if (widget.me.can('view_finance') && _summary.isNotEmpty)
               GlowListCard(
                 padding: const EdgeInsets.all(16),
@@ -253,37 +277,6 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                     ]),
                 ],
               ),
-            const SizedBox(height: 10),
-            TextField(
-              key: const Key('grp_pay_search'),
-              controller: _search,
-              onChanged: (_) {
-                _debounce?.cancel();
-                _debounce = Timer(const Duration(milliseconds: 400), _load);
-              },
-              style: const TextStyle(color: Colors.white),
-              decoration: ThemeConstants.darkField(sw ? 'Tafuta jina, namba au reference' : 'Search name, number or reference', prefix: const Icon(Icons.search, color: Colors.white54)),
-            ),
-            const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(children: <Widget>[
-                for (final (String?, String) f in filters)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      key: Key('grp_pay_filter_${f.$1 ?? 'all'}'),
-                      label: Text(f.$2),
-                      selected: _status == f.$1,
-                      onSelected: (_) {
-                        setState(() => _status = f.$1);
-                        _load();
-                      },
-                    ),
-                  ),
-              ]),
-            ),
-            const SizedBox(height: 10),
             if (_error != null) GroupEmpty(_error!),
             if (!_loading && _error == null && _rows.isEmpty)
               GroupEmpty(_status == 'pending' ? (sw ? 'Hakuna malipo yanayosubiri.' : 'Nothing waits for verification.') : (sw ? 'Hakuna malipo hapa.' : 'No payments here.')),

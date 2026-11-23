@@ -9,7 +9,6 @@ import '../../../services/localization_service.dart';
 import '../../../utils/server_message.dart';
 import '../../../widgets/month_selector.dart';
 import '../../inventory/screens/widgets/glow_list_card.dart';
-import '../../inventory/screens/widgets/joined_sections.dart';
 import '../models/group_models.dart';
 import '../models/group_records_models.dart';
 import '../services/groups_api.dart';
@@ -27,10 +26,14 @@ import 'groups_text.dart';
 ///
 /// Money appears only for whoever sees the group's money; the secretary sees the membership part.
 class GroupOverviewDashboard extends StatefulWidget {
-  const GroupOverviewDashboard({required this.api, required this.me, required this.onOpen, super.key, this.between = const <Widget>[]});
+  const GroupOverviewDashboard({required this.api, required this.me, required this.onOpen, super.key, this.lead = const <Widget>[], this.beforeChart = const <Widget>[], this.afterChart = const <Widget>[]});
 
-  /// What the screen puts between the figures and the trend (who I am, what waits for me): the trend is the last thing on the page.
-  final List<Widget> between;
+  /// Plain widgets shown after the figures and before the joined card (the person's own tiles).
+  final List<Widget> lead;
+
+  /// The cards of the joined card that come before the trend (who I am, what waits for me), and after it (news, my money, my payments).
+  final List<Widget> beforeChart;
+  final List<Widget> afterChart;
 
   final GroupsApi api;
   final GroupMe me;
@@ -90,7 +93,7 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
           padding: const EdgeInsets.all(24),
           child: Center(child: _error == null ? const CircularProgressIndicator() : Text(_error!, style: const TextStyle(color: Colors.white70))),
         ),
-        if (_error != null) ...joinGlowCards(widget.between),
+        if (_error != null) ...joinGlowCards(<Widget>[...widget.beforeChart, ...widget.afterChart]),
       ]);
     }
     final GroupDashboardMoney? m = d.money;
@@ -204,14 +207,14 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
           ]),
         ],
         ..._desk(sw, d, hasMoney: m != null),
-        if (widget.between.isNotEmpty) ...<Widget>[const SizedBox(height: 22), ...joinGlowCards(widget.between)],
-        // 6. the trend: the last thing on the page, after who I am and what waits
-        if (m != null) ...<Widget>[
-          const SizedBox(height: 22),
-          _title(sw ? 'Mwenendo wa fedha' : 'Money over time'),
-          const SizedBox(height: 8),
-          _chartCard(sw, m),
-        ],
+        if (widget.lead.isNotEmpty) ...<Widget>[const SizedBox(height: 22), ...widget.lead],
+        // ONE joined card: who I am, what waits, the trend, then news and my money, told apart by the glowing line and each part's gold title.
+        const SizedBox(height: 22),
+        ...joinGlowCards(<Widget>[
+          ...widget.beforeChart,
+          if (m != null) _ChartSection(title: sw ? 'Mwenendo wa fedha' : 'Money over time', child: _chartBody(sw, m)),
+          ...widget.afterChart,
+        ]),
       ],
     );
   }
@@ -280,31 +283,24 @@ class GroupOverviewDashboardState extends State<GroupOverviewDashboard> {
         child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
       );
 
-  /// The inventory dashboard's glowing chart card: the months above, the line (12 months of money in and out) or the bars (the month by kind).
-  Widget _chartCard(final bool sw, final GroupDashboardMoney m) => DecoratedBox(
+  /// The chart as the inside of a part of the joined card: the months above, the line (12 months of money in and out) or the bars (the month by kind).
+  Widget _chartBody(final bool sw, final GroupDashboardMoney m) => KeyedSubtree(
         key: const Key('grp_overview_chart'),
-        decoration: joinedCardDecoration(),
-        child: DecoratedBox(
-          decoration: joinedCardBorder(),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-              Row(children: <Widget>[
-                Expanded(child: Text(_bars ? (sw ? 'Mwezi huu kwa aina' : 'This month, by kind') : (sw ? 'Miezi 12' : 'Last 12 months'), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600))),
-                _toggle(sw),
-              ]),
-              const SizedBox(height: 16),
-              SizedBox(height: 220, child: _bars ? _mixBars(sw, m) : _trendLines(sw, m)),
-              const SizedBox(height: 8),
-              if (!_bars)
-                Row(children: <Widget>[
-                  _legend(ThemeConstants.successGreen, sw ? 'Zilizoingia' : 'In'),
-                  const SizedBox(width: 16),
-                  _legend(ThemeConstants.errorRed, sw ? 'Zilizotoka' : 'Out'),
-                ]),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+          Row(children: <Widget>[
+            Expanded(child: Text(_bars ? (sw ? 'Mwezi huu kwa aina' : 'This month, by kind') : (sw ? 'Miezi 12' : 'Last 12 months'), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600))),
+            _toggle(sw),
+          ]),
+          const SizedBox(height: 16),
+          SizedBox(height: 220, child: _bars ? _mixBars(sw, m) : _trendLines(sw, m)),
+          const SizedBox(height: 8),
+          if (!_bars)
+            Row(children: <Widget>[
+              _legend(ThemeConstants.successGreen, sw ? 'Zilizoingia' : 'In'),
+              const SizedBox(width: 16),
+              _legend(ThemeConstants.errorRed, sw ? 'Zilizotoka' : 'Out'),
             ]),
-          ),
-        ),
+        ]),
       );
 
   Widget _legend(final Color c, final String label) => Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
@@ -663,4 +659,15 @@ class GroupBento extends StatelessWidget {
           ),
         ),
       );
+}
+
+/// The trend as one part of the joined card (its gold title inside), so it is joined to its neighbours like any other card.
+class _ChartSection extends StatelessWidget with GlowSectionWidget {
+  const _ChartSection({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(final BuildContext context) => GlowCard(title: title, children: <Widget>[child]);
 }

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../../constants/theme_constants.dart';
 import '../../../services/localization_service.dart';
+import '../../../widgets/scrolling_chip_row.dart';
 import '../../../utils/server_message.dart';
 import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_models.dart';
@@ -233,6 +234,30 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
           children: joinGlowCards(<Widget>[
+            ScrollingChipRow(padding: EdgeInsets.zero, children: <Widget>[
+                for (final (String, String) f in filters)
+                  ScrollChoiceChip(chipKey: Key('grp_obl_filter_${f.$1}'),
+                      label: f.$2,
+                      selected: _state == f.$1,
+                      onSelected: (_) {
+                        setState(() => _state = f.$1);
+                        _load();
+                      },
+                    ),
+              ]),
+            const SizedBox(height: 8),
+            if (_state != 'promises')
+              TextField(
+                key: const Key('grp_obl_search'),
+                controller: _search,
+                onChanged: (_) {
+                  _debounce?.cancel();
+                  _debounce = Timer(const Duration(milliseconds: 400), _load);
+                },
+                style: const TextStyle(color: Colors.white),
+                decoration: ThemeConstants.darkField(sw ? 'Tafuta jina au namba' : 'Search name or number', prefix: const Icon(Icons.search, color: Colors.white54)),
+              ),
+            const SizedBox(height: 10),
             if (_types.isNotEmpty)
               GlowListCard(
                 dividerKey: 'grp_types_div',
@@ -252,38 +277,6 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
                     ),
                 ],
               ),
-            const SizedBox(height: 10),
-            if (_state != 'promises')
-              TextField(
-                key: const Key('grp_obl_search'),
-                controller: _search,
-                onChanged: (_) {
-                  _debounce?.cancel();
-                  _debounce = Timer(const Duration(milliseconds: 400), _load);
-                },
-                style: const TextStyle(color: Colors.white),
-                decoration: ThemeConstants.darkField(sw ? 'Tafuta jina au namba' : 'Search name or number', prefix: const Icon(Icons.search, color: Colors.white54)),
-              ),
-            const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(children: <Widget>[
-                for (final (String, String) f in filters)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      key: Key('grp_obl_filter_${f.$1}'),
-                      label: Text(f.$2),
-                      selected: _state == f.$1,
-                      onSelected: (_) {
-                        setState(() => _state = f.$1);
-                        _load();
-                      },
-                    ),
-                  ),
-              ]),
-            ),
-            const SizedBox(height: 10),
             if (_error != null) GroupEmpty(_error!),
             if (!_loading && _error == null && _state != 'promises' && _rows.isEmpty)
               GroupEmpty(_types.isEmpty ? (sw ? 'Bado hakuna mchango. Ongeza mchango wa kwanza.' : 'No contribution yet. Add the first one.') : (sw ? 'Hakuna hapa.' : 'Nothing here.')),
