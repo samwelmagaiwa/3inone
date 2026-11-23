@@ -7,6 +7,7 @@ import 'package:boda_mapato/modules/groups/screens/voting_form_screen.dart';
 import 'package:boda_mapato/modules/groups/screens/voting_report_screen.dart';
 import 'package:boda_mapato/modules/groups/screens/voting_screen.dart';
 import 'package:boda_mapato/modules/groups/services/groups_api.dart';
+import 'package:boda_mapato/modules/inventory/screens/widgets/glow_list_card.dart';
 import 'package:boda_mapato/services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -151,6 +152,8 @@ void main() {
     ]);
     await _pump(t, Scaffold(body: VotingScreen(me: _me(<String>[]), api: api, onChanged: () async {})));
 
+    expect(find.byType(GlowSections), findsOneWidget, reason: 'every group of votings is a part of ONE joined card, with no gap between');
+    expect(find.byType(GlowCard), findsNWidgets(2), reason: 'a part for each series or kind');
     expect(find.text('Uchaguzi 2026'), findsOneWidget, reason: 'the two elections sit under their own series');
     expect(find.text('Financial decision'), findsOneWidget, reason: 'an agenda sits under its kind of matter');
     expect(find.text('Mwenyekiti'), findsOneWidget);
@@ -183,6 +186,7 @@ void main() {
     final _Api api = _Api(<Map<String, dynamic>>[_voting(1)]);
     await _pump(t, VotingDetailScreen(api: api, me: _me(<String>[]), votingId: 1));
 
+    expect(find.byType(GlowSections), findsOneWidget, reason: 'the head, the facts and my choice are one joined card');
     expect(find.byKey(const Key('grp_vote_target')), findsOneWidget);
     expect(find.text('Mwenyekiti'), findsWidgets);
     expect(find.byKey(const Key('grp_vote_candidates')), findsOneWidget);
@@ -295,6 +299,7 @@ void main() {
   testWidgets('preparing an election needs a position and two candidates; a secret ballot cannot allow changes; it is saved as a draft', (final WidgetTester t) async {
     final _Api api = _Api(<Map<String, dynamic>>[]);
     await _pump(t, VotingFormScreen(api: api));
+    expect(find.byType(GlowSections), findsOneWidget, reason: 'the form sections are one joined card');
 
     await t.tap(find.byKey(const Key('grp_vf_save')));
     await t.pumpAndSettle();
