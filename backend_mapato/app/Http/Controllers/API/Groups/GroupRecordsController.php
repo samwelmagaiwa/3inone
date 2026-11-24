@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The group's records around its members: invitation codes, the referral tree (who brought whom), members' photos and documents, and the
- * reports and exports. Who sees what follows the rights: the whole tree and the exports for officers, one's own branch for a member, ID
+ * reports and exports. Who sees what follows the rights: the whole tree and the exports for leaders, one's own branch for a member, ID
  * documents only for whoever may see NIDA numbers.
  */
 class GroupRecordsController extends Controller
@@ -124,7 +124,7 @@ class GroupRecordsController extends Controller
             ])->all();
     }
 
-    /** The whole tree (as a flat list the app nests), for officers; and the growth in numbers. */
+    /** The whole tree (as a flat list the app nests), for leaders; and the growth in numbers. */
     public function tree(): JsonResponse
     {
         $nodes = self::nodes();
@@ -286,7 +286,7 @@ class GroupRecordsController extends Controller
             'members' => [
                 'by_status' => collect(GroupMembers::STATUSES)->mapWithKeys(fn ($s) => [$s => (int) ($statusCounts[$s] ?? 0)]),
                 'joined' => DB::table('group_members')->whereBetween('joined_on', [$from, $to])->count(),
-                'officers' => DB::table('group_members')->whereIn('office', GroupOffices::OFFICES)->where('status', GroupMembers::ACTIVE)->count(),
+                'leaders' => DB::table('group_members')->whereIn('office', GroupOffices::OFFICES)->where('status', GroupMembers::ACTIVE)->count(),
             ],
             'money' => $money,
             'contributions' => [
@@ -300,7 +300,7 @@ class GroupRecordsController extends Controller
         ]]);
     }
 
-    /** A CSV of the member register (officers who see members; NIDA only for those who may see it). */
+    /** A CSV of the member register (leaders who see members; NIDA only for those who may see it). */
     public function exportMembers(Request $request): StreamedResponse
     {
         $sensitive = GroupAccess::can($request->user(), 'view_sensitive');

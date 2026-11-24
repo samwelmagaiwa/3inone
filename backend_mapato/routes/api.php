@@ -258,7 +258,7 @@ Route::prefix('public/groups')->middleware('throttle:30,1,public-groups')->group
 // everything else needs a right from the office they hold (group_right:...), see App\Support\Groups\GroupOffices.
 Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(function () {
     Route::get('me', [GroupMeController::class, 'show']);
-    // The officers' dashboard: members for whoever sees them, money only for whoever sees the group's money.
+    // The leaders' dashboard: members for whoever sees them, money only for whoever sees the group's money.
     Route::get('dashboard', [GroupDashboardController::class, 'show'])->middleware('group_right:view_members,view_finance');
     Route::get('me/transactions', [GroupMeController::class, 'transactions']);
     Route::post('me/payments', [GroupMeController::class, 'pay'])->middleware('throttle:20,1');
@@ -311,7 +311,7 @@ Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(f
     Route::post('promises', [GroupContributionController::class, 'storePromise'])->middleware('group_right:record_payments');
     Route::post('obligations/{id}/exempt', [GroupContributionController::class, 'exempt'])->whereNumber('id')->middleware('group_right:grant_exemptions');
 
-    // Loans (phase 3): the member's side, the guarantors, then each officer's step.
+    // Loans (phase 3): the member's side, the guarantors, then each leader's step.
     Route::get('me/loan-eligibility', [GroupLoanController::class, 'myEligibility']);
     Route::get('me/loans', [GroupLoanController::class, 'mine']);
     Route::post('me/loans', [GroupLoanController::class, 'applyMine'])->middleware('throttle:10,1');
@@ -419,7 +419,7 @@ Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(f
     // The payment methods the group authorises and where each is paid: everyone reads them, the Mwenyekiti and the Makamu choose them.
     Route::get('payment-methods', [GroupPaymentMethodController::class, 'index']);
     Route::put('payment-methods', [GroupPaymentMethodController::class, 'update'])->middleware('group_right:manage_payment_methods');
-    // Voting: many independent processes. Every member sees them and votes in the ones they may; officers prepare and run them.
+    // Voting: many independent processes. Every member sees them and votes in the ones they may; leaders prepare and run them.
     Route::get('votings', [GroupVotingController::class, 'index']);
     Route::get('votings/{id}', [GroupVotingController::class, 'show'])->whereNumber('id');
     Route::post('votings/{id}/vote', [GroupVotingController::class, 'vote'])->whereNumber('id')->middleware('throttle:60,1');

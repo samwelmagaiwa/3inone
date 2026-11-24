@@ -41,7 +41,7 @@ class GroupsMembershipTest extends TestCase
     }
 
     /** An existing member entered by the owner, holding [office], with a sign-in. Returns [member id, their account]. */
-    private function officer(User $owner, string $name, string $phone, ?string $office): array
+    private function leader(User $owner, string $name, string $phone, ?string $office): array
     {
         $id = $this->api($owner, 'POST', '/members', ['full_name' => $name, 'phone' => $phone, 'existing' => true])->assertCreated()->json('data.member.id');
         if ($office !== null) {
@@ -75,7 +75,7 @@ class GroupsMembershipTest extends TestCase
     {
         $owner = $this->owner();
         $this->setFees($owner);
-        [, $treasurer] = $this->officer($owner, 'Mweka Hazina', '0712000001', 'mweka_hazina');
+        [, $treasurer] = $this->leader($owner, 'Mweka Hazina', '0712000001', 'mweka_hazina');
 
         $app = $this->api($owner, 'POST', '/members', ['full_name' => 'Asha Juma', 'phone' => '0713000001', 'nida' => '19900101-12345-00001-25'])
             ->assertCreated()->assertJsonPath('data.member.status', 'submitted')->assertJsonPath('data.member.member_number', null)
@@ -120,7 +120,7 @@ class GroupsMembershipTest extends TestCase
     {
         $owner = $this->owner();
         $this->setFees($owner);
-        [, $treasurer] = $this->officer($owner, 'Mweka Hazina', '0712000001', 'mweka_hazina');
+        [, $treasurer] = $this->leader($owner, 'Mweka Hazina', '0712000001', 'mweka_hazina');
         $id = $this->api($owner, 'POST', '/members', ['full_name' => 'Neema', 'phone' => '0713000003'])->json('data.member.id');
         $tx = $this->api($owner, 'POST', '/transactions', ['member_id' => $id, 'category' => 'shares', 'amount' => 50000, 'method' => 'cash'])->json('data.transaction.id');
         $this->api($treasurer, 'POST', "/transactions/{$tx}/verify")->assertOk();
@@ -135,14 +135,14 @@ class GroupsMembershipTest extends TestCase
         $this->assertEquals(50000, (float) $original->amount);
         $this->api($treasurer, 'POST', "/transactions/{$tx}/reverse", ['reason' => 'Again'])->assertStatus(409);
         // The assistant treasurer verifies but does not reverse.
-        [, $assistant] = $this->officer($owner, 'Msaidizi', '0712000009', 'mweka_hazina_msaidizi');
+        [, $assistant] = $this->leader($owner, 'Msaidizi', '0712000009', 'mweka_hazina_msaidizi');
         $this->api($assistant, 'POST', "/transactions/{$tx}/reverse", ['reason' => 'x'])->assertForbidden();
     }
 
     public function test_a_treasurer_cannot_verify_their_own_payment(): void
     {
         $owner = $this->owner();
-        [$treasurerId, $treasurer] = $this->officer($owner, 'Mweka Hazina', '0712000001', 'mweka_hazina');
+        [$treasurerId, $treasurer] = $this->leader($owner, 'Mweka Hazina', '0712000001', 'mweka_hazina');
         $tx = $this->api($owner, 'POST', '/transactions', ['member_id' => $treasurerId, 'category' => 'shares', 'amount' => 1000, 'method' => 'cash'])->json('data.transaction.id');
 
         $this->api($treasurer, 'POST', "/transactions/{$tx}/verify")->assertStatus(403)->assertJsonPath('code', 'own_payment');
@@ -153,8 +153,8 @@ class GroupsMembershipTest extends TestCase
     {
         $owner = $this->owner();
         $this->setFees($owner);
-        [$memberId, $member] = $this->officer($owner, 'Mwanachama', '0714000001', null);
-        $this->officer($owner, 'Another', '0714000002', null);
+        [$memberId, $member] = $this->leader($owner, 'Mwanachama', '0714000001', null);
+        $this->leader($owner, 'Another', '0714000002', null);
 
         $this->api($member, 'GET', '/members')->assertForbidden();
         $this->api($member, 'GET', '/transactions')->assertForbidden();
@@ -173,8 +173,8 @@ class GroupsMembershipTest extends TestCase
     public function test_offices_give_rights_one_holder_each_and_nobody_changes_their_own(): void
     {
         $owner = $this->owner();
-        [$chairId, $chair] = $this->officer($owner, 'Mwenyekiti', '0712000010', 'mwenyekiti');
-        [$otherId] = $this->officer($owner, 'Second', '0712000011', null);
+        [$chairId, $chair] = $this->leader($owner, 'Mwenyekiti', '0712000010', 'mwenyekiti');
+        [$otherId] = $this->leader($owner, 'Second', '0712000011', null);
 
         $this->api($owner, 'PUT', "/members/{$otherId}/office", ['office' => 'mwenyekiti'])->assertStatus(409)->assertJsonPath('code', 'office_taken');
         $this->api($chair, 'PUT', "/members/{$chairId}/office", ['office' => null])->assertForbidden()->assertJsonPath('code', 'own_office');
@@ -190,7 +190,7 @@ class GroupsMembershipTest extends TestCase
     public function test_nida_is_masked_without_the_right_and_a_duplicate_is_refused(): void
     {
         $owner = $this->owner();
-        [, $assistant] = $this->officer($owner, 'Katibu Msaidizi', '0712000020', 'katibu_msaidizi');
+        [, $assistant] = $this->leader($owner, 'Katibu Msaidizi', '0712000020', 'katibu_msaidizi');
         $id = $this->api($owner, 'POST', '/members', ['full_name' => 'Rehema', 'phone' => '0713000020', 'nida' => '19900101-12345-00001-25'])->json('data.member.id');
 
         $this->api($owner, 'GET', "/members/{$id}")->assertJsonPath('data.member.nida', '19900101-12345-00001-25');
@@ -210,7 +210,7 @@ class GroupsMembershipTest extends TestCase
     public function test_a_member_signs_in_with_their_phone_and_loses_it_when_they_leave(): void
     {
         $owner = $this->owner();
-        [$id, $account] = $this->officer($owner, 'Mwanachama', '0714000050', null);
+        [$id, $account] = $this->leader($owner, 'Mwanachama', '0714000050', null);
         DB::table('users')->where('id', $account->id)->update(['password' => bcrypt('Secret#2026'), 'must_change_password' => false]);
 
         $this->postJson('/api/auth/login', ['email' => '+255714000050', 'password' => 'Secret#2026'])->assertOk()->assertJsonPath('data.user.id', (string) $account->id);

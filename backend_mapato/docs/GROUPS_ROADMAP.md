@@ -16,7 +16,7 @@ Status: **Phase 1 built (2026-11-22)**; phases 2–5 to come. No APK until the w
 - App: `lib/modules/groups` – GroupsHome (same frame as shop/salon: header ⋮ menu, teal page, pill footer), Home (my
   file, my money, Pay, "waiting for you"), Members (register, filters, search, paging), member file (approve/reject,
   suspend/reinstate/exit/deceased with reasons, office, sign-in, dependants, payments, history), Payments (queue, verify,
-  turn down, reverse, totals), More (settings with history, officers, activity log). Yes/No card before every change;
+  turn down, reverse, totals), More (settings with history, leaders, activity log). Yes/No card before every change;
   green/red/orange by what the action does; en/sw throughout. Sign-in field accepts email or phone.
 - Tests: `tests/Feature/GroupsMembershipTest.php` (13), `test/groups_phase1_test.dart` (7).
 - Deployed 2026-11-22 (migration `2026_12_03_000100_create_groups_tables` ran on the live MariaDB after a backup).
@@ -56,7 +56,7 @@ Status: **Phase 1 built (2026-11-22)**; phases 2–5 to come. No APK until the w
   private description, amount); chair/deputy (`approve_benefits`) approve with amount or reject with reason; treasurer
   pays (`welfare` transaction = approved amount, once); paid only when verified by someone else; description shown only
   to the member, deciders and payers; never one's own request.
-- App: Loans section (portfolio, waiting per step, by stage), loan file with each officer's step, My loans (eligibility
+- App: Loans section (portfolio, waiting per step, by stage), loan file with each leader's step, My loans (eligibility
   sum, apply with guarantors, answer guarantees), Welfare section, My welfare (ask for help), kinds of help, loan terms
   in settings, Home card "My loans / Welfare" and waiting lines.
 - Tests: `tests/Feature/GroupsLoansWelfareTest.php` (6), `test/groups_phase3_test.dart` (6).
@@ -67,7 +67,7 @@ Status: **Phase 1 built (2026-11-22)**; phases 2–5 to come. No APK until the w
   (private: only managers and the asset's keeper), keeper = any active member, shown to members or not, hire rate and late
   rate per unit per day (empty = not for hire / no late charge — never assumed). The count changes only through events
   (damage, loss, repair, recount up/down, retire, maintenance cost), each with its reason.
-- Hire: member asks (or keeper/officer writes down a hire for a member or someone outside the group) → availability over
+- Hire: member asks (or keeper/leader writes down a hire for a member or someone outside the group) → availability over
   the dates (approved + handed-over hires hold units; one still out holds them until today) → the KEEPER of that asset
   (any office) or a manager confirms or declines (never their own) → paid (`hire` payment, verified by someone else) →
   handed over only once paid → back: returned + missing = handed over, damaged ⊂ returned; late charge = overdue days ×
@@ -90,8 +90,8 @@ Status: **Phase 1 built (2026-11-22)**; phases 2–5 to come. No APK until the w
 - Meetings: `call_meetings` (chair, deputy) calls (optional SMS to all active members) and cancels with a reason;
   `record_meetings` (secretary, assistant secretary, chair, deputy) records attendance + minutes once it has started
   (correctable, logged). Members see meetings and whether they attended.
-- Notices: `post_announcements` (chair, deputy, secretaries), to all or officers only, optional expiry; taken down by
-  expiring (logged). Texts: `send_texts` (chair, deputy, secretary) to all / officers / overdue / chosen; the estimate
+- Notices: `post_announcements` (chair, deputy, secretaries), to all or leaders only, optional expiry; taken down by
+  expiring (logged). Texts: `send_texts` (chair, deputy, secretary) to all / leaders / overdue / chosen; the estimate
   (people, SMS parts) is shown before sending; sent in the queue (`SendGroupMessageJob`, each recipient claimed once,
   group's own SMS switch and limit).
 - App: "Meetings" section for everyone (meetings, notices, texts), meeting file with attendance/minutes, dividends (runs,
@@ -107,7 +107,7 @@ Status: **Phase 1 built (2026-11-22)**; phases 2–5 to come. No APK until the w
   hire (nothing else); apply to join (same duplicate checks, consent required → a normal application, source
   invitation/group_code); ask to hire (availability checked → a normal requested hire for the keeper). Written as the
   code's group (`TenantContext::runAs`). App: "Have a group code? Join a group" link on the sign-in page.
-- Referral tree: officers get the whole tree (flat nodes the app nests, search with the path from the top, growth by
+- Referral tree: leaders get the whole tree (flat nodes the app nests, search with the path from the top, growth by
   month); a member gets their own branch. Applications appear only once approved.
 - Photos and papers per member, private (`group_documents`, signed links); ID copies only uploaded/seen by
   `view_sensitive`; photo becomes the member's photo.
@@ -116,7 +116,7 @@ Status: **Phase 1 built (2026-11-22)**; phases 2–5 to come. No APK until the w
   BOM for Excel, cells starting with = + - @ written as text, each export logged.
 - Tests: `tests/Feature/GroupsInvitationsRecordsTest.php` (6), `test/groups_phase5b_test.dart` (4).
 
-**Officers' dashboard (2026-11-22)** – the other services' dashboards combined into one on Home, above the person's own card
+**Leaders' dashboard (2026-11-22)** – the other services' dashboards combined into one on Home, above the person's own card
 - One call `GET /api/groups/dashboard?month=YYYY-MM` (`view_members` or `view_finance`): member counts and the next meeting
   for both; the money part only with `view_finance` (null otherwise), from verified rows only.
 - App (`group_overview_dashboard.dart`): transport-style glass card (cash on record, the month's in/out, payments waiting);
@@ -175,7 +175,7 @@ A setting change keeps its old value with the date it stopped (history), so old 
 | Kamati ya Miradi | Projects Committee | Works with the Projects Chairperson on loans and projects (the blueprint's "Loan Committee") |
 | Mwanachama | Member | Own records, payments, applications |
 
-Open: the deputies' and assistants' exact powers (assumed: same screens, act when the main officer is away), and whether the
+Open: the deputies' and assistants' exact powers (assumed: same screens, act when the main leader is away), and whether the
 blueprint's chair keeper / asset custodian is a separate role or a duty given to a member.
 
 ## 3. What is reused (already in the app)
@@ -251,7 +251,7 @@ found no projects module. Built: `group_projects`, `group_project_reviews`, `gro
 Flow: any active member proposes → the committee recommends (yes/no with reason, never on its own proposal) → the chair
 approves (needs at least one "yes"; never their own) or turns down with a reason → the Projects Chairperson names a manager,
 logs progress (the manager may too) and closes it as completed or cancelled. Members see running and finished projects and
-their own proposals; officers see every proposal. The budget is a plan: money still moves only through the verified ledger.
+their own proposals; leaders see every proposal. The budget is a plan: money still moves only through the verified ledger.
 Still open: expense request → treasurer approval (spending against a project), loan arrears follow-up by the Projects
 Chairperson, loan penalties/grace/rescheduling (waiting for MEG's rules).
 
@@ -281,7 +281,7 @@ Latin-1 in the PDFs, a scanner screen (the QR opens the check page in any phone 
 
 Built on the existing meetings (title, agenda, when, venue, attendance, minutes): resolutions and actions (who must do what, by when) in
 `group_meeting_items`; the chair's approval of the secretary's minutes (`approve_minutes`: Mwenyekiti and Makamu; never ones they wrote;
-reopening needs a reason). Until approved the minutes, resolutions and actions are a DRAFT only officers see; once approved members see
+reopening needs a reason). Until approved the minutes, resolutions and actions are a DRAFT only leaders see; once approved members see
 them, nothing is edited without the chair reopening, and an action is ticked off by its owner or by whoever records meetings.
 Follow-up: `GET /groups/meeting-actions` (own, or all for `record_meetings`); Home shows "Minutes to approve", "My meeting actions" and
 "Meeting actions overdue". Not built: meeting attachments (files), reminders before a meeting, absent-with-apology in attendance.

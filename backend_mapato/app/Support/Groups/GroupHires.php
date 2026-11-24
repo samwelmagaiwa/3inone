@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 /**
  * Hiring the group's things out (chairs, tents ...), from request to closed:
  *
- *   requested -> approved (the keeper or an officer confirms they are there) or declined
+ *   requested -> approved (the keeper or a leader confirms they are there) or declined
  *   approved  -> issued (handed over: how many, in what condition)
  *   issued    -> returned (how many came back, damaged, missing; a late charge if the group set a late rate)
  *   returned  -> closed (everything back or settled, every shilling paid)

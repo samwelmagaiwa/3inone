@@ -55,7 +55,7 @@ class GroupMoreScreen extends StatelessWidget {
               entry(const Key('grp_more_dividends'), Icons.savings_rounded, sw ? 'Gawio' : 'Dividends', () => DividendsScreen(api: api, me: me)),
             if (me.can('manage_settings'))
               entry(const Key('grp_more_btypes'), Icons.volunteer_activism_rounded, sw ? 'Aina za msaada' : 'Kinds of help', () => BenefitTypesScreen(api: api)),
-            if (me.can('view_members')) entry(const Key('grp_more_offices'), Icons.workspace_premium_rounded, sw ? 'Viongozi' : 'Officers', () => GroupOfficesScreen(api: api)),
+            if (me.can('view_members')) entry(const Key('grp_more_offices'), Icons.workspace_premium_rounded, sw ? 'Viongozi' : 'Leaders', () => GroupOfficesScreen(api: api)),
             if (me.can('view_audit')) entry(const Key('grp_more_activity'), Icons.history_rounded, sw ? 'Kumbukumbu za shughuli' : 'Activity log', () => GroupActivityScreen(api: api)),
           ],
         ),
@@ -501,7 +501,7 @@ class _GroupOfficesScreenState extends State<GroupOfficesScreen> {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     return Scaffold(
       backgroundColor: ThemeConstants.primaryBlue,
-      appBar: ThemeConstants.buildAppBar(sw ? 'Viongozi' : 'Officers', flat: true),
+      appBar: ThemeConstants.buildAppBar(sw ? 'Viongozi' : 'Leaders', flat: true),
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())

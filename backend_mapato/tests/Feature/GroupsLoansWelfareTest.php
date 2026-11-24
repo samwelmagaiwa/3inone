@@ -157,7 +157,7 @@ class GroupsLoansWelfareTest extends TestCase
 
         // Paid out and repaid: the payout can no longer be undone.
         $this->api($this->people['treasurer'], 'POST', "/transactions/{$payout}/reverse", ['reason' => 'mistake'])->assertStatus(409);
-        // Officers see all of it; another member does not.
+        // Leaders see all of it; another member does not.
         $this->api($this->people['secretary'], 'GET', "/loans/{$id}")->assertForbidden();
         $this->api($this->people['juma'], 'GET', "/loans/{$id}")->assertOk();
     }

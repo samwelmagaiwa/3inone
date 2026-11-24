@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The group at a glance, for its officers: one call for the whole dashboard. Membership figures for whoever sees members; the money
+ * The group at a glance, for its leaders: one call for the whole dashboard. Membership figures for whoever sees members; the money
  * (cash, savings, contributions, loans, the 12-month trend and this month's mix) only for whoever sees the group's money -- the rest is null.
  * Every money figure is read from verified rows only, like everywhere else in the service.
  */

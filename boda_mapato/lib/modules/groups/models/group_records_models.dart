@@ -110,7 +110,7 @@ class GroupPublicInfo {
   final List<(int, String, double, int)> assets;
 }
 
-/// The officers' dashboard in one go. [money] is null for whoever may not see the group's money.
+/// The leaders' dashboard in one go. [money] is null for whoever may not see the group's money.
 class GroupDashboardData {
   const GroupDashboardData({required this.month, required this.active, required this.applications, required this.suspended, required this.joinedInMonth, this.money, this.nextMeetingTitle, this.nextMeetingAt, this.loansDesk, this.projectsDesk, this.meetingsDesk});
 

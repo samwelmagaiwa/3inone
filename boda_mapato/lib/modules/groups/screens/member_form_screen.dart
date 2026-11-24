@@ -16,7 +16,7 @@ import 'widgets/member_picker.dart';
 class MemberFormScreen extends StatefulWidget {
   const MemberFormScreen({required this.api, required this.me, super.key, this.member, this.placeSource, this.byMember = false});
 
-  /// A member registering someone else (not an officer entering a file): the person is tied to them, and a one-time password is texted to the
+  /// A member registering someone else (not a leader entering a file): the person is tied to them, and a one-time password is texted to the
   /// phone number entered. There is no referrer to choose and no "already a member" switch.
   final bool byMember;
 
@@ -173,7 +173,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
           content: Text(
             sent
                 ? (sw ? 'Nenosiri la muda limetumwa kwa SMS kwenda $phone. ${file.member.fullName} ataliingiza, aweke nenosiri lake mwenyewe, kisha aingie tena.' : 'A one-time password was texted to $phone. ${file.member.fullName} enters it, chooses their own password and signs in again.')
-                : (sw ? 'SMS ya nenosiri haikuweza kutumwa kwenda $phone. Bonyeza "Tuma tena" au mwombe msimamizi aijaribu.' : 'The text with the password could not be sent to $phone. Tap "Send again", or ask an officer to try.'),
+                : (sw ? 'SMS ya nenosiri haikuweza kutumwa kwenda $phone. Bonyeza "Tuma tena" au mwombe msimamizi aijaribu.' : 'The text with the password could not be sent to $phone. Tap "Send again", or ask a leader to try.'),
             key: const Key('grp_reg_done_text'),
             style: const TextStyle(color: Colors.white70),
           ),

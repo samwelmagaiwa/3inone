@@ -79,7 +79,7 @@ class GroupsDeskTest extends TestCase
         $d->assertJsonPath('data.money', null);
     }
 
-    public function test_an_ordinary_member_has_no_officers_dashboard(): void
+    public function test_an_ordinary_member_has_no_leaders_dashboard(): void
     {
         $this->api($this->people['asha'], 'GET', '/dashboard')->assertForbidden();
         $this->api($this->people['asha'], 'GET', '/me')->assertOk()->assertJsonPath('data.waiting', []);

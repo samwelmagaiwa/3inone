@@ -146,7 +146,7 @@ class GroupsApi {
           GroupPromise.fromJson(Map<String, dynamic>.from(p as Map)),
       ];
 
-  /// A promise for oneself ([memberId] null) or, by an officer, for a member.
+  /// A promise for oneself ([memberId] null) or, by a leader, for a member.
   Future<GroupPromise> makePromise(final Map<String, dynamic> body, {final int? memberId}) async => GroupPromise.fromJson(Map<String, dynamic>.from(
         _data(memberId == null ? await _api.post('$_base/me/promises', body) : await _api.post('$_base/promises', <String, dynamic>{...body, 'member_id': memberId}))['promise'] as Map,
       ));
@@ -285,7 +285,7 @@ class GroupsApi {
 
   Future<List<GroupHire>> hires({final String? status}) async => _hires(await _api.get('$_base/hires${_query(<String, String?>{'status': status})}'));
 
-  /// The keeper (or an officer) writes down a hire for a member or someone outside the group.
+  /// The keeper (or a leader) writes down a hire for a member or someone outside the group.
   Future<GroupHire> askHireFor(final Map<String, dynamic> body) async => _hire(await _api.post('$_base/hires', body));
 
   Future<GroupHire> decideHire(final int id, {required final bool approve, final String? note}) async =>
@@ -398,7 +398,7 @@ class GroupsApi {
   List<GroupTreeNode> _nodes(final Map<String, dynamic> d) =>
       <GroupTreeNode>[for (final dynamic n in (d['nodes'] as List? ?? const <dynamic>[])) GroupTreeNode.fromJson(Map<String, dynamic>.from(n as Map))];
 
-  /// The whole tree (officers).
+  /// The whole tree (leaders).
   Future<List<GroupTreeNode>> tree() async => _nodes(_data(await _api.get('$_base/tree')));
 
   /// One's own branch and its root.
@@ -483,7 +483,7 @@ class GroupsApi {
   /// The verified payments of a period as a CSV file.
   Future<Uint8List> exportPayments({required final String from, required final String to}) => _api.getFileBytes('$_base/reports/transactions.csv?from=$from&to=$to');
 
-  /// The officers' dashboard for [month] (2026-11; this month when null).
+  /// The leaders' dashboard for [month] (2026-11; this month when null).
   Future<GroupDashboardData> dashboard({final String? month}) async =>
       GroupDashboardData.fromJson(_data(await _api.get('$_base/dashboard${month == null ? '' : '?month=$month'}')));
 

@@ -10,7 +10,7 @@ import '../services/groups_api.dart';
 import 'groups_text.dart';
 import 'widgets/groups_ui.dart';
 
-/// "I will pay ... on ...": by a member for themself ([memberId] null) or by an officer for a member. A promise never lowers what is owed.
+/// "I will pay ... on ...": by a member for themself ([memberId] null) or by a leader for a member. A promise never lowers what is owed.
 /// [owing] lets it name the contribution it is for. Returns true when one was made.
 Future<bool> showPromiseForm(
   final BuildContext context, {

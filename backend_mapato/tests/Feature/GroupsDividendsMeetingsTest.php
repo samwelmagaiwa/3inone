@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * Groups (Vikundi), phase 5a: dividends by the group's own formula (prepared by one officer, approved and posted by another, never twice for
+ * Groups (Vikundi), phase 5a: dividends by the group's own formula (prepared by one leader, approved and posted by another, never twice for
  * a period, never past the approved profit), meetings with attendance and minutes, announcements, and texts to many members.
  */
 class GroupsDividendsMeetingsTest extends TestCase
@@ -139,19 +139,39 @@ class GroupsDividendsMeetingsTest extends TestCase
         $this->api($this->people['juma'], 'GET', '/meetings')->assertJsonPath('data.meetings.0.i_was_there', false);
     }
 
-    public function test_announcements_for_officers_stay_with_officers_and_texts_show_their_cost_first(): void
+    public function test_announcements_for_leaders_stay_with_leaders_and_texts_show_their_cost_first(): void
     {
         $this->api($this->people['secretary'], 'POST', '/announcements', ['title' => 'Kwa wote', 'body' => 'Karibuni kikaoni'])->assertCreated();
-        $this->api($this->people['secretary'], 'POST', '/announcements', ['title' => 'Viongozi tu', 'body' => 'Tukutane saa nane', 'audience' => 'officers'])->assertCreated();
+        $this->api($this->people['secretary'], 'POST', '/announcements', ['title' => 'Viongozi tu', 'body' => 'Tukutane saa nane', 'audience' => 'leaders'])->assertCreated();
         $this->api($this->people['asha'], 'GET', '/announcements')->assertJsonCount(1, 'data.announcements');
         $this->api($this->people['treasurer'], 'GET', '/announcements')->assertJsonCount(2, 'data.announcements');
         $this->api($this->people['asha'], 'POST', '/announcements', ['title' => 'xxx', 'body' => 'yyy'])->assertForbidden();
 
-        $this->api($this->people['secretary'], 'POST', '/messages/estimate', ['audience' => 'officers', 'body' => str_repeat('a', 200)])
+        $this->api($this->people['secretary'], 'POST', '/messages/estimate', ['audience' => 'leaders', 'body' => str_repeat('a', 200)])
             ->assertOk()->assertJsonPath('data.recipients', 4)->assertJsonPath('data.parts_each', 2)->assertJsonPath('data.parts_total', 8);
         $this->api($this->people['asha'], 'POST', '/messages', ['audience' => 'all', 'body' => 'Hello'])->assertForbidden();
         $this->api($this->people['secretary'], 'POST', '/messages', ['audience' => 'selected', 'member_ids' => [$this->ids['juma']], 'body' => 'Tafadhali njoo ofisini.'])
             ->assertCreated()->assertJsonPath('data.messages.0.recipients', 1)->assertJsonPath('data.messages.0.sent', 1);
         $this->assertSame('0713000002', $this->sms->sent[0]['to']);
+    }
+
+    public function test_an_older_app_that_still_says_officers_is_understood_and_means_the_leaders(): void
+    {
+        $this->api($this->people['secretary'], 'POST', '/announcements', ['title' => 'Viongozi tu', 'body' => 'Tukutane saa nane', 'audience' => 'officers'])->assertCreated();
+        $this->assertSame('leaders', DB::table('group_announcements')->value('audience'), 'stored under the new name');
+        $this->api($this->people['asha'], 'GET', '/announcements')->assertJsonCount(0, 'data.announcements');
+        $this->api($this->people['treasurer'], 'GET', '/announcements')->assertJsonCount(1, 'data.announcements')->assertJsonPath('data.announcements.0.audience', 'leaders');
+        $this->api($this->people['secretary'], 'POST', '/messages/estimate', ['audience' => 'officers', 'body' => 'Habari'])->assertOk()->assertJsonPath('data.recipients', 4);
+    }
+
+    public function test_the_migration_renames_stored_officers_to_leaders_and_back(): void
+    {
+        DB::table('group_announcements')->insert(['title' => 'Old', 'body' => 'x', 'category' => 'general', 'audience' => 'officers', 'author_id' => (string) $this->owner->id, 'owner_id' => (string) $this->owner->id, 'created_at' => now(), 'updated_at' => now()]);
+        $migration = require base_path('database/migrations/2026_12_16_000100_rename_groups_audience_officers_to_leaders.php');
+        $migration->up();
+        $this->assertSame(0, DB::table('group_announcements')->where('audience', 'officers')->count());
+        $this->assertSame(1, DB::table('group_announcements')->where('audience', 'leaders')->count());
+        $migration->down();
+        $this->assertSame(1, DB::table('group_announcements')->where('audience', 'officers')->count());
     }
 }

@@ -15,7 +15,7 @@ import '../services/groups_api.dart';
 import 'groups_text.dart';
 import 'widgets/group_tile_grid.dart';
 
-/// The group at a glance for its officers, built from the other services' dashboards:
+/// The group at a glance for its leaders, built from the other services' dashboards:
 ///
 ///   - the transport dashboard's glass balance card: the cash the records say the group holds, the month's money in and out;
 ///   - the rental dashboard's ring: how much of the month's contributions came in;

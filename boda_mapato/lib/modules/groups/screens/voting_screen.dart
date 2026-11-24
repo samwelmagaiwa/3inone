@@ -15,7 +15,7 @@ import 'voting_form_screen.dart';
 import 'widgets/groups_ui.dart';
 
 /// The Voting Dashboard. Three views: every voting (filtered as Active, Upcoming, Waiting for my vote, Completed or Closed), My voting activity (what
-/// I have voted in and what still waits for me) and, for officers who run votings, Manage. Votings are grouped under their own series or kind so
+/// I have voted in and what still waits for me) and, for leaders who run votings, Manage. Votings are grouped under their own series or kind so
 /// one process is never mistaken for another; each row says exactly what is voted on and where the member stands in it.
 class VotingScreen extends StatefulWidget {
   const VotingScreen({required this.me, required this.api, required this.onChanged, super.key});

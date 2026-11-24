@@ -11,7 +11,7 @@ use InvalidArgumentException;
  * The group's money records. Each category of money is kept apart (a joining fee is never savings), and a payment changes nothing until
  * it is verified:
  *
- *   submit   a member (or an officer for them) says a payment was made, with how and its reference      -> pending
+ *   submit   a member (or a leader for them) says a payment was made, with how and its reference      -> pending
  *   verify   the treasurer checks it against the evidence (never their own)                              -> verified, receipt number
  *   reject   the treasurer turns it down, with the reason                                                -> rejected (changes nothing)
  *   reverse  a verified payment that was wrong is put right by a new verified row the other way, linked to it; the original is

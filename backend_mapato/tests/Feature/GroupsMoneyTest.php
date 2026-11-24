@@ -177,7 +177,7 @@ class GroupsMoneyTest extends TestCase
         $this->api($this->people['assistant'], 'POST', "/transactions/{$tx}/verify")->assertOk();
         $this->api($this->people['treasurer'], 'GET', '/promises')->assertJsonPath('data.promises.0.state', 'kept');
 
-        // Only the member or an officer who records payments can withdraw a promise.
+        // Only the member or a leader who records payments can withdraw a promise.
         $other = $this->api($this->people['asha'], 'POST', '/me/promises', ['amount' => 5000, 'promised_on' => '2026-11-25'])->json('data.promise.id');
         $this->api($this->people['juma'], 'POST', "/promises/{$other}/cancel")->assertForbidden();
         $this->api($this->people['asha'], 'POST', "/promises/{$other}/cancel")->assertOk();
@@ -208,7 +208,7 @@ class GroupsMoneyTest extends TestCase
         $this->assertStringContainsString('TSh 10,000', collect($this->sms->sent)->last()['message']);
     }
 
-    public function test_only_officers_who_handle_money_see_who_owes(): void
+    public function test_only_leaders_who_handle_money_see_who_owes(): void
     {
         $this->jamii();
         $this->api($this->people['asha'], 'GET', '/obligations')->assertForbidden();

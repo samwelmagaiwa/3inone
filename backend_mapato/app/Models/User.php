@@ -107,7 +107,7 @@ class User extends Authenticatable
         'landlord'      => 'Landlord',
         'caretaker'     => 'Caretaker',
         'tenant'        => 'Tenant',
-        // A member of a savings / economic group (the Groups service). Officers are members too: their office decides what they may do.
+        // A member of a savings / economic group (the Groups service). Leaders are members too: their office decides what they may do.
         'group_member'  => 'Group Member',
     ];
 

@@ -14,7 +14,7 @@ import 'groups_text.dart';
 import 'widgets/groups_ui.dart';
 import 'widgets/member_picker.dart';
 
-/// Projects (miradi): every member sees the projects that run or finished and the ones they proposed; officers see every proposal too. Any
+/// Projects (miradi): every member sees the projects that run or finished and the ones they proposed; leaders see every proposal too. Any
 /// member may propose one. The committee recommends, the chair decides, the Projects Chairperson runs them (the server enforces it all).
 class ProjectsScreen extends StatefulWidget {
   const ProjectsScreen(

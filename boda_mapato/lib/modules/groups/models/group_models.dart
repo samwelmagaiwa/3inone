@@ -176,7 +176,7 @@ class GroupMemberFile {
   final List<Map<String, dynamic>> documents;
   final String? photoUrl;
 
-  /// officer | invitation | group_code
+  /// leader | invitation | group_code
   final String? source;
 }
 

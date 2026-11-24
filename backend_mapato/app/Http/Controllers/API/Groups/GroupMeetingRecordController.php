@@ -82,7 +82,7 @@ class GroupMeetingRecordController extends Controller
             ->where('g.id', $id)->first(['g.*', 'u.name as called_by_name', 'v.name as approved_by_name']);
         $me = $this->myId($request);
 
-        return response()->json(['success' => true, 'data' => ['meeting' => GroupCommunicationController::meetingFor($row, $me, GroupCommunicationController::officer($request))]]);
+        return response()->json(['success' => true, 'data' => ['meeting' => GroupCommunicationController::meetingFor($row, $me, GroupCommunicationController::leader($request))]]);
     }
 
     // ---------------------------------------------------------------- resolutions and actions

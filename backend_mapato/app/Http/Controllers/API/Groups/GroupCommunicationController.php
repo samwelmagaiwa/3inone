@@ -25,13 +25,13 @@ class GroupCommunicationController extends Controller
         return response()->json(['success' => false, 'code' => $code, 'message' => $message], $status);
     }
 
-    /** Does this person hold an office (or run the group)? Officers see draft minutes; members only the approved ones. */
-    public static function officer(Request $request): bool
+    /** Does this person hold an office (or run the group)? Leaders see draft minutes; members only the approved ones. */
+    public static function leader(Request $request): bool
     {
-        return self::isOfficer($request);
+        return self::isLeader($request);
     }
 
-    private static function isOfficer(Request $request): bool
+    private static function isLeader(Request $request): bool
     {
         if (GroupAccess::isOwner($request->user())) {
             return true;
@@ -50,15 +50,15 @@ class GroupCommunicationController extends Controller
     }
 
     /**
-     * A meeting as one person may see it: the minutes, resolutions and actions are a draft until the chair approves them, so only officers see
+     * A meeting as one person may see it: the minutes, resolutions and actions are a draft until the chair approves them, so only leaders see
      * them before that.
      *
      * @return array<string, mixed>
      */
-    public static function meetingFor(object $m, ?int $myId, bool $officer): array
+    public static function meetingFor(object $m, ?int $myId, bool $leader): array
     {
         $approved = ($m->minutes_approved_at ?? null) !== null;
-        $see = $officer || $approved;
+        $see = $leader || $approved;
         $present = DB::table('group_meeting_attendance')->where('meeting_id', $m->id)->where('present', true)->pluck('member_id')->map(fn ($id) => (int) $id)->all();
 
         return [
@@ -86,9 +86,9 @@ class GroupCommunicationController extends Controller
         $me = GroupAccess::member($request->user());
         $rows = DB::table('group_meetings as g')->leftJoin('users as u', 'u.id', '=', 'g.called_by')->leftJoin('users as v', 'v.id', '=', 'g.minutes_approved_by')
             ->orderByDesc('g.starts_at')->limit(100)->get(['g.*', 'u.name as called_by_name', 'v.name as approved_by_name']);
-        $officer = self::isOfficer($request);
+        $leader = self::isLeader($request);
 
-        return response()->json(['success' => true, 'data' => ['meetings' => $rows->map(fn ($m) => self::meetingFor($m, $me === null ? null : (int) $me['id'], $officer))->values()]]);
+        return response()->json(['success' => true, 'data' => ['meetings' => $rows->map(fn ($m) => self::meetingFor($m, $me === null ? null : (int) $me['id'], $leader))->values()]]);
     }
 
     /** The chair calls a meeting; members can be told by text (it uses the group's SMS). */
@@ -163,9 +163,9 @@ class GroupCommunicationController extends Controller
 
     public function announcements(Request $request): JsonResponse
     {
-        $officer = self::isOfficer($request);
+        $leader = self::isLeader($request);
         $rows = DB::table('group_announcements as a')->leftJoin('users as u', 'u.id', '=', 'a.author_id')
-            ->when(!$officer, fn ($q) => $q->where('a.audience', 'all'))
+            ->when(!$leader, fn ($q) => $q->where('a.audience', 'all'))
             ->where(fn ($q) => $q->whereNull('a.expires_on')->orWhere('a.expires_on', '>=', now()->toDateString()))
             ->orderByDesc('a.id')->limit(100)->get(['a.*', 'u.name as author_name']);
 
@@ -181,11 +181,11 @@ class GroupCommunicationController extends Controller
             'title' => 'required|string|min:3|max:150',
             'body' => 'required|string|min:3|max:5000',
             'category' => ['nullable', Rule::in(['general', 'meeting', 'event', 'bereavement', 'contribution', 'loan', 'asset', 'emergency'])],
-            'audience' => ['nullable', Rule::in(['all', 'officers'])],
+            'audience' => ['nullable', Rule::in(['all', 'leaders', 'officers'])],
             'expires_on' => 'nullable|date|after_or_equal:today',
         ]);
         $id = (int) DB::table('group_announcements')->insertGetId([
-            'title' => trim($data['title']), 'body' => trim($data['body']), 'category' => $data['category'] ?? 'general', 'audience' => $data['audience'] ?? 'all',
+            'title' => trim($data['title']), 'body' => trim($data['body']), 'category' => $data['category'] ?? 'general', 'audience' => self::audience($data['audience'] ?? 'all'),
             'expires_on' => $data['expires_on'] ?? null, 'author_id' => (string) $request->user()->id, 'created_at' => now(), 'updated_at' => now(),
         ]);
         GroupAudit::record((string) $request->user()->id, 'announcement_posted', trim($data['title']), 'announcement', $id);
@@ -208,12 +208,18 @@ class GroupCommunicationController extends Controller
 
     // ---------------------------------------------------------------- texts to many members
 
+    /** The people in the group who hold a leadership office are called leaders; an older app said "officers", which still means them. */
+    private static function audience(string $audience): string
+    {
+        return $audience === 'officers' ? 'leaders' : $audience;
+    }
+
     /** @return array<int, array{id: int, phone: string}> the members a text for [audience] goes to */
     private static function recipients(string $audience, array $ids): array
     {
         $q = DB::table('group_members')->where('status', GroupMembers::ACTIVE)->whereNotNull('phone');
-        match ($audience) {
-            'officers' => $q->whereNotNull('office'),
+        match (self::audience($audience)) {
+            'leaders' => $q->whereNotNull('office'),
             'overdue' => $q->whereIn('id', GroupContributions::owing(GroupContributions::query())->where('o.due_date', '<', now()->toDateString())->pluck('o.member_id')),
             'selected' => $q->whereIn('id', array_map('intval', $ids)),
             default => $q,
@@ -226,7 +232,7 @@ class GroupCommunicationController extends Controller
     public function estimate(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'audience' => ['required', Rule::in(['all', 'officers', 'overdue', 'selected'])],
+            'audience' => ['required', Rule::in(['all', 'leaders', 'officers', 'overdue', 'selected'])],
             'member_ids' => 'nullable|array|max:5000',
             'member_ids.*' => 'integer',
             'body' => 'required|string|min:2|max:640',
@@ -258,12 +264,12 @@ class GroupCommunicationController extends Controller
     public function send(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'audience' => ['required', Rule::in(['all', 'officers', 'overdue', 'selected'])],
+            'audience' => ['required', Rule::in(['all', 'leaders', 'officers', 'overdue', 'selected'])],
             'member_ids' => 'nullable|array|max:5000|required_if:audience,selected',
             'member_ids.*' => 'integer',
             'body' => 'required|string|min:2|max:640',
         ]);
-        $id = $this->queueText($request, $data['audience'], $data['member_ids'] ?? [], trim($data['body']));
+        $id = $this->queueText($request, self::audience($data['audience']), $data['member_ids'] ?? [], trim($data['body']));
         if ($id === null) {
             return $this->fail('no_recipients', 'Hakuna wa kutumiwa ujumbe. / Nobody to send it to.');
         }

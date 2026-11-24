@@ -176,7 +176,7 @@ class GroupWelfareController extends Controller
         return response()->json(['success' => true]);
     }
 
-    // ---------------------------------------------------------------- the officers
+    // ---------------------------------------------------------------- the leaders
 
     public function index(Request $request): JsonResponse
     {

@@ -98,7 +98,7 @@ class GroupsVotingTest extends TestCase
         return (int) DB::table('group_voting_options')->where('voting_id', $voting)->where(fn ($q) => $q->where('label', 'like', $label . '%')->orWhere('role', strtolower($label)))->value('id');
     }
 
-    public function test_the_voting_rights_belong_to_the_officers_who_run_votings(): void
+    public function test_the_voting_rights_belong_to_the_leaders_who_run_votings(): void
     {
         foreach (['mwenyekiti', 'makamu_mwenyekiti', 'katibu', 'katibu_msaidizi'] as $office) {
             $this->assertContains('manage_votings', GroupOffices::rightsOf($office));
@@ -227,7 +227,7 @@ class GroupsVotingTest extends TestCase
 
     public function test_only_eligible_members_vote(): void
     {
-        $this->api($this->people['secretary'], 'POST', '/votings', ['title' => 'Viongozi pekee', 'category' => 'general', 'kind' => 'decision', 'eligibility' => 'officers',
+        $this->api($this->people['secretary'], 'POST', '/votings', ['title' => 'Viongozi pekee', 'category' => 'general', 'kind' => 'decision', 'eligibility' => 'leaders',
             'opens_at' => '2026-05-02 08:00:00', 'closes_at' => '2026-05-09 08:00:00'])->assertStatus(422);
         $everyone = $this->agenda('Jambo la wote');
         $selected = $this->agenda('Jambo la wachache', ['eligibility' => 'selected', 'member_ids' => [$this->ids['asha'], $this->ids['juma']]]);
@@ -311,7 +311,7 @@ class GroupsVotingTest extends TestCase
         $this->api($this->people['chair'], 'POST', "/votings/{$id}/publish-results")->assertStatus(409)->assertJsonPath('code', 'not_closed');
         $this->api($this->people['secretary'], 'POST', "/votings/{$id}/close")->assertOk()->assertJsonPath('data.voting.status', 'closed');
         $this->assertNull($this->api($this->people['rehema'], 'GET', "/votings/{$id}")->json('data.voting.results'), 'a member waits for the announcement');
-        $this->assertNotNull($this->api($this->people['secretary'], 'GET', "/votings/{$id}")->json('data.voting.results'), 'officers who report see it once closed');
+        $this->assertNotNull($this->api($this->people['secretary'], 'GET', "/votings/{$id}")->json('data.voting.results'), 'leaders who report see it once closed');
 
         $this->api($this->people['secretary'], 'POST', "/votings/{$id}/publish-results")->assertForbidden();
         $this->api($this->people['chair'], 'POST', "/votings/{$id}/publish-results")->assertOk();

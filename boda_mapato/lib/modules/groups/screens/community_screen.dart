@@ -28,7 +28,7 @@ Color meetingStatusColor(final String status) => switch (status) {
 
 String audienceLabel({required final bool sw, required final String audience}) => switch (audience) {
       'all' => sw ? 'Wanachama wote' : 'All members',
-      'officers' => sw ? 'Viongozi' : 'Officers',
+      'leaders' || 'officers' => sw ? 'Viongozi' : 'Leaders',
       'overdue' => sw ? 'Wenye michango iliyopita muda' : 'With overdue contributions',
       'selected' => sw ? 'Waliochaguliwa' : 'Chosen members',
       _ => audience,
@@ -244,7 +244,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   Row(children: <Widget>[
                     Expanded(
                       child: Text(
-                        '${a.authorName ?? ''} · ${dateLabel(a.createdAt)}${a.audience == 'officers' ? ' · ${audienceLabel(sw: sw, audience: 'officers')}' : ''}',
+                        '${a.authorName ?? ''} · ${dateLabel(a.createdAt)}${a.audience == 'leaders' ? ' · ${audienceLabel(sw: sw, audience: 'leaders')}' : ''}',
                         style: const TextStyle(color: Colors.white54, fontSize: 12),
                       ),
                     ),
@@ -595,18 +595,26 @@ class _NoticeDialogState extends State<_NoticeDialog> {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     final bool ready = _title.text.trim().length >= 3 && _body.text.trim().length >= 3;
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       key: const Key('grp_notice_dialog'),
       backgroundColor: ThemeConstants.bgMid,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       title: Text(sw ? 'Tangazo jipya' : 'New notice', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
       content: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-          TextField(key: const Key('grp_notice_title'), controller: _title, onChanged: (_) => setState(() {}), style: const TextStyle(color: Colors.white), decoration: ThemeConstants.darkField(sw ? 'Kichwa' : 'Title')),
+          // As wide as the screen allows, not as narrow as the fields' hints.
+          const SizedBox(width: double.maxFinite),
+          TextField(
+              key: const Key('grp_notice_title'),
+              controller: _title,
+              onChanged: (_) => setState(() {}),
+              style: const TextStyle(color: Colors.white),
+              decoration: ThemeConstants.darkField(sw ? 'Kichwa' : 'Title')),
           const SizedBox(height: 10),
           TextField(key: const Key('grp_notice_body'), controller: _body, onChanged: (_) => setState(() {}), maxLines: 6, minLines: 3, style: const TextStyle(color: Colors.white), decoration: ThemeConstants.darkField(sw ? 'Ujumbe' : 'Message')),
           const SizedBox(height: 10),
           Wrap(spacing: 8, children: <Widget>[
-            for (final String a in const <String>['all', 'officers'])
+            for (final String a in const <String>['all', 'leaders'])
               ChoiceChip(label: Text(audienceLabel(sw: sw, audience: a)), selected: _audience == a, onSelected: (_) => setState(() => _audience = a)),
           ]),
         ]),
@@ -699,7 +707,7 @@ class _TextFormState extends State<_TextForm> {
           Text(sw ? 'Ujumbe kwa wanachama' : 'Text to members', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
           const Divider(color: Colors.white12, height: 24),
           Wrap(spacing: 8, runSpacing: 4, children: <Widget>[
-            for (final String a in const <String>['all', 'officers', 'overdue'])
+            for (final String a in const <String>['all', 'leaders', 'overdue'])
               ChoiceChip(
                 key: Key('grp_text_aud_$a'),
                 label: Text(audienceLabel(sw: sw, audience: a)),

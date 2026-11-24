@@ -217,7 +217,7 @@ class GroupAnnouncement {
   final String body;
   final String category;
 
-  /// all | officers
+  /// all | leaders
   final String audience;
   final String? expiresOn;
   final String? authorName;

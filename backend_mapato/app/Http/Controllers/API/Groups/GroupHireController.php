@@ -15,7 +15,7 @@ use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 
 /**
- * Hiring out, step by step: a member asks (or an officer or the keeper writes down someone outside the group) -> the keeper confirms they
+ * Hiring out, step by step: a member asks (or a leader or the keeper writes down someone outside the group) -> the keeper confirms they
  * are there (or declines) -> it is paid and verified by someone else -> handed over -> back, counted (late charge from the group's late
  * rate; damage and loss counted) -> the damage charge, if any, decided by whoever decides hire charges -> closed when every unit is back or
  * settled and every shilling paid. Nobody approves, hands over or charges their own hire.
@@ -117,7 +117,7 @@ class GroupHireController extends Controller
         return $this->ask($request, $request->validate(self::askRules()), (int) $me['id'], null, null);
     }
 
-    /** An officer (or the keeper) writes down a hire for a member or for someone outside the group. */
+    /** A leader (or the keeper) writes down a hire for a member or for someone outside the group. */
     public function askFor(Request $request): JsonResponse
     {
         $data = $request->validate(self::askRules() + [
@@ -158,7 +158,7 @@ class GroupHireController extends Controller
         return $this->show($id);
     }
 
-    // ---------------------------------------------------------------- the keeper and the officers
+    // ---------------------------------------------------------------- the keeper and the leaders
 
     /** Hires the person may handle: everything for whoever manages assets, the hires of their assets for a keeper. */
     public function index(Request $request): JsonResponse
@@ -303,7 +303,7 @@ class GroupHireController extends Controller
         return $this->show($id);
     }
 
-    /** A payment for a hire, recorded by the keeper or an officer (the hirer may be outside the group). It waits for verification. */
+    /** A payment for a hire, recorded by the keeper or a leader (the hirer may be outside the group). It waits for verification. */
     public function pay(Request $request, int $id): JsonResponse
     {
         $data = $request->validate([

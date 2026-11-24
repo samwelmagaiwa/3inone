@@ -130,7 +130,7 @@ void main() {
     expect(find.byKey(const Key('grp_reg_resend')), findsNothing);
   });
 
-  testWidgets('an officer entering a member file still sees the referrer and the existing-member switch (the normal form is unchanged)', (final WidgetTester t) async {
+  testWidgets('a leader entering a member file still sees the referrer and the existing-member switch (the normal form is unchanged)', (final WidgetTester t) async {
     await _pump(t, MemberFormScreen(api: _Api(), me: _approver(), placeSource: FakePlaces()));
     expect(find.byKey(const Key('grp_f_referrer')), findsOneWidget);
     expect(find.byKey(const Key('grp_f_existing')), findsOneWidget);

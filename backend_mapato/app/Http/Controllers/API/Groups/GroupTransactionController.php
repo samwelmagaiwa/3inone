@@ -141,7 +141,7 @@ class GroupTransactionController extends Controller
     }
 
     /**
-     * An officer records money a member paid in -- or, with the payout right, money going out: a member's savings withdrawal, or a group
+     * A leader records money a member paid in -- or, with the payout right, money going out: a member's savings withdrawal, or a group
      * expense (no member, a payee). Everything waits for someone else's verification.
      */
     public function store(Request $request): JsonResponse
@@ -168,7 +168,7 @@ class GroupTransactionController extends Controller
         return self::submitFor($request, $member, $data);
     }
 
-    /** Shared by the officer's form and a member paying for themself. [member] is null for a group expense. */
+    /** Shared by the leader's form and a member paying for themself. [member] is null for a group expense. */
     public static function submitFor(Request $request, ?object $member, array $data): JsonResponse
     {
         try {

@@ -262,7 +262,7 @@ class GroupGuarantee {
   bool get waitsForMe => status == 'pending' && loanStatus == 'awaiting_guarantors';
 }
 
-/// The officers' view of all loans: a page, the portfolio and what waits at each step.
+/// The leaders' view of all loans: a page, the portfolio and what waits at each step.
 class GroupLoanPage {
   const GroupLoanPage({required this.loans, required this.portfolio, required this.waiting, required this.hasMore});
 

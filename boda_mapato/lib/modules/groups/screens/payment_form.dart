@@ -12,7 +12,7 @@ import 'groups_text.dart';
 import 'payment_methods_screen.dart';
 import 'widgets/groups_ui.dart';
 
-/// The form for money a member pays in -- by the member for themself ([member] null), or by an officer for a member -- and, for whoever
+/// The form for money a member pays in -- by the member for themself ([member] null), or by a leader for a member -- and, for whoever
 /// records payouts, a savings withdrawal. Everything is sent WAITING: it counts only after someone else verifies it. Returns true when one
 /// was sent. [owing] are the member's open contributions (to choose which one is paid); [obligation] starts the form on one of them.
 Future<bool> showPaymentForm(
@@ -79,7 +79,7 @@ class _PaymentFormState extends State<_PaymentForm> {
   /// The methods the group authorises (all of them until it has chosen).
   List<String> get _methods => widget.me.paymentMethods.isEmpty ? paymentMethods : <String>[for (final GroupPayMethod m in widget.me.paymentMethods) m.method];
 
-  /// An officer with the payout right, recording for a member whose savings are known, may record a savings withdrawal.
+  /// A leader with the payout right, recording for a member whose savings are known, may record a savings withdrawal.
   bool get _mayWithdraw => widget.member != null && widget.me.can('record_payouts') && widget.paid.containsKey('savings');
 
   List<String> get _kinds => widget.loan != null

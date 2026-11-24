@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * "I will pay 20,000 on the 30th." A promise is a note with a date: it never lowers what is owed -- only a verified payment does. Its state is
  * read, not stored: KEPT once the contribution it names is paid (or, for a general promise, once the member's verified payments since the
- * promise reach its amount), OVERDUE when its day has passed without that, otherwise DUE. A member or an officer can withdraw it (cancelled).
+ * promise reach its amount), OVERDUE when its day has passed without that, otherwise DUE. A member or a leader can withdraw it (cancelled).
  */
 final class GroupPromises
 {

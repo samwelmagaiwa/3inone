@@ -482,7 +482,7 @@ class GroupMemberController extends Controller
      * A member registers a new member. Any ACTIVE member may do it (whatever their office, or none), and so may whoever manages members.
      *
      *   - the new person is tied to the member who registered them (their referrer), so the tree of who brought whom is complete;
-     *   - they start as an application, like any other: the officers still approve it once the joining payments are verified;
+     *   - they start as an application, like any other: the leaders still approve it once the joining payments are verified;
      *   - they get a sign-in at once, and a one-time password goes by SMS to the phone number that was entered for them. The registrar is
      *     NEVER shown it: only the person it was sent to knows it. Signing in with it forces a new password of 8 or more characters, and
      *     then a new sign-in (the app's first-login screen does that for every account with a temporary password).

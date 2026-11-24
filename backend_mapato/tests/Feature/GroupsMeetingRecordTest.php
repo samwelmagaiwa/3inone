@@ -14,7 +14,7 @@ use Tests\TestCase;
 
 /**
  * Groups (Vikundi): the record of a meeting. The secretary writes minutes, resolutions and actions; the chair approves the minutes (never
- * ones they wrote); until then only officers see them; actions are ticked off by their owner; approved minutes are not edited unless reopened.
+ * ones they wrote); until then only leaders see them; actions are ticked off by their owner; approved minutes are not edited unless reopened.
  */
 class GroupsMeetingRecordTest extends TestCase
 {
@@ -81,7 +81,7 @@ class GroupsMeetingRecordTest extends TestCase
         $this->assertNotContains('approve_minutes', GroupOffices::rightsOf('mweka_hazina'));
     }
 
-    public function test_minutes_are_a_draft_for_officers_until_the_chair_approves_and_then_the_members_see_them(): void
+    public function test_minutes_are_a_draft_for_leaders_until_the_chair_approves_and_then_the_members_see_them(): void
     {
         $id = $this->heldMeeting();
         $this->api($this->people['secretary'], 'POST', "/meetings/{$id}/items", ['kind' => 'resolution', 'text' => 'Banda la kuku lijengwe kabla ya Julai'])->assertOk();
@@ -89,7 +89,7 @@ class GroupsMeetingRecordTest extends TestCase
             ->assertOk()->assertJsonCount(2, 'data.meeting.items');
         $this->api($this->people['asha'], 'POST', "/meetings/{$id}/items", ['kind' => 'resolution', 'text' => 'Mimi pia nasema'])->assertForbidden();
 
-        // A draft: officers see it, ordinary members do not.
+        // A draft: leaders see it, ordinary members do not.
         $this->api($this->people['treasurer'], 'GET', '/meetings')->assertJsonPath('data.meetings.0.minutes_status', 'draft')->assertJsonCount(2, 'data.meetings.0.items');
         $this->api($this->people['asha'], 'GET', '/meetings')->assertJsonPath('data.meetings.0.minutes', null)->assertJsonPath('data.meetings.0.items', [])->assertJsonPath('data.meetings.0.minutes_status', 'draft');
 

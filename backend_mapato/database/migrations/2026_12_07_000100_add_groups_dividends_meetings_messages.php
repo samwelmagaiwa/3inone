@@ -14,7 +14,7 @@ return new class extends Migration
      *   group_dividend_lines      each member's base and amount in that run, kept with it forever
      *   group_meetings            a meeting the chair calls: when, where, agenda; held with minutes, or cancelled
      *   group_meeting_attendance  who was there
-     *   group_announcements       a notice to all members or to the officers, until it expires
+     *   group_announcements       a notice to all members or to the leaders, until it expires
      *   group_messages            a text sent to a set of members: what, to whom, how many went out
      *   group_message_recipients  each member it was for, and whether it went
      */
@@ -88,7 +88,7 @@ return new class extends Migration
                 $table->string('title', 150);
                 $table->text('body');
                 $table->string('category', 20)->default('general');
-                $table->string('audience', 12)->default('all'); // all | officers
+                $table->string('audience', 12)->default('all'); // all | leaders
                 $table->date('expires_on')->nullable();
                 $table->uuid('author_id')->nullable();
                 $table->timestamps();
@@ -100,7 +100,7 @@ return new class extends Migration
                 $table->id();
                 $table->uuid('owner_id')->index();
                 $table->text('body');
-                $table->string('audience', 20); // all | officers | overdue | selected
+                $table->string('audience', 20); // all | leaders | overdue | selected
                 $table->unsignedInteger('recipients')->default(0);
                 $table->unsignedInteger('sent')->default(0);
                 $table->unsignedSmallInteger('parts')->default(1);

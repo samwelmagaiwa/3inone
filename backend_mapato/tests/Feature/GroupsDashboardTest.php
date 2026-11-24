@@ -10,7 +10,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
-/** Groups (Vikundi): the officers' dashboard -- one call, figures that add up, money only for whoever sees the money. */
+/** Groups (Vikundi): the leaders' dashboard -- one call, figures that add up, money only for whoever sees the money. */
 class GroupsDashboardTest extends TestCase
 {
     use RefreshDatabase;

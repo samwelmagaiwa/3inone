@@ -15,7 +15,7 @@ import 'widgets/groups_ui.dart';
 
 /// ONE voting: exactly what is voted on (the position and its candidates, or the agenda), the background, the dates and rules, who may vote,
 /// where the member stands, the choice (candidates for a position, approve / reject / abstain for an agenda), the confirmation, and the
-/// result when the voting's own rules allow it to be seen. Officers who run votings have a Manage button at the top.
+/// result when the voting's own rules allow it to be seen. Leaders who run votings have a Manage button at the top.
 class VotingDetailScreen extends StatefulWidget {
   const VotingDetailScreen({required this.api, required this.me, required this.votingId, super.key});
 
@@ -84,7 +84,7 @@ class _VotingDetailScreenState extends State<VotingDetailScreen> {
     if (mounted) setState(() => _busy = false);
   }
 
-  // ---------------------------------------------------------------- the officers' side
+  // ---------------------------------------------------------------- the leaders' side
 
   Future<void> _manage(final GroupVoting v) async {
     final bool sw = context.read<LocalizationService>().isSwahili;

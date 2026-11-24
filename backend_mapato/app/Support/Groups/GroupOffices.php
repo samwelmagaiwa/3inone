@@ -17,7 +17,7 @@ namespace App\Support\Groups;
  *   kamati_miradi       Projects Committee     works with the Projects Chairperson on loans and projects
  * A member with no office is an ordinary member: they see and do only their own things.
  *
- * Deputies and assistants hold the same rights as the officer they help (they act when that officer is away). The business owner (the
+ * Deputies and assistants hold the same rights as the leader they help (they act when that leader is away). The business owner (the
  * account head who runs the group in the app) holds every right.
  */
 final class GroupOffices

@@ -16,8 +16,8 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 
 /**
- * What the signed-in person sees of their group: who they are in it (owner, officer, member), what they may do, the group's fees and how
- * to pay, their own file and money, and -- for officers -- how much waits for them. A member only ever reads their own records here.
+ * What the signed-in person sees of their group: who they are in it (owner, leader, member), what they may do, the group's fees and how
+ * to pay, their own file and money, and -- for leaders -- how much waits for them. A member only ever reads their own records here.
  */
 class GroupMeController extends Controller
 {

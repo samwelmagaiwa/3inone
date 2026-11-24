@@ -15,7 +15,7 @@ import 'groups_text.dart';
 import 'widgets/groups_ui.dart';
 
 /// A member's statement: their account (what the group holds for them), the totals of the period chosen, what is still owed, what waits for
-/// verification, promises, and every transaction with the balance after it. One's own ([memberId] null) or, for an officer, a member's.
+/// verification, promises, and every transaction with the balance after it. One's own ([memberId] null) or, for a leader, a member's.
 /// The period and the kind of money are chosen with the buttons at the top; the document (PDF, picture, Word) holds the whole period.
 class GroupStatementScreen extends StatefulWidget {
   const GroupStatementScreen({required this.api, super.key, this.memberId, this.memberName});

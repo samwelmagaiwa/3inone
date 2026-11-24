@@ -243,11 +243,11 @@ void main() {
     expect(find.byKey(const Key('grp_my_shares')), findsOneWidget);
     expect(find.byKey(const Key('grp_my_owed')), findsOneWidget);
     expect(find.byKey(const Key('grp_my_pending')), findsOneWidget);
-    expect(find.byKey(const Key('grp_overview')), findsNothing, reason: 'no officers figures for a member');
+    expect(find.byKey(const Key('grp_overview')), findsNothing, reason: 'no leaders figures for a member');
     expect(find.text('100K'), findsOneWidget, reason: 'their savings');
   });
 
-  testWidgets('while the officers figures load there is only a spinner: the page appears once, in its final order', (final WidgetTester t) async {
+  testWidgets('while the leaders figures load there is only a spinner: the page appears once, in its final order', (final WidgetTester t) async {
     final Completer<void> gate = Completer<void>();
     final _FakeApi api = _SlowApi(gate.future);
     SharedPreferences.setMockInitialValues(<String, Object>{});

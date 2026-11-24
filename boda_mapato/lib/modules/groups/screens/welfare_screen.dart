@@ -14,7 +14,7 @@ import 'groups_text.dart';
 import 'widgets/amount_dialogs.dart';
 import 'widgets/groups_ui.dart';
 
-/// Welfare for the officers: the requests by stage; the chair approves (with the amount) or turns down, the treasurer pays an approved one.
+/// Welfare for the leaders: the requests by stage; the chair approves (with the amount) or turns down, the treasurer pays an approved one.
 /// Nobody decides or pays their own request (the server refuses it too).
 class WelfareScreen extends StatefulWidget {
   const WelfareScreen({required this.me, required this.api, required this.onChanged, super.key});

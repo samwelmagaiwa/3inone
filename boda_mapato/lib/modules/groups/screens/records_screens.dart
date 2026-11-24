@@ -180,13 +180,13 @@ class _InviteScreenState extends State<InviteScreen> {
   }
 }
 
-/// Who brought whom: the whole tree for officers (with a search), one's own branch for a member.
+/// Who brought whom: the whole tree for leaders (with a search), one's own branch for a member.
 class ReferralTreeScreen extends StatefulWidget {
   const ReferralTreeScreen({required this.api, required this.whole, super.key});
 
   final GroupsApi api;
 
-  /// The whole group (officers) or one's own branch.
+  /// The whole group (leaders) or one's own branch.
   final bool whole;
 
   @override

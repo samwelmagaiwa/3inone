@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * (approve / reject / abstain), with its own eligible voters, rules, dates, ballots, participation and result. A member votes once in each
  * process they may vote in and never twice in the same one; a secret ballot never records who chose what.
  *
- * Officers with `manage_votings` prepare and run the processes; `publish_voting_results` announces a result; `view_voting_reports` reads the
+ * Leaders with `manage_votings` prepare and run the processes; `publish_voting_results` announces a result; `view_voting_reports` reads the
  * reports. A candidate never runs, closes, cancels or announces the process they stand in. Members only vote, see the processes and read what
  * the process's own rules allow them to read.
  */

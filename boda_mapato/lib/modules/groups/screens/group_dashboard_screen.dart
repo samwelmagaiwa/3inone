@@ -23,7 +23,7 @@ import 'widgets/account_card.dart';
 import 'widgets/group_tile_grid.dart';
 import 'widgets/groups_ui.dart';
 
-/// Home: the person's own membership and money, and -- for officers -- what waits for them. Everyone has it; a member sees nothing of anyone else.
+/// Home: the person's own membership and money, and -- for leaders -- what waits for them. Everyone has it; a member sees nothing of anyone else.
 class GroupDashboardScreen extends StatefulWidget {
   const GroupDashboardScreen({required this.me, required this.api, required this.onChanged, required this.onOpen, super.key});
 
@@ -284,7 +284,7 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
     final GroupMe me = widget.me;
     final GroupMember? m = me.member;
 
-    final bool officer = me.can('view_finance') || me.can('view_members');
+    final bool leader = me.can('view_finance') || me.can('view_members');
     final int waitingCount = me.waiting.values.fold<int>(0, (final int a, final int b) => a + (b > 0 ? b : 0));
     final List<Widget> personal = <Widget>[
           // Who I am in the group (an administrator with no member record has nothing to show).
@@ -390,9 +390,9 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: <Widget>[
-          // The officers: the group's figures, then ONE joined card (who I am, what waits, the trend, news, my money). Everyone else: the same
+          // The leaders: the group's figures, then ONE joined card (who I am, what waits, the trend, news, my money). Everyone else: the same
           // joined card without the trend. The person's own tiles come before it.
-          if (officer)
+          if (leader)
             GroupOverviewDashboard(key: _overview, api: widget.api, me: me, onOpen: widget.onOpen, account: account, lead: lead, beforeChart: personal, afterChart: afterChart)
           else ...<Widget>[
             // Everyone else: the same ONE joined card, from the account down.

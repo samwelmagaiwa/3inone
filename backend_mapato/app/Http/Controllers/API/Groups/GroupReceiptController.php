@@ -14,7 +14,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Receipts. A member reads the receipt of their OWN verified payment, an officer who sees the group's finances reads any; the app turns it
+ * Receipts. A member reads the receipt of their OWN verified payment, a leader who sees the group's finances reads any; the app turns it
  * into a document (with a QR code made from the verification link). Anyone holding the link or code may check that a receipt is genuine.
  */
 class GroupReceiptController extends Controller

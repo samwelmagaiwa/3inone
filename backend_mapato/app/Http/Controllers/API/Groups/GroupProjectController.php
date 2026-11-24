@@ -13,9 +13,9 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
- * Projects (miradi): a member or an officer proposes a project; the projects committee recommends it (yes or no, with the reason); the chair
+ * Projects (miradi): a member or a leader proposes a project; the projects committee recommends it (yes or no, with the reason); the chair
  * approves or turns it down, never their own, and only once the committee has said yes; the Projects Chairperson runs it (names a manager,
- * logs progress, closes it). Members see the projects that run or finished; proposals are seen by the proposer and by the officers.
+ * logs progress, closes it). Members see the projects that run or finished; proposals are seen by the proposer and by the leaders.
  * The budget is what the group PLANS: money still moves only through the verified ledger.
  */
 class GroupProjectController extends Controller
@@ -92,7 +92,7 @@ class GroupProjectController extends Controller
 
     // ---------------------------------------------------------------- reading
 
-    /** Officers see every project; everyone else sees the running and finished ones, and their own proposals. */
+    /** Leaders see every project; everyone else sees the running and finished ones, and their own proposals. */
     public function index(Request $request): JsonResponse
     {
         $data = $request->validate(['status' => ['nullable', Rule::in(['proposed', 'active', 'completed', 'rejected', 'cancelled'])], 'page' => 'nullable|integer|min:1']);
@@ -135,7 +135,7 @@ class GroupProjectController extends Controller
 
     // ---------------------------------------------------------------- proposing
 
-    /** A member (or an officer with the right to run projects) proposes a project. */
+    /** A member (or a leader with the right to run projects) proposes a project. */
     public function propose(Request $request): JsonResponse
     {
         $data = $request->validate([

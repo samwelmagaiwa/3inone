@@ -14,8 +14,8 @@ import 'loan_detail_screen.dart';
 import 'my_loans_screen.dart';
 import 'widgets/groups_ui.dart';
 
-/// Loans for the officers: the portfolio (paid out, principal and interest still owed apart, overdue), what waits at each step, and the
-/// loans by stage. A loan opens its file, where each officer finds their own step.
+/// Loans for the leaders: the portfolio (paid out, principal and interest still owed apart, overdue), what waits at each step, and the
+/// loans by stage. A loan opens its file, where each leader finds their own step.
 class LoansScreen extends StatefulWidget {
   const LoansScreen({required this.me, required this.api, required this.onChanged, super.key});
 

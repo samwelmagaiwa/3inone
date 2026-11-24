@@ -194,7 +194,7 @@ class GroupContributionController extends Controller
         ];
     }
 
-    /** Record a promise for [member] (an officer for a member, or a member for themself). */
+    /** Record a promise for [member] (a leader for a member, or a member for themself). */
     public static function promiseFor(Request $request, object|array $member, array $data): JsonResponse
     {
         $member = (object) $member;
@@ -241,7 +241,7 @@ class GroupContributionController extends Controller
         return self::promiseFor($request, $member, $request->validate(self::promiseRules()));
     }
 
-    /** Withdraw a promise: the member who made it, or an officer who records payments. */
+    /** Withdraw a promise: the member who made it, or a leader who records payments. */
     public function cancelPromise(Request $request, int $id): JsonResponse
     {
         $p = DB::table('group_promises')->where('id', $id)->first();

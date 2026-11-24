@@ -17,7 +17,7 @@ use InvalidArgumentException;
 /**
  * Loans, step by step, each step by the person whose job it is and never by the borrower:
  *
- *   the member applies (or an officer for them)  ->  each guarantor accepts or declines  ->  the projects committee recommends an amount
+ *   the member applies (or a leader for them)  ->  each guarantor accepts or declines  ->  the projects committee recommends an amount
  *   ->  the chair approves (or anyone of them turns it down with the reason)  ->  the treasurer pays it out  ->  someone else verifies the
  *   payout, and the loan runs with its instalments  ->  repayments, each verified, until nothing is left.
  */
@@ -98,7 +98,7 @@ class GroupLoanController extends Controller
         ];
     }
 
-    /** Apply for [memberId] (the member themself, or an officer for them). */
+    /** Apply for [memberId] (the member themself, or a leader for them). */
     private function applyFor(Request $request, int $memberId, array $data): JsonResponse
     {
         $eligibility = GroupLoans::eligibility($memberId);
@@ -235,7 +235,7 @@ class GroupLoanController extends Controller
         return $this->show($id);
     }
 
-    // ---------------------------------------------------------------- the officers' side
+    // ---------------------------------------------------------------- the leaders' side
 
     public function index(Request $request): JsonResponse
     {
@@ -282,7 +282,7 @@ class GroupLoanController extends Controller
         ]);
     }
 
-    /** One loan: its officers, its borrower and its guarantors may read it. */
+    /** One loan: its leaders, its borrower and its guarantors may read it. */
     public function detail(Request $request, int $id): JsonResponse
     {
         $loan = $this->loan($id);

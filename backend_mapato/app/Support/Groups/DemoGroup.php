@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\Schema;
  * expense requests paid and verified, a dividend run, meetings with minutes, resolutions and actions, notices and texts.
  *
  * Everything is made THROUGH THE APP'S OWN ENDPOINTS, with the clock set back to each day, so every figure is the one the app really works out
- * (balances, receipts, statements, the officers' dashboard) and the approval rules hold: nobody verifies their own payment, nobody decides their
+ * (balances, receipts, statements, the leaders' dashboard) and the approval rules hold: nobody verifies their own payment, nobody decides their
  * own request. No SMS can leave: the gateway is replaced by one that only logs. The business is found again by its administrator's address (see
  * ADMIN_EMAIL), and {@see self::remove()} takes away exactly that business and nothing else.
  */
@@ -401,8 +401,8 @@ final class DemoGroup
         // Their joining fee and shares were paid when they joined (the treasurer records it, the assistant verifies it).
         foreach (self::MEMBERS as $key => [, , , , $joined]) {
             $shares = in_array($key, ['peter', 'rajabu', 'happiness', 'amina', 'fatma'], true) ? 100000 : 200000;
-            $this->pay($key, 'joining_fee', 80000, Carbon::parse($joined)->setTime(11, 0), 'officer', 'Ada ya kujiunga');
-            $this->pay($key, 'shares', $shares, Carbon::parse($joined)->setTime(11, 15), 'officer', $shares < 200000 ? 'Hisa awamu ya kwanza' : 'Hisa zote');
+            $this->pay($key, 'joining_fee', 80000, Carbon::parse($joined)->setTime(11, 0), 'leader', 'Ada ya kujiunga');
+            $this->pay($key, 'shares', $shares, Carbon::parse($joined)->setTime(11, 15), 'leader', $shares < 200000 ? 'Hisa awamu ya kwanza' : 'Hisa zote');
         }
     }
 
@@ -456,7 +456,7 @@ final class DemoGroup
     }
 
     /**
-     * One payment, recorded by the treasurer ('officer') or by the member from their phone ('self'), then verified by someone else.
+     * One payment, recorded by the treasurer ('leader') or by the member from their phone ('self'), then verified by someone else.
      * Returns the transaction id (null when it was left waiting on purpose).
      */
     private function pay(string $key, string $category, float $amount, Carbon $at, string $via, ?string $note = null, array $extra = [], bool $verify = true): ?int
@@ -522,9 +522,9 @@ final class DemoGroup
                 if ($at->lessThanOrEqualTo($this->end->copy()->setTime(18, 0))) {
                     $amount = $this->chance(0.08) ? 10000 : 20000;
                     $left = $current && $this->chance(0.12);
-                    $this->pay($key, 'contribution', $amount, $at, $this->chance(0.45) ? 'self' : 'officer', 'JAMII ' . $period, ['obligation_id' => $oid], !$left);
+                    $this->pay($key, 'contribution', $amount, $at, $this->chance(0.45) ? 'self' : 'leader', 'JAMII ' . $period, ['obligation_id' => $oid], !$left);
                     if ($amount === 10000 && $this->chance(0.7)) {
-                        $this->pay($key, 'contribution', 10000, $at->copy()->addDays(5), 'officer', 'Salio la JAMII ' . $period, ['obligation_id' => $oid]);
+                        $this->pay($key, 'contribution', 10000, $at->copy()->addDays(5), 'leader', 'Salio la JAMII ' . $period, ['obligation_id' => $oid]);
                     }
                 }
             }
@@ -533,7 +533,7 @@ final class DemoGroup
                 $at = $this->day($i, $this->between(11, 28), $this->between(8, 18));
                 if ($at->lessThanOrEqualTo($this->end->copy()->setTime(18, 0))) {
                     $base = (self::MEMBERS[$key] ?? [])[7] ?? ((self::NEWCOMERS[$key] ?? [])[6] ?? 30000);
-                    $this->pay($key, 'savings', round($base * $this->pick([0.5, 1, 1, 1, 1.5, 2]) / 1000) * 1000, $at, $this->chance(0.4) ? 'self' : 'officer', 'Akiba ya mwezi');
+                    $this->pay($key, 'savings', round($base * $this->pick([0.5, 1, 1, 1, 1.5, 2]) / 1000) * 1000, $at, $this->chance(0.4) ? 'self' : 'leader', 'Akiba ya mwezi');
                 }
             }
         }
@@ -688,7 +688,7 @@ final class DemoGroup
         $e = $this->call($key, 'GET', '/me/loan-eligibility', [], $at)['data'];
         if (!($e['eligible'] ?? true)) {
             // The shares are not all paid yet: the member tops them up first (it is what the group asks before a loan).
-            $this->pay($key, 'shares', 100000, $at->copy()->subDays(2), 'officer', 'Hisa zilizobaki');
+            $this->pay($key, 'shares', 100000, $at->copy()->subDays(2), 'leader', 'Hisa zilizobaki');
             $e = $this->call($key, 'GET', '/me/loan-eligibility', [], $at)['data'];
         }
         $ceiling = (float) $e['ceiling'];
@@ -994,8 +994,8 @@ final class DemoGroup
             $this->publicApply($code, $key, $name, $gender, $born, $occupation, $ref, $at);
             $id = (int) DB::table('group_members')->where('phone', $this->phones[$key])->value('id');
             $this->ids[$key] = $id;
-            $this->pay($key, 'joining_fee', 80000, $at->copy()->addDays(2), 'officer', 'Ada ya kujiunga');
-            $this->pay($key, 'shares', 200000, $at->copy()->addDays(2)->addHours(1), 'officer', 'Hisa zote');
+            $this->pay($key, 'joining_fee', 80000, $at->copy()->addDays(2), 'leader', 'Ada ya kujiunga');
+            $this->pay($key, 'shares', 200000, $at->copy()->addDays(2)->addHours(1), 'leader', 'Hisa zote');
             $this->call('juma', 'POST', "/members/{$id}/status", ['action' => 'approve'], $at->copy()->addDays(4));
             $this->call('admin', 'PUT', "/members/{$id}", ['notes' => 'Amepokelewa kupitia mwaliko wa ' . self::MEMBERS[$ref][0] . '.', 'alt_phone' => $this->phone()], $at->copy()->addDays(4));
             $this->dependants($key, $id);
@@ -1045,7 +1045,7 @@ final class DemoGroup
             if ($key === 'anna') {
                 $id = (int) DB::table('group_members')->where('phone', $this->phones[$key])->value('id');
                 $this->ids[$key] = $id;
-                $this->pay($key, 'joining_fee', 80000, $at->copy()->addDay(), 'officer', 'Ada ya kujiunga');
+                $this->pay($key, 'joining_fee', 80000, $at->copy()->addDay(), 'leader', 'Ada ya kujiunga');
             }
         }
 
@@ -1111,7 +1111,7 @@ final class DemoGroup
     {
         $png = self::solidPng(240);
         $at = $this->end->copy()->subDays(10)->setTime(12, 0);
-        // The officers who register members share the work (an upload is limited to 30 a minute for each person).
+        // The leaders who register members share the work (an upload is limited to 30 a minute for each person).
         $uploaders = ['neema', 'rehema', 'juma'];
         $n = 0;
         foreach ($this->ids as $key => $id) {

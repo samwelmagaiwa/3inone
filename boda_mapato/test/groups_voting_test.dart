@@ -276,7 +276,7 @@ void main() {
     expect(find.byKey(const Key('grp_vote_progress')), findsOneWidget);
   });
 
-  testWidgets('officers see a Manage button; a member does not', (final WidgetTester t) async {
+  testWidgets('leaders see a Manage button; a member does not', (final WidgetTester t) async {
     final _Api api = _Api(<Map<String, dynamic>>[_voting(1, status: 'draft', state: 'draft', canVote: false, buckets: <String>['draft'], manage: true, report: true)]);
     await _pump(t, VotingDetailScreen(api: api, me: _me(<String>['manage_votings']), votingId: 1));
     expect(find.byKey(const Key('grp_vote_manage')), findsOneWidget);

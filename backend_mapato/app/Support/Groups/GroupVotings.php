@@ -189,7 +189,7 @@ final class GroupVotings
         return [$by('approve') * 100 / $valid >= (float) $v->threshold_percent ? 'passed' : 'failed', null];
     }
 
-    /** May this person see the counts of this process now? Officers with the reports right see them once it is closed. */
+    /** May this person see the counts of this process now? Leaders with the reports right see them once it is closed. */
     public static function resultsVisible(object $v, bool $reportsRight): bool
     {
         if (!in_array($v->status, ['open', 'paused', 'closed'], true)) {

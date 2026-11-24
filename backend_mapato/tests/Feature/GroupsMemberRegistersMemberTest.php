@@ -180,7 +180,7 @@ class GroupsMemberRegistersMemberTest extends TestCase
         $first = (int) $this->newMember($this->people['asha'], '0715000111', 'First Brought')->assertCreated()->json('data.member.id');
         $this->newMember($this->people['asha'], '0715000222', 'Second Brought')->assertCreated();
 
-        // From the first moment the officers see who brought them in (an application is not part of the tree until it is approved).
+        // From the first moment the leaders see who brought them in (an application is not part of the tree until it is approved).
         $file = $this->api($this->owner, 'GET', "/members/{$first}")->assertOk();
         $this->assertSame('Asha Member', $file->json('data.member.referrer_name'));
         $ashaFile = $this->api($this->owner, 'GET', "/members/{$this->ids['asha']}")->assertOk();

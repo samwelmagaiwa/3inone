@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * Groups (Vikundi): receipts. A verified payment has a receipt its member (or an officer who sees the finances) can read, carrying a link
+ * Groups (Vikundi): receipts. A verified payment has a receipt its member (or a leader who sees the finances) can read, carrying a link
  * that anyone can use to check it is genuine; a made-up or changed one does not verify, and nothing but the facts of the receipt is shown.
  */
 class GroupsReceiptsTest extends TestCase
@@ -64,7 +64,7 @@ class GroupsReceiptsTest extends TestCase
         return $id;
     }
 
-    public function test_a_member_reads_their_own_receipt_and_officers_who_see_the_finances_read_any(): void
+    public function test_a_member_reads_their_own_receipt_and_leaders_who_see_the_finances_read_any(): void
     {
         $id = $this->verifiedPayment();
 
@@ -123,7 +123,7 @@ class GroupsReceiptsTest extends TestCase
         $this->assertCount(2, $this->api($this->people['asha'], 'GET', '/me/statement?from=2026-03-01&to=2026-01-01')->json('data.lines'));
         $this->assertCount(2, $this->api($this->people['asha'], 'GET', '/me/statement?from=abc')->json('data.lines'));
 
-        // Officers who see the finances read a member's statement; another ordinary member does not.
+        // Leaders who see the finances read a member's statement; another ordinary member does not.
         $this->api($this->people['treasurer'], 'GET', "/members/{$this->ids['asha']}/statement?from=2026-02-01")->assertOk()->assertJsonPath('data.account', 70000);
         $this->api($this->people['juma'], 'GET', "/members/{$this->ids['asha']}/statement")->assertForbidden();
         // Everyone with a member record has an account, the managers too.
