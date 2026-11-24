@@ -127,6 +127,9 @@ class GroupPublicController extends Controller
                 return $id;
             });
             GroupAudit::record(null, 'member_applied', 'Application of ' . $data['full_name'] . ' with code ' . $inv->code, 'member', $id);
+            // The management is told a request waits (it came from the person themselves, with a member's code or the group's).
+            $by = $referrer !== null ? (string) DB::table('group_members')->where('id', $referrer)->value('full_name') : 'mwombaji mwenyewe / the applicant';
+            \App\Support\Groups\GroupApprovals::requested($id, (string) $data['full_name'], $by, $referrer);
             $row = DB::table('group_members')->where('id', $id)->first(['application_ref']);
 
             return response()->json(['success' => true, 'data' => ['application_ref' => $row->application_ref, 'group' => $found['group']]], 201);

@@ -122,11 +122,11 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     final bool sw = _sw;
     final String? picked = await groupActions(
       context,
-      title: sw ? 'Cheo cha ${m.fullName}' : 'Office of ${m.fullName}',
+      title: sw ? 'Uongozi wa ${m.fullName}' : 'Management role of ${m.fullName}',
       actions: <GroupSheetAction>[
         for (final String o in groupOffices)
           if (o != m.office) GroupSheetAction(icon: Icons.workspace_premium_outlined, label: officeLabel(sw: sw, office: o), value: o),
-        if (m.office != null) GroupSheetAction(icon: Icons.remove_circle_outline, label: sw ? 'Ondoa cheo' : 'Remove the office', value: '__none', tone: GroupTone.danger),
+        if (m.office != null) GroupSheetAction(icon: Icons.remove_circle_outline, label: sw ? 'Ondoa kwenye uongozi' : 'Remove from management', value: '__none', tone: GroupTone.danger),
       ],
     );
     if (picked == null || !mounted) return;
@@ -145,15 +145,15 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
     if (!mounted) return;
     final bool ok = await groupConfirm(
       context,
-      title: office == null ? (sw ? 'Ondoa cheo?' : 'Remove the office?') : (sw ? 'Mpe cheo?' : 'Give this office?'),
+      title: office == null ? (sw ? 'Ondoa kwenye uongozi?' : 'Remove from management?') : (sw ? 'Mpe nafasi ya uongozi?' : 'Give this management role?'),
       message: office == null
           ? (sw ? '${m.fullName} atabaki mwanachama wa kawaida.' : '${m.fullName} stays an ordinary member.')
           : '${m.fullName}: ${officeLabel(sw: sw, office: office)} — ${officeDuty(sw: sw, office: office)}.'
-              '${holder == null ? '' : (sw ? '\n$holder ataachia cheo hiki.' : '\n$holder will no longer hold it.')}',
+              '${holder == null ? '' : (sw ? '\n$holder ataachia nafasi hii.' : '\n$holder will no longer hold it.')}',
       yes: office == null ? (sw ? 'Ondoa' : 'Remove') : (sw ? 'Mpe' : 'Give'),
       tone: office == null ? GroupTone.danger : GroupTone.positive,
     );
-    if (ok) await _run(() => widget.api.setOffice(m.id, office, replace: holder != null), sw ? 'Cheo kimebadilishwa.' : 'Office changed.');
+    if (ok) await _run(() => widget.api.setOffice(m.id, office, replace: holder != null), sw ? 'Uongozi umebadilishwa.' : 'Management role changed.');
   }
 
   Future<void> _signIn(final GroupMember m) async {
@@ -232,7 +232,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
         if (me.can('record_payments') && <String>['submitted', 'active', 'suspended'].contains(m.status))
           GroupSheetAction(icon: Icons.payments_outlined, label: sw ? 'Rekodi malipo' : 'Record a payment', value: 'pay'),
         if (me.seesContributions) GroupSheetAction(icon: Icons.receipt_long_outlined, label: sw ? 'Taarifa ya fedha' : 'Statement', value: 'statement'),
-        if (!_isSelf && me.can('manage_offices') && m.isActive) GroupSheetAction(icon: Icons.workspace_premium_outlined, label: sw ? 'Cheo' : 'Office', value: 'office'),
+        if (!_isSelf && me.can('manage_offices') && m.isActive) GroupSheetAction(icon: Icons.workspace_premium_outlined, label: sw ? 'Uongozi' : 'Management', value: 'office'),
         if (me.can('manage_members') && (m.isActive || m.status == 'suspended'))
           GroupSheetAction(
             icon: Icons.key_outlined,
@@ -418,6 +418,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
             GroupDetailRow(sw ? 'Makazi' : 'Address', <String?>[m.street, m.ward, m.district, m.region].whereType<String>().join(', ')),
           if (m.occupation != null) GroupDetailRow(sw ? 'Kazi' : 'Occupation', m.occupation!),
           GroupDetailRow(sw ? 'Aliyemleta' : 'Referred by', m.referrerName ?? (m.founding ? (sw ? 'Mwanzilishi' : 'Founding member') : '-')),
+          if (m.approvedByName != null) GroupDetailRow(sw ? 'Imeidhinishwa na' : 'Approved by', m.approvedByName!, key: const Key('grp_m_approved_by')),
         ],
       );
 

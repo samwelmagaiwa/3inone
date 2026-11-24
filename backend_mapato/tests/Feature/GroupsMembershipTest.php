@@ -203,8 +203,8 @@ class GroupsMembershipTest extends TestCase
         $this->api($assistant, 'POST', '/members', ['full_name' => 'Copy', 'phone' => '0713000021', 'nida' => '1990 0101 12345 00001 25'])
             ->assertStatus(422)->assertJsonPath('code', 'duplicate_nida');
         $this->api($assistant, 'POST', '/members', ['full_name' => 'Copy', 'phone' => '+255713000020'])->assertStatus(422)->assertJsonPath('code', 'duplicate_phone');
-        // Only an approver may enter someone as an existing member.
-        $this->api($assistant, 'POST', '/members', ['full_name' => 'Old', 'phone' => '0713000022', 'existing' => true])->assertForbidden();
+        // Whoever approves members may enter someone as an existing member: the management (chair, vice chair, secretary, assistant secretary) all do.
+        $this->api($assistant, 'POST', '/members', ['full_name' => 'Old', 'phone' => '0713000022', 'existing' => true])->assertCreated();
     }
 
     public function test_a_member_signs_in_with_their_phone_and_loses_it_when_they_leave(): void

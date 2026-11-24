@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:boda_mapato/modules/groups/models/group_models.dart';
 import 'package:boda_mapato/modules/groups/models/group_records_models.dart';
+import 'package:boda_mapato/modules/groups/models/group_voting_models.dart';
 import 'package:boda_mapato/modules/groups/screens/group_dashboard_screen.dart';
 import 'package:boda_mapato/modules/groups/screens/group_overview_dashboard.dart';
 import 'package:boda_mapato/modules/groups/services/groups_api.dart';
@@ -14,7 +15,10 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeApi extends GroupsApi {
-  _FakeApi({this.withMoney = true, this.desk, this.failing = false});
+  _FakeApi({this.withMoney = true, this.desk, this.failing = false, this.unread = 0});
+
+  /// How many notices the person has not opened.
+  final int unread;
 
   final bool withMoney;
   final Map<String, dynamic>? desk;
@@ -24,6 +28,9 @@ class _FakeApi extends GroupsApi {
 
   @override
   Future<List<GroupTransaction>> myTransactions() async => const <GroupTransaction>[];
+
+  @override
+  Future<(List<GroupNotice>, int)> notifications() async => (<GroupNotice>[], unread);
 
   @override
   Future<GroupDashboardData> dashboard({final String? month}) async {
@@ -151,6 +158,18 @@ void main() {
     expect(find.byKey(const Key('grp_my_account')), findsOneWidget);
     expect(find.text('No. MEG-0001'), findsOneWidget);
     expect(find.byKey(const Key('grp_my_glance')), findsOneWidget);
+  });
+
+  testWidgets('Home has a Notices button that carries the number of notices not yet opened (a membership request waiting, for one)', (final WidgetTester t) async {
+    await _pump(t, _me(rights, <String, int>{}), api: _FakeApi(unread: 3));
+    await t.ensureVisible(find.byKey(const Key('grp_notifs_open')));
+    expect(find.byKey(const Key('grp_notifs_open')), findsOneWidget);
+    expect(find.text('Notices'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('grp_notifs_open')), matching: find.text('3')), findsOneWidget);
+
+    await _pump(t, _me(rights, <String, int>{}), api: _FakeApi());
+    expect(find.byKey(const Key('grp_notifs_open')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('grp_notifs_open')), matching: find.text('0')), findsNothing, reason: 'no badge for none');
   });
 
   testWidgets('a count of zero is not shown, and when nothing waits the screen says so', (final WidgetTester t) async {

@@ -33,6 +33,7 @@ class GroupMember {
     this.statusReason,
     this.referrerId,
     this.referrerName,
+    this.approvedByName,
     this.founding = false,
     this.joinedOn,
     this.hasSignIn = false,
@@ -60,6 +61,7 @@ class GroupMember {
         statusReason: _str(j['status_reason']),
         referrerId: _int(j['referrer_id']),
         referrerName: _str(j['referrer_name']),
+        approvedByName: _str(j['approved_by_name']),
         founding: j['founding'] == true,
         joinedOn: _str(j['joined_on']),
         hasSignIn: j['has_sign_in'] == true,
@@ -86,6 +88,9 @@ class GroupMember {
   final String? statusReason;
   final int? referrerId;
   final String? referrerName;
+
+  /// Who of the management approved the request (once is enough).
+  final String? approvedByName;
   final bool founding;
   final String? joinedOn;
   final bool hasSignIn;

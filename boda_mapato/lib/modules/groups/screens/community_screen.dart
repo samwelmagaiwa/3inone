@@ -28,7 +28,7 @@ Color meetingStatusColor(final String status) => switch (status) {
 
 String audienceLabel({required final bool sw, required final String audience}) => switch (audience) {
       'all' => sw ? 'Wanachama wote' : 'All members',
-      'leaders' || 'officers' => sw ? 'Viongozi' : 'Leaders',
+      'leaders' || 'officers' => sw ? 'Uongozi' : 'Management',
       'overdue' => sw ? 'Wenye michango iliyopita muda' : 'With overdue contributions',
       'selected' => sw ? 'Waliochaguliwa' : 'Chosen members',
       _ => audience,

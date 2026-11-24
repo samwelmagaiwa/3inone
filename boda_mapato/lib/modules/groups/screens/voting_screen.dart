@@ -9,6 +9,7 @@ import '../../inventory/screens/widgets/glow_list_card.dart';
 import '../models/group_models.dart';
 import '../models/group_voting_models.dart';
 import '../services/groups_api.dart';
+import 'member_detail_screen.dart';
 import 'voting_common.dart';
 import 'voting_detail_screen.dart';
 import 'voting_form_screen.dart';
@@ -278,6 +279,9 @@ class _VotingNoticesScreenState extends State<VotingNoticesScreen> {
     if (!mounted) return;
     if (n.linkType == 'voting' && n.linkId != null) {
       await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => VotingDetailScreen(api: widget.api, me: widget.me, votingId: n.linkId!)));
+    } else if (n.linkType == 'member' && n.linkId != null && widget.me.can('view_members')) {
+      // A membership request: its file, where whoever may approve does it (or sees who already did).
+      await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MemberDetailScreen(api: widget.api, me: widget.me, memberId: n.linkId!)));
     }
     await _load();
   }
@@ -287,7 +291,7 @@ class _VotingNoticesScreenState extends State<VotingNoticesScreen> {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     return Scaffold(
       backgroundColor: ThemeConstants.primaryBlue,
-      appBar: ThemeConstants.buildAppBar(sw ? 'Taarifa za kura' : 'Voting notices', flat: true, actions: <Widget>[
+      appBar: ThemeConstants.buildAppBar(sw ? 'Arifa' : 'Notices', flat: true, actions: <Widget>[
         IconButton(key: const Key('grp_notice_all'), tooltip: sw ? 'Weka zote kuwa zimesomwa' : 'Mark all as read', onPressed: () async {
           await widget.api.readNotifications(all: true);
           await _load();

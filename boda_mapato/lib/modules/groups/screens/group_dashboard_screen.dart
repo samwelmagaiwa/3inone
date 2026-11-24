@@ -18,6 +18,7 @@ import 'payment_form.dart';
 import 'promise_form.dart';
 import 'records_screens.dart';
 import 'statement_screen.dart';
+import 'voting_screen.dart' show VotingNoticesScreen;
 import 'welfare_screen.dart';
 import 'widgets/account_card.dart';
 import 'widgets/group_tile_grid.dart';
@@ -38,13 +39,17 @@ class GroupDashboardScreen extends StatefulWidget {
 
 class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
   List<GroupTransaction> _mine = const <GroupTransaction>[];
+  int _unread = 0;
   String? _error;
   final GlobalKey<GroupOverviewDashboardState> _overview = GlobalKey<GroupOverviewDashboardState>();
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadMine());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadMine();
+      _loadUnread();
+    });
   }
 
   Future<void> _loadMine() async {
@@ -57,9 +62,21 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
     }
   }
 
+  /// How many notices (a membership request, a voting) the person has not opened: the count on the Notices button.
+  Future<void> _loadUnread() async {
+    if (widget.me.member == null) return;
+    try {
+      final int unread = (await widget.api.notifications()).$2;
+      if (mounted) setState(() => _unread = unread);
+    } on Exception {
+      // the count is a convenience; the screen works without it
+    }
+  }
+
   Future<void> _refresh() async {
     await widget.onChanged();
     await _loadMine();
+    await _loadUnread();
     await _overview.currentState?.load();
   }
 
@@ -270,6 +287,11 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
     await _refresh();
   }
 
+  Future<void> _openNotices() async {
+    await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => VotingNoticesScreen(api: widget.api, me: widget.me)));
+    await _refresh();
+  }
+
   Future<void> _openMyMoney() async {
     await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MyMoneyScreen(api: widget.api, me: widget.me, onChanged: _refresh)));
   }
@@ -331,6 +353,7 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
               columns: 3,
               tiles: <GroupGridTile>[
                 GroupGridTile(tileKey: const Key('grp_waiting_open'), icon: Icons.notifications_active_rounded, color: ThemeConstants.warningAmber, label: sw ? 'Yanayokusubiri' : 'Waiting for you', badge: waitingCount, onTap: _openWaiting),
+                GroupGridTile(tileKey: const Key('grp_notifs_open'), icon: Icons.notifications_rounded, color: ThemeConstants.invAccent, label: sw ? 'Arifa' : 'Notices', badge: _unread, onTap: _openNotices),
                 GroupGridTile(tileKey: const Key('grp_my_money'), icon: Icons.account_balance_wallet_rounded, color: ThemeConstants.successGreen, label: sw ? 'Malipo yangu' : 'My payments', badge: me.owing.length, badgeColor: ThemeConstants.errorRed, onTap: _openMyMoney),
                 GroupGridTile(tileKey: const Key('grp_my_payments'), icon: Icons.history_rounded, color: ThemeConstants.invAccent, label: sw ? 'Malipo yangu ya hivi karibuni' : 'My latest payments', onTap: _openMyPayments),
                 GroupGridTile(tileKey: const Key('grp_my_loans'), icon: Icons.request_quote_rounded, color: ThemeConstants.errorRed, label: sw ? 'Mikopo yangu' : 'My loans', onTap: _myLoans),

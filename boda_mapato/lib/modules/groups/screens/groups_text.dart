@@ -227,7 +227,7 @@ String activityLabel({required final bool sw, required final String action}) {
     case 'member_deceased':
       return sw ? 'Kifo kimerekodiwa' : 'Death recorded';
     case 'office_changed':
-      return sw ? 'Cheo kimebadilishwa' : 'Office changed';
+      return sw ? 'Uongozi umebadilishwa' : 'Management role changed';
     case 'dependant_saved':
       return sw ? 'Mtegemezi amehifadhiwa' : 'Dependant saved';
     case 'dependant_removed':

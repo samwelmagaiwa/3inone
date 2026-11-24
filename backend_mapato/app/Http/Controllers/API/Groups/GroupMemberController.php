@@ -6,6 +6,7 @@ use App\Models\Business;
 use App\Models\User;
 use App\Rules\UniquePhoneInBusiness;
 use App\Support\Groups\GroupAccess;
+use App\Support\Groups\GroupApprovals;
 use App\Support\Groups\GroupAudit;
 use App\Support\Groups\GroupLedger;
 use App\Support\Groups\GroupMembers;
@@ -94,7 +95,7 @@ class GroupMemberController extends Controller
             ->get(['e.kind', 'e.from_value', 'e.to_value', 'e.reason', 'e.created_at', 'u.name as by_name']);
 
         return response()->json(['success' => true, 'data' => [
-            'member' => GroupMembers::payload($row, GroupAccess::can($user, 'view_sensitive')),
+            'member' => GroupMembers::payload($row, GroupAccess::can($user, 'view_sensitive')) + ['approved_by_name' => GroupApprovals::approverName($row)],
             'dependants' => DB::table('group_dependants')->where('member_id', $id)->orderBy('id')->get(['id', 'name', 'relationship', 'phone', 'date_of_birth', 'notes']),
             'events' => $events,
             'referrals' => DB::table('group_members')->where('referrer_id', $id)->orderBy('full_name')->get(['id', 'full_name', 'member_number', 'status']),
@@ -229,6 +230,10 @@ class GroupMemberController extends Controller
         });
 
         GroupAudit::record((string) $user->id, $existing ? 'member_entered' : 'member_applied', ($existing ? 'Entered existing member ' : 'Recorded application of ') . $data['full_name'], 'member', $id);
+        if (!$existing) {
+            $mine = GroupAccess::member($user);
+            GroupApprovals::requested($id, (string) $data['full_name'], GroupApprovals::nameOf($user), $mine === null ? null : (int) $mine['id']);
+        }
 
         return $this->show($request, $id)->setStatusCode(201);
     }
@@ -271,6 +276,11 @@ class GroupMemberController extends Controller
         $user = $request->user();
         [$from, $to] = GroupMembers::MOVES[$data['action']];
         if (!in_array($row->status, $from, true)) {
+            // Approved once is approved: whoever comes second is told by whom.
+            if ($data['action'] === 'approve' && $row->status !== GroupMembers::SUBMITTED && ($by = GroupApprovals::approverName($row)) !== null) {
+                return $this->fail('already_approved', "Tayari imeidhinishwa na {$by}. / Already approved by {$by}.", 409, ['approved_by' => $by]);
+            }
+
             return $this->fail('wrong_status', 'Hatua hii haiwezekani kwa hali ya sasa ya mwanachama. / This step is not possible from the member\'s current status.', 409);
         }
         $reason = trim((string) ($data['reason'] ?? ''));
@@ -313,6 +323,10 @@ class GroupMemberController extends Controller
         });
 
         GroupAudit::record((string) $user->id, 'member_' . $data['action'], ucfirst($data['action']) . ' ' . $row->full_name . ($reason !== '' ? ': ' . $reason : ''), 'member', $id);
+        // The rest of the management are told who decided this request, so they do not decide it again.
+        if ($row->status === GroupMembers::SUBMITTED && in_array($data['action'], ['approve', 'reject'], true)) {
+            GroupApprovals::decided($id, (string) $row->full_name, $data['action'] === 'approve', GroupApprovals::nameOf($user));
+        }
 
         return $this->show($request, $id);
     }
@@ -332,11 +346,11 @@ class GroupMemberController extends Controller
         $user = $request->user();
         $me = GroupAccess::member($user);
         if ($me !== null && (int) $me['id'] === $id) {
-            return $this->fail('own_office', 'Huwezi kubadilisha cheo chako mwenyewe. / You cannot change your own office.', 403);
+            return $this->fail('own_office', 'Huwezi kubadilisha nafasi yako ya uongozi mwenyewe. / You cannot change your own management role.', 403);
         }
         $office = $data['office'] ?? null;
         if ($office !== null && $row->status !== GroupMembers::ACTIVE) {
-            return $this->fail('not_active', 'Ni mwanachama hai tu anayeweza kushika cheo. / Only an active member can hold an office.', 409);
+            return $this->fail('not_active', 'Ni mwanachama hai tu anayeweza kushika nafasi ya uongozi. / Only an active member can hold a management role.', 409);
         }
         if ($office === $row->office) {
             return $this->show($request, $id);
@@ -346,7 +360,7 @@ class GroupMemberController extends Controller
         if ($office !== null && in_array($office, GroupOffices::SINGLE_HOLDER, true)) {
             $holder = DB::table('group_members')->where('office', $office)->where('id', '!=', $id)->first(['id', 'full_name']);
             if ($holder !== null && !($data['replace'] ?? false)) {
-                return $this->fail('office_taken', "Cheo hiki kinashikwa na {$holder->full_name}. / This office is held by {$holder->full_name}.", 409, ['holder' => ['id' => (int) $holder->id, 'name' => $holder->full_name]]);
+                return $this->fail('office_taken', "Nafasi hii inashikwa na {$holder->full_name}. / This management role is held by {$holder->full_name}.", 409, ['holder' => ['id' => (int) $holder->id, 'name' => $holder->full_name]]);
             }
         }
 
@@ -548,6 +562,7 @@ class GroupMemberController extends Controller
             return $id;
         });
 
+        GroupApprovals::requested($id, (string) $data['full_name'], $isMember ? (string) $registrar['full_name'] : GroupApprovals::nameOf($user), $isMember ? (int) $registrar['id'] : null);
         GroupAudit::record((string) $user->id, 'member_registered_by_member', 'Registered ' . $data['full_name'] . ($isMember ? ' (brought in by member #' . $registrar['id'] . ')' : ''), 'member', $id);
         $sent = $this->sendOtp($user, (string) $data['full_name'], (string) $data['phone'], $password, $isMember ? (string) $registrar['full_name'] : (string) $user->name);
 
