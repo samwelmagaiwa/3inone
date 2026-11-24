@@ -264,6 +264,9 @@ Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(f
     Route::post('me/payments', [GroupMeController::class, 'pay'])->middleware('throttle:20,1');
     Route::get('settings', [GroupSettingsController::class, 'show']);
 
+    // A member registers another member (tied to them as the one who brought them in); the one-time password goes to the new member's phone.
+    Route::post('members/register', [GroupMemberController::class, 'registerFor'])->middleware('throttle:20,1');
+    Route::post('members/{id}/resend-otp', [GroupMemberController::class, 'resendOtp'])->whereNumber('id')->middleware('throttle:6,1');
     Route::middleware('group_right:view_members')->group(function () {
         Route::get('members', [GroupMemberController::class, 'index']);
         Route::get('members/{id}', [GroupMemberController::class, 'show'])->whereNumber('id');

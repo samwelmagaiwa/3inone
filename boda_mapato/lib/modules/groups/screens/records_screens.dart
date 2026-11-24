@@ -13,6 +13,7 @@ import '../models/group_records_models.dart';
 import '../services/group_documents.dart';
 import '../services/groups_api.dart';
 import 'groups_text.dart';
+import 'member_form_screen.dart';
 import 'widgets/groups_ui.dart';
 
 /// Invitations: one's own code to share (whoever applies with it is linked to you), and -- for whoever registers members -- the group's codes.
@@ -160,6 +161,15 @@ class _InviteScreenState extends State<InviteScreen> {
             : RefreshIndicator(
                 onRefresh: _load,
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 96), children: joinGlowCards(<Widget>[
+                  // Every member may register someone: the person is tied to them, and a one-time password is texted to the new member's phone.
+                  FilledButton.icon(
+                    key: const Key('grp_register_member'),
+                    style: FilledButton.styleFrom(backgroundColor: ThemeConstants.successGreen, padding: const EdgeInsets.symmetric(vertical: 14)),
+                    onPressed: () => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MemberFormScreen(api: widget.api, me: widget.me, byMember: true))),
+                    icon: const Icon(Icons.person_add_alt_1_rounded),
+                    label: Text(sw ? 'Msajili mwanachama (nenosiri kwa SMS)' : 'Register a member (password by SMS)'),
+                  ),
+                  const SizedBox(height: 14),
                   if (_error != null) GroupEmpty(_error!),
                   if (_mine != null) _codeCard(sw, _mine!, title: sw ? 'Namba yangu ya mwaliko' : 'My invitation code'),
                   for (final GroupInvitation g in _group.where((final GroupInvitation g) => g.active)) _codeCard(sw, g, title: sw ? 'Namba ya kikundi' : 'Group code'),

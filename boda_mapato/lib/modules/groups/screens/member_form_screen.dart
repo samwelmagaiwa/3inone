@@ -14,7 +14,11 @@ import 'widgets/member_picker.dart';
 /// Register a person or change their details. A new person is an APPLICATION (waits for payments and approval), unless whoever approves
 /// members enters them as someone who was ALREADY a member before the group used the app. Returns the saved file.
 class MemberFormScreen extends StatefulWidget {
-  const MemberFormScreen({required this.api, required this.me, super.key, this.member, this.placeSource});
+  const MemberFormScreen({required this.api, required this.me, super.key, this.member, this.placeSource, this.byMember = false});
+
+  /// A member registering someone else (not an officer entering a file): the person is tied to them, and a one-time password is texted to the
+  /// phone number entered. There is no referrer to choose and no "already a member" switch.
+  final bool byMember;
 
   /// Where the region, district, ward and street lists come from (the server's imported Tanzania locations unless a test says otherwise).
   final PlaceSource? placeSource;
@@ -115,10 +119,14 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
     if (!_editing) {
       final bool ok = await groupConfirm(
         context,
-        title: _existing ? (sw ? 'Weka mwanachama aliyekuwepo?' : 'Enter this existing member?') : (sw ? 'Rekodi ombi la uanachama?' : 'Record this application?'),
-        message: _existing
-            ? (sw ? '${_name.text.trim()} atakuwa mwanachama hai mara moja.' : '${_name.text.trim()} becomes an active member at once.')
-            : (sw ? '${_name.text.trim()} atasubiri malipo ya kujiunga na idhini.' : '${_name.text.trim()} waits for the joining payments and approval.'),
+        title: widget.byMember ? (sw ? 'Sajili mwanachama huyu?' : 'Register this member?') : (_existing ? (sw ? 'Weka mwanachama aliyekuwepo?' : 'Enter this existing member?') : (sw ? 'Rekodi ombi la uanachama?' : 'Record this application?')),
+        message: widget.byMember
+            ? (sw
+                ? 'Nenosiri la muda litatumwa kwa SMS kwenda ${_phone.text.replaceAll(' ', '')}. ${_name.text.trim()} ataingia kwa namba hiyo, aweke nenosiri lake mwenyewe (herufi 8+), kisha aingie tena. Utaandikwa kama aliyemleta.'
+                : 'A one-time password will be texted to ${_phone.text.replaceAll(' ', '')}. ${_name.text.trim()} signs in with it, chooses their own password (8+ characters) and signs in again. You are recorded as the one who brought them in.')
+            : (_existing
+                ? (sw ? '${_name.text.trim()} atakuwa mwanachama hai mara moja.' : '${_name.text.trim()} becomes an active member at once.')
+                : (sw ? '${_name.text.trim()} atasubiri malipo ya kujiunga na idhini.' : '${_name.text.trim()} waits for the joining payments and approval.')),
         yes: sw ? 'Hifadhi' : 'Save',
         tone: GroupTone.positive,
       );
@@ -129,6 +137,14 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
       _error = null;
     });
     try {
+      if (widget.byMember) {
+        final ({GroupMemberFile file, bool smsSent}) done = await widget.api.registerMember(_body());
+        if (!mounted) return;
+        setState(() => _busy = false);
+        await _registeredDialog(done.file, done.smsSent, _phone.text.replaceAll(' ', ''));
+        if (mounted) Navigator.pop(context, done.file);
+        return;
+      }
       final GroupMemberFile saved = _editing ? await widget.api.updateMember(widget.member!.id, _body()) : await widget.api.createMember(_body());
       if (!mounted) return;
       ThemeConstants.showSuccessSnackBar(context, sw ? 'Imehifadhiwa.' : 'Saved.');
@@ -140,6 +156,46 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
         _error = readableErrorMessage(e);
       });
     }
+  }
+
+  /// What happened to the text: it went to the new member's phone, or it did not and the registrar can ask for it to be sent again.
+  Future<void> _registeredDialog(final GroupMemberFile file, final bool smsSent, final String phone) async {
+    final bool sw = context.read<LocalizationService>().isSwahili;
+    bool sent = smsSent;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (final BuildContext ctx) => StatefulBuilder(
+        builder: (final BuildContext ctx, final StateSetter set) => AlertDialog(
+          key: const Key('grp_reg_done'),
+          backgroundColor: ThemeConstants.bgMid,
+          title: Text(sent ? (sw ? 'Amesajiliwa' : 'Registered') : (sw ? 'Amesajiliwa, SMS haikutumwa' : 'Registered, the text was not sent'), style: const TextStyle(color: Colors.white)),
+          content: Text(
+            sent
+                ? (sw ? 'Nenosiri la muda limetumwa kwa SMS kwenda $phone. ${file.member.fullName} ataliingiza, aweke nenosiri lake mwenyewe, kisha aingie tena.' : 'A one-time password was texted to $phone. ${file.member.fullName} enters it, chooses their own password and signs in again.')
+                : (sw ? 'SMS ya nenosiri haikuweza kutumwa kwenda $phone. Bonyeza "Tuma tena" au mwombe msimamizi aijaribu.' : 'The text with the password could not be sent to $phone. Tap "Send again", or ask an officer to try.'),
+            key: const Key('grp_reg_done_text'),
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: <Widget>[
+            if (!sent)
+              TextButton(
+                key: const Key('grp_reg_resend'),
+                onPressed: () async {
+                  try {
+                    final bool ok = await widget.api.resendOtp(file.member.id);
+                    set(() => sent = ok);
+                  } on Exception catch (e) {
+                    if (mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
+                  }
+                },
+                child: Text(sw ? 'Tuma tena' : 'Send again', style: const TextStyle(color: ThemeConstants.primaryOrange)),
+              ),
+            TextButton(key: const Key('grp_reg_ok'), onPressed: () => Navigator.pop(ctx), child: Text(sw ? 'Sawa' : 'OK')),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _field(final TextEditingController c, final String label, {final String? Function(String?)? validator, final TextInputType? keyboard, final Key? key, final int? maxLength}) =>
@@ -159,14 +215,14 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   @override
   Widget build(final BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
-    final bool mayEnterExisting = !_editing && widget.me.can('approve_members');
+    final bool mayEnterExisting = !_editing && !widget.byMember && widget.me.can('approve_members');
     String? required(final String? v) => (v ?? '').trim().length < 3 ? (sw ? 'Andika jina kamili.' : 'Write the full name.') : null;
     String? phone(final String? v) => _phoneRule.hasMatch((v ?? '').replaceAll(' ', '')) ? null : (sw ? 'Namba si sahihi (mfano 0712345678).' : 'Not a valid number (e.g. 0712345678).');
     String? optionalPhone(final String? v) => (v ?? '').trim().isEmpty ? null : phone(v);
 
     return Scaffold(
       backgroundColor: ThemeConstants.primaryBlue,
-      appBar: ThemeConstants.buildAppBar(_editing ? (sw ? 'Badili taarifa' : 'Edit details') : (sw ? 'Mwanachama mpya' : 'New member'), flat: true),
+      appBar: ThemeConstants.buildAppBar(_editing ? (sw ? 'Badili taarifa' : 'Edit details') : (widget.byMember ? (sw ? 'Sajili mwanachama' : 'Register a member') : (sw ? 'Mwanachama mpya' : 'New member')), flat: true),
       body: SafeArea(
         child: Form(
           key: _form,
@@ -237,6 +293,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
                   _field(_occupation, sw ? 'Kazi' : 'Occupation'),
                 ],
               ),
+              if (!widget.byMember)
               GlowCard(
                 title: sw ? 'Aliyemleta' : 'Referred by',
                 children: <Widget>[

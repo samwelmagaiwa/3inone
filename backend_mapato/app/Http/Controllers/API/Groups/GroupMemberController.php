@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\Groups;
 
+use App\Models\Business;
 use App\Models\User;
 use App\Rules\UniquePhoneInBusiness;
 use App\Support\Groups\GroupAccess;
@@ -9,6 +10,7 @@ use App\Support\Groups\GroupAudit;
 use App\Support\Groups\GroupLedger;
 use App\Support\Groups\GroupMembers;
 use App\Support\Groups\GroupOffices;
+use App\Services\SmsService;
 use App\Support\TemporaryPassword;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -474,5 +476,123 @@ class GroupMemberController extends Controller
         GroupAudit::record((string) $actor->id, 'sign_in_created', 'Gave ' . $row->full_name . ' a sign-in', 'member', $id);
 
         return response()->json(['success' => true, 'data' => ['login' => $row->phone, 'email' => $account->email, 'temporary_password' => $password]], 201);
+    }
+
+    /**
+     * A member registers a new member. Any ACTIVE member may do it (whatever their office, or none), and so may whoever manages members.
+     *
+     *   - the new person is tied to the member who registered them (their referrer), so the tree of who brought whom is complete;
+     *   - they start as an application, like any other: the officers still approve it once the joining payments are verified;
+     *   - they get a sign-in at once, and a one-time password goes by SMS to the phone number that was entered for them. The registrar is
+     *     NEVER shown it: only the person it was sent to knows it. Signing in with it forces a new password of 8 or more characters, and
+     *     then a new sign-in (the app's first-login screen does that for every account with a temporary password).
+     */
+    public function registerFor(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $registrar = GroupAccess::member($user);
+        $isMember = $registrar !== null && $registrar['status'] === GroupMembers::ACTIVE;
+        if (!$isMember && !GroupAccess::can($user, 'manage_members')) {
+            return $this->fail('not_a_member', 'Ni mwanachama hai tu anayeweza kusajili mwanachama mwingine. / Only an active member can register another member.', 403);
+        }
+
+        $rules = $this->detailRules(true);
+        unset($rules['referrer_id'], $rules['notes']);
+        $data = $request->validate($rules);
+        if ($problem = $this->checkDetails($data, null)) {
+            return $problem;
+        }
+
+        // The phone signs them in, so it must point at nobody else who signs in with a phone.
+        $nine = UniquePhoneInBusiness::lastNine($data['phone']);
+        $clash = User::query()->withoutGlobalScopes()->whereNotNull('phone_number')->where('phone_number', 'like', '%' . $nine)->get(['id', 'phone_number'])
+            ->first(fn ($u) => UniquePhoneInBusiness::lastNine($u->phone_number) === $nine);
+        if ($clash !== null) {
+            return $this->fail('phone_in_use', 'Namba hii ya simu tayari inatumika na akaunti nyingine. / This phone number is already used by another account.', 409);
+        }
+        $head = (string) $user->accountHeadId();
+        $email = !empty($data['email']) ? trim($data['email']) : null;
+        $signInEmail = $email ?: ('m' . substr(md5($nine . $head), 0, 10) . '.' . substr(str_replace('-', '', $head), 0, 12) . '@members.3inone.local');
+        if (User::query()->withoutGlobalScopes()->where('email', $signInEmail)->exists()) {
+            return $this->fail('email_in_use', 'Barua pepe hii tayari ina akaunti. / This email already has an account.', 409);
+        }
+
+        $password = TemporaryPassword::generate();
+        $id = DB::transaction(function () use ($data, $user, $registrar, $isMember, $signInEmail, $password, $head) {
+            $id = (int) DB::table('group_members')->insertGetId($this->columns($data) + [
+                'application_ref' => GroupMembers::newApplicationRef(),
+                'status' => GroupMembers::SUBMITTED,
+                'founding' => false,
+                'referrer_id' => $isMember ? (int) $registrar['id'] : null,
+                'source' => 'member',
+                'created_by' => (string) $user->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            GroupMembers::event($id, 'status', null, GroupMembers::SUBMITTED, $isMember ? 'registered by member #' . $registrar['id'] : null, (string) $user->id);
+
+            $account = new User([
+                'name' => $data['full_name'],
+                'email' => $signInEmail,
+                'phone_number' => $data['phone'],
+                'password' => Hash::make($password),
+                'role' => User::GROUP_MEMBER_ROLE,
+                'service_type' => 'groups',
+                'created_by' => $head,
+                'is_active' => true,
+            ]);
+            $account->must_change_password = true;
+            $account->save();
+            DB::table('group_members')->where('id', $id)->update(['user_id' => (string) $account->id]);
+
+            return $id;
+        });
+
+        GroupAudit::record((string) $user->id, 'member_registered_by_member', 'Registered ' . $data['full_name'] . ($isMember ? ' (brought in by member #' . $registrar['id'] . ')' : ''), 'member', $id);
+        $sent = $this->sendOtp($user, (string) $data['full_name'], (string) $data['phone'], $password, $isMember ? (string) $registrar['full_name'] : (string) $user->name);
+
+        $payload = $this->show($request, $id)->getData(true);
+        $payload['data']['sms_sent'] = $sent;
+
+        return response()->json($payload, 201);
+    }
+
+    /**
+     * A new one-time password by SMS, for someone who has not yet chosen their own: the registrar (or whoever manages members) asks for it
+     * again when the text never arrived. It is never shown to whoever asks. Not possible once the person has set their own password.
+     */
+    public function resendOtp(Request $request, int $id): JsonResponse
+    {
+        $row = $this->find($id);
+        if ($row === null || $row->user_id === null) {
+            return $this->fail('not_found', 'Mwanachama hayupo. / Member not found.', 404);
+        }
+        $user = $request->user();
+        if ((string) ($row->created_by ?? '') !== (string) $user->id && !GroupAccess::can($user, 'manage_members')) {
+            return $this->fail('not_allowed', 'Ni aliyemsajili au msimamizi wa wanachama tu. / Only whoever registered them, or whoever manages members.', 403);
+        }
+        $account = User::query()->withoutGlobalScopes()->find($row->user_id);
+        if ($account === null || !$account->must_change_password) {
+            return $this->fail('already_set', 'Mwanachama ameshaweka nenosiri lake mwenyewe. / The member has already chosen their own password.', 409);
+        }
+        $password = TemporaryPassword::generate();
+        $account->forceFill(['password' => Hash::make($password), 'must_change_password' => true])->save();
+        $account->tokens()->delete();
+        GroupAudit::record((string) $user->id, 'otp_resent', 'New one-time password sent to ' . $row->full_name, 'member', $id);
+        $by = GroupAccess::member($user);
+        $sent = $this->sendOtp($user, (string) $row->full_name, (string) $row->phone, $password, $by !== null ? (string) $by['full_name'] : (string) $user->name);
+
+        return response()->json(['success' => true, 'data' => ['sms_sent' => $sent]]);
+    }
+
+    /** The one-time password to the number entered for the new member, under the group's own sender name; whether the text was accepted. */
+    private function sendOtp(User $actor, string $name, string $phone, string $password, string $by): bool
+    {
+        $business = Business::forOwnerId((string) $actor->accountHeadId());
+        $group = $business?->name ?? 'Kikundi';
+        $text = "{$group}: {$by} amekusajili, {$name}. Ingia kwa simu {$phone} na nenosiri la muda: {$password}. Kisha weka nenosiri lako jipya (herufi 8+). "
+            . "/ {$by} registered you. Sign in with {$phone} and the temporary password {$password}, then choose your own (8+ characters).";
+
+        return SmsService::sendFor($business, $phone, $text);
     }
 }

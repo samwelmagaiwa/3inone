@@ -52,6 +52,16 @@ class GroupsApi {
 
   Future<GroupMemberFile> createMember(final Map<String, dynamic> body) async => GroupMemberFile.fromJson(_data(await _api.post('$_base/members', body)));
 
+  /// A member registers a new member: tied to them as the one who brought them in, and a one-time password is sent by SMS to the phone
+  /// number entered for the new member (it is never shown here). [smsSent] says whether the text was accepted.
+  Future<({GroupMemberFile file, bool smsSent})> registerMember(final Map<String, dynamic> body) async {
+    final Map<String, dynamic> d = _data(await _api.post('$_base/members/register', body));
+    return (file: GroupMemberFile.fromJson(d), smsSent: d['sms_sent'] == true);
+  }
+
+  /// A new one-time password to the member's phone (for one who has not yet chosen their own); whether the text was accepted.
+  Future<bool> resendOtp(final int memberId) async => _data(await _api.post('$_base/members/$memberId/resend-otp', <String, dynamic>{}))['sms_sent'] == true;
+
   Future<GroupMemberFile> updateMember(final int id, final Map<String, dynamic> body) async =>
       GroupMemberFile.fromJson(_data(await _api.put('$_base/members/$id', body)));
 
