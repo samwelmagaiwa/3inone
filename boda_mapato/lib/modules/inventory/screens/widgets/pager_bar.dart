@@ -68,14 +68,17 @@ class PagerBar extends StatelessWidget {
             onTap: p == page ? null : () => onPage(p),
             child: Container(
               constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-              alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(horizontal: 6),
               decoration: BoxDecoration(
                 color: p == page ? ThemeConstants.invAccent.withValues(alpha: 0.28) : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: p == page ? ThemeConstants.invAccent : Colors.white24),
               ),
-              child: Text('${p + 1}', style: TextStyle(color: p == page ? Colors.white : Colors.white70, fontWeight: p == page ? FontWeight.w800 : FontWeight.w500, fontSize: 13)),
+              child: Center(
+                widthFactor: 1,
+                heightFactor: 1,
+                child: Text('${p + 1}', style: TextStyle(color: p == page ? Colors.white : Colors.white70, fontWeight: p == page ? FontWeight.w800 : FontWeight.w500, fontSize: 13)),
+              ),
             ),
           ),
         );
@@ -114,17 +117,23 @@ class PagerBar extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        Wrap(
-          alignment: WrapAlignment.center,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: <Widget>[
-            arrow('pager_first', Icons.first_page_rounded, loc.translate('pager_first'), page > 0 ? 0 : null),
-            arrow('pager_prev', Icons.chevron_left_rounded, loc.translate('pager_prev'), page > 0 ? page - 1 : null),
-            for (final int p in window())
-              if (p == -1) const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Text('…', style: TextStyle(color: Colors.white54))) else number(p),
-            arrow('pager_next', Icons.chevron_right_rounded, loc.translate('pager_next'), page < last ? page + 1 : null),
-            arrow('pager_last', Icons.last_page_rounded, loc.translate('pager_last'), page < last ? last : null),
-          ],
+        // ONE row, side by side: first, previous, the numbers (only as many as the data has pages, "…" where some are left out), next, last.
+        // On a narrow phone the whole row is scaled down to fit; it never wraps.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            key: const Key('pager_row'),
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              arrow('pager_first', Icons.first_page_rounded, loc.translate('pager_first'), page > 0 ? 0 : null),
+              arrow('pager_prev', Icons.chevron_left_rounded, loc.translate('pager_prev'), page > 0 ? page - 1 : null),
+              for (final int p in window())
+                if (p == -1) const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Text('…', style: TextStyle(color: Colors.white54))) else number(p),
+              arrow('pager_next', Icons.chevron_right_rounded, loc.translate('pager_next'), page < last ? page + 1 : null),
+              arrow('pager_last', Icons.last_page_rounded, loc.translate('pager_last'), page < last ? last : null),
+            ],
+          ),
         ),
         Center(
           child: Text(loc.translateWith('pager_page_of', <Object?>[page + 1, pages]), key: const Key('pager_page_of'), style: ThemeConstants.captionStyle),

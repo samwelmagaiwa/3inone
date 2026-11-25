@@ -110,6 +110,25 @@ void main() {
     expect(t.widget<IconButton>(find.byKey(const Key('pager_next'))).onPressed, isNull, reason: 'no page after the last');
   });
 
+  testWidgets('the numbers are in ONE row beside the arrows (never one under another), as many as the data has pages, also on a narrow phone', (final WidgetTester t) async {
+    for (final (int count, int pages) in <(int, int)>[(30, 2), (47, 3), (250, 13)]) {
+      await _open(t, count);
+      final double row = t.getCenter(find.byKey(const Key('pager_next'))).dy;
+      expect(t.getCenter(find.byKey(const Key('pager_first'))).dy, closeTo(row, 1), reason: '$count products: first and next on one line');
+      expect(find.byKey(const Key('pager_page_0')), findsOneWidget);
+      expect(find.byKey(Key('pager_page_${pages - 1}')), findsOneWidget, reason: 'the last page number is shown');
+      expect(find.byKey(Key('pager_page_$pages')), findsNothing, reason: 'no number beyond the pages the data has');
+      for (final Element e in find.byWidgetPredicate((Widget w) => w.key is Key && RegExp(r"pager_page_\d+").hasMatch('${w.key}')).evaluate()) {
+        expect(t.getCenter(find.byWidget(e.widget)).dy, closeTo(row, 1), reason: '$count products: every number on the same line as the arrows');
+      }
+    }
+    // The row is one row at every width.
+    t.view.physicalSize = const Size(360, 3000);
+    await t.pumpAndSettle();
+    expect(t.getCenter(find.byKey(const Key('pager_first'))).dy, closeTo(t.getCenter(find.byKey(const Key('pager_last'))).dy, 1));
+    expect(t.getSize(find.byKey(const Key('pager_row'))).width, lessThanOrEqualTo(360));
+  });
+
   testWidgets('first, previous, next and last move between the pages', (final WidgetTester t) async {
     await _open(t, 47);
     await t.tap(find.byKey(const Key('pager_next')));
