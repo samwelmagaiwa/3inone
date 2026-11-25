@@ -1,9 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { DebtSummary } from './credit.models';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { EMPTY, Observable, expand, map, reduce } from 'rxjs';
 
 import { environment } from '../../environments/environment';
+import { alphabetical } from './sort';
 import { Customer, Product, parseCustomer, parseProduct } from './till.models';
 
 const API = environment.apiUrl;
@@ -115,17 +116,29 @@ export interface ClientPackage {
 export class TillApi {
   private readonly http = inject(HttpClient);
 
-  /** `filters`: narrow the goods to one category, one brand, or (in a salon) only services or only goods. */
+  /**
+   * Every product that fits, A to Z by name: ALL the pages are read (100 to a page), not only the first, so a product or service saved long
+   * ago is still in the till. `filters`: narrow the goods to one category, one brand, or (in a salon) only services or only goods.
+   */
   products(q: string, page = 1, filters: { category?: string; brand?: string; kind?: string } = {}): Observable<{ items: Product[]; lastPage: number }> {
-    let p = new HttpParams().set('page', page).set('with_units', '1').set('status', 'active');
-    if (q.trim()) p = p.set('q', q.trim());
-    if (filters.category) p = p.set('category_id', filters.category);
-    if (filters.brand) p = p.set('brand_id', filters.brand);
-    if (filters.kind === 'service') p = p.set('is_service', '1');
-    if (filters.kind === 'goods') p = p.set('is_service', '0');
-    return this.http
-      .get<{ data: Record<string, unknown>[]; meta?: { last_page?: number } }>(`${API}/inventory/products`, { params: p })
-      .pipe(map((r) => ({ items: (r.data ?? []).map(parseProduct), lastPage: r.meta?.last_page ?? 1 })));
+    const one = (n: number) => {
+      let p = new HttpParams().set('page', n).set('per_page', 100).set('sort', 'name').set('with_units', '1').set('status', 'active');
+      if (q.trim()) p = p.set('q', q.trim());
+      if (filters.category) p = p.set('category_id', filters.category);
+      if (filters.brand) p = p.set('brand_id', filters.brand);
+      if (filters.kind === 'service') p = p.set('is_service', '1');
+      if (filters.kind === 'goods') p = p.set('is_service', '0');
+
+      return this.http
+        .get<{ data: Record<string, unknown>[]; meta?: { current_page?: number; last_page?: number } }>(`${API}/inventory/products`, { params: p })
+        .pipe(map((r) => ({ items: (r.data ?? []).map(parseProduct), page: r.meta?.current_page ?? n, lastPage: r.meta?.last_page ?? 1 })));
+    };
+
+    return one(page).pipe(
+      expand((r) => (r.page < r.lastPage ? one(r.page + 1) : EMPTY)),
+      reduce((all, r) => ({ items: [...all.items, ...r.items], lastPage: r.lastPage }), { items: [] as Product[], lastPage: 1 }),
+      map((r) => ({ items: alphabetical(r.items), lastPage: r.lastPage })),
+    );
   }
 
   /** Customers matching what was typed (every word, in the name or the phone), by name; with nothing typed, the first of the list. */

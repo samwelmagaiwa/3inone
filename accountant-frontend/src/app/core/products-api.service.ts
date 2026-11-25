@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
+import { alphabetical } from './sort';
 import { Named, NamedKind, Product, ProductBody, ProductFilters, ProductPage, ServiceMaterial, StaffMember } from './products.models';
 
 const API = environment.apiUrl;
@@ -54,7 +55,8 @@ export class ProductsApi {
   private readonly http = inject(HttpClient);
 
   products(f: ProductFilters): Observable<ProductPage> {
-    let params = new HttpParams().set('page', String(f.page));
+    // A to Z by name (the server sorts the whole list, so the pages follow one order), 20 to a page as the page's list bar counts them.
+    let params = new HttpParams().set('page', String(f.page)).set('per_page', '20').set('sort', 'name');
     if (f.q.trim()) params = params.set('q', f.q.trim());
     if (f.status) params = params.set('status', f.status);
     if (f.kind) params = params.set('is_service', f.kind === 'services' ? '1' : '0');
@@ -63,7 +65,7 @@ export class ProductsApi {
 
     return this.http.get<{ data: Record<string, unknown>[]; meta?: { current_page?: number; last_page?: number; total?: number } }>(`${API}/inventory/products`, { params }).pipe(
       map((r) => ({
-        items: (r.data ?? []).map(parseProduct),
+        items: alphabetical((r.data ?? []).map(parseProduct)),
         page: r.meta?.current_page ?? 1,
         lastPage: r.meta?.last_page ?? 1,
         total: r.meta?.total ?? (r.data ?? []).length,

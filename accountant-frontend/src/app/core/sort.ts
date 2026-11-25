@@ -25,6 +25,19 @@ export function sorted<T>(rows: readonly T[], state: SortState | null, value: (r
   });
 }
 
+/** A to Z by name, capitals and stray spaces ignored: the order the server gives with ?sort=name and the phone app uses. */
+export function byName(a: string, b: string): number {
+  const x = a.trim().toLowerCase();
+  const y = b.trim().toLowerCase();
+
+  return x < y ? -1 : x > y ? 1 : 0;
+}
+
+/** A copy of the products or services in A to Z order (the same name keeps the older first). */
+export function alphabetical<T extends { name: string; id: number }>(rows: readonly T[]): T[] {
+  return [...rows].sort((a, b) => byName(a.name, b.name) || a.id - b.id);
+}
+
 /** The arrow shown in a header: both arrows while unsorted, one once sorted. */
 export function sortArrow(state: SortState | null, key: string): string {
   return state?.key !== key ? '⇅' : state.dir === 'asc' ? '▲' : '▼';
