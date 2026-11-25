@@ -79,6 +79,22 @@ class InventoryProductsPagingTest extends TestCase
         $this->assertContains('Item 1', collect($res->json('data'))->pluck('name')->all());
     }
 
+    public function test_the_list_can_be_asked_for_from_a_to_z_capitals_and_spaces_ignored_and_the_pages_follow_that_order(): void
+    {
+        foreach (['kucha', 'Bangili', '  Cheni', 'bangili', 'Zeze', 'afro wig', 'Rasta', 'Mafuta'] as $name) {
+            $this->api('POST', '/api/inventory/products', ['name' => $name, 'cost_price' => 500, 'selling_price' => 800, 'quantity' => 4, 'min_stock' => 1, 'status' => 'active'])->assertCreated();
+        }
+        $names = fn (string $q) => collect($this->api('GET', '/api/inventory/products?sort=name&' . $q)->assertOk()->json('data'))->pluck('name')->map(fn ($n) => trim($n))->all();
+
+        $this->assertSame(['afro wig', 'Bangili', 'bangili', 'Cheni', 'kucha', 'Mafuta', 'Rasta', 'Zeze'], $names('per_page=100'));
+        // Page by page it is the same one order, not each page sorted on its own.
+        $this->assertSame(['afro wig', 'Bangili', 'bangili'], $names('per_page=3&page=1'));
+        $this->assertSame(['Cheni', 'kucha', 'Mafuta'], $names('per_page=3&page=2'));
+        $this->assertSame(['Rasta', 'Zeze'], $names('per_page=3&page=3'));
+        // Without it the newest comes first, as before.
+        $this->assertSame('Mafuta', trim($this->api('GET', '/api/inventory/products?per_page=100')->json('data.0.name')));
+    }
+
     public function test_a_search_finds_an_old_product_whatever_page_it_is_on(): void
     {
         $this->save(45);

@@ -1,3 +1,4 @@
+import 'package:boda_mapato/modules/inventory/models/inv_product.dart';
 import 'package:boda_mapato/modules/inventory/providers/inventory_provider.dart';
 import 'package:boda_mapato/services/api_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,7 +42,28 @@ class _PagedApi extends ApiService {
   }
 }
 
+InvProduct _p(final int id, final String name) => InvProduct(id: id, name: name, sku: 'S$id', category: '', costPrice: 1, sellingPrice: 2, unit: 'pcs', quantity: 1, minStock: 1, status: 'active', barcode: '', createdBy: 0);
+
 void main() {
+  test('products and services are listed A to Z by name, capitals and stray spaces ignored, the same name older first', () {
+    final List<InvProduct> sorted = InventoryProvider.alphabetical(<InvProduct>[
+      _p(5, 'kucha'), _p(2, 'Bangili'), _p(7, '  Cheni'), _p(3, 'bangili'), _p(9, 'Zeze'), _p(1, 'afro wig'), _p(8, 'Rasta'), _p(6, '027 sunflower'),
+    ]);
+    expect(sorted.map((InvProduct p) => p.name.trim()).toList(), <String>['027 sunflower', 'afro wig', 'Bangili', 'bangili', 'Cheni', 'kucha', 'Rasta', 'Zeze']);
+    expect(sorted[2].id, 2, reason: 'the same name: the older (smaller id) first');
+    expect(sorted[3].id, 3);
+  });
+
+  test('after the pages are read the whole list is alphabetical, even when the server gave it newest first (an older server)', () async {
+    final InventoryProvider inv = InventoryProvider(api: _PagedApi(products: 250));
+    await inv.fetchProducts();
+    final List<String> names = inv.products.map((p) => p.name.toLowerCase()).toList();
+    final List<String> sorted = List<String>.of(names)..sort();
+    expect(names, sorted);
+    expect(inv.products.length, 250);
+    inv.dispose();
+  });
+
   test('a shop with more than a page of products has ALL of them in the app, the old ones too (the slow sellers saved long ago)', () async {
     final _PagedApi api = _PagedApi(products: 250);
     final InventoryProvider inv = InventoryProvider(api: api);
@@ -49,8 +71,7 @@ void main() {
 
     expect(inv.products.length, 250, reason: 'three pages of 100, 100 and 50 are all read');
     expect(inv.products.any((p) => p.name == 'medium tembo'), isTrue, reason: 'the product saved long ago is not left out');
-    expect(inv.products.first.id, 250, reason: 'the newest first, as the server gives them');
-    expect(inv.products.last.id, 1);
+    expect(inv.products.first.name, 'medium tembo', reason: 'A to Z: the name that comes first in the alphabet is first, whatever its age');
     expect(inv.products.map((p) => p.id).toSet().length, 250, reason: 'none twice');
     final List<String> asked = api.asked.where((String e) => e.startsWith('/inventory/products')).toList();
     expect(asked.length, 3);

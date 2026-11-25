@@ -661,6 +661,17 @@ class InventoryProvider extends ChangeNotifier {
     }
   }
 
+  /// Products and services A to Z by name (capitals and stray spaces ignored; the same name keeps the older first), so a name is easy
+  /// to find in the till, the lists and the pickers. The server is asked for the same order, this keeps it when an older server is not.
+  static List<InvProduct> alphabetical(final Iterable<InvProduct> list) {
+    final List<InvProduct> out = list.toList();
+    out.sort((InvProduct a, InvProduct b) {
+      final int byName = a.name.trim().toLowerCase().compareTo(b.name.trim().toLowerCase());
+      return byName != 0 ? byName : a.id.compareTo(b.id);
+    });
+    return out;
+  }
+
   /// The page size the app asks the server for (the server's ceiling is 100), and a safety stop on how many pages are read.
   static const int _productsPerPage = 100;
   static const int _productsMaxPages = 200;
@@ -687,7 +698,7 @@ class InventoryProvider extends ChangeNotifier {
         int last = 1;
         bool answered = false;
         for (int p = page; p <= last && p < page + _productsMaxPages; p++) {
-          final res = await _api.getOrNull('$e?page=$p&per_page=$_productsPerPage&with_units=1$filters');
+          final res = await _api.getOrNull('$e?page=$p&per_page=$_productsPerPage&sort=name&with_units=1$filters');
           // Nothing came back: on the first page try the next endpoint; on a later page (a weak connection) keep what was read, the next
           // refresh reads again.
           if (res == null) break;
@@ -719,7 +730,7 @@ class InventoryProvider extends ChangeNotifier {
             // The first page shows straight away; the rest follow.
             _products
               ..clear()
-              ..addAll(all);
+              ..addAll(alphabetical(all));
             _unitsByProduct.addAll(units);
             notifyListeners();
           }
@@ -728,7 +739,7 @@ class InventoryProvider extends ChangeNotifier {
         if (read != _productsRead) return;
         _products
           ..clear()
-          ..addAll(all);
+          ..addAll(alphabetical(all));
         _unitsByProduct.addAll(units);
         notifyListeners();
         return;

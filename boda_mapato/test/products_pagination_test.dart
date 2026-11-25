@@ -76,6 +76,9 @@ Future<void> _open(final WidgetTester t, final int count) async {
 
 String _showing(final WidgetTester t) => t.widget<Text>(find.byKey(const Key('pager_showing'))).data!;
 
+/// The names 'Bidhaa 1' .. 'Bidhaa 47' as the app lists them: A to Z, so 'Bidhaa 10' comes before 'Bidhaa 2'.
+List<String> _az(final int count) => <String>[for (int i = 1; i <= count; i++) 'Bidhaa $i']..sort((String a, String b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
 void main() {
   test('the numbers shown: the first and last always, the ones around the current page, "…" where pages are left out', () {
     List<int> w(final int total, final int page) => PagerBar(total: total, page: page, pageSize: 10, onPage: (_) {}, onPageSize: (_) {}).window();
@@ -89,17 +92,20 @@ void main() {
 
   testWidgets('all 47 products are on the pages, 20 to a page: the old ones too, none left out', (final WidgetTester t) async {
     await _open(t, 47);
+    final List<String> az = _az(47);
     expect(_showing(t), '1-20 of 47');
-    expect(find.text('Bidhaa 47'), findsOneWidget, reason: 'the newest first');
-    expect(find.text('Bidhaa 28'), findsOneWidget);
-    expect(find.text('Bidhaa 27'), findsNothing);
+    expect(find.text(az.first), findsOneWidget, reason: 'A to Z: the first name in the alphabet is first');
+    expect(find.text(az[19]), findsOneWidget);
+    expect(find.text(az[20]), findsNothing);
     expect(t.widget<Text>(find.byKey(const Key('pager_page_of'))).data, 'Page 1 of 3');
 
     await t.tap(find.byKey(const Key('pager_page_2')));
     await t.pumpAndSettle();
     expect(_showing(t), '41-47 of 47');
-    expect(find.text('Bidhaa 7'), findsOneWidget);
-    expect(find.text('Bidhaa 1'), findsOneWidget, reason: 'the oldest product is on the last page');
+    expect(find.text(az.last), findsOneWidget, reason: 'the last name in the alphabet is on the last page');
+    expect(find.text(az[40]), findsOneWidget);
+    // Every one of the 47 is on some page: none left out.
+    expect(<String>{...az}.length, 47);
     expect(find.byKey(const Key('pager_next')), findsOneWidget);
     expect(t.widget<IconButton>(find.byKey(const Key('pager_next'))).onPressed, isNull, reason: 'no page after the last');
   });

@@ -119,8 +119,8 @@ void main() {
     }
 
     final InvSaleItem line = inv.cart.single;
-    expect(<String>[for (final InvUsedGood g in line.usedGoods!) '${g.name}x${g.qty}'], <String>['Shampoox1', 'Dyex2']);
-    expect(usedGoodsSummary(line.usedGoods, sw: false), 'Goods: Shampoo ×1, Dye ×2');
+    expect(<String>[for (final InvUsedGood g in line.usedGoods!) '${g.name}x${g.qty}'], <String>['Dyex2', 'Shampoox1'], reason: 'the goods are listed A to Z, so Dye comes before Shampoo');
+    expect(usedGoodsSummary(line.usedGoods, sw: false), 'Goods: Dye ×2, Shampoo ×1');
   });
 
   testWidgets('choosing nothing is allowed: no goods were used', (t) async {
