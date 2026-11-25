@@ -33,12 +33,7 @@ class GroupCommunicationController extends Controller
 
     private static function isLeader(Request $request): bool
     {
-        if (GroupAccess::isOwner($request->user())) {
-            return true;
-        }
-        $me = GroupAccess::member($request->user());
-
-        return $me !== null && !empty($me['office']) && $me['status'] === GroupMembers::ACTIVE;
+        return GroupAccess::holdsOffice($request->user());
     }
 
     // ---------------------------------------------------------------- meetings

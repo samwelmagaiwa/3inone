@@ -19,8 +19,46 @@ final class GroupAccess
     /** @var array<string, array<string, mixed>|null> user id => their member row (memoised per request) */
     private static array $members = [];
 
-    public static function isOwner(?User $user): bool
+    /** True for this request when the app asked to be treated as an ordinary member ("ME": header X-Group-View: member). */
+    private static bool $asMember = false;
+
+    public static function viewAsMember(bool $on): void
     {
+        self::$asMember = $on;
+    }
+
+    /**
+     * A leader (or the owner) who is ALSO a member may look at the group as an ordinary member: no office, no rights, no leaders' lists.
+     * It only ever reduces what the person sees, and only for a person who has a member record to look from.
+     */
+    public static function asMember(?User $user = null): bool
+    {
+        return self::$asMember && ($user === null || self::member($user) !== null);
+    }
+
+    /** Does this person hold an office or run the group right now (ignoring ME)? Whether the ME switch is offered to them. */
+    public static function canSwitchView(?User $user): bool
+    {
+        return $user !== null && self::member($user) !== null && count(self::rights($user, true)) > 0;
+    }
+
+    /** Holds an office in the group at this moment (an active member with an office, or the owner), as seen in the current view. */
+    public static function holdsOffice(?User $user): bool
+    {
+        if (self::isOwner($user)) {
+            return true;
+        }
+        $me = self::member($user);
+
+        return !self::asMember($user) && $me !== null && !empty($me['office']) && $me['status'] === GroupMembers::ACTIVE;
+    }
+
+    public static function isOwner(?User $user, bool $real = false): bool
+    {
+        if (!$real && self::asMember($user)) {
+            return false;
+        }
+
         return $user !== null
             && (string) $user->accountHeadId() === (string) $user->id
             && strtolower((string) $user->role) !== User::GROUP_MEMBER_ROLE
@@ -43,12 +81,16 @@ final class GroupAccess
     }
 
     /** @return array<int, string> */
-    public static function rights(?User $user): array
+    public static function rights(?User $user, bool $real = false): array
     {
         if ($user === null) {
             return [];
         }
-        if (self::isOwner($user)) {
+        // ME: the person looks at the group as an ordinary member, whatever their office.
+        if (!$real && self::asMember($user)) {
+            return [];
+        }
+        if (self::isOwner($user, true)) {
             return GroupOffices::RIGHTS;
         }
         $member = self::member($user);

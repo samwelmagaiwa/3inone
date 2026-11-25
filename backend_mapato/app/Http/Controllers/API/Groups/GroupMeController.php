@@ -140,8 +140,12 @@ class GroupMeController extends Controller
         return response()->json(['success' => true, 'data' => [
             'is_owner' => GroupAccess::isOwner($user),
             'rights' => $rights,
+            // Whether the ME switch is offered (a leader who is also a member), even while the answer itself is the member's view.
+            'can_switch_view' => GroupAccess::canSwitchView($user),
+            'viewing_as_member' => GroupAccess::asMember($user),
             'offices' => GroupOffices::OFFICES,
-            'member' => $member === null ? null : GroupMembers::payload($member, true),
+            // In ME the office is not shown either: they look at the group as an ordinary member.
+            'member' => $member === null ? null : GroupMembers::payload(GroupAccess::asMember($user) ? array_merge($member, ['office' => null]) : $member, true),
             'balances' => $memberId === null ? null : GroupLedger::balances($memberId),
             'pending' => $memberId === null ? 0 : DB::table('group_transactions')->where('member_id', $memberId)->where('status', GroupLedger::PENDING)->count(),
             // What they still owe (contributions), oldest first, and the promises they made.
@@ -163,7 +167,7 @@ class GroupMeController extends Controller
             'next_meeting' => DB::table('group_meetings')->where('status', 'scheduled')->where('starts_at', '>=', now())->orderBy('starts_at')
                 ->first(['id', 'title', 'starts_at', 'venue']),
             'notices' => DB::table('group_announcements')
-                ->when(!($member !== null && !empty($member['office'])) && !GroupAccess::isOwner($user), fn ($q) => $q->where('audience', 'all'))
+                ->when(!GroupAccess::holdsOffice($user), fn ($q) => $q->where('audience', 'all'))
                 ->where(fn ($q) => $q->whereNull('expires_on')->orWhere('expires_on', '>=', now()->toDateString()))->count(),
             'group' => ['name' => optional(\App\Models\Business::forUser($user))->name],
         ]]);

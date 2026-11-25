@@ -1,6 +1,7 @@
 import 'package:boda_mapato/modules/groups/models/group_models.dart';
 import 'package:boda_mapato/modules/groups/screens/groups_home.dart';
 import 'package:boda_mapato/modules/groups/services/groups_api.dart';
+import 'package:boda_mapato/services/api_service.dart';
 import 'package:boda_mapato/services/localization_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -60,7 +61,8 @@ void main() {
     expect(me.balances?['savings'], 120000);
     expect(me.waiting.keys, <String>['votes_to_cast']);
     expect(me.seesPayments, isFalse);
-    expect(me.canBeMe, isFalse, reason: 'an ordinary member has nothing to switch');
+    expect(me.member?.office, isNull, reason: 'the office is not shown in ME');
+    expect(me.canBeMe, isTrue, reason: 'the switch stays so they can go back');
   });
 
   test('an ordinary member, and an owner who is not a member, have no ME switch', () {
@@ -99,6 +101,31 @@ void main() {
     await t.tap(find.byKey(const Key('grp_me_toggle')));
     await t.pumpAndSettle();
     expect(find.byKey(const Key('grp_footer_members')), findsOneWidget);
+  });
+
+  testWidgets('when the server already answers as a member (ME on), the switch is still there and the header is sent; leaving clears it', (final WidgetTester t) async {
+    final Map<String, dynamic> json = _me(rights: const <String>[], office: null)
+      ..['can_switch_view'] = true
+      ..['viewing_as_member'] = true;
+    await _pump(t, GroupsHome(api: _Api(json)), prefs: <String, Object>{'grp_me_mode_1_MEG': true});
+    expect(find.byKey(const Key('grp_me_toggle')), findsOneWidget, reason: 'a leader in ME can always go back');
+    expect(ApiService.groupViewAsMember, isTrue);
+    await t.pumpWidget(const SizedBox());
+    expect(ApiService.groupViewAsMember, isFalse, reason: 'other services never send the view');
+  });
+
+  testWidgets('the switch sends the view as soon as it is turned on and stops sending it when turned off', (final WidgetTester t) async {
+    final Map<String, dynamic> json = _me(rights: <String>['view_finance', 'view_members'], office: 'treasurer')..['can_switch_view'] = true;
+    await _pump(t, GroupsHome(api: _Api(json)));
+    expect(ApiService.groupViewAsMember, isFalse);
+    expect(find.textContaining('treasurer'), findsWidgets, reason: 'the office is on Home');
+    await t.tap(find.byKey(const Key('grp_me_toggle')));
+    await t.pumpAndSettle();
+    expect(ApiService.groupViewAsMember, isTrue);
+    expect(find.textContaining('treasurer'), findsNothing, reason: 'their office is not on Home in ME');
+    await t.tap(find.byKey(const Key('grp_me_toggle')));
+    await t.pumpAndSettle();
+    expect(ApiService.groupViewAsMember, isFalse);
   });
 
   testWidgets('an ordinary member has no ME switch', (final WidgetTester t) async {

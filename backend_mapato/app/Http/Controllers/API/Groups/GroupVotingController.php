@@ -601,6 +601,10 @@ class GroupVotingController extends Controller
     {
         $mid = $this->myId($request);
         $rows = $mid === null ? collect() : DB::table('group_notifications')->where('member_id', $mid)->orderByDesc('id')->limit(100)->get();
+        // In ME the leaders' notices (a membership request waiting for the management) are not shown: they belong to the office, not the member.
+        if (\App\Support\Groups\GroupAccess::asMember($request->user())) {
+            $rows = $rows->reject(fn ($n) => str_starts_with((string) $n->kind, 'member_'))->values();
+        }
 
         return response()->json(['success' => true, 'data' => [
             'notifications' => $rows->map(fn ($n) => ['id' => (int) $n->id, 'kind' => $n->kind, 'title' => $n->title, 'title_en' => $n->title_en, 'body' => $n->body, 'body_en' => $n->body_en,

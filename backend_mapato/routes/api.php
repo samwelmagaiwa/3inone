@@ -256,7 +256,7 @@ Route::prefix('public/groups')->middleware('throttle:30,1,public-groups')->group
 
 // GROUPS (Vikundi) -- a savings / economic group. Everyone who holds the service reaches /groups/me (their own file and money);
 // everything else needs a right from the office they hold (group_right:...), see App\Support\Groups\GroupOffices.
-Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(function () {
+Route::middleware(['auth:sanctum', 'service:groups', \App\Http\Middleware\GroupViewAs::class])->prefix('groups')->group(function () {
     Route::get('me', [GroupMeController::class, 'show']);
     // The leaders' dashboard: members for whoever sees them, money only for whoever sees the group's money.
     Route::get('dashboard', [GroupDashboardController::class, 'show'])->middleware('group_right:view_members,view_finance');

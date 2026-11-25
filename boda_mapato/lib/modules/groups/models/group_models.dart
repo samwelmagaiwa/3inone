@@ -100,6 +100,35 @@ class GroupMember {
   /// The profile photo as a link that expires (null when there is none).
   final String? photoUrl;
 
+  /// The same person without their office (the ME view).
+  GroupMember withoutOffice() => GroupMember(
+        id: id,
+        fullName: fullName,
+        phone: phone,
+        status: status,
+        memberNumber: memberNumber,
+        applicationRef: applicationRef,
+        altPhone: altPhone,
+        email: email,
+        nida: nida,
+        nidaMasked: nidaMasked,
+        dateOfBirth: dateOfBirth,
+        gender: gender,
+        region: region,
+        district: district,
+        ward: ward,
+        street: street,
+        occupation: occupation,
+        statusReason: statusReason,
+        referrerId: referrerId,
+        referrerName: referrerName,
+        approvedByName: approvedByName,
+        founding: founding,
+        joinedOn: joinedOn,
+        hasSignIn: hasSignIn,
+        photoUrl: photoUrl,
+      );
+
   bool get isActive => status == 'active';
   bool get isApplication => status == 'submitted';
 }
@@ -375,6 +404,7 @@ class GroupMe {
     this.nextMeetingVenue,
     this.notices = 0,
     this.personal = false,
+    this.canSwitchView = false,
   });
 
   factory GroupMe.fromJson(final Map<String, dynamic> j) {
@@ -399,6 +429,8 @@ class GroupMe {
       nextMeetingAt: _str(j['next_meeting'] is Map ? (j['next_meeting'] as Map)['starts_at'] : null),
       nextMeetingVenue: _str(j['next_meeting'] is Map ? (j['next_meeting'] as Map)['venue'] : null),
       notices: _int(j['notices']) ?? 0,
+      personal: j['viewing_as_member'] == true,
+      canSwitchView: j['can_switch_view'] == true,
     );
   }
 
@@ -435,6 +467,9 @@ class GroupMe {
   /// True while a leader looks at the group as an ordinary member ("ME"): no office rights, only their own account and what is theirs.
   final bool personal;
 
+  /// The server says this person may switch to ME (it stays true while the answer itself is the member's view).
+  final bool canSwitchView;
+
   /// What waits for a person AS A MEMBER, whatever their office (the rest of [waiting] is the leaders' queue).
   static const Set<String> _memberWaiting = <String>{'votes_to_cast', 'guarantees', 'my_actions'};
 
@@ -443,7 +478,8 @@ class GroupMe {
   GroupMe asMember() => GroupMe(
         isOwner: false,
         rights: const <String>{},
-        member: member,
+        // The office is not shown in ME: they look as an ordinary member.
+        member: member?.withoutOffice(),
         balances: balances,
         pending: pending,
         joiningFee: joiningFee,
@@ -460,10 +496,11 @@ class GroupMe {
         nextMeetingVenue: nextMeetingVenue,
         notices: notices,
         personal: true,
+        canSwitchView: canBeMe,
       );
 
   /// A leader (an office or the owner) who is also a member: the one who may switch to ME.
-  bool get canBeMe => member != null && (isOwner || rights.isNotEmpty);
+  bool get canBeMe => member != null && (canSwitchView || isOwner || rights.isNotEmpty);
 
   bool can(final String right) => rights.contains(right);
 

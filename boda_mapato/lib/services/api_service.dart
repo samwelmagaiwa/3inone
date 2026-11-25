@@ -63,6 +63,10 @@ class ApiService {
     activeBranchService = id == null ? null : service;
   }
 
+  /// Vikundi "ME": a leader looks at the group as an ordinary member. While true every request carries X-Group-View: member and the server
+  /// answers as for a plain member (reset to false on leaving the service).
+  static bool groupViewAsMember = false;
+
   /// Back to "all branches": a branch of one service must never follow the person into another.
   static void clearBranch() => chooseBranch(null, null);
 
@@ -72,6 +76,7 @@ class ApiService {
       ..._headers,
       if (token != null) "Authorization": "Bearer $token",
       if (activeService != null) "X-Service": activeService!,
+      if (groupViewAsMember) "X-Group-View": "member",
       if (activeBranch != null) "X-Branch": '$activeBranch',
       if (activeBranch != null) "X-Branch-Service": activeBranchService ?? activeService ?? 'inventory',
     };

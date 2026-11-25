@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../constants/theme_constants.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../services/api_service.dart';
 import '../../../services/localization_service.dart';
 import '../../../utils/server_message.dart';
 import '../../../widgets/service_switcher_dialog.dart';
@@ -68,8 +69,13 @@ class _GroupsHomeState extends State<GroupsHome> {
 
   Future<void> _load() async {
     try {
-      final GroupMe me = await _api.me();
-      if (!_meLoaded && me.canBeMe) _meMode = await _readMeMode(me);
+      GroupMe me = await _api.me();
+      if (!_meLoaded && me.canBeMe) {
+        _meMode = await _readMeMode(me);
+        // ME was left on last time: from here every request says so, and the server answers as for an ordinary member.
+        ApiService.groupViewAsMember = _meMode;
+        if (_meMode && !me.personal) me = await _api.me();
+      }
       _meLoaded = true;
       if (!mounted) return;
       setState(() {
@@ -95,6 +101,8 @@ class _GroupsHomeState extends State<GroupsHome> {
   Future<void> _setMeMode(final bool on) async {
     final GroupMe? me = _me;
     if (me == null) return;
+    // Before anything is rebuilt: every request from now on carries the view, so the server answers as for a member (or as the office again).
+    ApiService.groupViewAsMember = on;
     setState(() {
       _meMode = on;
       _current = 'home';
@@ -107,6 +115,14 @@ class _GroupsHomeState extends State<GroupsHome> {
     } on Exception {
       // not remembered this time; the switch still works for now
     }
+    await _load();
+  }
+
+  @override
+  void dispose() {
+    // The view belongs to this service only: other services never send it.
+    ApiService.groupViewAsMember = false;
+    super.dispose();
   }
 
   List<_Section> _sections(final GroupMe me) => <_Section>[
