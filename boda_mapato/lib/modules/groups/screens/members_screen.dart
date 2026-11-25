@@ -181,7 +181,11 @@ class _MemberTile extends StatelessWidget {
         key: Key('grp_member_${m.id}'),
         onTap: onTap,
         leading: CircleAvatar(
+          key: Key('grp_member_pic_${m.id}'),
           backgroundColor: statusColor(m.status).withValues(alpha: 0.2),
+          // The photo when there is one; the initial shows until it loads and stays if it cannot be read.
+          foregroundImage: m.photoUrl == null ? null : NetworkImage(m.photoUrl!),
+          onForegroundImageError: m.photoUrl == null ? null : (_, __) {},
           child: Text(m.fullName.isEmpty ? '?' : m.fullName.characters.first.toUpperCase(), style: TextStyle(color: statusColor(m.status), fontWeight: FontWeight.w800)),
         ),
         title: Text(m.fullName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),

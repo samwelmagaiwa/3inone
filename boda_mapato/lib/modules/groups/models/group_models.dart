@@ -37,6 +37,7 @@ class GroupMember {
     this.founding = false,
     this.joinedOn,
     this.hasSignIn = false,
+    this.photoUrl,
   });
 
   factory GroupMember.fromJson(final Map<String, dynamic> j) => GroupMember(
@@ -65,6 +66,7 @@ class GroupMember {
         founding: j['founding'] == true,
         joinedOn: _str(j['joined_on']),
         hasSignIn: j['has_sign_in'] == true,
+        photoUrl: _str(j['photo_url']),
       );
 
   final int id;
@@ -94,6 +96,9 @@ class GroupMember {
   final bool founding;
   final String? joinedOn;
   final bool hasSignIn;
+
+  /// The profile photo as a link that expires (null when there is none).
+  final String? photoUrl;
 
   bool get isActive => status == 'active';
   bool get isApplication => status == 'submitted';
@@ -369,6 +374,7 @@ class GroupMe {
     this.nextMeetingAt,
     this.nextMeetingVenue,
     this.notices = 0,
+    this.personal = false,
   });
 
   factory GroupMe.fromJson(final Map<String, dynamic> j) {
@@ -425,6 +431,39 @@ class GroupMe {
 
   /// How many notices are up for this person.
   final int notices;
+
+  /// True while a leader looks at the group as an ordinary member ("ME"): no office rights, only their own account and what is theirs.
+  final bool personal;
+
+  /// What waits for a person AS A MEMBER, whatever their office (the rest of [waiting] is the leaders' queue).
+  static const Set<String> _memberWaiting = <String>{'votes_to_cast', 'guarantees', 'my_actions'};
+
+  /// The same person seen only as a member: no office rights, not the owner, none of the leaders' queues, no asset keeping. Their own
+  /// membership, account, promises, meeting and notices stay. The server still decides what each call may do; this only changes what is shown.
+  GroupMe asMember() => GroupMe(
+        isOwner: false,
+        rights: const <String>{},
+        member: member,
+        balances: balances,
+        pending: pending,
+        joiningFee: joiningFee,
+        shareAmount: shareAmount,
+        sharesRequiredFor: sharesRequiredFor,
+        paymentInstructions: paymentInstructions,
+        paymentMethods: paymentMethods,
+        waiting: <String, int>{for (final MapEntry<String, int> e in waiting.entries) if (_memberWaiting.contains(e.key)) e.key: e.value},
+        groupName: groupName,
+        owing: owing,
+        promises: promises,
+        nextMeetingTitle: nextMeetingTitle,
+        nextMeetingAt: nextMeetingAt,
+        nextMeetingVenue: nextMeetingVenue,
+        notices: notices,
+        personal: true,
+      );
+
+  /// A leader (an office or the owner) who is also a member: the one who may switch to ME.
+  bool get canBeMe => member != null && (isOwner || rights.isNotEmpty);
 
   bool can(final String right) => rights.contains(right);
 

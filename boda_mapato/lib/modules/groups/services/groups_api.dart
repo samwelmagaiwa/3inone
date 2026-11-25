@@ -415,6 +415,13 @@ class GroupsApi {
   Future<List<GroupDocument>> uploadDocument(final int memberId, final Uint8List bytes, final String filename, {required final String kind, final String? caption}) async =>
       _docs(_data(await _api.uploadFile('$_base/members/$memberId/documents', 'file', bytes, filename, fields: <String, String>{'kind': kind, if (caption != null) 'caption': caption})));
 
+  /// Sets the signed-in member's OWN profile photo (no right needed). The answer is the new link.
+  Future<String?> uploadMyPhoto(final Uint8List bytes, final String filename) async {
+    final Map<String, dynamic> d = _data(await _api.uploadFile('$_base/members/me/photo', 'file', bytes, filename));
+    final Object? url = d['photo_url'];
+    return url == null || '$url'.isEmpty ? null : '$url';
+  }
+
   Future<List<GroupDocument>> removeDocument(final int memberId, final int id) async => _docs(_data(await _api.delete('$_base/members/$memberId/documents/$id')));
 
   // ---------------------------------------------------------------- payment methods

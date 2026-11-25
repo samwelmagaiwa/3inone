@@ -185,6 +185,8 @@ final class GroupMembers
             'founding' => (bool) ($r['founding'] ?? false),
             'joined_on' => $r['joined_on'] ?? null,
             'has_sign_in' => !empty($r['user_id']),
+            // The profile photo, as a signed link that expires (null when none): lists and Home show it beside the name.
+            'photo_url' => \App\Support\PrivateFile::url($r['photo_path'] ?? null),
             'created_at' => isset($r['created_at']) ? (string) $r['created_at'] : null,
         ];
     }

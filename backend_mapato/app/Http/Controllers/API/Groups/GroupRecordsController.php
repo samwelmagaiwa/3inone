@@ -238,6 +238,23 @@ class GroupRecordsController extends Controller
         return $this->documents($request, $id)->setStatusCode(201);
     }
 
+    /** A member sets or changes THEIR OWN profile photo (no right needed: it is their picture). Same rules as any photo. */
+    public function uploadMine(Request $request): JsonResponse
+    {
+        $member = GroupAccess::member($request->user());
+        if ($member === null || $member['status'] !== GroupMembers::ACTIVE) {
+            return $this->fail('not_a_member', 'Wewe si mwanachama hai wa kikundi hiki. / You are not an active member of this group.', 403);
+        }
+        $request->merge(['kind' => 'photo']);
+        $id = (int) $member['id'];
+        $response = $this->upload($request, $id);
+        if ($response->getStatusCode() !== 201) {
+            return $response;
+        }
+
+        return response()->json(['success' => true, 'data' => ['photo_url' => PrivateFile::url(DB::table('group_members')->where('id', $id)->value('photo_path'))]], 201);
+    }
+
     public function removeDocument(Request $request, int $id, int $documentId): JsonResponse
     {
         $d = DB::table('group_member_documents')->where('id', $documentId)->where('member_id', $id)->first();

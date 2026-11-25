@@ -23,6 +23,7 @@ import 'welfare_screen.dart';
 import 'widgets/account_card.dart';
 import 'widgets/group_tile_grid.dart';
 import 'widgets/groups_ui.dart';
+import 'widgets/member_documents_card.dart' show changeMyPhoto;
 
 /// Home: the person's own membership and money, and -- for leaders -- what waits for them. Everyone has it; a member sees nothing of anyone else.
 class GroupDashboardScreen extends StatefulWidget {
@@ -101,6 +102,10 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
   Future<void> _myHires() async {
     await Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MyHiresScreen(api: widget.api, me: widget.me)));
     await _refresh();
+  }
+
+  Future<void> _changeMyPhoto() async {
+    if (await changeMyPhoto(context, api: widget.api)) await _refresh();
   }
 
   Future<void> _myDividends() => Navigator.push<void>(context, MaterialPageRoute<void>(builder: (_) => MyDividendsScreen(api: widget.api)));
@@ -406,7 +411,7 @@ class _GroupDashboardScreenState extends State<GroupDashboardScreen> {
     // The member's own figures in tiles (not a card), shown before the joined sections.
     final List<Widget> lead = <Widget>[if (m != null) _MyGlance(me: me, sw: sw, onStatement: _statement)];
     // The account comes first, on every screen of every role that has a member record.
-    final Widget account = GroupAccountSection(me: me, onStatement: _statement);
+    final Widget account = GroupAccountSection(me: me, onStatement: _statement, onPhoto: _changeMyPhoto);
 
     return RefreshIndicator(
       onRefresh: _refresh,

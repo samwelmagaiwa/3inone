@@ -6,15 +6,19 @@ import '../../../../services/localization_service.dart';
 import '../../../inventory/screens/widgets/glow_list_card.dart';
 import '../../models/group_models.dart';
 import '../groups_text.dart';
+import 'member_avatar.dart';
 
 /// The member's account on Home: what the group holds for them (savings and shares), with the account number beside it. The amount is hidden
 /// until the eye is tapped (and hidden again on the next tap), so it is not on show to anyone looking over a shoulder. Tapping the card opens
 /// the statement.
 class GroupAccountCard extends StatefulWidget {
-  const GroupAccountCard({required this.me, required this.onStatement, super.key});
+  const GroupAccountCard({required this.me, required this.onStatement, super.key, this.onPhoto});
 
   final GroupMe me;
   final VoidCallback onStatement;
+
+  /// Tapping the picture sets the member's own photo (null: the picture is only shown).
+  final VoidCallback? onPhoto;
 
   @override
   State<GroupAccountCard> createState() => _GroupAccountCardState();
@@ -40,11 +44,8 @@ class _GroupAccountCardState extends State<GroupAccountCard> {
           // Inside the joined card the card's own frame is dropped: the glowing lines and the gold title tell it apart.
           decoration: GlowSections.joined(context) ? null : BoxDecoration(borderRadius: BorderRadius.circular(20), color: Colors.white.withValues(alpha: 0.03), border: Border.all(color: Colors.white.withValues(alpha: 0.06))),
           child: Row(children: <Widget>[
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: ThemeConstants.invAccent.withValues(alpha: 0.12), shape: BoxShape.circle),
-              child: const Icon(Icons.account_balance_wallet_rounded, color: ThemeConstants.invAccent, size: 20),
-            ),
+            // Their own picture (initials until they add one); the camera badge says it may be changed.
+            MemberAvatar(name: me.member?.fullName ?? '', photoUrl: me.member?.photoUrl, ringColor: ThemeConstants.invAccent, size: 52, editable: widget.onPhoto != null, onTap: widget.onPhoto),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: <Widget>[
@@ -84,10 +85,11 @@ class _GroupAccountCardState extends State<GroupAccountCard> {
 
 /// The account as a titled section, so it joins the sections under it into one card.
 class GroupAccountSection extends StatelessWidget with GlowSectionWidget {
-  const GroupAccountSection({required this.me, required this.onStatement, super.key});
+  const GroupAccountSection({required this.me, required this.onStatement, super.key, this.onPhoto});
 
   final GroupMe me;
   final VoidCallback onStatement;
+  final VoidCallback? onPhoto;
 
   @override
   Widget build(final BuildContext context) {
@@ -107,6 +109,6 @@ class GroupAccountSection extends StatelessWidget with GlowSectionWidget {
         ],
       );
     }
-    return GlowCard(title: sw ? 'Akaunti' : 'Account', children: <Widget>[GroupAccountCard(me: me, onStatement: onStatement)]);
+    return GlowCard(title: sw ? 'Akaunti' : 'Account', children: <Widget>[GroupAccountCard(me: me, onStatement: onStatement, onPhoto: onPhoto)]);
   }
 }

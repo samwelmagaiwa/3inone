@@ -407,6 +407,7 @@ Route::middleware(['auth:sanctum', 'service:groups'])->prefix('groups')->group(f
     Route::post('invitations/{id}/stop', [GroupRecordsController::class, 'stopCode'])->whereNumber('id');
     Route::get('me/referrals', [GroupRecordsController::class, 'myBranch']);
     Route::get('tree', [GroupRecordsController::class, 'tree'])->middleware('group_right:view_members');
+    Route::post('members/me/photo', [GroupRecordsController::class, 'uploadMine'])->middleware('throttle:20,1');
     Route::get('members/{id}/documents', [GroupRecordsController::class, 'documents'])->whereNumber('id')->middleware('group_right:view_members');
     Route::post('members/{id}/documents', [GroupRecordsController::class, 'upload'])->whereNumber('id')->middleware(['group_right:manage_members', 'throttle:30,1']);
     Route::delete('members/{id}/documents/{documentId}', [GroupRecordsController::class, 'removeDocument'])->whereNumber(['id', 'documentId'])->middleware('group_right:manage_members');

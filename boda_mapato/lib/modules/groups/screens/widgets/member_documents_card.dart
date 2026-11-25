@@ -106,6 +106,45 @@ Future<bool> addMemberDocument(
   }
 }
 
+/// The signed-in member sets or changes THEIR OWN profile photo: camera or phone, the same checks as any photo, Yes/No, then it is sent.
+/// True when the photo was kept.
+Future<bool> changeMyPhoto(final BuildContext context, {required final GroupsApi api}) async {
+  final bool sw = context.read<LocalizationService>().isSwahili;
+  final String? kind = await groupActions(context, title: sw ? 'Picha yangu' : 'My photo', actions: <GroupSheetAction>[
+    GroupSheetAction(icon: Icons.photo_camera_outlined, label: sw ? 'Picha (kamera)' : 'Photo (camera)', value: 'photo_camera'),
+    GroupSheetAction(icon: Icons.photo_library_outlined, label: sw ? 'Picha (kwenye simu)' : 'Photo (from the phone)', value: 'photo_gallery'),
+  ]);
+  if (kind == null || !context.mounted) return false;
+  final XFile? f = await ImagePicker().pickImage(source: kind == 'photo_camera' ? ImageSource.camera : ImageSource.gallery, imageQuality: 80, maxWidth: 1600);
+  if (f == null) return false;
+  final Uint8List bytes = await f.readAsBytes();
+  final String lower = f.name.toLowerCase();
+  final String name = lower.endsWith('.png') ? f.name : (lower.endsWith('.jpeg') ? f.name : 'photo.jpg');
+  if (!context.mounted) return false;
+  final String? problem = await memberPhotoProblem(bytes: bytes, name: name, sw: sw);
+  if (problem != null) {
+    if (context.mounted) ThemeConstants.showErrorSnackBar(context, problem);
+    return false;
+  }
+  if (!context.mounted) return false;
+  final bool ok = await groupConfirm(
+    context,
+    title: sw ? 'Weka kuwa picha yangu ya wasifu?' : 'Keep as my profile photo?',
+    message: name,
+    yes: sw ? 'Hifadhi' : 'Keep',
+    tone: GroupTone.positive,
+  );
+  if (!ok || !context.mounted) return false;
+  try {
+    await api.uploadMyPhoto(bytes, name);
+    if (context.mounted) ThemeConstants.showSuccessSnackBar(context, sw ? 'Picha yako imehifadhiwa.' : 'Your photo is kept.');
+    return true;
+  } on Exception catch (e) {
+    if (context.mounted) ThemeConstants.showErrorSnackBar(context, readableErrorMessage(e));
+    return false;
+  }
+}
+
 /// A member's photo and papers, kept privately (links expire). Whoever registers members adds and removes them; an ID copy only by whoever
 /// may see NIDA numbers (the server hides ID copies from everyone else).
 class MemberDocumentsCard extends StatefulWidget with GlowSectionWidget {

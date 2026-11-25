@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../constants/theme_constants.dart';
 import '../../../providers/auth_provider.dart';
@@ -52,6 +53,10 @@ class _GroupsHomeState extends State<GroupsHome> {
   String? _error;
   String _current = 'home';
 
+  /// "ME": a leader who is also a member looks at the group as an ordinary member. Remembered per member until they switch it off.
+  bool _meMode = false;
+  bool _meLoaded = false;
+
   /// The sections opened so far: only those are built (a section loads its data the first time it is opened, then keeps it).
   final Set<String> _opened = <String>{'home'};
 
@@ -64,6 +69,8 @@ class _GroupsHomeState extends State<GroupsHome> {
   Future<void> _load() async {
     try {
       final GroupMe me = await _api.me();
+      if (!_meLoaded && me.canBeMe) _meMode = await _readMeMode(me);
+      _meLoaded = true;
       if (!mounted) return;
       setState(() {
         _me = me;
@@ -72,6 +79,33 @@ class _GroupsHomeState extends State<GroupsHome> {
     } on Exception catch (e) {
       if (!mounted) return;
       setState(() => _error = readableErrorMessage(e));
+    }
+  }
+
+  static String _meKey(final GroupMe me) => 'grp_me_mode_${me.member?.id}_${me.groupName ?? ''}';
+
+  Future<bool> _readMeMode(final GroupMe me) async {
+    try {
+      return (await SharedPreferences.getInstance()).getBool(_meKey(me)) ?? false;
+    } on Exception {
+      return false; // the choice is a convenience: without storage it starts off
+    }
+  }
+
+  Future<void> _setMeMode(final bool on) async {
+    final GroupMe? me = _me;
+    if (me == null) return;
+    setState(() {
+      _meMode = on;
+      _current = 'home';
+      _opened
+        ..clear()
+        ..add('home');
+    });
+    try {
+      await (await SharedPreferences.getInstance()).setBool(_meKey(me), on);
+    } on Exception {
+      // not remembered this time; the switch still works for now
     }
   }
 
@@ -215,7 +249,10 @@ class _GroupsHomeState extends State<GroupsHome> {
   Widget build(final BuildContext context) {
     final LocalizationService loc = context.watch<LocalizationService>();
     final bool sw = loc.isSwahili;
-    final GroupMe? me = _me;
+    final GroupMe? real = _me;
+    // In ME mode every screen is built for the person as an ordinary member (no office rights, none of the leaders' queues).
+    final bool personal = real != null && _meMode && real.canBeMe;
+    final GroupMe? me = real == null ? null : (personal ? real.asMember() : real);
     final List<_Section> sections = me == null ? const <_Section>[] : _sections(me);
     final _Section? current = sections.where((_Section s) => s.key == _current).firstOrNull ?? sections.firstOrNull;
 
@@ -238,6 +275,7 @@ class _GroupsHomeState extends State<GroupsHome> {
           },
         ),
         actions: <Widget>[
+          if (real != null && real.canBeMe) _MeToggle(on: personal, onChanged: _setMeMode),
           PopupMenuButton<String>(
             key: const Key('grp_more_menu'),
             icon: Icon(Icons.more_vert, size: 22.sp),
@@ -295,7 +333,8 @@ class _GroupsHomeState extends State<GroupsHome> {
                 children: <Widget>[
                   for (final _Section s in sections)
                     KeyedSubtree(
-                      key: ValueKey<String>('grp_section_${s.key}'),
+                      // A fresh screen when the view changes (leader <-> ME), so nothing of the other view stays on it.
+                      key: ValueKey<String>(personal ? 'grp_section_${s.key}_me' : 'grp_section_${s.key}'),
                       child: _opened.contains(s.key) || s.key == current.key ? s.build(me, _load, _open) : const SizedBox.shrink(),
                     ),
                 ],
@@ -310,6 +349,57 @@ class _GroupsHomeState extends State<GroupsHome> {
               onTap: _open,
               onMenu: () => _showMenu(sections, sw),
             ),
+    );
+  }
+}
+
+/// The "ME" switch at the very top: on, the whole service shows the person's own account as an ordinary member; off, their office again.
+/// A gold pill with a glowing person when on, a quiet outline when off; the choice is remembered until they change it.
+class _MeToggle extends StatelessWidget {
+  const _MeToggle({required this.on, required this.onChanged});
+
+  final bool on;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(final BuildContext context) {
+    final bool sw = context.watch<LocalizationService>().isSwahili;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+      child: Semantics(
+        toggled: on,
+        button: true,
+        label: on ? (sw ? 'Taarifa zangu: zimewashwa' : 'My own view: on') : (sw ? 'Taarifa zangu: zimezimwa' : 'My own view: off'),
+        child: Tooltip(
+          message: on ? (sw ? 'Rudi kwenye uongozi' : 'Back to my office') : (sw ? 'Ona taarifa zangu kama mwanachama' : 'See my own account as a member'),
+          child: GestureDetector(
+            key: const Key('grp_me_toggle'),
+            onTap: () => onChanged(!on),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.fromLTRB(4, 3, 10, 3),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                color: on ? ThemeConstants.invAccent.withValues(alpha: 0.22) : Colors.white.withValues(alpha: 0.06),
+                border: Border.all(color: on ? ThemeConstants.invAccent : Colors.white30, width: on ? 1.4 : 1),
+                boxShadow: on ? <BoxShadow>[BoxShadow(color: ThemeConstants.invAccent.withValues(alpha: 0.35), blurRadius: 10)] : null,
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: on ? ThemeConstants.invAccent : Colors.white24),
+                  child: Icon(Icons.person_rounded, size: 16, color: on ? ThemeConstants.primaryBlue : Colors.white70),
+                ),
+                const SizedBox(width: 6),
+                Text('ME', key: const Key('grp_me_label'), style: TextStyle(color: on ? Colors.white : Colors.white70, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1)),
+              ]),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
