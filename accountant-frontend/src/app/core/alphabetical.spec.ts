@@ -76,4 +76,22 @@ describe('services and goods A to Z', () => {
     expect(page.total).toBe(70);
     h.http.verify();
   });
+
+  it('the goods a service uses up are found A to Z, and the categories and brands to choose from too', async () => {
+    const h = configure({ services: ['salon'] });
+    const api = TestBed.inject(ProductsApi);
+    const goods = firstValueFrom(api.findGoods('oil'));
+    const req = h.http.expectOne((r) => r.url === LIST);
+    expect(req.request.params.get('sort')).toBe('name');
+    expect(req.request.params.get('per_page')).toBe('100');
+    req.flush({ data: [row(3, 'Shine oil'), row(1, 'Argan oil')] });
+    expect((await goods).map((p) => p.name)).toEqual(['Argan oil', 'Shine oil']);
+
+    const named = firstValueFrom(api.named('categories'));
+    h.http.expectOne(`${environment.apiUrl}/inventory/categories`).flush({
+      data: [{ id: 2, name: 'Wigi', status: 'active', products_count: 1 }, { id: 1, name: 'bidhaa za nywele', status: 'active', products_count: 2 }, { id: 3, name: 'Nywele', status: 'active', products_count: 0 }],
+    });
+    expect((await named).map((n) => n.name)).toEqual(['bidhaa za nywele', 'Nywele', 'Wigi']);
+    h.http.verify();
+  });
 });

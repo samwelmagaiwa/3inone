@@ -7,6 +7,7 @@ import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth.service';
 import { dayOf, serverMessage, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
+import { byName } from '../../core/sort';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
 
 const API = environment.apiUrl;
@@ -356,7 +357,7 @@ export class AppointmentsPage implements OnInit {
   private async loadChoices(): Promise<void> {
     if (this.choices().length) return;
     try {
-      const r = await firstValueFrom(this.http.get<{ data?: unknown[] }>(`${API}/inventory/products`, { params: { is_service: '1', per_page: '200' } }));
+      const r = await firstValueFrom(this.http.get<{ data?: unknown[] }>(`${API}/inventory/products`, { params: { is_service: '1', per_page: '100', sort: 'name' } }));
       this.choices.set(
         (r.data ?? []).map((x) => {
           const o = obj(x);
@@ -371,7 +372,7 @@ export class AppointmentsPage implements OnInit {
             options: opts.map((p) => ({ label: text(obj(p)['label']), price: num(obj(p)['price']) })),
             active: text(o['status']) !== 'inactive',
           };
-        }).filter((c) => c.active),
+        }).filter((c) => c.active).sort((a, b) => byName(a.name, b.name)),
       );
     } catch {
       // the list stays empty: the form says so
@@ -382,7 +383,7 @@ export class AppointmentsPage implements OnInit {
     if (this.staff().length) return;
     try {
       const r = await firstValueFrom(this.http.get<{ data?: unknown[] }>(`${API}/inventory/salon/staff`));
-      this.staff.set((r.data ?? []).map((x) => ({ id: text(obj(x)['id']), name: text(obj(x)['name']) })));
+      this.staff.set((r.data ?? []).map((x) => ({ id: text(obj(x)['id']), name: text(obj(x)['name']) })).sort((a, b) => byName(a.name, b.name)));
     } catch {
       // booking works without naming a stylist
     }

@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { alphabetical } from './sort';
+import { alphabetical, byName } from './sort';
 import { Named, NamedKind, Product, ProductBody, ProductFilters, ProductPage, ServiceMaterial, StaffMember } from './products.models';
 
 const API = environment.apiUrl;
@@ -104,9 +104,9 @@ export class ProductsApi {
 
   /** Goods (not services) by name, to pick what a service uses up. */
   findGoods(q: string): Observable<Product[]> {
-    const params = new HttpParams().set('is_service', '0').set('status', 'active').set('q', q);
+    const params = new HttpParams().set('is_service', '0').set('status', 'active').set('q', q).set('per_page', '100').set('sort', 'name');
 
-    return this.http.get<{ data: Record<string, unknown>[] }>(`${API}/inventory/products`, { params }).pipe(map((r) => (r.data ?? []).map(parseProduct)));
+    return this.http.get<{ data: Record<string, unknown>[] }>(`${API}/inventory/products`, { params }).pipe(map((r) => alphabetical((r.data ?? []).map(parseProduct))));
   }
 
   named(kind: NamedKind): Observable<Named[]> {
@@ -117,7 +117,7 @@ export class ProductsApi {
         description: text(n['description']),
         status: (n['status'] === 'inactive' ? 'inactive' : 'active') as 'active' | 'inactive',
         products_count: num(n['products_count']),
-      }))),
+      })).sort((a, b) => byName(a.name, b.name))),
     );
   }
 
