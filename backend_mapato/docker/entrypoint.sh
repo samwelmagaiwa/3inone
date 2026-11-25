@@ -11,6 +11,11 @@ php artisan l5-swagger:generate || true
 php /var/www/html/docker/reorder-swagger-tags.php || true
 chown -R www-data:www-data storage/api-docs 2>/dev/null || true
 
+# Uploads (member photos, receipts, documents) are written by the web process, which runs as www-data. A command run by hand as root inside the
+# container (a seeder, a tinker session) leaves root-owned folders in storage/app that the web process can then neither read nor write: photos
+# stop showing (404) and new ones fail to save. Hand them back to www-data on every start.
+chown -R www-data:www-data storage/app storage/framework storage/logs 2>/dev/null || true
+
 # Redis keeps its data on the storage volume (docker/redis.conf).
 mkdir -p storage/redis && chown -R redis:redis storage/redis 2>/dev/null || true
 exec supervisord -c /etc/supervisord.conf
