@@ -115,7 +115,10 @@ class ProductController extends Controller
             $query->where(fn ($w) => $w->where('p.family_id', (int) $family)->orWhere('p.id', (int) $family));
         }
 
-        $products = $query->orderByDesc('p.id')->paginate(20);
+        // The newest first, 100 to a page (the most the server gives; ?per_page asks for fewer). The app reads every page: a product is never
+        // left out of the till or of a search because it was saved a long time ago. (It was 20 to a page, and an app that read only the first
+        // page lost every product but the newest twenty.)
+        $products = $query->orderByDesc('p.id')->paginate(\App\Support\Pagination::perPage($request, 100));
         $items = $products->items();
 
         // `with_units=1`: each product comes with its selling units and their prices, so the till can offer

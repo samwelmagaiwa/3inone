@@ -661,38 +661,75 @@ class InventoryProvider extends ChangeNotifier {
     }
   }
 
+  /// The page size the app asks the server for (the server's ceiling is 100), and a safety stop on how many pages are read.
+  static const int _productsPerPage = 100;
+  static const int _productsMaxPages = 200;
+
+  /// Bumped by every read, so a slower earlier read never overwrites a newer one.
+  int _productsRead = 0;
+
   // POS: cart operations
+  /// Reads the products: EVERY page, not only the first. The server hands them over newest first, 100 to a page; the first page shows at
+  /// once and the rest are added as they arrive. (Reading only the first page left every product but the newest few out of the till, the
+  /// search and the totals: the slow sellers, saved long ago, seemed to have disappeared.)
   Future<void> fetchProducts(
       {int page = 1, String? q, String? status, bool? lowStock}) async {
+    final int read = ++_productsRead;
     final List<String> endpoints = [
       '/inventory/products',
       '/products',
     ];
+    final String filters = '${q != null ? '&q=$q' : ''}${status != null ? '&status=$status' : ''}${(lowStock ?? false) ? '&low_stock=1' : ''}';
     for (final e in endpoints) {
       try {
-        final res = await _api.getOrNull(
-            '$e?page=$page&with_units=1${q != null ? '&q=$q' : ''}${status != null ? '&status=$status' : ''}${(lowStock ?? false) ? '&low_stock=1' : ''}');
-        if (res == null) continue;
-        final List<dynamic> list = (res['data'] is List)
-            ? List<dynamic>.from(res['data'] as List)
-            : (res['products'] is List)
-                ? List<dynamic>.from(res['products'] as List)
-                : (res is List)
-                    ? List<dynamic>.from(res as List)
-                    : <dynamic>[];
-        _products
-          ..clear()
-          ..addAll(
-              list.map((j) => _fromProductJson(j as Map<String, dynamic>)));
-        // The selling units (crate / bottle, kg / g ...) and their prices arrive with the list.
-        for (final dynamic j in list) {
-          if (j is Map<String, dynamic> && j['units'] is List) {
-            final int id = int.tryParse((j['id'] ?? 0).toString()) ?? 0;
-            _unitsByProduct[id] = (j['units'] as List)
-                .map((u) => InvProductUnit.fromJson(<String, dynamic>{...(u as Map<String, dynamic>), 'product_id': id}))
-                .toList();
+        final List<InvProduct> all = <InvProduct>[];
+        final Map<int, List<InvProductUnit>> units = <int, List<InvProductUnit>>{};
+        int last = 1;
+        bool answered = false;
+        for (int p = page; p <= last && p < page + _productsMaxPages; p++) {
+          final res = await _api.getOrNull('$e?page=$p&per_page=$_productsPerPage&with_units=1$filters');
+          // Nothing came back: on the first page try the next endpoint; on a later page (a weak connection) keep what was read, the next
+          // refresh reads again.
+          if (res == null) break;
+          answered = true;
+          final List<dynamic> list = (res['data'] is List)
+              ? List<dynamic>.from(res['data'] as List)
+              : (res['products'] is List)
+                  ? List<dynamic>.from(res['products'] as List)
+                  : (res is List)
+                      ? List<dynamic>.from(res as List)
+                      : <dynamic>[];
+          if (p == page) {
+            final Object? meta = res is Map ? res['meta'] : null;
+            final Object? lastPage = meta is Map ? meta['last_page'] : null;
+            last = lastPage is num ? lastPage.toInt() : page;
+          }
+          all.addAll(list.map((j) => _fromProductJson(j as Map<String, dynamic>)));
+          // The selling units (crate / bottle, kg / g ...) and their prices arrive with the list.
+          for (final dynamic j in list) {
+            if (j is Map<String, dynamic> && j['units'] is List) {
+              final int id = int.tryParse((j['id'] ?? 0).toString()) ?? 0;
+              units[id] = (j['units'] as List)
+                  .map((u) => InvProductUnit.fromJson(<String, dynamic>{...(u as Map<String, dynamic>), 'product_id': id}))
+                  .toList();
+            }
+          }
+          if (read != _productsRead) return; // a newer read has begun: it has the last word
+          if (p == page && last > page) {
+            // The first page shows straight away; the rest follow.
+            _products
+              ..clear()
+              ..addAll(all);
+            _unitsByProduct.addAll(units);
+            notifyListeners();
           }
         }
+        if (!answered) continue;
+        if (read != _productsRead) return;
+        _products
+          ..clear()
+          ..addAll(all);
+        _unitsByProduct.addAll(units);
         notifyListeners();
         return;
       } on Exception {
@@ -940,26 +977,49 @@ class InventoryProvider extends ChangeNotifier {
     }
   }
 
+  /// Reads the customers: EVERY page (the server gives 100 to a page), like the products, so a customer saved long ago is still on the list
+  /// when a credit sale or a payment is made.
   Future<void> fetchCustomers({String? q}) async {
+    final int read = ++_customersRead;
     final List<String> endpoints = [
       '/inventory/customers',
       '/customers',
     ];
     for (final e in endpoints) {
       try {
-        final res = await _api.getOrNull('$e${q != null ? '?q=$q' : ''}');
-        if (res == null) continue;
-        final List<dynamic> list = (res['data'] is List)
-            ? List<dynamic>.from(res['data'] as List)
-            : (res['customers'] is List)
-                ? List<dynamic>.from(res['customers'] as List)
-                : (res is List)
-                    ? List<dynamic>.from(res as List)
-                    : <dynamic>[];
+        final List<InvCustomer> all = <InvCustomer>[];
+        int last = 1;
+        bool answered = false;
+        for (int p = 1; p <= last && p <= _productsMaxPages; p++) {
+          final res = await _api.getOrNull('$e?page=$p&per_page=$_productsPerPage${q != null ? '&q=$q' : ''}');
+          if (res == null) break;
+          answered = true;
+          final List<dynamic> list = (res['data'] is List)
+              ? List<dynamic>.from(res['data'] as List)
+              : (res['customers'] is List)
+                  ? List<dynamic>.from(res['customers'] as List)
+                  : (res is List)
+                      ? List<dynamic>.from(res as List)
+                      : <dynamic>[];
+          if (p == 1) {
+            final Object? meta = res is Map ? res['meta'] : null;
+            final Object? lastPage = meta is Map ? meta['last_page'] : null;
+            last = lastPage is num ? lastPage.toInt() : 1;
+          }
+          all.addAll(list.map((j) => _fromCustomerJson(j as Map<String, dynamic>)));
+          if (read != _customersRead) return; // a newer read has begun: it has the last word
+          if (p == 1 && last > 1) {
+            _customers
+              ..clear()
+              ..addAll(all);
+            notifyListeners();
+          }
+        }
+        if (!answered) continue;
+        if (read != _customersRead) return;
         _customers
           ..clear()
-          ..addAll(
-              list.map((j) => _fromCustomerJson(j as Map<String, dynamic>)));
+          ..addAll(all);
         notifyListeners();
         return;
       } on Exception {
@@ -967,6 +1027,9 @@ class InventoryProvider extends ChangeNotifier {
       }
     }
   }
+
+  /// Bumped by every customers read, so a slower earlier read never overwrites a newer one.
+  int _customersRead = 0;
 
   Future<void> fetchSales(
       {String? status, DateTime? from, DateTime? to, String? q}) async {
