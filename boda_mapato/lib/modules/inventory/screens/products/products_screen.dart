@@ -11,6 +11,7 @@ import '../../models/inv_product.dart';
 import '../../providers/inventory_provider.dart';
 import '../widgets/inv_units_ui.dart';
 import '../widgets/inventory_widgets.dart';
+import '../widgets/pager_bar.dart';
 import 'add_edit_product_screen.dart';
 import 'business_kind_chooser.dart';
 import '../../providers/depot_provider.dart';
@@ -26,8 +27,15 @@ class ProductsScreen extends StatefulWidget {
 
 class _ProductsScreenState extends State<ProductsScreen> {
   int _page = 0;
-  final int _pageSize = 8;
+  int _pageSize = 20;
+  final ScrollController _scroll = ScrollController();
   String _query = '';
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   Future<void> _scanToSearch(BuildContext context) async {
     final loc = LocalizationService.instance;
@@ -95,7 +103,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
           p.sku.toLowerCase().contains(q) ||
           p.barcode.toLowerCase().contains(q);
     }).toList();
-    final start = _page * _pageSize;
+    // A page that no longer exists (the list got shorter, after a search or a deletion) falls back to the last one.
+    final int pages = filtered.isEmpty ? 1 : (filtered.length / _pageSize).ceil();
+    final int page = _page >= pages ? pages - 1 : _page;
+    final start = page * _pageSize;
     final end = (start + _pageSize) > filtered.length
         ? filtered.length
         : (start + _pageSize);
@@ -150,6 +161,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
             SizedBox(height: 16.h),
             Expanded(
               child: SingleChildScrollView(
+                controller: _scroll,
                 child: Column(
                   children: [
                     ListView.separated(
@@ -346,31 +358,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       },
                     ),
                     SizedBox(height: 12.h),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                            '${filtered.isEmpty ? 0 : (start + 1)}-$end / ${filtered.length}',
-                            style: ThemeConstants.captionStyle),
-                        Row(
-                          children: [
-                            IconButton(
-                              onPressed: _page > 0
-                                  ? () => setState(() => _page -= 1)
-                                  : null,
-                              icon: const Icon(Icons.chevron_left,
-                                  color: Colors.white70),
-                            ),
-                            IconButton(
-                              onPressed: end < filtered.length
-                                  ? () => setState(() => _page += 1)
-                                  : null,
-                              icon: const Icon(Icons.chevron_right,
-                                  color: Colors.white70),
-                            ),
-                          ],
-                        ),
-                      ],
+                    PagerBar(
+                      total: filtered.length,
+                      page: page,
+                      pageSize: _pageSize,
+                      onPage: (final int p) {
+                        setState(() => _page = p);
+                        // The new page starts at the top.
+                        if (_scroll.hasClients) _scroll.jumpTo(0);
+                      },
+                      onPageSize: (final int size) => setState(() {
+                        _pageSize = size;
+                        _page = 0;
+                      }),
                     ),
                   ],
                 ),
