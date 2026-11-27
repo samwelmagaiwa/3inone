@@ -304,7 +304,7 @@ class _MemberDetailScreenState extends State<MemberDetailScreen> {
                         if (f.events.isNotEmpty) _historyCard(f, sw),
                       ],
                     ),
-                  ],
+                  ]),
                 ),
               ),
       ),
@@ -508,6 +508,7 @@ class _DependantDialogState extends State<_DependantDialog> {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     final bool ready = _name.text.trim().length >= 2;
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       key: const Key('grp_dep_dialog'),
       backgroundColor: ThemeConstants.bgMid,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -515,6 +516,8 @@ class _DependantDialogState extends State<_DependantDialog> {
           style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
       content: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          // As wide as the screen allows, not as narrow as the fields' hints.
+          const SizedBox(width: double.maxFinite),
           TextField(
             key: const Key('grp_dep_name'),
             controller: _name,

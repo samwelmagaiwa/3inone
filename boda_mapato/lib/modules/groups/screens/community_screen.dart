@@ -272,7 +272,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 ],
               ),
           ],
-        ]),
+        ])),
       ),
     );
   }
@@ -370,7 +370,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
               label: Text(sw ? 'Sitisha kikao' : 'Cancel the meeting'),
             ),
           ],
-        ]),
+        ])),
       ),
     );
   }
@@ -483,7 +483,7 @@ class _RecordMeetingScreenState extends State<_RecordMeetingScreen> {
                   icon: const Icon(Icons.save_rounded),
                   label: Text(sw ? 'Hifadhi' : 'Save'),
                 ),
-              ]),
+              ])),
       ),
     );
   }
@@ -518,13 +518,21 @@ class _MeetingDialogState extends State<_MeetingDialog> {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     final bool ready = _title.text.trim().length >= 3;
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       key: const Key('grp_meeting_dialog'),
       backgroundColor: ThemeConstants.bgMid,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       title: Text(sw ? 'Itisha kikao' : 'Call a meeting', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
       content: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-          TextField(key: const Key('grp_meeting_title'), controller: _title, onChanged: (_) => setState(() {}), style: const TextStyle(color: Colors.white), decoration: ThemeConstants.darkField(sw ? 'Kichwa' : 'Title')),
+          // As wide as the screen allows, not as narrow as the fields' hints.
+          const SizedBox(width: double.maxFinite),
+          TextField(
+              key: const Key('grp_meeting_title'),
+              controller: _title,
+              onChanged: (_) => setState(() {}),
+              style: const TextStyle(color: Colors.white),
+              decoration: ThemeConstants.darkField(sw ? 'Kichwa' : 'Title')),
           const SizedBox(height: 10),
           ListTile(
             key: const Key('grp_meeting_when'),

@@ -211,6 +211,8 @@ void main() {
     await t.pumpAndSettle();
     await t.tap(find.byKey(const Key('grp_act_raise')));
     await t.pumpAndSettle();
+    // The form fills the screen less 16 at each side, not as narrow as its fields' hints.
+    expect(t.getSize(find.descendant(of: find.byKey(const Key('grp_raise_dialog')), matching: find.byType(Material)).first).width, 411 - 32);
     final String month = '${DateTime.now().year.toString().padLeft(4, '0')}-${DateTime.now().month.toString().padLeft(2, '0')}';
     expect(find.text(month), findsOneWidget);
     await t.tap(find.byKey(const Key('grp_raise_next')));

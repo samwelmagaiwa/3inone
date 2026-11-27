@@ -297,7 +297,7 @@ class _ContributionsScreenState extends State<ContributionsScreen> {
                 onPressed: () => _load(more: true),
                 child: Text(LocalizationService.instance.translate('list_show_more'), style: const TextStyle(color: ThemeConstants.primaryOrange)),
               ),
-          ],
+          ]),
         ),
       ),
     );
@@ -339,6 +339,7 @@ class _TypeDialogState extends State<_TypeDialog> {
   Widget build(final BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       key: const Key('grp_type_dialog'),
       backgroundColor: ThemeConstants.bgMid,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -346,6 +347,8 @@ class _TypeDialogState extends State<_TypeDialog> {
           style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
       content: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          // As wide as the screen allows, not as narrow as the fields' hints.
+          const SizedBox(width: double.maxFinite),
           TextField(
             key: const Key('grp_type_name'),
             controller: _name,
@@ -453,11 +456,14 @@ class _RaiseDialogState extends State<_RaiseDialog> {
     final bool ready = !event || _label.text.trim().length >= 3;
     final String month = '${_month.year.toString().padLeft(4, '0')}-${_month.month.toString().padLeft(2, '0')}';
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       key: const Key('grp_raise_dialog'),
       backgroundColor: ThemeConstants.bgMid,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       title: Text('${sw ? 'Itisha' : 'Call'} ${widget.type.name}', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
       content: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+        // As wide as the screen allows, not as narrow as the fields' hints.
+        const SizedBox(width: double.maxFinite),
         if (monthly)
           Row(children: <Widget>[
             IconButton(icon: const Icon(Icons.chevron_left, color: Colors.white70), onPressed: () => setState(() => _month = DateTime(_month.year, _month.month - 1))),

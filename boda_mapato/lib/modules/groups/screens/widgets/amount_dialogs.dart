@@ -42,11 +42,14 @@ class _AmountNoteDialogState extends State<AmountNoteDialog> {
   Widget build(final BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       key: const Key('grp_amount_dialog'),
       backgroundColor: ThemeConstants.bgMid,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       title: Text(widget.title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
       content: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+        // As wide as the screen allows, not as narrow as the fields' hints.
+        const SizedBox(width: double.maxFinite),
         TextField(
           key: const Key('grp_amount_field'),
           controller: _amount,
@@ -102,11 +105,14 @@ class _PayOutDialogState extends State<PayOutDialog> {
   Widget build(final BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       key: const Key('grp_payout_dialog'),
       backgroundColor: ThemeConstants.bgMid,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       title: Text(sw ? 'Imelipwa kwa njia gani' : 'How it is paid out', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
       content: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+        // As wide as the screen allows, not as narrow as the fields' hints.
+        const SizedBox(width: double.maxFinite),
         DropdownButtonFormField<String>(
           initialValue: _method,
           dropdownColor: ThemeConstants.bgMid,

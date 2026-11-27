@@ -157,7 +157,7 @@ class _WelfareScreenState extends State<WelfareScreen> {
               children: <Widget>[for (final GroupBenefitRequest r in _rows) BenefitTile(r: r, sw: sw, showMember: true, onTap: () => _act(r))],
             ),
           if (_loading) const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator())),
-        ],
+          ]),
       ),
     );
   }
@@ -294,7 +294,7 @@ class _MyWelfareScreenState extends State<MyWelfareScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         children: <Widget>[for (final GroupBenefitRequest r in _rows) BenefitTile(r: r, sw: sw, onTap: () => _cancel(r))],
                       ),
-                  ],
+                  ]),
                 ),
               ),
       ),
@@ -524,7 +524,7 @@ class _BenefitTypesScreenState extends State<BenefitTypesScreen> {
                         ),
                     ],
                   ),
-              ]),
+              ])),
       ),
     );
   }
@@ -556,11 +556,20 @@ class _TypeDialogState extends State<_TypeDialog> {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     final bool ready = _name.text.trim().length >= 2;
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       backgroundColor: ThemeConstants.bgMid,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       title: Text(widget.type == null ? (sw ? 'Aina mpya ya msaada' : 'New kind of help') : widget.type!.name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
       content: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-        TextField(key: const Key('grp_btype_name'), controller: _name, onChanged: (_) => setState(() {}), style: const TextStyle(color: Colors.white), decoration: ThemeConstants.darkField(sw ? 'Jina (mfano: Msiba)' : 'Name (e.g. Bereavement)')),
+        // As wide as the screen allows, not as narrow as the fields' hints.
+        const SizedBox(width: double.maxFinite),
+        TextField(
+            key: const Key('grp_btype_name'),
+            controller: _name,
+            onChanged: (_) => setState(() {}),
+            style: const TextStyle(color: Colors.white),
+            decoration: ThemeConstants.darkField(
+                sw ? 'Jina (mfano: Msiba)' : 'Name (e.g. Bereavement)')),
         const SizedBox(height: 10),
         TextField(
           controller: _amount,

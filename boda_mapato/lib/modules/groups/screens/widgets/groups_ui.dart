@@ -88,6 +88,7 @@ class _ReasonDialogState extends State<_ReasonDialog> {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     final bool ready = _reason.text.trim().length >= 3;
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       key: const Key('grp_reason'),
       backgroundColor: ThemeConstants.bgMid,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -96,6 +97,8 @@ class _ReasonDialogState extends State<_ReasonDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
+          // As wide as the screen allows, not as narrow as the fields' hints.
+          const SizedBox(width: double.maxFinite),
           if (widget.message != null) ...<Widget>[
             Text(widget.message!, style: const TextStyle(color: Colors.white70)),
             const SizedBox(height: 12),

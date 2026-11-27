@@ -177,7 +177,7 @@ class _AssetsScreenState extends State<AssetsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 children: <Widget>[for (final GroupAsset a in _assets) AssetTile(a: a, sw: sw, onTap: () => _openAsset(a))],
               ),
-          ],
+          ]),
         ),
       ),
     );
@@ -323,7 +323,7 @@ class _AssetDetailScreenState extends State<AssetDetailScreen> {
                           style: const TextStyle(color: Colors.white70, fontSize: 12),
                         ),
                     ]),
-                ]),
+                ])),
               ),
       ),
     );
@@ -362,12 +362,15 @@ class _EventDialogState extends State<_EventDialog> {
   Widget build(final BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       key: const Key('grp_event_dialog'),
       backgroundColor: ThemeConstants.bgMid,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       title: Text(assetEventLabel(sw: sw, kind: widget.kind), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
       content: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          // As wide as the screen allows, not as narrow as the fields' hints.
+          const SizedBox(width: double.maxFinite),
           if (widget.kind == 'adjust')
             Wrap(spacing: 8, children: <Widget>[
               ChoiceChip(label: Text(sw ? 'Ongeza' : 'Up'), selected: _direction == 'up', onSelected: (_) => setState(() => _direction = 'up')),
@@ -864,7 +867,7 @@ class _MyHiresScreenState extends State<MyHiresScreen> {
                       children: <Widget>[for (final GroupHire h in _mine) HireTile(h: h, sw: sw, onTap: () => _open(h))],
                     ),
                   ],
-                ]),
+                ])),
               ),
       ),
     );

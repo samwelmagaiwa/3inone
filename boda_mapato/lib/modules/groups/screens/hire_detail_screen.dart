@@ -218,7 +218,7 @@ class _HireDetailScreenState extends State<HireDetailScreen> {
             if (_handles && h.state == 'settled') button('grp_hire_close', sw ? 'Funga' : 'Close', Icons.task_alt_rounded, ThemeConstants.successGreen, _close),
             if (_mine && (h.status == 'requested' || (h.status == 'approved' && h.paid == 0)))
               button('grp_hire_cancel', sw ? 'Ondoa ombi' : 'Withdraw', Icons.close_rounded, ThemeConstants.errorRed, _cancel, outlined: true),
-          ],
+          ]),
         ),
       ),
     );
@@ -270,17 +270,38 @@ class _ReturnDialogState extends State<_ReturnDialog> {
   Widget build(final BuildContext context) {
     final bool sw = context.watch<LocalizationService>().isSwahili;
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       key: const Key('grp_return_dialog'),
       backgroundColor: ThemeConstants.bgMid,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       title: Text('${sw ? 'Vilitolewa' : 'Handed over'}: ${widget.issued}', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
       content: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-          _count(_back, sw ? 'Vimerudi (pamoja na vibovu)' : 'Came back (damaged included)', const Key('grp_return_back')),
-          _count(_damaged, sw ? 'Kati ya hivyo, vibovu' : 'Of those, damaged', const Key('grp_return_damaged')),
-          _count(_missing, sw ? 'Havijarudi' : 'Did not come back', const Key('grp_return_missing')),
-          TextField(controller: _note, maxLength: 255, style: const TextStyle(color: Colors.white), decoration: ThemeConstants.darkField(sw ? 'Maelezo (hiari)' : 'Note (optional)')),
-          if (!_ready) Text(sw ? 'Vilivyorudi + vilivyopotea = ${widget.issued}' : 'Back + missing = ${widget.issued}', style: const TextStyle(color: ThemeConstants.warningAmber, fontSize: 12)),
+          // As wide as the screen allows, not as narrow as the fields' hints.
+          const SizedBox(width: double.maxFinite),
+          _count(
+              _back,
+              sw
+                  ? 'Vimerudi (pamoja na vibovu)'
+                  : 'Came back (damaged included)',
+              const Key('grp_return_back')),
+          _count(_damaged, sw ? 'Kati ya hivyo, vibovu' : 'Of those, damaged',
+              const Key('grp_return_damaged')),
+          _count(_missing, sw ? 'Havijarudi' : 'Did not come back',
+              const Key('grp_return_missing')),
+          TextField(
+              controller: _note,
+              maxLength: 255,
+              style: const TextStyle(color: Colors.white),
+              decoration: ThemeConstants.darkField(
+                  sw ? 'Maelezo (hiari)' : 'Note (optional)')),
+          if (!_ready)
+            Text(
+                sw
+                    ? 'Vilivyorudi + vilivyopotea = ${widget.issued}'
+                    : 'Back + missing = ${widget.issued}',
+                style: const TextStyle(
+                    color: ThemeConstants.warningAmber, fontSize: 12)),
         ]),
       ),
       actions: <Widget>[
