@@ -2090,9 +2090,9 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
 /* ═══ Groups (Vikundi) tables: as wide as their data, one line per cell (a name, an amount, a date never broken in two); long text
    (a note, a description, a message) is cut to one line and shown whole on hover. A table wider than the screen scrolls sideways. ═══ */
 .grid-table.g-grid { width: max-content; min-width: 100%; }
-.grid-table.g-grid thead th { white-space: nowrap; padding: 9px 12px; }
-.grid-table.g-grid tbody td { white-space: nowrap; padding: 7px 12px; overflow-wrap: normal; }
-.grid-table.g-grid tbody td.g-long { max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+.grid-table.g-grid thead th { white-space: nowrap; padding: 9px 10px; }
+.grid-table.g-grid tbody td { white-space: nowrap; padding: 7px 10px; overflow-wrap: normal; }
+.grid-table.g-grid tbody td.g-long { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
 /* A Groups table wider than its box scrolls sideways inside it at every screen size (the box clipped it on wide screens) */
 .table-scroll-container.fit-page:has(> .g-grid) { overflow-x: auto !important; overflow-y: hidden !important; max-height: none !important; }
 /* The Actions column stays in view at the right edge when a wide table scrolls sideways */

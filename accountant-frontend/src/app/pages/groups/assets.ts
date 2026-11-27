@@ -64,15 +64,15 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
               @for (a of filtered(assets(), assetKeys); track a['id']) {
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
-                  <td>{{ a['code'] }}</td>
-                  <td class="font-bold">{{ a['name'] }}</td>
-                  <td>{{ a['category'] || '—' }}</td>
+                  <td class="g-long" [title]="a['code']">{{ a['code'] }}</td>
+                  <td class="font-bold g-long" [title]="a['name']">{{ a['name'] }}</td>
+                  <td class="g-long" [title]="a['category'] || '—'">{{ a['category'] || '—' }}</td>
                   <td class="text-right">{{ a['quantity'] }}</td>
                   <td class="text-right">{{ n(a['free_today'], n(a['quantity'])) }}</td>
-                  <td>{{ a['custodian_name'] || '—' }}</td>
+                  <td class="g-long" [title]="a['custodian_name'] || '—'">{{ a['custodian_name'] || '—' }}</td>
                   <td class="text-right">{{ a['hire_rate'] ? tsh(a['hire_rate']) : '—' }}</td>
                   <td>{{ a['condition'] ? i18n.t('g.cond.' + a['condition']) : '—' }}</td>
-                  <td>{{ a['location'] || '—' }}</td>
+                  <td class="g-long" [title]="a['location'] || '—'">{{ a['location'] || '—' }}</td>
                   <td class="text-right"><app-row-menu [items]="orNone(assetMenu())" [testid]="'g-a-menu-' + a['id']" (picked)="assetPicked($event, a)" /></td>
                 </tr>
               } @empty {
@@ -106,9 +106,9 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td>{{ h['reference'] }}</td>
-                  <td class="font-bold">{{ h['who'] }}</td>
+                  <td class="font-bold g-long" [title]="h['who']">{{ h['who'] }}</td>
                   <td>{{ h['phone'] || '—' }}</td>
-                  <td>{{ h['asset_name'] }}</td>
+                  <td class="g-long" [title]="h['asset_name']">{{ h['asset_name'] }}</td>
                   <td class="text-right">{{ h['quantity'] }}</td>
                   <td>{{ day(h['start_date']) }}</td>
                   <td>{{ day(h['end_date']) }}</td>
@@ -174,7 +174,7 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
                   <td class="text-right">{{ e['quantity'] || '—' }}</td>
                   <td class="text-right">{{ e['cost'] ? tsh(e['cost']) : '—' }}</td>
                   <td class="g-long" [title]="e['note'] || '—'">{{ e['note'] || '—' }}</td>
-                  <td>{{ e['by_name'] || '—' }}</td>
+                  <td class="g-long" [title]="e['by_name'] || '—'">{{ e['by_name'] || '—' }}</td>
                   <td>{{ when(e['created_at']) }}</td>
                 </tr>
               } @empty {

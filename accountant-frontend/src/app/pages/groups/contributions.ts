@@ -79,9 +79,9 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
                 @for (o of owing(); track o['id']) {
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
-                    <td class="font-bold">{{ o['member_name'] }}</td>
+                    <td class="font-bold g-long" [title]="o['member_name']">{{ o['member_name'] }}</td>
                     <td>{{ o['member_number'] || '—' }}</td>
-                    <td>{{ o['label'] || o['type_name'] }}</td>
+                    <td class="g-long" [title]="o['label'] || o['type_name']">{{ o['label'] || o['type_name'] }}</td>
                     <td>{{ o['period'] || '—' }}</td>
                     <td>{{ day(o['due_date']) }}@if (o['days_overdue'] > 0) { <span class="ph-bad"> ({{ i18n.t('g.c.late.days', o['days_overdue']) }})</span> }</td>
                     <td class="text-right">{{ tsh(o['amount_due']) }}</td>
@@ -123,7 +123,7 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
                 @for (t of filtered(types(), typeKeys); track t['id']) {
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
-                    <td class="font-bold">{{ t['name'] }}</td>
+                    <td class="font-bold g-long" [title]="t['name']">{{ t['name'] }}</td>
                     <td class="text-right">{{ tsh(t['amount']) }}</td>
                     <td>{{ i18n.t('g.freq.' + t['frequency']) }}</td>
                     <td>{{ t['frequency'] === 'monthly' ? t['due_day'] : '—' }}</td>
@@ -158,7 +158,7 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
                 @for (p of filtered(promises(), promiseKeys); track p['id']) {
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
-                    <td class="font-bold">{{ p['member_name'] }}</td>
+                    <td class="font-bold g-long" [title]="p['member_name']">{{ p['member_name'] }}</td>
                     <td>{{ p['obligation_label'] || i18n.t('g.c.any') }}</td>
                     <td class="text-right">{{ tsh(p['amount']) }}</td>
                     <td>{{ day(p['promised_on']) }}</td>

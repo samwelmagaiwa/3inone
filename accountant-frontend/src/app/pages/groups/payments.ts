@@ -63,8 +63,8 @@ type Form = 'member' | 'withdrawal' | 'expense' | 'opening';
               <th>{{ i18n.t('g.p.who') }}</th>
               <th>{{ i18n.t('g.kind') }}</th>
               <th>{{ i18n.t('g.p.for') }}</th>
-              <th>{{ i18n.t('g.method') }}</th>
-              <th>{{ i18n.t('g.ref') }}</th>
+              <th>{{ i18n.t('g.method.col') }}</th>
+              <th>{{ i18n.t('g.ref.col') }}</th>
               <th class="text-right">{{ i18n.t('g.amount') }}</th>
               <th>{{ i18n.t('g.status') }}</th>
               <th>{{ i18n.t('g.p.recorded.by') }}</th>
@@ -77,14 +77,14 @@ type Form = 'member' | 'withdrawal' | 'expense' | 'opening';
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td>{{ day(t['paid_on']) }}</td>
-                  <td class="font-bold">{{ t['member_name'] || t['payee'] || (t['category'] === 'opening_balance' ? i18n.t('g.p.group') : '—') }}</td>
+                  <td class="font-bold g-long" [title]="t['member_name'] || t['payee'] || ''">{{ t['member_name'] || t['payee'] || (t['category'] === 'opening_balance' ? i18n.t('g.p.group') : '—') }}</td>
                   <td>{{ cat(t['category']) }}</td>
-                  <td>{{ t['obligation_label'] || '—' }}</td>
+                  <td class="g-long" [title]="t['obligation_label'] || '—'">{{ t['obligation_label'] || '—' }}</td>
                   <td>{{ method(t['method']) }}</td>
                   <td>{{ t['external_ref'] || '—' }}</td>
                   <td class="text-right"><b [class.ph-good]="t['direction'] === 'in'" [class.ph-bad]="t['direction'] === 'out'">{{ t['direction'] === 'out' ? '-' : '+' }}{{ tsh(t['amount']) }}</b></td>
                   <td><span class="ph-badge" [class]="t['reversed_by_id'] ? 'ph-bad' : tone(t['status'])">{{ t['reversed_by_id'] ? status('reversed') : status(t['status']) }}</span></td>
-                  <td>{{ t['submitted_by_name'] || '—' }}</td>
+                  <td class="g-long" [title]="t['submitted_by_name'] || '—'">{{ t['submitted_by_name'] || '—' }}</td>
                   <td class="g-long" [title]="t['reject_reason'] || t['note'] || '—'">{{ t['reject_reason'] || t['note'] || '—' }}</td>
                   <td class="text-right"><app-row-menu [items]="orNone(menuFor(t))" [testid]="'g-p-menu-' + t['id']" (picked)="picked($event, t)" /></td>
                 </tr>

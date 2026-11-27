@@ -63,9 +63,9 @@ const STATUSES = ['submitted', 'approved', 'rejected', 'cancelled', ''];
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td>{{ r['reference'] }}</td>
-                  <td class="font-bold">{{ r['member_name'] }}</td>
-                  <td>{{ r['type_name'] }}</td>
-                  <td>{{ r['beneficiary'] }}</td>
+                  <td class="font-bold g-long" [title]="r['member_name']">{{ r['member_name'] }}</td>
+                  <td class="g-long" [title]="r['type_name']">{{ r['type_name'] }}</td>
+                  <td class="g-long" [title]="r['beneficiary']">{{ r['beneficiary'] }}</td>
                   <td>{{ i18n.t('g.rel.' + r['relationship']) }}</td>
                   <td>{{ day(r['event_date']) }}</td>
                   <td class="text-right">{{ r['amount_requested'] ? tsh(r['amount_requested']) : '—' }}</td>
@@ -97,7 +97,7 @@ const STATUSES = ['submitted', 'approved', 'rejected', 'cancelled', ''];
               @for (t of filtered(types(), typeKeys); track t['id']) {
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
-                  <td class="font-bold">{{ t['name'] }}</td>
+                  <td class="font-bold g-long" [title]="t['name']">{{ t['name'] }}</td>
                   <td class="text-right">{{ t['amount'] ? tsh(t['amount']) : i18n.t('g.w.decided') }}</td>
                   <td class="g-long" [title]="t['description'] || '—'">{{ t['description'] || '—' }}</td>
                   <td><span class="ph-badge" [class]="t['active'] ? 'ph-good' : 'ph-bad'">{{ t['active'] ? i18n.t('g.running') : i18n.t('g.stopped') }}</span></td>

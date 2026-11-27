@@ -64,7 +64,7 @@ const FIELDS = ['full_name', 'phone', 'alt_phone', 'email', 'nida', 'date_of_bir
               @for (m of rows(); track m['id']; let i = $index) {
                 <tr [attr.data-testid]="'g-m-' + m['id']">
                   <td class="no-col">{{ rowNo(i, page()) }}</td>
-                  <td class="font-bold">{{ m['full_name'] }}</td>
+                  <td class="font-bold g-long" [title]="m['full_name']">{{ m['full_name'] }}</td>
                   <td>{{ m['member_number'] || m['application_ref'] || '—' }}</td>
                   <td>{{ m['phone'] }}</td>
                   <td>{{ m['office'] ? office(m['office']) : '—' }}</td>

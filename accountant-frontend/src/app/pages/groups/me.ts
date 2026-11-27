@@ -48,8 +48,8 @@ import { GBase } from './g-base';
           <div class="table-scroll-container fit-page" data-testid="g-me-payments">
             <table class="grid-table g-grid">
               <thead><tr>
-                <th class="no-col">#</th><th>{{ i18n.t('g.paid.on') }}</th><th>{{ i18n.t('g.kind') }}</th><th>{{ i18n.t('g.p.for') }}</th><th>{{ i18n.t('g.method') }}</th>
-                <th>{{ i18n.t('g.ref') }}</th><th class="text-right">{{ i18n.t('g.amount') }}</th><th>{{ i18n.t('g.status') }}</th><th>{{ i18n.t('g.receipt') }}</th><th>{{ i18n.t('g.note') }}</th>
+                <th class="no-col">#</th><th>{{ i18n.t('g.paid.on') }}</th><th>{{ i18n.t('g.kind') }}</th><th>{{ i18n.t('g.p.for') }}</th><th>{{ i18n.t('g.method.col') }}</th>
+                <th>{{ i18n.t('g.ref.col') }}</th><th class="text-right">{{ i18n.t('g.amount') }}</th><th>{{ i18n.t('g.status') }}</th><th>{{ i18n.t('g.receipt') }}</th><th>{{ i18n.t('g.note') }}</th>
               </tr></thead>
               <tbody>
                 @for (t of filtered(payments(), paymentKeys); track t['id']) {
@@ -57,7 +57,7 @@ import { GBase } from './g-base';
                     <td class="no-col">{{ $index + 1 }}</td>
                     <td>{{ day(t['paid_on']) }}</td>
                     <td class="font-bold">{{ cat(t['category']) }}</td>
-                    <td>{{ t['obligation_label'] || '—' }}</td>
+                    <td class="g-long" [title]="t['obligation_label'] || '—'">{{ t['obligation_label'] || '—' }}</td>
                     <td>{{ method(t['method']) }}</td>
                     <td>{{ t['external_ref'] || '—' }}</td>
                     <td class="text-right"><b [class.ph-good]="t['direction'] === 'in'" [class.ph-bad]="t['direction'] === 'out'">{{ t['direction'] === 'out' ? '-' : '+' }}{{ tsh(t['amount']) }}</b></td>
@@ -83,7 +83,7 @@ import { GBase } from './g-base';
                 @for (o of filtered(owing(), owingKeys); track o['id']) {
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
-                    <td class="font-bold">{{ o['label'] || o['type_name'] }}</td>
+                    <td class="font-bold g-long" [title]="o['label'] || o['type_name']">{{ o['label'] || o['type_name'] }}</td>
                     <td>{{ day(o['due_date']) }}</td>
                     <td class="text-right">{{ tsh(n(o['amount_due'])) }}</td>
                     <td class="text-right">{{ tsh(n(o['paid'])) }}</td>
@@ -109,7 +109,7 @@ import { GBase } from './g-base';
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
                     <td>{{ l['reference'] }}</td>
-                    <td class="font-bold">{{ l['purpose'] }}</td>
+                    <td class="font-bold g-long" [title]="l['purpose']">{{ l['purpose'] }}</td>
                     <td class="text-right">{{ tsh(n(l['amount_approved'], n(l['amount_requested']))) }}</td>
                     <td>{{ l['term_months'] }}</td>
                     <td class="text-right">{{ l['outstanding'] === null || l['outstanding'] === undefined ? '—' : tsh(n(l['outstanding'])) }}</td>

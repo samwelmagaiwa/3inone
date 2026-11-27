@@ -84,7 +84,7 @@ import { MemberPick, PickedMember } from './member-pick';
                     <td class="no-col">{{ $index + 1 }}</td>
                     <td>{{ day(l['paid_on'] || l['date']) }}</td>
                     <td>{{ cat(l['category']) }}</td>
-                    <td>{{ l['obligation_label'] || '—' }}</td>
+                    <td class="g-long" [title]="l['obligation_label'] || '—'">{{ l['obligation_label'] || '—' }}</td>
                     <td>{{ l['receipt_number'] || l['reference'] }}</td>
                     <td class="text-right"><span class="ph-good">{{ l['direction'] === 'in' ? tsh(l['amount']) : '' }}</span></td>
                     <td class="text-right"><span class="ph-bad">{{ l['direction'] === 'out' ? tsh(l['amount']) : '' }}</span></td>

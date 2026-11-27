@@ -52,9 +52,9 @@ const STATUSES = ['proposed', 'active', 'completed', 'rejected', 'cancelled', ''
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td>{{ p['reference'] }}</td>
-                  <td class="font-bold">{{ p['title'] }}</td>
-                  <td>{{ p['proposer_name'] || '—' }}</td>
-                  <td>{{ p['manager_name'] || '—' }}</td>
+                  <td class="font-bold g-long" [title]="p['title']">{{ p['title'] }}</td>
+                  <td class="g-long" [title]="p['proposer_name'] || '—'">{{ p['proposer_name'] || '—' }}</td>
+                  <td class="g-long" [title]="p['manager_name'] || '—'">{{ p['manager_name'] || '—' }}</td>
                   <td class="text-right">{{ tsh(p['budget']) }}</td>
                   <td class="text-right">{{ tsh(p['spent'] ?? 0) }}</td>
                   <td class="text-right">{{ p['progress'] ?? 0 }}%</td>

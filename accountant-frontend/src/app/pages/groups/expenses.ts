@@ -55,11 +55,11 @@ const CATEGORIES = ['project', 'office', 'meeting', 'transport', 'event', 'other
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td>{{ r['reference'] }}</td>
                   <td>{{ day(r['created_at']) }}</td>
-                  <td class="font-bold">{{ r['purpose'] }}</td>
+                  <td class="font-bold g-long" [title]="r['purpose']">{{ r['purpose'] }}</td>
                   <td>{{ i18n.t('g.e.cat.' + r['category']) }}</td>
-                  <td>{{ r['payee'] }}</td>
-                  <td>{{ r['project_title'] || '—' }}</td>
-                  <td>{{ r['requested_by_name'] || '—' }}</td>
+                  <td class="g-long" [title]="r['payee']">{{ r['payee'] }}</td>
+                  <td class="g-long" [title]="r['project_title'] || '—'">{{ r['project_title'] || '—' }}</td>
+                  <td class="g-long" [title]="r['requested_by_name'] || '—'">{{ r['requested_by_name'] || '—' }}</td>
                   <td class="text-right">{{ tsh(r['amount']) }}</td>
                   <td class="text-right">{{ r['amount_approved'] ? tsh(r['amount_approved']) : '—' }}</td>
                   <td><span class="ph-badge" [class]="tone(r['state'])">{{ status(r['state']) }}</span></td>

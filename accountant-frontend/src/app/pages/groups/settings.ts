@@ -97,7 +97,7 @@ const KEYS = [
                       <td>{{ shown(h['key'], h['value']) }}</td>
                       <td>{{ day(h['effective_from']) }}</td>
                       <td class="g-long" [title]="h['reason'] || '—'">{{ h['reason'] || '—' }}</td>
-                      <td>{{ h['changed_by_name'] || '—' }}</td>
+                      <td class="g-long" [title]="h['changed_by_name'] || '—'">{{ h['changed_by_name'] || '—' }}</td>
                       <td>{{ when(h['created_at']) }}</td>
                     </tr>
                   } @empty {
@@ -218,7 +218,7 @@ const KEYS = [
                     <td class="no-col">{{ $index + 1 }}</td>
                     <td>{{ when(e['created_at']) }}</td>
                     <td class="g-long" [title]="e['summary'] || e['action']">{{ e['summary'] || e['action'] }}</td>
-                    <td>{{ e['by_name'] || '—' }}</td>
+                    <td class="g-long" [title]="e['by_name'] || '—'">{{ e['by_name'] || '—' }}</td>
                   </tr>
                 } @empty {
                   <tr><td colspan="4" class="ph-muted">{{ i18n.t('g.none') }}</td></tr>

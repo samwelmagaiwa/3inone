@@ -49,8 +49,8 @@ import { GBase } from './g-base';
                   <td>{{ i18n.t('g.d.base.' + r['base']) }}</td>
                   <td>{{ r['method'] === 'rate' ? i18n.t('g.d.rate', r['rate']) : i18n.t('g.d.method.share') }}</td>
                   <td class="text-right"><b class="ph-accent">{{ tsh(r['total']) }}</b></td>
-                  <td>{{ r['prepared_by_name'] || '—' }}</td>
-                  <td>{{ r['approved_by_name'] || '—' }}</td>
+                  <td class="g-long" [title]="r['prepared_by_name'] || '—'">{{ r['prepared_by_name'] || '—' }}</td>
+                  <td class="g-long" [title]="r['approved_by_name'] || '—'">{{ r['approved_by_name'] || '—' }}</td>
                   <td><span class="ph-badge" [class]="tone(r['status'] === 'posted' ? 'done' : r['status'] === 'discarded' ? 'cancelled' : 'pending')">{{ status(r['status']) }}</span></td>
                   <td class="g-long" [title]="r['note'] || '—'">{{ r['note'] || '—' }}</td>
                   <td class="text-right"><app-row-menu [items]="orNone(menuFor(r))" [testid]="'g-d-menu-' + r['id']" (picked)="picked($event, r)" /></td>
@@ -80,7 +80,7 @@ import { GBase } from './g-base';
               @for (l of run()?.['lines'] ?? []; track l['member_id']) {
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
-                  <td class="font-bold">{{ l['name'] }}</td>
+                  <td class="font-bold g-long" [title]="l['name']">{{ l['name'] }}</td>
                   <td>{{ l['member_number'] || '—' }}</td>
                   <td class="text-right">{{ tsh(l['base']) }}</td>
                   <td class="text-right"><b class="ph-good">{{ tsh(l['amount']) }}</b></td>

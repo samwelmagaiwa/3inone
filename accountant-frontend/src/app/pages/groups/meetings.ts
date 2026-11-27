@@ -59,9 +59,9 @@ const TEXT_AUDIENCES = ['all', 'leaders', 'overdue', 'selected'];
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
                     <td>{{ when(m['starts_at']) }}</td>
-                    <td class="font-bold">{{ m['title'] }}</td>
-                    <td>{{ m['venue'] || '—' }}</td>
-                    <td>{{ m['called_by_name'] || '—' }}</td>
+                    <td class="font-bold g-long" [title]="m['title']">{{ m['title'] }}</td>
+                    <td class="g-long" [title]="m['venue'] || '—'">{{ m['venue'] || '—' }}</td>
+                    <td class="g-long" [title]="m['called_by_name'] || '—'">{{ m['called_by_name'] || '—' }}</td>
                     <td class="text-right">{{ m['status'] === 'held' ? n(m['present_count']) : '—' }}</td>
                     <td>{{ m['status'] === 'held' ? i18n.t('g.mt.minutes.' + (m['minutes_status'] || 'draft')) : '—' }}</td>
                     <td><span class="ph-badge" [class]="tone(m['status'] === 'held' ? 'done' : m['status'])">{{ status(m['status']) }}</span></td>
@@ -93,8 +93,8 @@ const TEXT_AUDIENCES = ['all', 'leaders', 'overdue', 'selected'];
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
                     <td class="font-bold">{{ a['text'] }}</td>
-                    <td>{{ a['meeting_title'] || '—' }}</td>
-                    <td>{{ a['assignee_name'] || '—' }}</td>
+                    <td class="g-long" [title]="a['meeting_title'] || '—'">{{ a['meeting_title'] || '—' }}</td>
+                    <td class="g-long" [title]="a['assignee_name'] || '—'">{{ a['assignee_name'] || '—' }}</td>
                     <td>{{ a['due_date'] ? day(a['due_date']) : '—' }}</td>
                     <td><span class="ph-badge" [class]="a['overdue'] ? 'ph-bad' : 'ph-warn'">{{ a['overdue'] ? status('overdue') : status('open') }}</span></td>
                     <td class="text-right"><app-row-menu [items]="orNone([{ id: 'done', label: i18n.t('g.mt.done'), primary: true }])" [testid]="'g-mt-action-menu-' + a['id']" (picked)="markDone(a)" /></td>
@@ -126,11 +126,11 @@ const TEXT_AUDIENCES = ['all', 'leaders', 'overdue', 'selected'];
                 @for (n of filtered(notices(), noticeKeys); track n['id']) {
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
-                    <td class="font-bold">{{ n['title'] }}</td>
+                    <td class="font-bold g-long" [title]="n['title']">{{ n['title'] }}</td>
                     <td class="g-long" [title]="n['body']">{{ n['body'] }}</td>
                     <td>{{ i18n.t('g.nk.' + (n['category'] || 'general')) }}</td>
                     <td>{{ i18n.t('g.aud.' + (n['audience'] === 'officers' ? 'leaders' : n['audience'] || 'all')) }}</td>
-                    <td>{{ n['author_name'] || '—' }}</td>
+                    <td class="g-long" [title]="n['author_name'] || '—'">{{ n['author_name'] || '—' }}</td>
                     <td>{{ when(n['created_at']) }}</td>
                     <td>{{ n['expires_on'] ? day(n['expires_on']) : '—' }}</td>
                     <td class="text-right"><app-row-menu [items]="orNone((can('post_announcements') ? [{ id: 'remove', label: i18n.t('g.remove'), danger: true }] : []))" [testid]="'g-mt-notice-menu-' + n['id']" (picked)="removeNotice(n)" /></td>
@@ -163,7 +163,7 @@ const TEXT_AUDIENCES = ['all', 'leaders', 'overdue', 'selected'];
                     <td>{{ when(t['created_at']) }}</td>
                     <td class="g-long" [title]="t['body']">{{ t['body'] }}</td>
                     <td>{{ i18n.t('g.aud.' + (t['audience'] === 'officers' ? 'leaders' : t['audience'])) }}</td>
-                    <td>{{ t['sent_by_name'] || '—' }}</td>
+                    <td class="g-long" [title]="t['sent_by_name'] || '—'">{{ t['sent_by_name'] || '—' }}</td>
                     <td class="text-right">{{ i18n.t('g.mt.sent.count', n(t['sent']), n(t['recipients'])) }}</td>
                     <td><span class="ph-badge" [class]="tone(t['status'])">{{ status(t['status']) }}</span></td>
                   </tr>

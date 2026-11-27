@@ -58,7 +58,7 @@ const STATUSES = ['open', 'awaiting_guarantors', 'under_review', 'recommended', 
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td>{{ l['reference'] }}</td>
-                  <td class="font-bold">{{ l['member_name'] }}</td>
+                  <td class="font-bold g-long" [title]="l['member_name']">{{ l['member_name'] }}</td>
                   <td class="g-long" [title]="l['purpose']">{{ l['purpose'] }}</td>
                   <td class="text-right">{{ tsh(l['amount_approved'] ?? l['amount_requested']) }}</td>
                   <td>{{ l['term_months'] }}</td>
