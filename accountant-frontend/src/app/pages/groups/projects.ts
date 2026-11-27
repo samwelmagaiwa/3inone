@@ -18,8 +18,8 @@ const STATUSES = ['proposed', 'active', 'completed', 'rejected', 'cancelled', ''
   imports: [RowMenuComponent, FormsModule, ModalDialogComponent, MemberPick],
   template: `
     <div class="ad ph-page" data-testid="g-projects">
-      <div class="ph-row" style="flex-wrap: wrap">
-        <div class="ph-chips">
+      <div class="g-toolbar">
+        <div class="ph-chips g-seg">
           @for (s of statuses; track s) {
             <button type="button" class="pill-tab" [class.is-active]="filter() === s" (click)="filter.set(s); load()">{{ s ? status(s) : i18n.t('g.all') }}</button>
           }

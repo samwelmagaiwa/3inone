@@ -19,8 +19,8 @@ const STATUSES = ['open', 'awaiting_guarantors', 'under_review', 'recommended', 
   imports: [RowMenuComponent, FormsModule, ModalDialogComponent, MemberPick],
   template: `
     <div class="ad ph-page" data-testid="g-loans">
-      <div class="ph-row" style="flex-wrap: wrap">
-        <div class="ph-chips">
+      <div class="g-toolbar">
+        <div class="ph-chips g-seg">
           @for (s of statuses; track s) {
             <button type="button" class="pill-tab" [class.is-active]="filter() === s" (click)="filter.set(s); load(1)" [attr.data-testid]="'g-l-st-' + (s || 'all')">{{ s === 'open' ? i18n.t('g.l.open') : s ? status(s) : i18n.t('g.all') }}</button>
           }
@@ -28,12 +28,12 @@ const STATUSES = ['open', 'awaiting_guarantors', 'under_review', 'recommended', 
         @if (can('record_payments')) {
           <button type="button" class="btn-primary ph-btn" (click)="openApply()" data-testid="g-l-new">{{ i18n.t('g.l.apply') }}</button>
         }
+        <span class="g-count">{{ i18n.t('g.count', total()) }}</span>
       </div>
 
       @if (error()) {
         <section class="ph-card"><p>{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load(page())">{{ i18n.t('pl.retry') }}</button></section>
       } @else {
-        <p class="ph-muted">{{ i18n.t('g.count', total()) }}</p>
         <div class="table-scroll-container fit-page" data-testid="g-l-list">
           <table class="grid-table">
             <thead>

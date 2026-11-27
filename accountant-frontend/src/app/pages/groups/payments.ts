@@ -33,37 +33,27 @@ type Form = 'member' | 'withdrawal' | 'expense' | 'opening';
         </div>
       }
 
-      <div class="ph-row" style="flex-wrap: wrap">
-        <div class="ph-chips">
+      <div class="g-toolbar">
+        <div class="ph-chips g-seg">
           @for (s of states; track s) {
             <button type="button" class="pill-tab" [class.is-active]="state() === s" (click)="pickState(s)" [attr.data-testid]="'g-pst-' + (s || 'all')">{{ s ? status(s) : i18n.t('g.all') }}</button>
           }
         </div>
-        <div class="ph-row" style="flex-wrap: wrap; gap: 6px">
-          @if (can('record_payments')) {
-            <button type="button" class="btn-primary is-success ph-btn" (click)="openForm('member')" data-testid="g-p-new">{{ i18n.t('g.p.record') }}</button>
-          }
-          @if (can('record_payouts')) {
-            <button type="button" class="btn-primary is-warn ph-btn" (click)="openForm('withdrawal')" data-testid="g-p-withdraw">{{ i18n.t('g.p.withdrawal') }}</button>
-            <button type="button" class="btn-primary is-danger ph-btn" (click)="openForm('expense')" data-testid="g-p-expense">{{ i18n.t('g.p.expense') }}</button>
-            <button type="button" class="btn-primary is-info ph-btn" (click)="openForm('opening')" data-testid="g-p-opening">{{ i18n.t('g.p.opening') }}</button>
-          }
-        </div>
-      </div>
-      <div class="ph-row" style="flex-wrap: wrap">
-        <label class="ph-field" style="flex: 2; min-width: 200px">{{ i18n.t('g.search') }}<input [ngModel]="q()" (ngModelChange)="q.set($event)" (keyup.enter)="load(1)" [placeholder]="i18n.t('g.p.search.ph')" /></label>
-        <label class="ph-field" style="flex: 1; min-width: 160px">{{ i18n.t('g.kind') }}
-          <select [ngModel]="category()" (ngModelChange)="category.set($event); load(1)" data-testid="g-p-cat">
-            <option value="">{{ i18n.t('g.all') }}</option>
-            @for (c of categories; track c) { <option [value]="c">{{ cat(c) }}</option> }
-          </select></label>
+        <input class="g-search" [ngModel]="q()" (ngModelChange)="q.set($event)" (keyup.enter)="load(1)" [placeholder]="i18n.t('g.p.search.ph')" [attr.aria-label]="i18n.t('g.search')" />
+        <select class="g-select" [ngModel]="category()" (ngModelChange)="category.set($event); load(1)" [attr.aria-label]="i18n.t('g.kind')" data-testid="g-p-cat">
+          <option value="">{{ i18n.t('g.p.all.kinds') }}</option>
+          @for (c of categories; track c) { <option [value]="c">{{ cat(c) }}</option> }
+        </select>
         <button type="button" class="btn-outline ph-btn" (click)="load(1)">{{ i18n.t('ad.apply') }}</button>
+        @if (recordMenu().length) {
+          <app-row-menu [items]="recordMenu()" [label]="i18n.t('g.p.record.short')" icon="plus" buttonClass="btn-primary is-success ph-btn g-menu-btn" testid="g-p-record" (picked)="openForm($any($event))" />
+        }
+        <span class="g-count">{{ i18n.t('g.count', total()) }}</span>
       </div>
 
       @if (error()) {
         <section class="ph-card"><p>{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load(page())">{{ i18n.t('pl.retry') }}</button></section>
       } @else {
-        <p class="ph-muted">{{ i18n.t('g.count', total()) }}</p>
         <div class="table-scroll-container fit-page" data-testid="g-p-list">
           <table class="grid-table">
             <thead>
@@ -202,6 +192,18 @@ export class GPaymentsPage extends GBase implements OnInit {
 
   /** The group's chosen methods once it has chosen; every method until then. */
   protected readonly allowedMethods = computed(() => (this.authorised().length ? this.authorised() : this.methods.filter((m) => m !== 'other')));
+
+  /** What this person may record: a member's payment, and (for whoever records payouts) a withdrawal, spending and the opening balance. */
+  protected readonly recordMenu = computed<MenuItem[]>(() => [
+    ...(this.can('record_payments') ? [{ id: 'member', label: this.i18n.t('g.p.record'), primary: true, testid: 'g-p-new' }] : []),
+    ...(this.can('record_payouts')
+      ? [
+          { id: 'withdrawal', label: this.i18n.t('g.p.withdrawal'), testid: 'g-p-withdraw' },
+          { id: 'expense', label: this.i18n.t('g.p.expense'), danger: true, testid: 'g-p-expense' },
+          { id: 'opening', label: this.i18n.t('g.p.opening'), testid: 'g-p-opening' },
+        ]
+      : []),
+  ]);
 
   protected readonly formTitle = computed(() => {
     switch (this.form()) {

@@ -26,10 +26,12 @@ const KEYS = [
   imports: [RowMenuComponent, FormsModule, RouterLink],
   template: `
     <div class="ad ph-page" data-testid="g-settings">
-      <div class="ph-chips">
-        @for (t of tabs(); track t) {
-          <button type="button" class="pill-tab" [class.is-active]="tab() === t" (click)="go(t)" [attr.data-testid]="'g-s-tab-' + t">{{ i18n.t('g.s.tab.' + t) }}</button>
-        }
+      <div class="g-toolbar">
+        <div class="ph-chips g-seg">
+          @for (t of tabs(); track t) {
+            <button type="button" class="pill-tab" [class.is-active]="tab() === t" (click)="go(t)" [attr.data-testid]="'g-s-tab-' + t">{{ i18n.t('g.s.tab.' + t) }}</button>
+          }
+        </div>
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
 

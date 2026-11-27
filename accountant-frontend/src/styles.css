@@ -2086,3 +2086,24 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
 .theme-phone .cp-name small { color: rgba(255,255,255,.7) !important; opacity: 1 !important; }
 .theme-phone .cp-tag.is-services { color: #7fe3f2 !important; background: rgba(32,184,206,.16) !important; border-color: rgba(32,184,206,.45) !important; }
 .theme-phone .cp-tag.is-goods { color: #fcd34d !important; background: rgba(245,158,11,.16) !important; border-color: rgba(245,158,11,.45) !important; }
+
+/* ═══ Groups (Vikundi) pages: the page's controls in ONE row above the table (section tabs, status chips, search, filters, buttons, the
+   count at the right). It wraps only when the screen is too narrow, and nothing is cut. ═══ */
+.g-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.g-toolbar .g-seg { display: inline-flex; flex-wrap: nowrap; gap: 4px; padding: 3px; border-radius: 99px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); }
+.g-toolbar .g-seg .pill-tab { padding: 6px 12px; border-radius: 99px; font-size: 12.5px; font-weight: 800; white-space: nowrap; cursor: pointer; }
+.g-toolbar .g-sep { width: 1px; align-self: stretch; margin: 2px 2px; background: rgba(255,255,255,.18); }
+.g-toolbar :is(.g-search, .g-select) { height: 38px; padding: 0 12px; border-radius: 10px; font-size: 14px; font-weight: 600; background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.22); }
+.g-toolbar .g-search { flex: 1 1 220px; min-width: 180px; }
+.g-toolbar .g-search::placeholder { color: rgba(255,255,255,.55); }
+.g-toolbar .g-select { min-width: 150px; max-width: 240px; }
+.g-toolbar .g-select option { color: #0f172a; }
+.g-toolbar .ph-btn { height: 38px; padding: 0 14px; white-space: nowrap; display: inline-flex; align-items: center; }
+.g-toolbar .g-count { margin-left: auto; font-size: 12.5px; font-weight: 700; opacity: .75; white-space: nowrap; }
+.shell-wrap:not(.theme-phone) .g-toolbar :is(.g-search, .g-select) { background: #fff; color: #1e293b; border-color: #cfd9f3; }
+.shell-wrap:not(.theme-phone) .g-toolbar .g-seg { background: #f1f5ff; border-color: #dbe4ff; }
+@media (max-width: 767px) {
+  .g-toolbar .g-seg { flex-wrap: wrap; border-radius: 16px; }
+  .g-toolbar .g-search { flex-basis: 100%; }
+  .g-toolbar .g-count { margin-left: 0; }
+}

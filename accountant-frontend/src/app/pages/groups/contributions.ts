@@ -20,10 +20,30 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
   imports: [RowMenuComponent, FormsModule, ModalDialogComponent],
   template: `
     <div class="ad ph-page" data-testid="g-contributions">
-      <div class="ph-chips">
-        <button type="button" class="pill-tab" [class.is-active]="tab() === 'owing'" (click)="go('owing')" data-testid="g-c-tab-owing">{{ i18n.t('g.c.owing') }}</button>
-        <button type="button" class="pill-tab" [class.is-active]="tab() === 'types'" (click)="go('types')" data-testid="g-c-tab-types">{{ i18n.t('g.c.types') }}</button>
-        <button type="button" class="pill-tab" [class.is-active]="tab() === 'promises'" (click)="go('promises')" data-testid="g-c-tab-promises">{{ i18n.t('g.c.promises') }}</button>
+      <div class="g-toolbar" data-testid="g-c-toolbar">
+        <div class="ph-chips g-seg">
+          <button type="button" class="pill-tab" [class.is-active]="tab() === 'owing'" (click)="go('owing')" data-testid="g-c-tab-owing">{{ i18n.t('g.c.owing') }}</button>
+          <button type="button" class="pill-tab" [class.is-active]="tab() === 'types'" (click)="go('types')" data-testid="g-c-tab-types">{{ i18n.t('g.c.types') }}</button>
+          <button type="button" class="pill-tab" [class.is-active]="tab() === 'promises'" (click)="go('promises')" data-testid="g-c-tab-promises">{{ i18n.t('g.c.promises') }}</button>
+        </div>
+        @if (tab() === 'owing') {
+          <span class="g-sep"></span>
+          <div class="ph-chips g-seg">
+            @for (s of states; track s) {
+              <button type="button" class="pill-tab" [class.is-active]="state() === s" (click)="state.set(s); loadOwing(1)">{{ s === 'all' ? i18n.t('g.all') : status(s) }}</button>
+            }
+          </div>
+          <input class="g-search" [ngModel]="q()" (ngModelChange)="q.set($event)" (keyup.enter)="loadOwing(1)" [placeholder]="i18n.t('g.pick.ph')" [attr.aria-label]="i18n.t('g.search')" />
+          <select class="g-select" [ngModel]="typeId()" (ngModelChange)="typeId.set($event); loadOwing(1)" [attr.aria-label]="i18n.t('g.c.type')">
+            <option [ngValue]="null">{{ i18n.t('g.c.all.types') }}</option>
+            @for (t of types(); track t['id']) { <option [ngValue]="t['id']">{{ t['name'] }}</option> }
+          </select>
+          <button type="button" class="btn-outline ph-btn" (click)="loadOwing(1)">{{ i18n.t('ad.apply') }}</button>
+          <span class="g-count">{{ i18n.t('g.count', total()) }}</span>
+        }
+        @if (tab() === 'types' && can('manage_contributions')) {
+          <button type="button" class="btn-primary ph-btn" style="margin-left: auto" (click)="openType(null)" data-testid="g-c-type-new">{{ i18n.t('g.c.type.new') }}</button>
+        }
       </div>
 
       @if (error()) {
@@ -32,23 +52,6 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
 
       @switch (tab()) {
         @case ('owing') {
-          <div class="ph-row" style="flex-wrap: wrap">
-            <div class="ph-chips">
-              @for (s of states; track s) {
-                <button type="button" class="pill-tab" [class.is-active]="state() === s" (click)="state.set(s); loadOwing(1)">{{ s === 'all' ? i18n.t('g.all') : status(s) }}</button>
-              }
-            </div>
-          </div>
-          <div class="ph-row" style="flex-wrap: wrap">
-            <label class="ph-field" style="flex: 2; min-width: 200px">{{ i18n.t('g.search') }}<input [ngModel]="q()" (ngModelChange)="q.set($event)" (keyup.enter)="loadOwing(1)" [placeholder]="i18n.t('g.pick.ph')" /></label>
-            <label class="ph-field" style="flex: 1; min-width: 160px">{{ i18n.t('g.c.type') }}
-              <select [ngModel]="typeId()" (ngModelChange)="typeId.set($event); loadOwing(1)">
-                <option [ngValue]="null">{{ i18n.t('g.all') }}</option>
-                @for (t of types(); track t['id']) { <option [ngValue]="t['id']">{{ t['name'] }}</option> }
-              </select></label>
-            <button type="button" class="btn-outline ph-btn" (click)="loadOwing(1)">{{ i18n.t('ad.apply') }}</button>
-          </div>
-          <p class="ph-muted">{{ i18n.t('g.count', total()) }}</p>
           <div class="table-scroll-container fit-page" data-testid="g-c-owing">
             <table class="grid-table">
               <thead>
@@ -96,9 +99,6 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
           </div>
         }
         @case ('types') {
-          @if (can('manage_contributions')) {
-            <div class="ph-row"><span></span><button type="button" class="btn-primary ph-btn" (click)="openType(null)" data-testid="g-c-type-new">{{ i18n.t('g.c.type.new') }}</button></div>
-          }
           <div class="table-scroll-container fit-page" data-testid="g-c-types">
             <table class="grid-table">
               <thead>

@@ -16,7 +16,7 @@ import { GBase } from './g-base';
   imports: [RowMenuComponent, FormsModule, ModalDialogComponent],
   template: `
     <div class="ad ph-page" data-testid="g-dividends">
-      <div class="ph-row"><span class="ph-muted">{{ i18n.t('g.d.hint') }}</span>
+      <div class="g-toolbar"><span class="ph-muted" style="flex: 1">{{ i18n.t('g.d.hint') }}</span>
         @if (can('prepare_dividends')) { <button type="button" class="btn-primary ph-btn" (click)="openPrepare()" data-testid="g-d-new">{{ i18n.t('g.d.prepare') }}</button> }</div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
       <div class="table-scroll-container fit-page" data-testid="g-d-list">

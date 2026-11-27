@@ -24,8 +24,12 @@ export interface MenuItem {
   standalone: true,
   template: `
     @if (label) {
-      <button type="button" class="menu-label-btn" (click)="toggle($event)" aria-haspopup="menu" [attr.aria-expanded]="!!open()" [attr.data-testid]="testid">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3"/></svg>
+      <button type="button" [class]="buttonClass" (click)="toggle($event)" aria-haspopup="menu" [attr.aria-expanded]="!!open()" [attr.data-testid]="testid">
+        @if (icon === 'plus') {
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        } @else {
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3"/></svg>
+        }
         {{ label }}
       </button>
     } @else {
@@ -68,6 +72,10 @@ export class RowMenuComponent {
   /** With a label the button is a named one (with a download arrow); without, it is the three dots. */
   @Input() label = '';
   @Input() testid = '';
+  /** The labelled button's icon: a download arrow (exports) or a plus (adding something). */
+  @Input() icon: 'download' | 'plus' = 'download';
+  /** Extra classes for the labelled button (e.g. the page's green "add" look). */
+  @Input() buttonClass = 'menu-label-btn';
   @Output() picked = new EventEmitter<string>();
 
   protected readonly open = signal<{ top: number | null; bottom: number | null; right: number } | null>(null);

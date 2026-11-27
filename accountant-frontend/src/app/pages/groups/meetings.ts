@@ -21,14 +21,14 @@ const TEXT_AUDIENCES = ['all', 'leaders', 'overdue', 'selected'];
   imports: [RowMenuComponent, FormsModule, ModalDialogComponent, MemberPick],
   template: `
     <div class="ad ph-page" data-testid="g-meetings">
-      <div class="ph-row" style="flex-wrap: wrap">
-        <div class="ph-chips">
+      <div class="g-toolbar">
+        <div class="ph-chips g-seg">
           <button type="button" class="pill-tab" [class.is-active]="tab() === 'meetings'" (click)="go('meetings')">{{ i18n.t('g.mt.meetings') }}</button>
           <button type="button" class="pill-tab" [class.is-active]="tab() === 'actions'" (click)="go('actions')" data-testid="g-mt-tab-actions">{{ i18n.t('g.mt.actions') }}</button>
           <button type="button" class="pill-tab" [class.is-active]="tab() === 'notices'" (click)="go('notices')" data-testid="g-mt-tab-notices">{{ i18n.t('g.mt.notices') }}</button>
           @if (can('send_texts')) { <button type="button" class="pill-tab" [class.is-active]="tab() === 'texts'" (click)="go('texts')" data-testid="g-mt-tab-texts">{{ i18n.t('g.mt.texts') }}</button> }
         </div>
-        <div class="ph-row" style="gap: 6px">
+        <div class="ph-row" style="gap: 6px; margin-left: auto">
           @if (tab() === 'meetings' && can('call_meetings')) { <button type="button" class="btn-primary ph-btn" (click)="openCall()" data-testid="g-mt-call">{{ i18n.t('g.mt.call') }}</button> }
           @if (tab() === 'notices' && can('post_announcements')) { <button type="button" class="btn-primary ph-btn" (click)="openNotice()" data-testid="g-mt-notice-new">{{ i18n.t('g.mt.notice.new') }}</button> }
           @if (tab() === 'texts' && can('send_texts')) { <button type="button" class="btn-primary ph-btn" (click)="openText()" data-testid="g-mt-text-new">{{ i18n.t('g.mt.text.new') }}</button> }

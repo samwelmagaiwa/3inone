@@ -17,18 +17,25 @@ const STATUSES = ['submitted', 'approved', 'rejected', 'cancelled', ''];
   imports: [RowMenuComponent, FormsModule, ModalDialogComponent],
   template: `
     <div class="ad ph-page" data-testid="g-welfare">
-      <div class="ph-chips">
-        <button type="button" class="pill-tab" [class.is-active]="tab() === 'requests'" (click)="tab.set('requests'); load()">{{ i18n.t('g.w.requests') }}</button>
-        <button type="button" class="pill-tab" [class.is-active]="tab() === 'types'" (click)="tab.set('types'); loadTypes()" data-testid="g-w-tab-types">{{ i18n.t('g.w.types') }}</button>
+      <div class="g-toolbar">
+        <div class="ph-chips g-seg">
+          <button type="button" class="pill-tab" [class.is-active]="tab() === 'requests'" (click)="tab.set('requests'); load()">{{ i18n.t('g.w.requests') }}</button>
+          <button type="button" class="pill-tab" [class.is-active]="tab() === 'types'" (click)="tab.set('types'); loadTypes()" data-testid="g-w-tab-types">{{ i18n.t('g.w.types') }}</button>
+        </div>
+        @if (tab() === 'requests') {
+          <span class="g-sep"></span>
+          <div class="ph-chips g-seg">
+            @for (s of statuses; track s) {
+              <button type="button" class="pill-tab" [class.is-active]="filter() === s" (click)="filter.set(s); load()">{{ s ? status(s) : i18n.t('g.all') }}</button>
+            }
+          </div>
+        } @else if (can('manage_settings')) {
+          <button type="button" class="btn-primary ph-btn" style="margin-left: auto" (click)="openType(null)" data-testid="g-w-type-new">{{ i18n.t('g.w.type.new') }}</button>
+        }
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
 
       @if (tab() === 'requests') {
-        <div class="ph-chips">
-          @for (s of statuses; track s) {
-            <button type="button" class="pill-tab" [class.is-active]="filter() === s" (click)="filter.set(s); load()">{{ s ? status(s) : i18n.t('g.all') }}</button>
-          }
-        </div>
         <div class="table-scroll-container fit-page" data-testid="g-w-list">
           <table class="grid-table">
             <thead>
@@ -70,9 +77,6 @@ const STATUSES = ['submitted', 'approved', 'rejected', 'cancelled', ''];
           </table>
         </div>
       } @else {
-        @if (can('manage_settings')) {
-          <div class="ph-row"><span></span><button type="button" class="btn-primary ph-btn" (click)="openType(null)" data-testid="g-w-type-new">{{ i18n.t('g.w.type.new') }}</button></div>
-        }
         <div class="table-scroll-container fit-page">
           <table class="grid-table">
             <thead>

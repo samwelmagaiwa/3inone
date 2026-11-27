@@ -25,8 +25,8 @@ function local(v: string | null | undefined): string {
   imports: [RowMenuComponent, FormsModule, ModalDialogComponent, MemberPick],
   template: `
     <div class="ad ph-page" data-testid="g-votings">
-      <div class="ph-row">
-        <span></span>
+      <div class="g-toolbar">
+        <span style="flex: 1"></span>
         @if (can('manage_votings')) { <button type="button" class="btn-primary ph-btn" (click)="openForm(null)" data-testid="g-v-new">{{ i18n.t('g.v.new') }}</button> }
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }

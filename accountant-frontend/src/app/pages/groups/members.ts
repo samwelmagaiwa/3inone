@@ -29,23 +29,23 @@ const FIELDS = ['full_name', 'phone', 'alt_phone', 'email', 'nida', 'date_of_bir
   imports: [FormsModule, ModalDialogComponent, RowMenuComponent],
   template: `
     <div class="ad ph-page" data-testid="g-members">
-      <div class="ph-chips">
-        @for (s of statuses; track s) {
-          <button type="button" class="pill-tab" [class.is-active]="status_() === s" (click)="pickStatus(s)" [attr.data-testid]="'g-mst-' + (s || 'all')">{{ s ? status(s) : i18n.t('g.all') }}</button>
-        }
-      </div>
-      <div class="ph-row" style="flex-wrap: wrap">
-        <label class="ph-field" style="flex: 1; min-width: 220px">{{ i18n.t('g.search') }}<input [ngModel]="q()" (ngModelChange)="q.set($event)" (keyup.enter)="load(1)" [placeholder]="i18n.t('g.pick.ph')" data-testid="g-m-q" /></label>
+      <div class="g-toolbar">
+        <div class="ph-chips g-seg">
+          @for (s of statuses; track s) {
+            <button type="button" class="pill-tab" [class.is-active]="status_() === s" (click)="pickStatus(s)" [attr.data-testid]="'g-mst-' + (s || 'all')">{{ s ? status(s) : i18n.t('g.all') }}</button>
+          }
+        </div>
+        <input class="g-search" [ngModel]="q()" (ngModelChange)="q.set($event)" (keyup.enter)="load(1)" [placeholder]="i18n.t('g.pick.ph')" [attr.aria-label]="i18n.t('g.search')" data-testid="g-m-q" />
         <button type="button" class="btn-outline ph-btn" (click)="load(1)">{{ i18n.t('ad.apply') }}</button>
         @if (can('manage_members')) {
           <button type="button" class="btn-primary ph-btn" (click)="openNew()" data-testid="g-m-new">{{ i18n.t('g.m.add') }}</button>
         }
+        <span class="g-count">{{ i18n.t('g.count', total()) }}</span>
       </div>
 
       @if (error()) {
         <section class="ph-card"><p>{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load(page())">{{ i18n.t('pl.retry') }}</button></section>
       } @else {
-        <p class="ph-muted">{{ i18n.t('g.count', total()) }}</p>
         <div class="table-scroll-container fit-page" data-testid="g-m-list">
           <table class="grid-table">
             <thead>

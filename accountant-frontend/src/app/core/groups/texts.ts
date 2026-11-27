@@ -94,6 +94,9 @@ export const G_TEXTS: Record<string, [sw: string, en: string]> = {
   'g.male': ['Mwanaume', 'Male'],
   'g.female': ['Mwanamke', 'Female'],
   // ---- table column headings
+  'g.p.all.kinds': ['Aina zote', 'Every kind'],
+  'g.c.all.types': ['Michango yote', 'Every contribution'],
+  'g.p.record.short': ['Rekodi', 'Record'],
   'g.date': ['Tarehe', 'Date'],
   'g.by': ['Na', 'By'],
   'g.what': ['Nini', 'What'],

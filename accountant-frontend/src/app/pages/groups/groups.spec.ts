@@ -115,6 +115,9 @@ describe('Groups payments page', () => {
 
   it('records an opening balance for the group (no member) on an earlier day', async () => {
     const { h, fixture, el } = await open();
+    // the four kinds of record are behind one "Record" button
+    (el.querySelector('[data-testid="g-p-record"]') as HTMLButtonElement).click();
+    await settle(fixture);
     (byTestId(el, 'g-p-opening') as HTMLButtonElement).click();
     await settle(fixture);
     const amount = byTestId(el, 'g-pf-amount') as HTMLInputElement;

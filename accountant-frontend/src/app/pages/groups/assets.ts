@@ -21,12 +21,20 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
   imports: [RowMenuComponent, FormsModule, ModalDialogComponent, MemberPick],
   template: `
     <div class="ad ph-page" data-testid="g-assets">
-      <div class="ph-row" style="flex-wrap: wrap">
-        <div class="ph-chips">
+      <div class="g-toolbar">
+        <div class="ph-chips g-seg">
           <button type="button" class="pill-tab" [class.is-active]="tab() === 'assets'" (click)="tab.set('assets'); loadAssets()">{{ i18n.t('g.a.register') }}</button>
           <button type="button" class="pill-tab" [class.is-active]="tab() === 'hires'" (click)="tab.set('hires'); loadHires()" data-testid="g-a-tab-hires">{{ i18n.t('g.a.hires') }}</button>
         </div>
-        <div class="ph-row" style="gap: 6px">
+        @if (tab() === 'hires') {
+          <span class="g-sep"></span>
+          <div class="ph-chips g-seg">
+            @for (s of hireFilters; track s) {
+              <button type="button" class="pill-tab" [class.is-active]="hireFilter() === s" (click)="hireFilter.set(s); loadHires()">{{ s === 'open' ? i18n.t('g.l.open') : status(s) }}</button>
+            }
+          </div>
+        }
+        <div class="ph-row" style="gap: 6px; margin-left: auto">
           @if (tab() === 'assets' && can('manage_assets')) { <button type="button" class="btn-primary ph-btn" (click)="openAsset(null)" data-testid="g-a-new">{{ i18n.t('g.a.new') }}</button> }
           @if (tab() === 'hires') { <button type="button" class="btn-primary is-success ph-btn" (click)="openHire()" data-testid="g-h-new">{{ i18n.t('g.h.new') }}</button> }
         </div>
@@ -73,11 +81,6 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
           </table>
         </div>
       } @else {
-        <div class="ph-chips">
-          @for (s of hireFilters; track s) {
-            <button type="button" class="pill-tab" [class.is-active]="hireFilter() === s" (click)="hireFilter.set(s); loadHires()">{{ s === 'open' ? i18n.t('g.l.open') : status(s) }}</button>
-          }
-        </div>
         <div class="table-scroll-container fit-page" data-testid="g-h-list">
           <table class="grid-table">
             <thead>

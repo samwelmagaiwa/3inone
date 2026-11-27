@@ -18,8 +18,8 @@ const CATEGORIES = ['project', 'office', 'meeting', 'transport', 'event', 'other
   imports: [RowMenuComponent, FormsModule, ModalDialogComponent],
   template: `
     <div class="ad ph-page" data-testid="g-expenses">
-      <div class="ph-row" style="flex-wrap: wrap">
-        <div class="ph-chips">
+      <div class="g-toolbar">
+        <div class="ph-chips g-seg">
           @for (s of statuses; track s) {
             <button type="button" class="pill-tab" [class.is-active]="filter() === s" (click)="filter.set(s); load()">{{ s ? status(s) : i18n.t('g.all') }}</button>
           }
