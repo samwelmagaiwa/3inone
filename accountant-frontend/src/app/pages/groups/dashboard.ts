@@ -47,34 +47,6 @@ export const G_WAITING: Record<string, string> = {
         <button type="button" class="btn-outline ph-btn" (click)="load()" data-testid="g-dash-refresh">{{ i18n.t('common.refresh') }}</button>
       </div>
 
-      @if (waiting().length) {
-        <h3>{{ i18n.t('g.waiting') }}</h3>
-<div class="table-scroll-container fit-page" data-testid="g-waiting">
-          <table class="grid-table">
-            <thead>
-              <tr>
-              <th class="no-col">#</th>
-              <th>{{ i18n.t('g.what') }}</th>
-              <th class="text-right">{{ i18n.t('g.count.short') }}</th>
-              <th class="text-right">{{ i18n.t('g.actions') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (w of waiting(); track w.key) {
-                <tr>
-                  <td class="no-col">{{ $index + 1 }}</td>
-                  <td class="font-bold"><a class="g-link" [routerLink]="w.path" [attr.data-testid]="'g-wait-' + w.key">{{ i18n.t('g.wait.' + w.key) }}</a></td>
-                  <td class="text-right"><b class="ph-warn">{{ w.count }}</b></td>
-                  <td class="text-right">@if ([{ id: 'open', label: i18n.t('g.open'), primary: true }].length) { <app-row-menu [items]="[{ id: 'open', label: i18n.t('g.open'), primary: true }]" [testid]="'g-wait-menu-' + w.key" (picked)="go(w.path)" /> } @else { — }</td>
-                </tr>
-              } @empty {
-                <tr><td colspan="4" class="ph-muted">{{ i18n.t('g.none') }}</td></tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-
       @if (error()) {
         <section class="ph-card"><p data-testid="g-dash-error">{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load()">{{ i18n.t('pl.retry') }}</button></section>
       } @else if (!d()) {
@@ -82,7 +54,7 @@ export const G_WAITING: Record<string, string> = {
       } @else {
         @let data = d()!;
         @let m = data['money'];
-        <div class="ph-tiles">
+        <div class="ph-tiles g-tiles-row" data-testid="g-tiles">
           @if (m) {
             <div class="ph-tile" data-testid="g-cash"><span class="ph-muted">{{ i18n.t('g.cash') }}</span><b class="ph-accent">{{ tsh(m['cash_on_record']) }}</b></div>
             <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.month.in') }}</span><b class="ph-good">{{ tsh(m['month_in']) }}</b></div>
@@ -161,6 +133,34 @@ export const G_WAITING: Record<string, string> = {
           </a>
         }
       }
+
+      @if (waiting().length) {
+        <h3>{{ i18n.t('g.waiting') }}</h3>
+<div class="table-scroll-container fit-page" data-testid="g-waiting">
+          <table class="grid-table">
+            <thead>
+              <tr>
+              <th class="no-col">#</th>
+              <th>{{ i18n.t('g.what') }}</th>
+              <th class="text-right">{{ i18n.t('g.count.short') }}</th>
+              <th class="text-right">{{ i18n.t('g.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (w of waiting(); track w.key) {
+                <tr>
+                  <td class="no-col">{{ $index + 1 }}</td>
+                  <td class="font-bold"><a class="g-link" [routerLink]="w.path" [attr.data-testid]="'g-wait-' + w.key">{{ i18n.t('g.wait.' + w.key) }}</a></td>
+                  <td class="text-right"><b class="ph-warn">{{ w.count }}</b></td>
+                  <td class="text-right">@if ([{ id: 'open', label: i18n.t('g.open'), primary: true }].length) { <app-row-menu [items]="[{ id: 'open', label: i18n.t('g.open'), primary: true }]" [testid]="'g-wait-menu-' + w.key" (picked)="go(w.path)" /> } @else { — }</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="4" class="ph-muted">{{ i18n.t('g.none') }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     </div>
   `,
   styles: [
@@ -169,6 +169,13 @@ export const G_WAITING: Record<string, string> = {
       a.ph-card.g-link { display: block; }
       a.ph-row.g-link { display: flex; }
       a.ph-tile.g-link { display: grid; }
+      /* The figures in ONE row on a computer screen: equal columns, the amounts never broken in two */
+      @media (min-width: 1100px) {
+        .g-tiles-row { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+        .g-tiles-row .ph-tile { padding: 9px 10px; min-width: 0; }
+        .g-tiles-row .ph-tile b { font-size: clamp(12px, 0.8vw, 17px); white-space: nowrap; letter-spacing: -0.01em; }
+        .g-tiles-row .ph-tile .ph-muted { font-size: 11px; line-height: 1.25; }
+      }
       a.ph-tile.g-link:hover, a.ph-card.g-link:hover { border-color: #20b8ce; }
       .g-bar { height: 10px; border-radius: 99px; background: rgba(255, 255, 255, 0.18); overflow: hidden; margin: 8px 0 4px; }
       .g-bar i { display: block; height: 100%; background: linear-gradient(90deg, #1ba3c7, #20b8ce); }
