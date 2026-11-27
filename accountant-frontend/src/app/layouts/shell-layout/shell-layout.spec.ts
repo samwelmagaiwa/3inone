@@ -255,9 +255,16 @@ describe('the look of Groups (Vikundi)', () => {
   it('a group leader (not the business admin) gets the dark teal look in Groups, as on the phone; shop staff keep the light look', async () => {
     const leader = await open({ role: 'group_member', roleLabel: 'Member', services: ['groups'], permissions: [] });
     expect(leader.el.querySelector('.shell-wrap')!.classList.contains('theme-phone')).toBe(true);
+    // the app's name is the group's, never "Accountant", for a leader in Groups
+    expect(text(leader.el.querySelector('.sidebar-logo-name') as HTMLElement)).toBe('3inone Groups');
 
     TestBed.resetTestingModule();
     const staff = await open({ role: 'sales_officer', roleLabel: 'Sales officer', services: ['inventory'] });
     expect(staff.el.querySelector('.shell-wrap')!.classList.contains('theme-phone')).toBe(false);
+    expect(text(staff.el.querySelector('.sidebar-logo-name') as HTMLElement)).toBe('3inone');
+
+    TestBed.resetTestingModule();
+    const accountant = await open();
+    expect(text(accountant.el.querySelector('.sidebar-logo-name') as HTMLElement)).toBe('3inone Accountant');
   });
 });

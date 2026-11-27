@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { Row } from '../../core/groups/groups-api.service';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
 import { G_OFFICES } from './members';
 
@@ -22,7 +23,7 @@ const KEYS = [
  */
 @Component({
   selector: 'app-g-settings',
-  imports: [FormsModule, RouterLink],
+  imports: [RowMenuComponent, FormsModule, RouterLink],
   template: `
     <div class="ad ph-page" data-testid="g-settings">
       <div class="ph-chips">
@@ -64,12 +65,36 @@ const KEYS = [
                 <button type="button" class="btn-primary is-success ph-btn" [disabled]="busy() || !changed().length" (click)="saveValues()" data-testid="g-s-save">{{ i18n.t('g.s.save', changed().length) }}</button>
               </div>
             }
-            <div class="ph-card ph-joined">
-              <section class="ph-sec"><h3>{{ i18n.t('g.s.history') }}</h3></section>
-              @for (h of s['history'] ?? []; track h['id']) {
-                <section class="ph-sec"><div class="ph-line"><span>{{ i18n.t('g.set.' + h['key']) }}: <b>{{ shown(h['key'], h['value']) }}</b> · {{ i18n.t('g.s.from.day', day(h['effective_from'])) }}</span>
-                  <span class="ph-muted">{{ h['changed_by_name'] }} · {{ when(h['created_at']) }}</span></div><p class="ph-muted">{{ h['reason'] }}</p></section>
-              } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.none') }}</p></section> }
+            <h3>{{ i18n.t('g.s.history') }}</h3>
+    <div class="table-scroll-container fit-page">
+              <table class="grid-table">
+                <thead>
+                  <tr>
+                  <th class="no-col">#</th>
+                  <th>{{ i18n.t('g.s.setting') }}</th>
+                  <th>{{ i18n.t('g.s.value') }}</th>
+                  <th>{{ i18n.t('g.s.from') }}</th>
+                  <th>{{ i18n.t('g.reason') }}</th>
+                  <th>{{ i18n.t('g.by') }}</th>
+                  <th>{{ i18n.t('g.date') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (h of s['history'] ?? []; track h['id']) {
+                    <tr>
+                      <td class="no-col">{{ $index + 1 }}</td>
+                      <td class="font-bold">{{ i18n.t('g.set.' + h['key']) }}</td>
+                      <td>{{ shown(h['key'], h['value']) }}</td>
+                      <td>{{ day(h['effective_from']) }}</td>
+                      <td>{{ h['reason'] || '—' }}</td>
+                      <td>{{ h['changed_by_name'] || '—' }}</td>
+                      <td>{{ when(h['created_at']) }}</td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="7" class="ph-muted">{{ i18n.t('g.none') }}</td></tr>
+                  }
+                </tbody>
+              </table>
             </div>
           } @else { <section class="ph-card"><p class="ph-muted">{{ i18n.t('pl.loading') }}</p></section> }
         }
@@ -99,22 +124,58 @@ const KEYS = [
           }
         }
         @case ('offices') {
-          <div class="ph-card ph-joined" data-testid="g-s-offices">
-            @for (o of offices; track o) {
-              <section class="ph-sec"><div class="ph-line"><span>{{ office(o) }}</span><b>{{ holders(o) || '—' }}</b></div></section>
-            }
+          <div class="table-scroll-container fit-page" data-testid="g-s-offices">
+            <table class="grid-table">
+              <thead>
+                <tr>
+                <th class="no-col">#</th>
+                <th>{{ i18n.t('g.office') }}</th>
+                <th>{{ i18n.t('g.s.holders') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (o of offices; track o) {
+                  <tr>
+                    <td class="no-col">{{ $index + 1 }}</td>
+                    <td class="font-bold">{{ office(o) }}</td>
+                    <td>{{ holders(o) || '—' }}</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="3" class="ph-muted">{{ i18n.t('g.none') }}</td></tr>
+                }
+              </tbody>
+            </table>
           </div>
           @if (can('manage_offices')) { <p class="ph-muted">{{ i18n.t('g.s.offices.how') }} <a routerLink="/groups/members" class="link-btn">{{ i18n.t('nav.g.members') }}</a></p> }
         }
         @case ('codes') {
           <div class="ph-row"><span class="ph-muted">{{ i18n.t('g.s.codes.hint') }}</span>
             <button type="button" class="btn-primary ph-btn" (click)="newCode()" data-testid="g-s-code-new">{{ i18n.t('g.s.code.new') }}</button></div>
-          <div class="ph-card ph-joined" data-testid="g-s-codes">
-            @for (c of codes(); track c['id']) {
-              <section class="ph-sec"><div class="ph-row"><h3 style="letter-spacing: 0.12em">{{ c['code'] }}</h3>
-                <span><span class="ph-muted">{{ i18n.t('g.s.code.used', n(c['used'])) }}</span> <span class="ph-badge" [class]="c['active'] ? 'ph-good' : 'ph-bad'">{{ c['active'] ? i18n.t('g.running') : i18n.t('g.stopped') }}</span>
-                  @if (c['active']) { <button type="button" class="link-btn danger" (click)="stopCode(c)">{{ i18n.t('g.s.code.stop') }}</button> }</span></div></section>
-            } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.none') }}</p></section> }
+          <div class="table-scroll-container fit-page" data-testid="g-s-codes">
+            <table class="grid-table">
+              <thead>
+                <tr>
+                <th class="no-col">#</th>
+                <th>{{ i18n.t('g.s.code') }}</th>
+                <th class="text-right">{{ i18n.t('g.s.used') }}</th>
+                <th>{{ i18n.t('g.status') }}</th>
+                <th class="text-right">{{ i18n.t('g.actions') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (c of codes(); track c['id']) {
+                  <tr>
+                    <td class="no-col">{{ $index + 1 }}</td>
+                    <td><b style="letter-spacing: 0.12em">{{ c['code'] }}</b></td>
+                    <td class="text-right">{{ n(c['used']) }}</td>
+                    <td><span class="ph-badge" [class]="c['active'] ? 'ph-good' : 'ph-bad'">{{ c['active'] ? i18n.t('g.running') : i18n.t('g.stopped') }}</span></td>
+                    <td class="text-right">@if ((c['active'] ? [{ id: 'stop', label: i18n.t('g.s.code.stop'), danger: true }] : []).length) { <app-row-menu [items]="(c['active'] ? [{ id: 'stop', label: i18n.t('g.s.code.stop'), danger: true }] : [])" [testid]="'g-s-code-menu-' + c['id']" (picked)="stopCode(c)" /> } @else { — }</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="5" class="ph-muted">{{ i18n.t('g.none') }}</td></tr>
+                }
+              </tbody>
+            </table>
           </div>
         }
         @case ('logo') {
@@ -133,10 +194,29 @@ const KEYS = [
           </div>
         }
         @case ('log') {
-          <div class="ph-card ph-joined" data-testid="g-s-log">
-            @for (e of log(); track e['id']) {
-              <section class="ph-sec"><div class="ph-line"><span>{{ e['summary'] || e['action'] }}</span><span class="ph-muted">{{ e['by_name'] || '—' }} · {{ when(e['created_at']) }}</span></div></section>
-            } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.none') }}</p></section> }
+          <div class="table-scroll-container fit-page" data-testid="g-s-log">
+            <table class="grid-table">
+              <thead>
+                <tr>
+                <th class="no-col">#</th>
+                <th>{{ i18n.t('g.date') }}</th>
+                <th>{{ i18n.t('g.s.what') }}</th>
+                <th>{{ i18n.t('g.by') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (e of log(); track e['id']) {
+                  <tr>
+                    <td class="no-col">{{ $index + 1 }}</td>
+                    <td>{{ when(e['created_at']) }}</td>
+                    <td>{{ e['summary'] || e['action'] }}</td>
+                    <td>{{ e['by_name'] || '—' }}</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="4" class="ph-muted">{{ i18n.t('g.none') }}</td></tr>
+                }
+              </tbody>
+            </table>
           </div>
           @if (logMore()) { <button type="button" class="btn-outline ph-btn" (click)="loadLog(true)">{{ i18n.t('g.more') }}</button> }
         }

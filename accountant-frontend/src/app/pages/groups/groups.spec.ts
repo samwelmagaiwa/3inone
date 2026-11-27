@@ -94,9 +94,16 @@ describe('Groups payments page', () => {
   it('shows the cash on record and the waiting payments, and verifies one after a yes', async () => {
     const { h, fixture, el } = await open();
     expect(text(byTestId(el, 'g-p-cash')!)).toContain('1,250,000');
-    expect(text(byTestId(el, 'g-p-5')!)).toContain('Asha Juma');
-    expect(text(byTestId(el, 'g-p-5')!)).toContain('QX12');
+    const list = el.querySelector('[data-testid="g-p-list"] table.grid-table') as HTMLElement;
+    expect(list).not.toBeNull();
+    expect(text(list)).toContain('Asha Juma');
+    expect(text(list)).toContain('QX12');
+    expect(Array.from(list.querySelectorAll('thead th')).map((th) => text(th as HTMLElement))).toContain('Actions');
 
+    // the actions are behind the row's three dots
+    expect(byTestId(el, 'g-p-verify-5')).toBeNull();
+    (el.querySelector('[data-testid="g-p-menu-5"]') as HTMLButtonElement).click();
+    await settle(fixture);
     (byTestId(el, 'g-p-verify-5') as HTMLButtonElement).click();
     await settle(fixture);
     const req = h.http.expectOne(`${API}/transactions/5/verify`);

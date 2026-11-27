@@ -38,7 +38,15 @@ export class ShellLayout implements OnDestroy {
   protected readonly branches = inject(BranchesService);
   private readonly router = inject(Router);
 
-  protected readonly appName = environment.appName;
+  /** The name at the top of the menu: the accountant's app, the group's (Vikundi), or plain 3inone for everyone else. */
+  protected readonly appName_ = computed(() => {
+    if ((this.auth.user()?.role ?? '').toLowerCase() === 'accountant') return this.i18n.t('brand.accountant');
+    if (this.auth.service() === 'groups') return this.i18n.t('brand.groups');
+    return environment.appName;
+  });
+  protected get appName(): string {
+    return this.appName_();
+  }
 
   /** The pages in each part of the sidebar. */
   protected readonly pages = computed(() => {

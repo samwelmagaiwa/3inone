@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { Row } from '../../core/groups/groups-api.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
 import { MemberPick, PickedMember } from './member-pick';
 
@@ -15,7 +16,7 @@ const STATUSES = ['open', 'awaiting_guarantors', 'under_review', 'recommended', 
  */
 @Component({
   selector: 'app-g-loans',
-  imports: [FormsModule, ModalDialogComponent, MemberPick],
+  imports: [RowMenuComponent, FormsModule, ModalDialogComponent, MemberPick],
   template: `
     <div class="ad ph-page" data-testid="g-loans">
       <div class="ph-row" style="flex-wrap: wrap">
@@ -33,17 +34,43 @@ const STATUSES = ['open', 'awaiting_guarantors', 'under_review', 'recommended', 
         <section class="ph-card"><p>{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load(page())">{{ i18n.t('pl.retry') }}</button></section>
       } @else {
         <p class="ph-muted">{{ i18n.t('g.count', total()) }}</p>
-        <div class="ph-card ph-joined" data-testid="g-l-list">
-          @for (l of rows(); track l['id']) {
-            <section class="ph-sec">
-              <div class="ph-row"><h3>{{ l['member_name'] }} <span class="ph-muted">{{ l['reference'] }}</span></h3>
-                <span class="ph-badge" [class]="tone(l['state'] === 'overdue' ? 'overdue' : l['status'])">{{ l['state'] === 'overdue' ? status('overdue') : status(l['status']) }}</span></div>
-              <div class="ph-line"><span>{{ l['purpose'] }}</span><b>{{ tsh(l['amount_approved'] ?? l['amount_requested']) }}</b></div>
-              <div class="ph-line"><span class="ph-muted">{{ i18n.t('g.l.term', l['term_months']) }} · {{ l['interest_rate'] }}% {{ l['interest_method'] ? i18n.t('g.l.method.' + l['interest_method']) : '' }}</span>
-                @if (l['outstanding'] !== null && l['outstanding'] !== undefined) { <span>{{ i18n.t('g.l.owed') }} <b>{{ tsh(l['outstanding']) }}</b>@if (l['arrears'] > 0) { · <b class="ph-bad">{{ i18n.t('g.l.late', tsh(l['arrears'])) }}</b> }</span> }</div>
-              <div class="ph-row"><span></span><button type="button" class="btn-outline ph-btn" (click)="open(l['id'])" [attr.data-testid]="'g-l-open-' + l['id']">{{ i18n.t('g.open') }}</button></div>
-            </section>
-          } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.l.none') }}</p></section> }
+        <div class="table-scroll-container fit-page" data-testid="g-l-list">
+          <table class="grid-table">
+            <thead>
+              <tr>
+              <th class="no-col">#</th>
+              <th>{{ i18n.t('g.ref') }}</th>
+              <th>{{ i18n.t('g.member') }}</th>
+              <th>{{ i18n.t('g.l.purpose') }}</th>
+              <th class="text-right">{{ i18n.t('g.amount') }}</th>
+              <th>{{ i18n.t('g.l.months') }}</th>
+              <th>{{ i18n.t('g.l.rate') }}</th>
+              <th class="text-right">{{ i18n.t('g.l.owed') }}</th>
+              <th class="text-right">{{ i18n.t('g.loans.arrears') }}</th>
+              <th>{{ i18n.t('g.status') }}</th>
+              <th class="text-right">{{ i18n.t('g.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (l of rows(); track l['id']) {
+                <tr>
+                  <td class="no-col">{{ $index + 1 }}</td>
+                  <td>{{ l['reference'] }}</td>
+                  <td class="font-bold">{{ l['member_name'] }}</td>
+                  <td>{{ l['purpose'] }}</td>
+                  <td class="text-right">{{ tsh(l['amount_approved'] ?? l['amount_requested']) }}</td>
+                  <td>{{ l['term_months'] }}</td>
+                  <td>{{ l['interest_rate'] }}%@if (l['interest_method']) { · {{ i18n.t('g.l.method.' + l['interest_method']) }} }</td>
+                  <td class="text-right">{{ l['outstanding'] === null || l['outstanding'] === undefined ? '—' : tsh(l['outstanding']) }}</td>
+                  <td class="text-right"><span [class.ph-bad]="l['arrears'] > 0">{{ l['arrears'] ? tsh(l['arrears']) : '—' }}</span></td>
+                  <td><span class="ph-badge" [class]="tone(l['state'] === 'overdue' ? 'overdue' : l['status'])">{{ l['state'] === 'overdue' ? status('overdue') : status(l['status']) }}</span></td>
+                  <td class="text-right">@if (menuFor(l).length) { <app-row-menu [items]="menuFor(l)" [testid]="'g-l-menu-' + l['id']" (picked)="picked($event, l)" /> } @else { — }</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="11" class="ph-muted">{{ i18n.t('g.l.none') }}</td></tr>
+              }
+            </tbody>
+          </table>
         </div>
         <div class="ph-row">
           <button type="button" class="btn-outline ph-btn" [disabled]="page() <= 1" (click)="load(page() - 1)">{{ i18n.t('g.prev') }}</button>
@@ -214,6 +241,25 @@ export class GLoansPage extends GBase implements OnInit {
       this.total.set(p.total);
     } catch (e) {
       this.error.set(this.failed(e));
+    }
+  }
+
+  protected menuFor(l: Row): MenuItem[] {
+    const items: MenuItem[] = [{ id: 'open', label: this.i18n.t('g.open'), testid: 'g-l-open-' + l['id'] }];
+    if (l['status'] === 'under_review' && this.can('recommend_loans')) items.push({ id: 'recommend', label: this.i18n.t('g.l.recommend'), primary: true });
+    if (l['status'] === 'recommended' && this.can('approve_loans')) items.push({ id: 'approve', label: this.i18n.t('g.approve'), primary: true });
+    if ((l['status'] === 'under_review' || l['status'] === 'recommended') && this.can('approve_loans', 'recommend_loans')) items.push({ id: 'reject', label: this.i18n.t('g.turn.down'), danger: true });
+    if (l['status'] === 'approved' && this.can('record_payouts')) items.push({ id: 'payout', label: this.i18n.t('g.l.pay.out') });
+    return items;
+  }
+
+  protected picked(id: string, l: Row): void {
+    switch (id) {
+      case 'open': void this.open(Number(l['id'])); break;
+      case 'recommend': this.recommend(l); break;
+      case 'approve': void this.approve(l); break;
+      case 'reject': void this.reject(l); break;
+      case 'payout': this.payOut.set(l); break;
     }
   }
 

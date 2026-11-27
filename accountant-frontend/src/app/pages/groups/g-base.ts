@@ -29,6 +29,11 @@ export abstract class GBase {
   protected readonly methods = G_METHODS;
   protected readonly busy = signal(false);
 
+  /** A row's number in a paged list (page 1 starts at 1). */
+  protected rowNo(i: number, page = 1, size = 50): number {
+    return (page - 1) * size + i + 1;
+  }
+
   /** A count or figure from the server, 0 when it is missing. */
   protected n(v: unknown, fallback = 0): number {
     const x = Number(v);

@@ -65,12 +65,35 @@ import { MemberPick, PickedMember } from './member-pick';
             @for (b of keys(s['balances']); track b) { <div class="ph-tile"><span class="ph-muted">{{ cat(b) }}</span><b>{{ tsh(s['balances'][b]) }}</b></div> }
             <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.r.owes') }}</span><b class="ph-bad">{{ tsh(s['owing_total'] ?? 0) }}</b></div>
           </div>
-          <div class="ph-card ph-joined" style="margin-top: 8px">
-            @for (l of s['lines'] ?? []; track l['id']) {
-              <section class="ph-sec"><div class="ph-line">
-                <span>{{ day(l['paid_on'] || l['date']) }} · {{ cat(l['category']) }}@if (l['obligation_label']) { · {{ l['obligation_label'] }} } <span class="ph-muted">{{ l['receipt_number'] || l['reference'] }}</span></span>
-                <b [class.ph-good]="l['direction'] === 'in'" [class.ph-bad]="l['direction'] === 'out'">{{ l['direction'] === 'out' ? '-' : '+' }}{{ tsh(l['amount']) }}</b></div></section>
-            } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.r.no.lines') }}</p></section> }
+          <div class="table-scroll-container fit-page" data-testid="g-r-lines">
+            <table class="grid-table">
+              <thead>
+                <tr>
+                <th class="no-col">#</th>
+                <th>{{ i18n.t('g.paid.on') }}</th>
+                <th>{{ i18n.t('g.kind') }}</th>
+                <th>{{ i18n.t('g.p.for') }}</th>
+                <th>{{ i18n.t('g.receipt') }}</th>
+                <th class="text-right">{{ i18n.t('g.in') }}</th>
+                <th class="text-right">{{ i18n.t('g.out') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (l of s['lines'] ?? []; track l['id']) {
+                  <tr>
+                    <td class="no-col">{{ $index + 1 }}</td>
+                    <td>{{ day(l['paid_on'] || l['date']) }}</td>
+                    <td>{{ cat(l['category']) }}</td>
+                    <td>{{ l['obligation_label'] || '—' }}</td>
+                    <td>{{ l['receipt_number'] || l['reference'] }}</td>
+                    <td class="text-right"><span class="ph-good">{{ l['direction'] === 'in' ? tsh(l['amount']) : '' }}</span></td>
+                    <td class="text-right"><span class="ph-bad">{{ l['direction'] === 'out' ? tsh(l['amount']) : '' }}</span></td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="7" class="ph-muted">{{ i18n.t('g.r.no.lines') }}</td></tr>
+                }
+              </tbody>
+            </table>
           </div>
         }
       </div>

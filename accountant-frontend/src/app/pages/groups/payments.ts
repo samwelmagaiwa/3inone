@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { Row } from '../../core/groups/groups-api.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
 import { MemberPick, PickedMember } from './member-pick';
 
@@ -19,7 +20,7 @@ type Form = 'member' | 'withdrawal' | 'expense' | 'opening';
  */
 @Component({
   selector: 'app-g-payments',
-  imports: [FormsModule, ModalDialogComponent, MemberPick],
+  imports: [RowMenuComponent, FormsModule, ModalDialogComponent, MemberPick],
   template: `
     <div class="ad ph-page" data-testid="g-payments">
       @if (summary(); as s) {
@@ -63,33 +64,45 @@ type Form = 'member' | 'withdrawal' | 'expense' | 'opening';
         <section class="ph-card"><p>{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load(page())">{{ i18n.t('pl.retry') }}</button></section>
       } @else {
         <p class="ph-muted">{{ i18n.t('g.count', total()) }}</p>
-        <div class="ph-card ph-joined" data-testid="g-p-list">
-          @for (t of rows(); track t['id']) {
-            <section class="ph-sec" [attr.data-testid]="'g-p-' + t['id']">
-              <div class="ph-row">
-                <h3>{{ t['member_name'] || t['payee'] || (t['category'] === 'opening_balance' ? i18n.t('g.p.group') : '—') }} <span class="ph-muted">{{ t['member_number'] || '' }}</span></h3>
-                <b [class.ph-good]="t['direction'] === 'in'" [class.ph-bad]="t['direction'] === 'out'">{{ t['direction'] === 'out' ? '-' : '+' }}{{ tsh(t['amount']) }}</b>
-              </div>
-              <div class="ph-line"><span>{{ cat(t['category']) }}@if (t['obligation_label']) { · {{ t['obligation_label'] }} }</span>
-                <span class="ph-badge" [class]="t['reversed_by_id'] ? 'ph-bad' : tone(t['status'])">{{ t['reversed_by_id'] ? status('reversed') : status(t['status']) }}</span></div>
-              <div class="ph-line"><span class="ph-muted">{{ method(t['method']) }}@if (t['external_ref']) { · {{ t['external_ref'] }} } · {{ day(t['paid_on']) }}</span>
-                <span class="ph-muted">{{ t['reference'] }}@if (t['receipt_number']) { · {{ i18n.t('g.receipt') }} {{ t['receipt_number'] }} }</span></div>
-              <div class="ph-line"><span class="ph-muted">{{ i18n.t('g.p.by', t['submitted_by_name'] || '—') }}@if (t['verified_by_name']) { · {{ i18n.t('g.p.checked', t['verified_by_name']) }} }</span>
-                @if (t['note']) { <span class="ph-muted">{{ t['note'] }}</span> }</div>
-              @if (t['reject_reason']) { <p class="ph-bad" style="font-size: 13px">{{ t['reject_reason'] }}</p> }
-              <div class="g-acts">
-                @if (t['status'] === 'pending' && can('verify_payments')) {
-                  <button type="button" class="btn-primary is-success ph-btn" (click)="verify(t)" [attr.data-testid]="'g-p-verify-' + t['id']">{{ i18n.t('g.verify') }}</button>
-                  <button type="button" class="btn-primary is-danger ph-btn" (click)="reject(t)" [attr.data-testid]="'g-p-reject-' + t['id']">{{ i18n.t('g.turn.down') }}</button>
-                }
-                @if (t['status'] === 'verified' && !t['reversed_by_id'] && !t['reverses_id'] && can('reverse_payments')) {
-                  <button type="button" class="btn-outline ph-btn" (click)="reverse(t)" [attr.data-testid]="'g-p-reverse-' + t['id']">{{ i18n.t('g.p.reverse') }}</button>
-                }
-              </div>
-            </section>
-          } @empty {
-            <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.p.empty') }}</p></section>
-          }
+        <div class="table-scroll-container fit-page" data-testid="g-p-list">
+          <table class="grid-table">
+            <thead>
+              <tr>
+              <th class="no-col">#</th>
+              <th>{{ i18n.t('g.paid.on') }}</th>
+              <th>{{ i18n.t('g.p.who') }}</th>
+              <th>{{ i18n.t('g.kind') }}</th>
+              <th>{{ i18n.t('g.p.for') }}</th>
+              <th>{{ i18n.t('g.method') }}</th>
+              <th>{{ i18n.t('g.ref') }}</th>
+              <th class="text-right">{{ i18n.t('g.amount') }}</th>
+              <th>{{ i18n.t('g.status') }}</th>
+              <th>{{ i18n.t('g.p.recorded.by') }}</th>
+              <th>{{ i18n.t('g.note') }}</th>
+              <th class="text-right">{{ i18n.t('g.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (t of rows(); track t['id']) {
+                <tr>
+                  <td class="no-col">{{ $index + 1 }}</td>
+                  <td>{{ day(t['paid_on']) }}</td>
+                  <td class="font-bold">{{ t['member_name'] || t['payee'] || (t['category'] === 'opening_balance' ? i18n.t('g.p.group') : '—') }}</td>
+                  <td>{{ cat(t['category']) }}</td>
+                  <td>{{ t['obligation_label'] || '—' }}</td>
+                  <td>{{ method(t['method']) }}</td>
+                  <td>{{ t['external_ref'] || '—' }}</td>
+                  <td class="text-right"><b [class.ph-good]="t['direction'] === 'in'" [class.ph-bad]="t['direction'] === 'out'">{{ t['direction'] === 'out' ? '-' : '+' }}{{ tsh(t['amount']) }}</b></td>
+                  <td><span class="ph-badge" [class]="t['reversed_by_id'] ? 'ph-bad' : tone(t['status'])">{{ t['reversed_by_id'] ? status('reversed') : status(t['status']) }}</span></td>
+                  <td>{{ t['submitted_by_name'] || '—' }}</td>
+                  <td>{{ t['reject_reason'] || t['note'] || '—' }}</td>
+                  <td class="text-right">@if (menuFor(t).length) { <app-row-menu [items]="menuFor(t)" [testid]="'g-p-menu-' + t['id']" (picked)="picked($event, t)" /> } @else { — }</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="12" class="ph-muted">{{ i18n.t('g.p.empty') }}</td></tr>
+              }
+            </tbody>
+          </table>
         </div>
         <div class="ph-row">
           <button type="button" class="btn-outline ph-btn" [disabled]="page() <= 1" (click)="load(page() - 1)">{{ i18n.t('g.prev') }}</button>
@@ -203,6 +216,25 @@ export class GPaymentsPage extends GBase implements OnInit {
     void this.load(1);
     void this.loadSummary();
     void this.api.get('/payment-methods').then((d) => this.authorised.set(((d['methods'] as Row[]) ?? []).map((m) => String(m['method'])))).catch(() => undefined);
+  }
+
+  /** The three-dots menu of a payment's row. */
+  protected menuFor(t: Row): MenuItem[] {
+    const items: MenuItem[] = [];
+    if (t['status'] === 'pending' && this.can('verify_payments')) {
+      items.push({ id: 'verify', label: this.i18n.t('g.verify'), primary: true, testid: 'g-p-verify-' + t['id'] });
+      items.push({ id: 'reject', label: this.i18n.t('g.turn.down'), danger: true, testid: 'g-p-reject-' + t['id'] });
+    }
+    if (t['status'] === 'verified' && !t['reversed_by_id'] && !t['reverses_id'] && this.can('reverse_payments')) {
+      items.push({ id: 'reverse', label: this.i18n.t('g.p.reverse'), danger: true, testid: 'g-p-reverse-' + t['id'] });
+    }
+    return items;
+  }
+
+  protected picked(id: string, t: Row): void {
+    if (id === 'verify') void this.verify(t);
+    if (id === 'reject') void this.reject(t);
+    if (id === 'reverse') void this.reverse(t);
   }
 
   protected needsRef(): boolean {

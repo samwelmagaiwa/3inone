@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { Row } from '../../core/groups/groups-api.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
 
 const STATUSES = ['', 'submitted', 'active', 'suspended', 'exited', 'rejected', 'deceased'];
@@ -25,7 +26,7 @@ const FIELDS = ['full_name', 'phone', 'alt_phone', 'email', 'nida', 'date_of_bir
  */
 @Component({
   selector: 'app-g-members',
-  imports: [FormsModule, ModalDialogComponent],
+  imports: [FormsModule, ModalDialogComponent, RowMenuComponent],
   template: `
     <div class="ad ph-page" data-testid="g-members">
       <div class="ph-chips">
@@ -45,20 +46,37 @@ const FIELDS = ['full_name', 'phone', 'alt_phone', 'email', 'nida', 'date_of_bir
         <section class="ph-card"><p>{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load(page())">{{ i18n.t('pl.retry') }}</button></section>
       } @else {
         <p class="ph-muted">{{ i18n.t('g.count', total()) }}</p>
-        <div class="ph-card ph-joined" data-testid="g-m-list">
-          @for (m of rows(); track m['id']) {
-            <section class="ph-sec" [attr.data-testid]="'g-m-' + m['id']">
-              <div class="ph-row">
-                <h3>{{ m['full_name'] }} <span class="ph-muted">{{ m['member_number'] || m['application_ref'] }}</span></h3>
-                <span class="ph-badge" [class]="tone(m['status'])">{{ status(m['status']) }}</span>
-              </div>
-              <div class="ph-line"><span>{{ m['phone'] }}</span><b>{{ m['office'] ? office(m['office']) : '' }}</b></div>
-              <div class="ph-row"><span class="ph-muted">{{ m['joined_on'] ? i18n.t('g.joined', day(m['joined_on'])) : '' }}</span>
-                <button type="button" class="btn-outline ph-btn" (click)="open(m['id'])" [attr.data-testid]="'g-m-open-' + m['id']">{{ i18n.t('g.open') }}</button></div>
-            </section>
-          } @empty {
-            <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.m.empty') }}</p></section>
-          }
+        <div class="table-scroll-container fit-page" data-testid="g-m-list">
+          <table class="grid-table">
+            <thead>
+              <tr>
+                <th class="no-col">#</th>
+                <th>{{ i18n.t('g.name') }}</th>
+                <th>{{ i18n.t('g.number') }}</th>
+                <th>{{ i18n.t('g.f.phone') }}</th>
+                <th>{{ i18n.t('g.office') }}</th>
+                <th>{{ i18n.t('g.status') }}</th>
+                <th>{{ i18n.t('g.f.joined_on') }}</th>
+                <th class="text-right">{{ i18n.t('g.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (m of rows(); track m['id']; let i = $index) {
+                <tr [attr.data-testid]="'g-m-' + m['id']">
+                  <td class="no-col">{{ rowNo(i, page()) }}</td>
+                  <td class="font-bold">{{ m['full_name'] }}</td>
+                  <td>{{ m['member_number'] || m['application_ref'] || '—' }}</td>
+                  <td>{{ m['phone'] }}</td>
+                  <td>{{ m['office'] ? office(m['office']) : '—' }}</td>
+                  <td><span class="ph-badge" [class]="tone(m['status'])">{{ status(m['status']) }}</span></td>
+                  <td>{{ m['joined_on'] ? day(m['joined_on']) : '—' }}</td>
+                  <td class="text-right"><app-row-menu [items]="menuFor(m)" [testid]="'g-m-menu-' + m['id']" (picked)="picked($event, m)" /></td>
+                </tr>
+              } @empty {
+                <tr><td colspan="8" class="ph-muted">{{ i18n.t('g.m.empty') }}</td></tr>
+              }
+            </tbody>
+          </table>
         </div>
         <div class="ph-row">
           <button type="button" class="btn-outline ph-btn" [disabled]="page() <= 1" (click)="load(page() - 1)">{{ i18n.t('g.prev') }}</button>
@@ -251,6 +269,34 @@ export class GMembersPage extends GBase implements OnInit {
       this.total.set(p.total);
     } catch (e) {
       this.error.set(this.failed(e));
+    }
+  }
+
+  /** The three-dots menu of a member's row: what this person may do with them now. */
+  protected menuFor(m: Row): MenuItem[] {
+    const items: MenuItem[] = [{ id: 'open', label: this.i18n.t('g.open'), primary: true, testid: 'g-m-open-' + m['id'] }];
+    if (this.can('manage_members')) items.push({ id: 'edit', label: this.i18n.t('g.m.edit') });
+    if (this.can('approve_members')) {
+      for (const a of this.movesFor(m['status'])) items.push({ id: 'move:' + a, label: this.i18n.t('g.move.' + a), danger: a !== 'approve' && a !== 'reinstate', primary: a === 'approve' || a === 'reinstate' });
+    }
+    if (this.can('manage_members') && (m['status'] === 'active' || m['status'] === 'suspended')) {
+      items.push({ id: 'signin', label: m['has_sign_in'] ? this.i18n.t('g.signin.reset') : this.i18n.t('g.signin.give') });
+    }
+    return items;
+  }
+
+  protected async picked(id: string, m: Row): Promise<void> {
+    if (id === 'open') return this.open(Number(m['id']));
+    if (id.startsWith('move:')) return this.move(m, id.slice(5));
+    if (id === 'signin') {
+      await this.open(Number(m['id']));
+      return this.signIn(this.file()?.['member'] ?? m);
+    }
+    if (id === 'edit') {
+      await this.open(Number(m['id']));
+      const member = this.file()?.['member'];
+      this.file.set(null);
+      if (member) this.openEdit(member);
     }
   }
 

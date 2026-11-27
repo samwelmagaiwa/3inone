@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { Row } from '../../core/groups/groups-api.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
 
 const STATUSES = ['submitted', 'approved', 'rejected', 'cancelled', ''];
@@ -13,7 +14,7 @@ const STATUSES = ['submitted', 'approved', 'rejected', 'cancelled', ''];
  */
 @Component({
   selector: 'app-g-welfare',
-  imports: [FormsModule, ModalDialogComponent],
+  imports: [RowMenuComponent, FormsModule, ModalDialogComponent],
   template: `
     <div class="ad ph-page" data-testid="g-welfare">
       <div class="ph-chips">
@@ -28,39 +29,77 @@ const STATUSES = ['submitted', 'approved', 'rejected', 'cancelled', ''];
             <button type="button" class="pill-tab" [class.is-active]="filter() === s" (click)="filter.set(s); load()">{{ s ? status(s) : i18n.t('g.all') }}</button>
           }
         </div>
-        <div class="ph-card ph-joined" data-testid="g-w-list">
-          @for (r of rows(); track r['id']) {
-            <section class="ph-sec">
-              <div class="ph-row"><h3>{{ r['member_name'] }} <span class="ph-muted">{{ r['reference'] }}</span></h3><span class="ph-badge" [class]="tone(r['state'])">{{ status(r['state']) }}</span></div>
-              <div class="ph-line"><span>{{ r['type_name'] }} · {{ r['beneficiary'] }} ({{ i18n.t('g.rel.' + r['relationship']) }})</span><span class="ph-muted">{{ day(r['event_date']) }}</span></div>
-              @if (r['description']) { <p class="ph-muted">{{ r['description'] }}</p> }
-              <div class="ph-line"><span>{{ i18n.t('g.l.asked') }} {{ r['amount_requested'] ? tsh(r['amount_requested']) : '—' }}</span>
-                @if (r['amount_approved']) { <b class="ph-good">{{ i18n.t('g.l.approved') }} {{ tsh(r['amount_approved']) }}</b> }</div>
-              @if (r['decision_note']) { <p class="ph-muted">{{ r['decision_note'] }}</p> }
-              <div class="g-acts">
-                @if (r['state'] === 'submitted' && can('approve_benefits')) {
-                  <button type="button" class="btn-primary is-success ph-btn" (click)="openDecide(r)" [attr.data-testid]="'g-w-approve-' + r['id']">{{ i18n.t('g.approve') }}</button>
-                  <button type="button" class="btn-primary is-danger ph-btn" (click)="turnDown(r)">{{ i18n.t('g.turn.down') }}</button>
-                }
-                @if (r['state'] === 'approved' && can('record_payouts')) {
-                  <button type="button" class="btn-primary is-warn ph-btn" (click)="openPay(r)" [attr.data-testid]="'g-w-pay-' + r['id']">{{ i18n.t('g.pay') }}</button>
-                }
-              </div>
-            </section>
-          } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.w.none') }}</p></section> }
+        <div class="table-scroll-container fit-page" data-testid="g-w-list">
+          <table class="grid-table">
+            <thead>
+              <tr>
+              <th class="no-col">#</th>
+              <th>{{ i18n.t('g.ref') }}</th>
+              <th>{{ i18n.t('g.member') }}</th>
+              <th>{{ i18n.t('g.kind') }}</th>
+              <th>{{ i18n.t('g.w.beneficiary') }}</th>
+              <th>{{ i18n.t('g.w.relationship') }}</th>
+              <th>{{ i18n.t('g.w.event.date') }}</th>
+              <th class="text-right">{{ i18n.t('g.l.asked') }}</th>
+              <th class="text-right">{{ i18n.t('g.l.approved') }}</th>
+              <th>{{ i18n.t('g.status') }}</th>
+              <th>{{ i18n.t('g.note') }}</th>
+              <th class="text-right">{{ i18n.t('g.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of rows(); track r['id']) {
+                <tr>
+                  <td class="no-col">{{ $index + 1 }}</td>
+                  <td>{{ r['reference'] }}</td>
+                  <td class="font-bold">{{ r['member_name'] }}</td>
+                  <td>{{ r['type_name'] }}</td>
+                  <td>{{ r['beneficiary'] }}</td>
+                  <td>{{ i18n.t('g.rel.' + r['relationship']) }}</td>
+                  <td>{{ day(r['event_date']) }}</td>
+                  <td class="text-right">{{ r['amount_requested'] ? tsh(r['amount_requested']) : '—' }}</td>
+                  <td class="text-right">{{ r['amount_approved'] ? tsh(r['amount_approved']) : '—' }}</td>
+                  <td><span class="ph-badge" [class]="tone(r['state'])">{{ status(r['state']) }}</span></td>
+                  <td>{{ r['decision_note'] || r['description'] || '—' }}</td>
+                  <td class="text-right">@if (menuFor(r).length) { <app-row-menu [items]="menuFor(r)" [testid]="'g-w-menu-' + r['id']" (picked)="picked($event, r)" /> } @else { — }</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="12" class="ph-muted">{{ i18n.t('g.w.none') }}</td></tr>
+              }
+            </tbody>
+          </table>
         </div>
       } @else {
         @if (can('manage_settings')) {
           <div class="ph-row"><span></span><button type="button" class="btn-primary ph-btn" (click)="openType(null)" data-testid="g-w-type-new">{{ i18n.t('g.w.type.new') }}</button></div>
         }
-        <div class="ph-card ph-joined">
-          @for (t of types(); track t['id']) {
-            <section class="ph-sec">
-              <div class="ph-row"><h3>{{ t['name'] }}</h3><b class="ph-accent">{{ t['amount'] ? tsh(t['amount']) : i18n.t('g.w.decided') }}</b></div>
-              <div class="ph-line"><span class="ph-muted">{{ t['description'] }}</span><span class="ph-badge" [class]="t['active'] ? 'ph-good' : 'ph-bad'">{{ t['active'] ? i18n.t('g.running') : i18n.t('g.stopped') }}</span></div>
-              @if (can('manage_settings')) { <div class="g-acts"><button type="button" class="btn-outline ph-btn" (click)="openType(t)">{{ i18n.t('g.edit') }}</button></div> }
-            </section>
-          } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.w.types.none') }}</p></section> }
+        <div class="table-scroll-container fit-page">
+          <table class="grid-table">
+            <thead>
+              <tr>
+              <th class="no-col">#</th>
+              <th>{{ i18n.t('g.name') }}</th>
+              <th class="text-right">{{ i18n.t('g.w.usual.amount') }}</th>
+              <th>{{ i18n.t('g.description') }}</th>
+              <th>{{ i18n.t('g.status') }}</th>
+              <th class="text-right">{{ i18n.t('g.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (t of types(); track t['id']) {
+                <tr>
+                  <td class="no-col">{{ $index + 1 }}</td>
+                  <td class="font-bold">{{ t['name'] }}</td>
+                  <td class="text-right">{{ t['amount'] ? tsh(t['amount']) : i18n.t('g.w.decided') }}</td>
+                  <td>{{ t['description'] || '—' }}</td>
+                  <td><span class="ph-badge" [class]="t['active'] ? 'ph-good' : 'ph-bad'">{{ t['active'] ? i18n.t('g.running') : i18n.t('g.stopped') }}</span></td>
+                  <td class="text-right">@if ((can('manage_settings') ? [{ id: 'edit', label: i18n.t('g.edit') }] : []).length) { <app-row-menu [items]="(can('manage_settings') ? [{ id: 'edit', label: i18n.t('g.edit') }] : [])" [testid]="'g-w-type-menu-' + t['id']" (picked)="openType(t)" /> } @else { — }</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="6" class="ph-muted">{{ i18n.t('g.w.types.none') }}</td></tr>
+              }
+            </tbody>
+          </table>
         </div>
       }
     </div>
@@ -124,6 +163,22 @@ export class GWelfarePage extends GBase implements OnInit {
   ngOnInit(): void {
     if (!this.can('view_benefits')) this.tab.set('types');
     void (this.tab() === 'types' ? this.loadTypes() : this.load());
+  }
+
+  protected menuFor(r: Row): MenuItem[] {
+    const items: MenuItem[] = [];
+    if (r['state'] === 'submitted' && this.can('approve_benefits')) {
+      items.push({ id: 'approve', label: this.i18n.t('g.approve'), primary: true, testid: 'g-w-approve-' + r['id'] });
+      items.push({ id: 'reject', label: this.i18n.t('g.turn.down'), danger: true });
+    }
+    if (r['state'] === 'approved' && this.can('record_payouts')) items.push({ id: 'pay', label: this.i18n.t('g.pay'), testid: 'g-w-pay-' + r['id'] });
+    return items;
+  }
+
+  protected picked(id: string, r: Row): void {
+    if (id === 'approve') this.openDecide(r);
+    if (id === 'reject') void this.turnDown(r);
+    if (id === 'pay') this.openPay(r);
   }
 
   async load(): Promise<void> {

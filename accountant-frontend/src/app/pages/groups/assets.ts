@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { Row } from '../../core/groups/groups-api.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
 import { MemberPick, PickedMember } from './member-pick';
 
@@ -17,7 +18,7 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
  */
 @Component({
   selector: 'app-g-assets',
-  imports: [FormsModule, ModalDialogComponent, MemberPick],
+  imports: [RowMenuComponent, FormsModule, ModalDialogComponent, MemberPick],
   template: `
     <div class="ad ph-page" data-testid="g-assets">
       <div class="ph-row" style="flex-wrap: wrap">
@@ -33,22 +34,43 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
 
       @if (tab() === 'assets') {
-        <div class="ph-card ph-joined" data-testid="g-a-list">
-          @for (a of assets(); track a['id']) {
-            <section class="ph-sec">
-              <div class="ph-row"><h3>{{ a['name'] }} <span class="ph-muted">{{ a['code'] }}</span></h3><b class="ph-accent">{{ a['quantity'] }}</b></div>
-              <div class="ph-line"><span>{{ a['category'] || '' }}@if (a['location']) { · {{ a['location'] }} }</span><span>{{ i18n.t('g.a.free.today', n(a['free_today'], n(a['quantity']))) }}</span></div>
-              <div class="ph-line"><span class="ph-muted">{{ i18n.t('g.a.keeper') }}: {{ a['custodian_name'] || '—' }}</span>
-                <span>@if (a['hire_rate']) { {{ i18n.t('g.a.rate', tsh(a['hire_rate'])) }} } @if (a['condition']) { · {{ i18n.t('g.cond.' + a['condition']) }} }</span></div>
-              <div class="g-acts">
-                <button type="button" class="btn-outline ph-btn" (click)="openDetail(a)">{{ i18n.t('g.open') }}</button>
-                @if (can('manage_assets')) {
-                  <button type="button" class="btn-outline ph-btn" (click)="openAsset(a)">{{ i18n.t('g.edit') }}</button>
-                  <button type="button" class="btn-primary is-warn ph-btn" (click)="openEvent(a)">{{ i18n.t('g.a.event') }}</button>
-                }
-              </div>
-            </section>
-          } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.a.none') }}</p></section> }
+        <div class="table-scroll-container fit-page" data-testid="g-a-list">
+          <table class="grid-table">
+            <thead>
+              <tr>
+              <th class="no-col">#</th>
+              <th>{{ i18n.t('g.a.code') }}</th>
+              <th>{{ i18n.t('g.name') }}</th>
+              <th>{{ i18n.t('g.a.category') }}</th>
+              <th class="text-right">{{ i18n.t('g.a.quantity') }}</th>
+              <th class="text-right">{{ i18n.t('g.a.free') }}</th>
+              <th>{{ i18n.t('g.a.keeper') }}</th>
+              <th class="text-right">{{ i18n.t('g.a.hire.rate') }}</th>
+              <th>{{ i18n.t('g.a.condition') }}</th>
+              <th>{{ i18n.t('g.a.location') }}</th>
+              <th class="text-right">{{ i18n.t('g.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (a of assets(); track a['id']) {
+                <tr>
+                  <td class="no-col">{{ $index + 1 }}</td>
+                  <td>{{ a['code'] }}</td>
+                  <td class="font-bold">{{ a['name'] }}</td>
+                  <td>{{ a['category'] || '—' }}</td>
+                  <td class="text-right">{{ a['quantity'] }}</td>
+                  <td class="text-right">{{ n(a['free_today'], n(a['quantity'])) }}</td>
+                  <td>{{ a['custodian_name'] || '—' }}</td>
+                  <td class="text-right">{{ a['hire_rate'] ? tsh(a['hire_rate']) : '—' }}</td>
+                  <td>{{ a['condition'] ? i18n.t('g.cond.' + a['condition']) : '—' }}</td>
+                  <td>{{ a['location'] || '—' }}</td>
+                  <td class="text-right">@if (assetMenu().length) { <app-row-menu [items]="assetMenu()" [testid]="'g-a-menu-' + a['id']" (picked)="assetPicked($event, a)" /> } @else { — }</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="11" class="ph-muted">{{ i18n.t('g.a.none') }}</td></tr>
+              }
+            </tbody>
+          </table>
         </div>
       } @else {
         <div class="ph-chips">
@@ -56,34 +78,47 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
             <button type="button" class="pill-tab" [class.is-active]="hireFilter() === s" (click)="hireFilter.set(s); loadHires()">{{ s === 'open' ? i18n.t('g.l.open') : status(s) }}</button>
           }
         </div>
-        <div class="ph-card ph-joined" data-testid="g-h-list">
-          @for (h of hires(); track h['id']) {
-            <section class="ph-sec">
-              <div class="ph-row"><h3>{{ h['who'] }} <span class="ph-muted">{{ h['reference'] }}</span></h3><span class="ph-badge" [class]="tone(h['state'] === 'overdue' ? 'overdue' : h['status'])">{{ h['state'] === 'overdue' ? status('overdue') : status(h['status']) }}</span></div>
-              <div class="ph-line"><span>{{ h['asset_name'] }} × {{ h['quantity'] }} · {{ day(h['start_date']) }} – {{ day(h['end_date']) }}</span><b>{{ tsh(h['total'] ?? h['amount']) }}</b></div>
-              <div class="ph-line"><span class="ph-muted">{{ h['phone'] }}@if (h['purpose']) { · {{ h['purpose'] }} }</span>
-                <span>{{ i18n.t('g.paid') }} {{ tsh(h['paid'] ?? 0) }}@if (h['balance'] > 0) { · <b class="ph-bad">{{ i18n.t('g.p.left', tsh(h['balance'])) }}</b> }</span></div>
-              @if (h['late_charge_now'] > 0) { <p class="ph-bad" style="font-size: 13px">{{ i18n.t('g.h.late.now', tsh(h['late_charge_now'])) }}</p> }
-              @if (h['returned_quantity'] !== null && h['returned_quantity'] !== undefined) {
-                <p class="ph-muted">{{ i18n.t('g.h.back', n(h['returned_quantity']), n(h['damaged_quantity']), n(h['missing_quantity'])) }}</p>
+        <div class="table-scroll-container fit-page" data-testid="g-h-list">
+          <table class="grid-table">
+            <thead>
+              <tr>
+              <th class="no-col">#</th>
+              <th>{{ i18n.t('g.ref') }}</th>
+              <th>{{ i18n.t('g.h.who') }}</th>
+              <th>{{ i18n.t('g.f.phone') }}</th>
+              <th>{{ i18n.t('g.h.what') }}</th>
+              <th class="text-right">{{ i18n.t('g.a.quantity') }}</th>
+              <th>{{ i18n.t('g.h.from') }}</th>
+              <th>{{ i18n.t('g.h.to') }}</th>
+              <th class="text-right">{{ i18n.t('g.d.total') }}</th>
+              <th class="text-right">{{ i18n.t('g.paid') }}</th>
+              <th class="text-right">{{ i18n.t('g.l.left') }}</th>
+              <th>{{ i18n.t('g.status') }}</th>
+              <th class="text-right">{{ i18n.t('g.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (h of hires(); track h['id']) {
+                <tr>
+                  <td class="no-col">{{ $index + 1 }}</td>
+                  <td>{{ h['reference'] }}</td>
+                  <td class="font-bold">{{ h['who'] }}</td>
+                  <td>{{ h['phone'] || '—' }}</td>
+                  <td>{{ h['asset_name'] }}</td>
+                  <td class="text-right">{{ h['quantity'] }}</td>
+                  <td>{{ day(h['start_date']) }}</td>
+                  <td>{{ day(h['end_date']) }}</td>
+                  <td class="text-right">{{ tsh(h['total'] ?? h['amount']) }}</td>
+                  <td class="text-right">{{ tsh(h['paid'] ?? 0) }}</td>
+                  <td class="text-right"><span [class.ph-bad]="h['balance'] > 0">{{ tsh(h['balance'] ?? 0) }}</span></td>
+                  <td><span class="ph-badge" [class]="tone(h['state'] === 'overdue' ? 'overdue' : h['status'])">{{ h['state'] === 'overdue' ? status('overdue') : status(h['status']) }}</span></td>
+                  <td class="text-right">@if (hireMenu(h).length) { <app-row-menu [items]="hireMenu(h)" [testid]="'g-h-menu-' + h['id']" (picked)="hirePicked($event, h)" /> } @else { — }</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="13" class="ph-muted">{{ i18n.t('g.h.none') }}</td></tr>
               }
-              <div class="g-acts">
-                @if (h['status'] === 'requested') {
-                  <button type="button" class="btn-primary is-success ph-btn" (click)="decide(h, true)" [attr.data-testid]="'g-h-approve-' + h['id']">{{ i18n.t('g.approve') }}</button>
-                  <button type="button" class="btn-primary is-danger ph-btn" (click)="decide(h, false)">{{ i18n.t('g.turn.down') }}</button>
-                }
-                @if ((h['status'] === 'approved' || h['status'] === 'returned' || h['status'] === 'issued') && h['balance'] > 0) {
-                  <button type="button" class="btn-primary is-success ph-btn" (click)="openAct(h, 'pay')">{{ i18n.t('g.h.take.pay') }}</button>
-                }
-                @if (h['status'] === 'approved') { <button type="button" class="btn-primary is-info ph-btn" (click)="openAct(h, 'issue')">{{ i18n.t('g.h.issue') }}</button> }
-                @if (h['status'] === 'issued') { <button type="button" class="btn-primary is-warn ph-btn" (click)="openAct(h, 'return')">{{ i18n.t('g.h.return') }}</button> }
-                @if (h['status'] === 'returned' && can('decide_hire_charges') && ((h['damaged_quantity'] ?? 0) + (h['missing_quantity'] ?? 0)) > 0 && h['damage_charge'] === null) {
-                  <button type="button" class="btn-primary is-danger ph-btn" (click)="openAct(h, 'charge')">{{ i18n.t('g.h.charge') }}</button>
-                }
-                @if (h['status'] === 'returned' && !(h['balance'] > 0)) { <button type="button" class="btn-outline ph-btn" (click)="close(h)">{{ i18n.t('g.h.close') }}</button> }
-              </div>
-            </section>
-          } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.h.none') }}</p></section> }
+            </tbody>
+          </table>
         </div>
       }
     </div>
@@ -114,11 +149,35 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
     <!-- an asset's history -->
     <app-modal-dialog [show]="!!detail()" [eyebrow]="detail()?.['asset']?.['code'] ?? ''" [title]="detail()?.['asset']?.['name'] ?? ''" size="md" (close)="detail.set(null)">
       <div slot="body">
-        <div class="ph-card ph-joined">
-          @for (e of detail()?.['events'] ?? []; track $index) {
-            <section class="ph-sec"><div class="ph-line"><span>{{ i18n.t('g.ev.' + e['kind']) }}@if (e['quantity']) { · {{ e['quantity'] }} } @if (e['cost']) { · {{ tsh(e['cost']) }} }</span><span class="ph-muted">{{ when(e['created_at']) }}</span></div>
-              <p class="ph-muted">{{ e['note'] }}@if (e['by_name']) { · {{ e['by_name'] }} }</p></section>
-          } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.none') }}</p></section> }
+        <div class="table-scroll-container fit-page">
+          <table class="grid-table">
+            <thead>
+              <tr>
+              <th class="no-col">#</th>
+              <th>{{ i18n.t('g.kind') }}</th>
+              <th class="text-right">{{ i18n.t('g.a.quantity') }}</th>
+              <th class="text-right">{{ i18n.t('g.a.cost') }}</th>
+              <th>{{ i18n.t('g.note') }}</th>
+              <th>{{ i18n.t('g.by') }}</th>
+              <th>{{ i18n.t('g.date') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (e of detail()?.['events'] ?? []; track $index) {
+                <tr>
+                  <td class="no-col">{{ $index + 1 }}</td>
+                  <td>{{ i18n.t('g.ev.' + e['kind']) }}</td>
+                  <td class="text-right">{{ e['quantity'] || '—' }}</td>
+                  <td class="text-right">{{ e['cost'] ? tsh(e['cost']) : '—' }}</td>
+                  <td>{{ e['note'] || '—' }}</td>
+                  <td>{{ e['by_name'] || '—' }}</td>
+                  <td>{{ when(e['created_at']) }}</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="7" class="ph-muted">{{ i18n.t('g.none') }}</td></tr>
+              }
+            </tbody>
+          </table>
         </div>
       </div>
       <div slot="footer" class="flex gap-2"><button type="button" class="btn-outline ph-btn" (click)="detail.set(null)">{{ i18n.t('common.close') }}</button></div>
@@ -223,6 +282,47 @@ export class GAssetsPage extends GBase implements OnInit {
 
   ngOnInit(): void {
     void this.loadAssets();
+  }
+
+  protected assetMenu(): MenuItem[] {
+    const items: MenuItem[] = [{ id: 'open', label: this.i18n.t('g.a.history') }];
+    if (this.can('manage_assets')) {
+      items.push({ id: 'edit', label: this.i18n.t('g.edit') });
+      items.push({ id: 'event', label: this.i18n.t('g.a.event') });
+    }
+    return items;
+  }
+
+  protected assetPicked(id: string, a: Row): void {
+    if (id === 'open') void this.openDetail(a);
+    if (id === 'edit') this.openAsset(a);
+    if (id === 'event') this.openEvent(a);
+  }
+
+  protected hireMenu(h: Row): MenuItem[] {
+    const items: MenuItem[] = [];
+    const s = h['status'];
+    if (s === 'requested') {
+      items.push({ id: 'approve', label: this.i18n.t('g.approve'), primary: true, testid: 'g-h-approve-' + h['id'] });
+      items.push({ id: 'decline', label: this.i18n.t('g.turn.down'), danger: true });
+    }
+    if ((s === 'approved' || s === 'returned' || s === 'issued') && h['balance'] > 0) items.push({ id: 'pay', label: this.i18n.t('g.h.take.pay'), primary: true });
+    if (s === 'approved') items.push({ id: 'issue', label: this.i18n.t('g.h.issue') });
+    if (s === 'issued') items.push({ id: 'return', label: this.i18n.t('g.h.return') });
+    if (s === 'returned' && this.can('decide_hire_charges') && (this.n(h['damaged_quantity']) + this.n(h['missing_quantity'])) > 0 && h['damage_charge'] === null) {
+      items.push({ id: 'charge', label: this.i18n.t('g.h.charge'), danger: true });
+    }
+    if (s === 'returned' && !(h['balance'] > 0)) items.push({ id: 'close', label: this.i18n.t('g.h.close') });
+    return items;
+  }
+
+  protected hirePicked(id: string, h: Row): void {
+    switch (id) {
+      case 'approve': void this.decide(h, true); break;
+      case 'decline': void this.decide(h, false); break;
+      case 'close': void this.close(h); break;
+      default: this.openAct(h, id as HireAct);
+    }
   }
 
   protected actTitle(): string {

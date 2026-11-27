@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { monthKey } from '../../core/format';
 import { Row } from '../../core/groups/groups-api.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
 
 type Tab = 'owing' | 'types' | 'promises';
@@ -16,7 +17,7 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
  */
 @Component({
   selector: 'app-g-contributions',
-  imports: [FormsModule, ModalDialogComponent],
+  imports: [RowMenuComponent, FormsModule, ModalDialogComponent],
   template: `
     <div class="ad ph-page" data-testid="g-contributions">
       <div class="ph-chips">
@@ -48,23 +49,45 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
             <button type="button" class="btn-outline ph-btn" (click)="loadOwing(1)">{{ i18n.t('ad.apply') }}</button>
           </div>
           <p class="ph-muted">{{ i18n.t('g.count', total()) }}</p>
-          <div class="ph-card ph-joined" data-testid="g-c-owing">
-            @for (o of owing(); track o['id']) {
-              <section class="ph-sec">
-                <div class="ph-row"><h3>{{ o['member_name'] }} <span class="ph-muted">{{ o['member_number'] }}</span></h3>
-                  <span class="ph-badge" [class]="tone(o['state'])">{{ status(o['state']) }}</span></div>
-                <div class="ph-line"><span>{{ o['label'] || o['type_name'] }} @if (o['period']) { · {{ o['period'] }} }</span><b>{{ tsh(o['amount_due']) }}</b></div>
-                <div class="ph-line"><span class="ph-muted">{{ i18n.t('g.c.due', day(o['due_date'])) }}@if (o['days_overdue'] > 0) { · {{ i18n.t('g.c.late.days', o['days_overdue']) }} }</span>
-                  <span>{{ i18n.t('g.paid') }} {{ tsh(o['paid']) }} · <b [class.ph-bad]="o['remaining'] > 0">{{ i18n.t('g.p.left', tsh(o['remaining'])) }}</b></span></div>
-                @if (o['exempt_reason']) { <p class="ph-muted">{{ i18n.t('g.c.excused', o['exempt_reason']) }}</p> }
-                @if (o['remaining'] > 0 && o['state'] !== 'exempt') {
-                  <div class="g-acts">
-                    @if (can('grant_exemptions')) { <button type="button" class="btn-primary is-warn ph-btn" (click)="exempt(o)" [attr.data-testid]="'g-c-exempt-' + o['id']">{{ i18n.t('g.c.exempt') }}</button> }
-                    @if (can('record_payments')) { <button type="button" class="btn-outline ph-btn" (click)="openPromise(o)">{{ i18n.t('g.c.promise') }}</button> }
-                  </div>
+          <div class="table-scroll-container fit-page" data-testid="g-c-owing">
+            <table class="grid-table">
+              <thead>
+                <tr>
+                <th class="no-col">#</th>
+                <th>{{ i18n.t('g.member') }}</th>
+                <th>{{ i18n.t('g.number') }}</th>
+                <th>{{ i18n.t('g.c.type') }}</th>
+                <th>{{ i18n.t('g.c.period') }}</th>
+                <th>{{ i18n.t('g.c.due.date') }}</th>
+                <th class="text-right">{{ i18n.t('g.c.amount.due') }}</th>
+                <th class="text-right">{{ i18n.t('g.paid') }}</th>
+                <th class="text-right">{{ i18n.t('g.l.left') }}</th>
+                <th>{{ i18n.t('g.status') }}</th>
+                <th>{{ i18n.t('g.note') }}</th>
+                <th class="text-right">{{ i18n.t('g.actions') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (o of owing(); track o['id']) {
+                  <tr>
+                    <td class="no-col">{{ $index + 1 }}</td>
+                    <td class="font-bold">{{ o['member_name'] }}</td>
+                    <td>{{ o['member_number'] || '—' }}</td>
+                    <td>{{ o['label'] || o['type_name'] }}</td>
+                    <td>{{ o['period'] || '—' }}</td>
+                    <td>{{ day(o['due_date']) }}@if (o['days_overdue'] > 0) { <span class="ph-bad"> ({{ i18n.t('g.c.late.days', o['days_overdue']) }})</span> }</td>
+                    <td class="text-right">{{ tsh(o['amount_due']) }}</td>
+                    <td class="text-right">{{ tsh(o['paid']) }}</td>
+                    <td class="text-right"><b [class.ph-bad]="o['remaining'] > 0">{{ tsh(o['remaining']) }}</b></td>
+                    <td><span class="ph-badge" [class]="tone(o['state'])">{{ status(o['state']) }}</span></td>
+                    <td>{{ o['exempt_reason'] || '—' }}</td>
+                    <td class="text-right">@if (owingMenu(o).length) { <app-row-menu [items]="owingMenu(o)" [testid]="'g-c-menu-' + o['id']" (picked)="owingPicked($event, o)" /> } @else { — }</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="12" class="ph-muted">{{ i18n.t('g.c.none') }}</td></tr>
                 }
-              </section>
-            } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.c.none') }}</p></section> }
+              </tbody>
+            </table>
           </div>
           <div class="ph-row">
             <button type="button" class="btn-outline ph-btn" [disabled]="page() <= 1" (click)="loadOwing(page() - 1)">{{ i18n.t('g.prev') }}</button>
@@ -76,36 +99,73 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
           @if (can('manage_contributions')) {
             <div class="ph-row"><span></span><button type="button" class="btn-primary ph-btn" (click)="openType(null)" data-testid="g-c-type-new">{{ i18n.t('g.c.type.new') }}</button></div>
           }
-          <div class="ph-card ph-joined" data-testid="g-c-types">
-            @for (t of types(); track t['id']) {
-              <section class="ph-sec">
-                <div class="ph-row"><h3>{{ t['name'] }}</h3><b class="ph-accent">{{ tsh(t['amount']) }}</b></div>
-                <div class="ph-line"><span>{{ i18n.t('g.freq.' + t['frequency']) }}@if (t['frequency'] === 'monthly') { · {{ i18n.t('g.c.day', t['due_day']) }} }</span>
-                  <span><span class="ph-badge" [class]="t['active'] ? 'ph-good' : 'ph-bad'">{{ t['active'] ? i18n.t('g.running') : i18n.t('g.stopped') }}</span>
-                    @if (t['mandatory']) { <span class="ph-badge ph-warn">{{ i18n.t('g.c.mandatory') }}</span> }</span></div>
-                @if (t['description']) { <p class="ph-muted">{{ t['description'] }}</p> }
-                @if (can('manage_contributions')) {
-                  <div class="g-acts">
-                    <button type="button" class="btn-outline ph-btn" (click)="openType(t)">{{ i18n.t('g.edit') }}</button>
-                    @if (t['active']) { <button type="button" class="btn-primary is-success ph-btn" (click)="openRaise(t)" [attr.data-testid]="'g-c-raise-' + t['id']">{{ i18n.t('g.c.raise') }}</button> }
-                  </div>
+          <div class="table-scroll-container fit-page" data-testid="g-c-types">
+            <table class="grid-table">
+              <thead>
+                <tr>
+                <th class="no-col">#</th>
+                <th>{{ i18n.t('g.name') }}</th>
+                <th class="text-right">{{ i18n.t('g.c.amount.each') }}</th>
+                <th>{{ i18n.t('g.c.frequency') }}</th>
+                <th>{{ i18n.t('g.c.due.day.short') }}</th>
+                <th>{{ i18n.t('g.c.mandatory') }}</th>
+                <th>{{ i18n.t('g.status') }}</th>
+                <th>{{ i18n.t('g.description') }}</th>
+                <th class="text-right">{{ i18n.t('g.actions') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (t of types(); track t['id']) {
+                  <tr>
+                    <td class="no-col">{{ $index + 1 }}</td>
+                    <td class="font-bold">{{ t['name'] }}</td>
+                    <td class="text-right">{{ tsh(t['amount']) }}</td>
+                    <td>{{ i18n.t('g.freq.' + t['frequency']) }}</td>
+                    <td>{{ t['frequency'] === 'monthly' ? t['due_day'] : '—' }}</td>
+                    <td>{{ t['mandatory'] ? i18n.t('g.yes') : i18n.t('g.no') }}</td>
+                    <td><span class="ph-badge" [class]="t['active'] ? 'ph-good' : 'ph-bad'">{{ t['active'] ? i18n.t('g.running') : i18n.t('g.stopped') }}</span></td>
+                    <td>{{ t['description'] || '—' }}</td>
+                    <td class="text-right">@if (typeMenu(t).length) { <app-row-menu [items]="typeMenu(t)" [testid]="'g-c-type-menu-' + t['id']" (picked)="typePicked($event, t)" /> } @else { — }</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="9" class="ph-muted">{{ i18n.t('g.c.types.none') }}</td></tr>
                 }
-              </section>
-            } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.c.types.none') }}</p></section> }
+              </tbody>
+            </table>
           </div>
         }
         @case ('promises') {
-          <div class="ph-card ph-joined" data-testid="g-c-promises">
-            @for (p of promises(); track p['id']) {
-              <section class="ph-sec">
-                <div class="ph-row"><h3>{{ p['member_name'] }}</h3><span class="ph-badge" [class]="tone(p['state'])">{{ status(p['state']) }}</span></div>
-                <div class="ph-line"><span>{{ p['obligation_label'] || i18n.t('g.c.any') }}</span><b>{{ tsh(p['amount']) }}</b></div>
-                <div class="ph-line"><span class="ph-muted">{{ i18n.t('g.c.promised.on', day(p['promised_on'])) }}</span><span class="ph-muted">{{ p['note'] }}</span></div>
-                @if ((p['state'] === 'due' || p['state'] === 'open' || p['state'] === 'upcoming') && can('record_payments')) {
-                  <div class="g-acts"><button type="button" class="btn-outline ph-btn" (click)="cancelPromise(p)">{{ i18n.t('g.c.promise.cancel') }}</button></div>
+          <div class="table-scroll-container fit-page" data-testid="g-c-promises">
+            <table class="grid-table">
+              <thead>
+                <tr>
+                <th class="no-col">#</th>
+                <th>{{ i18n.t('g.member') }}</th>
+                <th>{{ i18n.t('g.c.for') }}</th>
+                <th class="text-right">{{ i18n.t('g.amount') }}</th>
+                <th>{{ i18n.t('g.c.promise.day') }}</th>
+                <th>{{ i18n.t('g.note') }}</th>
+                <th>{{ i18n.t('g.status') }}</th>
+                <th class="text-right">{{ i18n.t('g.actions') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (p of promises(); track p['id']) {
+                  <tr>
+                    <td class="no-col">{{ $index + 1 }}</td>
+                    <td class="font-bold">{{ p['member_name'] }}</td>
+                    <td>{{ p['obligation_label'] || i18n.t('g.c.any') }}</td>
+                    <td class="text-right">{{ tsh(p['amount']) }}</td>
+                    <td>{{ day(p['promised_on']) }}</td>
+                    <td>{{ p['note'] || '—' }}</td>
+                    <td><span class="ph-badge" [class]="tone(p['state'])">{{ status(p['state']) }}</span></td>
+                    <td class="text-right">@if (promiseMenu(p).length) { <app-row-menu [items]="promiseMenu(p)" [testid]="'g-c-promise-menu-' + p['id']" (picked)="cancelPromise(p)" /> } @else { — }</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="8" class="ph-muted">{{ i18n.t('g.c.promises.none') }}</td></tr>
                 }
-              </section>
-            } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.c.promises.none') }}</p></section> }
+              </tbody>
+            </table>
           </div>
         }
       }
@@ -195,6 +255,37 @@ export class GContributionsPage extends GBase implements OnInit {
   ngOnInit(): void {
     void this.loadTypes();
     void this.loadOwing(1);
+  }
+
+  protected owingMenu(o: Row): MenuItem[] {
+    if (!(o['remaining'] > 0) || o['state'] === 'exempt') return [];
+    const items: MenuItem[] = [];
+    if (this.can('grant_exemptions')) items.push({ id: 'exempt', label: this.i18n.t('g.c.exempt'), testid: 'g-c-exempt-' + o['id'] });
+    if (this.can('record_payments')) items.push({ id: 'promise', label: this.i18n.t('g.c.promise') });
+    return items;
+  }
+
+  protected owingPicked(id: string, o: Row): void {
+    if (id === 'exempt') void this.exempt(o);
+    if (id === 'promise') this.openPromise(o);
+  }
+
+  protected typeMenu(t: Row): MenuItem[] {
+    if (!this.can('manage_contributions')) return [];
+    const items: MenuItem[] = [{ id: 'edit', label: this.i18n.t('g.edit') }];
+    if (t['active']) items.push({ id: 'raise', label: this.i18n.t('g.c.raise'), primary: true, testid: 'g-c-raise-' + t['id'] });
+    return items;
+  }
+
+  protected typePicked(id: string, t: Row): void {
+    if (id === 'edit') this.openType(t);
+    if (id === 'raise') this.openRaise(t);
+  }
+
+  protected promiseMenu(p: Row): MenuItem[] {
+    return (p['state'] === 'due' || p['state'] === 'open' || p['state'] === 'upcoming') && this.can('record_payments')
+      ? [{ id: 'cancel', label: this.i18n.t('g.c.promise.cancel'), danger: true }]
+      : [];
   }
 
   protected go(t: Tab): void {

@@ -1,9 +1,10 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { monthKey } from '../../core/format';
 import { Row } from '../../core/groups/groups-api.service';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
 
 /** Each kind of work that can wait for a leader, and the page where it is done. */
@@ -38,7 +39,7 @@ export const G_WAITING: Record<string, string> = {
  */
 @Component({
   selector: 'app-g-dashboard',
-  imports: [FormsModule, RouterLink],
+  imports: [RowMenuComponent, FormsModule, RouterLink],
   template: `
     <div class="ad ph-page" data-testid="g-dashboard">
       <div class="ph-row" style="flex-wrap: wrap">
@@ -47,15 +48,30 @@ export const G_WAITING: Record<string, string> = {
       </div>
 
       @if (waiting().length) {
-        <div class="ph-card ph-joined" data-testid="g-waiting">
-          <section class="ph-sec"><h3>{{ i18n.t('g.waiting') }}</h3></section>
-          @for (w of waiting(); track w.key) {
-            <section class="ph-sec">
-              <a class="ph-row g-link" [routerLink]="w.path" [attr.data-testid]="'g-wait-' + w.key">
-                <span>{{ i18n.t('g.wait.' + w.key) }}</span><b class="ph-warn">{{ w.count }}</b>
-              </a>
-            </section>
-          }
+        <h3>{{ i18n.t('g.waiting') }}</h3>
+<div class="table-scroll-container fit-page" data-testid="g-waiting">
+          <table class="grid-table">
+            <thead>
+              <tr>
+              <th class="no-col">#</th>
+              <th>{{ i18n.t('g.what') }}</th>
+              <th class="text-right">{{ i18n.t('g.count.short') }}</th>
+              <th class="text-right">{{ i18n.t('g.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (w of waiting(); track w.key) {
+                <tr>
+                  <td class="no-col">{{ $index + 1 }}</td>
+                  <td class="font-bold"><a class="g-link" [routerLink]="w.path" [attr.data-testid]="'g-wait-' + w.key">{{ i18n.t('g.wait.' + w.key) }}</a></td>
+                  <td class="text-right"><b class="ph-warn">{{ w.count }}</b></td>
+                  <td class="text-right">@if ([{ id: 'open', label: i18n.t('g.open'), primary: true }].length) { <app-row-menu [items]="[{ id: 'open', label: i18n.t('g.open'), primary: true }]" [testid]="'g-wait-menu-' + w.key" (picked)="go(w.path)" /> } @else { — }</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="4" class="ph-muted">{{ i18n.t('g.none') }}</td></tr>
+              }
+            </tbody>
+          </table>
         </div>
       }
 
@@ -166,6 +182,7 @@ export const G_WAITING: Record<string, string> = {
   ],
 })
 export class GDashboardPage extends GBase implements OnInit {
+  private readonly router = inject(Router);
   protected readonly month = signal(monthKey(new Date()));
   protected readonly d = signal<Row | null>(null);
   protected readonly error = signal('');
@@ -182,6 +199,10 @@ export class GDashboardPage extends GBase implements OnInit {
     const t: Row[] = this.d()?.['money']?.['trend'] ?? [];
     return Math.max(1, ...t.map((x) => Math.max(Number(x['in']) || 0, Number(x['out']) || 0)));
   });
+
+  protected go(path: string): void {
+    void this.router.navigate([path]);
+  }
 
   ngOnInit(): void {
     void this.ctx.reload();

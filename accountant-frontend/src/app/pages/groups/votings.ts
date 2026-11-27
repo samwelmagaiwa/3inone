@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { Row } from '../../core/groups/groups-api.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
 import { MemberPick, PickedMember } from './member-pick';
 
@@ -21,7 +22,7 @@ function local(v: string | null | undefined): string {
  */
 @Component({
   selector: 'app-g-votings',
-  imports: [FormsModule, ModalDialogComponent, MemberPick],
+  imports: [RowMenuComponent, FormsModule, ModalDialogComponent, MemberPick],
   template: `
     <div class="ad ph-page" data-testid="g-votings">
       <div class="ph-row">
@@ -29,35 +30,42 @@ function local(v: string | null | undefined): string {
         @if (can('manage_votings')) { <button type="button" class="btn-primary ph-btn" (click)="openForm(null)" data-testid="g-v-new">{{ i18n.t('g.v.new') }}</button> }
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
-      <div class="ph-card ph-joined" data-testid="g-v-list">
-        @for (v of rows(); track v['id']) {
-          <section class="ph-sec">
-            <div class="ph-row"><h3>{{ v['title'] }} <span class="ph-muted">{{ v['reference'] }}</span></h3><span class="ph-badge" [class]="tone(v['status'] === 'open' ? 'active' : v['status'])">{{ status(v['status']) }}</span></div>
-            <div class="ph-line"><span>{{ i18n.t('g.v.kind.' + v['kind']) }}@if (v['position']) { · {{ v['position'] }} } · {{ i18n.t('g.v.cat.' + v['category']) }}</span>
-              <span class="ph-muted">{{ when(v['opens_at']) }} – {{ when(v['closes_at']) }}</span></div>
-            @if (v['progress']; as pg) { <div class="ph-line"><span class="ph-muted">{{ i18n.t('g.v.turnout', n(pg['turnout']), n(pg['eligible'], n(v['eligible_count']))) }}</span><b>{{ pg['percent'] ?? 0 }}%</b></div> }
-            @if (v['cancel_reason']) { <p class="ph-bad" style="font-size: 13px">{{ v['cancel_reason'] }}</p> }
-            <div class="g-acts">
-              <button type="button" class="btn-outline ph-btn" (click)="open(v)" [attr.data-testid]="'g-v-open-' + v['id']">{{ i18n.t('g.open') }}</button>
-              @if (can('manage_votings')) {
-                @if (v['status'] === 'draft') {
-                  <button type="button" class="btn-outline ph-btn" (click)="openForm(v)">{{ i18n.t('g.edit') }}</button>
-                  <button type="button" class="btn-primary is-success ph-btn" (click)="move(v, 'publish')" [attr.data-testid]="'g-v-publish-' + v['id']">{{ i18n.t('g.v.publish') }}</button>
-                  <button type="button" class="link-btn danger" (click)="remove(v)">{{ i18n.t('common.delete') }}</button>
-                }
-                @if (v['status'] === 'open') { <button type="button" class="btn-primary is-warn ph-btn" (click)="move(v, 'pause')">{{ i18n.t('g.v.pause') }}</button> }
-                @if (v['status'] === 'paused') { <button type="button" class="btn-primary is-success ph-btn" (click)="move(v, 'resume')">{{ i18n.t('g.v.resume') }}</button> }
-                @if (v['status'] === 'open' || v['status'] === 'paused') { <button type="button" class="btn-primary is-info ph-btn" (click)="move(v, 'close')">{{ i18n.t('g.v.close') }}</button> }
-                @if (v['status'] === 'scheduled' || v['status'] === 'open' || v['status'] === 'paused') { <button type="button" class="btn-outline ph-btn" (click)="extend(v)">{{ i18n.t('g.v.extend') }}</button> }
-                @if (v['status'] !== 'closed' && v['status'] !== 'cancelled') { <button type="button" class="btn-primary is-danger ph-btn" (click)="cancel(v)">{{ i18n.t('g.v.cancel') }}</button> }
+      <div class="table-scroll-container fit-page" data-testid="g-v-list">
+          <table class="grid-table">
+            <thead>
+              <tr>
+              <th class="no-col">#</th>
+              <th>{{ i18n.t('g.ref') }}</th>
+              <th>{{ i18n.t('g.pr.title') }}</th>
+              <th>{{ i18n.t('g.v.kind') }}</th>
+              <th>{{ i18n.t('g.kind') }}</th>
+              <th>{{ i18n.t('g.v.opens') }}</th>
+              <th>{{ i18n.t('g.v.closes') }}</th>
+              <th class="text-right">{{ i18n.t('g.v.turnout.short') }}</th>
+              <th>{{ i18n.t('g.status') }}</th>
+              <th class="text-right">{{ i18n.t('g.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (v of rows(); track v['id']) {
+                <tr>
+                  <td class="no-col">{{ $index + 1 }}</td>
+                  <td>{{ v['reference'] }}</td>
+                  <td class="font-bold">{{ v['title'] }}@if (v['position']) { <span class="ph-muted"> · {{ v['position'] }}</span> }</td>
+                  <td>{{ i18n.t('g.v.kind.' + v['kind']) }}</td>
+                  <td>{{ i18n.t('g.v.cat.' + v['category']) }}</td>
+                  <td>{{ when(v['opens_at']) }}</td>
+                  <td>{{ when(v['closes_at']) }}</td>
+                  <td class="text-right">{{ v['progress'] ? n(v['progress']['turnout']) + ' / ' + n(v['progress']['eligible'], n(v['eligible_count'])) : '—' }}</td>
+                  <td><span class="ph-badge" [class]="tone(v['status'] === 'open' ? 'active' : v['status'])">{{ status(v['status']) }}</span></td>
+                  <td class="text-right">@if (menuFor(v).length) { <app-row-menu [items]="menuFor(v)" [testid]="'g-v-menu-' + v['id']" (picked)="picked($event, v)" /> } @else { — }</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="10" class="ph-muted">{{ i18n.t('g.v.none') }}</td></tr>
               }
-              @if (v['status'] === 'closed' && !v['results_published'] && can('publish_voting_results')) {
-                <button type="button" class="btn-primary is-success ph-btn" (click)="move(v, 'publish-results')">{{ i18n.t('g.v.publish.results') }}</button>
-              }
-            </div>
-          </section>
-        } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.v.none') }}</p></section> }
-      </div>
+            </tbody>
+          </table>
+        </div>
     </div>
 
     <!-- one voting and its results -->
@@ -177,6 +185,36 @@ export class GVotingsPage extends GBase implements OnInit {
 
   ngOnInit(): void {
     void this.load();
+  }
+
+  protected menuFor(v: Row): MenuItem[] {
+    const s = v['status'];
+    const items: MenuItem[] = [{ id: 'open', label: this.i18n.t('g.open'), testid: 'g-v-open-' + v['id'] }];
+    if (this.can('manage_votings')) {
+      if (s === 'draft') {
+        items.push({ id: 'edit', label: this.i18n.t('g.edit') });
+        items.push({ id: 'publish', label: this.i18n.t('g.v.publish'), primary: true, testid: 'g-v-publish-' + v['id'] });
+        items.push({ id: 'delete', label: this.i18n.t('common.delete'), danger: true });
+      }
+      if (s === 'open') items.push({ id: 'pause', label: this.i18n.t('g.v.pause') });
+      if (s === 'paused') items.push({ id: 'resume', label: this.i18n.t('g.v.resume'), primary: true });
+      if (s === 'open' || s === 'paused') items.push({ id: 'close', label: this.i18n.t('g.v.close') });
+      if (s === 'scheduled' || s === 'open' || s === 'paused') items.push({ id: 'extend', label: this.i18n.t('g.v.extend') });
+      if (s !== 'closed' && s !== 'cancelled') items.push({ id: 'cancel', label: this.i18n.t('g.v.cancel'), danger: true });
+    }
+    if (s === 'closed' && !v['results_published'] && this.can('publish_voting_results')) items.push({ id: 'publish-results', label: this.i18n.t('g.v.publish.results'), primary: true });
+    return items;
+  }
+
+  protected picked(id: string, v: Row): void {
+    switch (id) {
+      case 'open': void this.open(v); break;
+      case 'edit': this.openForm(v); break;
+      case 'delete': void this.remove(v); break;
+      case 'extend': this.extend(v); break;
+      case 'cancel': void this.cancel(v); break;
+      default: void this.move(v, id as 'publish' | 'pause' | 'resume' | 'close' | 'publish-results');
+    }
   }
 
   async load(): Promise<void> {

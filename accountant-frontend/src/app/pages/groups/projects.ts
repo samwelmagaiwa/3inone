@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { Row } from '../../core/groups/groups-api.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
 import { MemberPick, PickedMember } from './member-pick';
 
@@ -14,7 +15,7 @@ const STATUSES = ['proposed', 'active', 'completed', 'rejected', 'cancelled', ''
  */
 @Component({
   selector: 'app-g-projects',
-  imports: [FormsModule, ModalDialogComponent, MemberPick],
+  imports: [RowMenuComponent, FormsModule, ModalDialogComponent, MemberPick],
   template: `
     <div class="ad ph-page" data-testid="g-projects">
       <div class="ph-row" style="flex-wrap: wrap">
@@ -26,18 +27,44 @@ const STATUSES = ['proposed', 'active', 'completed', 'rejected', 'cancelled', ''
         <button type="button" class="btn-primary ph-btn" (click)="openForm(null)" data-testid="g-pr-new">{{ i18n.t('g.pr.propose') }}</button>
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
-      <div class="ph-card ph-joined" data-testid="g-pr-list">
-        @for (p of rows(); track p['id']) {
-          <section class="ph-sec">
-            <div class="ph-row"><h3>{{ p['title'] }} <span class="ph-muted">{{ p['reference'] }}</span></h3><span class="ph-badge" [class]="tone(p['status'])">{{ status(p['status']) }}</span></div>
-            <div class="ph-line"><span>{{ i18n.t('g.pr.budget') }} {{ tsh(p['budget']) }}</span><span>{{ i18n.t('g.pr.spent') }} {{ tsh(p['spent'] ?? 0) }}</span></div>
-            @if (p['status'] === 'active') { <div class="g-bar"><i [style.width.%]="p['progress'] ?? 0"></i></div> }
-            <div class="ph-line"><span class="ph-muted">{{ i18n.t('g.pr.by', p['proposer_name'] || '—') }}@if (p['manager_name']) { · {{ i18n.t('g.pr.manager') }}: {{ p['manager_name'] }} }</span>
-              <span class="ph-muted">{{ i18n.t('g.pr.votes', n(p['supports']), n(p['opposes'])) }}</span></div>
-            <div class="ph-row"><span></span><button type="button" class="btn-outline ph-btn" (click)="open(p['id'])" [attr.data-testid]="'g-pr-open-' + p['id']">{{ i18n.t('g.open') }}</button></div>
-          </section>
-        } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.pr.none') }}</p></section> }
-      </div>
+      <div class="table-scroll-container fit-page" data-testid="g-pr-list">
+          <table class="grid-table">
+            <thead>
+              <tr>
+              <th class="no-col">#</th>
+              <th>{{ i18n.t('g.ref') }}</th>
+              <th>{{ i18n.t('g.pr.title') }}</th>
+              <th>{{ i18n.t('g.pr.by.short') }}</th>
+              <th>{{ i18n.t('g.pr.manager') }}</th>
+              <th class="text-right">{{ i18n.t('g.pr.budget') }}</th>
+              <th class="text-right">{{ i18n.t('g.pr.spent') }}</th>
+              <th class="text-right">{{ i18n.t('g.pr.progress') }}</th>
+              <th>{{ i18n.t('g.pr.committee') }}</th>
+              <th>{{ i18n.t('g.status') }}</th>
+              <th class="text-right">{{ i18n.t('g.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of rows(); track p['id']) {
+                <tr>
+                  <td class="no-col">{{ $index + 1 }}</td>
+                  <td>{{ p['reference'] }}</td>
+                  <td class="font-bold">{{ p['title'] }}</td>
+                  <td>{{ p['proposer_name'] || '—' }}</td>
+                  <td>{{ p['manager_name'] || '—' }}</td>
+                  <td class="text-right">{{ tsh(p['budget']) }}</td>
+                  <td class="text-right">{{ tsh(p['spent'] ?? 0) }}</td>
+                  <td class="text-right">{{ p['progress'] ?? 0 }}%</td>
+                  <td>{{ i18n.t('g.pr.votes', n(p['supports']), n(p['opposes'])) }}</td>
+                  <td><span class="ph-badge" [class]="tone(p['status'])">{{ status(p['status']) }}</span></td>
+                  <td class="text-right">@if (menuFor(p).length) { <app-row-menu [items]="menuFor(p)" [testid]="'g-pr-menu-' + p['id']" (picked)="picked($event, p)" /> } @else { — }</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="11" class="ph-muted">{{ i18n.t('g.pr.none') }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
     </div>
 
     <!-- one project -->
@@ -154,6 +181,33 @@ export class GProjectsPage extends GBase implements OnInit {
 
   ngOnInit(): void {
     void this.load();
+  }
+
+  protected menuFor(p: Row): MenuItem[] {
+    const items: MenuItem[] = [{ id: 'open', label: this.i18n.t('g.open'), testid: 'g-pr-open-' + p['id'] }];
+    if (p['status'] === 'proposed' && this.can('recommend_projects')) {
+      items.push({ id: 'support', label: this.i18n.t('g.pr.support'), primary: true });
+      items.push({ id: 'oppose', label: this.i18n.t('g.pr.oppose'), danger: true });
+    }
+    if (p['status'] === 'proposed' && this.can('approve_projects')) {
+      items.push({ id: 'approve', label: this.i18n.t('g.approve'), primary: true });
+      items.push({ id: 'reject', label: this.i18n.t('g.turn.down'), danger: true });
+    }
+    if ((p['status'] === 'proposed' || p['status'] === 'active') && this.can('manage_projects')) items.push({ id: 'edit', label: this.i18n.t('g.edit') });
+    if (p['status'] === 'active') items.push({ id: 'progress', label: this.i18n.t('g.pr.log') });
+    return items;
+  }
+
+  protected picked(id: string, p: Row): void {
+    switch (id) {
+      case 'open': void this.open(Number(p['id'])); break;
+      case 'support': void this.review(p, true); break;
+      case 'oppose': void this.review(p, false); break;
+      case 'approve': void this.decide(p, true); break;
+      case 'reject': void this.decide(p, false); break;
+      case 'edit': this.openForm(p); break;
+      case 'progress': this.openProgress(p); break;
+    }
   }
 
   async load(): Promise<void> {

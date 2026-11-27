@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { Row } from '../../core/groups/groups-api.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
 
 /**
@@ -12,34 +13,79 @@ import { GBase } from './g-base';
  */
 @Component({
   selector: 'app-g-dividends',
-  imports: [FormsModule, ModalDialogComponent],
+  imports: [RowMenuComponent, FormsModule, ModalDialogComponent],
   template: `
     <div class="ad ph-page" data-testid="g-dividends">
       <div class="ph-row"><span class="ph-muted">{{ i18n.t('g.d.hint') }}</span>
         @if (can('prepare_dividends')) { <button type="button" class="btn-primary ph-btn" (click)="openPrepare()" data-testid="g-d-new">{{ i18n.t('g.d.prepare') }}</button> }</div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
-      <div class="ph-card ph-joined" data-testid="g-d-list">
-        @for (r of runs(); track r['id']) {
-          <section class="ph-sec">
-            <div class="ph-row"><h3>{{ day(r['period_from']) }} – {{ day(r['period_to']) }}</h3><span class="ph-badge" [class]="tone(r['status'] === 'posted' ? 'done' : r['status'] === 'discarded' ? 'cancelled' : 'pending')">{{ status(r['status']) }}</span></div>
-            <div class="ph-line"><span>{{ i18n.t('g.d.pool') }} {{ tsh(r['profit_pool']) }} · {{ i18n.t('g.d.base.' + r['base']) }} · {{ r['method'] === 'rate' ? i18n.t('g.d.rate', r['rate']) : i18n.t('g.d.method.share') }}</span><b class="ph-accent">{{ tsh(r['total']) }}</b></div>
-            <div class="ph-line"><span class="ph-muted">{{ i18n.t('g.d.prepared', r['prepared_by_name'] || '—') }}@if (r['approved_by_name']) { · {{ i18n.t('g.d.approved', r['approved_by_name']) }} }</span><span class="ph-muted">{{ r['note'] }}</span></div>
-            <div class="g-acts">
-              <button type="button" class="btn-outline ph-btn" (click)="open(r)" [attr.data-testid]="'g-d-open-' + r['id']">{{ i18n.t('g.open') }}</button>
-              @if (r['status'] === 'draft' && can('approve_dividends')) { <button type="button" class="btn-primary is-success ph-btn" (click)="post(r)" [attr.data-testid]="'g-d-post-' + r['id']">{{ i18n.t('g.d.post') }}</button> }
-              @if (r['status'] === 'draft' && can('prepare_dividends')) { <button type="button" class="btn-primary is-danger ph-btn" (click)="discard(r)">{{ i18n.t('g.d.discard') }}</button> }
-            </div>
-          </section>
-        } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.d.none') }}</p></section> }
-      </div>
+      <div class="table-scroll-container fit-page" data-testid="g-d-list">
+          <table class="grid-table">
+            <thead>
+              <tr>
+              <th class="no-col">#</th>
+              <th>{{ i18n.t('g.d.period') }}</th>
+              <th class="text-right">{{ i18n.t('g.d.pool') }}</th>
+              <th>{{ i18n.t('g.d.base') }}</th>
+              <th>{{ i18n.t('g.d.method') }}</th>
+              <th class="text-right">{{ i18n.t('g.d.total') }}</th>
+              <th>{{ i18n.t('g.d.prepared.by') }}</th>
+              <th>{{ i18n.t('g.d.approved.by') }}</th>
+              <th>{{ i18n.t('g.status') }}</th>
+              <th>{{ i18n.t('g.note') }}</th>
+              <th class="text-right">{{ i18n.t('g.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of runs(); track r['id']) {
+                <tr>
+                  <td class="no-col">{{ $index + 1 }}</td>
+                  <td class="font-bold">{{ day(r['period_from']) }} – {{ day(r['period_to']) }}</td>
+                  <td class="text-right">{{ tsh(r['profit_pool']) }}</td>
+                  <td>{{ i18n.t('g.d.base.' + r['base']) }}</td>
+                  <td>{{ r['method'] === 'rate' ? i18n.t('g.d.rate', r['rate']) : i18n.t('g.d.method.share') }}</td>
+                  <td class="text-right"><b class="ph-accent">{{ tsh(r['total']) }}</b></td>
+                  <td>{{ r['prepared_by_name'] || '—' }}</td>
+                  <td>{{ r['approved_by_name'] || '—' }}</td>
+                  <td><span class="ph-badge" [class]="tone(r['status'] === 'posted' ? 'done' : r['status'] === 'discarded' ? 'cancelled' : 'pending')">{{ status(r['status']) }}</span></td>
+                  <td>{{ r['note'] || '—' }}</td>
+                  <td class="text-right">@if (menuFor(r).length) { <app-row-menu [items]="menuFor(r)" [testid]="'g-d-menu-' + r['id']" (picked)="picked($event, r)" /> } @else { — }</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="11" class="ph-muted">{{ i18n.t('g.d.none') }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
     </div>
 
     <app-modal-dialog [show]="!!run()" [eyebrow]="i18n.t('nav.g.dividends')" [title]="(run()?.['period_from'] ? day(run()!['period_from']) + ' – ' + day(run()!['period_to']) : '')" size="lg" (close)="run.set(null)">
       <div slot="body">
-        <div class="ph-card ph-joined">
-          @for (l of run()?.['lines'] ?? []; track l['member_id']) {
-            <section class="ph-sec"><div class="ph-line"><span>{{ l['name'] }} <span class="ph-muted">{{ l['member_number'] }}</span></span><span class="ph-muted">{{ i18n.t('g.d.on', tsh(l['base'])) }}</span><b class="ph-good">{{ tsh(l['amount']) }}</b></div></section>
-          } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.none') }}</p></section> }
+        <div class="table-scroll-container fit-page">
+          <table class="grid-table">
+            <thead>
+              <tr>
+              <th class="no-col">#</th>
+              <th>{{ i18n.t('g.member') }}</th>
+              <th>{{ i18n.t('g.number') }}</th>
+              <th class="text-right">{{ i18n.t('g.d.base.amount') }}</th>
+              <th class="text-right">{{ i18n.t('g.d.share') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (l of run()?.['lines'] ?? []; track l['member_id']) {
+                <tr>
+                  <td class="no-col">{{ $index + 1 }}</td>
+                  <td class="font-bold">{{ l['name'] }}</td>
+                  <td>{{ l['member_number'] || '—' }}</td>
+                  <td class="text-right">{{ tsh(l['base']) }}</td>
+                  <td class="text-right"><b class="ph-good">{{ tsh(l['amount']) }}</b></td>
+                </tr>
+              } @empty {
+                <tr><td colspan="5" class="ph-muted">{{ i18n.t('g.none') }}</td></tr>
+              }
+            </tbody>
+          </table>
         </div>
       </div>
       <div slot="footer" class="flex gap-2"><button type="button" class="btn-outline ph-btn" (click)="run.set(null)">{{ i18n.t('common.close') }}</button></div>
@@ -74,6 +120,19 @@ export class GDividendsPage extends GBase implements OnInit {
 
   ngOnInit(): void {
     void this.load();
+  }
+
+  protected menuFor(r: Row): MenuItem[] {
+    const items: MenuItem[] = [{ id: 'open', label: this.i18n.t('g.open'), testid: 'g-d-open-' + r['id'] }];
+    if (r['status'] === 'draft' && this.can('approve_dividends')) items.push({ id: 'post', label: this.i18n.t('g.d.post'), primary: true, testid: 'g-d-post-' + r['id'] });
+    if (r['status'] === 'draft' && this.can('prepare_dividends')) items.push({ id: 'discard', label: this.i18n.t('g.d.discard'), danger: true });
+    return items;
+  }
+
+  protected picked(id: string, r: Row): void {
+    if (id === 'open') void this.open(r);
+    if (id === 'post') void this.post(r);
+    if (id === 'discard') void this.discard(r);
   }
 
   async load(): Promise<void> {

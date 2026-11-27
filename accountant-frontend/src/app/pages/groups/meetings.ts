@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { Row } from '../../core/groups/groups-api.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
 import { MemberPick, PickedMember } from './member-pick';
 
@@ -17,7 +18,7 @@ const TEXT_AUDIENCES = ['all', 'leaders', 'overdue', 'selected'];
  */
 @Component({
   selector: 'app-g-meetings',
-  imports: [FormsModule, ModalDialogComponent, MemberPick],
+  imports: [RowMenuComponent, FormsModule, ModalDialogComponent, MemberPick],
   template: `
     <div class="ad ph-page" data-testid="g-meetings">
       <div class="ph-row" style="flex-wrap: wrap">
@@ -37,59 +38,139 @@ const TEXT_AUDIENCES = ['all', 'leaders', 'overdue', 'selected'];
 
       @switch (tab()) {
         @case ('meetings') {
-          <div class="ph-card ph-joined" data-testid="g-mt-list">
-            @for (m of meetings(); track m['id']) {
-              <section class="ph-sec">
-                <div class="ph-row"><h3>{{ m['title'] }}</h3><span class="ph-badge" [class]="tone(m['status'] === 'held' ? 'done' : m['status'])">{{ status(m['status']) }}</span></div>
-                <div class="ph-line"><span>{{ when(m['starts_at']) }}@if (m['venue']) { · {{ m['venue'] }} }</span><span class="ph-muted">{{ m['called_by_name'] }}</span></div>
-                @if (m['agenda']) { <p class="ph-muted" style="white-space: pre-line">{{ m['agenda'] }}</p> }
-                @if (m['status'] === 'held') {
-                  <div class="ph-line"><span>{{ i18n.t('g.mt.present', n(m['present_count'])) }}</span>
-                    <span class="ph-badge" [class]="m['minutes_status'] === 'approved' ? 'ph-good' : 'ph-warn'">{{ i18n.t('g.mt.minutes.' + (m['minutes_status'] || 'draft')) }}</span></div>
+          <div class="table-scroll-container fit-page" data-testid="g-mt-list">
+            <table class="grid-table">
+              <thead>
+                <tr>
+                <th class="no-col">#</th>
+                <th>{{ i18n.t('g.mt.when') }}</th>
+                <th>{{ i18n.t('g.pr.title') }}</th>
+                <th>{{ i18n.t('g.mt.venue') }}</th>
+                <th>{{ i18n.t('g.mt.called.by') }}</th>
+                <th class="text-right">{{ i18n.t('g.mt.present.short') }}</th>
+                <th>{{ i18n.t('g.mt.minutes') }}</th>
+                <th>{{ i18n.t('g.status') }}</th>
+                <th class="text-right">{{ i18n.t('g.actions') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (m of meetings(); track m['id']) {
+                  <tr>
+                    <td class="no-col">{{ $index + 1 }}</td>
+                    <td>{{ when(m['starts_at']) }}</td>
+                    <td class="font-bold">{{ m['title'] }}</td>
+                    <td>{{ m['venue'] || '—' }}</td>
+                    <td>{{ m['called_by_name'] || '—' }}</td>
+                    <td class="text-right">{{ m['status'] === 'held' ? n(m['present_count']) : '—' }}</td>
+                    <td>{{ m['status'] === 'held' ? i18n.t('g.mt.minutes.' + (m['minutes_status'] || 'draft')) : '—' }}</td>
+                    <td><span class="ph-badge" [class]="tone(m['status'] === 'held' ? 'done' : m['status'])">{{ status(m['status']) }}</span></td>
+                    <td class="text-right">@if (meetingMenu(m).length) { <app-row-menu [items]="meetingMenu(m)" [testid]="'g-mt-menu-' + m['id']" (picked)="meetingPicked($event, m)" /> } @else { — }</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="9" class="ph-muted">{{ i18n.t('g.mt.none') }}</td></tr>
                 }
-                @if (m['cancel_reason']) { <p class="ph-bad" style="font-size: 13px">{{ m['cancel_reason'] }}</p> }
-                <div class="g-acts">
-                  <button type="button" class="btn-outline ph-btn" (click)="openMeeting(m)" [attr.data-testid]="'g-mt-open-' + m['id']">{{ i18n.t('g.open') }}</button>
-                  @if (m['status'] === 'scheduled' && can('record_meetings')) { <button type="button" class="btn-primary is-success ph-btn" (click)="openRecord(m)" [attr.data-testid]="'g-mt-record-' + m['id']">{{ i18n.t('g.mt.record') }}</button> }
-                  @if (m['status'] === 'scheduled' && can('call_meetings')) { <button type="button" class="btn-primary is-danger ph-btn" (click)="cancel(m)">{{ i18n.t('g.mt.cancel') }}</button> }
-                </div>
-              </section>
-            } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.mt.none') }}</p></section> }
+              </tbody>
+            </table>
           </div>
         }
         @case ('actions') {
-          <div class="ph-card ph-joined" data-testid="g-mt-actions">
-            @for (a of actions(); track a['id']) {
-              <section class="ph-sec">
-                <div class="ph-row"><h3>{{ a['text'] }}</h3><span class="ph-badge" [class]="a['overdue'] ? 'ph-bad' : 'ph-warn'">{{ a['overdue'] ? status('overdue') : status('open') }}</span></div>
-                <div class="ph-line"><span class="ph-muted">{{ a['meeting_title'] }} · {{ a['assignee_name'] || '—' }}</span><span>{{ a['due_date'] ? day(a['due_date']) : '' }}</span></div>
-                <div class="g-acts"><button type="button" class="btn-primary is-success ph-btn" (click)="markDone(a)">{{ i18n.t('g.mt.done') }}</button></div>
-              </section>
-            } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.mt.actions.none') }}</p></section> }
+          <div class="table-scroll-container fit-page" data-testid="g-mt-actions">
+            <table class="grid-table">
+              <thead>
+                <tr>
+                <th class="no-col">#</th>
+                <th>{{ i18n.t('g.mt.kind.action') }}</th>
+                <th>{{ i18n.t('g.mt.meeting') }}</th>
+                <th>{{ i18n.t('g.mt.who') }}</th>
+                <th>{{ i18n.t('g.c.due.date') }}</th>
+                <th>{{ i18n.t('g.status') }}</th>
+                <th class="text-right">{{ i18n.t('g.actions') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (a of actions(); track a['id']) {
+                  <tr>
+                    <td class="no-col">{{ $index + 1 }}</td>
+                    <td class="font-bold">{{ a['text'] }}</td>
+                    <td>{{ a['meeting_title'] || '—' }}</td>
+                    <td>{{ a['assignee_name'] || '—' }}</td>
+                    <td>{{ a['due_date'] ? day(a['due_date']) : '—' }}</td>
+                    <td><span class="ph-badge" [class]="a['overdue'] ? 'ph-bad' : 'ph-warn'">{{ a['overdue'] ? status('overdue') : status('open') }}</span></td>
+                    <td class="text-right">@if ([{ id: 'done', label: i18n.t('g.mt.done'), primary: true }].length) { <app-row-menu [items]="[{ id: 'done', label: i18n.t('g.mt.done'), primary: true }]" [testid]="'g-mt-action-menu-' + a['id']" (picked)="markDone(a)" /> } @else { — }</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="7" class="ph-muted">{{ i18n.t('g.mt.actions.none') }}</td></tr>
+                }
+              </tbody>
+            </table>
           </div>
         }
         @case ('notices') {
-          <div class="ph-card ph-joined" data-testid="g-mt-notices">
-            @for (n of notices(); track n['id']) {
-              <section class="ph-sec">
-                <div class="ph-row"><h3>{{ n['title'] }}</h3><span class="ph-badge ph-accent">{{ i18n.t('g.nk.' + (n['category'] || 'general')) }}</span></div>
-                <p style="white-space: pre-line">{{ n['body'] }}</p>
-                <div class="ph-line"><span class="ph-muted">{{ n['author_name'] }} · {{ when(n['created_at']) }} · {{ i18n.t('g.aud.' + (n['audience'] === 'officers' ? 'leaders' : n['audience'] || 'all')) }}</span>
-                  @if (n['expires_on']) { <span class="ph-muted">{{ i18n.t('g.mt.until', day(n['expires_on'])) }}</span> }</div>
-                @if (can('post_announcements')) { <div class="g-acts"><button type="button" class="link-btn danger" (click)="removeNotice(n)">{{ i18n.t('g.remove') }}</button></div> }
-              </section>
-            } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.mt.notices.none') }}</p></section> }
+          <div class="table-scroll-container fit-page" data-testid="g-mt-notices">
+            <table class="grid-table">
+              <thead>
+                <tr>
+                <th class="no-col">#</th>
+                <th>{{ i18n.t('g.pr.title') }}</th>
+                <th>{{ i18n.t('g.mt.message') }}</th>
+                <th>{{ i18n.t('g.kind') }}</th>
+                <th>{{ i18n.t('g.mt.for') }}</th>
+                <th>{{ i18n.t('g.by') }}</th>
+                <th>{{ i18n.t('g.date') }}</th>
+                <th>{{ i18n.t('g.mt.expires.short') }}</th>
+                <th class="text-right">{{ i18n.t('g.actions') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (n of notices(); track n['id']) {
+                  <tr>
+                    <td class="no-col">{{ $index + 1 }}</td>
+                    <td class="font-bold">{{ n['title'] }}</td>
+                    <td>{{ n['body'] }}</td>
+                    <td>{{ i18n.t('g.nk.' + (n['category'] || 'general')) }}</td>
+                    <td>{{ i18n.t('g.aud.' + (n['audience'] === 'officers' ? 'leaders' : n['audience'] || 'all')) }}</td>
+                    <td>{{ n['author_name'] || '—' }}</td>
+                    <td>{{ when(n['created_at']) }}</td>
+                    <td>{{ n['expires_on'] ? day(n['expires_on']) : '—' }}</td>
+                    <td class="text-right">@if ((can('post_announcements') ? [{ id: 'remove', label: i18n.t('g.remove'), danger: true }] : []).length) { <app-row-menu [items]="(can('post_announcements') ? [{ id: 'remove', label: i18n.t('g.remove'), danger: true }] : [])" [testid]="'g-mt-notice-menu-' + n['id']" (picked)="removeNotice(n)" /> } @else { — }</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="9" class="ph-muted">{{ i18n.t('g.mt.notices.none') }}</td></tr>
+                }
+              </tbody>
+            </table>
           </div>
         }
         @case ('texts') {
-          <div class="ph-card ph-joined" data-testid="g-mt-texts">
-            @for (t of texts(); track t['id']) {
-              <section class="ph-sec">
-                <div class="ph-row"><span>{{ t['body'] }}</span><span class="ph-badge" [class]="tone(t['status'])">{{ status(t['status']) }}</span></div>
-                <div class="ph-line"><span class="ph-muted">{{ t['sent_by_name'] }} · {{ when(t['created_at']) }} · {{ i18n.t('g.aud.' + (t['audience'] === 'officers' ? 'leaders' : t['audience'])) }}</span>
-                  <span class="ph-muted">{{ i18n.t('g.mt.sent.count', n(t['sent']), n(t['recipients'])) }}</span></div>
-              </section>
-            } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.mt.texts.none') }}</p></section> }
+          <div class="table-scroll-container fit-page" data-testid="g-mt-texts">
+            <table class="grid-table">
+              <thead>
+                <tr>
+                <th class="no-col">#</th>
+                <th>{{ i18n.t('g.date') }}</th>
+                <th>{{ i18n.t('g.mt.message') }}</th>
+                <th>{{ i18n.t('g.mt.to') }}</th>
+                <th>{{ i18n.t('g.by') }}</th>
+                <th class="text-right">{{ i18n.t('g.mt.delivered') }}</th>
+                <th>{{ i18n.t('g.status') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (t of texts(); track t['id']) {
+                  <tr>
+                    <td class="no-col">{{ $index + 1 }}</td>
+                    <td>{{ when(t['created_at']) }}</td>
+                    <td>{{ t['body'] }}</td>
+                    <td>{{ i18n.t('g.aud.' + (t['audience'] === 'officers' ? 'leaders' : t['audience'])) }}</td>
+                    <td>{{ t['sent_by_name'] || '—' }}</td>
+                    <td class="text-right">{{ i18n.t('g.mt.sent.count', n(t['sent']), n(t['recipients'])) }}</td>
+                    <td><span class="ph-badge" [class]="tone(t['status'])">{{ status(t['status']) }}</span></td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="7" class="ph-muted">{{ i18n.t('g.mt.texts.none') }}</td></tr>
+                }
+              </tbody>
+            </table>
           </div>
         }
       }
@@ -248,6 +329,19 @@ export class GMeetingsPage extends GBase implements OnInit {
 
   ngOnInit(): void {
     void this.loadMeetings();
+  }
+
+  protected meetingMenu(m: Row): MenuItem[] {
+    const items: MenuItem[] = [{ id: 'open', label: this.i18n.t('g.open'), testid: 'g-mt-open-' + m['id'] }];
+    if (m['status'] === 'scheduled' && this.can('record_meetings')) items.push({ id: 'record', label: this.i18n.t('g.mt.record'), primary: true, testid: 'g-mt-record-' + m['id'] });
+    if (m['status'] === 'scheduled' && this.can('call_meetings')) items.push({ id: 'cancel', label: this.i18n.t('g.mt.cancel'), danger: true });
+    return items;
+  }
+
+  protected meetingPicked(id: string, m: Row): void {
+    if (id === 'open') this.openMeeting(m);
+    if (id === 'record') void this.openRecord(m);
+    if (id === 'cancel') void this.cancel(m);
   }
 
   protected go(t: Tab): void {

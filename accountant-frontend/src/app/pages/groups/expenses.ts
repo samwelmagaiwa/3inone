@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { Row } from '../../core/groups/groups-api.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
 
 const STATUSES = ['requested', 'approved', 'rejected', 'cancelled', ''];
@@ -14,7 +15,7 @@ const CATEGORIES = ['project', 'office', 'meeting', 'transport', 'event', 'other
  */
 @Component({
   selector: 'app-g-expenses',
-  imports: [FormsModule, ModalDialogComponent],
+  imports: [RowMenuComponent, FormsModule, ModalDialogComponent],
   template: `
     <div class="ad ph-page" data-testid="g-expenses">
       <div class="ph-row" style="flex-wrap: wrap">
@@ -26,30 +27,48 @@ const CATEGORIES = ['project', 'office', 'meeting', 'transport', 'event', 'other
         @if (can('request_expenses')) { <button type="button" class="btn-primary ph-btn" (click)="openNew()" data-testid="g-e-new">{{ i18n.t('g.e.new') }}</button> }
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
-      <div class="ph-card ph-joined" data-testid="g-e-list">
-        @for (r of rows(); track r['id']) {
-          <section class="ph-sec">
-            <div class="ph-row"><h3>{{ r['purpose'] }} <span class="ph-muted">{{ r['reference'] }}</span></h3><span class="ph-badge" [class]="tone(r['state'])">{{ status(r['state']) }}</span></div>
-            <div class="ph-line"><span>{{ i18n.t('g.e.cat.' + r['category']) }} · {{ i18n.t('g.payee') }}: {{ r['payee'] }}@if (r['project_title']) { · {{ r['project_title'] }} }</span>
-              <b>{{ tsh(r['amount_approved'] ?? r['amount']) }}</b></div>
-            <div class="ph-line"><span class="ph-muted">{{ i18n.t('g.e.asked.by', r['requested_by_name'] || '—') }} · {{ day(r['created_at']) }}</span>
-              @if (r['amount_approved'] && r['amount_approved'] !== r['amount']) { <span class="ph-muted">{{ i18n.t('g.l.asked') }} {{ tsh(r['amount']) }}</span> }</div>
-            @if (r['decision_note']) { <p class="ph-muted">{{ r['decision_note'] }}</p> }
-            <div class="g-acts">
-              @if (r['state'] === 'requested' && !r['mine'] && can('approve_expenses')) {
-                <button type="button" class="btn-primary is-success ph-btn" (click)="approve(r)" [attr.data-testid]="'g-e-approve-' + r['id']">{{ i18n.t('g.approve') }}</button>
-                <button type="button" class="btn-primary is-danger ph-btn" (click)="turnDown(r)">{{ i18n.t('g.turn.down') }}</button>
+      <div class="table-scroll-container fit-page" data-testid="g-e-list">
+          <table class="grid-table">
+            <thead>
+              <tr>
+              <th class="no-col">#</th>
+              <th>{{ i18n.t('g.ref') }}</th>
+              <th>{{ i18n.t('g.date') }}</th>
+              <th>{{ i18n.t('g.p.for.what') }}</th>
+              <th>{{ i18n.t('g.kind') }}</th>
+              <th>{{ i18n.t('g.payee') }}</th>
+              <th>{{ i18n.t('g.e.project.short') }}</th>
+              <th>{{ i18n.t('g.e.asked.by.short') }}</th>
+              <th class="text-right">{{ i18n.t('g.l.asked') }}</th>
+              <th class="text-right">{{ i18n.t('g.l.approved') }}</th>
+              <th>{{ i18n.t('g.status') }}</th>
+              <th>{{ i18n.t('g.note') }}</th>
+              <th class="text-right">{{ i18n.t('g.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of rows(); track r['id']) {
+                <tr>
+                  <td class="no-col">{{ $index + 1 }}</td>
+                  <td>{{ r['reference'] }}</td>
+                  <td>{{ day(r['created_at']) }}</td>
+                  <td class="font-bold">{{ r['purpose'] }}</td>
+                  <td>{{ i18n.t('g.e.cat.' + r['category']) }}</td>
+                  <td>{{ r['payee'] }}</td>
+                  <td>{{ r['project_title'] || '—' }}</td>
+                  <td>{{ r['requested_by_name'] || '—' }}</td>
+                  <td class="text-right">{{ tsh(r['amount']) }}</td>
+                  <td class="text-right">{{ r['amount_approved'] ? tsh(r['amount_approved']) : '—' }}</td>
+                  <td><span class="ph-badge" [class]="tone(r['state'])">{{ status(r['state']) }}</span></td>
+                  <td>{{ r['decision_note'] || '—' }}</td>
+                  <td class="text-right">@if (menuFor(r).length) { <app-row-menu [items]="menuFor(r)" [testid]="'g-e-menu-' + r['id']" (picked)="picked($event, r)" /> } @else { — }</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="13" class="ph-muted">{{ i18n.t('g.e.none') }}</td></tr>
               }
-              @if (r['state'] === 'approved' && !r['mine'] && can('record_payouts')) {
-                <button type="button" class="btn-primary is-warn ph-btn" (click)="openPay(r)" [attr.data-testid]="'g-e-pay-' + r['id']">{{ i18n.t('g.pay') }}</button>
-              }
-              @if (r['state'] === 'requested' && r['mine']) {
-                <button type="button" class="btn-outline ph-btn" (click)="cancel(r)">{{ i18n.t('g.e.withdraw') }}</button>
-              }
-            </div>
-          </section>
-        } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.e.none') }}</p></section> }
-      </div>
+            </tbody>
+          </table>
+        </div>
     </div>
 
     <app-modal-dialog [show]="newOpen()" [eyebrow]="i18n.t('nav.g.expenses')" [title]="i18n.t('g.e.new')" size="md" (close)="newOpen.set(false)">
@@ -99,6 +118,24 @@ export class GExpensesPage extends GBase implements OnInit {
 
   ngOnInit(): void {
     void this.load();
+  }
+
+  protected menuFor(r: Row): MenuItem[] {
+    const items: MenuItem[] = [];
+    if (r['state'] === 'requested' && !r['mine'] && this.can('approve_expenses')) {
+      items.push({ id: 'approve', label: this.i18n.t('g.approve'), primary: true, testid: 'g-e-approve-' + r['id'] });
+      items.push({ id: 'reject', label: this.i18n.t('g.turn.down'), danger: true });
+    }
+    if (r['state'] === 'approved' && !r['mine'] && this.can('record_payouts')) items.push({ id: 'pay', label: this.i18n.t('g.pay'), testid: 'g-e-pay-' + r['id'] });
+    if (r['state'] === 'requested' && r['mine']) items.push({ id: 'withdraw', label: this.i18n.t('g.e.withdraw'), danger: true });
+    return items;
+  }
+
+  protected picked(id: string, r: Row): void {
+    if (id === 'approve') void this.approve(r);
+    if (id === 'reject') void this.turnDown(r);
+    if (id === 'pay') this.openPay(r);
+    if (id === 'withdraw') void this.cancel(r);
   }
 
   async load(): Promise<void> {

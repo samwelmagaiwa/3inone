@@ -3,7 +3,7 @@
  * `npm start` does the same through proxy.conf.json. No address is baked into the build.
  */
 export const environment = {
-  appName: '3inone Accountant',
+  appName: '3inone',
   apiUrl: '/api',
   /** The service used when the account does not say (a shop). */
   defaultService: 'inventory' as const,
