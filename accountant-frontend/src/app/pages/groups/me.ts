@@ -46,7 +46,7 @@ import { GBase } from './g-base';
       @switch (tab()) {
         @case ('payments') {
           <div class="table-scroll-container fit-page" data-testid="g-me-payments">
-            <table class="grid-table">
+            <table class="grid-table g-grid">
               <thead><tr>
                 <th class="no-col">#</th><th>{{ i18n.t('g.paid.on') }}</th><th>{{ i18n.t('g.kind') }}</th><th>{{ i18n.t('g.p.for') }}</th><th>{{ i18n.t('g.method') }}</th>
                 <th>{{ i18n.t('g.ref') }}</th><th class="text-right">{{ i18n.t('g.amount') }}</th><th>{{ i18n.t('g.status') }}</th><th>{{ i18n.t('g.receipt') }}</th><th>{{ i18n.t('g.note') }}</th>
@@ -63,7 +63,7 @@ import { GBase } from './g-base';
                     <td class="text-right"><b [class.ph-good]="t['direction'] === 'in'" [class.ph-bad]="t['direction'] === 'out'">{{ t['direction'] === 'out' ? '-' : '+' }}{{ tsh(t['amount']) }}</b></td>
                     <td><span class="ph-badge" [class]="t['reversed_by_id'] ? 'ph-bad' : tone(t['status'])">{{ t['reversed_by_id'] ? status('reversed') : status(t['status']) }}</span></td>
                     <td>{{ t['receipt_number'] || '—' }}</td>
-                    <td>{{ t['reject_reason'] || t['note'] || '—' }}</td>
+                    <td class="g-long" [title]="t['reject_reason'] || t['note'] || '—'">{{ t['reject_reason'] || t['note'] || '—' }}</td>
                   </tr>
                 } @empty {
                   <tr><td colspan="10" class="ph-muted">{{ i18n.t('g.p.empty') }}</td></tr>
@@ -74,7 +74,7 @@ import { GBase } from './g-base';
         }
         @case ('owing') {
           <div class="table-scroll-container fit-page" data-testid="g-me-owing">
-            <table class="grid-table">
+            <table class="grid-table g-grid">
               <thead><tr>
                 <th class="no-col">#</th><th>{{ i18n.t('g.c.type') }}</th><th>{{ i18n.t('g.c.due.date') }}</th><th class="text-right">{{ i18n.t('g.c.amount.due') }}</th>
                 <th class="text-right">{{ i18n.t('g.paid') }}</th><th class="text-right">{{ i18n.t('g.l.left') }}</th><th>{{ i18n.t('g.status') }}</th>
@@ -99,7 +99,7 @@ import { GBase } from './g-base';
         }
         @case ('loans') {
           <div class="table-scroll-container fit-page" data-testid="g-me-loans">
-            <table class="grid-table">
+            <table class="grid-table g-grid">
               <thead><tr>
                 <th class="no-col">#</th><th>{{ i18n.t('g.reference') }}</th><th>{{ i18n.t('g.l.purpose') }}</th><th class="text-right">{{ i18n.t('g.amount') }}</th>
                 <th>{{ i18n.t('g.l.months') }}</th><th class="text-right">{{ i18n.t('g.l.owed') }}</th><th class="text-right">{{ i18n.t('g.loans.arrears') }}</th><th>{{ i18n.t('g.status') }}</th>

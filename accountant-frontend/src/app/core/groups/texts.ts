@@ -108,6 +108,7 @@ export const G_TEXTS: Record<string, [sw: string, en: string]> = {
   'g.me.off.label': ['Taarifa zangu: zimezimwa', 'My own view: off'],
 
   // ---- table column headings
+  'g.no.actions': ['Hakuna hatua unayoweza kuchukua hapa', 'Nothing for you to do here'],
   'g.reference': ['Namba ya kumbukumbu', 'Reference'],
   'g.l.new': ['Mkopo mpya', 'New loan'],
   'g.find.ph': ['Tafuta kwenye orodha hii', 'Search this list'],

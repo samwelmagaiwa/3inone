@@ -31,7 +31,7 @@ const STATUSES = ['proposed', 'active', 'completed', 'rejected', 'cancelled', ''
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
       <div class="table-scroll-container fit-page" data-testid="g-pr-list">
-          <table class="grid-table">
+          <table class="grid-table g-grid">
             <thead>
               <tr>
               <th class="no-col">#</th>
@@ -60,7 +60,7 @@ const STATUSES = ['proposed', 'active', 'completed', 'rejected', 'cancelled', ''
                   <td class="text-right">{{ p['progress'] ?? 0 }}%</td>
                   <td>{{ i18n.t('g.pr.votes', n(p['supports']), n(p['opposes'])) }}</td>
                   <td><span class="ph-badge" [class]="tone(p['status'])">{{ status(p['status']) }}</span></td>
-                  <td class="text-right">@if (menuFor(p).length) { <app-row-menu [items]="menuFor(p)" [testid]="'g-pr-menu-' + p['id']" (picked)="picked($event, p)" /> } @else { — }</td>
+                  <td class="text-right"><app-row-menu [items]="orNone(menuFor(p))" [testid]="'g-pr-menu-' + p['id']" (picked)="picked($event, p)" /></td>
                 </tr>
               } @empty {
                 <tr><td colspan="11" class="ph-muted">{{ i18n.t('g.pr.none') }}</td></tr>

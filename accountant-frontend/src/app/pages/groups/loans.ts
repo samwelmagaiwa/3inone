@@ -37,7 +37,7 @@ const STATUSES = ['open', 'awaiting_guarantors', 'under_review', 'recommended', 
         <section class="ph-card"><p>{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load(page())">{{ i18n.t('pl.retry') }}</button></section>
       } @else {
         <div class="table-scroll-container fit-page" data-testid="g-l-list">
-          <table class="grid-table">
+          <table class="grid-table g-grid">
             <thead>
               <tr>
               <th class="no-col">#</th>
@@ -59,14 +59,14 @@ const STATUSES = ['open', 'awaiting_guarantors', 'under_review', 'recommended', 
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td>{{ l['reference'] }}</td>
                   <td class="font-bold">{{ l['member_name'] }}</td>
-                  <td>{{ l['purpose'] }}</td>
+                  <td class="g-long" [title]="l['purpose']">{{ l['purpose'] }}</td>
                   <td class="text-right">{{ tsh(l['amount_approved'] ?? l['amount_requested']) }}</td>
                   <td>{{ l['term_months'] }}</td>
                   <td>{{ l['interest_rate'] }}%@if (l['interest_method']) { · {{ i18n.t('g.l.method.' + l['interest_method']) }} }</td>
                   <td class="text-right">{{ l['outstanding'] === null || l['outstanding'] === undefined ? '—' : tsh(l['outstanding']) }}</td>
                   <td class="text-right"><span [class.ph-bad]="l['arrears'] > 0">{{ l['arrears'] ? tsh(l['arrears']) : '—' }}</span></td>
                   <td><span class="ph-badge" [class]="tone(l['state'] === 'overdue' ? 'overdue' : l['status'])">{{ l['state'] === 'overdue' ? status('overdue') : status(l['status']) }}</span></td>
-                  <td class="text-right">@if (menuFor(l).length) { <app-row-menu [items]="menuFor(l)" [testid]="'g-l-menu-' + l['id']" (picked)="picked($event, l)" /> } @else { — }</td>
+                  <td class="text-right"><app-row-menu [items]="orNone(menuFor(l))" [testid]="'g-l-menu-' + l['id']" (picked)="picked($event, l)" /></td>
                 </tr>
               } @empty {
                 <tr><td colspan="11" class="ph-muted">{{ i18n.t('g.l.none') }}</td></tr>

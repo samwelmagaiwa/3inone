@@ -137,7 +137,7 @@ export const G_WAITING: Record<string, string> = {
       @if (waiting().length) {
         <h3>{{ i18n.t('g.waiting') }}</h3>
 <div class="table-scroll-container fit-page" data-testid="g-waiting">
-          <table class="grid-table">
+          <table class="grid-table g-grid">
             <thead>
               <tr>
               <th class="no-col">#</th>
@@ -152,7 +152,7 @@ export const G_WAITING: Record<string, string> = {
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td class="font-bold"><a class="g-link" [routerLink]="w.path" [attr.data-testid]="'g-wait-' + w.key">{{ i18n.t('g.wait.' + w.key) }}</a></td>
                   <td class="text-right"><b class="ph-warn">{{ w.count }}</b></td>
-                  <td class="text-right">@if ([{ id: 'open', label: i18n.t('g.open'), primary: true }].length) { <app-row-menu [items]="[{ id: 'open', label: i18n.t('g.open'), primary: true }]" [testid]="'g-wait-menu-' + w.key" (picked)="go(w.path)" /> } @else { — }</td>
+                  <td class="text-right"><app-row-menu [items]="orNone([{ id: 'open', label: i18n.t('g.open'), primary: true }])" [testid]="'g-wait-menu-' + w.key" (picked)="go(w.path)" /></td>
                 </tr>
               } @empty {
                 <tr><td colspan="4" class="ph-muted">{{ i18n.t('g.none') }}</td></tr>

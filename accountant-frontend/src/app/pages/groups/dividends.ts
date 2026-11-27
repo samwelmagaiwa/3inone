@@ -24,7 +24,7 @@ import { GBase } from './g-base';
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
       <div class="table-scroll-container fit-page" data-testid="g-d-list">
-          <table class="grid-table">
+          <table class="grid-table g-grid">
             <thead>
               <tr>
               <th class="no-col">#</th>
@@ -52,8 +52,8 @@ import { GBase } from './g-base';
                   <td>{{ r['prepared_by_name'] || '—' }}</td>
                   <td>{{ r['approved_by_name'] || '—' }}</td>
                   <td><span class="ph-badge" [class]="tone(r['status'] === 'posted' ? 'done' : r['status'] === 'discarded' ? 'cancelled' : 'pending')">{{ status(r['status']) }}</span></td>
-                  <td>{{ r['note'] || '—' }}</td>
-                  <td class="text-right">@if (menuFor(r).length) { <app-row-menu [items]="menuFor(r)" [testid]="'g-d-menu-' + r['id']" (picked)="picked($event, r)" /> } @else { — }</td>
+                  <td class="g-long" [title]="r['note'] || '—'">{{ r['note'] || '—' }}</td>
+                  <td class="text-right"><app-row-menu [items]="orNone(menuFor(r))" [testid]="'g-d-menu-' + r['id']" (picked)="picked($event, r)" /></td>
                 </tr>
               } @empty {
                 <tr><td colspan="11" class="ph-muted">{{ i18n.t('g.d.none') }}</td></tr>
@@ -66,7 +66,7 @@ import { GBase } from './g-base';
     <app-modal-dialog [show]="!!run()" [eyebrow]="i18n.t('nav.g.dividends')" [title]="(run()?.['period_from'] ? day(run()!['period_from']) + ' – ' + day(run()!['period_to']) : '')" size="lg" (close)="run.set(null)">
       <div slot="body">
         <div class="table-scroll-container fit-page">
-          <table class="grid-table">
+          <table class="grid-table g-grid">
             <thead>
               <tr>
               <th class="no-col">#</th>

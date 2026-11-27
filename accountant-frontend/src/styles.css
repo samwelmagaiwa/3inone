@@ -2087,6 +2087,27 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
 .theme-phone .cp-tag.is-services { color: #7fe3f2 !important; background: rgba(32,184,206,.16) !important; border-color: rgba(32,184,206,.45) !important; }
 .theme-phone .cp-tag.is-goods { color: #fcd34d !important; background: rgba(245,158,11,.16) !important; border-color: rgba(245,158,11,.45) !important; }
 
+/* ═══ Groups (Vikundi) tables: as wide as their data, one line per cell (a name, an amount, a date never broken in two); long text
+   (a note, a description, a message) is cut to one line and shown whole on hover. A table wider than the screen scrolls sideways. ═══ */
+.grid-table.g-grid { width: max-content; min-width: 100%; }
+.grid-table.g-grid thead th { white-space: nowrap; padding: 9px 12px; }
+.grid-table.g-grid tbody td { white-space: nowrap; padding: 7px 12px; overflow-wrap: normal; }
+.grid-table.g-grid tbody td.g-long { max-width: 190px; overflow: hidden; text-overflow: ellipsis; }
+/* A Groups table wider than its box scrolls sideways inside it at every screen size (the box clipped it on wide screens) */
+.table-scroll-container.fit-page:has(> .g-grid) { overflow-x: auto !important; overflow-y: hidden !important; max-height: none !important; }
+/* The Actions column stays in view at the right edge when a wide table scrolls sideways */
+.grid-table.g-grid:has(app-row-menu) thead th:last-child, .grid-table.g-grid tbody td:has(> app-row-menu) { position: sticky; right: 0; z-index: 2; }
+.theme-phone .grid-table.g-grid:has(app-row-menu) thead th:last-child { background: #10505f !important; z-index: 21; }
+.theme-phone .grid-table.g-grid tbody td:has(> app-row-menu) { background: #0f3d4a !important; box-shadow: -6px 0 10px -6px rgba(0,0,0,.5); }
+.shell-wrap:not(.theme-phone) .grid-table.g-grid tbody td:has(> app-row-menu) { background: #fff; }
+.grid-table.g-grid tbody td.text-right { text-align: right; }
+@media (max-width: 767px) {
+  .theme-phone .grid-table.g-grid { width: 100%; }
+  .theme-phone .grid-table.g-grid tbody td { white-space: normal; }
+  .theme-phone .grid-table.g-grid tbody td.g-long { max-width: none; }
+  .theme-phone .grid-table.g-grid tbody td:has(> app-row-menu) { position: static; background: transparent !important; box-shadow: none; }
+}
+
 /* ═══ Groups (Vikundi) pages: the page's controls in ONE row above the table (section tabs, status chips, search, filters, buttons, the
    count at the right). It wraps only when the screen is too narrow, and nothing is cut. ═══ */
 .g-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

@@ -66,7 +66,7 @@ import { MemberPick, PickedMember } from './member-pick';
             <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.r.owes') }}</span><b class="ph-bad">{{ tsh(s['owing_total'] ?? 0) }}</b></div>
           </div>
           <div class="table-scroll-container fit-page" data-testid="g-r-lines">
-            <table class="grid-table">
+            <table class="grid-table g-grid">
               <thead>
                 <tr>
                 <th class="no-col">#</th>

@@ -55,7 +55,7 @@ type Form = 'member' | 'withdrawal' | 'expense' | 'opening';
         <section class="ph-card"><p>{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load(page())">{{ i18n.t('pl.retry') }}</button></section>
       } @else {
         <div class="table-scroll-container fit-page" data-testid="g-p-list">
-          <table class="grid-table">
+          <table class="grid-table g-grid">
             <thead>
               <tr>
               <th class="no-col">#</th>
@@ -85,8 +85,8 @@ type Form = 'member' | 'withdrawal' | 'expense' | 'opening';
                   <td class="text-right"><b [class.ph-good]="t['direction'] === 'in'" [class.ph-bad]="t['direction'] === 'out'">{{ t['direction'] === 'out' ? '-' : '+' }}{{ tsh(t['amount']) }}</b></td>
                   <td><span class="ph-badge" [class]="t['reversed_by_id'] ? 'ph-bad' : tone(t['status'])">{{ t['reversed_by_id'] ? status('reversed') : status(t['status']) }}</span></td>
                   <td>{{ t['submitted_by_name'] || '—' }}</td>
-                  <td>{{ t['reject_reason'] || t['note'] || '—' }}</td>
-                  <td class="text-right">@if (menuFor(t).length) { <app-row-menu [items]="menuFor(t)" [testid]="'g-p-menu-' + t['id']" (picked)="picked($event, t)" /> } @else { — }</td>
+                  <td class="g-long" [title]="t['reject_reason'] || t['note'] || '—'">{{ t['reject_reason'] || t['note'] || '—' }}</td>
+                  <td class="text-right"><app-row-menu [items]="orNone(menuFor(t))" [testid]="'g-p-menu-' + t['id']" (picked)="picked($event, t)" /></td>
                 </tr>
               } @empty {
                 <tr><td colspan="12" class="ph-muted">{{ i18n.t('g.p.empty') }}</td></tr>

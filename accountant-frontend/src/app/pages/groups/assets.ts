@@ -44,7 +44,7 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
 
       @if (tab() === 'assets') {
         <div class="table-scroll-container fit-page" data-testid="g-a-list">
-          <table class="grid-table">
+          <table class="grid-table g-grid">
             <thead>
               <tr>
               <th class="no-col">#</th>
@@ -73,7 +73,7 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
                   <td class="text-right">{{ a['hire_rate'] ? tsh(a['hire_rate']) : '—' }}</td>
                   <td>{{ a['condition'] ? i18n.t('g.cond.' + a['condition']) : '—' }}</td>
                   <td>{{ a['location'] || '—' }}</td>
-                  <td class="text-right">@if (assetMenu().length) { <app-row-menu [items]="assetMenu()" [testid]="'g-a-menu-' + a['id']" (picked)="assetPicked($event, a)" /> } @else { — }</td>
+                  <td class="text-right"><app-row-menu [items]="orNone(assetMenu())" [testid]="'g-a-menu-' + a['id']" (picked)="assetPicked($event, a)" /></td>
                 </tr>
               } @empty {
                 <tr><td colspan="11" class="ph-muted">{{ i18n.t('g.a.none') }}</td></tr>
@@ -83,7 +83,7 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
         </div>
       } @else {
         <div class="table-scroll-container fit-page" data-testid="g-h-list">
-          <table class="grid-table">
+          <table class="grid-table g-grid">
             <thead>
               <tr>
               <th class="no-col">#</th>
@@ -116,7 +116,7 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
                   <td class="text-right">{{ tsh(h['paid'] ?? 0) }}</td>
                   <td class="text-right"><span [class.ph-bad]="h['balance'] > 0">{{ tsh(h['balance'] ?? 0) }}</span></td>
                   <td><span class="ph-badge" [class]="tone(h['state'] === 'overdue' ? 'overdue' : h['status'])">{{ h['state'] === 'overdue' ? status('overdue') : status(h['status']) }}</span></td>
-                  <td class="text-right">@if (hireMenu(h).length) { <app-row-menu [items]="hireMenu(h)" [testid]="'g-h-menu-' + h['id']" (picked)="hirePicked($event, h)" /> } @else { — }</td>
+                  <td class="text-right"><app-row-menu [items]="orNone(hireMenu(h))" [testid]="'g-h-menu-' + h['id']" (picked)="hirePicked($event, h)" /></td>
                 </tr>
               } @empty {
                 <tr><td colspan="13" class="ph-muted">{{ i18n.t('g.h.none') }}</td></tr>
@@ -154,7 +154,7 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
     <app-modal-dialog [show]="!!detail()" [eyebrow]="detail()?.['asset']?.['code'] ?? ''" [title]="detail()?.['asset']?.['name'] ?? ''" size="md" (close)="detail.set(null)">
       <div slot="body">
         <div class="table-scroll-container fit-page">
-          <table class="grid-table">
+          <table class="grid-table g-grid">
             <thead>
               <tr>
               <th class="no-col">#</th>
@@ -173,7 +173,7 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
                   <td>{{ i18n.t('g.ev.' + e['kind']) }}</td>
                   <td class="text-right">{{ e['quantity'] || '—' }}</td>
                   <td class="text-right">{{ e['cost'] ? tsh(e['cost']) : '—' }}</td>
-                  <td>{{ e['note'] || '—' }}</td>
+                  <td class="g-long" [title]="e['note'] || '—'">{{ e['note'] || '—' }}</td>
                   <td>{{ e['by_name'] || '—' }}</td>
                   <td>{{ when(e['created_at']) }}</td>
                 </tr>

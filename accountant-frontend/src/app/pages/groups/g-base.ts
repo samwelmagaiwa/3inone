@@ -5,6 +5,7 @@ import { GroupsApi, Row } from '../../core/groups/groups-api.service';
 import { GroupsContext } from '../../core/groups/groups-context.service';
 import { I18nService } from '../../core/i18n.service';
 import { ConfirmService } from '../../core/services/confirm.service';
+import { MenuItem } from '../../shared/components/row-menu/row-menu';
 import { ToastService } from '../../core/services/toast.service';
 
 /** The ways money moves, as the server knows them. */
@@ -38,6 +39,11 @@ export abstract class GBase {
     const list = rows ?? [];
     if (!q) return list;
     return list.filter((r) => keys.some((k) => String(r[k] ?? '').toLowerCase().includes(q)));
+  }
+
+  /** A row's menu as shown: when this person may do nothing with the row, one greyed line says so (the three dots are always there). */
+  protected orNone(items: MenuItem[]): MenuItem[] {
+    return items.length ? items : [{ id: 'none', label: this.i18n.t('g.no.actions'), disabled: true }];
   }
 
   /** A row's number in a paged list (page 1 starts at 1). */

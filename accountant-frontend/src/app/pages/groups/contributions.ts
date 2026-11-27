@@ -58,7 +58,7 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
       @switch (tab()) {
         @case ('owing') {
           <div class="table-scroll-container fit-page" data-testid="g-c-owing">
-            <table class="grid-table">
+            <table class="grid-table g-grid">
               <thead>
                 <tr>
                 <th class="no-col">#</th>
@@ -88,8 +88,8 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
                     <td class="text-right">{{ tsh(o['paid']) }}</td>
                     <td class="text-right"><b [class.ph-bad]="o['remaining'] > 0">{{ tsh(o['remaining']) }}</b></td>
                     <td><span class="ph-badge" [class]="tone(o['state'])">{{ status(o['state']) }}</span></td>
-                    <td>{{ o['exempt_reason'] || '—' }}</td>
-                    <td class="text-right">@if (owingMenu(o).length) { <app-row-menu [items]="owingMenu(o)" [testid]="'g-c-menu-' + o['id']" (picked)="owingPicked($event, o)" /> } @else { — }</td>
+                    <td class="g-long" [title]="o['exempt_reason'] || '—'">{{ o['exempt_reason'] || '—' }}</td>
+                    <td class="text-right"><app-row-menu [items]="orNone(owingMenu(o))" [testid]="'g-c-menu-' + o['id']" (picked)="owingPicked($event, o)" /></td>
                   </tr>
                 } @empty {
                   <tr><td colspan="12" class="ph-muted">{{ i18n.t('g.c.none') }}</td></tr>
@@ -105,7 +105,7 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
         }
         @case ('types') {
           <div class="table-scroll-container fit-page" data-testid="g-c-types">
-            <table class="grid-table">
+            <table class="grid-table g-grid">
               <thead>
                 <tr>
                 <th class="no-col">#</th>
@@ -129,8 +129,8 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
                     <td>{{ t['frequency'] === 'monthly' ? t['due_day'] : '—' }}</td>
                     <td>{{ t['mandatory'] ? i18n.t('g.yes') : i18n.t('g.no') }}</td>
                     <td><span class="ph-badge" [class]="t['active'] ? 'ph-good' : 'ph-bad'">{{ t['active'] ? i18n.t('g.running') : i18n.t('g.stopped') }}</span></td>
-                    <td>{{ t['description'] || '—' }}</td>
-                    <td class="text-right">@if (typeMenu(t).length) { <app-row-menu [items]="typeMenu(t)" [testid]="'g-c-type-menu-' + t['id']" (picked)="typePicked($event, t)" /> } @else { — }</td>
+                    <td class="g-long" [title]="t['description'] || '—'">{{ t['description'] || '—' }}</td>
+                    <td class="text-right"><app-row-menu [items]="orNone(typeMenu(t))" [testid]="'g-c-type-menu-' + t['id']" (picked)="typePicked($event, t)" /></td>
                   </tr>
                 } @empty {
                   <tr><td colspan="9" class="ph-muted">{{ i18n.t('g.c.types.none') }}</td></tr>
@@ -141,7 +141,7 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
         }
         @case ('promises') {
           <div class="table-scroll-container fit-page" data-testid="g-c-promises">
-            <table class="grid-table">
+            <table class="grid-table g-grid">
               <thead>
                 <tr>
                 <th class="no-col">#</th>
@@ -162,9 +162,9 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
                     <td>{{ p['obligation_label'] || i18n.t('g.c.any') }}</td>
                     <td class="text-right">{{ tsh(p['amount']) }}</td>
                     <td>{{ day(p['promised_on']) }}</td>
-                    <td>{{ p['note'] || '—' }}</td>
+                    <td class="g-long" [title]="p['note'] || '—'">{{ p['note'] || '—' }}</td>
                     <td><span class="ph-badge" [class]="tone(p['state'])">{{ status(p['state']) }}</span></td>
-                    <td class="text-right">@if (promiseMenu(p).length) { <app-row-menu [items]="promiseMenu(p)" [testid]="'g-c-promise-menu-' + p['id']" (picked)="cancelPromise(p)" /> } @else { — }</td>
+                    <td class="text-right"><app-row-menu [items]="orNone(promiseMenu(p))" [testid]="'g-c-promise-menu-' + p['id']" (picked)="cancelPromise(p)" /></td>
                   </tr>
                 } @empty {
                   <tr><td colspan="8" class="ph-muted">{{ i18n.t('g.c.promises.none') }}</td></tr>

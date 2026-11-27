@@ -41,7 +41,7 @@ const STATUSES = ['submitted', 'approved', 'rejected', 'cancelled', ''];
 
       @if (tab() === 'requests') {
         <div class="table-scroll-container fit-page" data-testid="g-w-list">
-          <table class="grid-table">
+          <table class="grid-table g-grid">
             <thead>
               <tr>
               <th class="no-col">#</th>
@@ -71,8 +71,8 @@ const STATUSES = ['submitted', 'approved', 'rejected', 'cancelled', ''];
                   <td class="text-right">{{ r['amount_requested'] ? tsh(r['amount_requested']) : '—' }}</td>
                   <td class="text-right">{{ r['amount_approved'] ? tsh(r['amount_approved']) : '—' }}</td>
                   <td><span class="ph-badge" [class]="tone(r['state'])">{{ status(r['state']) }}</span></td>
-                  <td>{{ r['decision_note'] || r['description'] || '—' }}</td>
-                  <td class="text-right">@if (menuFor(r).length) { <app-row-menu [items]="menuFor(r)" [testid]="'g-w-menu-' + r['id']" (picked)="picked($event, r)" /> } @else { — }</td>
+                  <td class="g-long" [title]="r['decision_note'] || r['description'] || '—'">{{ r['decision_note'] || r['description'] || '—' }}</td>
+                  <td class="text-right"><app-row-menu [items]="orNone(menuFor(r))" [testid]="'g-w-menu-' + r['id']" (picked)="picked($event, r)" /></td>
                 </tr>
               } @empty {
                 <tr><td colspan="12" class="ph-muted">{{ i18n.t('g.w.none') }}</td></tr>
@@ -82,7 +82,7 @@ const STATUSES = ['submitted', 'approved', 'rejected', 'cancelled', ''];
         </div>
       } @else {
         <div class="table-scroll-container fit-page">
-          <table class="grid-table">
+          <table class="grid-table g-grid">
             <thead>
               <tr>
               <th class="no-col">#</th>
@@ -99,9 +99,9 @@ const STATUSES = ['submitted', 'approved', 'rejected', 'cancelled', ''];
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td class="font-bold">{{ t['name'] }}</td>
                   <td class="text-right">{{ t['amount'] ? tsh(t['amount']) : i18n.t('g.w.decided') }}</td>
-                  <td>{{ t['description'] || '—' }}</td>
+                  <td class="g-long" [title]="t['description'] || '—'">{{ t['description'] || '—' }}</td>
                   <td><span class="ph-badge" [class]="t['active'] ? 'ph-good' : 'ph-bad'">{{ t['active'] ? i18n.t('g.running') : i18n.t('g.stopped') }}</span></td>
-                  <td class="text-right">@if ((can('manage_settings') ? [{ id: 'edit', label: i18n.t('g.edit') }] : []).length) { <app-row-menu [items]="(can('manage_settings') ? [{ id: 'edit', label: i18n.t('g.edit') }] : [])" [testid]="'g-w-type-menu-' + t['id']" (picked)="openType(t)" /> } @else { — }</td>
+                  <td class="text-right"><app-row-menu [items]="orNone((can('manage_settings') ? [{ id: 'edit', label: i18n.t('g.edit') }] : []))" [testid]="'g-w-type-menu-' + t['id']" (picked)="openType(t)" /></td>
                 </tr>
               } @empty {
                 <tr><td colspan="6" class="ph-muted">{{ i18n.t('g.w.types.none') }}</td></tr>

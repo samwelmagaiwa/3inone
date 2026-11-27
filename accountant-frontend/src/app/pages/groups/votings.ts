@@ -38,7 +38,7 @@ function local(v: string | null | undefined): string {
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
       <div class="table-scroll-container fit-page" data-testid="g-v-list">
-          <table class="grid-table">
+          <table class="grid-table g-grid">
             <thead>
               <tr>
               <th class="no-col">#</th>
@@ -65,7 +65,7 @@ function local(v: string | null | undefined): string {
                   <td>{{ when(v['closes_at']) }}</td>
                   <td class="text-right">{{ v['progress'] ? n(v['progress']['turnout']) + ' / ' + n(v['progress']['eligible'], n(v['eligible_count'])) : '—' }}</td>
                   <td><span class="ph-badge" [class]="tone(v['status'] === 'open' ? 'active' : v['status'])">{{ status(v['status']) }}</span></td>
-                  <td class="text-right">@if (menuFor(v).length) { <app-row-menu [items]="menuFor(v)" [testid]="'g-v-menu-' + v['id']" (picked)="picked($event, v)" /> } @else { — }</td>
+                  <td class="text-right"><app-row-menu [items]="orNone(menuFor(v))" [testid]="'g-v-menu-' + v['id']" (picked)="picked($event, v)" /></td>
                 </tr>
               } @empty {
                 <tr><td colspan="10" class="ph-muted">{{ i18n.t('g.v.none') }}</td></tr>

@@ -47,7 +47,7 @@ const FIELDS = ['full_name', 'phone', 'alt_phone', 'email', 'nida', 'date_of_bir
         <section class="ph-card"><p>{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load(page())">{{ i18n.t('pl.retry') }}</button></section>
       } @else {
         <div class="table-scroll-container fit-page" data-testid="g-m-list">
-          <table class="grid-table">
+          <table class="grid-table g-grid">
             <thead>
               <tr>
                 <th class="no-col">#</th>

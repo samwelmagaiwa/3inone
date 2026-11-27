@@ -77,7 +77,7 @@ const KEYS = [
             }
             <h3>{{ i18n.t('g.s.history') }}</h3>
     <div class="table-scroll-container fit-page">
-              <table class="grid-table">
+              <table class="grid-table g-grid">
                 <thead>
                   <tr>
                   <th class="no-col">#</th>
@@ -96,7 +96,7 @@ const KEYS = [
                       <td class="font-bold">{{ i18n.t('g.set.' + h['key']) }}</td>
                       <td>{{ shown(h['key'], h['value']) }}</td>
                       <td>{{ day(h['effective_from']) }}</td>
-                      <td>{{ h['reason'] || '—' }}</td>
+                      <td class="g-long" [title]="h['reason'] || '—'">{{ h['reason'] || '—' }}</td>
                       <td>{{ h['changed_by_name'] || '—' }}</td>
                       <td>{{ when(h['created_at']) }}</td>
                     </tr>
@@ -135,7 +135,7 @@ const KEYS = [
         }
         @case ('offices') {
           <div class="table-scroll-container fit-page" data-testid="g-s-offices">
-            <table class="grid-table">
+            <table class="grid-table g-grid">
               <thead>
                 <tr>
                 <th class="no-col">#</th>
@@ -160,7 +160,7 @@ const KEYS = [
         }
         @case ('codes') {
           <div class="table-scroll-container fit-page" data-testid="g-s-codes">
-            <table class="grid-table">
+            <table class="grid-table g-grid">
               <thead>
                 <tr>
                 <th class="no-col">#</th>
@@ -177,7 +177,7 @@ const KEYS = [
                     <td><b style="letter-spacing: 0.12em">{{ c['code'] }}</b></td>
                     <td class="text-right">{{ n(c['used']) }}</td>
                     <td><span class="ph-badge" [class]="c['active'] ? 'ph-good' : 'ph-bad'">{{ c['active'] ? i18n.t('g.running') : i18n.t('g.stopped') }}</span></td>
-                    <td class="text-right">@if ((c['active'] ? [{ id: 'stop', label: i18n.t('g.s.code.stop'), danger: true }] : []).length) { <app-row-menu [items]="(c['active'] ? [{ id: 'stop', label: i18n.t('g.s.code.stop'), danger: true }] : [])" [testid]="'g-s-code-menu-' + c['id']" (picked)="stopCode(c)" /> } @else { — }</td>
+                    <td class="text-right"><app-row-menu [items]="orNone((c['active'] ? [{ id: 'stop', label: i18n.t('g.s.code.stop'), danger: true }] : []))" [testid]="'g-s-code-menu-' + c['id']" (picked)="stopCode(c)" /></td>
                   </tr>
                 } @empty {
                   <tr><td colspan="5" class="ph-muted">{{ i18n.t('g.none') }}</td></tr>
@@ -203,7 +203,7 @@ const KEYS = [
         }
         @case ('log') {
           <div class="table-scroll-container fit-page" data-testid="g-s-log">
-            <table class="grid-table">
+            <table class="grid-table g-grid">
               <thead>
                 <tr>
                 <th class="no-col">#</th>
@@ -217,7 +217,7 @@ const KEYS = [
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
                     <td>{{ when(e['created_at']) }}</td>
-                    <td>{{ e['summary'] || e['action'] }}</td>
+                    <td class="g-long" [title]="e['summary'] || e['action']">{{ e['summary'] || e['action'] }}</td>
                     <td>{{ e['by_name'] || '—' }}</td>
                   </tr>
                 } @empty {

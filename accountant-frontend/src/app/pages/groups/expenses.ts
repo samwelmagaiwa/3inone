@@ -31,7 +31,7 @@ const CATEGORIES = ['project', 'office', 'meeting', 'transport', 'event', 'other
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
       <div class="table-scroll-container fit-page" data-testid="g-e-list">
-          <table class="grid-table">
+          <table class="grid-table g-grid">
             <thead>
               <tr>
               <th class="no-col">#</th>
@@ -63,8 +63,8 @@ const CATEGORIES = ['project', 'office', 'meeting', 'transport', 'event', 'other
                   <td class="text-right">{{ tsh(r['amount']) }}</td>
                   <td class="text-right">{{ r['amount_approved'] ? tsh(r['amount_approved']) : '—' }}</td>
                   <td><span class="ph-badge" [class]="tone(r['state'])">{{ status(r['state']) }}</span></td>
-                  <td>{{ r['decision_note'] || '—' }}</td>
-                  <td class="text-right">@if (menuFor(r).length) { <app-row-menu [items]="menuFor(r)" [testid]="'g-e-menu-' + r['id']" (picked)="picked($event, r)" /> } @else { — }</td>
+                  <td class="g-long" [title]="r['decision_note'] || '—'">{{ r['decision_note'] || '—' }}</td>
+                  <td class="text-right"><app-row-menu [items]="orNone(menuFor(r))" [testid]="'g-e-menu-' + r['id']" (picked)="picked($event, r)" /></td>
                 </tr>
               } @empty {
                 <tr><td colspan="13" class="ph-muted">{{ i18n.t('g.e.none') }}</td></tr>
