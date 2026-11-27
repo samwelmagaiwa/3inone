@@ -250,3 +250,14 @@ describe('the menu of the business admin, on a phone and on a computer', () => {
     expect(nav(el)).toContain('Salon dashboard');
   });
 });
+
+describe('the look of Groups (Vikundi)', () => {
+  it('a group leader (not the business admin) gets the dark teal look in Groups, as on the phone; shop staff keep the light look', async () => {
+    const leader = await open({ role: 'group_member', roleLabel: 'Member', services: ['groups'], permissions: [] });
+    expect(leader.el.querySelector('.shell-wrap')!.classList.contains('theme-phone')).toBe(true);
+
+    TestBed.resetTestingModule();
+    const staff = await open({ role: 'sales_officer', roleLabel: 'Sales officer', services: ['inventory'] });
+    expect(staff.el.querySelector('.shell-wrap')!.classList.contains('theme-phone')).toBe(false);
+  });
+});

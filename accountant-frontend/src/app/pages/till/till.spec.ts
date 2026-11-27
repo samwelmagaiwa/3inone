@@ -799,6 +799,9 @@ describe('the till: where to choose the customer', () => {
   });
 
   it('the customer box opens a list by itself on a click, and the toggle opens and closes it', async () => {
+    // "Choose the customer" (earlier tests) focuses the search box 150 ms later; a timer left from them would focus THIS till's box and
+    // reopen the list after the toggle closed it. Let any such timer run out before this till exists.
+    await new Promise((r) => setTimeout(r, 200));
     const { h, fixture, el } = await open();
     byTestId(el, 'good-1')!.click();
     expect(byTestId(el, 'till-customer-list')).toBeNull();

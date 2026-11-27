@@ -53,7 +53,8 @@ export class ShellLayout implements OnDestroy {
    * for both. Other staff keep the light look.
    */
   protected readonly phoneTheme = computed(() => {
-    this.auth.service();
+    // Groups (Vikundi) is dark teal on the phone for everyone (the owner and the group's leaders alike), so it is here too.
+    if (this.auth.service() === 'groups') return true;
 
     return this.auth.isBusinessAdmin() || (this.auth.user()?.role ?? '').toLowerCase() === 'accountant';
   });
