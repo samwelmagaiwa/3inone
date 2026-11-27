@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
 import { AuthService } from './auth.service';
+import { GroupsContext } from './groups/groups-context.service';
 import { NAV, NavItem, homePath, startPath } from './nav';
 
 /** Only for people who are signed in; everyone else goes to the sign-in page. */
@@ -25,6 +26,27 @@ export const canOpen = (key: NavItem['key']): CanActivateFn => () => {
   const item = NAV.find((n) => n.key === key);
   if (item?.allowed(auth)) return true;
   return inject(Router).createUrlTree([homePath(auth)]);
+};
+
+/**
+ * A Groups (Vikundi) page: its rights come from the group, so they are loaded first (once), then the page opens for whoever holds them.
+ * Anyone else goes to the Groups start page, which picks the first page they may open.
+ */
+export const groupsOpen = (key: NavItem['key']): CanActivateFn => async () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  if (auth.service() !== 'groups') return router.createUrlTree([homePath(auth)]);
+  await inject(GroupsContext).ensure();
+  return NAV.find((n) => n.key === key)?.allowed(auth) ? true : router.createUrlTree(['/welcome']);
+};
+
+/** "/groups": the first Groups page this person may open (after their group rights are loaded), else the "nothing here yet" page. */
+export const groupsStart: CanActivateFn = async () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  await inject(GroupsContext).ensure();
+  const first = NAV.find((n) => n.key.startsWith('g_') && n.allowed(auth));
+  return router.createUrlTree([first?.path ?? '/welcome']);
 };
 
 /** The address "/" means "my first page". */

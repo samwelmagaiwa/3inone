@@ -48,6 +48,7 @@ export class ServicesPage {
   protected readonly others = computed(() => (this.auth.user()?.otherServices ?? []).map((s) => this.i18n.t(`service.${s}`)).join(', '));
 
   protected icon(s: ServiceName): string {
+    if (s === 'groups') return 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z';
     return s === 'inventory'
       ? 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'
       : 'M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z';
@@ -55,6 +56,7 @@ export class ServicesPage {
 
   protected open(s: ServiceName): void {
     this.auth.pick(s);
-    void this.router.navigate([allowedPages(this.auth)[0]?.path ?? homePath(this.auth)]);
+    // Groups loads its own rights first (its start page then opens the first page they allow)
+    void this.router.navigate([s === 'groups' ? '/groups' : (allowedPages(this.auth)[0]?.path ?? homePath(this.auth))]);
   }
 }

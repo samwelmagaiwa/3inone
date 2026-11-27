@@ -3,10 +3,10 @@
  * what a super admin bound to them, else what their role implies. The server remains the judge; this only chooses where to send
  * the person after sign-in, and what to offer in the picker.
  */
-export type ServiceKey = 'inventory' | 'salon' | 'rental' | 'transport';
+export type ServiceKey = 'inventory' | 'salon' | 'rental' | 'transport' | 'groups';
 
 /** The services this web app can work in. The others are used on the phone. */
-export const WEB_SERVICES: ServiceKey[] = ['inventory', 'salon'];
+export const WEB_SERVICES: ServiceKey[] = ['inventory', 'salon', 'groups'];
 
 export function servicesForRole(role: string): ServiceKey[] {
   switch (role.toLowerCase()) {
@@ -36,7 +36,7 @@ export function servicesForRole(role: string): ServiceKey[] {
   }
 }
 
-const KNOWN: ServiceKey[] = ['inventory', 'salon', 'rental', 'transport'];
+const KNOWN: ServiceKey[] = ['inventory', 'salon', 'rental', 'transport', 'groups'];
 
 /** Every service the person has: their bindings, else what the role implies (unknown names are ignored). */
 export function allServices(bound: string[], role: string): ServiceKey[] {

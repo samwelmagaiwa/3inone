@@ -2,6 +2,8 @@
  * Every word the app shows, in Swahili and in English. Keys are the same in both (a test checks it, and that every key the code
  * uses exists). `{0}`, `{1}` are filled in by I18nService.t(). Swahili follows the wording of the mobile app where it has the same screen.
  */
+import { G_TEXTS } from './groups/texts';
+
 export type Lang = 'sw' | 'en';
 
 const en: Record<string, string> = {
@@ -3013,5 +3015,11 @@ const sw: Record<string, string> = {
   'till.voucher.bad': 'Vocha hii haiwezi kutumika.',
   'till.voucher.ok': 'Vocha inapunguza {0}.',
 };
+
+// The Groups (Vikundi) pages keep their words in groups/texts.ts, each key with both languages side by side.
+for (const [key, [swText, enText]] of Object.entries(G_TEXTS)) {
+  sw[key] = swText;
+  en[key] = enText;
+}
 
 export const TRANSLATIONS: Record<Lang, Record<string, string>> = { sw, en };

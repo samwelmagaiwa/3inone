@@ -43,6 +43,30 @@ export class ConfirmService {
     return result.isConfirmed;
   }
 
+  /**
+   * A question that needs a few words written (why a payment is turned down, why a member is suspended). Resolves the text, or null when
+   * the person cancels. The confirm button stays off until at least [minLength] letters are written.
+   */
+  async askText(options: ConfirmOptions & { placeholder?: string; minLength?: number; initial?: string }): Promise<string | null> {
+    const min = options.minLength ?? 3;
+    const result = await Swal.fire({
+      title: options.title,
+      text: options.message,
+      input: 'textarea',
+      inputValue: options.initial ?? '',
+      inputPlaceholder: options.placeholder ?? '',
+      inputAttributes: { maxlength: '255' },
+      showCancelButton: true,
+      confirmButtonText: options.confirmLabel || 'Confirm',
+      cancelButtonText: options.cancelLabel || 'Cancel',
+      reverseButtons: true,
+      buttonsStyling: false,
+      inputValidator: (v) => ((v ?? '').trim().length < min ? options.placeholder || ' ' : null),
+      customClass: { ...this.classes, input: 'swal-bs-pre', confirmButton: options.danger ? 'swal-bs-confirm swal-bs-danger' : 'swal-bs-confirm' },
+    });
+    return result.isConfirmed ? String(result.value ?? '').trim() : null;
+  }
+
   /** A message the user has to acknowledge. */
   async notify(title: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info'): Promise<void> {
     await Swal.fire({

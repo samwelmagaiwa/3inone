@@ -1,0 +1,394 @@
+import { Component, OnInit, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+
+import { Row } from '../../core/groups/groups-api.service';
+import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { GBase } from './g-base';
+import { MemberPick, PickedMember } from './member-pick';
+
+const HIRE_FILTERS = ['open', 'requested', 'approved', 'issued', 'returned', 'closed', 'declined', 'cancelled'];
+const EVENTS = ['maintenance', 'repair', 'damage', 'loss', 'adjust', 'retire'];
+type HireAct = 'pay' | 'issue' | 'return' | 'charge';
+
+/**
+ * The group's things (chairs, tents, a sound system ...): the register with its keeper and history, and hiring them out. A hire is
+ * confirmed by the keeper, paid (verified by someone else), handed over, brought back (damaged and missing counted), charged for damage
+ * when need be, and closed.
+ */
+@Component({
+  selector: 'app-g-assets',
+  imports: [FormsModule, ModalDialogComponent, MemberPick],
+  template: `
+    <div class="ad ph-page" data-testid="g-assets">
+      <div class="ph-row" style="flex-wrap: wrap">
+        <div class="ph-chips">
+          <button type="button" class="pill-tab" [class.is-active]="tab() === 'assets'" (click)="tab.set('assets'); loadAssets()">{{ i18n.t('g.a.register') }}</button>
+          <button type="button" class="pill-tab" [class.is-active]="tab() === 'hires'" (click)="tab.set('hires'); loadHires()" data-testid="g-a-tab-hires">{{ i18n.t('g.a.hires') }}</button>
+        </div>
+        <div class="ph-row" style="gap: 6px">
+          @if (tab() === 'assets' && can('manage_assets')) { <button type="button" class="btn-primary ph-btn" (click)="openAsset(null)" data-testid="g-a-new">{{ i18n.t('g.a.new') }}</button> }
+          @if (tab() === 'hires') { <button type="button" class="btn-primary is-success ph-btn" (click)="openHire()" data-testid="g-h-new">{{ i18n.t('g.h.new') }}</button> }
+        </div>
+      </div>
+      @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
+
+      @if (tab() === 'assets') {
+        <div class="ph-card ph-joined" data-testid="g-a-list">
+          @for (a of assets(); track a['id']) {
+            <section class="ph-sec">
+              <div class="ph-row"><h3>{{ a['name'] }} <span class="ph-muted">{{ a['code'] }}</span></h3><b class="ph-accent">{{ a['quantity'] }}</b></div>
+              <div class="ph-line"><span>{{ a['category'] || '' }}@if (a['location']) { · {{ a['location'] }} }</span><span>{{ i18n.t('g.a.free.today', n(a['free_today'], n(a['quantity']))) }}</span></div>
+              <div class="ph-line"><span class="ph-muted">{{ i18n.t('g.a.keeper') }}: {{ a['custodian_name'] || '—' }}</span>
+                <span>@if (a['hire_rate']) { {{ i18n.t('g.a.rate', tsh(a['hire_rate'])) }} } @if (a['condition']) { · {{ i18n.t('g.cond.' + a['condition']) }} }</span></div>
+              <div class="g-acts">
+                <button type="button" class="btn-outline ph-btn" (click)="openDetail(a)">{{ i18n.t('g.open') }}</button>
+                @if (can('manage_assets')) {
+                  <button type="button" class="btn-outline ph-btn" (click)="openAsset(a)">{{ i18n.t('g.edit') }}</button>
+                  <button type="button" class="btn-primary is-warn ph-btn" (click)="openEvent(a)">{{ i18n.t('g.a.event') }}</button>
+                }
+              </div>
+            </section>
+          } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.a.none') }}</p></section> }
+        </div>
+      } @else {
+        <div class="ph-chips">
+          @for (s of hireFilters; track s) {
+            <button type="button" class="pill-tab" [class.is-active]="hireFilter() === s" (click)="hireFilter.set(s); loadHires()">{{ s === 'open' ? i18n.t('g.l.open') : status(s) }}</button>
+          }
+        </div>
+        <div class="ph-card ph-joined" data-testid="g-h-list">
+          @for (h of hires(); track h['id']) {
+            <section class="ph-sec">
+              <div class="ph-row"><h3>{{ h['who'] }} <span class="ph-muted">{{ h['reference'] }}</span></h3><span class="ph-badge" [class]="tone(h['state'] === 'overdue' ? 'overdue' : h['status'])">{{ h['state'] === 'overdue' ? status('overdue') : status(h['status']) }}</span></div>
+              <div class="ph-line"><span>{{ h['asset_name'] }} × {{ h['quantity'] }} · {{ day(h['start_date']) }} – {{ day(h['end_date']) }}</span><b>{{ tsh(h['total'] ?? h['amount']) }}</b></div>
+              <div class="ph-line"><span class="ph-muted">{{ h['phone'] }}@if (h['purpose']) { · {{ h['purpose'] }} }</span>
+                <span>{{ i18n.t('g.paid') }} {{ tsh(h['paid'] ?? 0) }}@if (h['balance'] > 0) { · <b class="ph-bad">{{ i18n.t('g.p.left', tsh(h['balance'])) }}</b> }</span></div>
+              @if (h['late_charge_now'] > 0) { <p class="ph-bad" style="font-size: 13px">{{ i18n.t('g.h.late.now', tsh(h['late_charge_now'])) }}</p> }
+              @if (h['returned_quantity'] !== null && h['returned_quantity'] !== undefined) {
+                <p class="ph-muted">{{ i18n.t('g.h.back', n(h['returned_quantity']), n(h['damaged_quantity']), n(h['missing_quantity'])) }}</p>
+              }
+              <div class="g-acts">
+                @if (h['status'] === 'requested') {
+                  <button type="button" class="btn-primary is-success ph-btn" (click)="decide(h, true)" [attr.data-testid]="'g-h-approve-' + h['id']">{{ i18n.t('g.approve') }}</button>
+                  <button type="button" class="btn-primary is-danger ph-btn" (click)="decide(h, false)">{{ i18n.t('g.turn.down') }}</button>
+                }
+                @if ((h['status'] === 'approved' || h['status'] === 'returned' || h['status'] === 'issued') && h['balance'] > 0) {
+                  <button type="button" class="btn-primary is-success ph-btn" (click)="openAct(h, 'pay')">{{ i18n.t('g.h.take.pay') }}</button>
+                }
+                @if (h['status'] === 'approved') { <button type="button" class="btn-primary is-info ph-btn" (click)="openAct(h, 'issue')">{{ i18n.t('g.h.issue') }}</button> }
+                @if (h['status'] === 'issued') { <button type="button" class="btn-primary is-warn ph-btn" (click)="openAct(h, 'return')">{{ i18n.t('g.h.return') }}</button> }
+                @if (h['status'] === 'returned' && can('decide_hire_charges') && ((h['damaged_quantity'] ?? 0) + (h['missing_quantity'] ?? 0)) > 0 && h['damage_charge'] === null) {
+                  <button type="button" class="btn-primary is-danger ph-btn" (click)="openAct(h, 'charge')">{{ i18n.t('g.h.charge') }}</button>
+                }
+                @if (h['status'] === 'returned' && !(h['balance'] > 0)) { <button type="button" class="btn-outline ph-btn" (click)="close(h)">{{ i18n.t('g.h.close') }}</button> }
+              </div>
+            </section>
+          } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.h.none') }}</p></section> }
+        </div>
+      }
+    </div>
+
+    <!-- an asset -->
+    <app-modal-dialog [show]="assetOpen()" [eyebrow]="i18n.t('g.a.register')" [title]="af['id'] ? i18n.t('g.edit') : i18n.t('g.a.new')" size="lg" (close)="assetOpen.set(false)">
+      <div slot="body" class="ph-page" style="gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr))">
+        <label class="ph-field" style="grid-column: auto">{{ i18n.t('g.a.code') }} *<input class="modal-input" [(ngModel)]="af['code']" name="ac" placeholder="VITI-01" data-testid="g-af-code" /></label>
+        <label class="ph-field" style="grid-column: auto">{{ i18n.t('g.name') }} *<input class="modal-input" [(ngModel)]="af['name']" name="an" data-testid="g-af-name" /></label>
+        @if (!af['id']) { <label class="ph-field" style="grid-column: auto">{{ i18n.t('g.a.quantity') }} *<input class="modal-input" type="number" min="1" [(ngModel)]="af['quantity']" name="aq" data-testid="g-af-qty" /></label> }
+        <label class="ph-field" style="grid-column: auto">{{ i18n.t('g.a.category') }}<input class="modal-input" [(ngModel)]="af['category']" name="acat" /></label>
+        <label class="ph-field" style="grid-column: auto">{{ i18n.t('g.a.condition') }}<select class="modal-input" [(ngModel)]="af['condition']" name="acond"><option value="">—</option>@for (c of ['good', 'fair', 'poor']; track c) { <option [value]="c">{{ i18n.t('g.cond.' + c) }}</option> }</select></label>
+        <label class="ph-field" style="grid-column: auto">{{ i18n.t('g.a.location') }}<input class="modal-input" [(ngModel)]="af['location']" name="aloc" /></label>
+        <label class="ph-field" style="grid-column: auto">{{ i18n.t('g.a.hire.rate') }}<input class="modal-input" inputmode="numeric" [(ngModel)]="af['hire_rate']" name="ahr" /></label>
+        <label class="ph-field" style="grid-column: auto">{{ i18n.t('g.a.late.rate') }}<input class="modal-input" inputmode="numeric" [(ngModel)]="af['late_rate']" name="alr" /></label>
+        <label class="ph-field" style="grid-column: auto">{{ i18n.t('g.a.cost') }}<input class="modal-input" inputmode="numeric" [(ngModel)]="af['cost']" name="acost" /></label>
+        <label class="ph-field" style="grid-column: auto">{{ i18n.t('g.a.acquired') }}<input class="modal-input" type="date" [max]="today()" [(ngModel)]="af['acquired_on']" name="aacq" /></label>
+        <label class="ph-field" style="grid-column: 1 / -1">{{ i18n.t('g.description') }}<input class="modal-input" [(ngModel)]="af['description']" name="adesc" /></label>
+        <div style="grid-column: 1 / -1"><app-g-member-pick [label]="i18n.t('g.a.keeper')" [value]="keeper()" (picked$)="keeper.set($event)" /></div>
+        <label class="ph-row" style="grid-column: 1 / -1"><span>{{ i18n.t('g.a.visible') }}</span><input type="checkbox" [(ngModel)]="af['visible']" name="avis" /></label>
+      </div>
+      <div slot="footer" class="flex gap-2">
+        <button type="button" class="btn-outline ph-btn" (click)="assetOpen.set(false)">{{ i18n.t('common.cancel') }}</button>
+        <button type="button" class="btn-primary is-success ph-btn" [disabled]="busy()" (click)="saveAsset()" data-testid="g-af-save">{{ i18n.t('g.save') }}</button>
+      </div>
+    </app-modal-dialog>
+
+    <!-- an asset's history -->
+    <app-modal-dialog [show]="!!detail()" [eyebrow]="detail()?.['asset']?.['code'] ?? ''" [title]="detail()?.['asset']?.['name'] ?? ''" size="md" (close)="detail.set(null)">
+      <div slot="body">
+        <div class="ph-card ph-joined">
+          @for (e of detail()?.['events'] ?? []; track $index) {
+            <section class="ph-sec"><div class="ph-line"><span>{{ i18n.t('g.ev.' + e['kind']) }}@if (e['quantity']) { · {{ e['quantity'] }} } @if (e['cost']) { · {{ tsh(e['cost']) }} }</span><span class="ph-muted">{{ when(e['created_at']) }}</span></div>
+              <p class="ph-muted">{{ e['note'] }}@if (e['by_name']) { · {{ e['by_name'] }} }</p></section>
+          } @empty { <section class="ph-sec"><p class="ph-muted">{{ i18n.t('g.none') }}</p></section> }
+        </div>
+      </div>
+      <div slot="footer" class="flex gap-2"><button type="button" class="btn-outline ph-btn" (click)="detail.set(null)">{{ i18n.t('common.close') }}</button></div>
+    </app-modal-dialog>
+
+    <!-- something happened to an asset -->
+    <app-modal-dialog [show]="!!eventFor()" [eyebrow]="eventFor()?.['name'] ?? ''" [title]="i18n.t('g.a.event')" size="sm" (close)="eventFor.set(null)">
+      <div slot="body" class="ph-page" style="gap: 10px">
+        <label class="ph-field">{{ i18n.t('g.kind') }}<select class="modal-input" [(ngModel)]="ev['kind']" name="ek">@for (k of events; track k) { <option [value]="k">{{ i18n.t('g.ev.' + k) }}</option> }</select></label>
+        @if (ev['kind'] === 'adjust') {
+          <label class="ph-field">{{ i18n.t('g.a.direction') }}<select class="modal-input" [(ngModel)]="ev['direction']" name="ed"><option value="up">{{ i18n.t('g.a.up') }}</option><option value="down">{{ i18n.t('g.a.down') }}</option></select></label>
+        }
+        <label class="ph-field">{{ i18n.t('g.a.quantity') }}<input class="modal-input" type="number" min="1" [(ngModel)]="ev['quantity']" name="eq" /></label>
+        <label class="ph-field">{{ i18n.t('g.a.cost') }}<input class="modal-input" inputmode="numeric" [(ngModel)]="ev['cost']" name="ec" /></label>
+        <label class="ph-field">{{ i18n.t('g.note') }} *<input class="modal-input" [(ngModel)]="ev['note']" name="en" /></label>
+      </div>
+      <div slot="footer" class="flex gap-2">
+        <button type="button" class="btn-outline ph-btn" (click)="eventFor.set(null)">{{ i18n.t('common.cancel') }}</button>
+        <button type="button" class="btn-primary is-warn ph-btn" [disabled]="busy()" (click)="saveEvent()">{{ i18n.t('g.save') }}</button>
+      </div>
+    </app-modal-dialog>
+
+    <!-- a hire written for a member or someone outside -->
+    <app-modal-dialog [show]="hireOpen()" [eyebrow]="i18n.t('g.a.hires')" [title]="i18n.t('g.h.new')" size="md" (close)="hireOpen.set(false)">
+      <div slot="body" class="ph-page" style="gap: 10px">
+        <label class="ph-field">{{ i18n.t('g.h.what') }}<select class="modal-input" [(ngModel)]="hf['asset_id']" name="ha" data-testid="g-hf-asset">@for (a of assets(); track a['id']) { <option [ngValue]="a['id']">{{ a['name'] }} ({{ a['quantity'] }})</option> }</select></label>
+        <div class="ph-row" style="gap: 10px">
+          <label class="ph-field" style="flex: 1">{{ i18n.t('g.a.quantity') }}<input class="modal-input" type="number" min="1" [(ngModel)]="hf['quantity']" name="hq" /></label>
+          <label class="ph-field" style="flex: 1">{{ i18n.t('g.h.from') }}<input class="modal-input" type="date" [(ngModel)]="hf['start_date']" name="hs" /></label>
+          <label class="ph-field" style="flex: 1">{{ i18n.t('g.h.to') }}<input class="modal-input" type="date" [(ngModel)]="hf['end_date']" name="he" /></label>
+        </div>
+        <label class="ph-row"><span>{{ i18n.t('g.h.outsider') }}</span><input type="checkbox" [(ngModel)]="outsider" name="ho" /></label>
+        @if (outsider) {
+          <label class="ph-field">{{ i18n.t('g.f.full_name') }}<input class="modal-input" [(ngModel)]="hf['customer_name']" name="hcn" /></label>
+          <label class="ph-field">{{ i18n.t('g.f.phone') }}<input class="modal-input" [(ngModel)]="hf['customer_phone']" name="hcp" placeholder="07XXXXXXXX" /></label>
+        } @else {
+          <app-g-member-pick [value]="hirer()" (picked$)="hirer.set($event)" />
+        }
+        <label class="ph-field">{{ i18n.t('g.h.purpose') }}<input class="modal-input" [(ngModel)]="hf['purpose']" name="hp" /></label>
+      </div>
+      <div slot="footer" class="flex gap-2">
+        <button type="button" class="btn-outline ph-btn" (click)="hireOpen.set(false)">{{ i18n.t('common.cancel') }}</button>
+        <button type="button" class="btn-primary is-success ph-btn" [disabled]="busy()" (click)="saveHire()" data-testid="g-hf-save">{{ i18n.t('g.save') }}</button>
+      </div>
+    </app-modal-dialog>
+
+    <!-- a step of a hire -->
+    <app-modal-dialog [show]="!!acting()" [eyebrow]="acting()?.['h']?.['who'] ?? ''" [title]="actTitle()" size="sm" (close)="acting.set(null)">
+      <div slot="body" class="ph-page" style="gap: 10px">
+        @switch (acting()?.['kind']) {
+          @case ('pay') {
+            <label class="ph-field">{{ i18n.t('g.amount') }}<input class="modal-input" inputmode="numeric" [(ngModel)]="x['amount']" name="xa" /></label>
+            <label class="ph-field">{{ i18n.t('g.method') }}<select class="modal-input" [(ngModel)]="x['method']" name="xm">@for (m of methods; track m) { <option [value]="m">{{ method(m) }}</option> }</select></label>
+            @if (x['method'] !== 'cash') { <label class="ph-field">{{ i18n.t('g.ref') }}<input class="modal-input" [(ngModel)]="x['ref']" name="xr" /></label> }
+            <p class="ph-muted">{{ i18n.t('g.p.waits') }}</p>
+          }
+          @case ('issue') {
+            <label class="ph-field">{{ i18n.t('g.h.handed') }}<input class="modal-input" type="number" min="1" [(ngModel)]="x['quantity']" name="xq" /></label>
+            <label class="ph-field">{{ i18n.t('g.h.condition') }}<input class="modal-input" [(ngModel)]="x['condition']" name="xc" /></label>
+          }
+          @case ('return') {
+            <label class="ph-field">{{ i18n.t('g.h.returned') }}<input class="modal-input" type="number" min="0" [(ngModel)]="x['returned']" name="xre" /></label>
+            <label class="ph-field">{{ i18n.t('g.h.damaged') }}<input class="modal-input" type="number" min="0" [(ngModel)]="x['damaged']" name="xd" /></label>
+            <label class="ph-field">{{ i18n.t('g.h.missing') }}<input class="modal-input" type="number" min="0" [(ngModel)]="x['missing']" name="xmi" /></label>
+            <label class="ph-field">{{ i18n.t('g.note') }}<input class="modal-input" [(ngModel)]="x['note']" name="xn" /></label>
+          }
+          @case ('charge') {
+            <label class="ph-field">{{ i18n.t('g.h.charge.amount') }}<input class="modal-input" inputmode="numeric" [(ngModel)]="x['amount']" name="xca" /></label>
+            <label class="ph-field">{{ i18n.t('g.reason') }} *<input class="modal-input" [(ngModel)]="x['note']" name="xcn" /></label>
+          }
+        }
+      </div>
+      <div slot="footer" class="flex gap-2">
+        <button type="button" class="btn-outline ph-btn" (click)="acting.set(null)">{{ i18n.t('common.cancel') }}</button>
+        <button type="button" class="btn-primary ph-btn" [class.is-success]="acting()?.['kind'] === 'pay'" [disabled]="busy()" (click)="doAct()">{{ i18n.t('g.save') }}</button>
+      </div>
+    </app-modal-dialog>
+  `,
+  styles: [`.g-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; } .g-acts:empty { display: none; }`],
+})
+export class GAssetsPage extends GBase implements OnInit {
+  protected readonly hireFilters = HIRE_FILTERS;
+  protected readonly events = EVENTS;
+  protected readonly tab = signal<'assets' | 'hires'>('assets');
+  protected readonly assets = signal<Row[]>([]);
+  protected readonly hires = signal<Row[]>([]);
+  protected readonly hireFilter = signal('open');
+  protected readonly error = signal('');
+
+  protected readonly assetOpen = signal(false);
+  protected af: Row = {};
+  protected readonly keeper = signal<PickedMember | null>(null);
+  protected readonly detail = signal<Row | null>(null);
+  protected readonly eventFor = signal<Row | null>(null);
+  protected ev: Row = {};
+  protected readonly hireOpen = signal(false);
+  protected hf: Row = {};
+  protected outsider = false;
+  protected readonly hirer = signal<PickedMember | null>(null);
+  protected readonly acting = signal<{ kind: HireAct; h: Row } | null>(null);
+  protected x: Row = {};
+
+  ngOnInit(): void {
+    void this.loadAssets();
+  }
+
+  protected actTitle(): string {
+    switch (this.acting()?.kind) {
+      case 'pay': return this.i18n.t('g.h.take.pay');
+      case 'issue': return this.i18n.t('g.h.issue');
+      case 'return': return this.i18n.t('g.h.return');
+      case 'charge': return this.i18n.t('g.h.charge');
+      default: return '';
+    }
+  }
+
+  async loadAssets(): Promise<void> {
+    this.error.set('');
+    try {
+      this.assets.set(((await this.api.get('/assets'))['assets'] as Row[]) ?? []);
+    } catch (e) {
+      this.error.set(this.failed(e));
+    }
+  }
+
+  async loadHires(): Promise<void> {
+    this.error.set('');
+    try {
+      this.hires.set(((await this.api.get('/hires', { status: this.hireFilter() }))['hires'] as Row[]) ?? []);
+    } catch (e) {
+      this.error.set(this.failed(e));
+    }
+  }
+
+  protected openAsset(a: Row | null): void {
+    this.af = a ? { ...a } : { quantity: 1, condition: 'good', visible: true };
+    for (const k of ['hire_rate', 'late_rate', 'cost']) this.af[k] = this.af[k] === null || this.af[k] === undefined ? '' : String(this.af[k]);
+    this.keeper.set(a?.['custodian_id'] ? { id: Number(a['custodian_id']), name: String(a['custodian_name'] ?? ''), number: '' } : null);
+    this.assetOpen.set(true);
+  }
+
+  protected async saveAsset(): Promise<void> {
+    const code = String(this.af['code'] ?? '').trim();
+    const name = String(this.af['name'] ?? '').trim();
+    if (!code || name.length < 2) return this.stop(this.i18n.t('g.need.name'));
+    const money = (v: unknown) => (String(v ?? '').trim() === '' ? null : this.amount(v));
+    const body: Row = {
+      code, name,
+      category: String(this.af['category'] ?? '').trim() || null,
+      description: String(this.af['description'] ?? '').trim() || null,
+      condition: this.af['condition'] || null,
+      location: String(this.af['location'] ?? '').trim() || null,
+      acquired_on: this.af['acquired_on'] || null,
+      cost: money(this.af['cost']),
+      hire_rate: money(this.af['hire_rate']),
+      late_rate: money(this.af['late_rate']),
+      custodian_id: this.keeper()?.id ?? null,
+      visible: !!this.af['visible'],
+    };
+    const id = this.af['id'];
+    if (!id) body['quantity'] = Number(this.af['quantity']) || 1;
+    if (await this.act(() => (id ? this.api.put(`/assets/${id}`, body) : this.api.post('/assets', body)), this.i18n.t('g.saved'))) {
+      this.assetOpen.set(false);
+      await this.loadAssets();
+    }
+  }
+
+  protected async openDetail(a: Row): Promise<void> {
+    try {
+      this.detail.set(await this.api.get(`/assets/${a['id']}`));
+    } catch (e) {
+      this.error.set(this.failed(e));
+    }
+  }
+
+  protected openEvent(a: Row): void {
+    this.ev = { kind: 'maintenance', quantity: 1, cost: '', note: '', direction: 'down' };
+    this.eventFor.set(a);
+  }
+
+  protected async saveEvent(): Promise<void> {
+    const a = this.eventFor();
+    if (!a) return;
+    if (String(this.ev['note'] ?? '').trim().length < 3) return this.stop(this.i18n.t('g.need.reason'));
+    const body: Row = { kind: this.ev['kind'], note: String(this.ev['note']).trim(), quantity: Number(this.ev['quantity']) || null, cost: String(this.ev['cost'] ?? '').trim() ? this.amount(this.ev['cost']) : null };
+    if (this.ev['kind'] === 'adjust') body['direction'] = this.ev['direction'];
+    if (await this.act(() => this.api.post(`/assets/${a['id']}/events`, body), this.i18n.t('g.saved'))) {
+      this.eventFor.set(null);
+      await this.loadAssets();
+    }
+  }
+
+  protected async openHire(): Promise<void> {
+    if (!this.assets().length) await this.loadAssets();
+    this.hf = { asset_id: this.assets()[0]?.['id'] ?? null, quantity: 1, start_date: this.today(), end_date: this.today(), purpose: '' };
+    this.outsider = false;
+    this.hirer.set(null);
+    this.hireOpen.set(true);
+  }
+
+  protected async saveHire(): Promise<void> {
+    if (!this.hf['asset_id']) return this.stop(this.i18n.t('g.need.asset'));
+    const body: Row = { asset_id: this.hf['asset_id'], quantity: Number(this.hf['quantity']) || 1, start_date: this.hf['start_date'], end_date: this.hf['end_date'], ...(String(this.hf['purpose'] ?? '').trim() ? { purpose: String(this.hf['purpose']).trim() } : {}) };
+    if (this.outsider) {
+      body['customer_name'] = String(this.hf['customer_name'] ?? '').trim();
+      body['customer_phone'] = String(this.hf['customer_phone'] ?? '').trim();
+    } else {
+      const m = this.hirer();
+      if (!m) return this.stop(this.i18n.t('g.need.member'));
+      body['member_id'] = m.id;
+    }
+    if (await this.act(() => this.api.post('/hires', body), this.i18n.t('g.saved'))) {
+      this.hireOpen.set(false);
+      this.tab.set('hires');
+      await this.loadHires();
+    }
+  }
+
+  protected async decide(h: Row, approve: boolean): Promise<void> {
+    let note: string | null = null;
+    if (!approve) {
+      note = await this.reason(this.i18n.t('g.turn.down'), `${h['who']} · ${h['asset_name']} × ${h['quantity']}`, this.i18n.t('g.turn.down'));
+      if (note === null) return;
+    } else if (!(await this.sure(this.i18n.t('g.approve'), `${h['who']} · ${h['asset_name']} × ${h['quantity']} · ${this.day(h['start_date'])}`, this.i18n.t('g.approve')))) {
+      return;
+    }
+    if (await this.act(() => this.api.post(`/hires/${h['id']}/decide`, { approve, ...(note ? { note } : {}) }), this.i18n.t('g.saved'))) await Promise.all([this.loadHires(), this.ctx.reload()]);
+  }
+
+  protected openAct(h: Row, kind: HireAct): void {
+    switch (kind) {
+      case 'pay': this.x = { amount: String(h['balance'] ?? ''), method: 'cash', ref: '' }; break;
+      case 'issue': this.x = { quantity: h['quantity'], condition: '' }; break;
+      case 'return': this.x = { returned: h['issued_quantity'] ?? h['quantity'], damaged: 0, missing: 0, note: '' }; break;
+      case 'charge': this.x = { amount: '', note: '' }; break;
+    }
+    this.acting.set({ kind, h });
+  }
+
+  protected async doAct(): Promise<void> {
+    const a = this.acting();
+    if (!a) return;
+    const id = a.h['id'];
+    let call: () => Promise<unknown>;
+    switch (a.kind) {
+      case 'pay': {
+        const amount = this.amount(this.x['amount']);
+        if (amount < 1) return this.stop(this.i18n.t('g.need.amount'));
+        call = () => this.api.post(`/hires/${id}/pay`, { amount, method: this.x['method'], ...(String(this.x['ref'] ?? '').trim() ? { external_ref: String(this.x['ref']).trim() } : {}) });
+        break;
+      }
+      case 'issue':
+        call = () => this.api.post(`/hires/${id}/issue`, { quantity: Number(this.x['quantity']) || 1, ...(String(this.x['condition'] ?? '').trim() ? { condition: String(this.x['condition']).trim() } : {}) });
+        break;
+      case 'return':
+        call = () => this.api.post(`/hires/${id}/return`, { returned: Number(this.x['returned']) || 0, damaged: Number(this.x['damaged']) || 0, missing: Number(this.x['missing']) || 0, ...(String(this.x['note'] ?? '').trim() ? { note: String(this.x['note']).trim() } : {}) });
+        break;
+      case 'charge':
+        if (String(this.x['note'] ?? '').trim().length < 3) return this.stop(this.i18n.t('g.need.reason'));
+        call = () => this.api.post(`/hires/${id}/charge`, { amount: this.amount(this.x['amount']), note: String(this.x['note']).trim() });
+        break;
+    }
+    if (await this.act(call, this.i18n.t('g.saved'))) {
+      this.acting.set(null);
+      await this.loadHires();
+    }
+  }
+
+  protected async close(h: Row): Promise<void> {
+    if (!(await this.sure(this.i18n.t('g.h.close'), `${h['who']} · ${h['asset_name']}`, this.i18n.t('g.h.close')))) return;
+    if (await this.act(() => this.api.post(`/hires/${h['id']}/close`), this.i18n.t('g.saved'))) await this.loadHires();
+  }
+}

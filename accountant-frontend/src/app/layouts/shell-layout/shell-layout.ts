@@ -102,7 +102,7 @@ export class ShellLayout implements OnDestroy {
   });
   protected readonly payPhone = computed(() => this.auth.subscription()?.contact_phone ?? '');
   protected readonly initials = computed(() => (this.user().name || '?').trim().slice(0, 2).toUpperCase());
-  protected readonly serviceNames: Record<ServiceName, string> = { inventory: 'service.inventory', salon: 'service.salon' };
+  protected readonly serviceNames: Record<ServiceName, string> = { inventory: 'service.inventory', salon: 'service.salon', groups: 'service.groups' };
 
   protected readonly breadcrumb = computed(() => {
     const url = this.currentUrl();
@@ -235,8 +235,9 @@ export class ShellLayout implements OnDestroy {
     this.auth.switchService(service);
     void this.loadNotifications();
     // go to the first page of that service; a page the person may not open there would only show an error
-    const first = allowedPages(this.auth)[0];
-    void this.router.navigate([first?.path ?? '/welcome']);
+    // Groups loads its own rights first: its start page then opens the first page they allow
+    const first = service === 'groups' ? '/groups' : allowedPages(this.auth)[0]?.path;
+    void this.router.navigate([first ?? '/welcome']);
   }
 
   // ------------------------------------------------------------------ the bell

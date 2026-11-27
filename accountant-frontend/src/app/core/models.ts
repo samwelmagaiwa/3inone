@@ -6,7 +6,7 @@ export interface ApiEnvelope<T> {
 }
 
 /** The services the web app works in. */
-export type ServiceName = 'inventory' | 'salon';
+export type ServiceName = 'inventory' | 'salon' | 'groups';
 
 /** Who is signed in, with what they may do (the server's own list, `effective_permissions`). */
 export interface SessionUser {

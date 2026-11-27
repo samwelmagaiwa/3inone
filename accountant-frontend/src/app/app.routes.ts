@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, canOpen, canSell, noAuthGuard, startPage } from './core/auth.guard';
+import { authGuard, canOpen, canSell, groupsOpen, groupsStart, noAuthGuard, startPage } from './core/auth.guard';
 
 export const routes: Routes = [
   {
@@ -41,6 +41,22 @@ export const routes: Routes = [
       { path: 'branch-team', canActivate: [canOpen('branch_team')], loadComponent: () => import('./pages/branch-team/branch-team').then((m) => m.BranchTeamPage) },
       { path: 'branch-sales', canActivate: [canOpen('branch_sales')], loadComponent: () => import('./pages/branch-sales/branch-sales').then((m) => m.BranchSalesPage) },
       { path: 'assistant', loadComponent: () => import('./pages/assistant/assistant').then((m) => m.AssistantPage) },
+      // Groups (Vikundi): the business admin runs the whole group from here; leaders see the pages of their office.
+      { path: 'groups', pathMatch: 'full', canActivate: [groupsStart], children: [] },
+      { path: 'groups/dashboard', canActivate: [groupsOpen('g_dashboard')], loadComponent: () => import('./pages/groups/dashboard').then((m) => m.GDashboardPage) },
+      { path: 'groups/members', canActivate: [groupsOpen('g_members')], loadComponent: () => import('./pages/groups/members').then((m) => m.GMembersPage) },
+      { path: 'groups/payments', canActivate: [groupsOpen('g_payments')], loadComponent: () => import('./pages/groups/payments').then((m) => m.GPaymentsPage) },
+      { path: 'groups/contributions', canActivate: [groupsOpen('g_contributions')], loadComponent: () => import('./pages/groups/contributions').then((m) => m.GContributionsPage) },
+      { path: 'groups/loans', canActivate: [groupsOpen('g_loans')], loadComponent: () => import('./pages/groups/loans').then((m) => m.GLoansPage) },
+      { path: 'groups/welfare', canActivate: [groupsOpen('g_welfare')], loadComponent: () => import('./pages/groups/welfare').then((m) => m.GWelfarePage) },
+      { path: 'groups/expenses', canActivate: [groupsOpen('g_expenses')], loadComponent: () => import('./pages/groups/expenses').then((m) => m.GExpensesPage) },
+      { path: 'groups/dividends', canActivate: [groupsOpen('g_dividends')], loadComponent: () => import('./pages/groups/dividends').then((m) => m.GDividendsPage) },
+      { path: 'groups/assets', canActivate: [groupsOpen('g_assets')], loadComponent: () => import('./pages/groups/assets').then((m) => m.GAssetsPage) },
+      { path: 'groups/projects', canActivate: [groupsOpen('g_projects')], loadComponent: () => import('./pages/groups/projects').then((m) => m.GProjectsPage) },
+      { path: 'groups/meetings', canActivate: [groupsOpen('g_meetings')], loadComponent: () => import('./pages/groups/meetings').then((m) => m.GMeetingsPage) },
+      { path: 'groups/votings', canActivate: [groupsOpen('g_votings')], loadComponent: () => import('./pages/groups/votings').then((m) => m.GVotingsPage) },
+      { path: 'groups/reports', canActivate: [groupsOpen('g_reports')], loadComponent: () => import('./pages/groups/reports').then((m) => m.GReportsPage) },
+      { path: 'groups/settings', canActivate: [groupsOpen('g_settings')], loadComponent: () => import('./pages/groups/settings').then((m) => m.GSettingsPage) },
       // New modules are added here as children of the shell, and in core/nav.ts.
     ],
   },

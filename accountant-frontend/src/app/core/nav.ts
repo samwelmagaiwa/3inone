@@ -1,4 +1,5 @@
 import { AuthService } from './auth.service';
+import { gCan } from './groups/groups-rights';
 
 /**
  * Every page of the app, with who may open it. The sidebar, the page guards, the search box and the "where do I start" redirect all
@@ -6,7 +7,7 @@ import { AuthService } from './auth.service';
  * The server enforces the same rights; this keeps the screens honest.
  */
 export interface NavItem {
-  key: 'dashboard' | 'products' | 'sales' | 'credit' | 'debts' | 'expenses' | 'branch_stock' | 'branches' | 'staff' | 'branch_team' | 'branch_sales' | 'money' | 'appointments' | 'stylists' | 'reports' | 'cashbook' | 'rebook' | 'team' | 'payroll' | 'export' | 'business' | 'salon_settings' | 'assistant';
+  key: 'dashboard' | 'products' | 'sales' | 'credit' | 'debts' | 'expenses' | 'branch_stock' | 'branches' | 'staff' | 'branch_team' | 'branch_sales' | 'money' | 'appointments' | 'stylists' | 'reports' | 'cashbook' | 'rebook' | 'team' | 'payroll' | 'export' | 'business' | 'salon_settings' | 'assistant' | 'g_dashboard' | 'g_members' | 'g_payments' | 'g_contributions' | 'g_loans' | 'g_welfare' | 'g_expenses' | 'g_dividends' | 'g_assets' | 'g_projects' | 'g_meetings' | 'g_votings' | 'g_reports' | 'g_settings';
   path: string;
   labelKey: string;
   hintKey: string;
@@ -226,6 +227,133 @@ export const NAV: NavItem[] = [
     icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
     allowed: (a) => a.service() === 'salon' && a.can('inv_salon_money'),
   },
+  // ---- Groups (Vikundi): each page for whoever holds its right in the group (the business admin holds them all)
+  {
+    key: 'g_dashboard',
+    path: '/groups/dashboard',
+    labelKey: 'nav.g.dashboard',
+    hintKey: 'nav.g.dashboard.hint',
+    group: 'overview',
+    icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+    allowed: (a) => a.service() === 'groups' && gCan('view_members', 'view_finance'),
+  },
+  {
+    key: 'g_members',
+    path: '/groups/members',
+    labelKey: 'nav.g.members',
+    hintKey: 'nav.g.members.hint',
+    group: 'overview',
+    icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+    allowed: (a) => a.service() === 'groups' && gCan('view_members'),
+  },
+  {
+    key: 'g_payments',
+    path: '/groups/payments',
+    labelKey: 'nav.g.payments',
+    hintKey: 'nav.g.payments.hint',
+    group: 'money',
+    icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
+    allowed: (a) => a.service() === 'groups' && gCan('view_finance', 'verify_payments', 'record_payments'),
+  },
+  {
+    key: 'g_contributions',
+    path: '/groups/contributions',
+    labelKey: 'nav.g.contributions',
+    hintKey: 'nav.g.contributions.hint',
+    group: 'money',
+    icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    allowed: (a) => a.service() === 'groups' && gCan('view_finance', 'manage_contributions', 'record_payments'),
+  },
+  {
+    key: 'g_loans',
+    path: '/groups/loans',
+    labelKey: 'nav.g.loans',
+    hintKey: 'nav.g.loans.hint',
+    group: 'money',
+    icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
+    allowed: (a) => a.service() === 'groups' && gCan('view_loans'),
+  },
+  {
+    key: 'g_welfare',
+    path: '/groups/welfare',
+    labelKey: 'nav.g.welfare',
+    hintKey: 'nav.g.welfare.hint',
+    group: 'money',
+    icon: 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z',
+    allowed: (a) => a.service() === 'groups' && gCan('view_benefits', 'manage_settings'),
+  },
+  {
+    key: 'g_expenses',
+    path: '/groups/expenses',
+    labelKey: 'nav.g.expenses',
+    hintKey: 'nav.g.expenses.hint',
+    group: 'money',
+    icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z',
+    allowed: (a) => a.service() === 'groups' && gCan('view_expenses', 'request_expenses'),
+  },
+  {
+    key: 'g_dividends',
+    path: '/groups/dividends',
+    labelKey: 'nav.g.dividends',
+    hintKey: 'nav.g.dividends.hint',
+    group: 'money',
+    icon: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z',
+    allowed: (a) => a.service() === 'groups' && gCan('prepare_dividends', 'approve_dividends', 'view_finance'),
+  },
+  {
+    key: 'g_assets',
+    path: '/groups/assets',
+    labelKey: 'nav.g.assets',
+    hintKey: 'nav.g.assets.hint',
+    group: 'overview',
+    icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+    allowed: (a) => a.service() === 'groups' && gCan('manage_assets', 'view_finance'),
+  },
+  {
+    key: 'g_projects',
+    path: '/groups/projects',
+    labelKey: 'nav.g.projects',
+    hintKey: 'nav.g.projects.hint',
+    group: 'overview',
+    icon: 'M9 17v-6m4 6V7m4 10v-3M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z',
+    allowed: (a) => a.service() === 'groups' && gCan('view_projects', 'recommend_projects', 'approve_projects', 'manage_projects'),
+  },
+  {
+    key: 'g_meetings',
+    path: '/groups/meetings',
+    labelKey: 'nav.g.meetings',
+    hintKey: 'nav.g.meetings.hint',
+    group: 'overview',
+    icon: 'M8 7V3m8 4V3M5 11h14M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z',
+    allowed: (a) => a.service() === 'groups' && gCan('call_meetings', 'record_meetings', 'approve_minutes', 'post_announcements', 'send_texts'),
+  },
+  {
+    key: 'g_votings',
+    path: '/groups/votings',
+    labelKey: 'nav.g.votings',
+    hintKey: 'nav.g.votings.hint',
+    group: 'overview',
+    icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
+    allowed: (a) => a.service() === 'groups' && gCan('manage_votings', 'view_voting_reports', 'publish_voting_results'),
+  },
+  {
+    key: 'g_reports',
+    path: '/groups/reports',
+    labelKey: 'nav.g.reports',
+    hintKey: 'nav.g.reports.hint',
+    group: 'money',
+    icon: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4',
+    allowed: (a) => a.service() === 'groups' && gCan('view_finance', 'view_members'),
+  },
+  {
+    key: 'g_settings',
+    path: '/groups/settings',
+    labelKey: 'nav.g.settings',
+    hintKey: 'nav.g.settings.hint',
+    group: 'overview',
+    icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4',
+    allowed: (a) => a.service() === 'groups' && gCan('manage_settings', 'manage_offices', 'manage_payment_methods', 'view_audit', 'manage_members'),
+  },
   {
     key: 'assistant',
     path: '/assistant',
@@ -272,6 +400,8 @@ export function allowedPages(auth: AuthService): NavItem[] {
 
 /** Where a person lands: the first page they may open, or the "nothing here yet" page. */
 export function homePath(auth: AuthService): string {
+  // Groups: its rights come from the group (/groups/me), loaded by the /groups start page, which then opens the first page they allow.
+  if (auth.service() === 'groups') return '/groups';
   // The accountant and the business admin start on the dashboard (the accountant's month, the owner's whole dashboard), whatever else the menu
   // offers first. Everyone else starts on the first page their rights open.
   const dashboard = NAV.find((p) => p.key === 'dashboard');
