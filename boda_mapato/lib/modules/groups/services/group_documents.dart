@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -36,6 +37,36 @@ class GroupDocuments {
   static const PdfColor _line = PdfColor.fromInt(0xFFCCCCCC);
 
   static String _date(final String? iso) => dateLabel(iso);
+
+  /// The group's logo address (Groups Home sets it from /groups/me). Printed in the letterhead; the group's first letter when there is none.
+  static String? logoUrl;
+
+  /// How the logo's bytes are fetched. The app downloads them (once per address); tests supply their own.
+  static Future<Uint8List?> Function(String url) logoLoader = _download;
+
+  static final Map<String, Uint8List?> _logos = <String, Uint8List?>{};
+
+  static Future<Uint8List?> _download(final String url) async {
+    try {
+      final http.Response r = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+      return r.statusCode == 200 && r.bodyBytes.isNotEmpty ? r.bodyBytes : null;
+    } on Exception {
+      return null;
+    }
+  }
+
+  /// The logo as a picture the PDF can draw, or null (none, not reachable, or a kind the PDF cannot read such as webp).
+  static Future<pw.ImageProvider?> _logo() async {
+    final String? url = logoUrl;
+    if (url == null || url.isEmpty) return null;
+    final Uint8List? bytes = _logos.containsKey(url) ? _logos[url] : (_logos[url] = await logoLoader(url));
+    if (bytes == null) return null;
+    try {
+      return pw.MemoryImage(bytes);
+    } on Object {
+      return null;
+    }
+  }
 
   // ------------------------------------------------------------------------------------------------ the documents, as content
 
@@ -458,7 +489,7 @@ class GroupDocuments {
   }
 
   /// The letterhead: the group's name on a band of the app's teal with a gold rule, then the document's title and the date.
-  static pw.Widget _letterhead(final GroupDoc d) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: <pw.Widget>[
+  static pw.Widget _letterhead(final GroupDoc d, final pw.ImageProvider? logo) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: <pw.Widget>[
         pw.Container(
           padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: const pw.BoxDecoration(color: _teal, borderRadius: pw.BorderRadius.only(topLeft: pw.Radius.circular(4), topRight: pw.Radius.circular(4))),
@@ -467,8 +498,10 @@ class GroupDocuments {
               width: 34,
               height: 34,
               alignment: pw.Alignment.center,
-              decoration: const pw.BoxDecoration(color: _gold, shape: pw.BoxShape.circle),
-              child: pw.Text(d.group.trim().isEmpty ? 'G' : d.group.trim().substring(0, 1).toUpperCase(), style: pw.TextStyle(fontSize: 17, fontWeight: pw.FontWeight.bold, color: _teal)),
+              decoration: pw.BoxDecoration(color: logo == null ? _gold : PdfColors.white, shape: pw.BoxShape.circle),
+              child: logo != null
+                  ? pw.Padding(padding: const pw.EdgeInsets.all(3), child: pw.ClipOval(child: pw.Image(logo, fit: pw.BoxFit.contain)))
+                  : pw.Text(d.group.trim().isEmpty ? 'G' : d.group.trim().substring(0, 1).toUpperCase(), style: pw.TextStyle(fontSize: 17, fontWeight: pw.FontWeight.bold, color: _teal)),
             ),
             pw.SizedBox(width: 12),
             pw.Expanded(child: pw.Text(d.group, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.white))),
@@ -487,6 +520,7 @@ class GroupDocuments {
   /// The PDF of [d]: a letterhead on the first page, a short running head and page numbers after, tables that keep their header line.
   static Future<Uint8List> pdf(final GroupDoc d) async {
     final ({pw.Font bold, pw.Font regular})? f = await _fonts();
+    final pw.ImageProvider? logo = await _logo();
     final pw.Document doc = pw.Document(
       title: d.title,
       author: d.group,
@@ -518,7 +552,7 @@ class GroupDocuments {
         ]),
       ),
       build: (_) => <pw.Widget>[
-        _letterhead(d),
+        _letterhead(d, logo),
         if (d.small)
           // A receipt sits in a framed card.
           pw.Container(

@@ -43,9 +43,12 @@ abstract class BusinessProfileDataSource {
 }
 
 class ApiBusinessProfileDataSource implements BusinessProfileDataSource {
-  ApiBusinessProfileDataSource() {
+  /// [logoService]: the logo uploaded and removed is that service's own (the group's, for Vikundi); null for the business logo.
+  ApiBusinessProfileDataSource({this.logoService}) {
     _api.initialize();
   }
+
+  final String? logoService;
 
   final ApiService _api = ApiService();
 
@@ -77,10 +80,10 @@ class ApiBusinessProfileDataSource implements BusinessProfileDataSource {
 
   @override
   Future<Business> uploadLogo(final Uint8List bytes, final String filename) async =>
-      _business(await _api.uploadBusinessLogo(bytes: bytes, filename: filename));
+      _business(await _api.uploadBusinessLogo(bytes: bytes, filename: filename, service: logoService));
 
   @override
-  Future<Business> removeLogo() async => _business(await _api.removeBusinessLogo());
+  Future<Business> removeLogo() async => _business(await _api.removeBusinessLogo(service: logoService));
 
   @override
   Future<Business> requestSmsSender({required final String senderId, final String? displayName}) async =>
@@ -108,7 +111,11 @@ class BusinessProfileScreen extends StatefulWidget {
     this.dataSource,
     this.pickLogo,
     this.onChanged,
+    this.logoService,
   });
+
+  /// The service whose own logo this page shows and changes (e.g. 'groups'); null for the business logo every service uses.
+  final String? logoService;
 
   /// Is the signed-in person the owner of the business?
   final bool canEdit;
@@ -129,7 +136,7 @@ class BusinessProfileScreen extends StatefulWidget {
 
 class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
   final LocalizationService _loc = LocalizationService.instance;
-  late final BusinessProfileDataSource _source = widget.dataSource ?? ApiBusinessProfileDataSource();
+  late final BusinessProfileDataSource _source = widget.dataSource ?? ApiBusinessProfileDataSource(logoService: widget.logoService);
   final GlobalKey<FormState> _form = GlobalKey<FormState>();
   final TextEditingController _name = TextEditingController();
   final TextEditingController _tin = TextEditingController();
@@ -375,6 +382,10 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
   }
 
   Widget _logoBlock(final Business b, final bool edit) {
+    final String? service = widget.logoService;
+    final String? logo = b.logoFor(service);
+    // A service with no logo of its own shows the business logo; removing is only for a logo of its own.
+    final bool own = service == null ? b.logoUrl != null : b.serviceLogos.containsKey(service);
     return Column(
       children: <Widget>[
         Container(
@@ -387,15 +398,27 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: Colors.white24),
           ),
-          child: b.logoUrl == null
+          child: logo == null
               ? const Icon(Icons.storefront_outlined, color: Colors.white54, size: 44)
               : Image.network(
-                  b.logoUrl!,
+                  logo,
                   fit: BoxFit.cover,
                   errorBuilder: (final BuildContext _, final Object __, final StackTrace? ___) =>
                       const Icon(Icons.broken_image_outlined, color: Colors.white54, size: 36),
                 ),
         ),
+        if (service != null && !own)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              key: const ValueKey<String>("business_logo_fallback"),
+              logo == null
+                  ? (_sw ? "Hakuna nembo bado." : "No logo yet.")
+                  : (_sw ? "Inatumia nembo ya biashara. Weka nembo yake mwenyewe hapa." : "Using the business logo. Add one of its own here."),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+          ),
         if (edit) ...<Widget>[
           const SizedBox(height: 8),
           Wrap(
@@ -405,9 +428,9 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
                 key: const ValueKey<String>("business_logo_change"),
                 onPressed: _busy ? null : _changeLogo,
                 icon: const Icon(Icons.image_outlined, size: 18),
-                label: Text(b.logoUrl == null ? (_sw ? "Weka nembo" : "Add logo") : (_sw ? "Badilisha nembo" : "Change logo")),
+                label: Text(!own ? (_sw ? "Weka nembo" : "Add logo") : (_sw ? "Badilisha nembo" : "Change logo")),
               ),
-              if (b.logoUrl != null)
+              if (own)
                 TextButton.icon(
                   key: const ValueKey<String>("business_logo_remove"),
                   onPressed: _busy ? null : () => _run(_source.removeLogo, _sw ? "Nembo imeondolewa" : "Logo removed"),

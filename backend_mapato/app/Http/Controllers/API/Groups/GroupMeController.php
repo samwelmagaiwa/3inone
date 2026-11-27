@@ -169,7 +169,12 @@ class GroupMeController extends Controller
             'notices' => DB::table('group_announcements')
                 ->when(!GroupAccess::holdsOffice($user), fn ($q) => $q->where('audience', 'all'))
                 ->where(fn ($q) => $q->whereNull('expires_on')->orWhere('expires_on', '>=', now()->toDateString()))->count(),
-            'group' => ['name' => optional(\App\Models\Business::forUser($user))->name],
+            // The group's logo is its own when the owner uploaded one for Vikundi, else the business logo (printed on receipts and statements).
+            'group' => (function () use ($user) {
+                $business = \App\Models\Business::forUser($user);
+
+                return ['name' => $business?->name, 'logo_url' => $business?->logoUrl('groups')];
+            })(),
         ]]);
     }
 

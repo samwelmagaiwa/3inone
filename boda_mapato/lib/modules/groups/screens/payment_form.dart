@@ -362,10 +362,26 @@ Future<bool> showExpenseForm(final BuildContext context, {required final GroupsA
   return sent ?? false;
 }
 
+/// The cash the group already held when it started keeping its books in the app (the box, the bank, the phone wallet). Money cannot go
+/// out that the books do not show, so a group that starts with cash records it here once; someone else verifies it like any payment.
+Future<bool> showOpeningBalanceForm(final BuildContext context, {required final GroupsApi api}) async {
+  final bool? sent = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: ThemeConstants.bgMid,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (final BuildContext c) => Padding(padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom), child: _ExpenseForm(api: api, opening: true)),
+  );
+  return sent ?? false;
+}
+
 class _ExpenseForm extends StatefulWidget {
-  const _ExpenseForm({required this.api});
+  const _ExpenseForm({required this.api, this.opening = false});
 
   final GroupsApi api;
+
+  /// The group's opening balance (money in, no payee) instead of an expense.
+  final bool opening;
 
   @override
   State<_ExpenseForm> createState() => _ExpenseFormState();
@@ -410,7 +426,8 @@ class _ExpenseFormState extends State<_ExpenseForm> {
   Future<void> _send() async {
     final bool sw = context.read<LocalizationService>().isSwahili;
     final double? amount = double.tryParse(_amount.text.replaceAll(',', '').trim());
-    if (_payee.text.trim().length < 2) {
+    final bool opening = widget.opening;
+    if (!opening && _payee.text.trim().length < 2) {
       setState(() => _error = sw ? 'Andika aliyelipwa.' : 'Write who was paid.');
       return;
     }
@@ -420,11 +437,11 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     }
     final bool ok = await groupConfirm(
       context,
-      title: sw ? 'Rekodi matumizi?' : 'Record this expense?',
-      message: '${_payee.text.trim()}: ${tsh(amount)}${_note.text.trim().isEmpty ? '' : ' · ${_note.text.trim()}'}.\n'
+      title: opening ? (sw ? 'Rekodi salio la kuanzia?' : 'Record the opening balance?') : (sw ? 'Rekodi matumizi?' : 'Record this expense?'),
+      message: '${opening ? (sw ? 'Fedha za kikundi kabla ya kuanza' : 'Cash held before starting') : _payee.text.trim()}: ${tsh(amount)}${_note.text.trim().isEmpty ? '' : ' · ${_note.text.trim()}'}.\n'
           '${sw ? 'Yatahesabiwa baada ya mtu mwingine kuyathibitisha.' : 'It counts once someone else verifies it.'}',
       yes: sw ? 'Rekodi' : 'Record',
-      tone: GroupTone.danger,
+      tone: opening ? GroupTone.positive : GroupTone.danger,
     );
     if (!ok || !mounted) return;
     setState(() {
@@ -433,15 +450,20 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     });
     try {
       await widget.api.recordPayment(<String, dynamic>{
-        'category': 'expense',
-        'payee': _payee.text.trim(),
+        'category': opening ? 'opening_balance' : 'expense',
+        if (!opening) 'payee': _payee.text.trim(),
         'amount': amount,
         'method': _method,
         if (_ref.text.trim().isNotEmpty) 'external_ref': _ref.text.trim(),
         if (_note.text.trim().isNotEmpty) 'note': _note.text.trim(),
       });
       if (!mounted) return;
-      ThemeConstants.showSuccessSnackBar(context, sw ? 'Matumizi yamerekodiwa; yanasubiri uthibitisho.' : 'Expense recorded; it waits for verification.');
+      ThemeConstants.showSuccessSnackBar(
+        context,
+        opening
+            ? (sw ? 'Salio la kuanzia limerekodiwa; linasubiri uthibitisho.' : 'Opening balance recorded; it waits for verification.')
+            : (sw ? 'Matumizi yamerekodiwa; yanasubiri uthibitisho.' : 'Expense recorded; it waits for verification.'),
+      );
       Navigator.pop(context, true);
     } on Exception catch (e) {
       if (mounted) {
@@ -463,9 +485,23 @@ class _ExpenseFormState extends State<_ExpenseForm> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Text(sw ? 'Matumizi ya kikundi' : 'Group expense', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+            Text(
+              widget.opening ? (sw ? 'Salio la kuanzia' : 'Opening balance') : (sw ? 'Matumizi ya kikundi' : 'Group expense'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+            ),
             const Divider(color: Colors.white12, height: 24),
-            TextField(key: const Key('grp_exp_payee'), controller: _payee, maxLength: 150, style: const TextStyle(color: Colors.white), decoration: ThemeConstants.darkField(sw ? 'Aliyelipwa' : 'Paid to')),
+            if (widget.opening)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  sw
+                      ? 'Fedha ambazo kikundi kilikuwa nazo kabla ya kuanza kutumia programu (sanduku, benki, simu). Hurekodiwa mara moja.'
+                      : 'The cash the group held before it started using the app (box, bank, phone wallet). Recorded once.',
+                  style: const TextStyle(color: Colors.white60, fontSize: 12),
+                ),
+              ),
+            if (!widget.opening) TextField(key: const Key('grp_exp_payee'), controller: _payee, maxLength: 150, style: const TextStyle(color: Colors.white), decoration: ThemeConstants.darkField(sw ? 'Aliyelipwa' : 'Paid to')),
             TextField(
               key: const Key('grp_exp_amount'),
               controller: _amount,
@@ -479,7 +515,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
               initialValue: _method,
               dropdownColor: ThemeConstants.bgMid,
               style: const TextStyle(color: Colors.white),
-              decoration: ThemeConstants.darkField(sw ? 'Amelipwa kwa' : 'Paid out by'),
+              decoration: ThemeConstants.darkField(widget.opening ? (sw ? 'Zipo wapi' : 'Held as') : (sw ? 'Amelipwa kwa' : 'Paid out by')),
               items: <DropdownMenuItem<String>>[for (final String m in _methods) DropdownMenuItem<String>(value: m, child: Text(methodLabel(sw: sw, method: m)))],
               onChanged: (final String? v) => setState(() => _method = v ?? 'cash'),
             ),
@@ -488,15 +524,23 @@ class _ExpenseFormState extends State<_ExpenseForm> {
               TextField(controller: _ref, maxLength: 80, style: const TextStyle(color: Colors.white), decoration: ThemeConstants.darkField(sw ? 'Namba ya muamala (hiari)' : 'Reference (optional)')),
             ],
             const SizedBox(height: 4),
-            TextField(controller: _note, maxLength: 255, style: const TextStyle(color: Colors.white), decoration: ThemeConstants.darkField(sw ? 'Ni kwa ajili ya nini' : 'What it was for')),
+            TextField(
+              controller: _note,
+              maxLength: 255,
+              style: const TextStyle(color: Colors.white),
+              decoration: ThemeConstants.darkField(widget.opening ? (sw ? 'Maelezo (hiari)' : 'Note (optional)') : (sw ? 'Ni kwa ajili ya nini' : 'What it was for')),
+            ),
             if (_error != null) Text(_error!, key: const Key('grp_exp_error'), style: const TextStyle(color: ThemeConstants.errorText)),
             const SizedBox(height: 14),
             FilledButton.icon(
               key: const Key('grp_exp_send'),
-              style: FilledButton.styleFrom(backgroundColor: ThemeConstants.errorRed, padding: const EdgeInsets.symmetric(vertical: 14)),
+              style: FilledButton.styleFrom(
+                backgroundColor: widget.opening ? ThemeConstants.successGreen : ThemeConstants.errorRed,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
               onPressed: _busy ? null : _send,
-              icon: const Icon(Icons.receipt_long_rounded),
-              label: Text(sw ? 'Rekodi matumizi' : 'Record the expense'),
+              icon: Icon(widget.opening ? Icons.account_balance_rounded : Icons.receipt_long_rounded),
+              label: Text(widget.opening ? (sw ? 'Rekodi salio' : 'Record the balance') : (sw ? 'Rekodi matumizi' : 'Record the expense')),
             ),
           ],
         ),

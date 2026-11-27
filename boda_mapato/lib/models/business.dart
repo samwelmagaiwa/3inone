@@ -91,6 +91,7 @@ class Business {
     this.phone = '',
     this.email = '',
     this.logoUrl,
+    this.serviceLogos = const <String, String>{},
     this.inventoryType,
     this.owner,
     this.services = const <String>[],
@@ -107,6 +108,11 @@ class Business {
         phone: (json['phone'] ?? '').toString(),
         email: (json['email'] ?? '').toString(),
         logoUrl: (json['logo_url'] is String && (json['logo_url'] as String).isNotEmpty) ? json['logo_url'] as String : null,
+        serviceLogos: <String, String>{
+          if (json['service_logos'] is Map)
+            for (final MapEntry<dynamic, dynamic> e in (json['service_logos'] as Map).entries)
+              if (e.value is String && (e.value as String).isNotEmpty) '${e.key}': e.value as String,
+        },
         inventoryType: (json['inventory_type'] is String && (json['inventory_type'] as String).isNotEmpty) ? json['inventory_type'] as String : null,
         billing: BusinessBilling.fromJson(
           json['billing'] is Map ? Map<String, dynamic>.from(json['billing'] as Map) : <String, dynamic>{},
@@ -125,6 +131,12 @@ class Business {
   final String phone;
   final String email;
   final String? logoUrl;
+
+  /// service => the logo that service has of its own (e.g. the group's, for Vikundi). A service missing here uses [logoUrl].
+  final Map<String, String> serviceLogos;
+
+  /// The logo [service] shows: its own, else the business logo.
+  String? logoFor(final String? service) => (service == null ? null : serviceLogos[service]) ?? logoUrl;
 
   /// The kind of stock business (retail, wholesale, mixed, depot); null until one is chosen, which works like a depot.
   final String? inventoryType;

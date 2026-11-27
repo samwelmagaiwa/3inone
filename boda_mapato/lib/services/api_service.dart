@@ -708,11 +708,13 @@ class ApiService {
   Future<Map<String, dynamic>> updateMyBusiness(final Map<String, dynamic> fields) async =>
       _put("/business", fields);
 
-  Future<Map<String, dynamic>> removeBusinessLogo() async => _delete("/business/logo");
+  Future<Map<String, dynamic>> removeBusinessLogo({final String? service}) async =>
+      _delete(service == null ? "/business/logo" : "/business/logo?service=${Uri.encodeQueryComponent(service)}");
 
   Future<Map<String, dynamic>> uploadBusinessLogo({
     required final Uint8List bytes,
     required final String filename,
+    final String? service,
   }) async {
     final Map<String, String> headers = await _authHeaders;
     if (!headers.containsKey("Authorization")) {
@@ -722,6 +724,8 @@ class ApiService {
     final Map<String, String> h = Map<String, String>.of(headers)..remove("Content-Type");
     request.headers.addAll(h);
     request.files.add(http.MultipartFile.fromBytes("logo", bytes, filename: filename));
+    // A service's own logo (the group's, say); without it, the business logo.
+    if (service != null) request.fields["service"] = service;
     final http.StreamedResponse streamed = await request.send().timeout(timeoutDuration);
     return _handleResponse(await http.Response.fromStream(streamed));
   }

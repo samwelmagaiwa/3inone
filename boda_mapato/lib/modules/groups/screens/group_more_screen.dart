@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../constants/theme_constants.dart';
+import '../../../screens/settings/business_profile_screen.dart';
 import '../../../services/localization_service.dart';
 import '../../../utils/server_message.dart';
 import '../../inventory/screens/widgets/glow_list_card.dart';
@@ -45,6 +46,10 @@ class GroupMoreScreen extends StatelessWidget {
           dividerKey: 'grp_more_div',
           padding: const EdgeInsets.symmetric(horizontal: 4),
           children: <Widget>[
+            // The business admin: the group's own logo (receipts, statements, the header) and the business details.
+            if (me.isOwner)
+              entry(const Key('grp_more_logo'), Icons.image_rounded, sw ? 'Nembo na taarifa za kikundi' : 'Group logo and details',
+                  () => const BusinessProfileScreen(canEdit: true, logoService: 'groups')),
             if (me.can('manage_settings'))
               entry(const Key('grp_more_settings'), Icons.tune_rounded, sw ? 'Mipangilio ya kikundi' : 'Group settings', () => GroupSettingsScreen(api: api)),
             entry(const Key('grp_more_paymethods'), Icons.account_balance_wallet_rounded, sw ? 'Njia za malipo' : 'Payment methods', () => PaymentMethodsScreen(api: api, me: me)),

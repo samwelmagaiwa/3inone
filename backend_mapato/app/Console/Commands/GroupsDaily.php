@@ -113,20 +113,23 @@ class GroupsDaily extends Command
             ->where('m.status', 'active')
             ->where(fn ($q) => $q->where('o.due_date', $soon)->orWhere('o.due_date', '<', $today))
             ->get();
+        // An overdue text goes out on the day after the due date and weekly after that -- counted for each contribution -- and when it goes
+        // out it states EVERYTHING the member owes that is overdue, not only the contribution whose week came round.
         $byMember = [];
+        $remindToday = [];
         foreach ($owing as $o) {
             $kind = (string) $o->due_date === $soon ? 'due_soon' : 'overdue';
             if ($kind === 'overdue') {
                 $days = (int) Carbon::parse((string) $o->due_date)->diffInDays(Carbon::parse($today));
-                if (($days - 1) % 7 !== 0) {
-                    continue;
+                if (($days - 1) % 7 === 0) {
+                    $remindToday[(int) $o->member_id] = true;
                 }
             }
             $key = $kind . ':' . $o->member_id;
             $byMember[$key] ??= [$kind, (int) $o->member_id, (string) $o->member_phone, (string) $o->member_name, 0.0];
             $byMember[$key][4] += (float) $o->amount_due - (float) $o->paid;
         }
-        $out = array_values($byMember);
+        $out = array_values(array_filter($byMember, fn (array $line) => $line[0] === 'due_soon' || isset($remindToday[$line[1]])));
 
         $promises = DB::table('group_promises as p')->join('group_members as m', 'm.id', '=', 'p.member_id')
             ->where('p.status', 'open')->where('p.promised_on', $today)->where('m.status', 'active')

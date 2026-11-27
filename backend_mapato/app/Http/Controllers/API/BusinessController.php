@@ -29,6 +29,9 @@ use OpenApi\Attributes as OA;
  */
 class BusinessController extends Controller
 {
+    /** The services that may carry a logo of their own. */
+    private const LOGO_SERVICES = ['transport', 'rental', 'inventory', 'salon', 'groups'];
+
     private const TIN_MESSAGE = 'TIN lazima iwe na tarakimu 9 (mfano 123-456-789). / TIN must have 9 digits (e.g. 123-456-789).';
 
     public function __construct(private readonly AuditTrail $audit)
@@ -87,7 +90,7 @@ class BusinessController extends Controller
     #[OA\Post(
         path: '/business/logo',
         summary: 'Upload the business logo (owner only)',
-        description: 'Multipart field `logo`: jpg, png or webp, up to 2 MB.',
+        description: 'Multipart field `logo`: jpg, png or webp, up to 2 MB. Optional `service` (transport, rental, inventory, salon, groups): that service own logo; it falls back to the business logo.',
         security: [['bearerAuth' => []]],
         tags: ['Business'],
         responses: [new OA\Response(response: 200, description: 'Logo saved')],
@@ -99,22 +102,38 @@ class BusinessController extends Controller
             return $business;
         }
 
-        $request->validate(['logo' => 'required|file|image|mimes:jpg,jpeg,png,webp|max:2048']);
+        $request->validate([
+            'logo' => 'required|file|image|mimes:jpg,jpeg,png,webp|max:2048',
+            // Optional: the logo of one service only (the group's receipts, say); without it, the business logo.
+            'service' => ['nullable', 'string', Rule::in(self::LOGO_SERVICES)],
+        ]);
+        $service = $request->input('service') ?: null;
+        if ($service !== null && !$request->user()->canUseService($service)) {
+            return ResponseHelper::error('This business does not have that service. / Biashara hii haina huduma hiyo.', 422, ['code' => 'service_not_held']);
+        }
 
         $file = $request->file('logo');
         $extension = $file->guessExtension() ?: 'png';
         // A random name: a logo is shown on receipts, but its address should not be guessable.
-        $path = $file->storeAs('business_logos', $business->id . '_' . Str::random(16) . '.' . $extension, 'public');
+        $path = $file->storeAs('business_logos', $business->id . '_' . ($service ? $service . '_' : '') . Str::random(16) . '.' . $extension, 'public');
 
-        $previous = $business->logo_path;
-        $business->logo_path = $path;
+        if ($service === null) {
+            $previous = $business->logo_path;
+            $business->logo_path = $path;
+        } else {
+            $logos = (array) ($business->service_logos ?? []);
+            $previous = $logos[$service] ?? null;
+            $logos[$service] = $path;
+            $business->service_logos = $logos;
+        }
         $business->save();
 
         if ($previous && $previous !== $path) {
             Storage::disk('public')->delete($previous);
         }
 
-        $this->audit->record($request, 'business', null, 'logo_changed', null, null, "{$request->user()->name} changed the logo of \"{$business->name}\"");
+        $what = $service === null ? 'the logo' : "the {$service} logo";
+        $this->audit->record($request, 'business', null, 'logo_changed', null, null, "{$request->user()->name} changed {$what} of \"{$business->name}\"");
 
         return ResponseHelper::success($business->toApiArray(), 'Logo saved');
     }
@@ -133,9 +152,21 @@ class BusinessController extends Controller
             return $business;
         }
 
-        if ($business->logo_path) {
+        $service = $request->query('service') ?: $request->input('service');
+        if ($service !== null && !in_array($service, self::LOGO_SERVICES, true)) {
+            return ResponseHelper::error('Unknown service. / Huduma haijulikani.', 422, ['code' => 'unknown_service']);
+        }
+        if ($service === null && $business->logo_path) {
             Storage::disk('public')->delete($business->logo_path);
             $business->logo_path = null;
+            $business->save();
+        }
+        // Removing a service's own logo: that service goes back to the business logo.
+        $logos = (array) ($business->service_logos ?? []);
+        if ($service !== null && isset($logos[$service])) {
+            Storage::disk('public')->delete($logos[$service]);
+            unset($logos[$service]);
+            $business->service_logos = $logos === [] ? null : $logos;
             $business->save();
         }
 

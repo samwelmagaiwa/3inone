@@ -35,6 +35,8 @@ class GroupTransactionController extends Controller
         'cannot_pay_out' => 'Fedha zinazotoka ni kutoa akiba au matumizi ya kikundi tu. / Money goes out only as a savings withdrawal or a group expense.',
         'obligation_required' => 'Chagua mchango unaolipwa. / Choose the contribution being paid.',
         'more_than_owed' => 'Kiasi ni zaidi ya kinachodaiwa kwenye mchango huu. / The amount is more than is owed on this contribution.',
+        'not_enough_cash' => 'Kikundi hakina fedha za kutosha kwenye kumbukumbu kwa malipo haya (pamoja na yanayosubiri kutoka). Rekodi kwanza fedha zilizoingia au salio la kuanzia. / The group does not have enough cash on record for this payout (counting payouts already waiting). Record the money that came in, or the opening balance, first.',
+        'opening_balance_group_only' => 'Salio la kuanzia ni fedha za kikundi zinazoingia tu, bila mwanachama. / An opening balance is only money coming in to the group, with no member.',
         'more_than_savings' => 'Kiasi ni zaidi ya akiba iliyopo. / The amount is more than the savings there are.',
         'payee_required' => 'Andika aliyelipwa. / Write who was paid.',
         'payout_right_needed' => 'Ni Mweka Hazina tu anayerekodi fedha zinazotoka. / Only the treasurer records money going out.',
@@ -115,7 +117,7 @@ class GroupTransactionController extends Controller
 
         return response()->json(['success' => true, 'data' => [
             'verified' => collect(GroupLedger::CATEGORIES)->mapWithKeys(fn ($c) => [$c => round((float) ($verified[$c] ?? 0), 2)]),
-            'cash_on_record' => round((float) collect($verified)->sum(), 2),
+            'cash_on_record' => GroupLedger::cash(),
             'pending_count' => (int) $pending->n,
             'pending_amount' => round((float) $pending->amount, 2),
             'month' => $month,
@@ -149,7 +151,7 @@ class GroupTransactionController extends Controller
         $data = $request->validate([
             'category' => ['required', Rule::in(array_diff(GroupLedger::CATEGORIES, ['loan_disbursement', 'welfare', 'hire', 'dividend']))],
             'direction' => ['nullable', Rule::in(['in', 'out'])],
-            'member_id' => 'nullable|integer|required_unless:category,expense',
+            'member_id' => 'nullable|integer|required_unless:category,expense,opening_balance',
             'payee' => 'nullable|string|max:150',
         ] + array_diff_key(self::paymentRules(), ['category' => true]));
         $direction = $data['category'] === 'expense' ? 'out' : ($data['direction'] ?? 'in');
@@ -157,7 +159,11 @@ class GroupTransactionController extends Controller
             return $this->fail('payout_right_needed', 403);
         }
         $data['direction'] = $direction;
-        if ($data['category'] === 'expense') {
+        if ($data['category'] === 'opening_balance' && (($data['member_id'] ?? null) !== null || $direction !== 'in')) {
+            return $this->fail('opening_balance_group_only');
+        }
+        if ($data['category'] === 'expense' || $data['category'] === 'opening_balance') {
+            // The group's own money: no member. An opening balance is only ever money in.
             return self::submitFor($request, null, $data);
         }
         $member = DB::table('group_members')->where('id', (int) $data['member_id'])->first();
@@ -176,7 +182,7 @@ class GroupTransactionController extends Controller
         } catch (InvalidArgumentException $e) {
             return response()->json(['success' => false, 'code' => $e->getMessage(), 'message' => self::WORDS[$e->getMessage()] ?? $e->getMessage()], 422);
         }
-        GroupAudit::record((string) $request->user()->id, 'payment_submitted', (($data['direction'] ?? 'in') === 'out' ? 'Payout' : 'Payment') . ' of ' . number_format((float) $data['amount']) . ' (' . $data['category'] . ', ' . $data['method'] . ') ' . ($member === null ? 'to ' . ($data['payee'] ?? '') : 'for ' . $member->full_name), 'transaction', $id);
+        GroupAudit::record((string) $request->user()->id, 'payment_submitted', (($data['direction'] ?? 'in') === 'out' ? 'Payout' : 'Payment') . ' of ' . number_format((float) $data['amount']) . ' (' . $data['category'] . ', ' . $data['method'] . ') ' . ($member === null ? (($data['direction'] ?? 'in') === 'out' ? 'to ' . ($data['payee'] ?? '') : 'for the group') : 'for ' . $member->full_name), 'transaction', $id);
 
         return response()->json(['success' => true, 'data' => ['transaction' => GroupLedger::payload(GroupLedger::listQuery()->where('t.id', $id)->first())]], 201);
     }

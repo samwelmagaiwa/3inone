@@ -28,9 +28,16 @@ final class GroupLedger
     /**
      * The kinds of money, never mixed: joining fees, project shares, savings (in, and withdrawals out), contributions (each tied to what a
      * member owes), the group's own expenses (out, to a payee, no member), loans (the disbursement out and the repayments in, each tied to
-     * its loan), welfare payouts (out, tied to an approved request) and hire charges (in, tied to the hire). Dividends come last.
+     * its loan), welfare payouts (out, tied to an approved request) and hire charges (in, tied to the hire). Dividends come last. An
+     * opening balance is the cash the group already held when it started keeping its books here (in, no member).
      */
-    public const CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution', 'expense', 'loan_disbursement', 'loan_repayment', 'welfare', 'hire', 'dividend'];
+    public const CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution', 'expense', 'loan_disbursement', 'loan_repayment', 'welfare', 'hire', 'dividend', 'opening_balance'];
+
+    /** Kinds that are written in the books but bring no cash: a dividend is credited to savings out of money already counted. */
+    public const NON_CASH = ['dividend'];
+
+    /** Kinds that are cash but not money earned or paid in a month (kept out of the month's money in and the trend). */
+    public const NOT_A_FLOW = ['dividend', 'opening_balance'];
 
     /** What a member can pay for themself (never money out). */
     public const MEMBER_CATEGORIES = ['joining_fee', 'shares', 'savings', 'contribution', 'loan_repayment', 'hire'];
@@ -43,6 +50,13 @@ final class GroupLedger
 
     /** How a payment can be made (the same words the rest of the app uses). */
     public const METHODS = ['cash', 'mpesa', 'mixx', 'airtel_money', 'halopesa', 'bank_transfer', 'other'];
+
+    /** The group's cash as the verified books say it: everything in minus everything out, leaving out what brings no cash. */
+    public static function cash(): float
+    {
+        return round((float) DB::table('group_transactions')->where('status', self::VERIFIED)->whereNotIn('category', self::NON_CASH)
+            ->selectRaw("COALESCE(SUM(CASE WHEN direction = 'in' THEN amount ELSE -amount END), 0) as t")->value('t'), 2);
+    }
 
     /** Money from (or to) [loanId] in [category] that is pending, or pending and verified, leaving [except] out. */
     private static function linked(string $column, int $id, string $category, array $statuses, ?int $except): float
@@ -69,6 +83,9 @@ final class GroupLedger
         }
         if (in_array($category, self::OUT_CATEGORIES, true) && $direction !== 'out') {
             throw new InvalidArgumentException('cannot_pay_out');
+        }
+        if ($category === 'opening_balance' && ($direction !== 'in' || $memberId !== null)) {
+            throw new InvalidArgumentException('opening_balance_group_only');
         }
         if ($category === 'contribution') {
             $obligationId = $t['obligation_id'] ?? null;
@@ -148,6 +165,15 @@ final class GroupLedger
             }
             if (abs($amount - (float) $request->amount_approved) > 0.001) {
                 throw new InvalidArgumentException('amount_not_approved');
+            }
+        }
+
+        // Last, once the specific rules above have passed: money cannot go out that the books do not show the group holding. When it is sent, what is already waiting to go out counts
+        // too; when it is verified, only verified money counts (this one is the one waiting).
+        if ($direction === 'out') {
+            $waitingOut = $sending ? (float) DB::table('group_transactions')->where('direction', 'out')->where('status', self::PENDING)->sum('amount') : 0.0;
+            if ($amount > self::cash() - $waitingOut + 0.001) {
+                throw new InvalidArgumentException('not_enough_cash');
             }
         }
     }
@@ -238,6 +264,21 @@ final class GroupLedger
     }
 
     public static function verify(object $tx, string $by): string
+    {
+        if ((string) $tx->direction !== 'out') {
+            return self::verifyNow($tx, $by);
+        }
+
+        // Money going out: one at a time per group. Two withdrawals (or a withdrawal and an expense) verified at the same moment would
+        // otherwise both pass the same savings or cash balance. The group owner's row is the group's lock; it is held until the commit.
+        return DB::transaction(function () use ($tx, $by) {
+            DB::table('users')->where('id', (string) $tx->owner_id)->lockForUpdate()->first(['id']);
+
+            return self::verifyNow($tx, $by);
+        });
+    }
+
+    private static function verifyNow(object $tx, string $by): string
     {
         // The balance it depends on may have moved since it was sent (another withdrawal, another payment to the same contribution).
         self::check([

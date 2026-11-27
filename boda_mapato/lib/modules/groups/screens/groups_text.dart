@@ -143,6 +143,8 @@ String categoryLabel({required final bool sw, required final String category}) {
       return sw ? 'Ukodishaji' : 'Hire';
     case 'dividend':
       return sw ? 'Gawio' : 'Dividend';
+    case 'opening_balance':
+      return sw ? 'Salio la kuanzia' : 'Opening balance';
     default:
       return category;
   }

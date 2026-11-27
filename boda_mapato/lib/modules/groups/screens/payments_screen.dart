@@ -161,20 +161,29 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     }
   }
 
-  /// The button: a payment for a member, or -- for whoever records payouts -- a group expense.
+  /// The button: a payment for a member, or -- for whoever records payouts -- a group expense or the group's opening balance.
   Future<void> _add() async {
     final bool sw = context.read<LocalizationService>().isSwahili;
     if (!widget.me.can('record_payouts')) return _record();
     final String? picked = await groupActions(context, title: sw ? 'Rekodi' : 'Record', actions: <GroupSheetAction>[
       if (widget.me.can('record_payments')) GroupSheetAction(icon: Icons.add_card_rounded, label: sw ? 'Malipo ya mwanachama' : "A member's payment", value: 'payment', tone: GroupTone.positive),
       GroupSheetAction(icon: Icons.receipt_long_rounded, label: sw ? 'Matumizi ya kikundi' : 'A group expense', value: 'expense', tone: GroupTone.danger),
+      GroupSheetAction(icon: Icons.account_balance_rounded, label: sw ? 'Salio la kuanzia la kikundi' : 'The group opening balance', value: 'opening', tone: GroupTone.positive),
     ]);
     if (!mounted) return;
     if (picked == 'payment') {
       await _record();
       return;
     }
-    if (picked == 'expense' && await showExpenseForm(context, api: widget.api)) {
+    final bool sent;
+    if (picked == 'expense') {
+      sent = await showExpenseForm(context, api: widget.api);
+    } else if (picked == 'opening') {
+      sent = await showOpeningBalanceForm(context, api: widget.api);
+    } else {
+      sent = false;
+    }
+    if (sent) {
       await _load();
       await widget.onChanged();
     }

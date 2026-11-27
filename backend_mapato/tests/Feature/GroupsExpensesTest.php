@@ -43,6 +43,11 @@ class GroupsExpensesTest extends TestCase
             $this->ids[$key] = $id;
             $this->people[$key] = User::query()->find(DB::table('group_members')->where('id', $id)->value('user_id'));
         }
+        // The cash the group held before it kept its books here, so payouts have money on record to come from.
+        DB::table('group_transactions')->insert([
+            'owner_id' => $this->owner->id, 'reference' => 'TX-OPENING', 'member_id' => null, 'category' => 'opening_balance', 'direction' => 'in',
+            'amount' => 10000000, 'method' => 'cash', 'paid_on' => now()->toDateString(), 'status' => 'verified', 'verified_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
     }
 
     private function api(User $as, string $method, string $uri, array $body = [])

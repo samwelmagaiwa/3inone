@@ -10,6 +10,7 @@ import '../../../services/localization_service.dart';
 import '../../../utils/server_message.dart';
 import '../../../widgets/service_switcher_dialog.dart';
 import '../models/group_models.dart';
+import '../services/group_documents.dart';
 import '../services/groups_api.dart';
 import 'assets_screen.dart';
 import 'community_screen.dart';
@@ -77,6 +78,8 @@ class _GroupsHomeState extends State<GroupsHome> {
         if (_meMode && !me.personal) me = await _api.me();
       }
       _meLoaded = true;
+      // Receipts and statements made on the phone carry the group's logo.
+      GroupDocuments.logoUrl = me.groupLogoUrl;
       if (!mounted) return;
       setState(() {
         _me = me;
@@ -291,6 +294,8 @@ class _GroupsHomeState extends State<GroupsHome> {
           },
         ),
         actions: <Widget>[
+          // The group's logo, small, when it has one (its own or the business logo).
+          if (real?.groupLogoUrl != null) _GroupLogo(url: real!.groupLogoUrl!),
           if (real != null && real.canBeMe) _MeToggle(on: personal, onChanged: _setMeMode),
           PopupMenuButton<String>(
             key: const Key('grp_more_menu'),
@@ -529,6 +534,32 @@ class _GridItem extends StatelessWidget {
             SizedBox(height: 4.h),
             Text(label, maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis, style: ThemeConstants.bodyStyle),
           ],
+        ),
+      );
+}
+
+/// The group's logo in the header: a small circle, nothing when it cannot be loaded.
+class _GroupLogo extends StatelessWidget {
+  const _GroupLogo({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(final BuildContext context) => Padding(
+        key: const Key('grp_header_logo'),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Center(
+          child: Container(
+            width: 32,
+            height: 32,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: Colors.white24)),
+            child: Image.network(
+              url,
+              fit: BoxFit.cover,
+              errorBuilder: (final BuildContext _, final Object __, final StackTrace? ___) => const SizedBox.shrink(),
+            ),
+          ),
         ),
       );
 }

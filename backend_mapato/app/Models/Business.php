@@ -36,7 +36,7 @@ class Business extends Model
     public const SMS_SENDER_STATUSES = ['none', 'pending', 'approved', 'rejected'];
 
     protected $fillable = [
-        'owner_id', 'name', 'address', 'tin', 'phone', 'email', 'logo_path', 'plan', 'valid_until', 'inventory_type',
+        'owner_id', 'name', 'address', 'tin', 'phone', 'email', 'logo_path', 'service_logos', 'plan', 'valid_until', 'inventory_type',
         'sms_sender_id', 'sms_sender_status', 'sms_display_name', 'sms_sender_note',
         'sms_sender_requested_at', 'sms_sender_approved_at',
         'sms_sent_count', 'sms_own_count', 'sms_fallback_count', 'sms_last_sent_at', 'sms_last_error',
@@ -48,6 +48,7 @@ class Business extends Model
 
     protected $casts = [
         'valid_until' => 'datetime',
+        'service_logos' => 'array',
         'sms_api_key' => 'encrypted',
         'sms_api_secret' => 'encrypted',
         'sms_fallback_platform' => 'boolean',
@@ -186,9 +187,32 @@ class Business extends Model
     // ------------------------------------------------------------------ identity
 
     /** Public address of the logo, or null. Logos are not sensitive: they are printed on receipts. */
-    public function logoUrl(): ?string
+    public function logoUrl(?string $service = null): ?string
     {
-        return $this->logo_path ? url('api/files/public/' . ltrim($this->logo_path, '/')) : null;
+        $path = $this->logoPath($service);
+
+        return $path ? url('api/files/public/' . ltrim($path, '/')) : null;
+    }
+
+    /** The logo file of a service: its own when it has one, else the business logo. */
+    public function logoPath(?string $service = null): ?string
+    {
+        $own = $service === null ? null : ($this->service_logos[$service] ?? null);
+
+        return is_string($own) && $own !== '' ? $own : ($this->logo_path ?: null);
+    }
+
+    /** service => public address of the logo that service has of its own (a service missing here uses the business logo). @return array<string, string> */
+    public function serviceLogoUrls(): array
+    {
+        $out = [];
+        foreach ((array) ($this->service_logos ?? []) as $service => $path) {
+            if (is_string($path) && $path !== '') {
+                $out[(string) $service] = url('api/files/public/' . ltrim($path, '/'));
+            }
+        }
+
+        return $out;
     }
 
     /**
@@ -601,6 +625,7 @@ class Business extends Model
     {
         return array_merge(['id' => $this->id, 'owner_id' => $this->owner_id], $this->identity(), [
             'inventory_type' => $this->inventory_type,
+            'service_logos' => (object) $this->serviceLogoUrls(),
             'billing' => $this->billingSummary(),
             'sms_sender' => $this->smsSenderSummary(),
             'updated_at' => $this->updated_at?->toIso8601String(),

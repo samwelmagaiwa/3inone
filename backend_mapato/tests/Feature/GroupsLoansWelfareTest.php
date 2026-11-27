@@ -47,6 +47,11 @@ class GroupsLoansWelfareTest extends TestCase
             $this->people[$key] = User::query()->find(DB::table('group_members')->where('id', $id)->value('user_id'));
         }
         $this->api($this->owner, 'PUT', '/settings', ['values' => ['share_amount' => 200000, 'loan_multiplier' => 3], 'reason' => 'Rules'])->assertOk();
+        // The cash the group held before it kept its books here, so payouts have money on record to come from.
+        DB::table('group_transactions')->insert([
+            'owner_id' => $this->owner->id, 'reference' => 'TX-OPENING', 'member_id' => null, 'category' => 'opening_balance', 'direction' => 'in',
+            'amount' => 10000000, 'method' => 'cash', 'paid_on' => now()->toDateString(), 'status' => 'verified', 'verified_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
     }
 
     protected function tearDown(): void

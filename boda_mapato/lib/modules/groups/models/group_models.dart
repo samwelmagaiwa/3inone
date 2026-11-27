@@ -396,6 +396,7 @@ class GroupMe {
     this.paymentMethods = const <GroupPayMethod>[],
     this.waiting = const <String, int>{},
     this.groupName,
+    this.groupLogoUrl,
     this.owing = const <GroupObligation>[],
     this.promises = const <GroupPromise>[],
     this.keepsAssets = false,
@@ -422,6 +423,7 @@ class GroupMe {
       paymentMethods: <GroupPayMethod>[for (final dynamic m in (j['payment_methods'] as List? ?? const <dynamic>[])) GroupPayMethod.fromJson(Map<String, dynamic>.from(m as Map))],
       waiting: <String, int>{if (j['waiting'] is Map) for (final MapEntry<dynamic, dynamic> e in (j['waiting'] as Map).entries) '${e.key}': _int(e.value) ?? 0},
       groupName: _str(j['group'] is Map ? (j['group'] as Map)['name'] : null),
+      groupLogoUrl: _str(j['group'] is Map ? (j['group'] as Map)['logo_url'] : null),
       owing: <GroupObligation>[for (final dynamic o in (j['owing'] as List? ?? const <dynamic>[])) GroupObligation.fromJson(Map<String, dynamic>.from(o as Map))],
       promises: <GroupPromise>[for (final dynamic p in (j['promises'] as List? ?? const <dynamic>[])) GroupPromise.fromJson(Map<String, dynamic>.from(p as Map))],
       keepsAssets: j['keeps_assets'] == true,
@@ -448,6 +450,9 @@ class GroupMe {
   final List<GroupPayMethod> paymentMethods;
   final Map<String, int> waiting;
   final String? groupName;
+
+  /// The group's logo: its own (uploaded for Vikundi) or the business logo; null when there is none.
+  final String? groupLogoUrl;
 
   /// The contributions they still owe, oldest first.
   final List<GroupObligation> owing;
@@ -489,6 +494,7 @@ class GroupMe {
         paymentMethods: paymentMethods,
         waiting: <String, int>{for (final MapEntry<String, int> e in waiting.entries) if (_memberWaiting.contains(e.key)) e.key: e.value},
         groupName: groupName,
+        groupLogoUrl: groupLogoUrl,
         owing: owing,
         promises: promises,
         nextMeetingTitle: nextMeetingTitle,

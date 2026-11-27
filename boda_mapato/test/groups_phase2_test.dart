@@ -303,5 +303,18 @@ void main() {
     await _yes(t);
     expect(api.calls, <String>['record:expense:in:15000.0:Ukumbi']);
     await _banner(t);
+
+    // The cash the group held before it used the app: money in, no payee, confirmed first like everything else.
+    await t.tap(find.byKey(const Key('grp_payment_record')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('grp_act_opening')));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('grp_exp_payee')), findsNothing);
+    await t.enterText(find.byKey(const Key('grp_exp_amount')), '500000');
+    await t.tap(find.byKey(const Key('grp_exp_send')));
+    await t.pumpAndSettle();
+    await _yes(t);
+    expect(api.calls.last, 'record:opening_balance:in:500000.0:');
+    await _banner(t);
   });
 }

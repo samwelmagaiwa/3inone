@@ -285,3 +285,22 @@ reopening needs a reason). Until approved the minutes, resolutions and actions a
 them, nothing is edited without the chair reopening, and an action is ticked off by its owner or by whoever records meetings.
 Follow-up: `GET /groups/meeting-actions` (own, or all for `record_meetings`); Home shows "Minutes to approve", "My meeting actions" and
 "Meeting actions overdue". Not built: meeting attachments (files), reminders before a meeting, absent-with-apology in attendance.
+
+## 11. Cash guard, opening balance, logo – added 2026-11-27
+From the deep analysis of 2026-11-27 (all rights, tenancy, ledger, voting and language checks passed; these were the gaps):
+- **Cash guard.** No money goes out (savings withdrawal, expense, loan payout, welfare) beyond the cash on record. When it is sent,
+  payouts already waiting count too; when it is verified, verified money only. Checked last in `GroupLedger::check()`, after the
+  specific rules, so their messages come first. Refusal code `not_enough_cash` (422 when sent, 409 when verified).
+- **Opening balance** (`opening_balance`): the cash a group held before it kept its books here. In only, no member, recorded by whoever
+  records payouts (Payments > Record > The group opening balance), verified by someone else like any payment. Not a month's flow.
+- **Dividends are not cash.** They are credited to savings but brought no money in; `GroupLedger::cash()` (summary + dashboard) leaves
+  them out, and the dashboard's month in/out, trend and mix leave out dividends and opening balances (`NOT_A_FLOW`).
+- **Withdrawals verified at once.** Verifying any money going out takes the group's lock (the owner's `users` row, `lockForUpdate`
+  in a transaction), so two withdrawals verified at the same moment cannot both pass the same balance.
+- **Overdue texts** state everything the member owes that is overdue, sent on any of their contributions' weekly reminder days.
+- **A logo per service.** `businesses.service_logos` (service => file); `POST/DELETE /business/logo` take an optional `service`
+  (the business must hold it; owner only). `/groups/me` returns `group.logo_url` (the group's own, else the business logo). App: More >
+  Group logo and details (owner only, the business profile page in Vikundi mode), a small round logo in the Groups header, the logo
+  in the letterhead of every receipt/statement PDF (falls back to the first letter; webp cannot be drawn in a PDF, so it falls back too).
+- Not done (by the user's choice): a daily limit on members registering members (each sends a one-time password text).
+- Tests: `tests/Feature/GroupsCashAndLogoTest.php` (5), `test/groups_logo_test.dart` (4), opening balance in `test/groups_phase2_test.dart`.
