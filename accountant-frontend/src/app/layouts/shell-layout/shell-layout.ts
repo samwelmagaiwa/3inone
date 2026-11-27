@@ -7,6 +7,7 @@ import { filter, firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AccountantApi } from '../../core/accountant-api.service';
 import { AuthService } from '../../core/auth.service';
+import { GroupsContext } from '../../core/groups/groups-context.service';
 import { BranchesService } from '../../core/branches.service';
 import { serverDate } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
@@ -37,6 +38,8 @@ export class ShellLayout implements OnDestroy {
   private readonly api = inject(AccountantApi);
   protected readonly branches = inject(BranchesService);
   private readonly router = inject(Router);
+  protected readonly groups = inject(GroupsContext);
+  protected readonly meBusy = signal(false);
 
   /** The name at the top of the menu: the accountant's app, the group's (Vikundi), or plain 3inone for everyone else. */
   protected readonly appName_ = computed(() => {
@@ -236,6 +239,18 @@ export class ShellLayout implements OnDestroy {
   protected searchEnter(): void {
     const first = this.searchResults()[0];
     if (first) this.openSearchResult(first);
+  }
+
+  /** ME on or off (Groups): the group is read again in that view, and the person goes to their first page in it. */
+  protected async toggleMe(): Promise<void> {
+    if (this.meBusy()) return;
+    this.meBusy.set(true);
+    try {
+      await this.groups.setViewAsMember(!this.groups.viewingAsMember());
+      await this.router.navigateByUrl('/groups');
+    } finally {
+      this.meBusy.set(false);
+    }
   }
 
   /** Switch between the shop and the salon (only for people who work in both): the whole app then reads that service. */

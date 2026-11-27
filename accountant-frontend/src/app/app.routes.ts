@@ -43,6 +43,7 @@ export const routes: Routes = [
       { path: 'assistant', loadComponent: () => import('./pages/assistant/assistant').then((m) => m.AssistantPage) },
       // Groups (Vikundi): the business admin runs the whole group from here; leaders see the pages of their office.
       { path: 'groups', pathMatch: 'full', canActivate: [groupsStart], children: [] },
+      { path: 'groups/me', canActivate: [groupsOpen('g_me')], loadComponent: () => import('./pages/groups/me').then((m) => m.GMePage) },
       { path: 'groups/dashboard', canActivate: [groupsOpen('g_dashboard')], loadComponent: () => import('./pages/groups/dashboard').then((m) => m.GDashboardPage) },
       { path: 'groups/members', canActivate: [groupsOpen('g_members')], loadComponent: () => import('./pages/groups/members').then((m) => m.GMembersPage) },
       { path: 'groups/payments', canActivate: [groupsOpen('g_payments')], loadComponent: () => import('./pages/groups/payments').then((m) => m.GPaymentsPage) },

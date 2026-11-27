@@ -1,5 +1,5 @@
 import { AuthService } from './auth.service';
-import { gCan } from './groups/groups-rights';
+import { gCan, groupHasMember } from './groups/groups-rights';
 
 /**
  * Every page of the app, with who may open it. The sidebar, the page guards, the search box and the "where do I start" redirect all
@@ -7,7 +7,7 @@ import { gCan } from './groups/groups-rights';
  * The server enforces the same rights; this keeps the screens honest.
  */
 export interface NavItem {
-  key: 'dashboard' | 'products' | 'sales' | 'credit' | 'debts' | 'expenses' | 'branch_stock' | 'branches' | 'staff' | 'branch_team' | 'branch_sales' | 'money' | 'appointments' | 'stylists' | 'reports' | 'cashbook' | 'rebook' | 'team' | 'payroll' | 'export' | 'business' | 'salon_settings' | 'assistant' | 'g_dashboard' | 'g_members' | 'g_payments' | 'g_contributions' | 'g_loans' | 'g_welfare' | 'g_expenses' | 'g_dividends' | 'g_assets' | 'g_projects' | 'g_meetings' | 'g_votings' | 'g_reports' | 'g_settings';
+  key: 'dashboard' | 'products' | 'sales' | 'credit' | 'debts' | 'expenses' | 'branch_stock' | 'branches' | 'staff' | 'branch_team' | 'branch_sales' | 'money' | 'appointments' | 'stylists' | 'reports' | 'cashbook' | 'rebook' | 'team' | 'payroll' | 'export' | 'business' | 'salon_settings' | 'assistant' | 'g_me' | 'g_dashboard' | 'g_members' | 'g_payments' | 'g_contributions' | 'g_loans' | 'g_welfare' | 'g_expenses' | 'g_dividends' | 'g_assets' | 'g_projects' | 'g_meetings' | 'g_votings' | 'g_reports' | 'g_settings';
   path: string;
   labelKey: string;
   hintKey: string;
@@ -236,6 +236,16 @@ export const NAV: NavItem[] = [
     group: 'overview',
     icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
     allowed: (a) => a.service() === 'groups' && gCan('view_members', 'view_finance'),
+  },
+  {
+    key: 'g_me',
+    path: '/groups/me',
+    labelKey: 'nav.g.me',
+    hintKey: 'nav.g.me.hint',
+    group: 'overview',
+    icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
+    // Everyone in the group with a member record: their own account (with ME on, the whole menu).
+    allowed: (a) => a.service() === 'groups' && groupHasMember(),
   },
   {
     key: 'g_members',

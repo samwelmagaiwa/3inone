@@ -93,6 +93,20 @@ export const G_TEXTS: Record<string, [sw: string, en: string]> = {
   'g.joined': ['Alijiunga {0}', 'Joined {0}'],
   'g.male': ['Mwanaume', 'Male'],
   'g.female': ['Mwanamke', 'Female'],
+  // ---- ME and my account
+  'nav.g.me': ['Akaunti yangu', 'My account'],
+  'nav.g.me.hint': ['Uanachama wangu, akiba, madai, malipo na mikopo yangu', 'My membership, savings, what I owe, my payments and loans'],
+  'g.me.payments': ['Malipo yangu', 'My payments'],
+  'g.me.owing': ['Ninachodaiwa', 'What I owe'],
+  'g.me.loans': ['Mikopo yangu', 'My loans'],
+  'g.me.account': ['Akaunti yangu (akiba na hisa)', 'My account (savings and shares)'],
+  'g.me.owe': ['Ninadaiwa', 'I owe'],
+  'g.me.none': ['Akaunti hii si mwanachama wa kikundi.', 'This account is not a member of the group.'],
+  'g.me.on.hint': ['Ona kikundi kama mwanachama wa kawaida (akaunti yako)', 'See the group as an ordinary member (your own account)'],
+  'g.me.off.hint': ['Rudi kwenye uongozi wako', 'Back to your office'],
+  'g.me.on.label': ['Taarifa zangu: zimewashwa', 'My own view: on'],
+  'g.me.off.label': ['Taarifa zangu: zimezimwa', 'My own view: off'],
+
   // ---- table column headings
   'g.reference': ['Namba ya kumbukumbu', 'Reference'],
   'g.l.new': ['Mkopo mpya', 'New loan'],

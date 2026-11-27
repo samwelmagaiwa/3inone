@@ -12,3 +12,12 @@ export function gCan(...rights: string[]): boolean {
   const held = groupRights();
   return rights.some((r) => held.has(r));
 }
+
+/**
+ * ME: a leader looks at the group as an ordinary member. While on, every /groups call carries `X-Group-View: member` (the
+ * interceptor adds it) and the server answers with no office rights and none of the leaders' lists, exactly as on the phone.
+ */
+export const groupViewAsMember = signal(false);
+
+/** Does the signed-in person have a member record in the group (so "My account" has something to show)? */
+export const groupHasMember = signal(false);

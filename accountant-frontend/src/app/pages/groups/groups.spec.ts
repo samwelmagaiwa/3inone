@@ -2,7 +2,8 @@ import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../../environments/environment';
 import { GroupsContext } from '../../core/groups/groups-context.service';
-import { groupRights } from '../../core/groups/groups-rights';
+import { GroupsApi } from '../../core/groups/groups-api.service';
+import { groupHasMember, groupRights, groupViewAsMember } from '../../core/groups/groups-rights';
 import { allowedPages, homePath } from '../../core/nav';
 import { TRANSLATIONS } from '../../core/translations';
 import { byTestId, configure, settle, text } from '../../testing';
@@ -203,5 +204,53 @@ describe('Groups dashboard', () => {
     expect(byTestId(el, 'g-wait-payments_to_verify')!.getAttribute('href')).toContain('/groups/payments');
     expect(byTestId(el, 'g-wait-loans_to_approve')).not.toBeNull();
     expect(byTestId(el, 'g-wait-applications')).toBeNull();
+  });
+});
+
+describe('Groups ME (a leader looking as an ordinary member)', () => {
+  afterEach(() => {
+    groupRights.set(new Set());
+    groupViewAsMember.set(false);
+    groupHasMember.set(false);
+  });
+
+  it('with ME on the menu is My account alone; with it off a leader starts on the dashboard and still has My account', () => {
+    const h = asGroups([]);
+    groupHasMember.set(true);
+    expect(allowedPages(h.auth).map((p) => p.key).filter((k) => k.startsWith('g_'))).toEqual(['g_me']);
+
+    groupRights.set(new Set(ALL));
+    const keys = allowedPages(h.auth).map((p) => p.key).filter((k) => k.startsWith('g_'));
+    expect(keys[0]).toBe('g_dashboard');
+    expect(keys).toContain('g_me');
+  });
+
+  it('every Groups call says "member view" while ME is on, and only Groups calls', async () => {
+    const h = asGroups(ALL);
+    const api = TestBed.inject(GroupsApi);
+    groupViewAsMember.set(true);
+    void api.get('/me');
+    const on = h.http.expectOne(`${API}/me`);
+    expect(on.request.headers.get('X-Group-View')).toBe('member');
+    on.flush({ data: {} });
+
+    groupViewAsMember.set(false);
+    void api.get('/me');
+    const off = h.http.expectOne(`${API}/me`);
+    expect(off.request.headers.has('X-Group-View')).toBe(false);
+    off.flush({ data: {} });
+  });
+
+  it('turning ME on is remembered for this person and reads the group again in that view', async () => {
+    const h = asGroups(ALL);
+    const ctx = TestBed.inject(GroupsContext);
+    const done = ctx.setViewAsMember(true);
+    const req = h.http.expectOne(`${API}/me`);
+    expect(req.request.headers.get('X-Group-View')).toBe('member');
+    req.flush({ data: { is_owner: false, rights: [], can_switch_view: true, member: { id: 1, full_name: 'Juma' } } });
+    await done;
+    expect(ctx.viewingAsMember()).toBe(true);
+    expect(groupHasMember()).toBe(true);
+    expect(localStorage.getItem(`groups_me_view_${h.auth.user()!.id}`)).toBe('1');
   });
 });

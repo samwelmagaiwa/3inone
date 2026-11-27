@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
+import { GroupsContext } from '../../core/groups/groups-context.service';
 import { configure, settle, text } from '../../testing';
 import { ShellLayout } from './shell-layout';
 
@@ -266,5 +267,22 @@ describe('the look of Groups (Vikundi)', () => {
     TestBed.resetTestingModule();
     const accountant = await open();
     expect(text(accountant.el.querySelector('.sidebar-logo-name') as HTMLElement)).toBe('3inone Accountant');
+  });
+});
+
+describe('the ME switch (Groups)', () => {
+  it('is offered to a leader in Groups, and to nobody in the shop', async () => {
+    const leader = await open({ role: 'group_member', roleLabel: 'Member', services: ['groups'], permissions: [] });
+    TestBed.inject(GroupsContext).me.set({ can_switch_view: true, rights: [] });
+    await settle(leader.fixture);
+    expect(text(leader.el.querySelector('[data-testid="header-me"]') as HTMLElement)).toBe('ME');
+
+    TestBed.inject(GroupsContext).me.set({ can_switch_view: false, rights: [] });
+    await settle(leader.fixture);
+    expect(leader.el.querySelector('[data-testid="header-me"]')).toBeNull();
+
+    TestBed.resetTestingModule();
+    const staff = await open();
+    expect(staff.el.querySelector('[data-testid="header-me"]')).toBeNull();
   });
 });

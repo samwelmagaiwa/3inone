@@ -6,6 +6,7 @@ import { catchError, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
 import { BranchesService } from './branches.service';
+import { groupViewAsMember } from './groups/groups-rights';
 import { I18nService } from './i18n.service';
 import { ToastService } from './services/toast.service';
 
@@ -29,6 +30,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       // The branch being looked at: every list and figure follows it, and a new sale is recorded in it (none = the whole business).
       ...(branch !== null ? { 'X-Branch': String(branch), 'X-Branch-Service': auth.service() } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      // ME (Groups): a leader looking as an ordinary member; the server then answers without their office rights.
+      ...(groupViewAsMember() && req.url.startsWith(`${environment.apiUrl}/groups`) ? { 'X-Group-View': 'member' } : {}),
     },
   });
 
