@@ -83,7 +83,7 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
                     <td>{{ o['member_number'] || '—' }}</td>
                     <td class="g-long" [title]="o['label'] || o['type_name']">{{ o['label'] || o['type_name'] }}</td>
                     <td>{{ o['period'] || '—' }}</td>
-                    <td>{{ day(o['due_date']) }}@if (o['days_overdue'] > 0) { <span class="ph-bad"> ({{ i18n.t('g.c.late.days', o['days_overdue']) }})</span> }</td>
+                    <td [class.ph-bad]="o['days_overdue'] > 0" [title]="o['days_overdue'] > 0 ? i18n.t('g.c.late.days', o['days_overdue']) : ''">{{ day(o['due_date']) }}</td>
                     <td class="text-right">{{ tsh(o['amount_due']) }}</td>
                     <td class="text-right">{{ tsh(o['paid']) }}</td>
                     <td class="text-right"><b [class.ph-bad]="o['remaining'] > 0">{{ tsh(o['remaining']) }}</b></td>

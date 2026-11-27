@@ -2095,17 +2095,11 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
 .grid-table.g-grid tbody td.g-long { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
 /* A Groups table wider than its box scrolls sideways inside it at every screen size (the box clipped it on wide screens) */
 .table-scroll-container.fit-page:has(> .g-grid) { overflow-x: auto !important; overflow-y: hidden !important; max-height: none !important; }
-/* The Actions column stays in view at the right edge when a wide table scrolls sideways */
-.grid-table.g-grid:has(app-row-menu) thead th:last-child, .grid-table.g-grid tbody td:has(> app-row-menu) { position: sticky; right: 0; z-index: 2; }
-.theme-phone .grid-table.g-grid:has(app-row-menu) thead th:last-child { background: #10505f !important; z-index: 21; }
-.theme-phone .grid-table.g-grid tbody td:has(> app-row-menu) { background: #0f3d4a !important; box-shadow: -6px 0 10px -6px rgba(0,0,0,.5); }
-.shell-wrap:not(.theme-phone) .grid-table.g-grid tbody td:has(> app-row-menu) { background: #fff; }
 .grid-table.g-grid tbody td.text-right { text-align: right; }
 @media (max-width: 767px) {
   .theme-phone .grid-table.g-grid { width: 100%; }
   .theme-phone .grid-table.g-grid tbody td { white-space: normal; }
   .theme-phone .grid-table.g-grid tbody td.g-long { max-width: none; }
-  .theme-phone .grid-table.g-grid tbody td:has(> app-row-menu) { position: static; background: transparent !important; box-shadow: none; }
 }
 
 /* ═══ Groups (Vikundi) pages: the page's controls in ONE row above the table (section tabs, status chips, search, filters, buttons, the
@@ -2128,3 +2122,13 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
   .g-toolbar .g-search { flex-basis: 100%; }
   .g-toolbar .g-count { margin-left: 0; }
 }
+
+/* ═══ Scrollbars on the dark teal look: thin and translucent. The light-grey track (made for the light look) showed as white
+   lines beside the menu and at the right edge of the page. ═══ */
+:is(html, body):has(.theme-phone) { scrollbar-color: rgba(255,255,255,.22) transparent; }
+.theme-phone * { scrollbar-color: rgba(255,255,255,.22) transparent; scrollbar-width: thin; }
+:is(html, body):has(.theme-phone)::-webkit-scrollbar-track, .theme-phone ::-webkit-scrollbar-track { background: transparent; }
+:is(html, body):has(.theme-phone)::-webkit-scrollbar-thumb, .theme-phone ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 4px; }
+:is(html, body):has(.theme-phone)::-webkit-scrollbar-thumb:hover, .theme-phone ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.35); }
+:is(html, body):has(.theme-phone)::-webkit-scrollbar-corner, .theme-phone ::-webkit-scrollbar-corner { background: transparent; }
+:is(html, body):has(.theme-phone) { background: #0b2f3a; }
