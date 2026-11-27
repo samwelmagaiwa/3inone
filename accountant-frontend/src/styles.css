@@ -2091,10 +2091,10 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
    count at the right). It wraps only when the screen is too narrow, and nothing is cut. ═══ */
 .g-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .g-toolbar .g-seg { display: inline-flex; flex-wrap: nowrap; gap: 4px; padding: 3px; border-radius: 99px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); }
-.g-toolbar .g-seg .pill-tab { padding: 6px 12px; border-radius: 99px; font-size: 12.5px; font-weight: 800; white-space: nowrap; cursor: pointer; }
+.g-toolbar .g-seg .pill-tab { padding: 6px 10px; border-radius: 99px; font-size: 12px; font-weight: 800; white-space: nowrap; cursor: pointer; }
 .g-toolbar .g-sep { width: 1px; align-self: stretch; margin: 2px 2px; background: rgba(255,255,255,.18); }
 .g-toolbar :is(.g-search, .g-select) { height: 38px; padding: 0 12px; border-radius: 10px; font-size: 14px; font-weight: 600; background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.22); }
-.g-toolbar .g-search { flex: 1 1 220px; min-width: 180px; }
+.g-toolbar .g-search { flex: 1 1 180px; min-width: 150px; }
 .g-toolbar .g-search::placeholder { color: rgba(255,255,255,.55); }
 .g-toolbar .g-select { min-width: 150px; max-width: 240px; }
 .g-toolbar .g-select option { color: #0f172a; }

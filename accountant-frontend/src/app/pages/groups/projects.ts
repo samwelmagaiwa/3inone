@@ -24,7 +24,10 @@ const STATUSES = ['proposed', 'active', 'completed', 'rejected', 'cancelled', ''
             <button type="button" class="pill-tab" [class.is-active]="filter() === s" (click)="filter.set(s); load()">{{ s ? status(s) : i18n.t('g.all') }}</button>
           }
         </div>
+        <input class="g-search" [ngModel]="find()" (ngModelChange)="find.set($event)" [placeholder]="i18n.t('g.find.ph')" [attr.aria-label]="i18n.t('g.search')" />
+        <button type="button" class="btn-outline ph-btn" (click)="load()">{{ i18n.t('ad.apply') }}</button>
         <button type="button" class="btn-primary ph-btn" (click)="openForm(null)" data-testid="g-pr-new">{{ i18n.t('g.pr.propose') }}</button>
+        <span class="g-count">{{ i18n.t('g.count', shownCount()) }}</span>
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
       <div class="table-scroll-container fit-page" data-testid="g-pr-list">
@@ -32,7 +35,7 @@ const STATUSES = ['proposed', 'active', 'completed', 'rejected', 'cancelled', ''
             <thead>
               <tr>
               <th class="no-col">#</th>
-              <th>{{ i18n.t('g.ref') }}</th>
+              <th>{{ i18n.t('g.reference') }}</th>
               <th>{{ i18n.t('g.pr.title') }}</th>
               <th>{{ i18n.t('g.pr.by.short') }}</th>
               <th>{{ i18n.t('g.pr.manager') }}</th>
@@ -45,7 +48,7 @@ const STATUSES = ['proposed', 'active', 'completed', 'rejected', 'cancelled', ''
               </tr>
             </thead>
             <tbody>
-              @for (p of rows(); track p['id']) {
+              @for (p of filtered(rows(), keys); track p['id']) {
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td>{{ p['reference'] }}</td>
@@ -178,6 +181,12 @@ export class GProjectsPage extends GBase implements OnInit {
   protected readonly progressFor = signal<Row | null>(null);
   protected progressValue = 0;
   protected progressNote = '';
+
+  protected readonly keys = ['title', 'reference', 'proposer_name', 'manager_name'];
+
+  protected shownCount(): number {
+    return this.filtered(this.rows(), this.keys).length;
+  }
 
   ngOnInit(): void {
     void this.load();

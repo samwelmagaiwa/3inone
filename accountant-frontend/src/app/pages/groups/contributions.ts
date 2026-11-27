@@ -41,8 +41,13 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
           <button type="button" class="btn-outline ph-btn" (click)="loadOwing(1)">{{ i18n.t('ad.apply') }}</button>
           <span class="g-count">{{ i18n.t('g.count', total()) }}</span>
         }
-        @if (tab() === 'types' && can('manage_contributions')) {
-          <button type="button" class="btn-primary ph-btn" style="margin-left: auto" (click)="openType(null)" data-testid="g-c-type-new">{{ i18n.t('g.c.type.new') }}</button>
+        @if (tab() !== 'owing') {
+        <input class="g-search" [ngModel]="find()" (ngModelChange)="find.set($event)" [placeholder]="i18n.t('g.find.ph')" [attr.aria-label]="i18n.t('g.search')" />
+        <button type="button" class="btn-outline ph-btn" (click)="reload()">{{ i18n.t('ad.apply') }}</button>
+          @if (tab() === 'types' && can('manage_contributions')) {
+            <button type="button" class="btn-primary ph-btn" (click)="openType(null)" data-testid="g-c-type-new">{{ i18n.t('g.c.type.new') }}</button>
+          }
+        <span class="g-count">{{ i18n.t('g.count', shownCount()) }}</span>
         }
       </div>
 
@@ -115,7 +120,7 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
                 </tr>
               </thead>
               <tbody>
-                @for (t of types(); track t['id']) {
+                @for (t of filtered(types(), typeKeys); track t['id']) {
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
                     <td class="font-bold">{{ t['name'] }}</td>
@@ -150,7 +155,7 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
                 </tr>
               </thead>
               <tbody>
-                @for (p of promises(); track p['id']) {
+                @for (p of filtered(promises(), promiseKeys); track p['id']) {
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
                     <td class="font-bold">{{ p['member_name'] }}</td>
@@ -251,6 +256,13 @@ export class GContributionsPage extends GBase implements OnInit {
   protected pAmount = '';
   protected pDay = '';
   protected pNote = '';
+
+  protected readonly typeKeys = ['name', 'description'];
+  protected readonly promiseKeys = ['member_name', 'obligation_label', 'note'];
+
+  protected shownCount(): number {
+    return this.tab() === 'types' ? this.filtered(this.types(), this.typeKeys).length : this.filtered(this.promises(), this.promiseKeys).length;
+  }
 
   ngOnInit(): void {
     void this.loadTypes();

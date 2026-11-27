@@ -15,10 +15,10 @@ import { MemberPick, PickedMember } from './member-pick';
   imports: [FormsModule, MemberPick],
   template: `
     <div class="ad ph-page" data-testid="g-reports">
-      <div class="ph-card ph-row" style="flex-wrap: wrap; align-items: end">
-        <label class="ph-field">{{ i18n.t('ad.from') }} <input type="date" [(ngModel)]="from" name="rf" /></label>
-        <label class="ph-field">{{ i18n.t('ad.to') }} <input type="date" [(ngModel)]="to" name="rt" /></label>
-        <button type="button" class="btn-primary ph-btn" (click)="load()" data-testid="g-r-show">{{ i18n.t('ad.apply') }}</button>
+      <div class="g-toolbar">
+        <input class="g-select" type="date" [(ngModel)]="from" name="rf" [attr.aria-label]="i18n.t('ad.from')" [title]="i18n.t('ad.from')" />
+        <input class="g-select" type="date" [(ngModel)]="to" name="rt" [attr.aria-label]="i18n.t('ad.to')" [title]="i18n.t('ad.to')" />
+        <button type="button" class="btn-outline ph-btn" (click)="load()" data-testid="g-r-show">{{ i18n.t('ad.apply') }}</button>
         <span style="flex: 1"></span>
         @if (can('view_finance')) { <button type="button" class="btn-primary is-info ph-btn" (click)="exportPayments()" data-testid="g-r-csv-pay">{{ i18n.t('g.r.csv.payments') }}</button> }
         @if (can('view_members')) { <button type="button" class="btn-primary is-info ph-btn" (click)="exportMembers()" data-testid="g-r-csv-members">{{ i18n.t('g.r.csv.members') }}</button> }

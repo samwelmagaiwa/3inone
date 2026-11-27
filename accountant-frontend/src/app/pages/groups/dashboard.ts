@@ -42,8 +42,8 @@ export const G_WAITING: Record<string, string> = {
   imports: [RowMenuComponent, FormsModule, RouterLink],
   template: `
     <div class="ad ph-page" data-testid="g-dashboard">
-      <div class="ph-row" style="flex-wrap: wrap">
-        <label class="ph-field">{{ i18n.t('g.month') }} <input type="month" [ngModel]="month()" (ngModelChange)="pickMonth($event)" data-testid="g-dash-month" /></label>
+      <div class="g-toolbar">
+        <input class="g-select" type="month" [ngModel]="month()" (ngModelChange)="pickMonth($event)" [attr.aria-label]="i18n.t('g.month')" data-testid="g-dash-month" />
         <button type="button" class="btn-outline ph-btn" (click)="load()" data-testid="g-dash-refresh">{{ i18n.t('common.refresh') }}</button>
       </div>
 

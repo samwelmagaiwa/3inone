@@ -94,6 +94,9 @@ export const G_TEXTS: Record<string, [sw: string, en: string]> = {
   'g.male': ['Mwanaume', 'Male'],
   'g.female': ['Mwanamke', 'Female'],
   // ---- table column headings
+  'g.reference': ['Namba ya kumbukumbu', 'Reference'],
+  'g.l.new': ['Mkopo mpya', 'New loan'],
+  'g.find.ph': ['Tafuta kwenye orodha hii', 'Search this list'],
   'g.p.all.kinds': ['Aina zote', 'Every kind'],
   'g.c.all.types': ['Michango yote', 'Every contribution'],
   'g.p.record.short': ['Rekodi', 'Record'],

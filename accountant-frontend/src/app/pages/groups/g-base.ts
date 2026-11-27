@@ -1,7 +1,7 @@
 import { Directive, inject, signal } from '@angular/core';
 
 import { dayLabel, eatDateTime, serverMessage, today, tsh } from '../../core/format';
-import { GroupsApi } from '../../core/groups/groups-api.service';
+import { GroupsApi, Row } from '../../core/groups/groups-api.service';
 import { GroupsContext } from '../../core/groups/groups-context.service';
 import { I18nService } from '../../core/i18n.service';
 import { ConfirmService } from '../../core/services/confirm.service';
@@ -28,6 +28,17 @@ export abstract class GBase {
   protected readonly today = today;
   protected readonly methods = G_METHODS;
   protected readonly busy = signal(false);
+
+  /** What is typed in the page's search box (the toolbar). Lists the server cannot search are narrowed here, as one types. */
+  protected readonly find = signal('');
+
+  /** The rows whose [keys] hold what was typed (all of them when nothing was). */
+  protected filtered(rows: Row[] | null | undefined, keys: string[]): Row[] {
+    const q = this.find().trim().toLowerCase();
+    const list = rows ?? [];
+    if (!q) return list;
+    return list.filter((r) => keys.some((k) => String(r[k] ?? '').toLowerCase().includes(q)));
+  }
 
   /** A row's number in a paged list (page 1 starts at 1). */
   protected rowNo(i: number, page = 1, size = 50): number {

@@ -32,6 +32,14 @@ const KEYS = [
             <button type="button" class="pill-tab" [class.is-active]="tab() === t" (click)="go(t)" [attr.data-testid]="'g-s-tab-' + t">{{ i18n.t('g.s.tab.' + t) }}</button>
           }
         </div>
+        @if (tab() === 'codes' || tab() === 'log') {
+        <input class="g-search" [ngModel]="find()" (ngModelChange)="find.set($event)" [placeholder]="i18n.t('g.find.ph')" [attr.aria-label]="i18n.t('g.search')" />
+        <button type="button" class="btn-outline ph-btn" (click)="go(tab())">{{ i18n.t('ad.apply') }}</button>
+        }
+        @if (tab() === 'codes') { <button type="button" class="btn-primary ph-btn" (click)="newCode()" [title]="i18n.t('g.s.codes.hint')" data-testid="g-s-code-new">{{ i18n.t('g.s.code.new') }}</button> }
+        @if (tab() === 'codes' || tab() === 'log') {
+        <span class="g-count">{{ i18n.t('g.count', shownCount()) }}</span>
+        }
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
 
@@ -151,8 +159,6 @@ const KEYS = [
           @if (can('manage_offices')) { <p class="ph-muted">{{ i18n.t('g.s.offices.how') }} <a routerLink="/groups/members" class="link-btn">{{ i18n.t('nav.g.members') }}</a></p> }
         }
         @case ('codes') {
-          <div class="ph-row"><span class="ph-muted">{{ i18n.t('g.s.codes.hint') }}</span>
-            <button type="button" class="btn-primary ph-btn" (click)="newCode()" data-testid="g-s-code-new">{{ i18n.t('g.s.code.new') }}</button></div>
           <div class="table-scroll-container fit-page" data-testid="g-s-codes">
             <table class="grid-table">
               <thead>
@@ -165,7 +171,7 @@ const KEYS = [
                 </tr>
               </thead>
               <tbody>
-                @for (c of codes(); track c['id']) {
+                @for (c of filtered(codes(), codeKeys); track c['id']) {
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
                     <td><b style="letter-spacing: 0.12em">{{ c['code'] }}</b></td>
@@ -207,7 +213,7 @@ const KEYS = [
                 </tr>
               </thead>
               <tbody>
-                @for (e of log(); track e['id']) {
+                @for (e of filtered(log(), logKeys); track e['id']) {
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
                     <td>{{ when(e['created_at']) }}</td>
@@ -268,6 +274,13 @@ export class GSettingsPage extends GBase implements OnInit {
   protected changed(): string[] {
     const now = this.s()?.['settings'] ?? {};
     return KEYS.filter((k) => this.edit[k] !== undefined && String(this.edit[k] ?? '') !== String(now[k] ?? ''));
+  }
+
+  protected readonly codeKeys = ['code'];
+  protected readonly logKeys = ['summary', 'action', 'by_name'];
+
+  protected shownCount(): number {
+    return this.tab() === 'codes' ? this.filtered(this.codes(), this.codeKeys).length : this.filtered(this.log(), this.logKeys).length;
   }
 
   ngOnInit(): void {

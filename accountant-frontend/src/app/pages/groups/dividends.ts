@@ -16,8 +16,12 @@ import { GBase } from './g-base';
   imports: [RowMenuComponent, FormsModule, ModalDialogComponent],
   template: `
     <div class="ad ph-page" data-testid="g-dividends">
-      <div class="g-toolbar"><span class="ph-muted" style="flex: 1">{{ i18n.t('g.d.hint') }}</span>
-        @if (can('prepare_dividends')) { <button type="button" class="btn-primary ph-btn" (click)="openPrepare()" data-testid="g-d-new">{{ i18n.t('g.d.prepare') }}</button> }</div>
+      <div class="g-toolbar">
+        <input class="g-search" [ngModel]="find()" (ngModelChange)="find.set($event)" [placeholder]="i18n.t('g.find.ph')" [attr.aria-label]="i18n.t('g.search')" />
+        <button type="button" class="btn-outline ph-btn" (click)="load()">{{ i18n.t('ad.apply') }}</button>
+        @if (can('prepare_dividends')) { <button type="button" class="btn-primary ph-btn" (click)="openPrepare()" data-testid="g-d-new">{{ i18n.t('g.d.prepare') }}</button> }
+        <span class="g-count">{{ i18n.t('g.count', shownCount()) }}</span>
+      </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
       <div class="table-scroll-container fit-page" data-testid="g-d-list">
           <table class="grid-table">
@@ -37,7 +41,7 @@ import { GBase } from './g-base';
               </tr>
             </thead>
             <tbody>
-              @for (r of runs(); track r['id']) {
+              @for (r of filtered(runs(), keys); track r['id']) {
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td class="font-bold">{{ day(r['period_from']) }} – {{ day(r['period_to']) }}</td>
@@ -93,6 +97,7 @@ import { GBase } from './g-base';
 
     <app-modal-dialog [show]="prepOpen()" [eyebrow]="i18n.t('nav.g.dividends')" [title]="i18n.t('g.d.prepare')" size="md" (close)="prepOpen.set(false)">
       <div slot="body" class="ph-page" style="gap: 10px">
+        <p class="ph-muted">{{ i18n.t('g.d.hint') }}</p>
         <div class="ph-row" style="gap: 10px">
           <label class="ph-field" style="flex: 1">{{ i18n.t('g.h.from') }}<input class="modal-input" type="date" [(ngModel)]="f['period_from']" name="df" /></label>
           <label class="ph-field" style="flex: 1">{{ i18n.t('g.h.to') }}<input class="modal-input" type="date" [max]="today()" [(ngModel)]="f['period_to']" name="dt" /></label>
@@ -117,6 +122,12 @@ export class GDividendsPage extends GBase implements OnInit {
   protected readonly run = signal<Row | null>(null);
   protected readonly prepOpen = signal(false);
   protected f: Row = {};
+
+  protected readonly keys = ['note', 'prepared_by_name', 'approved_by_name', 'period_from', 'period_to', 'status'];
+
+  protected shownCount(): number {
+    return this.filtered(this.runs(), this.keys).length;
+  }
 
   ngOnInit(): void {
     void this.load();

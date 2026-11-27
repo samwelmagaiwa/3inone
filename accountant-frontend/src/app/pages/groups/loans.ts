@@ -25,10 +25,12 @@ const STATUSES = ['open', 'awaiting_guarantors', 'under_review', 'recommended', 
             <button type="button" class="pill-tab" [class.is-active]="filter() === s" (click)="filter.set(s); load(1)" [attr.data-testid]="'g-l-st-' + (s || 'all')">{{ s === 'open' ? i18n.t('g.l.open') : s ? status(s) : i18n.t('g.all') }}</button>
           }
         </div>
+        <input class="g-search" [ngModel]="find()" (ngModelChange)="find.set($event)" [placeholder]="i18n.t('g.find.ph')" [attr.aria-label]="i18n.t('g.search')" />
+        <button type="button" class="btn-outline ph-btn" (click)="load(1)">{{ i18n.t('ad.apply') }}</button>
         @if (can('record_payments')) {
-          <button type="button" class="btn-primary ph-btn" (click)="openApply()" data-testid="g-l-new">{{ i18n.t('g.l.apply') }}</button>
+          <button type="button" class="btn-primary ph-btn" (click)="openApply()" data-testid="g-l-new" [title]="i18n.t('g.l.apply')">{{ i18n.t('g.l.new') }}</button>
         }
-        <span class="g-count">{{ i18n.t('g.count', total()) }}</span>
+        <span class="g-count">{{ i18n.t('g.count', shownCount()) }}</span>
       </div>
 
       @if (error()) {
@@ -39,7 +41,7 @@ const STATUSES = ['open', 'awaiting_guarantors', 'under_review', 'recommended', 
             <thead>
               <tr>
               <th class="no-col">#</th>
-              <th>{{ i18n.t('g.ref') }}</th>
+              <th>{{ i18n.t('g.reference') }}</th>
               <th>{{ i18n.t('g.member') }}</th>
               <th>{{ i18n.t('g.l.purpose') }}</th>
               <th class="text-right">{{ i18n.t('g.amount') }}</th>
@@ -52,7 +54,7 @@ const STATUSES = ['open', 'awaiting_guarantors', 'under_review', 'recommended', 
               </tr>
             </thead>
             <tbody>
-              @for (l of rows(); track l['id']) {
+              @for (l of filtered(rows(), keys); track l['id']) {
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td>{{ l['reference'] }}</td>
@@ -226,6 +228,12 @@ export class GLoansPage extends GBase implements OnInit {
   protected aAmount = '';
   protected aPurpose = '';
   protected aMonths: number | string = 6;
+
+  protected readonly keys = ['member_name', 'member_number', 'reference', 'purpose'];
+
+  protected shownCount(): number {
+    return this.find().trim() ? this.filtered(this.rows(), this.keys).length : this.total();
+  }
 
   ngOnInit(): void {
     void this.load(1);

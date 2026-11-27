@@ -28,11 +28,12 @@ const TEXT_AUDIENCES = ['all', 'leaders', 'overdue', 'selected'];
           <button type="button" class="pill-tab" [class.is-active]="tab() === 'notices'" (click)="go('notices')" data-testid="g-mt-tab-notices">{{ i18n.t('g.mt.notices') }}</button>
           @if (can('send_texts')) { <button type="button" class="pill-tab" [class.is-active]="tab() === 'texts'" (click)="go('texts')" data-testid="g-mt-tab-texts">{{ i18n.t('g.mt.texts') }}</button> }
         </div>
-        <div class="ph-row" style="gap: 6px; margin-left: auto">
-          @if (tab() === 'meetings' && can('call_meetings')) { <button type="button" class="btn-primary ph-btn" (click)="openCall()" data-testid="g-mt-call">{{ i18n.t('g.mt.call') }}</button> }
-          @if (tab() === 'notices' && can('post_announcements')) { <button type="button" class="btn-primary ph-btn" (click)="openNotice()" data-testid="g-mt-notice-new">{{ i18n.t('g.mt.notice.new') }}</button> }
-          @if (tab() === 'texts' && can('send_texts')) { <button type="button" class="btn-primary ph-btn" (click)="openText()" data-testid="g-mt-text-new">{{ i18n.t('g.mt.text.new') }}</button> }
-        </div>
+        <input class="g-search" [ngModel]="find()" (ngModelChange)="find.set($event)" [placeholder]="i18n.t('g.find.ph')" [attr.aria-label]="i18n.t('g.search')" />
+        <button type="button" class="btn-outline ph-btn" (click)="go(tab())">{{ i18n.t('ad.apply') }}</button>
+        @if (tab() === 'meetings' && can('call_meetings')) { <button type="button" class="btn-primary ph-btn" (click)="openCall()" data-testid="g-mt-call">{{ i18n.t('g.mt.call') }}</button> }
+        @if (tab() === 'notices' && can('post_announcements')) { <button type="button" class="btn-primary ph-btn" (click)="openNotice()" data-testid="g-mt-notice-new">{{ i18n.t('g.mt.notice.new') }}</button> }
+        @if (tab() === 'texts' && can('send_texts')) { <button type="button" class="btn-primary ph-btn" (click)="openText()" data-testid="g-mt-text-new">{{ i18n.t('g.mt.text.new') }}</button> }
+        <span class="g-count">{{ i18n.t('g.count', shownCount()) }}</span>
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
 
@@ -54,7 +55,7 @@ const TEXT_AUDIENCES = ['all', 'leaders', 'overdue', 'selected'];
                 </tr>
               </thead>
               <tbody>
-                @for (m of meetings(); track m['id']) {
+                @for (m of filtered(meetings(), meetingKeys); track m['id']) {
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
                     <td>{{ when(m['starts_at']) }}</td>
@@ -88,7 +89,7 @@ const TEXT_AUDIENCES = ['all', 'leaders', 'overdue', 'selected'];
                 </tr>
               </thead>
               <tbody>
-                @for (a of actions(); track a['id']) {
+                @for (a of filtered(actions(), actionKeys); track a['id']) {
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
                     <td class="font-bold">{{ a['text'] }}</td>
@@ -122,7 +123,7 @@ const TEXT_AUDIENCES = ['all', 'leaders', 'overdue', 'selected'];
                 </tr>
               </thead>
               <tbody>
-                @for (n of notices(); track n['id']) {
+                @for (n of filtered(notices(), noticeKeys); track n['id']) {
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
                     <td class="font-bold">{{ n['title'] }}</td>
@@ -156,7 +157,7 @@ const TEXT_AUDIENCES = ['all', 'leaders', 'overdue', 'selected'];
                 </tr>
               </thead>
               <tbody>
-                @for (t of texts(); track t['id']) {
+                @for (t of filtered(texts(), textKeys); track t['id']) {
                   <tr>
                     <td class="no-col">{{ $index + 1 }}</td>
                     <td>{{ when(t['created_at']) }}</td>
@@ -326,6 +327,20 @@ export class GMeetingsPage extends GBase implements OnInit {
   protected tAudience = 'all';
   protected tBody = '';
   protected readonly tPeople = signal<PickedMember[]>([]);
+
+  protected readonly meetingKeys = ['title', 'venue', 'called_by_name', 'agenda'];
+  protected readonly actionKeys = ['text', 'meeting_title', 'assignee_name'];
+  protected readonly noticeKeys = ['title', 'body', 'author_name'];
+  protected readonly textKeys = ['body', 'sent_by_name'];
+
+  protected shownCount(): number {
+    switch (this.tab()) {
+      case 'actions': return this.filtered(this.actions(), this.actionKeys).length;
+      case 'notices': return this.filtered(this.notices(), this.noticeKeys).length;
+      case 'texts': return this.filtered(this.texts(), this.textKeys).length;
+      default: return this.filtered(this.meetings(), this.meetingKeys).length;
+    }
+  }
 
   ngOnInit(): void {
     void this.loadMeetings();

@@ -34,10 +34,11 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
             }
           </div>
         }
-        <div class="ph-row" style="gap: 6px; margin-left: auto">
-          @if (tab() === 'assets' && can('manage_assets')) { <button type="button" class="btn-primary ph-btn" (click)="openAsset(null)" data-testid="g-a-new">{{ i18n.t('g.a.new') }}</button> }
-          @if (tab() === 'hires') { <button type="button" class="btn-primary is-success ph-btn" (click)="openHire()" data-testid="g-h-new">{{ i18n.t('g.h.new') }}</button> }
-        </div>
+        <input class="g-search" [ngModel]="find()" (ngModelChange)="find.set($event)" [placeholder]="i18n.t('g.find.ph')" [attr.aria-label]="i18n.t('g.search')" />
+        <button type="button" class="btn-outline ph-btn" (click)="tab() === 'assets' ? loadAssets() : loadHires()">{{ i18n.t('ad.apply') }}</button>
+        @if (tab() === 'assets' && can('manage_assets')) { <button type="button" class="btn-primary ph-btn" (click)="openAsset(null)" data-testid="g-a-new">{{ i18n.t('g.a.new') }}</button> }
+        @if (tab() === 'hires') { <button type="button" class="btn-primary is-success ph-btn" (click)="openHire()" data-testid="g-h-new">{{ i18n.t('g.h.new') }}</button> }
+        <span class="g-count">{{ i18n.t('g.count', shownCount()) }}</span>
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
 
@@ -60,7 +61,7 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
               </tr>
             </thead>
             <tbody>
-              @for (a of assets(); track a['id']) {
+              @for (a of filtered(assets(), assetKeys); track a['id']) {
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td>{{ a['code'] }}</td>
@@ -86,7 +87,7 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
             <thead>
               <tr>
               <th class="no-col">#</th>
-              <th>{{ i18n.t('g.ref') }}</th>
+              <th>{{ i18n.t('g.reference') }}</th>
               <th>{{ i18n.t('g.h.who') }}</th>
               <th>{{ i18n.t('g.f.phone') }}</th>
               <th>{{ i18n.t('g.h.what') }}</th>
@@ -101,7 +102,7 @@ type HireAct = 'pay' | 'issue' | 'return' | 'charge';
               </tr>
             </thead>
             <tbody>
-              @for (h of hires(); track h['id']) {
+              @for (h of filtered(hires(), hireKeys); track h['id']) {
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td>{{ h['reference'] }}</td>
@@ -282,6 +283,13 @@ export class GAssetsPage extends GBase implements OnInit {
   protected readonly hirer = signal<PickedMember | null>(null);
   protected readonly acting = signal<{ kind: HireAct; h: Row } | null>(null);
   protected x: Row = {};
+
+  protected readonly assetKeys = ['code', 'name', 'category', 'custodian_name', 'location'];
+  protected readonly hireKeys = ['who', 'reference', 'asset_name', 'phone'];
+
+  protected shownCount(): number {
+    return this.tab() === 'assets' ? this.filtered(this.assets(), this.assetKeys).length : this.filtered(this.hires(), this.hireKeys).length;
+  }
 
   ngOnInit(): void {
     void this.loadAssets();

@@ -29,9 +29,13 @@ const STATUSES = ['submitted', 'approved', 'rejected', 'cancelled', ''];
               <button type="button" class="pill-tab" [class.is-active]="filter() === s" (click)="filter.set(s); load()">{{ s ? status(s) : i18n.t('g.all') }}</button>
             }
           </div>
-        } @else if (can('manage_settings')) {
-          <button type="button" class="btn-primary ph-btn" style="margin-left: auto" (click)="openType(null)" data-testid="g-w-type-new">{{ i18n.t('g.w.type.new') }}</button>
         }
+        <input class="g-search" [ngModel]="find()" (ngModelChange)="find.set($event)" [placeholder]="i18n.t('g.find.ph')" [attr.aria-label]="i18n.t('g.search')" />
+        <button type="button" class="btn-outline ph-btn" (click)="tab() === 'requests' ? load() : loadTypes()">{{ i18n.t('ad.apply') }}</button>
+        @if (tab() === 'types' && can('manage_settings')) {
+          <button type="button" class="btn-primary ph-btn" (click)="openType(null)" data-testid="g-w-type-new">{{ i18n.t('g.w.type.new') }}</button>
+        }
+        <span class="g-count">{{ i18n.t('g.count', shownCount()) }}</span>
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
 
@@ -41,7 +45,7 @@ const STATUSES = ['submitted', 'approved', 'rejected', 'cancelled', ''];
             <thead>
               <tr>
               <th class="no-col">#</th>
-              <th>{{ i18n.t('g.ref') }}</th>
+              <th>{{ i18n.t('g.reference') }}</th>
               <th>{{ i18n.t('g.member') }}</th>
               <th>{{ i18n.t('g.kind') }}</th>
               <th>{{ i18n.t('g.w.beneficiary') }}</th>
@@ -55,7 +59,7 @@ const STATUSES = ['submitted', 'approved', 'rejected', 'cancelled', ''];
               </tr>
             </thead>
             <tbody>
-              @for (r of rows(); track r['id']) {
+              @for (r of filtered(rows(), requestKeys); track r['id']) {
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td>{{ r['reference'] }}</td>
@@ -90,7 +94,7 @@ const STATUSES = ['submitted', 'approved', 'rejected', 'cancelled', ''];
               </tr>
             </thead>
             <tbody>
-              @for (t of types(); track t['id']) {
+              @for (t of filtered(types(), typeKeys); track t['id']) {
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td class="font-bold">{{ t['name'] }}</td>
@@ -163,6 +167,13 @@ export class GWelfarePage extends GBase implements OnInit {
   protected payRef = '';
   protected readonly typeOpen = signal(false);
   protected tf: Row = {};
+
+  protected readonly requestKeys = ['member_name', 'reference', 'type_name', 'beneficiary'];
+  protected readonly typeKeys = ['name', 'description'];
+
+  protected shownCount(): number {
+    return this.tab() === 'requests' ? this.filtered(this.rows(), this.requestKeys).length : this.filtered(this.types(), this.typeKeys).length;
+  }
 
   ngOnInit(): void {
     if (!this.can('view_benefits')) this.tab.set('types');

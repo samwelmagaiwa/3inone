@@ -24,7 +24,10 @@ const CATEGORIES = ['project', 'office', 'meeting', 'transport', 'event', 'other
             <button type="button" class="pill-tab" [class.is-active]="filter() === s" (click)="filter.set(s); load()">{{ s ? status(s) : i18n.t('g.all') }}</button>
           }
         </div>
+        <input class="g-search" [ngModel]="find()" (ngModelChange)="find.set($event)" [placeholder]="i18n.t('g.find.ph')" [attr.aria-label]="i18n.t('g.search')" />
+        <button type="button" class="btn-outline ph-btn" (click)="load()">{{ i18n.t('ad.apply') }}</button>
         @if (can('request_expenses')) { <button type="button" class="btn-primary ph-btn" (click)="openNew()" data-testid="g-e-new">{{ i18n.t('g.e.new') }}</button> }
+        <span class="g-count">{{ i18n.t('g.count', shownCount()) }}</span>
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
       <div class="table-scroll-container fit-page" data-testid="g-e-list">
@@ -32,7 +35,7 @@ const CATEGORIES = ['project', 'office', 'meeting', 'transport', 'event', 'other
             <thead>
               <tr>
               <th class="no-col">#</th>
-              <th>{{ i18n.t('g.ref') }}</th>
+              <th>{{ i18n.t('g.reference') }}</th>
               <th>{{ i18n.t('g.date') }}</th>
               <th>{{ i18n.t('g.p.for.what') }}</th>
               <th>{{ i18n.t('g.kind') }}</th>
@@ -47,7 +50,7 @@ const CATEGORIES = ['project', 'office', 'meeting', 'transport', 'event', 'other
               </tr>
             </thead>
             <tbody>
-              @for (r of rows(); track r['id']) {
+              @for (r of filtered(rows(), keys); track r['id']) {
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td>{{ r['reference'] }}</td>
@@ -115,6 +118,12 @@ export class GExpensesPage extends GBase implements OnInit {
   protected readonly paying = signal<Row | null>(null);
   protected payMethod = 'cash';
   protected payRef = '';
+
+  protected readonly keys = ['purpose', 'payee', 'reference', 'requested_by_name', 'project_title'];
+
+  protected shownCount(): number {
+    return this.filtered(this.rows(), this.keys).length;
+  }
 
   ngOnInit(): void {
     void this.load();

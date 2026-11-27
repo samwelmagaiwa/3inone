@@ -26,8 +26,15 @@ function local(v: string | null | undefined): string {
   template: `
     <div class="ad ph-page" data-testid="g-votings">
       <div class="g-toolbar">
-        <span style="flex: 1"></span>
+        <div class="ph-chips g-seg">
+          @for (s of vStatuses; track s) {
+            <button type="button" class="pill-tab" [class.is-active]="vStatus() === s" (click)="vStatus.set(s)" [attr.data-testid]="'g-v-st-' + (s || 'all')">{{ s ? status(s) : i18n.t('g.all') }}</button>
+          }
+        </div>
+        <input class="g-search" [ngModel]="find()" (ngModelChange)="find.set($event)" [placeholder]="i18n.t('g.find.ph')" [attr.aria-label]="i18n.t('g.search')" />
+        <button type="button" class="btn-outline ph-btn" (click)="load()">{{ i18n.t('ad.apply') }}</button>
         @if (can('manage_votings')) { <button type="button" class="btn-primary ph-btn" (click)="openForm(null)" data-testid="g-v-new">{{ i18n.t('g.v.new') }}</button> }
+        <span class="g-count">{{ i18n.t('g.count', shownCount()) }}</span>
       </div>
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
       <div class="table-scroll-container fit-page" data-testid="g-v-list">
@@ -35,7 +42,7 @@ function local(v: string | null | undefined): string {
             <thead>
               <tr>
               <th class="no-col">#</th>
-              <th>{{ i18n.t('g.ref') }}</th>
+              <th>{{ i18n.t('g.reference') }}</th>
               <th>{{ i18n.t('g.pr.title') }}</th>
               <th>{{ i18n.t('g.v.kind') }}</th>
               <th>{{ i18n.t('g.kind') }}</th>
@@ -47,7 +54,7 @@ function local(v: string | null | undefined): string {
               </tr>
             </thead>
             <tbody>
-              @for (v of rows(); track v['id']) {
+              @for (v of shown(); track v['id']) {
                 <tr>
                   <td class="no-col">{{ $index + 1 }}</td>
                   <td>{{ v['reference'] }}</td>
@@ -182,6 +189,20 @@ export class GVotingsPage extends GBase implements OnInit {
   protected readonly candidates = signal<PickedMember[]>([]);
   protected readonly extending = signal<Row | null>(null);
   protected extendTo = '';
+
+  protected readonly vStatuses = ['', 'draft', 'scheduled', 'open', 'paused', 'closed', 'cancelled'];
+  protected readonly vStatus = signal('');
+  protected readonly keys = ['title', 'reference', 'position', 'series'];
+
+  /** The votings of the chosen status that hold what was typed. */
+  protected shown(): Row[] {
+    const s = this.vStatus();
+    return this.filtered(this.rows(), this.keys).filter((v) => !s || v['status'] === s);
+  }
+
+  protected shownCount(): number {
+    return this.shown().length;
+  }
 
   ngOnInit(): void {
     void this.load();
