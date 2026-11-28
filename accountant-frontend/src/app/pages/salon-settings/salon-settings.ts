@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 
 import { environment } from '../../../environments/environment';
 import { parseAmount, serverMessage } from '../../core/format';
@@ -35,68 +36,93 @@ export function loyaltyBody(per: string, value: string, referral: string): { per
 
 @Component({
   selector: 'app-salon-settings',
-  imports: [FormsModule],
+  imports: [FormsModule, RowMenuComponent],
   template: `
     <div class="ad ph-page" data-testid="settings-page">
       @if (error() && !loaded()) {
-        <section class="ph-card"><p data-testid="set-error">{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load()">{{ i18n.t('pl.retry') }}</button></section>
+        <section class="ph-card set-wide"><p data-testid="set-error">{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load()">{{ i18n.t('pl.retry') }}</button></section>
       } @else if (!loaded()) {
-        <section class="ph-card"><p class="ph-muted">{{ i18n.t('pl.loading') }}</p></section>
+        <section class="ph-card set-wide"><p class="ph-muted">{{ i18n.t('pl.loading') }}</p></section>
       } @else {
-        @if (message()) { <p class="ph-good" data-testid="set-message">{{ message() }}</p> }
-        @if (error()) { <p class="ph-bad" data-testid="set-problem">{{ error() }}</p> }
+        @if (message()) { <p class="ph-good set-wide" data-testid="set-message">{{ message() }}</p> }
+        @if (error()) { <p class="ph-bad set-wide" data-testid="set-problem">{{ error() }}</p> }
 
-        <section class="ph-card">
-          <h3>{{ i18n.t('set.texts') }}</h3>
-          @for (s of group('texts'); track s.field) {
-            <div class="ph-row" style="padding: 6px 0"><span>{{ i18n.t(s.title) }}<br /><span class="ph-muted">{{ i18n.t(s.sub) }}</span></span><input type="checkbox" [checked]="isOn(s.field)" (change)="toggle(s.field, $any($event.target).checked)" [attr.data-testid]="'set-' + s.field" /></div>
-          }
-        </section>
+        <!-- every setting is a row: what it is, what it does, its value (a switch or a field), and Save under the three dots -->
+        <div class="table-scroll-container fit-page set-wide">
+          <table class="grid-table g-grid" data-testid="set-table">
+            <thead><tr>
+              <th class="no-col">#</th><th>{{ i18n.t('set.col.setting') }}</th><th>{{ i18n.t('set.col.about') }}</th><th>{{ i18n.t('set.col.value') }}</th><th class="text-right">{{ i18n.t('g.actions') }}</th>
+            </tr></thead>
+            <tbody>
+              <tr class="set-group"><td colspan="5">{{ i18n.t('set.texts') }}</td></tr>
+              @for (sw of group('texts'); track sw.field) {
+                <tr><td class="no-col">{{ $index + 1 }}</td><td class="font-bold">{{ i18n.t(sw.title) }}</td><td class="ph-muted">{{ i18n.t(sw.sub) }}</td>
+                  <td><label class="set-switch"><input type="checkbox" [checked]="isOn(sw.field)" (change)="toggle(sw.field, $any($event.target).checked)" [attr.data-testid]="'set-' + sw.field" /><span>{{ isOn(sw.field) ? i18n.t('set.on') : i18n.t('set.off') }}</span></label></td>
+                  <td class="text-right">—</td></tr>
+              }
 
-        <section class="ph-card">
-          <h3>{{ i18n.t('set.owner') }}</h3>
-          @for (s of group('owner'); track s.field) {
-            <div class="ph-row"><span>{{ i18n.t(s.title) }}<br /><span class="ph-muted">{{ i18n.t(s.sub) }}</span></span><input type="checkbox" [checked]="isOn(s.field)" (change)="toggle(s.field, $any($event.target).checked)" [attr.data-testid]="'set-' + s.field" /></div>
-          }
-        </section>
+              <tr class="set-group"><td colspan="5">{{ i18n.t('set.owner') }}</td></tr>
+              @for (sw of group('owner'); track sw.field) {
+                <tr><td class="no-col">{{ $index + 1 }}</td><td class="font-bold">{{ i18n.t(sw.title) }}</td><td class="ph-muted">{{ i18n.t(sw.sub) }}</td>
+                  <td><label class="set-switch"><input type="checkbox" [checked]="isOn(sw.field)" (change)="toggle(sw.field, $any($event.target).checked)" [attr.data-testid]="'set-' + sw.field" /><span>{{ isOn(sw.field) ? i18n.t('set.on') : i18n.t('set.off') }}</span></label></td>
+                  <td class="text-right">—</td></tr>
+              }
 
-        <section class="ph-card">
-          <h3>{{ i18n.t('set.deposits') }}</h3>
-          <label class="ph-field">{{ i18n.t('set.cancel.hours') }}<input class="modal-input" inputmode="numeric" [ngModel]="cancelHours()" (ngModelChange)="cancelHours.set($event)" data-testid="set-cancel" name="setCancel" /></label>
-          <button type="button" class="btn-outline ph-btn is-danger" style="margin-top: 6px" (click)="save({ cancel_hours: toInt(cancelHours()) })" data-testid="set-cancel-save">{{ i18n.t('common.save') }}</button>
-        </section>
+              <tr class="set-group"><td colspan="5">{{ i18n.t('set.deposits') }}</td></tr>
+              <tr><td class="no-col">1</td><td class="font-bold">{{ i18n.t('set.cancel.short') }}</td><td class="ph-muted">{{ i18n.t('set.cancel.hours') }}</td>
+                <td><input class="modal-input set-input" inputmode="numeric" [ngModel]="cancelHours()" (ngModelChange)="cancelHours.set($event)" data-testid="set-cancel" name="setCancel" /></td>
+                <td class="text-right"><app-row-menu [items]="saveMenu('set-cancel-save')" [testid]="'set-cancel-menu'" (picked)="save({ cancel_hours: toInt(cancelHours()) })" /></td></tr>
 
-        <section class="ph-card">
-          <h3>{{ i18n.t('set.booking') }}</h3>
-          @for (s of group('online'); track s.field) {
-            <div class="ph-row"><span>{{ i18n.t(s.title) }}<br /><span class="ph-muted">{{ i18n.t(s.sub) }}</span></span><input type="checkbox" [checked]="isOn(s.field)" (change)="toggle(s.field, $any($event.target).checked)" [attr.data-testid]="'set-' + s.field" /></div>
-          }
-          <label class="ph-field" style="margin-top: 6px">{{ i18n.t('set.slug') }}<input class="modal-input" [ngModel]="slug()" (ngModelChange)="slug.set($event)" data-testid="set-slug" name="setSlug" /></label>
-          <button type="button" class="btn-outline ph-btn is-success" style="margin-top: 6px" (click)="save({ booking_slug: slug().trim().toLowerCase() })" data-testid="set-slug-save">{{ i18n.t('common.save') }}</button>
-          @if (bookingUrl()) {
-            <div class="ph-row" style="margin-top: 6px"><a [href]="bookingUrl()" target="_blank" rel="noopener" data-testid="set-url">{{ bookingUrl() }}</a><button type="button" class="btn-outline ph-btn is-info" (click)="copy()" data-testid="set-copy">{{ i18n.t('set.copy') }}</button></div>
-          }
-        </section>
+              <tr class="set-group"><td colspan="5">{{ i18n.t('set.booking') }}</td></tr>
+              @for (sw of group('online'); track sw.field) {
+                <tr><td class="no-col">{{ $index + 1 }}</td><td class="font-bold">{{ i18n.t(sw.title) }}</td><td class="ph-muted">{{ i18n.t(sw.sub) }}</td>
+                  <td><label class="set-switch"><input type="checkbox" [checked]="isOn(sw.field)" (change)="toggle(sw.field, $any($event.target).checked)" [attr.data-testid]="'set-' + sw.field" /><span>{{ isOn(sw.field) ? i18n.t('set.on') : i18n.t('set.off') }}</span></label></td>
+                  <td class="text-right">—</td></tr>
+              }
+              <tr><td class="no-col">2</td><td class="font-bold">{{ i18n.t('set.address') }}</td><td class="ph-muted">{{ i18n.t('set.slug') }}</td>
+                <td><input class="modal-input set-input" [ngModel]="slug()" (ngModelChange)="slug.set($event)" data-testid="set-slug" name="setSlug" /></td>
+                <td class="text-right"><app-row-menu [items]="saveMenu('set-slug-save')" [testid]="'set-slug-menu'" (picked)="save({ booking_slug: slug().trim().toLowerCase() })" /></td></tr>
+              @if (bookingUrl()) {
+                <tr><td class="no-col">3</td><td class="font-bold">{{ i18n.t('set.link') }}</td><td class="g-long" [title]="bookingUrl()"><a [href]="bookingUrl()" target="_blank" rel="noopener" data-testid="set-url">{{ bookingUrl() }}</a></td>
+                  <td>—</td>
+                  <td class="text-right"><app-row-menu [items]="copyMenu()" [testid]="'set-copy-menu'" (picked)="copy()" /></td></tr>
+              }
 
-        <section class="ph-card">
-          <h3>{{ i18n.t('set.categories') }}</h3>
-          <p class="ph-muted">{{ i18n.t('set.presets.sub') }}</p>
-          <button type="button" class="btn-outline ph-btn" (click)="presets()" data-testid="set-presets">{{ i18n.t('set.presets') }}</button>
-        </section>
+              <tr class="set-group"><td colspan="5">{{ i18n.t('set.categories') }}</td></tr>
+              <tr><td class="no-col">1</td><td class="font-bold">{{ i18n.t('set.presets') }}</td><td class="g-long ph-muted" [title]="i18n.t('set.presets.sub')">{{ i18n.t('set.presets.sub') }}</td>
+                <td>—</td>
+                <td class="text-right"><app-row-menu [items]="presetMenu()" [testid]="'set-presets-menu'" (picked)="presets()" /></td></tr>
 
-        @if (loyaltyKnown()) {
-          <section class="ph-card">
-            <h3>{{ i18n.t('set.loyalty') }}</h3>
-            <div class="ph-row"><span>{{ i18n.t('set.loyalty.on') }}</span><input type="checkbox" [checked]="loyaltyOn()" (change)="saveLoyalty({ on: $any($event.target).checked })" data-testid="set-loyalty" /></div>
-            <label class="ph-field" style="margin-top: 6px">{{ i18n.t('set.per') }}<input class="modal-input" inputmode="numeric" [ngModel]="per()" (ngModelChange)="per.set($event)" data-testid="set-per" name="setPer" /></label>
-            <label class="ph-field" style="margin-top: 6px">{{ i18n.t('set.value') }}<input class="modal-input" inputmode="numeric" [ngModel]="pointValue()" (ngModelChange)="pointValue.set($event)" data-testid="set-value" name="setValue" /></label>
-            <label class="ph-field" style="margin-top: 6px">{{ i18n.t('set.referral') }}<input class="modal-input" inputmode="numeric" [ngModel]="referral()" (ngModelChange)="referral.set($event)" data-testid="set-referral" name="setReferral" /></label>
-            <button type="button" class="btn-outline ph-btn is-success" style="margin-top: 6px" (click)="saveLoyalty(loyaltyForm())" data-testid="set-loyalty-save">{{ i18n.t('set.points.save') }}</button>
-          </section>
-        }
+              @if (loyaltyKnown()) {
+                <tr class="set-group"><td colspan="5">{{ i18n.t('set.loyalty') }}</td></tr>
+                <tr><td class="no-col">1</td><td class="font-bold">{{ i18n.t('set.loyalty.on') }}</td><td class="ph-muted">{{ i18n.t('set.loyalty') }}</td>
+                  <td><label class="set-switch"><input type="checkbox" [checked]="loyaltyOn()" (change)="saveLoyalty({ on: $any($event.target).checked })" data-testid="set-loyalty" /><span>{{ loyaltyOn() ? i18n.t('set.on') : i18n.t('set.off') }}</span></label></td>
+                  <td class="text-right">—</td></tr>
+                <tr><td class="no-col">2</td><td class="font-bold">{{ i18n.t('set.per') }}</td><td class="ph-muted">{{ i18n.t('set.points.about') }}</td>
+                  <td><input class="modal-input set-input" inputmode="numeric" [ngModel]="per()" (ngModelChange)="per.set($event)" data-testid="set-per" name="setPer" /></td>
+                  <td class="text-right"><app-row-menu [items]="saveMenu('set-loyalty-save')" [testid]="'set-per-menu'" (picked)="saveLoyalty(loyaltyForm())" /></td></tr>
+                <tr><td class="no-col">3</td><td class="font-bold">{{ i18n.t('set.value') }}</td><td class="ph-muted">{{ i18n.t('set.points.about') }}</td>
+                  <td><input class="modal-input set-input" inputmode="numeric" [ngModel]="pointValue()" (ngModelChange)="pointValue.set($event)" data-testid="set-value" name="setValue" /></td>
+                  <td class="text-right"><app-row-menu [items]="saveMenu()" [testid]="'set-value-menu'" (picked)="saveLoyalty(loyaltyForm())" /></td></tr>
+                <tr><td class="no-col">4</td><td class="font-bold">{{ i18n.t('set.referral') }}</td><td class="ph-muted">{{ i18n.t('set.points.about') }}</td>
+                  <td><input class="modal-input set-input" inputmode="numeric" [ngModel]="referral()" (ngModelChange)="referral.set($event)" data-testid="set-referral" name="setReferral" /></td>
+                  <td class="text-right"><app-row-menu [items]="saveMenu()" [testid]="'set-referral-menu'" (picked)="saveLoyalty(loyaltyForm())" /></td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
     </div>
   `,
+  styles: [
+    `
+      .set-wide { grid-column: 1 / -1; }
+      tr.set-group td { background: rgba(32, 184, 206, 0.22) !important; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; }
+      .set-switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+      .set-switch input { width: 18px; height: 18px; accent-color: #20b8ce; }
+      .set-input { height: 34px; padding: 4px 10px; width: 200px; font-size: 14px; }
+    `,
+  ],
 })
 export class SalonSettingsPage implements OnInit {
   private readonly http = inject(HttpClient);
@@ -118,6 +144,18 @@ export class SalonSettingsPage implements OnInit {
 
   ngOnInit(): void {
     void this.load();
+  }
+
+  protected saveMenu(testid?: string): MenuItem[] {
+    return [{ id: 'save', label: this.i18n.t('common.save'), primary: true, ...(testid ? { testid } : {}) }];
+  }
+
+  protected copyMenu(): MenuItem[] {
+    return [{ id: 'copy', label: this.i18n.t('set.copy'), testid: 'set-copy' }];
+  }
+
+  protected presetMenu(): MenuItem[] {
+    return [{ id: 'presets', label: this.i18n.t('set.presets'), primary: true, testid: 'set-presets' }];
   }
 
   protected group(g: 'texts' | 'owner' | 'online'): typeof SWITCHES {

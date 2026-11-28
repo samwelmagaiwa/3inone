@@ -2,34 +2,49 @@
 @for (k of [motion.tick()]; track k) {
 <div class="space-y-5 animate-fade-in-up">
 
-  <div class="page-header-card">
-    <h1 class="text-slate-900 font-black text-xl tracking-tight">{{ i18n.t('bt.title') }}</h1>
-    <p class="text-slate-500 text-sm mt-0.5">{{ i18n.t('bt.sub') }}</p>
+  <!-- one table: each person, their role, and the branch they work in (chosen in the row); what the page does is the count's tooltip -->
+  <div class="g-toolbar">
+    <span class="ph-muted" [title]="i18n.t('bt.sub')">{{ i18n.t('bt.sub') }}</span>
+    <span class="g-grow"></span>
+    <span class="g-count">{{ i18n.t('g.count', rows().length) }}</span>
   </div>
 
   @if (loading() && !rows().length) {
-    <div class="skeleton-box" style="height: 120px; border-radius: 14px;"></div>
+    <div class="skeleton-box" style="height: 120px; border-radius: 10px;"></div>
   } @else if (error(); as message) {
     <div class="section-card p-8 text-center space-y-3" role="alert">
       <p class="text-slate-500 text-sm">{{ message }}</p>
       <button type="button" class="btn-primary" (click)="load()">{{ i18n.t('common.retry') }}</button>
     </div>
   } @else {
-    <section class="section-card overflow-hidden">
-      @if (!branches().length) { <p class="px-5 py-3 text-sm font-semibold text-amber-600" data-testid="bt-nobranches">{{ i18n.t('bt.nobranches') }}</p> }
-      @for (m of rows(); track m.staff_id) {
-        <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-100 last:border-b-0" [attr.data-testid]="'bt-row-' + m.staff_id">
-          <div class="min-w-0">
-            <p class="font-black text-slate-900">{{ m.name }}</p>
-            <p class="text-xs font-semibold text-slate-400">{{ m.role }}</p>
-          </div>
-          <select class="modal-input w-auto" [attr.aria-label]="m.name" (change)="place(m, $any($event.target).value)" [attr.data-testid]="'bt-select-' + m.staff_id">
-            <option value="" [selected]="m.branch_id === null">{{ i18n.t('bt.none') }}</option>
-            @for (b of branches(); track b.id) { <option [value]="b.id" [selected]="m.branch_id === b.id">{{ b.name }}</option> }
-          </select>
-        </div>
-      }
-    </section>
+    @if (!branches().length) { <p class="text-sm font-semibold text-amber-600" data-testid="bt-nobranches">{{ i18n.t('bt.nobranches') }}</p> }
+    <div class="table-scroll-container fit-page">
+      <table class="grid-table g-grid" data-testid="bt-table">
+        <thead><tr><th class="no-col">#</th><th>{{ i18n.t('st.name') }}</th><th>{{ i18n.t('st.role') }}</th><th>{{ i18n.t('bt.branch') }}</th></tr></thead>
+        <tbody>
+          @for (m of rows(); track m.staff_id) {
+            <tr [attr.data-testid]="'bt-row-' + m.staff_id">
+              <td class="no-col">{{ $index + 1 }}</td>
+              <td class="font-bold">{{ m.name }}</td>
+              <td>{{ roleLabel(m.role) }}</td>
+              <td>
+                <select class="modal-input bt-select" [attr.aria-label]="m.name" (change)="place(m, $any($event.target).value)" [attr.data-testid]="'bt-select-' + m.staff_id">
+                  <option value="" [selected]="m.branch_id === null">{{ i18n.t('bt.none') }}</option>
+                  @for (b of branches(); track b.id) { <option [value]="b.id" [selected]="m.branch_id === b.id">{{ b.name }}</option> }
+                </select>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="4" class="ph-muted">{{ i18n.t('stf.empty') }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
   }
 </div>
 }
+
+<style>
+  .g-grow { flex: 1; }
+  .bt-select { height: 34px; padding: 4px 10px; min-width: 220px; width: auto; font-size: 14px; }
+</style>

@@ -2,54 +2,58 @@
 @for (k of [motion.tick()]; track k) {
 <div class="space-y-5 animate-fade-in-up">
 
-  <div class="page-header-card flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-    <div class="min-w-0">
-      <h1 class="text-slate-900 font-black text-xl tracking-tight">{{ i18n.t('st.title') }}</h1>
-      <p class="text-slate-500 text-sm mt-0.5">{{ i18n.t('st.sub') }}</p>
-    </div>
-    <button type="button" class="btn-primary big-btn shrink-0" (click)="openForm()" data-testid="st-add">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+  <!-- a slim toolbar (no big header card): how many people, and Add a person; what the page is for is the button's tooltip -->
+  <div class="g-toolbar">
+    <span class="g-count">{{ i18n.t('g.count', rows().length) }}</span>
+    <span class="g-grow"></span>
+    <button type="button" class="btn-primary ph-btn" (click)="openForm()" [title]="i18n.t('st.sub')" data-testid="st-add">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
       {{ i18n.t('st.add') }}
     </button>
   </div>
 
   @if (given(); as g) {
-    <section class="section-card p-5 space-y-2" role="status" data-testid="st-given">
-      <p class="font-black text-slate-900">{{ i18n.t('st.given.title', g.name) }}</p>
-      <p class="text-sm text-slate-600">{{ i18n.t('st.given.email') }}: <b>{{ g.email }}</b></p>
-      <p class="text-sm text-slate-600">{{ i18n.t('st.given.password') }}: <b data-testid="st-given-password">{{ g.password }}</b></p>
-      <p class="text-xs font-semibold text-slate-400">{{ i18n.t('st.given.note') }}</p>
-      <button type="button" class="btn-outline" (click)="given.set(null)" data-testid="st-given-close">{{ i18n.t('common.close') }}</button>
-    </section>
+    <!-- the new first password, on one line, until it is closed -->
+    <div class="st-given" role="status" data-testid="st-given">
+      <b>{{ i18n.t('st.given.title', g.name) }}</b>
+      <span>{{ i18n.t('st.given.email') }}: <b>{{ g.email }}</b></span>
+      <span>{{ i18n.t('st.given.password') }}: <b data-testid="st-given-password">{{ g.password }}</b></span>
+      <span class="ph-muted">{{ i18n.t('st.given.note') }}</span>
+      <button type="button" class="btn-outline ph-btn" (click)="given.set(null)" data-testid="st-given-close">{{ i18n.t('common.close') }}</button>
+    </div>
   }
 
   @if (loading() && !rows().length) {
-    <div class="skeleton-box" style="height: 120px; border-radius: 14px;"></div>
+    <div class="skeleton-box" style="height: 120px; border-radius: 10px;"></div>
   } @else if (error(); as message) {
     <div class="section-card p-8 text-center space-y-3" role="alert">
       <p class="text-slate-500 text-sm">{{ message }}</p>
       <button type="button" class="btn-primary" (click)="load()">{{ i18n.t('common.retry') }}</button>
     </div>
   } @else {
-    <section class="section-card overflow-hidden">
-      @for (p of rows(); track p.id) {
-        <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-100 last:border-b-0" [attr.data-testid]="'st-row-' + p.id">
-          <div class="min-w-0">
-            <p class="font-black text-slate-900">{{ p.name }}@if (!p.active) { <span class="pill-inactive ml-2">{{ i18n.t('st.off') }}</span> }</p>
-            <p class="text-xs font-semibold text-slate-400">{{ roleName(p.role) }} · {{ p.phone }} · {{ p.email }}</p>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <button type="button" class="btn-outline" (click)="reset(p)" [attr.data-testid]="'st-reset-' + p.id">{{ i18n.t('st.reset') }}</button>
-            <button type="button" class="btn-outline" (click)="setActive(p, !p.active)" [attr.data-testid]="'st-toggle-' + p.id">{{ i18n.t(p.active ? 'st.switchoff' : 'st.switchon') }}</button>
-          </div>
-        </div>
-      } @empty {
-        <div class="empty-state" data-testid="st-empty">
-          <p class="empty-title">{{ i18n.t('stf.empty') }}</p>
-          <p class="empty-hint">{{ i18n.t('stf.empty.hint') }}</p>
-        </div>
-      }
-    </section>
+    <div class="table-scroll-container fit-page">
+      <table class="grid-table g-grid" data-testid="st-table">
+        <thead><tr>
+          <th class="no-col">#</th><th>{{ i18n.t('st.name') }}</th><th>{{ i18n.t('st.role') }}</th><th>{{ i18n.t('g.f.phone') }}</th>
+          <th>{{ i18n.t('g.f.email') }}</th><th>{{ i18n.t('g.status') }}</th><th class="text-right">{{ i18n.t('g.actions') }}</th>
+        </tr></thead>
+        <tbody>
+          @for (p of rows(); track p.id) {
+            <tr [attr.data-testid]="'st-row-' + p.id">
+              <td class="no-col">{{ $index + 1 }}</td>
+              <td class="font-bold">{{ p.name }}</td>
+              <td>{{ roleName(p.role) }}</td>
+              <td>{{ p.phone || '—' }}</td>
+              <td class="g-long" [title]="p.email">{{ p.email }}</td>
+              <td><span class="ph-badge" [class.ph-good]="p.active" [class.ph-bad]="!p.active">{{ p.active ? i18n.t('st.on') : i18n.t('st.off') }}</span></td>
+              <td class="text-right"><app-row-menu [items]="menuFor(p)" [testid]="'st-menu-' + p.id" (picked)="picked($event, p)" /></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="ph-muted" data-testid="st-empty">{{ i18n.t('stf.empty') }} {{ i18n.t('stf.empty.hint') }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
   }
 </div>
 }
@@ -84,5 +88,7 @@
 </app-modal-dialog>
 
 <style>
-  .big-btn { padding: 12px 22px; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+  .g-grow { flex: 1; }
+  .g-toolbar .btn-primary { display: inline-flex; align-items: center; gap: 6px; }
+  .st-given { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 10px 14px; border-radius: 8px; border: 1.5px solid #3fba68; background: rgba(63, 186, 104, 0.12); }
 </style>

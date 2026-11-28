@@ -26,6 +26,12 @@ export class BranchTeamPage implements OnInit {
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
 
+  /** A role as people read it ("hair_stylist" is "Hair stylist"). */
+  protected roleLabel(r: string): string {
+    const t = String(r ?? '').replace(/_/g, ' ').trim();
+    return t ? t.charAt(0).toUpperCase() + t.slice(1) : '—';
+  }
+
   ngOnInit(): void {
     void this.load();
   }

@@ -121,6 +121,8 @@ describe('staff', () => {
   it('switches a person off, and on again', async () => {
     const { h, fixture, el } = await open();
 
+    (byTestId(el, 'st-menu-u1') as HTMLButtonElement).click();
+    await settle(fixture);
     (byTestId(el, 'st-toggle-u1') as HTMLButtonElement).click();
     const off = h.http.expectOne({ method: 'PUT', url: `${API}/admin/users/u1` });
     expect(off.request.body).toEqual({ is_active: false });
@@ -129,6 +131,8 @@ describe('staff', () => {
     h.http.expectOne((r) => r.method === 'GET' && r.url === `${API}/admin/users/mine`).flush(LIST);
     await settle(fixture);
 
+    (byTestId(el, 'st-menu-u2') as HTMLButtonElement).click();
+    await settle(fixture);
     (byTestId(el, 'st-toggle-u2') as HTMLButtonElement).click();
     const on = h.http.expectOne({ method: 'PUT', url: `${API}/admin/users/u2` });
     expect(on.request.body).toEqual({ is_active: true });
@@ -140,6 +144,8 @@ describe('staff', () => {
   it('gives a new first password and shows it', async () => {
     const { h, fixture, el } = await open();
 
+    (byTestId(el, 'st-menu-u2') as HTMLButtonElement).click();
+    await settle(fixture);
     (byTestId(el, 'st-reset-u2') as HTMLButtonElement).click();
     await settle(fixture);
     const req = h.http.expectOne({ method: 'POST', url: `${API}/admin/users/u2/reset-password` });

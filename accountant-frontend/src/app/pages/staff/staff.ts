@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth.service';
@@ -62,7 +63,7 @@ export function readStaff(j: unknown): StaffMember[] {
  */
 @Component({
   selector: 'app-staff',
-  imports: [FormsModule, ModalDialogComponent],
+  imports: [RowMenuComponent, FormsModule, ModalDialogComponent],
   templateUrl: './staff.html',
 })
 export class StaffPage implements OnInit {
@@ -90,6 +91,19 @@ export class StaffPage implements OnInit {
 
   ngOnInit(): void {
     void this.load();
+  }
+
+  /** The three dots of a person's row: a new first password, and switch off / on. */
+  protected menuFor(p: { id: string; active: boolean }): MenuItem[] {
+    return [
+      { id: 'reset', label: this.i18n.t('st.reset'), testid: 'st-reset-' + p.id },
+      { id: 'toggle', label: this.i18n.t(p.active ? 'st.switchoff' : 'st.switchon'), danger: p.active, primary: !p.active, testid: 'st-toggle-' + p.id },
+    ];
+  }
+
+  protected picked(id: string, p: StaffMember): void {
+    if (id === 'reset') void this.reset(p);
+    else void this.setActive(p, !p.active);
   }
 
   protected roleName(role: string): string {
