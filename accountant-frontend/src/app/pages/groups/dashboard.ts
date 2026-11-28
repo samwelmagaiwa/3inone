@@ -1,9 +1,10 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit, TemplateRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
 import { monthKey } from '../../core/format';
 import { Row } from '../../core/groups/groups-api.service';
+import { HeaderSlotService } from '../../core/services/header-slot.service';
 import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
 import { GColor, GPieChart, GRoseChart, GSlice, shortMoney } from './g-charts';
@@ -42,11 +43,14 @@ export const G_WAITING: Record<string, string> = {
   selector: 'app-g-dashboard',
   imports: [RowMenuComponent, FormsModule, RouterLink, GRoseChart, GPieChart],
   template: `
-    <div class="ad ph-page" data-testid="g-dashboard">
-      <div class="g-toolbar">
+    <!-- the month and Refresh sit in the breadcrumb row (the frame's slot), not above the page -->
+    <ng-template #headerBar>
+      <div class="g-head-bar">
         <input class="g-select" type="month" [ngModel]="month()" (ngModelChange)="pickMonth($event)" [attr.aria-label]="i18n.t('g.month')" data-testid="g-dash-month" />
         <button type="button" class="btn-outline ph-btn" (click)="load()" data-testid="g-dash-refresh">{{ i18n.t('common.refresh') }}</button>
       </div>
+    </ng-template>
+    <div class="ad ph-page" data-testid="g-dashboard">
 
       @if (error()) {
         <section class="ph-card"><p data-testid="g-dash-error">{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load()">{{ i18n.t('pl.retry') }}</button></section>
@@ -57,20 +61,20 @@ export const G_WAITING: Record<string, string> = {
         @let m = data['money'];
         <div class="ph-tiles g-tiles-row" data-testid="g-tiles">
           @if (m) {
-            <div class="ph-tile" data-testid="g-cash"><span class="ph-muted">{{ i18n.t('g.cash') }}</span><b class="ph-accent">{{ tsh(m['cash_on_record']) }}</b></div>
-            <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.month.in') }}</span><b class="ph-good">{{ tsh(m['month_in']) }}</b></div>
-            <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.month.out') }}</span><b class="ph-bad">{{ tsh(m['month_out']) }}</b></div>
-            <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.savings') }}</span><b>{{ tsh(m['savings']) }}</b></div>
-            <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.shares') }}</span><b>{{ tsh(m['shares']) }}</b></div>
+            <div class="ph-tile g-t-teal" data-testid="g-cash"><span class="ph-muted">{{ i18n.t('g.cash') }}</span><b class="ph-accent">{{ tsh(m['cash_on_record']) }}</b></div>
+            <div class="ph-tile g-t-green"><span class="ph-muted">{{ i18n.t('g.month.in') }}</span><b class="ph-good">{{ tsh(m['month_in']) }}</b></div>
+            <div class="ph-tile g-t-red"><span class="ph-muted">{{ i18n.t('g.month.out') }}</span><b class="ph-bad">{{ tsh(m['month_out']) }}</b></div>
+            <div class="ph-tile g-t-blue"><span class="ph-muted">{{ i18n.t('g.savings') }}</span><b>{{ tsh(m['savings']) }}</b></div>
+            <div class="ph-tile g-t-purple"><span class="ph-muted">{{ i18n.t('g.shares') }}</span><b>{{ tsh(m['shares']) }}</b></div>
             @if (m['pending_count'] > 0) {
-              <a class="ph-tile g-link" routerLink="/groups/payments"><span class="ph-muted">{{ i18n.t('g.pending') }}</span><b class="ph-warn">{{ m['pending_count'] }}</b></a>
+              <a class="ph-tile g-link g-t-yellow" routerLink="/groups/payments"><span class="ph-muted">{{ i18n.t('g.pending') }}</span><b class="ph-warn">{{ m['pending_count'] }}</b></a>
             }
           }
-          <a class="ph-tile g-link" routerLink="/groups/members" data-testid="g-active"><span class="ph-muted">{{ i18n.t('g.members.active') }}</span><b>{{ data['members']?.['active'] ?? 0 }}</b></a>
+          <a class="ph-tile g-link g-t-violet" routerLink="/groups/members" data-testid="g-active"><span class="ph-muted">{{ i18n.t('g.members.active') }}</span><b>{{ data['members']?.['active'] ?? 0 }}</b></a>
           @if (data['members']?.['applications'] > 0) {
-            <a class="ph-tile g-link" routerLink="/groups/members"><span class="ph-muted">{{ i18n.t('g.applications') }}</span><b class="ph-warn">{{ data['members']['applications'] }}</b></a>
+            <a class="ph-tile g-link g-t-yellow" routerLink="/groups/members"><span class="ph-muted">{{ i18n.t('g.applications') }}</span><b class="ph-warn">{{ data['members']['applications'] }}</b></a>
           }
-          <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.joined.month') }}</span><b>{{ data['members']?.['joined_in_month'] ?? 0 }}</b></div>
+          <div class="ph-tile g-t-gray"><span class="ph-muted">{{ i18n.t('g.joined.month') }}</span><b>{{ data['members']?.['joined_in_month'] ?? 0 }}</b></div>
         </div>
 
         @if (m) {
@@ -177,10 +181,24 @@ export const G_WAITING: Record<string, string> = {
         .g-tiles-row .ph-tile b { font-size: clamp(12px, 0.8vw, 17px); white-space: nowrap; letter-spacing: -0.01em; }
         .g-tiles-row .ph-tile .ph-muted { font-size: 11px; line-height: 1.25; }
       }
-      a.ph-tile.g-link:hover, a.ph-card.g-link:hover { border-color: #20b8ce; }
+      a.ph-card.g-link:hover { border-color: #20b8ce; }
+      /* the figure tiles: squarer corners, each framed in its own chart colour, close above the charts */
+      .g-head-bar { display: flex; align-items: center; gap: 8px; }
+      .g-tiles-row { margin-bottom: 0; }
+      .g-tiles-row .ph-tile { border-radius: 8px; border: 1.5px solid var(--g-t, rgba(255, 255, 255, 0.3)); background: rgba(255, 255, 255, 0.07); box-shadow: inset 0 3px 0 var(--g-t, transparent); }
+      .g-tiles-row .ph-tile .ph-muted { color: var(--g-tl, rgba(255, 255, 255, 0.75)) !important; font-weight: 700; }
+      .g-tiles-row a.ph-tile.g-link:hover { background: rgba(255, 255, 255, 0.13); }
+      .g-t-teal { --g-t: #3fcfa6; --g-tl: #9af0d6; }
+      .g-t-green { --g-t: #3fba68; --g-tl: #8ee6a8; }
+      .g-t-red { --g-t: #e46262; --g-tl: #ffa3a3; }
+      .g-t-blue { --g-t: #4a9df8; --g-tl: #9fd0ff; }
+      .g-t-purple { --g-t: #6c5ce7; --g-tl: #b3a8ff; }
+      .g-t-yellow { --g-t: #f5b82e; --g-tl: #ffe08a; }
+      .g-t-violet { --g-t: #8e63d2; --g-tl: #d0b8f5; }
+      .g-t-gray { --g-t: #7f8794; --g-tl: #d3d8e0; }
       /* The chart cards: the same dark glass as every Groups card; the charts keep their eight colours, the words are light */
-      .g-charts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 14px 0; }
-      .g-ccard { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 18px; padding: 18px 18px 16px; color: #fff; min-width: 0; text-align: center; }
+      .g-charts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 10px 0 14px; }
+      .g-ccard { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 10px; padding: 18px 18px 16px; color: #fff; min-width: 0; text-align: center; }
       .g-wide { grid-column: span 2; }
       .g-trend-card { grid-column: span 3; }
       .g-ccard h3.g-ctitle { margin: 0 0 6px; font-size: 20px; font-weight: 800; color: #fff !important; letter-spacing: -0.01em; }
@@ -211,8 +229,10 @@ export const G_WAITING: Record<string, string> = {
     `,
   ],
 })
-export class GDashboardPage extends GBase implements OnInit {
+export class GDashboardPage extends GBase implements OnInit, AfterViewInit, OnDestroy {
   private readonly router = inject(Router);
+  private readonly slot = inject(HeaderSlotService);
+  @ViewChild('headerBar', { static: true }) private headerBar!: TemplateRef<unknown>;
   protected readonly month = signal(monthKey(new Date()));
   protected readonly d = signal<Row | null>(null);
   protected readonly error = signal('');
@@ -287,6 +307,14 @@ export class GDashboardPage extends GBase implements OnInit {
 
   protected go(path: string): void {
     void this.router.navigate([path]);
+  }
+
+  ngAfterViewInit(): void {
+    queueMicrotask(() => this.slot.show(this.headerBar));
+  }
+
+  ngOnDestroy(): void {
+    this.slot.clear(this.headerBar);
   }
 
   ngOnInit(): void {
