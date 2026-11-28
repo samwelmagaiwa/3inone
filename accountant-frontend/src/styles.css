@@ -1735,6 +1735,8 @@ app-book-ward-table, app-book-summaries, app-table-toolbar, app-table-pagination
 .theme-phone .premium-table thead th { background: transparent !important; color: #fff !important; }
 .theme-phone .premium-table tbody tr, .theme-phone .premium-table tbody td { background: transparent; color: #fff; border-color: rgba(255,255,255,.12) !important; }
 .theme-phone .table-scroll-container { background: transparent !important; }
+/* The table box's own edge: the light theme's near-white border showed as a white line on dark teal; it now matches the grid lines */
+.theme-phone :is(.table-scroll-container, .table-container-scrollable) { border-color: rgba(255,255,255,.14) !important; }
 .theme-phone a:not(.btn-primary):not(.bar-cta):not(.nav-item) { color: #7fe0ee; }
 
 /* Colours the pages set inline (figures, totals): lifted so they read on the dark glass */
