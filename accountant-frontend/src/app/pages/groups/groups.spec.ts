@@ -50,6 +50,21 @@ describe('Groups (Vikundi) on the web: the menu', () => {
   });
 });
 
+describe('Groups: a business admin whose business has only Groups', () => {
+  afterEach(() => groupRights.set(new Set()));
+
+  it('sees no shop page even though the server gives the admin every shop right (mprosper806, 2026-11-28)', () => {
+    const shop = ['inv_view_reports', 'inv_view_products', 'inv_create_sales', 'inv_view_credit', 'inv_view_expenses', 'inv_manage_expenses', 'inv_manage_settings', 'inv_salon_branch_stock', 'inv_salon_branch_sales'];
+    const h = configure({ role: 'admin', services: ['groups'], permissions: shop });
+    groupRights.set(new Set(ALL));
+    TestBed.inject(GroupsContext).me.set({ is_owner: true, rights: ALL, waiting: {} });
+    const keys = allowedPages(h.auth).map((p) => p.key);
+    expect(keys.filter((k) => !k.startsWith('g_') && k !== 'assistant')).toEqual([]);
+    expect(keys).toContain('g_dashboard');
+    expect(homePath(h.auth)).toBe('/groups');
+  });
+});
+
 describe('Groups texts', () => {
   it('every value the server sends has its words in both languages', () => {
     const families: Record<string, string[]> = {

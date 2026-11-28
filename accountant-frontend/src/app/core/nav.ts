@@ -40,7 +40,7 @@ export const NAV: NavItem[] = [
     group: 'overview',
     icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
     // The same as the mobile app's Products section: whoever may see products (a sales officer, an accountant, ...).
-    allowed: (a) => a.can('inv_view_products'),
+    allowed: (a) => a.sells() && a.can('inv_view_products'),
   },
   {
     key: 'sales',
@@ -50,7 +50,7 @@ export const NAV: NavItem[] = [
     group: 'money',
     icon: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z',
     // The server opens the sales list only to inv_create_sales (and so does the mobile app's Sales section): offering it to anyone else would only show an error.
-    allowed: (a) => a.can('inv_create_sales'),
+    allowed: (a) => a.sells() && a.can('inv_create_sales'),
   },
   {
     key: 'credit',
@@ -78,7 +78,7 @@ export const NAV: NavItem[] = [
     hintKey: 'nav.expenses.hint',
     group: 'money',
     icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z',
-    allowed: (a) => a.canAny('inv_view_expenses', 'inv_manage_expenses'),
+    allowed: (a) => a.sells() && a.canAny('inv_view_expenses', 'inv_manage_expenses'),
   },
   {
     key: 'branch_stock',
@@ -89,7 +89,7 @@ export const NAV: NavItem[] = [
     icon: 'M3 7l9-4 9 4M4 7v10l8 4 8-4V7M12 11v10',
     // As on the mobile app: whoever runs the settings or reads the reports sees (and moves) the goods held by each branch.
     // In a salon it is a section of its own, which the owner switches on for each person (the server refuses it otherwise).
-    allowed: (a) => (a.service() === 'salon' ? a.can('inv_salon_branch_stock') : a.canAny('inv_manage_settings', 'inv_view_reports')),
+    allowed: (a) => a.sells() && (a.service() === 'salon' ? a.can('inv_salon_branch_stock') : a.canAny('inv_manage_settings', 'inv_view_reports')),
   },
   {
     key: 'branches',
@@ -98,7 +98,7 @@ export const NAV: NavItem[] = [
     hintKey: 'nav.branches.hint',
     group: 'overview',
     icon: 'M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6',
-    allowed: (a) => a.can('inv_manage_settings'),
+    allowed: (a) => a.sells() && a.can('inv_manage_settings'),
   },
   {
     key: 'staff',
@@ -117,7 +117,7 @@ export const NAV: NavItem[] = [
     hintKey: 'nav.branch_team.hint',
     group: 'overview',
     icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
-    allowed: (a) => a.can('inv_manage_settings'),
+    allowed: (a) => a.sells() && a.can('inv_manage_settings'),
   },
   {
     key: 'branch_sales',
@@ -126,7 +126,7 @@ export const NAV: NavItem[] = [
     hintKey: 'nav.branch_sales.hint',
     group: 'overview',
     icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
-    allowed: (a) => (a.service() === 'salon' ? a.can('inv_salon_branch_sales') : a.can('inv_view_reports')),
+    allowed: (a) => a.sells() && (a.service() === 'salon' ? a.can('inv_salon_branch_sales') : a.can('inv_view_reports')),
   },
   {
     key: 'appointments',
