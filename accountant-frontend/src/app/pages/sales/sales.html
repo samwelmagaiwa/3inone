@@ -11,24 +11,24 @@
   } @else {
 
     <!-- The four figures stay in view while the page scrolls under them -->
-    <div appStickyRow class="kpi-row stat-row grid grid-cols-2 xl:grid-cols-4 gap-3">
+    <div appStickyRow class="kpi-row stat-row sales-head">
       @if (summary(); as s) {
         <div class="stat stat-slim g-look g-t-blue" style="--accent:#3b61e2"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10M9 12h10M9 19h10M4 5h.01M4 12h.01M4 19h.01"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.count') }}</p><h3 class="stat-value" [appCountUp]="'' + s.count" data-testid="sales-count">{{ s.count }}</h3></div>
         <div class="stat stat-slim g-look g-t-purple" style="--accent:#1a2f6e"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l3 4v14H4V7l3-4zM4 7h16M9 12h6M9 16h4"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.billed') }}</p><h3 class="stat-value" [appCountUp]="tsh(s.total)" data-testid="sales-total">{{ tsh(s.total) }}</h3></div>
         <div class="stat stat-slim g-look g-t-green" style="--accent:#16a34a"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.paid') }}</p><h3 class="stat-value" style="color:#15803d" data-testid="sales-paid">{{ tsh(s.paid) }}</h3></div>
         <div class="stat stat-slim g-look g-t-red" [style.--accent]="s.debt > 0 ? '#dc2626' : '#94a3b8'"><span class="stat-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><p class="stat-label">{{ i18n.t('sales.kpi.debt') }}</p><h3 class="stat-value" [class.text-red-600]="s.debt > 0" [class.text-slate-800]="s.debt === 0" data-testid="sales-debt">{{ tsh(s.debt) }}</h3></div>
       } @else {
-        @for (i of [1,2,3,4]; track i) { <div class="skeleton-box" style="height: 110px; border-radius: 14px;"></div> }
+        @for (i of [1,2,3,4]; track i) { <div class="skeleton-box" style="height: 66px; border-radius: 14px;"></div> }
+      }
+      <!-- Two ways to read the sales: one by one, or by category (what each category sold and earned) -->
+      @if (canSeeCategories()) {
+        <div class="sales-views" role="tablist" data-testid="sales-views">
+          <button type="button" role="tab" class="pill-tab" [class.is-active]="view() === 'list'" [attr.aria-selected]="view() === 'list'" (click)="setView('list')" data-testid="view-list">{{ i18n.t('sales.view.list') }}</button>
+          <button type="button" role="tab" class="pill-tab" [class.is-active]="view() === 'category'" [attr.aria-selected]="view() === 'category'" (click)="setView('category')" data-testid="view-category">{{ i18n.t('sales.view.cat') }}</button>
+        </div>
       }
     </div>
 
-    <!-- Two ways to read the sales: one by one, or by category (what each category sold and earned) -->
-    @if (canSeeCategories()) {
-      <div class="flex flex-wrap gap-2" role="tablist" data-testid="sales-views">
-        <button type="button" role="tab" class="pill-tab" [class.is-active]="view() === 'list'" [attr.aria-selected]="view() === 'list'" (click)="setView('list')" data-testid="view-list">{{ i18n.t('sales.view.list') }}</button>
-        <button type="button" role="tab" class="pill-tab" [class.is-active]="view() === 'category'" [attr.aria-selected]="view() === 'category'" (click)="setView('category')" data-testid="view-category">{{ i18n.t('sales.view.cat') }}</button>
-      </div>
-    }
 
     @if (view() === 'category') {
       <section class="panel" style="padding: 16px" data-testid="sales-categories">
@@ -243,6 +243,10 @@
   .slim-date { padding: 6px 10px; border-radius: 10px; border: 1px solid #dbe4ff; background: #fff; font-size: 12.5px; font-weight: 800; color: #1a2f6e; }
   .request-note { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; color: #92400e; background: #fff7e6; border: 1px solid #fcd9a0; }
   .stat-slim { padding: 8px 16px 8px 18px; border-radius: 12px; }
+  /* the four figures and the two views (Sales / By category) in ONE row: no row of its own for the two buttons, the cards no wider than they need */
+  .sales-head { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: 12px; align-items: stretch; }
+  .sales-views { display: flex; align-items: center; gap: 8px; }
+  @media (max-width: 1279px) { .sales-head { grid-template-columns: repeat(2, minmax(0, 1fr)); } .sales-views { grid-column: 1 / -1; } }
   .stat-slim .stat-ic { display: none; }
   .stat-slim .stat-label { margin-top: 0; font-size: 10.5px; }
   .stat-slim .stat-value { margin-top: 1px; font-size: 20px; }
