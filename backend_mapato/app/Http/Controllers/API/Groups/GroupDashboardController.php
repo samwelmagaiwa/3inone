@@ -85,7 +85,7 @@ class GroupDashboardController extends Controller
 
             // The 12 months up to the chosen one: money in and out per month.
             $from = Carbon::parse($start)->subMonths(11)->toDateString();
-            $trendRows = $verified()->whereNotIn('category', GroupLedger::NOT_A_FLOW)->whereBetween('paid_on', [$from, $end])->get(['paid_on', 'direction', 'amount']);
+            $trendRows = $verified()->whereNotIn('category', GroupLedger::NOT_A_FLOW)->where('brought_forward', false)->whereBetween('paid_on', [$from, $end])->get(['paid_on', 'direction', 'amount']);
             $trend = [];
             for ($m = Carbon::parse($from); $m->toDateString() <= $end; $m->addMonth()) {
                 $trend[$m->format('Y-m')] = ['month' => $m->format('Y-m'), 'in' => 0.0, 'out' => 0.0];
@@ -97,7 +97,7 @@ class GroupDashboardController extends Controller
                 }
             }
 
-            $mix = $verified()->whereNotIn('category', GroupLedger::NOT_A_FLOW)->whereBetween('paid_on', [$start, $end])
+            $mix = $verified()->whereNotIn('category', GroupLedger::NOT_A_FLOW)->where('brought_forward', false)->whereBetween('paid_on', [$start, $end])
                 ->selectRaw("category, SUM(CASE WHEN direction = 'in' THEN amount ELSE 0 END) as money_in, SUM(CASE WHEN direction = 'out' THEN amount ELSE 0 END) as money_out")
                 ->groupBy('category')->get()
                 ->map(fn ($r) => ['category' => $r->category, 'in' => round((float) $r->money_in, 2), 'out' => round((float) $r->money_out, 2)])->values();

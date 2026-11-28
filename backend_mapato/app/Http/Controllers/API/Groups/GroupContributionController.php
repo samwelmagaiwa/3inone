@@ -45,6 +45,7 @@ class GroupContributionController extends Controller
             'frequency' => ['required', Rule::in(GroupContributions::FREQUENCIES)],
             'due_day' => 'nullable|integer|min:1|max:31|required_if:frequency,monthly',
             'mandatory' => 'nullable|boolean',
+            'refundable' => 'nullable|boolean',
             'starts_on' => 'nullable|date',
             'ends_on' => 'nullable|date|after_or_equal:starts_on',
             'active' => 'nullable|boolean',
@@ -61,6 +62,10 @@ class GroupContributionController extends Controller
             'active' => (bool) ($data['active'] ?? true),
             'updated_at' => now(),
         ];
+        // refundable: the member gets it back on leaving. An older app that does not send it leaves it as it was.
+        if (array_key_exists('refundable', $data) || $id === null) {
+            $row['refundable'] = (bool) ($data['refundable'] ?? false);
+        }
         if ($id === null) {
             $id = (int) DB::table('group_contribution_types')->insertGetId($row + ['created_by' => (string) $request->user()->id, 'created_at' => now()]);
         } elseif (DB::table('group_contribution_types')->where('id', $id)->update($row) === 0 && !DB::table('group_contribution_types')->where('id', $id)->exists()) {

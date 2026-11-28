@@ -281,6 +281,12 @@ Route::middleware(['auth:sanctum', 'service:groups', \App\Http\Middleware\GroupV
     });
     Route::post('members/{id}/status', [GroupMemberController::class, 'move'])->whereNumber('id')->middleware('group_right:approve_members');
     Route::put('members/{id}/office', [GroupMemberController::class, 'office'])->whereNumber('id')->middleware('group_right:manage_offices');
+    // Previous data (before the app): any leader enters a member's totals and running loan; the controller checks "a leader, not for themself".
+    Route::get('members/{id}/previous', [\App\Http\Controllers\API\Groups\GroupPreviousController::class, 'index'])->whereNumber('id');
+    Route::post('members/{id}/previous', [\App\Http\Controllers\API\Groups\GroupPreviousController::class, 'store'])->whereNumber('id')->middleware('throttle:60,1');
+    Route::post('members/{id}/previous/loan', [\App\Http\Controllers\API\Groups\GroupPreviousController::class, 'loan'])->whereNumber('id')->middleware('throttle:30,1');
+    Route::delete('previous/entries/{txId}', [\App\Http\Controllers\API\Groups\GroupPreviousController::class, 'removeEntry'])->whereNumber('txId');
+    Route::delete('previous/loans/{loanId}', [\App\Http\Controllers\API\Groups\GroupPreviousController::class, 'removeLoan'])->whereNumber('loanId');
 
     Route::middleware('group_right:view_finance,verify_payments')->group(function () {
         Route::get('transactions', [GroupTransactionController::class, 'index']);

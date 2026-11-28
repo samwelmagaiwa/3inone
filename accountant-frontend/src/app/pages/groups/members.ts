@@ -5,6 +5,7 @@ import { Row } from '../../core/groups/groups-api.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
 import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
+import { GPreviousDialog } from './previous';
 
 const STATUSES = ['', 'submitted', 'active', 'suspended', 'exited', 'rejected', 'deceased'];
 export const G_OFFICES = ['mwenyekiti', 'makamu_mwenyekiti', 'mweka_hazina', 'mweka_hazina_msaidizi', 'katibu', 'katibu_msaidizi', 'mwenyekiti_miradi', 'kamati_miradi'];
@@ -26,7 +27,7 @@ const FIELDS = ['full_name', 'phone', 'alt_phone', 'email', 'nida', 'date_of_bir
  */
 @Component({
   selector: 'app-g-members',
-  imports: [FormsModule, ModalDialogComponent, RowMenuComponent],
+  imports: [FormsModule, ModalDialogComponent, RowMenuComponent, GPreviousDialog],
   template: `
     <div class="ad ph-page" data-testid="g-members">
       <div class="g-toolbar">
@@ -87,6 +88,8 @@ const FIELDS = ['full_name', 'phone', 'alt_phone', 'email', 'nida', 'date_of_bir
     </div>
 
     <!-- add or change a member -->
+    <app-g-previous [member]="previousOf()" (closed)="previousOf.set(null)" (changed)="load(page())" />
+
     <app-modal-dialog [show]="formOpen()" [eyebrow]="i18n.t('nav.g.members')" [title]="editId() ? i18n.t('g.m.edit') : i18n.t('g.m.add')" size="lg" (close)="formOpen.set(false)">
       <div slot="body" class="ph-page" style="gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr))">
         <label class="ph-field" style="grid-column: auto">{{ i18n.t('g.f.full_name') }} *<input class="modal-input" [(ngModel)]="f['full_name']" name="fn" data-testid="g-f-name" /></label>
@@ -247,6 +250,8 @@ export class GMembersPage extends GBase implements OnInit {
   protected readonly officeChoice = signal('');
   protected readonly password = signal<Row | null>(null);
   protected readonly depOpen = signal(false);
+  /** The member whose data from before the app is being entered (the Previous data window). */
+  protected readonly previousOf = signal<Row | null>(null);
   protected dep: Row = {};
 
   ngOnInit(): void {
@@ -279,6 +284,10 @@ export class GMembersPage extends GBase implements OnInit {
     if (this.can('approve_members')) {
       for (const a of this.movesFor(m['status'])) items.push({ id: 'move:' + a, label: this.i18n.t('g.move.' + a), danger: a !== 'approve' && a !== 'reinstate', primary: a === 'approve' || a === 'reinstate' });
     }
+    // any leader enters what a member held and owed before the app (never their own: another leader does)
+    if (this.isLeader() && m['status'] !== 'submitted' && m['status'] !== 'rejected' && Number(m['id']) !== Number(this.ctx.me()?.['member']?.['id'])) {
+      items.push({ id: 'previous', label: this.i18n.t('g.prev.menu'), testid: 'g-m-prev-' + m['id'] });
+    }
     if (this.can('manage_members') && (m['status'] === 'active' || m['status'] === 'suspended')) {
       items.push({ id: 'signin', label: m['has_sign_in'] ? this.i18n.t('g.signin.reset') : this.i18n.t('g.signin.give') });
     }
@@ -287,6 +296,7 @@ export class GMembersPage extends GBase implements OnInit {
 
   protected async picked(id: string, m: Row): Promise<void> {
     if (id === 'open') return this.open(Number(m['id']));
+    if (id === 'previous') return this.previousOf.set(m);
     if (id.startsWith('move:')) return this.move(m, id.slice(5));
     if (id === 'signin') {
       await this.open(Number(m['id']));
@@ -298,6 +308,11 @@ export class GMembersPage extends GBase implements OnInit {
       this.file.set(null);
       if (member) this.openEdit(member);
     }
+  }
+
+  /** A leader: the owner, or a member holding an office now (with ME on there are no rights, so no leader). */
+  protected isLeader(): boolean {
+    return !this.ctx.viewingAsMember() && (this.ctx.isOwner() || ((this.ctx.me()?.['rights'] as string[] | undefined) ?? []).length > 0);
   }
 
   protected place(m: Row): string {

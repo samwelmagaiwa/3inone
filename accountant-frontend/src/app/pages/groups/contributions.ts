@@ -114,6 +114,7 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
                 <th>{{ i18n.t('g.c.frequency') }}</th>
                 <th>{{ i18n.t('g.c.due.day.short') }}</th>
                 <th>{{ i18n.t('g.c.mandatory') }}</th>
+                <th>{{ i18n.t('g.c.refundable') }}</th>
                 <th>{{ i18n.t('g.status') }}</th>
                 <th>{{ i18n.t('g.description') }}</th>
                 <th class="text-right">{{ i18n.t('g.actions') }}</th>
@@ -128,12 +129,13 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
                     <td>{{ i18n.t('g.freq.' + t['frequency']) }}</td>
                     <td>{{ t['frequency'] === 'monthly' ? t['due_day'] : '—' }}</td>
                     <td>{{ t['mandatory'] ? i18n.t('g.yes') : i18n.t('g.no') }}</td>
+                    <td [class.ph-good]="t['refundable']">{{ t['refundable'] ? i18n.t('g.yes') : i18n.t('g.no') }}</td>
                     <td><span class="ph-badge" [class]="t['active'] ? 'ph-good' : 'ph-bad'">{{ t['active'] ? i18n.t('g.running') : i18n.t('g.stopped') }}</span></td>
                     <td class="g-long" [title]="t['description'] || '—'">{{ t['description'] || '—' }}</td>
                     <td class="text-right"><app-row-menu [items]="orNone(typeMenu(t))" [testid]="'g-c-type-menu-' + t['id']" (picked)="typePicked($event, t)" /></td>
                   </tr>
                 } @empty {
-                  <tr><td colspan="9" class="ph-muted">{{ i18n.t('g.c.types.none') }}</td></tr>
+                  <tr><td colspan="10" class="ph-muted">{{ i18n.t('g.c.types.none') }}</td></tr>
                 }
               </tbody>
             </table>
@@ -188,6 +190,7 @@ const FREQUENCIES = ['monthly', 'one_time', 'event'];
         }
         <label class="ph-field">{{ i18n.t('g.description') }}<input class="modal-input" [(ngModel)]="tf['description']" name="tds" /></label>
         <label class="ph-row"><span>{{ i18n.t('g.c.mandatory') }}</span><input type="checkbox" [(ngModel)]="tf['mandatory']" name="tm" /></label>
+        <label class="ph-row" [title]="i18n.t('g.c.refundable.hint')"><span>{{ i18n.t('g.c.refundable') }}</span><input type="checkbox" [(ngModel)]="tf['refundable']" name="trf" data-testid="g-c-refundable" /></label>
         @if (tf['id']) { <label class="ph-row"><span>{{ i18n.t('g.running') }}</span><input type="checkbox" [(ngModel)]="tf['active']" name="tac" /></label> }
       </div>
       <div slot="footer" class="flex gap-2">
@@ -363,6 +366,7 @@ export class GContributionsPage extends GBase implements OnInit {
       amount,
       frequency: this.tf['frequency'],
       mandatory: !!this.tf['mandatory'],
+      refundable: !!this.tf['refundable'],
       description: String(this.tf['description'] ?? '').trim() || null,
     };
     if (this.tf['frequency'] === 'monthly') body['due_day'] = Number(this.tf['due_day']) || 1;

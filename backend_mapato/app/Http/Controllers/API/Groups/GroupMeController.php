@@ -147,6 +147,8 @@ class GroupMeController extends Controller
             // In ME the office is not shown either: they look at the group as an ordinary member.
             'member' => $member === null ? null : GroupMembers::payload(GroupAccess::asMember($user) ? array_merge($member, ['office' => null]) : $member, true),
             'balances' => $memberId === null ? null : GroupLedger::balances($memberId),
+            // what they paid into refundable contributions (a project contribution): theirs again when they leave
+            'refundable' => $memberId === null ? 0.0 : GroupLedger::refundable($memberId),
             'pending' => $memberId === null ? 0 : DB::table('group_transactions')->where('member_id', $memberId)->where('status', GroupLedger::PENDING)->count(),
             // What they still owe (contributions), oldest first, and the promises they made.
             'owing' => $memberId === null ? [] : GroupStatement::owing($memberId),

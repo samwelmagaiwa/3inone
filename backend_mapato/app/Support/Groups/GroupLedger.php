@@ -51,10 +51,13 @@ final class GroupLedger
     /** How a payment can be made (the same words the rest of the app uses). */
     public const METHODS = ['cash', 'mpesa', 'mixx', 'airtel_money', 'halopesa', 'bank_transfer', 'other'];
 
-    /** The group's cash as the verified books say it: everything in minus everything out, leaving out what brings no cash. */
+    /**
+     * The group's cash as the verified books say it: everything in minus everything out, leaving out what brings no cash (a dividend, and
+     * the members' totals from before the app, which are records: the group's real cash then is its opening balance).
+     */
     public static function cash(): float
     {
-        return round((float) DB::table('group_transactions')->where('status', self::VERIFIED)->whereNotIn('category', self::NON_CASH)
+        return round((float) DB::table('group_transactions')->where('status', self::VERIFIED)->whereNotIn('category', self::NON_CASH)->where('brought_forward', false)
             ->selectRaw("COALESCE(SUM(CASE WHEN direction = 'in' THEN amount ELSE -amount END), 0) as t")->value('t'), 2);
     }
 
@@ -324,7 +327,8 @@ final class GroupLedger
     /** Put a verified payment right: a new verified row for the same amount the other way, linked both ways. Returns the new row's id. */
     public static function reverse(object $tx, string $by, string $reason): int
     {
-        if ($tx->status !== self::VERIFIED || $tx->reversed_by_id !== null || $tx->reverses_id !== null) {
+        // a total brought forward from before the app is not a payment: a mistake there is removed, never reversed
+        if ($tx->status !== self::VERIFIED || $tx->reversed_by_id !== null || $tx->reverses_id !== null || !empty($tx->brought_forward)) {
             throw new InvalidArgumentException('cannot_reverse');
         }
         if ($tx->category === 'loan_disbursement' && GroupLoans::repaid((int) $tx->loan_id) > 0) {
@@ -417,6 +421,21 @@ final class GroupLedger
     }
 
     /**
+     * What a member paid into REFUNDABLE contributions (a project contribution they get back on leaving), verified, in minus out: through
+     * what they owed, or as a total brought forward from before the app.
+     */
+    public static function refundable(int $memberId): float
+    {
+        return round((float) DB::table('group_transactions as t')
+            ->leftJoin('group_obligations as o', 'o.id', '=', 't.obligation_id')
+            ->leftJoin('group_contribution_types as c', 'c.id', '=', 'o.contribution_type_id')
+            ->leftJoin('group_contribution_types as bc', 'bc.id', '=', 't.contribution_type_id')
+            ->where('t.member_id', $memberId)->where('t.status', self::VERIFIED)->where('t.category', 'contribution')
+            ->where(fn ($q) => $q->where('c.refundable', true)->orWhere('bc.refundable', true))
+            ->selectRaw("COALESCE(SUM(CASE WHEN t.direction = 'in' THEN t.amount ELSE -t.amount END), 0) as total")->value('total'), 2);
+    }
+
+    /**
      * A transaction as the app shows it.
      *
      * @return array<string, mixed>
@@ -452,6 +471,9 @@ final class GroupLedger
             'verified_at' => $r->verified_at === null ? null : (string) $r->verified_at,
             'reverses_id' => $r->reverses_id === null ? null : (int) $r->reverses_id,
             'reversed_by_id' => $r->reversed_by_id === null ? null : (int) $r->reversed_by_id,
+            // a member's total from before the app: a record, not cash (shown as "Previous" and never verified or reversed)
+            'brought_forward' => (bool) ($r->brought_forward ?? false),
+            'contribution_type_id' => ($r->contribution_type_id ?? null) === null ? null : (int) $r->contribution_type_id,
         ];
     }
 
@@ -464,7 +486,9 @@ final class GroupLedger
             ->leftJoin('users as vu', 'vu.id', '=', 't.verified_by')
             ->leftJoin('group_obligations as o', 'o.id', '=', 't.obligation_id')
             ->leftJoin('group_contribution_types as c', 'c.id', '=', 'o.contribution_type_id')
+            ->leftJoin('group_contribution_types as bc', 'bc.id', '=', 't.contribution_type_id')
             ->select('t.*', 'm.full_name as member_name', 'm.member_number', 'su.name as submitted_by_name', 'vu.name as verified_by_name')
-            ->selectRaw("CASE WHEN c.name IS NULL THEN NULL ELSE " . self::concat("c.name", "' · '", "COALESCE(o.label, o.period)") . " END as obligation_label");
+            // a contribution paid against what was owed shows "JAMII · 2026-11"; a total brought forward shows its kind ("JAMII")
+            ->selectRaw("CASE WHEN c.name IS NOT NULL THEN " . self::concat("c.name", "' · '", "COALESCE(o.label, o.period)") . " WHEN bc.name IS NOT NULL THEN bc.name ELSE NULL END as obligation_label");
     }
 }

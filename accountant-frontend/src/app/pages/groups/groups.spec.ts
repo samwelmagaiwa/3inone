@@ -10,6 +10,7 @@ import { byTestId, configure, settle, text } from '../../testing';
 import { GDashboardPage, G_WAITING } from './dashboard';
 import { GMembersPage } from './members';
 import { GPaymentsPage } from './payments';
+import { GPreviousDialog } from './previous';
 
 const API = `${environment.apiUrl}/groups`;
 const ALL = [
@@ -252,5 +253,76 @@ describe('Groups ME (a leader looking as an ordinary member)', () => {
     expect(ctx.viewingAsMember()).toBe(true);
     expect(groupHasMember()).toBe(true);
     expect(localStorage.getItem(`groups_me_view_${h.auth.user()!.id}`)).toBe('1');
+  });
+});
+
+describe('Groups: previous data (before the app)', () => {
+  afterEach(() => groupRights.set(new Set()));
+
+  it('a leader enters a member’s totals as of a date, each kind of contribution by its own amount, and sees what was entered', async () => {
+    const h = asGroups(ALL);
+    const fixture = TestBed.createComponent(GPreviousDialog);
+    fixture.componentRef.setInput('member', { id: 7, full_name: 'Michael Prosper Shirima' });
+    fixture.detectChanges();
+    const types = [{ id: 1, name: 'JAMII', refundable: false, active: true }, { id: 2, name: 'MRADI', refundable: true, active: true }];
+    h.http.expectOne(`${API}/members/7/previous`).flush({ data: { types, entries: [], loans: [] } });
+    await settle(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+    expect(text(byTestId(el, 'g-previous') as HTMLElement)).toContain('MRADI');
+    expect(el.querySelectorAll('.ph-badge.ph-good').length).toBe(1);
+
+    const type = (id: string, v: string) => {
+      const box = byTestId(el, id) as HTMLInputElement;
+      box.value = v;
+      box.dispatchEvent(new Event('input'));
+    };
+    type('g-prev-as-of', '2026-06-30');
+    type('g-prev-savings', '1,300,000');
+    type('g-prev-c-1', '180,000');
+    type('g-prev-c-2', '200000');
+    await settle(fixture);
+    (byTestId(el, 'g-prev-save') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const req = h.http.expectOne((r) => r.url === `${API}/members/7/previous` && r.method === 'POST');
+    expect(req.request.body).toEqual({ as_of: '2026-06-30', savings: 1300000, contributions: [{ type_id: 1, amount: 180000 }, { type_id: 2, amount: 200000 }] });
+    req.flush({ data: { created: 3 } });
+    await settle(fixture);
+    h.http.expectOne(`${API}/members/7/previous`).flush({ data: { types, entries: [{ id: 50, category: 'savings', amount: 1300000, paid_on: '2026-06-30', brought_forward: true }], loans: [] } });
+    await settle(fixture);
+    expect(text(byTestId(el, 'g-prev-list') as HTMLElement)).toContain('1,300,000');
+  });
+
+  it('a running loan is entered from what is still owed; owing more than was borrowed is stopped before it is sent', async () => {
+    const h = asGroups(ALL);
+    const fixture = TestBed.createComponent(GPreviousDialog);
+    fixture.componentRef.setInput('member', { id: 7, full_name: 'Michael Prosper Shirima' });
+    fixture.detectChanges();
+    h.http.expectOne(`${API}/members/7/previous`).flush({ data: { types: [], entries: [], loans: [] } });
+    await settle(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+    const type = (id: string, v: string) => {
+      const box = byTestId(el, id) as HTMLInputElement;
+      box.value = v;
+      box.dispatchEvent(new Event('input'));
+    };
+    type('g-prev-l-amount', '500,000');
+    type('g-prev-l-left', '600,000');
+    type('g-prev-l-inst', '100,000');
+    type('g-prev-l-next', '2026-12-05');
+    await settle(fixture);
+    (byTestId(el, 'g-prev-l-save') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(h.http.match((r) => r.method === 'POST')).toEqual([]);
+
+    type('g-prev-l-left', '250,000');
+    await settle(fixture);
+    (byTestId(el, 'g-prev-l-save') as HTMLButtonElement).click();
+    await settle(fixture);
+    const req = h.http.expectOne((r) => r.url === `${API}/members/7/previous/loan`);
+    expect(req.request.body).toEqual({ amount: 500000, remaining: 250000, instalment: 100000, next_due: '2026-12-05' });
+    req.flush({ data: { loan: { id: 3 } } });
+    await settle(fixture);
+    h.http.match(() => true).forEach((r) => r.flush({ data: { types: [], entries: [], loans: [] } }));
   });
 });

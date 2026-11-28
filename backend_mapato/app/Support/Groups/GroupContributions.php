@@ -34,6 +34,7 @@ final class GroupContributions
             'frequency' => $t->frequency,
             'due_day' => $t->due_day === null ? null : (int) $t->due_day,
             'mandatory' => (bool) $t->mandatory,
+            'refundable' => (bool) ($t->refundable ?? false),
             'starts_on' => (string) $t->starts_on,
             'ends_on' => $t->ends_on === null ? null : (string) $t->ends_on,
             'active' => (bool) $t->active,

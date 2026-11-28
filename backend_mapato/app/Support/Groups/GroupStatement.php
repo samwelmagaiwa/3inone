@@ -83,6 +83,7 @@ final class GroupStatement
             // What the group holds for them now (kept apart from the fees and contributions they have paid to the group).
             'account' => round(array_sum(array_intersect_key($balances, array_flip(self::ACCOUNT_KINDS))), 2),
             'balances' => $balances,
+            'refundable' => GroupLedger::refundable($memberId),
             'period' => [
                 'from' => $from,
                 'to' => $to,
