@@ -117,8 +117,10 @@ export class ShellLayout implements OnDestroy {
   protected readonly serviceNames: Record<ServiceName, string> = { inventory: 'service.inventory', salon: 'service.salon', groups: 'service.groups' };
 
   protected readonly breadcrumb = computed(() => {
-    const url = this.currentUrl();
-    const page = NAV.find((n) => url.startsWith(n.path));
+    // the page whose address is this one, or the longest that holds it as a whole folder ("/groups/members" is not "/groups/me")
+    const url = this.currentUrl().split(/[?#]/)[0];
+    const page = NAV.filter((n) => url === n.path || url.startsWith(n.path.endsWith('/') ? n.path : n.path + '/'))
+      .sort((a, b) => b.path.length - a.path.length)[0];
     return page ? this.label(page) : this.i18n.t('nav.welcome');
   });
 

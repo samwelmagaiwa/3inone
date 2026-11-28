@@ -288,6 +288,19 @@ describe('Groups asks nothing of the shop', () => {
   });
 });
 
+describe('the breadcrumb', () => {
+  it('names the page itself, not another page whose address starts the same ("/groups/members" is Members, not My account)', async () => {
+    const leader = await open({ role: 'group_member', roleLabel: 'Member', services: ['groups'], permissions: [] });
+    const shell = leader.fixture.componentInstance as unknown as { currentUrl: { set(v: string): void }; breadcrumb(): string };
+    shell.currentUrl.set('/groups/members?page=2');
+    expect(shell.breadcrumb()).toBe('Members');
+    shell.currentUrl.set('/groups/me');
+    expect(shell.breadcrumb()).toBe('My account');
+    shell.currentUrl.set('/sales/new');
+    expect(shell.breadcrumb()).toBe('Sales');
+  });
+});
+
 describe('the ME switch (Groups)', () => {
   it('is offered to a leader in Groups, and to nobody in the shop', async () => {
     const leader = await open({ role: 'group_member', roleLabel: 'Member', services: ['groups'], permissions: [] });
