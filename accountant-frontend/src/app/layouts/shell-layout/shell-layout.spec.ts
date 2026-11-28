@@ -279,6 +279,13 @@ describe('Groups asks nothing of the shop', () => {
     await settle(leader.fixture);
     expect(leader.h.http.match(shop)).toEqual([]);
   });
+
+  it('loads the leader’s group rights on any page, so the menu is full even when the assistant is opened first', async () => {
+    const leader = await open({ role: 'group_member', roleLabel: 'Member', services: ['groups'], permissions: [] });
+    leader.h.http.expectOne(`${environment.apiUrl}/groups/me`).flush({ data: { rights: ['view_members', 'view_finance'], is_owner: false, member: { id: 1 }, can_switch_view: true } });
+    await settle(leader.fixture);
+    expect(nav(leader.el).length).toBeGreaterThan(1);
+  });
 });
 
 describe('the ME switch (Groups)', () => {

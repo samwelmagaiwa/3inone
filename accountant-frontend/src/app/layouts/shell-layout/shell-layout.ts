@@ -145,6 +145,8 @@ export class ShellLayout implements OnDestroy {
       void this.auth.refreshRights();
       void this.loadSubscription();
       void this.loadBranches();
+      // Groups: the person's office rights fill the menu on EVERY page (opening the assistant first left the menu empty)
+      if (this.auth.service() === 'groups') void this.groups.ensure();
       this.bellTimer = setInterval(() => {
         void this.loadNotifications();
         void this.auth.refreshRights();
