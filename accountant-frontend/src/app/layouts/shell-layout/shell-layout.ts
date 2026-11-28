@@ -164,6 +164,11 @@ export class ShellLayout implements OnDestroy {
 
   /** The branches this business has, for the choice in the top bar. A person who may not see them (or a business with none) simply gets no choice. */
   protected async loadBranches(): Promise<void> {
+    // a group has no shop branches: asking the shop's server only earns a "forbidden"
+    if (this.auth.service() === 'groups') {
+      this.branches.list.set([]);
+      return;
+    }
     try {
       const all = (await firstValueFrom(this.branches.branches())).filter((b) => b.active);
       this.branches.list.set(all);
@@ -266,6 +271,12 @@ export class ShellLayout implements OnDestroy {
 
   // ------------------------------------------------------------------ the bell
   protected async loadNotifications(): Promise<void> {
+    // the bell reads the shop's notifications; a group has none there (its waiting work is on the Groups dashboard)
+    if (this.auth.service() === 'groups') {
+      this.notifications.set([]);
+      this.unreadCount.set(0);
+      return;
+    }
     try {
       const res = await firstValueFrom(this.api.notifications());
       this.notifications.set(res.items);

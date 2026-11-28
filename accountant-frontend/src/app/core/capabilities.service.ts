@@ -51,7 +51,8 @@ export class CapabilitiesService {
           this.loaded.set(false);
         }
         this.who = now;
-        if (this.auth.isLoggedIn()) void this.load();
+        // a group has no shop settings to read (the server would answer "forbidden")
+        if (this.auth.isLoggedIn() && this.auth.service() !== 'groups') void this.load();
       });
     });
   }

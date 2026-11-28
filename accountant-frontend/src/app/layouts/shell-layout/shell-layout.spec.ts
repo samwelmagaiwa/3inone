@@ -11,7 +11,8 @@ async function open(who = {}, notifications: { id: number; title: string; body: 
   const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
   const fixture = TestBed.createComponent(ShellLayout);
   fixture.detectChanges();
-  h.http.expectOne(`${environment.apiUrl}/inventory/notifications`).flush({ data: notifications, meta: { unread_count: notifications.filter((n) => !n.read_at).length } });
+  // the shop's bell (Groups asks for none)
+  h.http.match(`${environment.apiUrl}/inventory/notifications`).forEach((r) => r.flush({ data: notifications, meta: { unread_count: notifications.filter((n) => !n.read_at).length } }));
   await settle(fixture);
 
   return { h, navigate, fixture, el: fixture.nativeElement as HTMLElement };
@@ -267,6 +268,16 @@ describe('the look of Groups (Vikundi)', () => {
     TestBed.resetTestingModule();
     const accountant = await open();
     expect(text(accountant.el.querySelector('.sidebar-logo-name') as HTMLElement)).toBe('3inone Accountant');
+  });
+});
+
+describe('Groups asks nothing of the shop', () => {
+  it('the frame of a group leader never calls the shop bell, branches or settings (they were refused as forbidden)', async () => {
+    const leader = await open({ role: 'group_member', roleLabel: 'Member', services: ['groups'], permissions: [] });
+    const shop = (r: { url: string }) => r.url.includes('/inventory/');
+    expect(leader.h.http.match(shop)).toEqual([]);
+    await settle(leader.fixture);
+    expect(leader.h.http.match(shop)).toEqual([]);
   });
 });
 
