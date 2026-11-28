@@ -59,6 +59,8 @@ export const G_WAITING: Record<string, string> = {
       } @else {
         @let data = d()!;
         @let m = data['money'];
+        <!-- the figures stay pinned at the top while the charts scroll under them -->
+        <div class="g-pin" data-testid="g-dash-pin">
         <div class="ph-tiles g-tiles-row" data-testid="g-tiles">
           @if (m) {
             <div class="ph-tile g-t-teal" data-testid="g-cash"><span class="ph-muted">{{ i18n.t('g.cash') }}</span><b class="ph-accent">{{ tsh(m['cash_on_record']) }}</b></div>
@@ -75,6 +77,7 @@ export const G_WAITING: Record<string, string> = {
             <a class="ph-tile g-link g-t-yellow" routerLink="/groups/members"><span class="ph-muted">{{ i18n.t('g.applications') }}</span><b class="ph-warn">{{ data['members']['applications'] }}</b></a>
           }
           <div class="ph-tile g-t-gray"><span class="ph-muted">{{ i18n.t('g.joined.month') }}</span><b>{{ data['members']?.['joined_in_month'] ?? 0 }}</b></div>
+        </div>
         </div>
 
         @if (m) {
