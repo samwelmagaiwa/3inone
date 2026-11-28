@@ -8,6 +8,7 @@ import { allowedPages, homePath } from '../../core/nav';
 import { TRANSLATIONS } from '../../core/translations';
 import { byTestId, configure, settle, text } from '../../testing';
 import { GDashboardPage, G_WAITING } from './dashboard';
+import { GMeetingsPage } from './meetings';
 import { GMembersPage } from './members';
 import { GPaymentsPage } from './payments';
 import { GPreviousDialog } from './previous';
@@ -363,5 +364,28 @@ describe('Groups dashboard charts', () => {
     // net of the year: 844,000 - 550,000 - 2,875,000, shown in red
     expect(text(byTestId(el, 'g-year') as HTMLElement)).toContain('2,581,000');
     expect(el.querySelector('[data-testid="g-year"] .g-cbig.g-cbad')).not.toBeNull();
+  });
+});
+
+describe('Groups: the next meeting', () => {
+  afterEach(() => groupRights.set(new Set()));
+
+  it('shows on the Meetings page as one line, and no longer on the dashboard', async () => {
+    const h = asGroups(ALL);
+    TestBed.inject(GroupsContext).me.set({ is_owner: true, rights: ALL, waiting: {}, next_meeting: { id: 1, title: 'Kikao cha kufunga mwaka', starts_at: '2026-12-05 17:00:00', venue: 'Ukumbi wa Kanisa' } });
+    const fixture = TestBed.createComponent(GMeetingsPage);
+    fixture.detectChanges();
+    await settle(fixture);
+    const line = byTestId(fixture.nativeElement as HTMLElement, 'g-next-meeting') as HTMLElement;
+    expect(text(line)).toContain('Kikao cha kufunga mwaka');
+    expect(text(line)).toContain('Ukumbi wa Kanisa');
+    h.http.match(() => true).forEach((r) => r.flush({ data: {} }));
+
+    const dash = TestBed.createComponent(GDashboardPage);
+    dash.detectChanges();
+    h.http.match((r) => r.url === `${API}/dashboard`).forEach((r) => r.flush({ data: { members: { active: 1 }, next_meeting: { id: 1, title: 'Kikao', starts_at: '2026-12-05 17:00:00' } } }));
+    await settle(dash);
+    expect(byTestId(dash.nativeElement as HTMLElement, 'g-next-meeting')).toBeNull();
+    h.http.match(() => true).forEach((r) => r.flush({ data: {} }));
   });
 });

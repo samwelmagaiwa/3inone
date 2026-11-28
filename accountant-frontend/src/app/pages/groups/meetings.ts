@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { Row } from '../../core/groups/groups-api.service';
@@ -35,6 +35,13 @@ const TEXT_AUDIENCES = ['all', 'leaders', 'overdue', 'selected'];
         @if (tab() === 'texts' && can('send_texts')) { <button type="button" class="btn-primary ph-btn" (click)="openText()" data-testid="g-mt-text-new">{{ i18n.t('g.mt.text.new') }}</button> }
         <span class="g-count">{{ i18n.t('g.count', shownCount()) }}</span>
       </div>
+      <!-- the next meeting, as one slim line (it used to be a card on the dashboard) -->
+      @if (nextMeeting(); as nm) {
+        <p class="g-next" data-testid="g-next-meeting" [title]="nm['venue'] || ''">
+          <span class="ph-muted">{{ i18n.t('g.next.meeting') }}:&nbsp;</span><b>{{ nm['title'] }}</b> · <b class="ph-warn">{{ when(nm['starts_at']) }}</b>
+          @if (nm['venue']) { <span class="ph-muted"> · {{ nm['venue'] }}</span> }
+        </p>
+      }
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
 
       @switch (tab()) {
@@ -299,6 +306,7 @@ const TEXT_AUDIENCES = ['all', 'leaders', 'overdue', 'selected'];
       .g-acts:empty { display: none; }
       .g-people { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 12px; max-height: 320px; overflow: auto; }
       .g-person { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+      .g-next { margin: 8px 2px 0; font-size: 14px; }
     `,
   ],
 })
@@ -306,6 +314,8 @@ export class GMeetingsPage extends GBase implements OnInit {
   protected readonly noticeKinds = NOTICE_KINDS;
   protected readonly audiences = TEXT_AUDIENCES;
   protected readonly tab = signal<Tab>('meetings');
+  /** The next meeting called (everyone's /groups/me carries it). */
+  protected readonly nextMeeting = computed<Row | null>(() => (this.ctx.me()?.['next_meeting'] as Row | null) ?? null);
   protected readonly error = signal('');
   protected readonly meetings = signal<Row[]>([]);
   protected readonly actions = signal<Row[]>([]);
@@ -343,6 +353,7 @@ export class GMeetingsPage extends GBase implements OnInit {
   }
 
   ngOnInit(): void {
+    void this.ctx.reload();
     void this.loadMeetings();
   }
 

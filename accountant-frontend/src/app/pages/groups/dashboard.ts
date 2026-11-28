@@ -133,13 +133,6 @@ export const G_WAITING: Record<string, string> = {
           </div>
         }
 
-        @if (data['next_meeting']; as nm) {
-          <a class="ph-card g-link" routerLink="/groups/meetings" data-testid="g-next-meeting">
-            <h3>{{ i18n.t('g.next.meeting') }}</h3>
-            <div class="ph-row"><span>{{ nm['title'] }}</span><b class="ph-warn">{{ when(nm['starts_at']) }}</b></div>
-            @if (nm['venue']) { <p class="ph-muted">{{ nm['venue'] }}</p> }
-          </a>
-        }
       }
 
       @if (waiting().length) {
