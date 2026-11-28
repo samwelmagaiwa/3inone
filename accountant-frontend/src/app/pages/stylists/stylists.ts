@@ -97,19 +97,37 @@ export function readStylistReport(j: Record<string, unknown>): StylistReportView
   imports: [FormsModule],
   template: `
     <div class="ad ph-page" data-testid="stylists-page">
-      <div class="ph-chips">
-        @for (p of periods; track p) {
-          <button type="button" class="pill-tab" [class.is-active]="period() === p" [attr.data-testid]="'st-period-' + p" (click)="pick(p)">{{ periodName(p) }}</button>
+      <!-- the periods and the figures stay pinned at the top while the table scrolls under them -->
+      <div class="g-pin" data-testid="st-pin">
+        <div class="ph-chips">
+          @for (p of periods; track p) {
+            <button type="button" class="pill-tab" [class.is-active]="period() === p" [attr.data-testid]="'st-period-' + p" (click)="pick(p)">{{ periodName(p) }}</button>
+          }
+          <span class="ph-muted st-range" data-testid="st-range">{{ rangeLabel() }}</span>
+        </div>
+        @if (period() === 'custom') {
+          <div class="ph-row" style="flex-wrap: wrap; align-items: end; gap: 8px">
+            <label class="ph-field">{{ i18n.t('ad.from') }} <input type="date" [ngModel]="from()" (ngModelChange)="from.set($event)" /></label>
+            <label class="ph-field">{{ i18n.t('ad.to') }} <input type="date" [ngModel]="to()" (ngModelChange)="to.set($event)" /></label>
+            <button type="button" class="btn-primary ph-btn" (click)="load()">{{ i18n.t('ad.apply') }}</button>
+          </div>
+        }
+        @if (data(); as d) {
+          <div class="ph-tiles g-tiles-row" data-testid="st-tiles">
+            <div class="ph-tile g-t-green"><span class="ph-muted">{{ i18n.t('pl.revenue') }}</span><b class="ph-good">{{ tsh(d.revenue) }}</b></div>
+            <div class="ph-tile g-t-blue"><span class="ph-muted">{{ i18n.t('st.services') }}</span><b>{{ d.services }}</b></div>
+            <div class="ph-tile g-t-purple"><span class="ph-muted">{{ i18n.t('st.visits') }}</span><b>{{ d.visits }}</b></div>
+            <div class="ph-tile g-t-teal"><span class="ph-muted">{{ i18n.t('st.avg') }}</span><b class="ph-accent">{{ tsh(d.avgTicket) }}</b></div>
+            @if (d.commission > 0) { <div class="ph-tile g-t-yellow"><span class="ph-muted">{{ i18n.t('pl.commissions') }}</span><b class="ph-warn">{{ tsh(d.commission) }}</b></div> }
+            @if (d.revenueChange !== null) {
+              <div class="ph-tile" [class.g-t-green]="d.revenueChange >= 0" [class.g-t-red]="d.revenueChange < 0">
+                <span class="ph-muted">{{ i18n.t('st.vs.before') }}</span>
+                <b [class.ph-good]="d.revenueChange >= 0" [class.ph-bad]="d.revenueChange < 0" [title]="tsh(d.previousRevenue)">{{ change(d.revenueChange) }}</b>
+              </div>
+            }
+          </div>
         }
       </div>
-      @if (period() === 'custom') {
-        <div class="ph-card ph-row" style="flex-wrap: wrap; align-items: end">
-          <label class="ph-field">{{ i18n.t('ad.from') }} <input type="date" [ngModel]="from()" (ngModelChange)="from.set($event)" /></label>
-          <label class="ph-field">{{ i18n.t('ad.to') }} <input type="date" [ngModel]="to()" (ngModelChange)="to.set($event)" /></label>
-          <button type="button" class="btn-primary ph-btn" (click)="load()">{{ i18n.t('ad.apply') }}</button>
-        </div>
-      }
-      <p class="ph-muted" data-testid="st-range">{{ rangeLabel() }}</p>
 
       @if (error()) {
         <section class="ph-card"><p data-testid="st-error">{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load()">{{ i18n.t('pl.retry') }}</button></section>
@@ -117,49 +135,82 @@ export function readStylistReport(j: Record<string, unknown>): StylistReportView
         <section class="ph-card"><p class="ph-muted">{{ i18n.t('pl.loading') }}</p></section>
       } @else {
         @let d = data()!;
-        <div class="ph-tiles">
-          <div class="ph-tile"><span class="ph-muted">{{ i18n.t('pl.revenue') }}</span><b class="ph-good">{{ tsh(d.revenue) }}</b></div>
-          <div class="ph-tile"><span class="ph-muted">{{ i18n.t('st.services') }}</span><b>{{ d.services }}</b></div>
-          <div class="ph-tile"><span class="ph-muted">{{ i18n.t('st.visits') }}</span><b>{{ d.visits }}</b></div>
-          <div class="ph-tile"><span class="ph-muted">{{ i18n.t('st.avg') }}</span><b class="ph-accent">{{ tsh(d.avgTicket) }}</b></div>
-          @if (d.commission > 0) { <div class="ph-tile"><span class="ph-muted">{{ i18n.t('pl.commissions') }}</span><b class="ph-warn">{{ tsh(d.commission) }}</b></div> }
-        </div>
-        @if (d.revenueChange !== null) {
-          <p class="ph-muted" [class.ph-good]="d.revenueChange >= 0" [class.ph-bad]="d.revenueChange < 0">{{ change(d.revenueChange) }} {{ i18n.t('st.vs.before') }} ({{ tsh(d.previousRevenue) }})</p>
-        }
-
-        <!-- One card, its sections told apart by the glowing lines (as on the phone) -->
-        <div class="ph-card ph-joined" data-testid="st-joined">
-          @for (r of d.stylists; track r.staffId ?? 'none') {
-            <section class="ph-sec" [attr.data-testid]="'st-row-' + (r.staffId ?? 'none')">
-              <div class="ph-row">
-                <h3>@if (d.seesEveryone && r.rank) { <span class="ph-badge ph-accent">{{ r.rank }}</span> } {{ r.staffId === null || !r.name.trim() ? i18n.t('st.nobody') : r.name }}</h3>
-                <b class="ph-accent">{{ tsh(r.revenue) }}</b>
-              </div>
-              @if (r.target; as t) {
-                <div class="st-bar"><i [style.width.%]="Math.min(100, t.percent)"></i></div>
-                <div class="ph-row"><span class="ph-muted">{{ i18n.t('st.target') }} {{ tsh(t.amount) }}</span><b [class]="paceClass(t.pace)">{{ Math.round(t.percent) }}% · {{ paceName(t.pace) }}</b></div>
+        @let hasTarget = hasAny(d, 'target');
+        @let hasDiscount = hasAny(d, 'discount');
+        @let hasCommission = hasAny(d, 'commission');
+        <!-- every stylist is one row; the figures are the columns, in clean grid lines -->
+        <div class="table-scroll-container fit-page st-wide" data-testid="st-joined">
+          <table class="grid-table g-grid" data-testid="st-table">
+            <thead><tr>
+              <th class="no-col">#</th>
+              <th>{{ i18n.t('st.col.name') }}</th>
+              <th class="text-right">{{ i18n.t('pl.revenue') }}</th>
+              <th class="text-right">{{ i18n.t('st.services') }}</th>
+              <th class="text-right">{{ i18n.t('st.visits') }}</th>
+              <th class="text-right">{{ i18n.t('st.clients') }}</th>
+              <th class="text-right">{{ i18n.t('st.avg') }}</th>
+              <th class="text-right">{{ i18n.t('st.came.back') }}</th>
+              @if (d.seesEveryone) { <th class="text-right">{{ i18n.t('st.share') }}</th> }
+              @if (hasDiscount) { <th class="text-right">{{ i18n.t('st.discount') }}</th> }
+              @if (hasCommission) { <th class="text-right">{{ i18n.t('st.commission') }}</th> }
+              @if (hasTarget) { <th>{{ i18n.t('st.target') }}</th> }
+            </tr></thead>
+            <tbody>
+              @for (r of d.stylists; track r.staffId ?? 'none'; let i = $index) {
+                <tr [attr.data-testid]="'st-row-' + (r.staffId ?? 'none')">
+                  <td class="no-col">{{ d.seesEveryone && r.rank ? r.rank : i + 1 }}</td>
+                  <td class="font-bold">{{ r.staffId === null || !r.name.trim() ? i18n.t('st.nobody') : r.name }}</td>
+                  <td class="text-right"><b class="ph-accent">{{ tsh(r.revenue) }}</b></td>
+                  <td class="text-right">{{ r.services }}</td>
+                  <td class="text-right">{{ r.visits }}</td>
+                  <td class="text-right">{{ r.clients }}</td>
+                  <td class="text-right">{{ r.visits > 0 ? tsh(r.avgTicket) : '—' }}</td>
+                  <td class="text-right">{{ r.returnRate === null ? '—' : Math.round(r.returnRate) + '%' }}</td>
+                  @if (d.seesEveryone) { <td class="text-right">{{ Math.round(r.share) }}%</td> }
+                  @if (hasDiscount) { <td class="text-right">{{ r.discount > 0 ? tsh(r.discount) : '—' }}</td> }
+                  @if (hasCommission) { <td class="text-right">{{ r.commission > 0 ? tsh(r.commission) : '—' }}</td> }
+                  @if (hasTarget) {
+                    <td>
+                      @if (r.target; as t) {
+                        <div class="st-target"><div class="st-bar"><i [style.width.%]="Math.min(100, t.percent)"></i></div><b [class]="paceClass(t.pace)">{{ Math.round(t.percent) }}% · {{ paceName(t.pace) }}</b></div>
+                        <span class="ph-muted st-small">{{ tsh(t.amount) }}</span>
+                      } @else { — }
+                    </td>
+                  }
+                </tr>
+              } @empty {
+                <tr><td colspan="12" class="ph-muted" data-testid="st-empty">{{ i18n.t('st.empty') }}</td></tr>
               }
-              <div class="ph-line"><span>{{ i18n.t('st.services') }}</span><b>{{ r.services }}</b></div>
-              <div class="ph-line"><span>{{ i18n.t('st.visits') }}</span><b>{{ r.visits }}</b></div>
-              <div class="ph-line"><span>{{ i18n.t('st.clients') }}</span><b>{{ r.clients }}</b></div>
-              @if (r.visits > 0) { <div class="ph-line"><span>{{ i18n.t('st.avg') }}</span><b>{{ tsh(r.avgTicket) }}</b></div> }
-              @if (r.returnRate !== null) { <div class="ph-line"><span>{{ i18n.t('st.came.back') }}</span><b>{{ Math.round(r.returnRate) }}%</b></div> }
-              @if (r.share > 0 && d.seesEveryone) { <div class="ph-line"><span>{{ i18n.t('st.share') }}</span><b>{{ Math.round(r.share) }}%</b></div> }
-              @if (r.discount > 0) { <div class="ph-line"><span>{{ i18n.t('st.discount') }}</span><b>{{ tsh(r.discount) }}</b></div> }
-              @if (r.commission > 0) { <div class="ph-line"><span>{{ i18n.t('st.commission') }}</span><b>{{ tsh(r.commission) }}</b></div> }
-            </section>
-          } @empty {
-            <section class="ph-sec"><p class="ph-muted" data-testid="st-empty">{{ i18n.t('st.empty') }}</p></section>
-          }
+            </tbody>
+            @if (d.stylists.length) {
+              <tfoot><tr data-testid="st-total">
+                <td class="no-col"></td>
+                <td class="font-bold">{{ i18n.t('st.total') }}</td>
+                <td class="text-right"><b>{{ tsh(d.revenue) }}</b></td>
+                <td class="text-right"><b>{{ d.services }}</b></td>
+                <td class="text-right"><b>{{ d.visits }}</b></td>
+                <td class="text-right">—</td>
+                <td class="text-right"><b>{{ tsh(d.avgTicket) }}</b></td>
+                <td class="text-right">—</td>
+                @if (d.seesEveryone) { <td class="text-right"><b>100%</b></td> }
+                @if (hasDiscount) { <td class="text-right"><b>{{ tsh(totalOf(d, 'discount')) }}</b></td> }
+                @if (hasCommission) { <td class="text-right"><b>{{ tsh(d.commission) }}</b></td> }
+                @if (hasTarget) { <td></td> }
+              </tr></tfoot>
+            }
+          </table>
         </div>
       }
     </div>
   `,
   styles: [
     `
-      .st-bar { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.18); overflow: hidden; margin: 8px 0 4px; }
+      .st-wide { grid-column: 1 / -1; }
+      .st-range { margin-left: 8px; align-self: center; }
+      .st-target { display: flex; align-items: center; gap: 8px; }
+      .st-bar { width: 80px; height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.18); overflow: hidden; flex: none; }
       .st-bar i { display: block; height: 100%; background: linear-gradient(90deg, #1ba3c7, #20b8ce); }
+      .st-small { font-size: 12px; }
     `,
   ],
 })
@@ -213,6 +264,15 @@ export class StylistsPage implements OnInit {
       case 'on_track': return this.i18n.t('st.pace.track');
       default: return this.i18n.t('st.pace.behind');
     }
+  }
+
+  /** Whether any stylist has this figure, so its column shows only when it says something. */
+  protected hasAny(d: StylistReportView, what: 'target' | 'discount' | 'commission'): boolean {
+    return d.stylists.some((r) => (what === 'target' ? r.target !== null : r[what] > 0));
+  }
+
+  protected totalOf(d: StylistReportView, what: 'discount'): number {
+    return d.stylists.reduce((a, r) => a + r[what], 0);
   }
 
   protected paceClass(pace: string): string {
