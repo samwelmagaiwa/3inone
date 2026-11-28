@@ -175,27 +175,9 @@ export const G_WAITING: Record<string, string> = {
       a.ph-row.g-link { display: flex; }
       a.ph-tile.g-link { display: grid; }
       /* The figures in ONE row on a computer screen: equal columns, the amounts never broken in two */
-      @media (min-width: 1100px) {
-        .g-tiles-row { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
-        .g-tiles-row .ph-tile { padding: 9px 10px; min-width: 0; }
-        .g-tiles-row .ph-tile b { font-size: clamp(12px, 0.8vw, 17px); white-space: nowrap; letter-spacing: -0.01em; }
-        .g-tiles-row .ph-tile .ph-muted { font-size: 11px; line-height: 1.25; }
-      }
       a.ph-card.g-link:hover { border-color: #20b8ce; }
       /* the figure tiles: squarer corners, each framed in its own chart colour, close above the charts */
       .g-head-bar { display: flex; align-items: center; gap: 8px; }
-      .g-tiles-row { margin-bottom: 0; }
-      .g-tiles-row .ph-tile { border-radius: 8px; border: 1.5px solid var(--g-t, rgba(255, 255, 255, 0.3)); background: rgba(255, 255, 255, 0.07); box-shadow: inset 0 3px 0 var(--g-t, transparent); }
-      .g-tiles-row .ph-tile .ph-muted { color: var(--g-tl, rgba(255, 255, 255, 0.75)) !important; font-weight: 700; }
-      .g-tiles-row a.ph-tile.g-link:hover { background: rgba(255, 255, 255, 0.13); }
-      .g-t-teal { --g-t: #3fcfa6; --g-tl: #9af0d6; }
-      .g-t-green { --g-t: #3fba68; --g-tl: #8ee6a8; }
-      .g-t-red { --g-t: #e46262; --g-tl: #ffa3a3; }
-      .g-t-blue { --g-t: #4a9df8; --g-tl: #9fd0ff; }
-      .g-t-purple { --g-t: #6c5ce7; --g-tl: #b3a8ff; }
-      .g-t-yellow { --g-t: #f5b82e; --g-tl: #ffe08a; }
-      .g-t-violet { --g-t: #8e63d2; --g-tl: #d0b8f5; }
-      .g-t-gray { --g-t: #7f8794; --g-tl: #d3d8e0; }
       /* The chart cards: the same dark glass as every Groups card; the charts keep their eight colours, the words are light */
       .g-charts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 10px 0 14px; }
       .g-ccard { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 10px; padding: 18px 18px 16px; color: #fff; min-width: 0; text-align: center; }

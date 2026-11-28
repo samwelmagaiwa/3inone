@@ -26,16 +26,16 @@ import { GBase } from './g-base';
       </div>
 
       @if (member(); as m) {
-        <div class="ph-tiles" data-testid="g-me-tiles">
-          <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.name') }}</span><b>{{ m['full_name'] }}</b></div>
-          <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.number') }}</span><b>{{ m['member_number'] || m['application_ref'] || '—' }}</b></div>
-          <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.status') }}</span><b [class]="tone(m['status'])">{{ status(m['status']) }}</b></div>
-          <div class="ph-tile" data-testid="g-me-account"><span class="ph-muted">{{ i18n.t('g.me.account') }}</span><b class="ph-accent">{{ tsh(account()) }}</b></div>
-          <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.savings') }}</span><b>{{ tsh(n(balances()['savings'])) }}</b></div>
-          <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.shares') }}</span><b>{{ tsh(n(balances()['shares'])) }}</b></div>
-          <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.cat.joining_fee') }}</span><b>{{ tsh(n(balances()['joining_fee'])) }}</b></div>
-          <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.me.owe') }}</span><b [class.ph-bad]="owedTotal() > 0">{{ tsh(owedTotal()) }}</b></div>
-          @if (n(ctx.me()?.['pending']) > 0) { <div class="ph-tile"><span class="ph-muted">{{ i18n.t('g.pending') }}</span><b class="ph-warn">{{ n(ctx.me()?.['pending']) }}</b></div> }
+        <div class="ph-tiles g-tiles-row" data-testid="g-me-tiles">
+          <div class="ph-tile g-t-teal"><span class="ph-muted">{{ i18n.t('g.name') }}</span><b [title]="m['full_name']">{{ m['full_name'] }}</b></div>
+          <div class="ph-tile g-t-gray"><span class="ph-muted">{{ i18n.t('g.number') }}</span><b>{{ m['member_number'] || m['application_ref'] || '—' }}</b></div>
+          <div class="ph-tile g-t-green"><span class="ph-muted">{{ i18n.t('g.status') }}</span><b [class]="tone(m['status'])">{{ status(m['status']) }}</b></div>
+          <div class="ph-tile g-t-teal" data-testid="g-me-account"><span class="ph-muted">{{ i18n.t('g.me.account') }}</span><b class="ph-accent">{{ tsh(account()) }}</b></div>
+          <div class="ph-tile g-t-blue"><span class="ph-muted">{{ i18n.t('g.savings') }}</span><b>{{ tsh(n(balances()['savings'])) }}</b></div>
+          <div class="ph-tile g-t-purple"><span class="ph-muted">{{ i18n.t('g.shares') }}</span><b>{{ tsh(n(balances()['shares'])) }}</b></div>
+          <div class="ph-tile g-t-yellow"><span class="ph-muted">{{ i18n.t('g.cat.joining_fee') }}</span><b>{{ tsh(n(balances()['joining_fee'])) }}</b></div>
+          <div class="ph-tile g-t-red"><span class="ph-muted">{{ i18n.t('g.me.owe') }}</span><b [class.ph-bad]="owedTotal() > 0">{{ tsh(owedTotal()) }}</b></div>
+          @if (n(ctx.me()?.['pending']) > 0) { <div class="ph-tile g-t-violet"><span class="ph-muted">{{ i18n.t('g.pending') }}</span><b class="ph-warn">{{ n(ctx.me()?.['pending']) }}</b></div> }
         </div>
       } @else {
         <section class="ph-card"><p class="ph-muted">{{ i18n.t('g.me.none') }}</p></section>

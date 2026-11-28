@@ -2134,3 +2134,24 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
 :is(html, body):has(.theme-phone)::-webkit-scrollbar-thumb:hover, .theme-phone ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.35); }
 :is(html, body):has(.theme-phone)::-webkit-scrollbar-corner, .theme-phone ::-webkit-scrollbar-corner { background: transparent; }
 :is(html, body):has(.theme-phone) { background: #0b2f3a; }
+
+/* ═══ Groups (Vikundi) figure tiles (the dashboard and My account): ONE row on a computer, equal widths, squarer corners, each framed
+   in its own chart colour (g-t-*), the label in a lighter shade of it, the figure never broken in two. ═══ */
+.g-tiles-row { margin-bottom: 0; }
+.g-tiles-row .ph-tile { border-radius: 8px; border: 1.5px solid var(--g-t, rgba(255, 255, 255, 0.3)); background: rgba(255, 255, 255, 0.07); box-shadow: inset 0 3px 0 var(--g-t, transparent); }
+.g-tiles-row .ph-tile .ph-muted { color: var(--g-tl, rgba(255, 255, 255, 0.75)) !important; font-weight: 700; }
+.g-tiles-row a.ph-tile.g-link:hover { background: rgba(255, 255, 255, 0.13); }
+@media (min-width: 1100px) {
+  .g-tiles-row { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  .g-tiles-row .ph-tile { padding: 9px 10px; min-width: 0; }
+  .g-tiles-row .ph-tile b { font-size: clamp(12px, 0.8vw, 17px); white-space: nowrap; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; }
+  .g-tiles-row .ph-tile .ph-muted { font-size: 11px; line-height: 1.25; }
+}
+.g-t-teal { --g-t: #3fcfa6; --g-tl: #9af0d6; }
+.g-t-green { --g-t: #3fba68; --g-tl: #8ee6a8; }
+.g-t-red { --g-t: #e46262; --g-tl: #ffa3a3; }
+.g-t-blue { --g-t: #4a9df8; --g-tl: #9fd0ff; }
+.g-t-purple { --g-t: #6c5ce7; --g-tl: #b3a8ff; }
+.g-t-yellow { --g-t: #f5b82e; --g-tl: #ffe08a; }
+.g-t-violet { --g-t: #8e63d2; --g-tl: #d0b8f5; }
+.g-t-gray { --g-t: #7f8794; --g-tl: #d3d8e0; }
