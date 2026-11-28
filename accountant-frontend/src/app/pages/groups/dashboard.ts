@@ -6,6 +6,7 @@ import { monthKey } from '../../core/format';
 import { Row } from '../../core/groups/groups-api.service';
 import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
+import { GColor, GPieChart, GRoseChart, GSlice } from './g-charts';
 
 /** Each kind of work that can wait for a leader, and the page where it is done. */
 export const G_WAITING: Record<string, string> = {
@@ -39,7 +40,7 @@ export const G_WAITING: Record<string, string> = {
  */
 @Component({
   selector: 'app-g-dashboard',
-  imports: [RowMenuComponent, FormsModule, RouterLink],
+  imports: [RowMenuComponent, FormsModule, RouterLink, GRoseChart, GPieChart],
   template: `
     <div class="ad ph-page" data-testid="g-dashboard">
       <div class="g-toolbar">
@@ -73,55 +74,62 @@ export const G_WAITING: Record<string, string> = {
         </div>
 
         @if (m) {
-          <div class="ph-card ph-joined ph-cols">
-            <section class="ph-sec" data-testid="g-collection">
-              <h3>{{ i18n.t('g.collection') }}</h3>
-              @let c = m['contributions'] ?? {};
-              <div class="g-bar"><i [style.width.%]="rate(c)"></i></div>
-              <div class="ph-row"><span class="ph-muted">{{ tsh(c['collected'] ?? 0) }} / {{ tsh(c['expected'] ?? 0) }}</span><b class="ph-accent">{{ rate(c) }}%</b></div>
-              <div class="ph-line"><span>{{ i18n.t('g.overdue.amount') }}</span><b [class.ph-bad]="(c['overdue_amount'] ?? 0) > 0">{{ tsh(c['overdue_amount'] ?? 0) }}</b></div>
-              <div class="ph-line"><span>{{ i18n.t('g.overdue.members') }}</span><b>{{ c['overdue_members'] ?? 0 }}</b></div>
-            </section>
-            <section class="ph-sec">
-              <h3>{{ i18n.t('g.loans.now') }}</h3>
-              @let l = m['loans'] ?? {};
-              <div class="ph-line"><span>{{ i18n.t('g.loans.owed') }}</span><b>{{ tsh((l['principal'] ?? 0) + (l['interest'] ?? 0)) }}</b></div>
-              <div class="ph-line"><span>{{ i18n.t('g.loans.arrears') }}</span><b [class.ph-bad]="(l['arrears'] ?? 0) > 0">{{ tsh(l['arrears'] ?? 0) }}</b></div>
-              <div class="ph-line"><span>{{ i18n.t('g.loans.running') }}</span><b>{{ l['running'] ?? 0 }}</b></div>
-              <div class="ph-line"><span>{{ i18n.t('g.loans.late') }}</span><b [class.ph-bad]="(l['overdue'] ?? 0) > 0">{{ l['overdue'] ?? 0 }}</b></div>
-            </section>
-            <section class="ph-sec">
-              <h3>{{ i18n.t('g.year') }}</h3>
-              @let y = m['year'] ?? {};
-              <div class="ph-line"><span>{{ i18n.t('g.year.welfare') }}</span><b>{{ tsh(y['welfare_paid'] ?? 0) }}</b></div>
-              <div class="ph-line"><span>{{ i18n.t('g.year.dividends') }}</span><b>{{ tsh(y['dividends'] ?? 0) }}</b></div>
-              <div class="ph-line"><span>{{ i18n.t('g.year.hire') }}</span><b>{{ tsh(y['hire_income'] ?? 0) }}</b></div>
-              <div class="ph-line"><span>{{ i18n.t('g.year.spent') }}</span><b>{{ tsh(y['expenses'] ?? 0) }}</b></div>
-            </section>
-            <section class="ph-sec">
-              <h3>{{ i18n.t('g.mix') }}</h3>
-              @for (x of m['mix'] ?? []; track x['category']) {
-                <div class="ph-line"><span>{{ cat(x['category']) }}</span><b><span class="ph-good">+{{ tsh(x['in']) }}</span> · <span class="ph-bad">-{{ tsh(x['out']) }}</span></b></div>
-              } @empty {
-                <p class="ph-muted">{{ i18n.t('g.none.month') }}</p>
+          <!-- The charts, drawn like the school dashboard: white cards, coloured titles, the figures on the charts -->
+          <div class="g-charts" data-testid="g-charts">
+            <section class="g-ccard g-wide" data-testid="g-mix">
+              <h3 class="g-ctitle">{{ i18n.t('g.ch.mix') }}</h3>
+              @if (mixIn().length) {
+                <app-g-rose [slices]="mixIn()" [label]="i18n.t('g.ch.mix')" />
+              } @else {
+                <p class="g-cempty">{{ i18n.t('g.none.month') }}</p>
+              }
+              @if (mixOut().length) {
+                <p class="g-cfoot"><span>{{ i18n.t('g.ch.out') }}:</span>
+                  @for (o of mixOut(); track o.label) { <b class="g-cbad">{{ o.label }} {{ tsh(o.value) }}</b> }
+                </p>
               }
             </section>
-          </div>
 
-          <div class="ph-card" data-testid="g-trend">
-            <h3>{{ i18n.t('g.trend') }}</h3>
-            <div class="g-chart">
-              @for (t of m['trend'] ?? []; track t['month']) {
-                <div class="g-col" [title]="t['month'] + ': +' + tsh(t['in']) + ' / -' + tsh(t['out'])">
-                  <div class="g-pair">
-                    <i class="g-in" [style.height.%]="pct(t['in'])"></i>
-                    <i class="g-out" [style.height.%]="pct(t['out'])"></i>
+            <section class="g-ccard" data-testid="g-collection">
+              <h3 class="g-ctitle">{{ i18n.t('g.collection') }}</h3>
+              @let c = m['contributions'] ?? {};
+              <app-g-pie [slices]="collection()" [label]="i18n.t('g.collection')" [empty]="i18n.t('g.ch.nothing')" />
+              <p class="g-cfoot">{{ tsh(c['collected'] ?? 0) }} / {{ tsh(c['expected'] ?? 0) }} · <b class="g-cgood">{{ rate(c) }}%</b></p>
+              <p class="g-cfoot">{{ i18n.t('g.overdue.amount') }}: <b [class.g-cbad]="(c['overdue_amount'] ?? 0) > 0">{{ tsh(c['overdue_amount'] ?? 0) }}</b> · {{ i18n.t('g.overdue.members') }}: <b>{{ c['overdue_members'] ?? 0 }}</b></p>
+            </section>
+
+            <section class="g-ccard" data-testid="g-loans-chart">
+              <h3 class="g-ctitle">{{ i18n.t('g.loans.now') }}</h3>
+              @let l = m['loans'] ?? {};
+              <app-g-pie [slices]="loanSlices()" [ring]="true" [label]="i18n.t('g.loans.now')" [empty]="i18n.t('g.ch.no.loans')" />
+              <p class="g-cfoot">{{ i18n.t('g.loans.owed') }}</p>
+              <p class="g-cbig">{{ tsh((l['principal'] ?? 0) + (l['interest'] ?? 0)) }}</p>
+              <p class="g-cfoot">{{ i18n.t('g.loans.running') }}: <b>{{ l['running'] ?? 0 }}</b> · {{ i18n.t('g.loans.late') }}: <b [class.g-cbad]="(l['overdue'] ?? 0) > 0">{{ l['overdue'] ?? 0 }}</b></p>
+            </section>
+
+            <section class="g-ccard" data-testid="g-year">
+              <h3 class="g-ctitle">{{ i18n.t('g.year') }}</h3>
+              <p class="g-csub">{{ month().slice(0, 4) }}</p>
+              <app-g-pie [slices]="yearSlices()" [ring]="true" [label]="i18n.t('g.year')" [empty]="i18n.t('g.ch.nothing')" />
+              <p class="g-cfoot">{{ i18n.t('g.ch.net') }}</p>
+              <p class="g-cbig" [class.g-cbad]="yearNet() < 0">{{ tsh(yearNet()) }}</p>
+            </section>
+
+            <section class="g-ccard g-trend-card" data-testid="g-trend">
+              <h3 class="g-ctitle">{{ i18n.t('g.trend') }}</h3>
+              <div class="g-chart">
+                @for (t of m['trend'] ?? []; track t['month']) {
+                  <div class="g-col" [title]="t['month'] + ': +' + tsh(t['in']) + ' / -' + tsh(t['out'])">
+                    <div class="g-pair">
+                      <i class="g-in" [style.height.%]="pct(t['in'])"></i>
+                      <i class="g-out" [style.height.%]="pct(t['out'])"></i>
+                    </div>
+                    <span>{{ t['month'].slice(5) }}</span>
                   </div>
-                  <span>{{ t['month'].slice(5) }}</span>
-                </div>
-              }
-            </div>
-            <p class="ph-muted"><span class="ph-good">■</span> {{ i18n.t('g.in') }} &nbsp; <span class="ph-bad">■</span> {{ i18n.t('g.out') }}</p>
+                }
+              </div>
+              <p class="g-ckeys"><span><i class="g-in"></i>{{ i18n.t('g.in') }}</span><span><i class="g-out"></i>{{ i18n.t('g.out') }}</span></p>
+            </section>
           </div>
         }
 
@@ -177,14 +185,32 @@ export const G_WAITING: Record<string, string> = {
         .g-tiles-row .ph-tile .ph-muted { font-size: 11px; line-height: 1.25; }
       }
       a.ph-tile.g-link:hover, a.ph-card.g-link:hover { border-color: #20b8ce; }
-      .g-bar { height: 10px; border-radius: 99px; background: rgba(255, 255, 255, 0.18); overflow: hidden; margin: 8px 0 4px; }
-      .g-bar i { display: block; height: 100%; background: linear-gradient(90deg, #1ba3c7, #20b8ce); }
-      .g-chart { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; align-items: end; height: 170px; margin-top: 8px; }
-      .g-col { display: grid; grid-template-rows: 1fr auto; height: 100%; gap: 4px; text-align: center; font-size: 11px; opacity: 0.9; }
-      .g-pair { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 100%; }
-      .g-pair i { display: block; width: 40%; min-height: 2px; border-radius: 4px 4px 0 0; }
-      .g-in { background: #10b981; }
-      .g-out { background: #ef4444; }
+      /* The chart cards: white, rounded, a soft shadow, the title in strong blue, the words dark (as the school dashboard) */
+      .g-charts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 14px 0; }
+      .g-ccard { background: #fff; border-radius: 18px; box-shadow: 0 2px 14px rgba(15, 23, 42, 0.12); padding: 18px 18px 16px; color: #1f2340; min-width: 0; text-align: center; }
+      .g-wide { grid-column: span 2; }
+      .g-trend-card { grid-column: span 3; }
+      /* the dark theme paints headings white: on these white cards the title keeps its strong blue */
+      .g-ccard h3.g-ctitle { margin: 0 0 6px; font-size: 22px; font-weight: 800; color: #2e1fd6 !important; letter-spacing: -0.01em; }
+      .g-csub { margin: 0 0 6px; font-size: 15px; color: #5d6573; }
+      .g-cfoot { margin: 6px 0 0; font-size: 14px; color: #5d6573; }
+      .g-cfoot b { color: #1f2340; }
+      .g-cfoot .g-cbad, b.g-cbad { color: #d94848; margin-left: 6px; }
+      .g-cgood { color: #1fa954 !important; }
+      .g-cbig { margin: 2px 0 0; font-size: 24px; font-weight: 800; color: #1fa954; }
+      .g-cbig.g-cbad { color: #d94848; }
+      .g-cempty { color: #8a90a0; margin: 40px 0; }
+      .g-chart { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; align-items: end; height: 230px; margin-top: 10px; }
+      .g-col { display: grid; grid-template-rows: 1fr auto; height: 100%; gap: 6px; text-align: center; font-size: 12px; font-weight: 700; color: #5d6573; }
+      .g-pair { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 100%; }
+      .g-pair i { display: block; width: 38%; min-height: 2px; border-radius: 5px 5px 0 0; }
+      .g-in { background: #6fd08c; border: 1.5px solid #3fba68; }
+      .g-out { background: #ee8585; border: 1.5px solid #e46262; }
+      .g-ckeys { display: flex; justify-content: center; gap: 16px; margin: 10px 0 0; font-size: 14px; font-weight: 700; color: #5d6573; }
+      .g-ckeys span { display: inline-flex; align-items: center; gap: 6px; }
+      .g-ckeys i { display: inline-block; width: 18px; height: 18px; border-radius: 50%; }
+      @media (max-width: 1280px) { .g-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g-trend-card { grid-column: 1 / -1; } }
+      @media (max-width: 760px) { .g-charts { grid-template-columns: 1fr; } .g-wide, .g-trend-card { grid-column: auto; } }
     `,
   ],
 })
@@ -205,6 +231,59 @@ export class GDashboardPage extends GBase implements OnInit {
   private readonly top = computed(() => {
     const t: Row[] = this.d()?.['money']?.['trend'] ?? [];
     return Math.max(1, ...t.map((x) => Math.max(Number(x['in']) || 0, Number(x['out']) || 0)));
+  });
+
+  /** The colour each kind of money keeps on every chart. */
+  private static readonly KIND: Record<string, GColor> = {
+    savings: 'green', contribution: 'purple', shares: 'blue', joining_fee: 'yellow', hire: 'teal', loan_repayment: 'red', welfare: 'violet', expense: 'gray',
+    loan_disbursement: 'red', dividend: 'violet', opening_balance: 'gray',
+  };
+
+  private mix(): Row[] {
+    return (this.d()?.['money']?.['mix'] as Row[] | undefined) ?? [];
+  }
+
+  /** The month's money in, kind by kind (the flower chart). */
+  protected readonly mixIn = computed<GSlice[]>(() =>
+    this.mix().filter((x) => this.n(x['in']) > 0).map((x) => ({ label: this.cat(x['category']), value: this.n(x['in']), color: GDashboardPage.KIND[x['category']] ?? 'gray', full: this.tsh(this.n(x['in'])) })),
+  );
+
+  /** The month's money out, kind by kind (written under the flower chart). */
+  protected readonly mixOut = computed(() => this.mix().filter((x) => this.n(x['out']) > 0).map((x) => ({ label: this.cat(x['category']), value: this.n(x['out']) })));
+
+  /** This month's contributions: what came in, and what is still to come. */
+  protected readonly collection = computed<GSlice[]>(() => {
+    const c: Row = this.d()?.['money']?.['contributions'] ?? {};
+    const got = Math.min(this.n(c['collected']), this.n(c['expected']));
+    const left = Math.max(0, this.n(c['expected']) - got);
+    return [
+      { label: this.i18n.t('g.ch.collected'), value: got, color: 'blue', full: this.tsh(got) },
+      { label: this.i18n.t('g.ch.unpaid'), value: left, color: 'red', full: this.tsh(left) },
+    ];
+  });
+
+  /** The loans now: what is on time, and what is late (arrears). */
+  protected readonly loanSlices = computed<GSlice[]>(() => {
+    const l: Row = this.d()?.['money']?.['loans'] ?? {};
+    const owed = this.n(l['principal']) + this.n(l['interest']);
+    const late = Math.min(this.n(l['arrears']), owed);
+    return [
+      { label: this.i18n.t('g.ch.on.time'), value: Math.max(0, owed - late), color: 'green', full: this.tsh(Math.max(0, owed - late)) },
+      { label: this.i18n.t('g.loans.arrears'), value: late, color: 'red', full: this.tsh(late) },
+    ];
+  });
+
+  /** The year so far: hire income, dividends, welfare paid and group spending. */
+  protected readonly yearSlices = computed<GSlice[]>(() => {
+    const y: Row = this.d()?.['money']?.['year'] ?? {};
+    return ([['g.year.hire', 'hire_income', 'green'], ['g.year.dividends', 'dividends', 'purple'], ['g.year.welfare', 'welfare_paid', 'yellow'], ['g.year.spent', 'expenses', 'red']] as [string, string, GColor][])
+      .map(([key, field, color]) => ({ label: this.i18n.t(key), value: Math.max(0, this.n(y[field])), color, full: this.tsh(this.n(y[field])) }));
+  });
+
+  /** What the year's hire brought in, less the welfare paid and the group's spending. */
+  protected readonly yearNet = computed(() => {
+    const y: Row = this.d()?.['money']?.['year'] ?? {};
+    return this.n(y['hire_income']) - this.n(y['welfare_paid']) - this.n(y['expenses']);
   });
 
   protected go(path: string): void {

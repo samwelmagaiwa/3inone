@@ -326,3 +326,42 @@ describe('Groups: previous data (before the app)', () => {
     h.http.match(() => true).forEach((r) => r.flush({ data: { types: [], entries: [], loans: [] } }));
   });
 });
+
+describe('Groups dashboard charts', () => {
+  afterEach(() => groupRights.set(new Set()));
+
+  it('draws the month by kind, the contributions pie, the loans ring and the year ring from the figures', async () => {
+    const h = asGroups(ALL);
+    const fixture = TestBed.createComponent(GDashboardPage);
+    fixture.detectChanges();
+    h.http.match((r) => r.url === `${API}/me`).forEach((r) => r.flush({ data: { is_owner: true, rights: ALL, waiting: {} } }));
+    h.http.expectOne((r) => r.url === `${API}/dashboard`).flush({
+      data: {
+        members: { active: 24 },
+        money: {
+          cash_on_record: 1, month_in: 1, month_out: 1, savings: 1, shares: 1, pending_count: 0, trend: [],
+          contributions: { expected: 420000, collected: 200000, overdue_amount: 540000, overdue_members: 17 },
+          loans: { principal: 300000, interest: 48000, arrears: 292000, running: 2, overdue: 2 },
+          year: { welfare_paid: 550000, dividends: 2400000, hire_income: 844000, expenses: 2875000 },
+          mix: [{ category: 'savings', in: 868000, out: 150000 }, { category: 'hire', in: 36000, out: 0 }],
+        },
+      },
+    });
+    await settle(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+    const mix = text(byTestId(el, 'g-mix') as HTMLElement);
+    expect(mix).toContain('SAVINGS');
+    expect(mix).toContain('(868K)');
+    expect(mix).toContain('150,000');
+    const pie = text(byTestId(el, 'g-collection') as HTMLElement);
+    expect(pie).toContain('200K');
+    expect(pie).toContain('47.6%');
+    expect(pie).toContain('220K');
+    const loans = text(byTestId(el, 'g-loans-chart') as HTMLElement);
+    expect(loans).toContain('348,000');
+    expect(loans).toContain('292K');
+    // net of the year: 844,000 - 550,000 - 2,875,000, shown in red
+    expect(text(byTestId(el, 'g-year') as HTMLElement)).toContain('2,581,000');
+    expect(el.querySelector('[data-testid="g-year"] .g-cbig.g-cbad')).not.toBeNull();
+  });
+});

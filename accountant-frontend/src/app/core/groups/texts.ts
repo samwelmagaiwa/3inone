@@ -402,6 +402,15 @@ export const G_TEXTS: Record<string, [sw: string, en: string]> = {
   'g.c.any': ['Deni lolote', 'Anything owed'],
   'g.c.day': ['tarehe {0} kila mwezi', 'day {0} of each month'],
   'g.c.mandatory': ['Ni lazima', 'Mandatory'],
+  // ---- dashboard charts
+  'g.ch.mix': ['Fedha zilizoingia mwezi huu kwa aina', 'Money in this month by kind'],
+  'g.ch.out': ['Zilizotoka', 'Money out'],
+  'g.ch.collected': ['Zilizokusanywa', 'Collected'],
+  'g.ch.unpaid': ['Bado hazijalipwa', 'Not yet paid'],
+  'g.ch.on.time': ['Kwa wakati', 'On time'],
+  'g.ch.nothing': ['Hakuna bado', 'Nothing yet'],
+  'g.ch.no.loans': ['Hakuna mikopo', 'No loans'],
+  'g.ch.net': ['Faida (ukodishaji − msaada − matumizi)', 'Net (hire income − welfare − spending)'],
   'g.c.refundable': ['Inarudishwa', 'Refundable'],
   'g.c.refundable.hint': ['Mwanachama hurudishiwa akiondoka (mfano: mchango wa mradi)', 'The member gets it back on leaving (for example a project contribution)'],
   // ---- previous data (before the app)
