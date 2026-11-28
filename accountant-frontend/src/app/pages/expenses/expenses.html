@@ -14,17 +14,17 @@
 
     <!-- The three figures stay in view while the page scrolls under them -->
     <div appStickyRow class="kpi-row kpi-three grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <div class="kpi-card kpi-slim">
+      <div class="kpi-card kpi-slim g-look g-t-teal">
         <p class="label-eyebrow">{{ i18n.t('exp.kpi.business') }}</p>
         <h3 class="text-3xl font-black tracking-tight mt-2" style="color: #1a2f6e;" [appCountUp]="tsh(s.total_expenses)" data-testid="exp-business">{{ tsh(s.total_expenses) }}</h3>
         <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('exp.kpi.business.hint') }}</p>
       </div>
-      <div class="kpi-card kpi-slim">
+      <div class="kpi-card kpi-slim g-look g-t-purple">
         <p class="label-eyebrow">{{ i18n.t('exp.kpi.personal') }}</p>
         <h3 class="text-2xl font-black tracking-tight mt-2 text-slate-800" data-testid="exp-personal">{{ tsh(s.personal_total) }}</h3>
         <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('exp.kpi.personal.hint') }}</p>
       </div>
-      <div class="kpi-card kpi-slim">
+      <div class="kpi-card kpi-slim g-look g-t-green">
         <p class="label-eyebrow">{{ i18n.t('exp.kpi.net') }}</p>
         <h3 class="text-2xl font-black tracking-tight mt-2" [style.color]="s.net_profit < 0 ? '#dc2626' : '#059669'" data-testid="exp-net">{{ tsh(s.net_profit) }}</h3>
         <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('exp.kpi.net.hint') }}</p>

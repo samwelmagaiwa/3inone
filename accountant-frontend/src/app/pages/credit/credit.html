@@ -23,17 +23,17 @@
     @if (tab() === 'customers') {
       <!-- The three figures stay in view while the page scrolls under them -->
       <div appStickyRow class="kpi-row kpi-three grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="kpi-card kpi-slim">
+        <div class="kpi-card kpi-slim g-look g-t-teal">
           <p class="label-eyebrow">{{ i18n.t('cr.kpi.owed') }}</p>
           <h3 class="text-3xl font-black tracking-tight mt-2" style="color: #1a2f6e;" data-testid="cr-total">{{ tsh(totalOwed()) }}</h3>
           <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('cr.kpi.owed.hint') }}</p>
         </div>
-        <div class="kpi-card kpi-slim">
+        <div class="kpi-card kpi-slim g-look g-t-yellow">
           <p class="label-eyebrow">{{ i18n.t('cr.kpi.owing') }}</p>
           <h3 class="text-2xl font-black tracking-tight mt-2 text-slate-800" data-testid="cr-owing">{{ owingCount() }}</h3>
           <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('cr.kpi.owing.hint') }}</p>
         </div>
-        <div class="kpi-card kpi-slim">
+        <div class="kpi-card kpi-slim g-look g-t-red">
           <p class="label-eyebrow">{{ i18n.t('cr.kpi.watch') }}</p>
           <h3 class="text-2xl font-black tracking-tight mt-2" [style.color]="watchCount() ? '#dc2626' : '#059669'" data-testid="cr-watch">{{ watchCount() }}</h3>
           <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-3 pt-3 border-t border-slate-100">{{ i18n.t('cr.kpi.watch.hint') }}</p>
@@ -115,10 +115,10 @@
       @if (ageing(); as a) {
         <!-- The four ages stay in view while the page scrolls under them -->
         <div appStickyRow class="kpi-row grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div class="kpi-card kpi-slim"><p class="label-eyebrow">{{ i18n.t('cr.age.current') }}</p><h3 class="text-xl font-black mt-2 text-slate-800" data-testid="age-current">{{ tsh(a.totals.current) }}</h3></div>
-          <div class="kpi-card kpi-slim"><p class="label-eyebrow">{{ i18n.t('cr.age.31') }}</p><h3 class="text-xl font-black mt-2 text-slate-800">{{ tsh(a.totals.days_31_60) }}</h3></div>
-          <div class="kpi-card kpi-slim"><p class="label-eyebrow">{{ i18n.t('cr.age.61') }}</p><h3 class="text-xl font-black mt-2 text-slate-800">{{ tsh(a.totals.days_61_90) }}</h3></div>
-          <div class="kpi-card kpi-slim"><p class="label-eyebrow">{{ i18n.t('cr.age.90') }}</p><h3 class="text-xl font-black mt-2" style="color: #dc2626;" data-testid="age-90">{{ tsh(a.totals.days_90_plus) }}</h3></div>
+          <div class="kpi-card kpi-slim g-look g-t-green"><p class="label-eyebrow">{{ i18n.t('cr.age.current') }}</p><h3 class="text-xl font-black mt-2 text-slate-800" data-testid="age-current">{{ tsh(a.totals.current) }}</h3></div>
+          <div class="kpi-card kpi-slim g-look g-t-yellow"><p class="label-eyebrow">{{ i18n.t('cr.age.31') }}</p><h3 class="text-xl font-black mt-2 text-slate-800">{{ tsh(a.totals.days_31_60) }}</h3></div>
+          <div class="kpi-card kpi-slim g-look g-t-violet"><p class="label-eyebrow">{{ i18n.t('cr.age.61') }}</p><h3 class="text-xl font-black mt-2 text-slate-800">{{ tsh(a.totals.days_61_90) }}</h3></div>
+          <div class="kpi-card kpi-slim g-look g-t-red"><p class="label-eyebrow">{{ i18n.t('cr.age.90') }}</p><h3 class="text-xl font-black mt-2" style="color: #dc2626;" data-testid="age-90">{{ tsh(a.totals.days_90_plus) }}</h3></div>
         </div>
         <section class="section-card overflow-clip">
           <app-table-toolbar [compact]="true" [searchable]="false"><ng-container *ngTemplateOutlet="tabsTpl" /></app-table-toolbar>
