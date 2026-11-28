@@ -38,17 +38,19 @@
     <section class="panel left" [class.hidden]="flat() ? (!!till.lines().length && !goodsOpen()) : step() !== 1">
       <div class="left-head">
         <p class="req-note" [class.is-bad]="tried() && !till.lines().length" data-testid="till-need-items"><span class="req-star"></span>{{ i18n.t('till.v.items') }}</p>
-        <div class="search-wrap mt-2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input class="modal-input search-input" type="search" [ngModel]="query()" (ngModelChange)="setQuery($event)" (keydown.enter)="onEnter()" [placeholder]="i18n.t('till.search')" autocomplete="off" data-testid="till-search"></div>
-        <p class="text-xs font-semibold text-slate-400 mt-2">{{ i18n.t('till.search.hint') }}</p>
-        @if (till.salon()) {
-          <div class="kind-tabs mt-2" role="tablist" data-testid="till-kind">
-            @for (k of kinds; track k.value) {
-              <button type="button" role="tab" class="pill-tab" [class.is-active]="fKind === k.value" [attr.aria-selected]="fKind === k.value" (click)="setKind(k.value)" [attr.data-testid]="'till-kind-' + (k.value || 'all')">{{ i18n.t(k.label) }}</button>
-            }
-          </div>
-        }
-        <button type="button" class="filter-toggle mt-2" (click)="toggleFilters()" [attr.aria-expanded]="filtersOpen()" data-testid="till-filters-toggle">{{ i18n.t('till.filters') }}@if (filtered) { · {{ i18n.t('till.filters.on') }} }</button>
+        <!-- the search (a field the size of the others) and the kind chips in ONE row; the barcode hint is the field's tooltip -->
+        <div class="search-row mt-2">
+          <div class="search-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input class="modal-input search-input" type="search" [ngModel]="query()" (ngModelChange)="setQuery($event)" (keydown.enter)="onEnter()" [placeholder]="i18n.t('till.search')" [title]="i18n.t('till.search.hint')" [attr.aria-description]="i18n.t('till.search.hint')" autocomplete="off" data-testid="till-search"></div>
+          @if (till.salon()) {
+            <div class="kind-tabs" role="tablist" data-testid="till-kind">
+              @for (k of kinds; track k.value) {
+                <button type="button" role="tab" class="pill-tab" [class.is-active]="fKind === k.value" [attr.aria-selected]="fKind === k.value" (click)="setKind(k.value)" [attr.data-testid]="'till-kind-' + (k.value || 'all')">{{ i18n.t(k.label) }}</button>
+              }
+            </div>
+          }
+          <button type="button" class="filter-toggle" (click)="toggleFilters()" [attr.aria-expanded]="filtersOpen()" data-testid="till-filters-toggle">{{ i18n.t('till.filters') }}@if (filtered) { · {{ i18n.t('till.filters.on') }} }</button>
+        </div>
         @if (filtersOpen()) {
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2" data-testid="till-filters">
             <select class="modal-input" [(ngModel)]="fCategory" name="fCategory" (ngModelChange)="setFilters()" [attr.aria-label]="i18n.t('prod.form.category')" data-testid="till-filter-category">
@@ -652,9 +654,11 @@
   .step b { display: inline-flex; width: 26px; height: 26px; align-items: center; justify-content: center; border-radius: 9px; font-size: 13px; color: #fff; background: linear-gradient(135deg, #1a2f6e, #3b61e2); box-shadow: 0 6px 14px -6px rgba(26,47,110,.7); }
   .count-chip { padding: 2px 9px; border-radius: 999px; background: #eaf0ff; color: #2e4dbd; font-size: 11px; letter-spacing: 0; }
 
+  .search-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .search-row .search-wrap { flex: 1 1 260px; min-width: 200px; }
   .search-wrap { position: relative; }
-  .search-wrap svg { position: absolute; left: 14px; top: 50%; width: 18px; height: 18px; transform: translateY(-50%); color: #7d8fc4; pointer-events: none; }
-  .search-input { padding-left: 42px; height: 48px; border-radius: 14px; background: #f5f8ff; border-color: #e0e8fb; }
+  .search-wrap svg { position: absolute; left: 11px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); color: #7d8fc4; pointer-events: none; }
+  .search-input { padding-left: 34px; height: 38px; border-radius: 10px; background: #f5f8ff; border-color: #e0e8fb; font-size: 14px; }
   .search-input:focus { background: #fff; }
   .filter-toggle { font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: #3b61e2; cursor: pointer; }
 
@@ -677,8 +681,9 @@
   .qty-box.is-bad { border-color: #f87171; background: #fff7f7; }
   .used-goods { display: block; width: 100%; font-size: 12px; font-weight: 600; color: #475a8f; }
   .used-goods b { font-weight: 900; color: #1a2f6e; }
-  .kind-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
-  .kind-tabs .pill-tab { padding: 8px 18px; font-size: 13px; font-weight: 800; }
+  .kind-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .kind-tabs .pill-tab { padding: 6px 14px; font-size: 13px; font-weight: 800; }
+  .search-row .filter-toggle { white-space: nowrap; padding: 0 4px; }
   .good-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
   .good.is-out { opacity: .45; cursor: not-allowed; filter: grayscale(.6); }
   .avatar { display: inline-flex; flex: none; width: 42px; height: 42px; align-items: center; justify-content: center; border-radius: 13px; font-size: 17px; font-weight: 900; text-transform: uppercase; color: #2e4dbd; background: linear-gradient(145deg, #eaf0ff, #d6e2ff); }
