@@ -508,6 +508,26 @@ class BusinessRegistrationTest extends TestCase
         $this->as($owner, 'GET', '/api/inventory/products')->assertForbidden()->assertJsonPath('code', 'service_not_assigned');
     }
 
+    public function test_a_business_approved_for_groups_only_signs_in_to_groups_only_with_no_shop_rights(): void
+    {
+        $registration = $this->register(['requested_services' => ['groups']]);
+        $this->approve($registration, ['groups'])->assertOk()->assertJsonPath('data.assigned_services', ['groups']);
+
+        $login = $this->login('asha@example.test', 'secret-pass-1', '0743519100')->assertOk();
+        // Only the service chosen at registration and approved; no shop rights for a business without the shop.
+        $this->assertSame(['groups'], array_column($login->json('data.user.services'), 'service_type'));
+        $this->assertSame([], $login->json('data.user.effective_permissions'));
+
+        $owner = User::where('email', 'asha@example.test')->firstOrFail();
+        $this->as($owner, 'GET', '/api/inventory/products')->assertForbidden()->assertJsonPath('code', 'service_not_assigned');
+        $this->assertNotSame(403, $this->as($owner, 'GET', '/api/groups/me')->status());
+
+        // A shop business keeps its shop rights.
+        $shop = $this->register(['email' => 'shop@example.test', 'phone_number' => '0743519111', 'business_name' => 'Duka', 'id_number' => '19900101-12345-00002-2', 'requested_services' => ['inventory']]);
+        $this->approve($shop, ['inventory'])->assertOk();
+        $this->assertNotEmpty(User::where('email', 'shop@example.test')->firstOrFail()->effectiveInventoryPermissions());
+    }
+
     public function test_a_rejected_registration_stays_locked_out_and_can_be_approved_later(): void
     {
         $registration = $this->register();

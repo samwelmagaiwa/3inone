@@ -620,6 +620,11 @@ class User extends Authenticatable
             // union silently dropped the sentinel itself).
             return ['__all__'];
         }
+        // Shop rights mean nothing without the shop: a business that was given only Groups (or rental, or transport)
+        // at registration and approval gets none, so no app shows it shop menus it cannot open (the routes refuse anyway).
+        if (!$this->canUseService('inventory') && !$this->canUseService('salon')) {
+            return [];
+        }
         $defaults = self::$INV_ROLE_DEFAULTS[$role] ?? [];
         if ($defaults === null) return ['__all__'];
         $explicit = is_array($this->permissions) ? $this->permissions : [];
