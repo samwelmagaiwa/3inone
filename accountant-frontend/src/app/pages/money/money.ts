@@ -116,133 +116,151 @@ export function periodRange(p: Period, now: Date, from = '', to = ''): [string, 
   selector: 'app-money',
   imports: [FormsModule],
   template: `
-    <div class="ad pl" data-testid="money-page">
-      <!-- The period is chosen with dates (a quick pick fills them in): the report follows as soon as both are set -->
-      <div class="pl-dates glass" data-testid="pl-dates">
-        <label>{{ i18n.t('pl.quick') }}
-          <select [ngModel]="period()" (ngModelChange)="pick($event)" data-testid="pl-quick">
-            @for (p of periods; track p) { <option [value]="p">{{ periodName(p) }}</option> }
-          </select>
-        </label>
-        <label>{{ i18n.t('ad.from') }} <input type="date" [ngModel]="from()" (ngModelChange)="setFrom($event)" data-testid="pl-from" /></label>
-        <label>{{ i18n.t('ad.to') }} <input type="date" [ngModel]="to()" (ngModelChange)="setTo($event)" data-testid="pl-to" /></label>
+    <div class="ad ph-page" data-testid="money-page">
+      <!-- the dates and the main figures stay pinned while the statements scroll -->
+      <div class="g-pin">
+        <div class="g-toolbar pl-dates" data-testid="pl-dates">
+          <label class="pl-field">{{ i18n.t('pl.quick') }}
+            <select class="g-select" [ngModel]="period()" (ngModelChange)="pick($event)" data-testid="pl-quick">
+              @for (p of periods; track p) { <option [value]="p">{{ periodName(p) }}</option> }
+            </select>
+          </label>
+          <label class="pl-field">{{ i18n.t('ad.from') }} <input class="g-select" type="date" [ngModel]="from()" (ngModelChange)="setFrom($event)" data-testid="pl-from" /></label>
+          <label class="pl-field">{{ i18n.t('ad.to') }} <input class="g-select" type="date" [ngModel]="to()" (ngModelChange)="setTo($event)" data-testid="pl-to" /></label>
+          <span class="ph-muted pl-range">{{ rangeLabel() }}</span>
+        </div>
+        @if (data(); as d) {
+          <div class="ph-tiles g-tiles-row" data-testid="pl-tiles">
+            <div class="ph-tile g-t-green"><span class="ph-muted">{{ i18n.t('pl.revenue') }}</span><b class="ph-good" data-testid="pl-t-revenue">{{ tsh(d.revenue) }}</b></div>
+            <div class="ph-tile g-t-yellow"><span class="ph-muted">{{ i18n.t('pl.costs') }}</span><b class="ph-warn">{{ tsh(d.profitHidden ? d.expenses : d.operatingCosts + d.costOfGoods) }}</b></div>
+            @if (!d.profitHidden) {
+              <div class="ph-tile" [class.g-t-green]="d.netProfit >= 0" [class.g-t-red]="d.netProfit < 0"><span class="ph-muted">{{ d.netProfit >= 0 ? i18n.t('pl.profit') : i18n.t('pl.loss') }}</span><b [class.ph-good]="d.netProfit >= 0" [class.ph-bad]="d.netProfit < 0" data-testid="pl-t-profit">{{ tsh(d.netProfit) }}</b></div>
+              <div class="ph-tile g-t-purple"><span class="ph-muted">{{ i18n.t('pl.gross') }}</span><b>{{ tsh(d.grossProfit) }}</b></div>
+            }
+            <div class="ph-tile g-t-teal"><span class="ph-muted">{{ i18n.t('pl.received.total') }}</span><b class="ph-accent">{{ tsh(d.collected) }}</b></div>
+            <div class="ph-tile" [class.g-t-red]="d.outstanding > 0" [class.g-t-gray]="d.outstanding <= 0"><span class="ph-muted">{{ i18n.t('pl.owed') }}</span><b [class.ph-bad]="d.outstanding > 0">{{ tsh(d.outstanding) }}</b></div>
+            @if (d.vatTotal > 0) { <div class="ph-tile g-t-blue"><span class="ph-muted">{{ i18n.t('pl.vat.total') }}</span><b>{{ tsh(d.vatTotal) }}</b></div> }
+          </div>
+        }
       </div>
-      <p class="pl-range">{{ rangeLabel() }}</p>
 
       @if (error()) {
-        <section class="glass pl-card"><p data-testid="pl-error">{{ error() }}</p><button type="button" class="btn-outline" (click)="load()">{{ i18n.t('pl.retry') }}</button></section>
+        <section class="ph-card pl-wide"><p data-testid="pl-error">{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load()">{{ i18n.t('pl.retry') }}</button></section>
       } @else if (!data()) {
-        <section class="glass pl-card"><p class="pl-muted">{{ i18n.t('pl.loading') }}</p></section>
+        <section class="ph-card pl-wide"><p class="ph-muted">{{ i18n.t('pl.loading') }}</p></section>
       } @else {
         @let d = data()!;
-        <div class="pl-tiles">
-          <div class="glass pl-tile"><span class="pl-muted">{{ i18n.t('pl.revenue') }}</span><b class="pl-good" data-testid="pl-t-revenue">{{ tsh(d.revenue) }}</b></div>
-          <div class="glass pl-tile"><span class="pl-muted">{{ i18n.t('pl.costs') }}</span><b class="pl-warn">{{ tsh(d.profitHidden ? d.expenses : d.operatingCosts + d.costOfGoods) }}</b></div>
-          @if (!d.profitHidden) {
-            <div class="glass pl-tile"><span class="pl-muted">{{ d.netProfit >= 0 ? i18n.t('pl.profit') : i18n.t('pl.loss') }}</span><b [class.pl-good]="d.netProfit >= 0" [class.pl-bad]="d.netProfit < 0" data-testid="pl-t-profit">{{ tsh(d.netProfit) }}</b></div>
-          }
-        </div>
+        <div class="pl-grid pl-wide" data-testid="pl-joined">
+          <!-- the statement: what came in, what it cost, what is left -->
+          <section class="pl-block" data-testid="pl-statement">
+            <h3 class="pl-title">{{ d.profitHidden ? i18n.t('pl.running') : i18n.t('pl.statement') }}</h3>
+            <div class="table-scroll-container fit-page">
+              <table class="grid-table g-grid">
+                <thead><tr><th>{{ i18n.t('pl.item') }}</th><th class="text-right">{{ i18n.t('g.amount') }}</th></tr></thead>
+                <tbody>
+                  @if (!d.profitHidden) {
+                    <tr><td>{{ i18n.t('pl.service.revenue') }}</td><td class="text-right">{{ tsh(d.serviceRevenue) }}</td></tr>
+                    <tr><td>{{ i18n.t('pl.goods.revenue') }}</td><td class="text-right">{{ tsh(d.goodsRevenue) }}</td></tr>
+                    @if (d.discounts > 0) { <tr><td class="ph-muted">{{ i18n.t('pl.discounts', tsh(d.discounts)) }}</td><td></td></tr> }
+                    <tr><td>{{ i18n.t('pl.cogs') }}</td><td class="text-right ph-bad">− {{ tsh(d.costOfGoods) }}</td></tr>
+                    <tr class="pl-sum"><td>{{ i18n.t('pl.gross') }}</td><td class="text-right" data-testid="pl-gross">{{ tsh(d.grossProfit) }}</td></tr>
+                  }
+                  @for (g of d.expensesByCategory; track g.category) {
+                    <tr><td class="g-long" [title]="g.category">{{ g.category }}</td><td class="text-right ph-bad">− {{ tsh(g.total) }}</td></tr>
+                  } @empty {
+                    <tr><td>{{ i18n.t('pl.expenses') }}</td><td class="text-right">{{ tsh(0) }}</td></tr>
+                  }
+                  @if (!d.profitHidden) {
+                    <tr><td>{{ i18n.t('pl.commissions') }}</td><td class="text-right ph-bad">− {{ tsh(d.commissions) }}</td></tr>
+                    <tr><td>{{ i18n.t('pl.salaries') }}</td><td class="text-right ph-bad">− {{ tsh(d.salaries) }}</td></tr>
+                  }
+                </tbody>
+                @if (!d.profitHidden) {
+                  <tfoot><tr><td class="font-bold">{{ d.netProfit >= 0 ? i18n.t('pl.net.profit') : i18n.t('pl.net.loss') }}</td>
+                    <td class="text-right"><b [class.ph-good]="d.netProfit >= 0" [class.ph-bad]="d.netProfit < 0" data-testid="pl-net">{{ tsh(d.netProfit) }}</b></td></tr></tfoot>
+                }
+              </table>
+            </div>
+          </section>
 
-        <!-- One card, its sections told apart by the glowing lines (as on the phone) -->
-        <div class="glass ph-joined ph-cols" data-testid="pl-joined">
-          @if (!d.profitHidden) {
-            <section class="ph-sec pl-card">
-              <div class="pl-line"><span>{{ i18n.t('pl.service.revenue') }}</span><b>{{ tsh(d.serviceRevenue) }}</b></div>
-              <div class="pl-line"><span>{{ i18n.t('pl.goods.revenue') }}</span><b>{{ tsh(d.goodsRevenue) }}</b></div>
-              @if (d.discounts > 0) { <p class="pl-muted">{{ i18n.t('pl.discounts', tsh(d.discounts)) }}</p> }
-              <div class="pl-line"><span>{{ i18n.t('pl.cogs') }}</span><b>− {{ tsh(d.costOfGoods) }}</b></div>
-              <hr />
-              <div class="pl-line pl-strong"><span>{{ i18n.t('pl.gross') }}</span><b data-testid="pl-gross">{{ tsh(d.grossProfit) }}</b></div>
-            </section>
-
-            <section class="ph-sec pl-card">
-              <h3>{{ i18n.t('pl.where') }}</h3>
-              <p class="pl-muted">{{ i18n.t('pl.where.hint') }}</p>
-              <h4>{{ i18n.t('pl.goods') }}</h4>
-              <div class="pl-line"><span>{{ i18n.t('pl.sold.for') }}</span><b>{{ tsh(d.goodsRevenue) }}</b></div>
-              <div class="pl-line"><span>{{ i18n.t('pl.bought.for') }}</span><b>− {{ tsh(d.goodsCost) }}</b></div>
-              <div class="pl-line pl-strong"><span>{{ i18n.t('pl.goods.profit') }}</span><b [class.pl-good]="d.goodsProfit >= 0" [class.pl-bad]="d.goodsProfit < 0">{{ tsh(d.goodsProfit) }}</b></div>
-              <hr />
-              <h4>{{ i18n.t('pl.services') }}</h4>
-              <div class="pl-line"><span>{{ i18n.t('pl.service.revenue') }}</span><b>{{ tsh(d.serviceRevenue) }}</b></div>
-              @if (d.servicesProfit !== d.serviceRevenue) {
-                <div class="pl-line"><span>{{ i18n.t('pl.service.costs') }}</span><b>{{ tsh(d.servicesProfit - d.serviceRevenue) }}</b></div>
-              }
-              <div class="pl-line pl-strong"><span>{{ i18n.t('pl.services.profit') }}</span><b [class.pl-good]="d.servicesProfit >= 0" [class.pl-bad]="d.servicesProfit < 0">{{ tsh(d.servicesProfit) }}</b></div>
-            </section>
-          }
-
-          <section class="ph-sec pl-card">
-            <h3>{{ i18n.t('pl.running') }}</h3>
-            @for (g of d.expensesByCategory; track g.category) {
-              <div class="pl-line"><span>{{ g.category }}</span><b>− {{ tsh(g.total) }}</b></div>
-            } @empty {
-              <div class="pl-line"><span>{{ i18n.t('pl.expenses') }}</span><b>{{ tsh(0) }}</b></div>
-            }
+          <div class="pl-col">
             @if (!d.profitHidden) {
-              <div class="pl-line"><span>{{ i18n.t('pl.commissions') }}</span><b>− {{ tsh(d.commissions) }}</b></div>
-              <div class="pl-line"><span>{{ i18n.t('pl.salaries') }}</span><b>− {{ tsh(d.salaries) }}</b></div>
-              <hr />
-              <div class="pl-line pl-strong"><span>{{ d.netProfit >= 0 ? i18n.t('pl.net.profit') : i18n.t('pl.net.loss') }}</span><b [class.pl-good]="d.netProfit >= 0" [class.pl-bad]="d.netProfit < 0" data-testid="pl-net">{{ tsh(d.netProfit) }}</b></div>
+              <!-- where the profit came from: goods and services side by side -->
+              <section class="pl-block" data-testid="pl-where">
+                <h3 class="pl-title">{{ i18n.t('pl.where') }}</h3>
+                <div class="table-scroll-container fit-page">
+                  <table class="grid-table g-grid">
+                    <thead><tr><th>{{ i18n.t('g.kind') }}</th><th class="text-right">{{ i18n.t('pl.sold.for') }}</th><th class="text-right">{{ i18n.t('pl.cost') }}</th><th class="text-right">{{ i18n.t('pl.profit') }}</th></tr></thead>
+                    <tbody>
+                      <tr><td class="font-bold">{{ i18n.t('pl.goods') }}</td><td class="text-right">{{ tsh(d.goodsRevenue) }}</td><td class="text-right">− {{ tsh(d.goodsCost) }}</td>
+                        <td class="text-right"><b [class.ph-good]="d.goodsProfit >= 0" [class.ph-bad]="d.goodsProfit < 0">{{ tsh(d.goodsProfit) }}</b></td></tr>
+                      <tr><td class="font-bold">{{ i18n.t('pl.services') }}</td><td class="text-right">{{ tsh(d.serviceRevenue) }}</td><td class="text-right">− {{ tsh(d.serviceRevenue - d.servicesProfit) }}</td>
+                        <td class="text-right"><b [class.ph-good]="d.servicesProfit >= 0" [class.ph-bad]="d.servicesProfit < 0">{{ tsh(d.servicesProfit) }}</b></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p class="ph-muted pl-hint">{{ i18n.t('pl.where.hint') }}</p>
+              </section>
             }
-          </section>
 
-          <section class="ph-sec pl-card">
-            <h3>{{ i18n.t('pl.received') }}</h3>
-            @for (c of d.collections; track c.method) {
-              <div class="pl-line"><span>{{ channel(c.method) }}</span><b>{{ tsh(c.amount) }}</b></div>
-            } @empty {
-              <p class="pl-muted">{{ i18n.t('pl.received.none') }}</p>
-            }
-            <hr />
-            <div class="pl-line pl-strong"><span>{{ i18n.t('pl.received.total') }}</span><b data-testid="pl-collected">{{ tsh(d.collected) }}</b></div>
-            <div class="pl-line"><span>{{ i18n.t('pl.owed') }}</span><b [class.pl-warn]="d.outstanding > 0">{{ tsh(d.outstanding) }}</b></div>
-            @if (d.otherIncome > 0) { <div class="pl-line"><span>{{ i18n.t('pl.other.income') }}</span><b>{{ tsh(d.otherIncome) }}</b></div> }
-            @if (d.depositsHeld > 0) { <div class="pl-line"><span class="pl-muted">{{ i18n.t('pl.deposits') }}</span><b>{{ tsh(d.depositsHeld) }}</b></div> }
-          </section>
-
-          @if (d.vatTotal > 0) {
-            <section class="ph-sec pl-card">
-              <h3>{{ i18n.t('pl.vat') }}</h3>
-              @for (r of d.vatByRate; track r.rate) {
-                <div class="pl-line"><span>{{ r.rate }}% ({{ i18n.t('pl.taxable') }} {{ tsh(r.taxable) }})</span><b>{{ tsh(r.vat) }}</b></div>
-              }
-              <hr />
-              <div class="pl-line pl-strong"><span>{{ i18n.t('pl.vat.total') }}</span><b>{{ tsh(d.vatTotal) }}</b></div>
+            <!-- the money that actually came in, by how it was paid -->
+            <section class="pl-block" data-testid="pl-received">
+              <h3 class="pl-title">{{ i18n.t('pl.received') }}</h3>
+              <div class="table-scroll-container fit-page">
+                <table class="grid-table g-grid">
+                  <thead><tr><th>{{ i18n.t('pr.paid.by') }}</th><th class="text-right">{{ i18n.t('g.amount') }}</th></tr></thead>
+                  <tbody>
+                    @for (c of d.collections; track c.method) {
+                      <tr><td>{{ channel(c.method) }}</td><td class="text-right">{{ tsh(c.amount) }}</td></tr>
+                    } @empty {
+                      <tr><td colspan="2" class="ph-muted">{{ i18n.t('pl.received.none') }}</td></tr>
+                    }
+                    <tr><td>{{ i18n.t('pl.owed') }}</td><td class="text-right"><span [class.ph-warn]="d.outstanding > 0">{{ tsh(d.outstanding) }}</span></td></tr>
+                    @if (d.otherIncome > 0) { <tr><td>{{ i18n.t('pl.other.income') }}</td><td class="text-right">{{ tsh(d.otherIncome) }}</td></tr> }
+                    @if (d.depositsHeld > 0) { <tr><td class="ph-muted">{{ i18n.t('pl.deposits') }}</td><td class="text-right">{{ tsh(d.depositsHeld) }}</td></tr> }
+                  </tbody>
+                  <tfoot><tr><td class="font-bold">{{ i18n.t('pl.received.total') }}</td><td class="text-right"><b data-testid="pl-collected">{{ tsh(d.collected) }}</b></td></tr></tfoot>
+                </table>
+              </div>
             </section>
-          }
 
+            @if (d.vatTotal > 0) {
+              <section class="pl-block" data-testid="pl-vat">
+                <h3 class="pl-title">{{ i18n.t('pl.vat') }}</h3>
+                <div class="table-scroll-container fit-page">
+                  <table class="grid-table g-grid">
+                    <thead><tr><th>{{ i18n.t('pl.rate') }}</th><th class="text-right">{{ i18n.t('pl.taxable.col') }}</th><th class="text-right">{{ i18n.t('pl.vat') }}</th></tr></thead>
+                    <tbody>
+                      @for (r of d.vatByRate; track r.rate) {
+                        <tr><td>{{ r.rate }}%</td><td class="text-right">{{ tsh(r.taxable) }}</td><td class="text-right">{{ tsh(r.vat) }}</td></tr>
+                      }
+                    </tbody>
+                    <tfoot><tr><td class="font-bold" colspan="2">{{ i18n.t('pl.vat.total') }}</td><td class="text-right"><b>{{ tsh(d.vatTotal) }}</b></td></tr></tfoot>
+                  </table>
+                </div>
+              </section>
+            }
+          </div>
         </div>
 
-        <p class="pl-muted" data-testid="pl-footer">{{ footer() }}</p>
-        <p class="pl-muted"><i>{{ i18n.t('pl.note') }}</i></p>
+        <p class="ph-muted pl-wide" data-testid="pl-footer">{{ footer() }}</p>
+        <p class="ph-muted pl-wide"><i>{{ i18n.t('pl.note') }}</i></p>
       }
     </div>
   `,
   styles: [
     `
-      .pl { display: grid; gap: 10px; max-width: min(100%, 1900px); margin: 0 auto; }
-      .pl-dates { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; padding: 10px 12px; border-radius: 14px; }
-      .pl-dates label { display: grid; gap: 3px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
-      .pl-dates input, .pl-dates select { padding: 6px 8px; border-radius: 8px; min-width: 0; }
-      .pl-dates label { flex: 1 1 130px; }
-      .pl-dates .btn-primary { padding: 8px 14px; border-radius: 10px; font-weight: 900; }
-      .pl-range { font-size: 13px; font-weight: 700; opacity: .8; }
-      .glass { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 16px; }
-      .pl-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
-      .pl-tile { display: grid; gap: 2px; padding: 10px 12px; }
-      .pl-tile b { font-size: 18px; font-weight: 900; }
-      .pl-card { padding: 12px 14px; }
-      .pl-card h3 { font-size: 15px; font-weight: 900; margin-bottom: 4px; }
-      .pl-card h4 { margin: 8px 0 2px; font-size: 13px; font-weight: 800; color: #20b8ce; }
-      .pl-card hr { border: 0; border-top: 1px solid rgba(255, 255, 255, 0.2); margin: 6px 0; }
-      .pl-line { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; font-size: 14px; }
-      .pl-line b { font-weight: 700; white-space: nowrap; }
-      .pl-strong span, .pl-strong b { font-weight: 900; }
-      .pl-muted { font-size: 12px; opacity: 0.7; }
-      .pl-good { color: #86efac !important; }
-      .pl-bad { color: #fca5a5 !important; }
-      .pl-warn { color: #fcd34d !important; }
+      .pl-wide { grid-column: 1 / -1; }
+      .pl-dates { align-items: end; }
+      .pl-field { display: grid; gap: 3px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+      .pl-range { align-self: center; margin-left: 6px; font-weight: 700; }
+      .pl-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+      .pl-col { display: grid; gap: 14px; }
+      .pl-block { min-width: 0; }
+      h3.pl-title { margin: 4px 0 8px; font-size: 16px; font-weight: 900; }
+      .pl-sum td { font-weight: 900; }
+      .pl-hint { margin: 6px 0 0; font-size: 12px; }
+      @media (max-width: 1100px) { .pl-grid { grid-template-columns: 1fr; } }
     `,
   ],
 })

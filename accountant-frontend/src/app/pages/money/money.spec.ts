@@ -48,10 +48,11 @@ describe('money page layout and dates', () => {
     return { h, fixture, el: fixture.nativeElement as HTMLElement, first };
   };
 
-  it('puts the sections in ONE card told apart by lines, and the period is chosen with dates', async () => {
+  it('shows the statements as grid-lines tables under pinned figure cards, and the period is chosen with dates', async () => {
     const { el } = await open();
 
-    expect(byTestId(el, 'pl-joined')!.querySelectorAll(':scope > section.ph-sec').length).toBeGreaterThanOrEqual(2);
+    expect(byTestId(el, 'pl-joined')!.querySelectorAll('table.grid-table.g-grid').length).toBeGreaterThanOrEqual(2);
+    expect(el.querySelector('.g-pin [data-testid="pl-tiles"]')).not.toBeNull();
     expect(el.querySelectorAll('section.glass').length).toBe(0);
     expect(el.querySelectorAll('.pl-chips .pill-tab').length).toBe(0);
     expect((byTestId(el, 'pl-from') as HTMLInputElement).type).toBe('date');

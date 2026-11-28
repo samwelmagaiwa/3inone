@@ -4,8 +4,9 @@ import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth.service';
-import { dayOf, serverMessage } from '../../core/format';
+import { dayLabel, dayOf, serverMessage } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 
 export const EXPORT_TYPES = ['sales', 'expenses', 'payroll', 'stylists', 'profit-loss', 'tax', 'cashbook'] as const;
 export type ExportType = (typeof EXPORT_TYPES)[number];
@@ -39,34 +40,55 @@ export function exportUrl(type: ExportType, format: 'pdf' | 'csv', lang: string,
 
 @Component({
   selector: 'app-export',
+  imports: [RowMenuComponent],
   template: `
     <div class="ad ph-page" data-testid="export-page">
-      <section class="ph-card">
-        <h3>{{ i18n.t('ex.report') }}</h3>
-        <div class="ph-chips">
-          @for (t of allowed(); track t) { <button type="button" class="pill-tab" [class.is-active]="type() === t" (click)="type.set(t)" [attr.data-testid]="'ex-type-' + t">{{ typeName(t) }}</button> }
+      <!-- the period and the file kind stay pinned; every report is a row with its three dots -->
+      <div class="g-pin">
+        <div class="g-toolbar">
+          <div class="ph-chips g-seg">
+            <button type="button" class="pill-tab" [class.is-active]="period() === 'today'" (click)="period.set('today')" data-testid="ex-today">{{ i18n.t('pl.p.today') }}</button>
+            <button type="button" class="pill-tab" [class.is-active]="period() === 'month'" (click)="period.set('month')" data-testid="ex-month">{{ i18n.t('pl.p.thisMonth') }}</button>
+            <button type="button" class="pill-tab" [class.is-active]="period() === 'last'" (click)="period.set('last')" data-testid="ex-last">{{ i18n.t('pl.p.lastMonth') }}</button>
+          </div>
+          <div class="ph-chips g-seg">
+            <button type="button" class="pill-tab" [class.is-active]="format() === 'pdf'" (click)="format.set('pdf')" data-testid="ex-pdf">PDF</button>
+            <button type="button" class="pill-tab" [class.is-active]="format() === 'csv'" (click)="format.set('csv')" data-testid="ex-csv">CSV</button>
+          </div>
+          <span class="ph-muted">{{ rangeLabel() }}</span>
         </div>
-        @if (!allowed().length) { <p class="ph-muted" data-testid="ex-none">{{ i18n.t('ex.none') }}</p> }
-      </section>
-      <section class="ph-card">
-        <h3>{{ i18n.t('ex.period') }}</h3>
-        <div class="ph-chips">
-          <button type="button" class="pill-tab" [class.is-active]="period() === 'today'" (click)="period.set('today')" data-testid="ex-today">{{ i18n.t('pl.p.today') }}</button>
-          <button type="button" class="pill-tab" [class.is-active]="period() === 'month'" (click)="period.set('month')" data-testid="ex-month">{{ i18n.t('pl.p.thisMonth') }}</button>
-          <button type="button" class="pill-tab" [class.is-active]="period() === 'last'" (click)="period.set('last')" data-testid="ex-last">{{ i18n.t('pl.p.lastMonth') }}</button>
+        <div class="ph-tiles g-tiles-row" data-testid="ex-tiles">
+          <div class="ph-tile g-t-teal"><span class="ph-muted">{{ i18n.t('ex.period') }}</span><b>{{ rangeLabel() }}</b></div>
+          <div class="ph-tile g-t-blue"><span class="ph-muted">{{ i18n.t('ex.format') }}</span><b>{{ format().toUpperCase() }}</b></div>
+          <div class="ph-tile g-t-purple"><span class="ph-muted">{{ i18n.t('ex.reports') }}</span><b>{{ allowed().length }}</b></div>
+          <div class="ph-tile g-t-green"><span class="ph-muted">{{ i18n.t('ex.language') }}</span><b>{{ i18n.lang() === 'sw' ? 'Kiswahili' : 'English' }}</b></div>
         </div>
-      </section>
-      <section class="ph-card">
-        <h3>{{ i18n.t('ex.format') }}</h3>
-        <div class="ph-chips">
-          <button type="button" class="pill-tab" [class.is-active]="format() === 'pdf'" (click)="format.set('pdf')" data-testid="ex-pdf">PDF</button>
-          <button type="button" class="pill-tab" [class.is-active]="format() === 'csv'" (click)="format.set('csv')" data-testid="ex-csv">CSV</button>
-        </div>
-      </section>
-      <button type="button" class="btn-primary ph-btn is-info" [disabled]="busy() || !allowed().length" (click)="download()" data-testid="ex-go">{{ busy() ? i18n.t('common.saving') : i18n.t('ex.download') }}</button>
-      @if (error()) { <p class="ph-bad" data-testid="ex-error">{{ error() }}</p> }
+      </div>
+
+      <div class="table-scroll-container fit-page ex-wide">
+        <table class="grid-table g-grid" data-testid="ex-table">
+          <thead><tr>
+            <th class="no-col">#</th><th>{{ i18n.t('ex.report') }}</th><th>{{ i18n.t('ex.holds') }}</th><th class="text-right">{{ i18n.t('g.actions') }}</th>
+          </tr></thead>
+          <tbody>
+            @for (t of allowed(); track t) {
+              <tr [attr.data-testid]="'ex-type-' + t" [class.ex-busy]="busy() && type() === t">
+                <td class="no-col">{{ $index + 1 }}</td>
+                <td class="font-bold">{{ typeName(t) }}</td>
+                <td class="ph-muted">{{ i18n.t('ex.d.' + t) }}</td>
+                <td class="text-right"><app-row-menu [items]="menuFor()" [testid]="'ex-menu-' + t" (picked)="get(t, $event)" /></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="4" class="ph-muted" data-testid="ex-none">{{ i18n.t('ex.none') }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (busy()) { <p class="ph-muted ex-wide">{{ i18n.t('common.saving') }}</p> }
+      @if (error()) { <p class="ph-bad ex-wide" data-testid="ex-error">{{ error() }}</p> }
     </div>
   `,
+  styles: [`.ex-wide { grid-column: 1 / -1; } tr.ex-busy td { opacity: 0.6; }`],
 })
 export class ExportPage {
   private readonly http = inject(HttpClient);
@@ -80,6 +102,26 @@ export class ExportPage {
   protected readonly error = signal('');
 
   protected readonly allowed = computed(() => EXPORT_TYPES.filter((t) => this.auth.can(EXPORT_RIGHTS[t])));
+  protected readonly rangeLabel = computed(() => {
+    const [a, b] = exportRange(this.period(), new Date());
+    return a === b ? dayLabel(a) : `${dayLabel(a)} – ${dayLabel(b)}`;
+  });
+
+  /** The row's three dots: the file in the kind chosen first, then the other kind. */
+  protected menuFor(): MenuItem[] {
+    const other = this.format() === 'pdf' ? 'csv' : 'pdf';
+    return [
+      { id: this.format(), label: this.i18n.t('ex.download.as', this.format().toUpperCase()), primary: true },
+      { id: other, label: this.i18n.t('ex.download.as', other.toUpperCase()) },
+    ];
+  }
+
+  /** Download one report in the kind picked from its menu. */
+  protected async get(t: ExportType, kind: string): Promise<void> {
+    this.type.set(t);
+    this.format.set(kind === 'csv' ? 'csv' : 'pdf');
+    await this.download();
+  }
 
   protected typeName(t: ExportType): string {
     switch (t) {

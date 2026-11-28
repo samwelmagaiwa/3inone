@@ -7,6 +7,7 @@ import { environment } from '../../../environments/environment';
 import { dayLabel, dayOf, monthKey, monthName, parseAmount, serverMessage, shiftMonth, tsh } from '../../core/format';
 import { I18nService } from '../../core/i18n.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
+import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 
 const API = environment.apiUrl;
 
@@ -84,55 +85,108 @@ export const CHANNELS = ['cash', 'mpesa', 'mixx', 'airtel_money', 'halopesa', 'b
 
 @Component({
   selector: 'app-payroll',
-  imports: [FormsModule, ModalDialogComponent],
+  imports: [FormsModule, ModalDialogComponent, RowMenuComponent],
+  styles: [
+    `
+      .pr-wide { grid-column: 1 / -1; }
+      h3.pr-title { margin: 6px 0 8px; font-size: 16px; font-weight: 900; }
+      .pr-month { min-width: 150px; text-align: center; font-size: 16px; }
+    `,
+  ],
   template: `
     <div class="ad ph-page" data-testid="payroll-page">
-      <div class="ph-row">
-        <button type="button" class="btn-outline ph-btn" (click)="go(-1)" data-testid="pr-prev" [attr.aria-label]="i18n.t('tm.prev')">‹</button>
-        <b data-testid="pr-month">{{ monthTitle() }}</b>
-        <button type="button" class="btn-outline ph-btn" (click)="go(1)" data-testid="pr-next" [attr.aria-label]="i18n.t('tm.next')">›</button>
+      <!-- the month and what is owed stay pinned while the tables scroll -->
+      <div class="g-pin">
+        <div class="g-toolbar">
+          <button type="button" class="btn-outline ph-btn" (click)="go(-1)" data-testid="pr-prev" [attr.aria-label]="i18n.t('tm.prev')">‹</button>
+          <b class="pr-month" data-testid="pr-month">{{ monthTitle() }}</b>
+          <button type="button" class="btn-outline ph-btn" (click)="go(1)" data-testid="pr-next" [attr.aria-label]="i18n.t('tm.next')">›</button>
+        </div>
+        @if (report(); as r) {
+          <div class="ph-tiles g-tiles-row" data-testid="pr-tiles">
+            <div class="ph-tile g-t-blue"><span class="ph-muted">{{ i18n.t('pr.salary') }}</span><b data-testid="pr-salary">{{ tsh(r.salary) }}</b></div>
+            <div class="ph-tile g-t-yellow"><span class="ph-muted">{{ i18n.t('st.commission') }}</span><b class="ph-warn">{{ tsh(r.commissionEarned) }}</b></div>
+            <div class="ph-tile g-t-green"><span class="ph-muted">{{ i18n.t('pr.paid') }}</span><b class="ph-good">{{ tsh(paidTotal(r)) }}</b></div>
+            <div class="ph-tile g-t-purple"><span class="ph-muted">{{ i18n.t('pr.advance') }}</span><b>{{ tsh(advanceTotal(r)) }}</b></div>
+            <div class="ph-tile" [class.g-t-red]="r.owed > 0" [class.g-t-teal]="r.owed <= 0"><span class="ph-muted">{{ i18n.t('pr.owed') }}</span><b [class.ph-bad]="r.owed > 0" [class.ph-good]="r.owed <= 0" data-testid="pr-owed">{{ tsh(r.owed) }}</b></div>
+            <div class="ph-tile g-t-gray"><span class="ph-muted">{{ i18n.t('pr.staff') }}</span><b>{{ r.staff.length }}</b></div>
+          </div>
+        }
       </div>
 
       @if (error() && !report()) {
-        <section class="ph-card"><p data-testid="pr-error">{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load()">{{ i18n.t('pl.retry') }}</button></section>
+        <section class="ph-card pr-wide"><p data-testid="pr-error">{{ error() }}</p><button type="button" class="btn-outline ph-btn" (click)="load()">{{ i18n.t('pl.retry') }}</button></section>
       } @else if (!report()) {
-        <section class="ph-card"><p class="ph-muted">{{ i18n.t('pl.loading') }}</p></section>
+        <section class="ph-card pr-wide"><p class="ph-muted">{{ i18n.t('pl.loading') }}</p></section>
       } @else {
         @let r = report()!;
-        <div class="ph-tiles">
-          <div class="ph-tile"><span class="ph-muted">{{ i18n.t('pr.salary') }}</span><b data-testid="pr-salary">{{ tsh(r.salary) }}</b></div>
-          <div class="ph-tile"><span class="ph-muted">{{ i18n.t('st.commission') }}</span><b class="ph-warn">{{ tsh(r.commissionEarned) }}</b></div>
-          <div class="ph-tile"><span class="ph-muted">{{ i18n.t('pr.owed') }}</span><b class="ph-good" data-testid="pr-owed">{{ tsh(r.owed) }}</b></div>
-        </div>
-        @if (error()) { <p class="ph-bad">{{ error() }}</p> }
+        @if (error()) { <p class="ph-bad pr-wide">{{ error() }}</p> }
 
-        @for (s of r.staff; track s.staffId) {
-          <section class="ph-card" [attr.data-testid]="'pr-staff-' + s.staffId">
-            <div class="ph-row"><h3>{{ s.name }}</h3><button type="button" class="btn-outline ph-btn" (click)="openProfile(s)" [attr.data-testid]="'pr-profile-' + s.staffId">{{ i18n.t('pr.profile') }}</button></div>
-            <div class="ph-line"><span>{{ i18n.t('pr.salary') }}</span><b>{{ tsh(s.salary) }}</b></div>
-            <div class="ph-line"><span>{{ i18n.t('st.commission') }}</span><b>{{ tsh(s.commissionEarned) }}</b></div>
-            <div class="ph-line"><span>{{ i18n.t('pr.paid') }}</span><b>{{ tsh(s.salaryPaid + s.commissionPaid) }}</b></div>
-            <div class="ph-line"><span>{{ i18n.t('pr.advance') }}</span><b>{{ tsh(s.advances) }}</b></div>
-            <div class="ph-row" style="margin-top: 6px">
-              <b [class.ph-warn]="s.owed > 0" [class.ph-good]="s.owed <= 0" [attr.data-testid]="'pr-owed-' + s.staffId">{{ s.owed > 0 ? i18n.t('pr.owed.amount', tsh(s.owed)) : i18n.t('pr.nothing.owed') }}</b>
-              <button type="button" class="btn-primary ph-btn is-success" (click)="openPay(s)" [attr.data-testid]="'pr-pay-' + s.staffId">{{ i18n.t('pr.pay') }}</button>
-            </div>
-          </section>
-        } @empty {
-          <section class="ph-card"><p class="ph-muted">{{ i18n.t('pr.none') }}</p></section>
-        }
+        <!-- every staff member on one line; Pay and their salary and rate are under the three dots -->
+        <section class="pr-wide">
+          <h3 class="pr-title">{{ i18n.t('pr.staff') }}</h3>
+          <div class="table-scroll-container fit-page">
+            <table class="grid-table g-grid" data-testid="pr-staff">
+              <thead><tr>
+                <th class="no-col">#</th><th>{{ i18n.t('g.name') }}</th><th class="text-right">{{ i18n.t('pr.salary') }}</th><th class="text-right">{{ i18n.t('st.commission') }}</th>
+                <th class="text-right">{{ i18n.t('pr.paid') }}</th><th class="text-right">{{ i18n.t('pr.advance') }}</th><th class="text-right">{{ i18n.t('pr.owed') }}</th><th class="text-right">{{ i18n.t('g.actions') }}</th>
+              </tr></thead>
+              <tbody>
+                @for (s of r.staff; track s.staffId) {
+                  <tr [attr.data-testid]="'pr-staff-' + s.staffId">
+                    <td class="no-col">{{ $index + 1 }}</td>
+                    <td class="font-bold">{{ s.name }}</td>
+                    <td class="text-right">{{ tsh(s.salary) }}</td>
+                    <td class="text-right">{{ tsh(s.commissionEarned) }}</td>
+                    <td class="text-right"><span class="ph-good">{{ tsh(s.salaryPaid + s.commissionPaid) }}</span></td>
+                    <td class="text-right">{{ s.advances ? tsh(s.advances) : '—' }}</td>
+                    <td class="text-right"><b [class.ph-warn]="s.owed > 0" [class.ph-good]="s.owed <= 0" [attr.data-testid]="'pr-owed-' + s.staffId">{{ s.owed > 0 ? tsh(s.owed) : i18n.t('pr.nothing.owed') }}</b></td>
+                    <td class="text-right"><app-row-menu [items]="staffMenu()" [testid]="'pr-menu-' + s.staffId" (picked)="staffPicked($event, s)" /></td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="8" class="ph-muted">{{ i18n.t('pr.none') }}</td></tr>
+                }
+              </tbody>
+              @if (r.staff.length) {
+                <tfoot><tr>
+                  <td class="no-col"></td><td class="font-bold">{{ i18n.t('st.total') }}</td>
+                  <td class="text-right"><b>{{ tsh(r.salary) }}</b></td><td class="text-right"><b>{{ tsh(r.commissionEarned) }}</b></td>
+                  <td class="text-right"><b>{{ tsh(paidTotal(r)) }}</b></td><td class="text-right"><b>{{ tsh(advanceTotal(r)) }}</b></td>
+                  <td class="text-right"><b>{{ tsh(r.owed) }}</b></td><td></td>
+                </tr></tfoot>
+              }
+            </table>
+          </div>
+        </section>
 
-        @if (payouts().length) {
-          <section class="ph-card">
-            <h3>{{ i18n.t('pr.payments') }}</h3>
-            @for (p of payouts(); track p.id) {
-              <div class="ph-row" style="padding: 4px 0" [attr.data-testid]="'pr-payout-' + p.id">
-                <span>{{ p.staffName }} • {{ kindName(p.kind) }}<br /><span class="ph-muted">{{ dayLabel(p.paidOn) }} • {{ channel(p.method) }}@if (p.note) { • {{ p.note }} }</span></span>
-                <span><b>{{ tsh(p.amount) }}</b> <button type="button" class="btn-outline is-danger" style="padding: 0 8px" (click)="remove(p)" [attr.aria-label]="i18n.t('cb.remove')" [attr.data-testid]="'pr-remove-' + p.id">×</button></span>
-              </div>
-            }
-          </section>
-        }
+        <!-- the month's payments, each with its three dots -->
+        <section class="pr-wide">
+          <h3 class="pr-title">{{ i18n.t('pr.payments') }}</h3>
+          <div class="table-scroll-container fit-page">
+            <table class="grid-table g-grid" data-testid="pr-payouts">
+              <thead><tr>
+                <th class="no-col">#</th><th>{{ i18n.t('g.date') }}</th><th>{{ i18n.t('g.name') }}</th><th>{{ i18n.t('g.kind') }}</th><th>{{ i18n.t('pr.paid.by') }}</th>
+                <th>{{ i18n.t('g.note') }}</th><th class="text-right">{{ i18n.t('pr.amount') }}</th><th class="text-right">{{ i18n.t('g.actions') }}</th>
+              </tr></thead>
+              <tbody>
+                @for (p of payouts(); track p.id) {
+                  <tr [attr.data-testid]="'pr-payout-' + p.id">
+                    <td class="no-col">{{ $index + 1 }}</td>
+                    <td>{{ dayLabel(p.paidOn) }}</td>
+                    <td class="font-bold">{{ p.staffName }}</td>
+                    <td>{{ kindName(p.kind) }}</td>
+                    <td>{{ channel(p.method) }}</td>
+                    <td class="g-long" [title]="p.note || '—'">{{ p.note || '—' }}</td>
+                    <td class="text-right"><b>{{ tsh(p.amount) }}</b></td>
+                    <td class="text-right"><app-row-menu [items]="removeMenu()" [testid]="'pr-remove-' + p.id" (picked)="remove(p)" /></td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="8" class="ph-muted">{{ i18n.t('pr.no.payments') }}</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
       }
     </div>
 
@@ -203,6 +257,27 @@ export class PayrollPage implements OnInit {
 
   ngOnInit(): void {
     void this.load();
+  }
+
+  protected staffMenu(): MenuItem[] {
+    return [{ id: 'pay', label: this.i18n.t('pr.pay'), primary: true }, { id: 'profile', label: this.i18n.t('pr.profile') }];
+  }
+
+  protected removeMenu(): MenuItem[] {
+    return [{ id: 'remove', label: this.i18n.t('cb.remove'), danger: true }];
+  }
+
+  protected staffPicked(id: string, s: PayrollRowView): void {
+    if (id === 'pay') this.openPay(s);
+    else void this.openProfile(s);
+  }
+
+  protected paidTotal(r: PayrollView): number {
+    return r.staff.reduce((a, s) => a + s.salaryPaid + s.commissionPaid, 0);
+  }
+
+  protected advanceTotal(r: PayrollView): number {
+    return r.staff.reduce((a, s) => a + s.advances, 0);
   }
 
   protected go(by: number): void {
