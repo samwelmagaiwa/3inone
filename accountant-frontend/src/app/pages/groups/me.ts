@@ -14,6 +14,8 @@ import { GBase } from './g-base';
   imports: [FormsModule],
   template: `
     <div class="ad ph-page" data-testid="g-me">
+      <!-- the toolbar and the figures stay in place while the list scrolls under them -->
+      <div class="g-pin" data-testid="g-me-pin">
       <div class="g-toolbar">
         <div class="ph-chips g-seg">
           <button type="button" class="pill-tab" [class.is-active]="tab() === 'payments'" (click)="tab.set('payments')" data-testid="g-me-tab-payments">{{ i18n.t('g.me.payments') }}</button>
@@ -40,6 +42,7 @@ import { GBase } from './g-base';
       } @else {
         <section class="ph-card"><p class="ph-muted">{{ i18n.t('g.me.none') }}</p></section>
       }
+      </div>
 
       @if (error()) { <section class="ph-card"><p>{{ error() }}</p></section> }
 

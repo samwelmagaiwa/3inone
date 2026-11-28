@@ -2155,3 +2155,6 @@ body:has(.theme-phone) .swal-bs-pre { background: rgba(255,255,255,.08) !importa
 .g-t-yellow { --g-t: #f5b82e; --g-tl: #ffe08a; }
 .g-t-violet { --g-t: #8e63d2; --g-tl: #d0b8f5; }
 .g-t-gray { --g-t: #7f8794; --g-tl: #d3d8e0; }
+
+/* Groups: a page's toolbar and figure tiles pinned at the top of the page area while its list scrolls under them (My account) */
+.g-pin { position: sticky; top: 0; z-index: 6; grid-column: 1 / -1; display: grid; gap: 10px; padding: 6px 0 10px; background: #0b2f3a; box-shadow: 0 8px 12px -10px rgba(0, 0, 0, 0.6); }
