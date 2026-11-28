@@ -404,3 +404,36 @@ describe('Groups: the next meeting', () => {
     h.http.match(() => true).forEach((r) => r.flush({ data: {} }));
   });
 });
+
+describe('Groups: the owner adds himself as a member', () => {
+  afterEach(() => groupRights.set(new Set()));
+
+  it('fills in his own name and phone, ties the file to his account, and reloads his membership (My account and ME)', async () => {
+    const h = configure({ role: 'admin', services: ['groups'], permissions: [], name: 'Michael Prosper', phone: '0713000555' });
+    groupRights.set(new Set(ALL));
+    TestBed.inject(GroupsContext).me.set({ is_owner: true, rights: ALL, waiting: {}, member: null });
+    const fixture = TestBed.createComponent(GMembersPage);
+    fixture.detectChanges();
+    h.http.expectOne((r) => r.url === `${API}/members`).flush({ data: { members: [] }, meta: { pagination: { page: 1, total: 0, has_more: false } } });
+    await settle(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+
+    (byTestId(el, 'g-m-add-me') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect((byTestId(el, 'g-f-name') as HTMLInputElement).value).toBe('Michael Prosper');
+    expect((byTestId(el, 'g-f-phone') as HTMLInputElement).value).toBe('0713000555');
+    expect((byTestId(el, 'g-f-existing') as HTMLInputElement).checked).toBe(true);
+
+    (byTestId(el, 'g-f-save') as HTMLButtonElement).click();
+    await settle(fixture);
+    const add = h.http.expectOne((r) => r.url === `${API}/members` && r.method === 'POST');
+    expect(add.request.body).toMatchObject({ full_name: 'Michael Prosper', phone: '0713000555', existing: true });
+    add.flush({ data: { member: { id: 41 } } });
+    await settle(fixture);
+    await settle(fixture);
+    h.http.expectOne((r) => r.url === `${API}/members/41/sign-in`).flush({ data: { linked_owner: true, login: null, temporary_password: null } });
+    await settle(fixture);
+    expect(h.http.match((r) => r.url === `${API}/me`).length).toBeGreaterThan(0);
+    h.http.match(() => true).forEach((r) => r.flush({ data: { members: [] }, meta: { pagination: {} } }));
+  });
+});

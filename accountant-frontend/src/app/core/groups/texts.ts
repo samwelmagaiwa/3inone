@@ -229,6 +229,9 @@ export const G_TEXTS: Record<string, [sw: string, en: string]> = {
   // ---- members
   'g.m.add': ['Ongeza mwanachama', 'Add a member'],
   'g.m.edit': ['Badili taarifa', 'Change details'],
+  'g.m.add.me': ['Niongeze kama mwanachama', 'Add me as a member'],
+  'g.m.add.me.hint': ['Faili lako la uanachama litaunganishwa na akaunti yako: utapata Akaunti yangu na ME', 'Your member file is tied to your own account: you get My account and ME'],
+  'g.signin.linked': ['Faili hili limeunganishwa na akaunti yako mwenyewe.', 'This member file is now tied to your own account.'],
   'g.m.empty': ['Hakuna mwanachama hapa.', 'No member here.'],
   'g.m.existing': ['Alikuwa mwanachama kabla ya programu', 'A member from before the app'],
   'g.m.existing.hint': ['Anakuwa hai mara moja, na namba yake ya zamani na tarehe aliyojiunga.', 'Active at once, with their old number and the day they joined.'],

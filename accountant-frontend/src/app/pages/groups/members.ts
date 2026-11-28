@@ -1,6 +1,7 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
+import { AuthService } from '../../core/auth.service';
 import { Row } from '../../core/groups/groups-api.service';
 import { ModalDialogComponent } from '../../shared/components/modal-dialog/modal-dialog';
 import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
@@ -40,6 +41,10 @@ const FIELDS = ['full_name', 'phone', 'alt_phone', 'email', 'nida', 'date_of_bir
         <button type="button" class="btn-outline ph-btn" (click)="load(1)">{{ i18n.t('ad.apply') }}</button>
         @if (can('manage_members')) {
           <button type="button" class="btn-primary ph-btn" (click)="openNew()" data-testid="g-m-new">{{ i18n.t('g.m.add') }}</button>
+        }
+        <!-- the business owner is often a member (the chairperson): his own file, tied to his account, gives him My account and ME -->
+        @if (ctx.isOwner() && !ctx.me()?.['member']) {
+          <button type="button" class="btn-outline ph-btn" (click)="openSelf()" [title]="i18n.t('g.m.add.me.hint')" data-testid="g-m-add-me">{{ i18n.t('g.m.add.me') }}</button>
         }
         <span class="g-count">{{ i18n.t('g.count', total()) }}</span>
       </div>
@@ -252,6 +257,9 @@ export class GMembersPage extends GBase implements OnInit {
   protected readonly depOpen = signal(false);
   /** The member whose data from before the app is being entered (the Previous data window). */
   protected readonly previousOf = signal<Row | null>(null);
+  private readonly auth = inject(AuthService);
+  /** The form is the owner adding himself: once saved, the file is tied to his own account. */
+  private selfAdd = false;
   protected dep: Row = {};
 
   ngOnInit(): void {
@@ -332,7 +340,18 @@ export class GMembersPage extends GBase implements OnInit {
     return `${what}${e['reason'] ? ' · ' + e['reason'] : ''}${e['by_name'] ? ' · ' + e['by_name'] : ''}`;
   }
 
+  /** The owner adds himself: his own name and phone, as a member who was already there. */
+  protected openSelf(): void {
+    const me = this.auth.user();
+    this.f = { gender: '', full_name: me?.name ?? '', phone: me?.phone ?? '' };
+    this.existing = true;
+    this.selfAdd = true;
+    this.editId.set(null);
+    this.formOpen.set(true);
+  }
+
   protected openNew(): void {
+    this.selfAdd = false;
     this.f = { gender: '' };
     this.existing = false;
     this.editId.set(null);
@@ -366,6 +385,12 @@ export class GMembersPage extends GBase implements OnInit {
     }, id ? this.i18n.t('g.saved') : this.existing ? this.i18n.t('g.m.added.existing') : this.i18n.t('g.m.added'));
     if (!ok) return;
     this.formOpen.set(false);
+    // The owner's own file: tie it to his account at once (the server sees his own phone), so My account and ME appear.
+    const newId = saved['member']?.['id'];
+    if (this.selfAdd && !id && newId) {
+      this.selfAdd = false;
+      if (await this.act(() => this.api.post(`/members/${newId}/sign-in`, {}), this.i18n.t('g.signin.linked'))) await this.ctx.reload();
+    }
     await this.load(this.page());
     if (id) this.showFile(saved);
   }
@@ -418,6 +443,14 @@ export class GMembersPage extends GBase implements OnInit {
     if (!(await this.sure(reset ? this.i18n.t('g.signin.reset') : this.i18n.t('g.signin.give'), msg, this.i18n.t('g.yes')))) return;
     let r: Row = {};
     if (await this.act(async () => (r = await this.api.post(`/members/${m['id']}/sign-in`, reset ? { reset: true } : {})))) {
+      // his own file, tied to the account he already has: no password to show, and My account and ME appear
+      if (r['linked_owner']) {
+        this.done(this.i18n.t('g.signin.linked'));
+        await this.ctx.reload();
+        const fl = this.file();
+        if (fl) this.file.set({ ...fl, member: { ...fl['member'], has_sign_in: true } });
+        return;
+      }
       this.password.set(r);
       const fl = this.file();
       if (fl) this.file.set({ ...fl, member: { ...fl['member'], has_sign_in: true } });

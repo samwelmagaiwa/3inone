@@ -232,6 +232,16 @@ class GroupsMembershipTest extends TestCase
         $id = $this->api($owner, 'POST', '/members', ['full_name' => 'MEG Owner', 'phone' => (string) $owner->phone_number, 'existing' => true])->json('data.member.id');
         $this->api($owner, 'POST', "/members/{$id}/sign-in")->assertOk()->assertJsonPath('data.linked_owner', true);
         $this->api($owner, 'GET', '/me')->assertJsonPath('data.is_owner', true)->assertJsonPath('data.member.id', $id);
+
+        // The owner may make himself the chairperson after the tie (a leader may not change their own office; the owner holds every right anyway).
+        $this->api($owner, 'PUT', "/members/{$id}/office", ['office' => 'mwenyekiti'])->assertOk()->assertJsonPath('data.member.office', 'mwenyekiti');
+        // ...and he has his own account and the ME switch, as a member does.
+        $this->api($owner, 'GET', '/me')->assertJsonPath('data.can_switch_view', true)->assertJsonPath('data.member.office', 'mwenyekiti');
+        $token = $owner->createToken('me')->plainTextToken;
+        $this->app['auth']->forgetGuards();
+        \App\Support\Groups\GroupAccess::forget();
+        $this->withHeaders(['Authorization' => "Bearer {$token}", 'X-Group-View' => 'member'])->getJson('/api/groups/me')
+            ->assertOk()->assertJsonPath('data.is_owner', false)->assertJsonPath('data.rights', [])->assertJsonPath('data.member.id', $id);
     }
 
     public function test_one_group_never_sees_another(): void

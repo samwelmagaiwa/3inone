@@ -345,8 +345,10 @@ class GroupMemberController extends Controller
         }
         $user = $request->user();
         $me = GroupAccess::member($user);
-        if ($me !== null && (int) $me['id'] === $id) {
-            return $this->fail('own_office', 'Huwezi kubadilisha nafasi yako ya uongozi mwenyewe. / You cannot change your own management role.', 403);
+        // A leader may not change their own office. The business owner may: he holds every right anyway, and is often the chairperson
+        // who set the group up, so taking the office for his own member file gives him nothing he did not have.
+        if ($me !== null && (int) $me['id'] === $id && !GroupAccess::isOwner($user, true)) {
+            return $this->fail('own_office','Huwezi kubadilisha nafasi yako ya uongozi mwenyewe. / You cannot change your own management role.', 403);
         }
         $office = $data['office'] ?? null;
         if ($office !== null && $row->status !== GroupMembers::ACTIVE) {
