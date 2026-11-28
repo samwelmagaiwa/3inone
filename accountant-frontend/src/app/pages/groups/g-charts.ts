@@ -11,16 +11,16 @@ export interface GSlice {
 
 export type GColor = 'purple' | 'blue' | 'green' | 'yellow' | 'red' | 'gray' | 'violet' | 'teal';
 
-/** The palette of the school dashboard the charts copy: a soft fill, a stronger edge, and a darker shade for the words. */
+/** The charts' eight colours: a soft fill, a stronger edge, and a lighter shade for the words (they sit on the dark Groups cards). */
 export const G_COLORS: Record<GColor, { fill: string; edge: string; text: string }> = {
-  purple: { fill: '#8576ee', edge: '#6c5ce7', text: '#4b33d1' },
-  blue: { fill: '#74b9ff', edge: '#4a9df8', text: '#2f8ae6' },
-  green: { fill: '#6fd08c', edge: '#3fba68', text: '#1fa954' },
-  yellow: { fill: '#fdd46b', edge: '#f5b82e', text: '#e0a400' },
-  red: { fill: '#ee8585', edge: '#e46262', text: '#d94848' },
-  gray: { fill: '#a0a7b4', edge: '#7f8794', text: '#5d6573' },
-  violet: { fill: '#a987dc', edge: '#8e63d2', text: '#7c4cc9' },
-  teal: { fill: '#72e3c2', edge: '#3fcfa6', text: '#18b88d' },
+  purple: { fill: '#8576ee', edge: '#6c5ce7', text: '#b3a8ff' },
+  blue: { fill: '#74b9ff', edge: '#4a9df8', text: '#9fd0ff' },
+  green: { fill: '#6fd08c', edge: '#3fba68', text: '#8ee6a8' },
+  yellow: { fill: '#fdd46b', edge: '#f5b82e', text: '#ffe08a' },
+  red: { fill: '#ee8585', edge: '#e46262', text: '#ffa3a3' },
+  gray: { fill: '#a0a7b4', edge: '#7f8794', text: '#d3d8e0' },
+  violet: { fill: '#a987dc', edge: '#8e63d2', text: '#d0b8f5' },
+  teal: { fill: '#72e3c2', edge: '#3fcfa6', text: '#9af0d6' },
 };
 
 /** A short figure for a chart label: 868K, 1.3M. */
@@ -75,13 +75,13 @@ const r1 = (v: number) => Math.round(v * 10) / 10;
         </g>
       }
       @for (t of ticks(); track t.r) {
-        <circle [attr.cx]="cx" [attr.cy]="cy" [attr.r]="t.r" fill="none" stroke="#e6e8ef" stroke-width="1.2" />
+        <circle [attr.cx]="cx" [attr.cy]="cy" [attr.r]="t.r" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.2" />
       }
       @for (s of parts(); track s.key) {
         <path [attr.d]="s.d" [attr.fill]="s.c.fill" fill-opacity="0.8" [attr.stroke]="s.c.edge" stroke-width="1.5"><title>{{ s.name }}: {{ s.full }}</title></path>
       }
       @for (t of ticks(); track t.r) {
-        <rect [attr.x]="cx - 17" [attr.y]="cy - t.r - 10" width="34" height="20" rx="3" fill="#f1f2f6" fill-opacity="0.92" />
+        <rect [attr.x]="cx - 17" [attr.y]="cy - t.r - 10" width="34" height="20" rx="3" fill="#0e3a47" fill-opacity="0.92" />
         <text [attr.x]="cx" [attr.y]="cy - t.r + 5" text-anchor="middle" class="g-tick">{{ t.label }}</text>
       }
       @for (s of parts(); track s.key) {
@@ -98,8 +98,8 @@ const r1 = (v: number) => Math.round(v * 10) / 10;
   `,
   styles: [`
     .g-svg { width: 100%; height: auto; display: block; overflow: visible; }
-    .g-legend { font-size: 14px; font-weight: 700; fill: #1f2340; }
-    .g-tick { font-size: 13px; font-weight: 700; fill: #5d6573; }
+    .g-legend { font-size: 14px; font-weight: 700; fill: #fff; }
+    .g-tick { font-size: 13px; font-weight: 700; fill: rgba(255, 255, 255, 0.75); }
     .g-call { font-size: 16px; font-weight: 800; }
   `],
 })
@@ -163,7 +163,7 @@ export class GRoseChart {
     </div>
     <svg class="g-svg" viewBox="0 0 320 320" role="img" [attr.aria-label]="label()">
       @if (total() <= 0) {
-        <circle cx="160" cy="160" [attr.r]="ring() ? 130 : 140" fill="none" stroke="#e6e8ef" [attr.stroke-width]="ring() ? 30 : 2" />
+        <circle cx="160" cy="160" [attr.r]="ring() ? 130 : 140" fill="none" stroke="rgba(255,255,255,0.18)" [attr.stroke-width]="ring() ? 30 : 2" />
         <text x="160" y="166" text-anchor="middle" class="g-empty">{{ empty() }}</text>
       } @else {
         @for (p of parts(); track p.key) {
@@ -181,13 +181,13 @@ export class GRoseChart {
   styles: [`
     .g-svg { width: 100%; max-width: 330px; height: auto; display: block; margin: 6px auto 0; overflow: visible; }
     .g-legend-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; }
-    .g-key { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: #5d6573; }
+    .g-key { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: rgba(255, 255, 255, 0.85); }
     .g-key i { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid; display: inline-block; }
     .g-val { font-size: 25px; font-weight: 800; fill: #fff; }
     .g-pct { font-size: 17px; font-weight: 600; fill: #fff; }
     .g-ring-val { paint-order: stroke; stroke-width: 4px; stroke-linejoin: round; font-size: 17px; }
     .g-pct.g-ring-val { font-size: 12px; stroke-width: 3px; }
-    .g-empty { font-size: 15px; fill: #8a90a0; }
+    .g-empty { font-size: 15px; fill: rgba(255, 255, 255, 0.6); }
   `],
 })
 export class GPieChart {

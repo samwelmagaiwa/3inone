@@ -185,28 +185,27 @@ export const G_WAITING: Record<string, string> = {
         .g-tiles-row .ph-tile .ph-muted { font-size: 11px; line-height: 1.25; }
       }
       a.ph-tile.g-link:hover, a.ph-card.g-link:hover { border-color: #20b8ce; }
-      /* The chart cards: white, rounded, a soft shadow, the title in strong blue, the words dark (as the school dashboard) */
+      /* The chart cards: the same dark glass as every Groups card; the charts keep their eight colours, the words are light */
       .g-charts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 14px 0; }
-      .g-ccard { background: #fff; border-radius: 18px; box-shadow: 0 2px 14px rgba(15, 23, 42, 0.12); padding: 18px 18px 16px; color: #1f2340; min-width: 0; text-align: center; }
+      .g-ccard { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 18px; padding: 18px 18px 16px; color: #fff; min-width: 0; text-align: center; }
       .g-wide { grid-column: span 2; }
       .g-trend-card { grid-column: span 3; }
-      /* the dark theme paints headings white: on these white cards the title keeps its strong blue */
-      .g-ccard h3.g-ctitle { margin: 0 0 6px; font-size: 22px; font-weight: 800; color: #2e1fd6 !important; letter-spacing: -0.01em; }
-      .g-csub { margin: 0 0 6px; font-size: 15px; color: #5d6573; }
-      .g-cfoot { margin: 6px 0 0; font-size: 14px; color: #5d6573; }
-      .g-cfoot b { color: #1f2340; }
-      .g-cfoot .g-cbad, b.g-cbad { color: #d94848; margin-left: 6px; }
-      .g-cgood { color: #1fa954 !important; }
-      .g-cbig { margin: 2px 0 0; font-size: 24px; font-weight: 800; color: #1fa954; }
-      .g-cbig.g-cbad { color: #d94848; }
-      .g-cempty { color: #8a90a0; margin: 40px 0; }
+      .g-ccard h3.g-ctitle { margin: 0 0 6px; font-size: 20px; font-weight: 800; color: #fff !important; letter-spacing: -0.01em; }
+      .g-csub { margin: 0 0 6px; font-size: 15px; color: rgba(255, 255, 255, 0.7); }
+      .g-cfoot { margin: 6px 0 0; font-size: 14px; color: rgba(255, 255, 255, 0.72); }
+      .g-cfoot b { color: #fff; }
+      .g-cfoot .g-cbad, b.g-cbad { color: #ff8a8a; margin-left: 6px; }
+      .g-cgood { color: #6fd08c !important; }
+      .g-cbig { margin: 2px 0 0; font-size: 24px; font-weight: 800; color: #6fd08c; }
+      .g-cbig.g-cbad { color: #ff8a8a; }
+      .g-cempty { color: rgba(255, 255, 255, 0.6); margin: 40px 0; }
       .g-chart { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; align-items: end; height: 230px; margin-top: 10px; }
-      .g-col { display: grid; grid-template-rows: 1fr auto; height: 100%; gap: 6px; text-align: center; font-size: 12px; font-weight: 700; color: #5d6573; }
+      .g-col { display: grid; grid-template-rows: 1fr auto; height: 100%; gap: 6px; text-align: center; font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.75); }
       .g-pair { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 100%; }
       .g-pair i { display: block; width: 38%; min-height: 2px; border-radius: 5px 5px 0 0; }
       .g-in { background: #6fd08c; border: 1.5px solid #3fba68; }
       .g-out { background: #ee8585; border: 1.5px solid #e46262; }
-      .g-ckeys { display: flex; justify-content: center; gap: 16px; margin: 10px 0 0; font-size: 14px; font-weight: 700; color: #5d6573; }
+      .g-ckeys { display: flex; justify-content: center; gap: 16px; margin: 10px 0 0; font-size: 14px; font-weight: 700; color: rgba(255, 255, 255, 0.8); }
       .g-ckeys span { display: inline-flex; align-items: center; gap: 6px; }
       .g-ckeys i { display: inline-block; width: 18px; height: 18px; border-radius: 50%; }
       @media (max-width: 1280px) { .g-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g-trend-card { grid-column: 1 / -1; } }
