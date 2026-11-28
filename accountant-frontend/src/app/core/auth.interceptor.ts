@@ -30,8 +30,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       // The branch being looked at: every list and figure follows it, and a new sale is recorded in it (none = the whole business).
       ...(branch !== null ? { 'X-Branch': String(branch), 'X-Branch-Service': auth.service() } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      // ME (Groups): a leader looking as an ordinary member; the server then answers without their office rights.
-      ...(groupViewAsMember() && req.url.startsWith(`${environment.apiUrl}/groups`) ? { 'X-Group-View': 'member' } : {}),
+      // ME (Groups): a leader looking as an ordinary member; the server then answers without their office rights (the assistant too).
+      ...(groupViewAsMember() && (req.url.startsWith(`${environment.apiUrl}/groups`) || req.url.startsWith(`${environment.apiUrl}/assistant`)) ? { 'X-Group-View': 'member' } : {}),
     },
   });
 

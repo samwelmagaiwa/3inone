@@ -48,11 +48,29 @@ final class AppGuide
             ['service' => 'rental', 'roles' => ['admin', 'landlord'], 'grants' => ['manage_billing_rental', 'view_reports_rental'], 'text' => 'RENT: menu "Rent payments" to record what a tenant paid; "Arrears" lists who owes; "Reports" gives totals.'],
             ['service' => 'rental', 'roles' => ['admin', 'landlord', 'caretaker', 'tenant', 'vendor'], 'grants' => ['manage_maintenance_rental'], 'text' => 'MAINTENANCE: menu "Maintenance" lists repair requests; tenants and caretakers raise them, owners assign them to a vendor, vendors mark them done.'],
             ['service' => 'rental', 'roles' => ['tenant'], 'text' => 'AS A TENANT: menu "My Account" shows your lease, rent bills and payments; raise a repair from "Maintenance".'],
+            // ---- Groups (Vikundi): 'group' lists the group rights that open the section; 'self' is for every member
+            ['service' => 'groups', 'group' => ['view_members', 'manage_members'], 'text' => 'MEMBERS: menu "Members" lists members with number, office and status; "Add" registers someone (an existing member can be entered with their past details); new applications wait for a leader\'s approval; the row menu gives the statement, office, sign-in and suspend/exit.'],
+            ['service' => 'groups', 'group' => ['record_payments', 'verify_payments', 'view_finance'], 'text' => 'PAYMENTS: menu "Payments" > Record: choose the member, the kind (savings, shares, contribution, joining fee, loan repayment), amount and method; a non-cash payment needs its reference. Every payment waits until the treasurer verifies it (row menu > Verify, or Reject with a reason); only verified money counts. A mistake is undone with Reverse.'],
+            ['service' => 'groups', 'group' => ['manage_contributions', 'grant_exemptions'], 'text' => 'CONTRIBUTIONS: menu "Contributions": "Kinds of contribution" sets each one (amount, monthly or event, due day); "Raise" creates what each member owes for a month (past months too); "Owing" and "Overdue" list who has not paid; row menu > Excuse (with a reason) or Record a promise.'],
+            ['service' => 'groups', 'group' => ['view_loans', 'recommend_loans', 'approve_loans'], 'text' => 'LOANS: a member applies, names guarantors who accept, the loans officer recommends, the chair approves, the treasurer disburses; then repayments are recorded under Payments. Menu "Loans" shows each step, what is left and what is late.'],
+            ['service' => 'groups', 'group' => ['view_benefits', 'approve_benefits', 'request_expenses', 'approve_expenses'], 'text' => 'WELFARE AND EXPENSES: "Welfare" holds members\' requests for help (decided by the leaders, then paid); "Expenses" holds the group\'s spending requests (requested, approved, then paid with a payee).'],
+            ['service' => 'groups', 'group' => ['call_meetings', 'record_meetings', 'manage_votings', 'prepare_dividends', 'manage_settings'], 'text' => 'MEETINGS, VOTES, DIVIDENDS, SETTINGS: "Meetings" calls a meeting and records attendance and minutes (approved by the chair); "Votings" runs elections and decisions; "Dividends" shares out the year\'s profit (prepared, then approved; credited to savings); "Settings" holds the group rules, payment numbers and the logo; "Reports" gives statements and totals.'],
+            ['service' => 'groups', 'self' => true, 'text' => 'AS A MEMBER: "My account" shows your savings, shares, what you owe and by when, your payments (waiting, verified or turned down) and your loans. A leader can switch "ME" on to see the group exactly as an ordinary member does.'],
         ];
     }
 
     private static function applies(array $e, User $user): bool
     {
+        if ($e['service'] === 'groups') {
+            if (!$user->canUseService('groups')) {
+                return false;
+            }
+            if (!empty($e['self'])) {
+                return \App\Support\Groups\GroupAccess::member($user) !== null;
+            }
+
+            return array_filter($e['group'], fn ($r) => \App\Support\Groups\GroupAccess::can($user, $r)) !== [];
+        }
         if (!$user->canUseService($e['service'])
             && !($e['service'] === 'inventory' && $user->canUseService('salon'))) {
             return false;
@@ -120,6 +138,9 @@ final class AppGuide
             ['hg_debt', 'How do I record an old debt?', 'Ninarekodije deni la zamani?', fn () => $user->canUseService('inventory') && $user->hasInventoryPermission('inv_view_credit')],
             ['hg_driver', 'How do I add a driver?', 'Ninaongezaje dereva?', fn () => $user->canUseService('transport') && (strtolower((string) $user->role) === 'admin' || $user->hasExplicitGrant('manage_drivers_transport'))],
             ['hg_pay', 'How do I record a driver payment?', 'Ninarekodije malipo ya dereva?', fn () => $user->canUseService('transport') && (strtolower((string) $user->role) === 'admin' || $user->hasExplicitGrant('manage_payments_transport'))],
+            ['hg_g_pay', 'How do I record a member payment?', 'Ninarekodije malipo ya mwanachama?', fn () => $user->canUseService('groups') && \App\Support\Groups\GroupAccess::can($user, 'record_payments')],
+            ['hg_g_raise', 'How do I raise this month\'s contributions?', 'Ninawekaje michango ya mwezi huu?', fn () => $user->canUseService('groups') && \App\Support\Groups\GroupAccess::can($user, 'manage_contributions')],
+            ['hg_g_loan', 'How does a loan go from request to payout?', 'Mkopo unapitaje kutoka ombi hadi kutolewa?', fn () => $user->canUseService('groups') && \App\Support\Groups\GroupAccess::member($user) !== null],
             ['hg_tenant', 'How do I add a tenant and a lease?', 'Ninaongezaje mpangaji na mkataba?', fn () => $user->canUseService('rental') && (in_array(strtolower((string) $user->role), ['admin', 'landlord'], true) || $user->hasExplicitGrant('onboard_tenants_rental'))],
         ];
         $out = [];

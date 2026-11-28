@@ -2,6 +2,7 @@
 
 namespace App\Support\Ai;
 
+use App\Support\Groups\GroupAccess;
 use App\Models\User;
 use App\Support\Inventory\MonthlyFigures;
 use App\Support\Inventory\MonthlyReport;
@@ -116,6 +117,32 @@ final class AssistantTools
                 'description' => 'Houses with property, status and monthly rent.'],
             'rental_maintenance' => ['service' => 'rental', 'roles' => ['admin', 'landlord', 'caretaker', 'tenant', 'vendor'], 'grants' => ['manage_maintenance_rental'], 'params' => [],
                 'description' => 'Open maintenance requests with house, category and priority (each person sees only theirs).'],
+            // ---- Groups (Vikundi): 'group' lists the group rights (GroupAccess) that open the tool, like the matching screens
+            'groups_overview' => ['service' => 'groups', 'group' => ['view_finance', 'view_members'], 'params' => $month,
+                'description' => 'The savings group at a glance for a month: members (active, applications, joined), cash on record, savings and shares, contributions expected/collected/overdue, loans out and late, money in and out this month and this year (welfare, dividends, hire income, expenses), payments waiting to be checked, the next meeting. Money figures only for people who see the group money.'],
+            'groups_who_owe' => ['service' => 'groups', 'group' => ['view_finance', 'manage_contributions', 'record_payments'],
+                'params' => ['limit' => ['type' => 'INTEGER', 'description' => 'How many members, at most 15'], 'include_not_yet_due' => ['type' => 'BOOLEAN', 'description' => 'true to count contributions not yet due as well (default: only overdue)']],
+                'description' => 'Members who owe contributions (overdue by default), most owed first, with the number unpaid and days late, plus the total owed.'],
+            'groups_member' => ['service' => 'groups', 'group' => ['view_members'],
+                'params' => ['name' => ['type' => 'STRING', 'description' => 'Part of the member name or member number']],
+                'description' => "One member by name or number: status, office, joined date, and (as far as this person's rights go) savings, shares and fees, contributions owed, loans."],
+            'groups_loans' => ['service' => 'groups', 'group' => ['view_loans'],
+                'params' => [
+                    'status' => ['type' => 'STRING', 'description' => 'active (default: running loans with what is left and late), awaiting_guarantors, under_review, recommended, approved, rejected or cancelled'],
+                    'late_only' => ['type' => 'BOOLEAN', 'description' => 'Only running loans with instalments past due'],
+                    'limit' => ['type' => 'INTEGER', 'description' => 'How many loans, at most 15'],
+                ],
+                'description' => 'Group loans with borrower, amount, what is still owed, what is late and the next instalment; totals outstanding and late.'],
+            'groups_payments' => ['service' => 'groups', 'group' => ['view_finance'],
+                'params' => [
+                    'days' => ['type' => 'INTEGER', 'description' => 'Look back this many days, at most 92 (default 30)'],
+                    'status' => ['type' => 'STRING', 'description' => 'verified (default) or pending (waiting to be checked by the treasurer)'],
+                    'category' => ['type' => 'STRING', 'description' => 'Only one kind: savings, shares, contribution, joining_fee, loan_repayment, loan_disbursement, welfare, expense, dividend, hire or opening_balance'],
+                    'limit' => ['type' => 'INTEGER', 'description' => 'How many entries, at most 15'],
+                ],
+                'description' => 'Money in and out of the group: totals by kind and the latest entries with member, kind, amount and method.'],
+            'groups_my_account' => ['service' => 'groups', 'group' => [], 'self' => true, 'params' => [],
+                'description' => "The person's OWN membership: savings, shares, fees paid, contributions they owe and by when, their loans and payments still waiting."],
         ];
     }
 
@@ -139,6 +166,22 @@ final class AssistantTools
     {
         // The platform owner runs businesses, they are not one: no business data through the assistant.
         if ($user->seesAllAccounts()) {
+            return false;
+        }
+
+        if ($tool['service'] === 'groups') {
+            if (!$user->canUseService('groups')) {
+                return false;
+            }
+            if (!empty($tool['self'])) {
+                return GroupAccess::member($user) !== null;
+            }
+            foreach ($tool['group'] as $right) {
+                if (GroupAccess::can($user, $right)) {
+                    return true;
+                }
+            }
+
             return false;
         }
 
@@ -209,6 +252,12 @@ final class AssistantTools
             'rental_arrears' => RentalTools::arrears($args),
             'rental_houses' => RentalTools::houses($args),
             'rental_maintenance' => RentalTools::maintenance($args),
+            'groups_overview' => GroupsTools::overview($args, $user),
+            'groups_who_owe' => GroupsTools::whoOwes($args),
+            'groups_member' => GroupsTools::member($args, $user),
+            'groups_loans' => GroupsTools::loans($args),
+            'groups_payments' => GroupsTools::payments($args),
+            'groups_my_account' => GroupsTools::myAccount($user),
         };
     }
 
@@ -251,6 +300,11 @@ final class AssistantTools
             ['sg_r_owe', 'Which tenants owe rent?', 'Wapangaji gani wanadaiwa kodi?', 'rental_arrears', []],
             ['sg_r_vac', 'Which houses are vacant?', 'Nyumba gani ziko wazi?', 'rental_houses', ['status' => 'vacant']],
             ['sg_r_fix', 'Open repair requests', 'Maombi ya matengenezo yaliyo wazi', 'rental_maintenance', []],
+            ['sg_g_over', 'How is our group doing this month?', 'Kikundi chetu kinaendeleaje mwezi huu?', 'groups_overview', []],
+            ['sg_g_owe', 'Who owes contributions?', 'Nani anadaiwa michango?', 'groups_who_owe', []],
+            ['sg_g_late', 'Which loans are late?', 'Mikopo gani imechelewa?', 'groups_loans', ['late_only' => true]],
+            ['sg_g_wait', 'Which payments are waiting to be checked?', 'Malipo gani yanasubiri kuhakikiwa?', 'groups_payments', ['status' => 'pending']],
+            ['sg_g_me', 'What do I have and what do I owe?', 'Nina akiba kiasi gani na ninadaiwa nini?', 'groups_my_account', []],
         ];
         $out = [];
         foreach ($all as [$id, $en, $sw, $tool, $args]) {

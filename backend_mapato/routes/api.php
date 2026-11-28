@@ -590,7 +590,7 @@ Route::get('files/private/{path}', [\App\Http\Controllers\API\MediaController::c
 Route::middleware(['auth:sanctum'])->group(function () {
     // The AI assistant: one for every service. Whoever is signed in may ask; what it can read is decided per person, tool by tool,
     // by the same rights the matching screens use (see App\Support\Ai\AssistantTools).
-    Route::middleware('throttle:15,1,assistant')->group(function () {
+    Route::middleware(['throttle:15,1,assistant', \App\Http\Middleware\GroupViewAs::class])->group(function () {
         Route::get('assistant',  [AssistantController::class, 'status']);
         Route::post('assistant', [AssistantController::class, 'ask']);
     });
