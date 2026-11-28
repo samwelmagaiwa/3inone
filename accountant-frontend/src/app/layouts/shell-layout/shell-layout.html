@@ -572,6 +572,8 @@
     opacity: 1;
     transition: opacity 0.25s ease, max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   }
+  /* the narrower menu: a long name ("Wafanyakazi kwa tawi", one beside a badge) goes onto a second line instead of being cut */
+  .sidebar:not(.sidebar--collapsed) .nav-label { white-space: normal; line-height: 1.2; overflow-wrap: break-word; }
   .sidebar--collapsed .nav-label {
     opacity: 0;
     max-width: 0;
