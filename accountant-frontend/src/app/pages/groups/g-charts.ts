@@ -60,7 +60,12 @@ const r1 = (v: number) => Math.round(v * 10) / 10;
 @Component({
   selector: 'app-g-rose',
   template: `
-    <svg class="g-svg" viewBox="0 0 720 500" role="img" [attr.aria-label]="label()">
+    <div class="g-legend-row">
+      @for (s of parts(); track s.key) {
+        <span class="g-key"><i [style.background]="s.c.fill" [style.border-color]="s.c.edge"></i>{{ s.name }}</span>
+      }
+    </div>
+    <svg class="g-svg" viewBox="0 0 720 575" role="img" [attr.aria-label]="label()">
       <defs>
         @for (s of parts(); track s.key) {
           <marker [attr.id]="'g-arrow-' + s.key" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -68,55 +73,47 @@ const r1 = (v: number) => Math.round(v * 10) / 10;
           </marker>
         }
       </defs>
-      @for (s of parts(); track s.key; let i = $index) {
-        <g [attr.transform]="'translate(6,' + (24 + i * 34) + ')'">
-          <circle cx="11" cy="0" r="10" [attr.fill]="s.c.fill" [attr.stroke]="s.c.edge" stroke-width="1.5" />
-          <text x="28" y="5" class="g-legend">{{ s.name }}</text>
-        </g>
-      }
       @for (t of ticks(); track t.r) {
         <circle [attr.cx]="cx" [attr.cy]="cy" [attr.r]="t.r" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.2" />
       }
       @for (s of parts(); track s.key) {
-        <path [attr.d]="s.d" [attr.fill]="s.c.fill" fill-opacity="0.8" [attr.stroke]="s.c.edge" stroke-width="1.5"><title>{{ s.name }}: {{ s.full }}</title></path>
+        <path [attr.d]="s.d" [attr.fill]="s.c.fill" fill-opacity="0.92" [attr.stroke]="s.c.edge" stroke-width="2"><title>{{ s.name }}: {{ s.full }}</title></path>
       }
       @for (t of ticks(); track t.r) {
-        <rect [attr.x]="cx - 17" [attr.y]="cy - t.r - 10" width="34" height="20" rx="3" fill="#0e3a47" fill-opacity="0.92" />
-        <text [attr.x]="cx" [attr.y]="cy - t.r + 5" text-anchor="middle" class="g-tick">{{ t.label }}</text>
+        <rect [attr.x]="cx - 24" [attr.y]="cy - t.r - 12" width="48" height="24" rx="4" fill="#0e3a47" fill-opacity="0.95" />
+        <text [attr.x]="cx" [attr.y]="cy - t.r + 6" text-anchor="middle" class="g-tick">{{ t.label }}</text>
       }
       @for (s of parts(); track s.key) {
         <line [attr.x1]="s.lx1" [attr.y1]="s.ly1" [attr.x2]="s.lx2" [attr.y2]="s.ly2" [attr.stroke]="s.c.edge" stroke-width="1.4" stroke-dasharray="2 3" [attr.marker-end]="'url(#g-arrow-' + s.key + ')'" />
         <text [attr.x]="s.tx" [attr.y]="s.ty" [attr.text-anchor]="s.anchor" class="g-call" [attr.fill]="s.c.text">
           @if (s.below) {
-            <tspan [attr.x]="s.tx" dy="0">({{ s.short }})</tspan><tspan [attr.x]="s.tx" dy="21">{{ s.name }}</tspan>
+            <tspan [attr.x]="s.tx" dy="0">({{ s.short }})</tspan><tspan [attr.x]="s.tx" dy="23">{{ s.name }}</tspan>
           } @else {
-            <tspan [attr.x]="s.tx" dy="-21">{{ s.name }}</tspan><tspan [attr.x]="s.tx" dy="21">({{ s.short }})</tspan>
+            <tspan [attr.x]="s.tx" dy="-23">{{ s.name }}</tspan><tspan [attr.x]="s.tx" dy="23">({{ s.short }})</tspan>
           }
         </text>
       }
     </svg>
   `,
   styles: [`
-    .g-svg { width: 100%; height: auto; display: block; overflow: visible; }
-    .g-legend { font-size: 14px; font-weight: 700; fill: #fff; }
-    .g-tick { font-size: 13px; font-weight: 700; fill: rgba(255, 255, 255, 0.75); }
-    .g-call { font-size: 16px; font-weight: 800; }
+    .g-svg { width: 100%; height: auto; display: block; overflow: visible; margin-top: 4px; }
+    .g-legend-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; }
+    .g-key { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: #fff; }
+    .g-key i { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid; display: inline-block; }
+    .g-tick { font-size: 15px; font-weight: 800; fill: #fff; }
+    .g-call { font-size: 19px; font-weight: 800; }
   `],
 })
 export class GRoseChart {
   readonly slices = input.required<GSlice[]>();
   readonly label = input('');
 
-  protected readonly cx = 492;
-  protected readonly cy = 250;
-  private readonly R = 165;
+  protected readonly cx = 360;
+  protected readonly cy = 280;
+  private readonly R = 210;
 
-  /** A round top for the scale (1, 2 or 5 times a power of ten), so the rings carry plain figures. */
-  private readonly top = computed(() => {
-    const max = Math.max(1, ...this.slices().map((s) => s.value));
-    const p = Math.pow(10, Math.floor(Math.log10(max)));
-    return [1, 2, 2.5, 5, 10].map((m) => m * p).find((x) => x >= max) ?? max;
-  });
+  /** The biggest slice reaches the outer ring, so the chart fills its space. */
+  private readonly top = computed(() => Math.max(1, ...this.slices().map((s) => s.value)));
 
   /** The rings at a quarter, half, three quarters and all of the radius, each with the figure a slice reaching it holds. */
   protected readonly ticks = computed(() => [0.25, 0.5, 0.75, 1].map((f) => ({ r: r1(this.R * f), label: shortMoney(this.top() * f * f) })));
@@ -126,13 +123,13 @@ export class GRoseChart {
     const step = TAU / Math.max(1, list.length);
     return list.map((s, i) => {
       // the AREA shows the amount (radius by the square root), so a small kind stays visible beside a big one
-      const r = Math.max(this.R * 0.12, this.R * Math.sqrt(s.value / this.top()));
+      const r = Math.max(this.R * 0.16, this.R * Math.sqrt(s.value / this.top()));
       const a0 = i * step;
       const a1 = a0 + step;
       const mid = a0 + step / 2;
       const [lx1, ly1] = at(this.cx, this.cy, r * 0.85, mid);
-      const [lx2, ly2] = at(this.cx, this.cy, this.R + 30, mid);
-      const [tx, ty] = at(this.cx, this.cy, this.R + 46, mid);
+      const [lx2, ly2] = at(this.cx, this.cy, this.R + 22, mid);
+      const [tx, ty] = at(this.cx, this.cy, this.R + 36, mid);
       const sin = Math.sin(mid);
       return {
         key: i,
@@ -142,7 +139,7 @@ export class GRoseChart {
         c: G_COLORS[s.color],
         d: wedge(this.cx, this.cy, r, a0, a1),
         lx1: r1(lx1), ly1: r1(ly1), lx2: r1(lx2), ly2: r1(ly2),
-        tx: r1(tx), ty: r1(ty + (Math.cos(mid) < -0.3 ? 22 : 0)),
+        tx: r1(tx), ty: r1(ty + (Math.cos(mid) < -0.3 ? 24 : 0)),
         anchor: sin > 0.25 ? 'start' : sin < -0.25 ? 'end' : 'middle',
         below: Math.cos(mid) < 0,
       };
@@ -171,22 +168,23 @@ export class GRoseChart {
         }
         @for (p of parts(); track p.key) {
           @if (p.share >= 0.06) {
-            <text [attr.x]="p.x" [attr.y]="p.y" text-anchor="middle" class="g-val" [class.g-ring-val]="ring()" [attr.stroke]="ring() ? p.c.edge : null">{{ p.short }}</text>
-            <text [attr.x]="p.x" [attr.y]="p.y + (ring() ? 17 : 26)" text-anchor="middle" class="g-pct" [class.g-ring-val]="ring()" [attr.stroke]="ring() ? p.c.edge : null">{{ p.pct }}%</text>
+            <text [attr.x]="p.x" [attr.y]="p.y" text-anchor="middle" class="g-val" [class.g-ring-val]="ring()">{{ p.short }}</text>
+            <text [attr.x]="p.x" [attr.y]="p.y + (ring() ? 19 : 26)" text-anchor="middle" class="g-pct" [class.g-ring-val]="ring()">{{ p.pct }}%</text>
           }
         }
       }
     </svg>
   `,
   styles: [`
-    .g-svg { width: 100%; max-width: 330px; height: auto; display: block; margin: 6px auto 0; overflow: visible; }
+    .g-svg { width: 100%; max-width: 380px; height: auto; display: block; margin: 8px auto 0; overflow: visible; }
     .g-legend-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; }
-    .g-key { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: rgba(255, 255, 255, 0.85); }
+    .g-key { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 700; color: #fff; }
     .g-key i { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid; display: inline-block; }
-    .g-val { font-size: 25px; font-weight: 800; fill: #fff; }
-    .g-pct { font-size: 17px; font-weight: 600; fill: #fff; }
-    .g-ring-val { paint-order: stroke; stroke-width: 4px; stroke-linejoin: round; font-size: 17px; }
-    .g-pct.g-ring-val { font-size: 12px; stroke-width: 3px; }
+    /* dark ink on the light slice colours: it reads on every one of them */
+    .g-val { font-size: 27px; font-weight: 900; fill: #0d1b2a; }
+    .g-pct { font-size: 18px; font-weight: 700; fill: #0d1b2a; fill-opacity: 0.85; }
+    .g-ring-val { font-size: 20px; }
+    .g-pct.g-ring-val { font-size: 14px; }
     .g-empty { font-size: 15px; fill: rgba(255, 255, 255, 0.6); }
   `],
 })
@@ -204,8 +202,8 @@ export class GPieChart {
 
   protected readonly parts = computed(() => {
     const total = this.total();
-    const outer = this.ring() ? 150 : 140;
-    const inner = this.ring() ? 112 : 0;
+    const outer = this.ring() ? 152 : 146;
+    const inner = this.ring() ? 96 : 0;
     let a = 0;
     return this.slices().filter((s) => s.value > 0).map((s, i) => {
       const share = s.value / total;

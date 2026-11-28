@@ -6,7 +6,7 @@ import { monthKey } from '../../core/format';
 import { Row } from '../../core/groups/groups-api.service';
 import { MenuItem, RowMenuComponent } from '../../shared/components/row-menu/row-menu';
 import { GBase } from './g-base';
-import { GColor, GPieChart, GRoseChart, GSlice } from './g-charts';
+import { GColor, GPieChart, GRoseChart, GSlice, shortMoney } from './g-charts';
 
 /** Each kind of work that can wait for a leader, and the page where it is done. */
 export const G_WAITING: Record<string, string> = {
@@ -121,8 +121,8 @@ export const G_WAITING: Record<string, string> = {
                 @for (t of m['trend'] ?? []; track t['month']) {
                   <div class="g-col" [title]="t['month'] + ': +' + tsh(t['in']) + ' / -' + tsh(t['out'])">
                     <div class="g-pair">
-                      <i class="g-in" [style.height.%]="pct(t['in'])"></i>
-                      <i class="g-out" [style.height.%]="pct(t['out'])"></i>
+                      <i class="g-in" [style.height.%]="pct(t['in'])" [attr.data-v]="n(t['in']) > 0 ? short(n(t['in'])) : null"></i>
+                      <i class="g-out" [style.height.%]="pct(t['out'])" [attr.data-v]="n(t['out']) > 0 ? short(n(t['out'])) : null"></i>
                     </div>
                     <span>{{ t['month'].slice(5) }}</span>
                   </div>
@@ -192,10 +192,15 @@ export const G_WAITING: Record<string, string> = {
       .g-cbig { margin: 2px 0 0; font-size: 24px; font-weight: 800; color: #6fd08c; }
       .g-cbig.g-cbad { color: #ff8a8a; }
       .g-cempty { color: rgba(255, 255, 255, 0.6); margin: 40px 0; }
-      .g-chart { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; align-items: end; height: 230px; margin-top: 10px; }
-      .g-col { display: grid; grid-template-rows: 1fr auto; height: 100%; gap: 6px; text-align: center; font-size: 12px; font-weight: 700; color: rgba(255, 255, 255, 0.75); }
+      /* the 12 months fill their card; each bar carries its figure on top */
+      .g-trend-card { display: flex; flex-direction: column; }
+      .g-chart { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; align-items: end; flex: 1; min-height: 280px; margin-top: 26px; }
+      .g-col { display: grid; grid-template-rows: 1fr auto; height: 100%; gap: 6px; text-align: center; font-size: 14px; font-weight: 800; color: #fff; }
       .g-pair { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 100%; }
-      .g-pair i { display: block; width: 38%; min-height: 2px; border-radius: 5px 5px 0 0; }
+      .g-pair i { position: relative; display: block; width: 40%; min-height: 2px; border-radius: 5px 5px 0 0; }
+      .g-pair i[data-v]::before { content: attr(data-v); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 3px; font-size: 11.5px; font-weight: 800; font-style: normal; white-space: nowrap; }
+      .g-pair i.g-in::before { color: #8ee6a8; }
+      .g-pair i.g-out::before { color: #ffa3a3; }
       .g-in { background: #6fd08c; border: 1.5px solid #3fba68; }
       .g-out { background: #ee8585; border: 1.5px solid #e46262; }
       .g-ckeys { display: flex; justify-content: center; gap: 16px; margin: 10px 0 0; font-size: 14px; font-weight: 700; color: rgba(255, 255, 255, 0.8); }
@@ -277,6 +282,8 @@ export class GDashboardPage extends GBase implements OnInit {
     const y: Row = this.d()?.['money']?.['year'] ?? {};
     return this.n(y['hire_income']) - this.n(y['welfare_paid']) - this.n(y['expenses']);
   });
+
+  protected readonly short = shortMoney;
 
   protected go(path: string): void {
     void this.router.navigate([path]);
